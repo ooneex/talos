@@ -1,0 +1,46 @@
+{
+  "name": "@talosjs/app-env",
+  "description": "Environment detection and configuration management for Talos applications — supports development, staging, production, and testing environments",
+  "version": "1.0.0",
+  "type": "module",
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md",
+    "package.json"
+  ],
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "license": "MIT",
+  "scripts": {
+    "test": "bun test tests",
+    "build": "bunup",
+    "lint": "tsgo --noEmit && bunx biome lint",
+    "npm:publish": "bun publish --tolerate-republish --force --production --access public"
+  },
+  "dependencies": {
+    "@talosjs/utils": "workspace:^",
+    "@talosjs/container": "workspace:^",
+    "@talosjs/exception": "workspace:^",
+    "@talosjs/http-status": "workspace:^"
+  },
+  "devDependencies": {},
+  "keywords": [
+    "bun",
+    "config",
+    "configuration",
+    "env",
+    "environment",
+    "talos",
+    "typescript"
+  ]
+}
