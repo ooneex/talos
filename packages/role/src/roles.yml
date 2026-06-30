@@ -1,0 +1,56 @@
+roles:
+  GUEST: ROLE_GUEST
+  TRIAL_USER: ROLE_TRIAL_USER
+  USER: ROLE_USER
+  PREMIUM_USER: ROLE_PREMIUM_USER
+  VIP_USER: ROLE_VIP_USER
+  REVIEWER: ROLE_REVIEWER
+  MODERATOR: ROLE_MODERATOR
+  MANAGER: ROLE_MANAGER
+  ADMIN: ROLE_ADMIN
+  SUPER_ADMIN: ROLE_SUPER_ADMIN
+  SYSTEM: ROLE_SYSTEM
+
+hierarchy:
+  ROLE_GUEST:
+    description: Unauthenticated visitor with read-only access to public content
+
+  ROLE_TRIAL_USER:
+    inherits: [ROLE_GUEST]
+    description: Registered user on a limited trial period with restricted feature access
+
+  ROLE_USER:
+    inherits: [ROLE_TRIAL_USER]
+    description: Standard authenticated user with full access to core features
+
+  ROLE_PREMIUM_USER:
+    inherits: [ROLE_USER]
+    description: Paid subscriber with access to premium features and content
+
+  ROLE_VIP_USER:
+    inherits: [ROLE_PREMIUM_USER]
+    description: High-value user with exclusive VIP benefits and priority support
+
+  ROLE_REVIEWER:
+    inherits: [ROLE_USER]
+    description: Trusted user who can review and rate content submitted by others
+
+  ROLE_MODERATOR:
+    inherits: [ROLE_USER]
+    description: Community moderator who can manage posts, comments, and user reports
+
+  ROLE_MANAGER:
+    inherits: [ROLE_USER]
+    description: Operational manager with access to team and resource management tools
+
+  ROLE_ADMIN:
+    inherits: [ROLE_MANAGER]
+    description: Application administrator with full control over users, settings, and content
+
+  ROLE_SUPER_ADMIN:
+    inherits: [ROLE_ADMIN]
+    description: Super administrator with unrestricted access across all tenants and configurations
+
+  ROLE_SYSTEM:
+    inherits: [ROLE_SUPER_ADMIN]
+    description: Internal system identity used for automated processes and service-to-service operations

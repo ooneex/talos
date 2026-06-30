@@ -1,0 +1,44 @@
+{
+  "name": "@talosjs/role",
+  "description": "Role-based authorization types and utilities for defining user roles, hierarchies, and access levels in multi-tenant applications",
+  "version": "1.0.0",
+  "type": "module",
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md",
+    "package.json"
+  ],
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "license": "MIT",
+  "scripts": {
+    "test": "bun test tests",
+    "build": "bunup",
+    "lint": "tsgo --noEmit && bunx biome lint",
+    "npm:publish": "bun publish --tolerate-republish --force --production --access public"
+  },
+  "dependencies": {
+    "@talosjs/exception": "workspace:*",
+    "@talosjs/http-status": "workspace:*"
+  },
+  "devDependencies": {},
+  "keywords": [
+    "authorization",
+    "bun",
+    "talos",
+    "rbac",
+    "role",
+    "roles",
+    "typescript"
+  ]
+}
