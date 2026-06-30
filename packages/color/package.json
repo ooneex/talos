@@ -1,0 +1,41 @@
+{
+  "name": "@talosjs/color",
+  "description": "Curated color palette with hex values and human-friendly names plus TypeScript types for UI theming",
+  "version": "1.0.0",
+  "type": "module",
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md",
+    "package.json"
+  ],
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "license": "MIT",
+  "scripts": {
+    "test": "bun test tests",
+    "build": "bunup",
+    "lint": "tsgo --noEmit && bunx biome lint",
+    "npm:publish": "bun publish --tolerate-republish --force --production --access public"
+  },
+  "dependencies": {},
+  "keywords": [
+    "bun",
+    "color",
+    "hex",
+    "talos",
+    "palette",
+    "theme",
+    "typescript",
+    "ui"
+  ]
+}
