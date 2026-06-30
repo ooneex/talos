@@ -7,7 +7,7 @@ import { Tiktok } from "./icons/TikTok";
 export const MailerLayoutFooter = ({
   backgroundColor,
   instagram = "https://www.instagram.com/talos_official",
-  tiktok = "https://www.tiktok.com/@talos",
+  tiktok = "https://www.tiktok.com/@talosjs",
   linkedin = "https://www.linkedin.com/company/talos/",
   facebook = "https://www.facebook.com/profile.php?id=61560619401969",
   slack = "https://join.slack.com/t/talos/shared_invite/zt-2ragcg3dz-P0Su1E7yFG33C3L5CPOuzw",
