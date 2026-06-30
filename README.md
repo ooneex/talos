@@ -18,7 +18,10 @@
   <br />
 
   <p align="center">
-    A modular TypeScript framework built on Bun — 60+ independent packages for building modern web applications.
+    A modular TypeScript framework built on Bun — 60+ independent packages and the first framework designed around Spec-Driven Development.
+    <br />
+    <br />
+    <a href="https://docs.talosjs.com/getting-started"><strong>Explore the docs »</strong></a>
     <br />
     <br />
     <a href="https://github.com/ooneex/talos/issues/new?labels=bug">Report Bug</a>
@@ -47,6 +50,7 @@
     </li>
     <li><a href="#usage">Usage</a></li>
     <li><a href="#architecture">Architecture</a></li>
+    <li><a href="#spec-driven-development">Spec-Driven Development</a></li>
     <li><a href="#development">Development</a></li>
     <li><a href="#roadmap">Roadmap</a></li>
     <li><a href="#contributing">Contributing</a></li>
@@ -66,13 +70,18 @@
 
 Talos is a comprehensive TypeScript monorepo framework designed for the [Bun](https://bun.sh) runtime. It provides a rich ecosystem of 60+ independently versioned packages under the `@talosjs` namespace, covering everything from dependency injection and routing to database management, caching, authentication, real-time communication, background job queues, and AI integration.
 
+It is also the first framework designed around **Spec-Driven Development** — your work lives as structured specs that AI agents can find, plan, and implement against your real conventions, with every step transparent and verifiable. See [Spec-Driven Development](#spec-driven-development) below.
+
 **Key highlights:**
 
 - **Modular architecture** — Use only the packages you need. Each package is independently versioned and published to npm.
+- **Built for the AI era** — First-class AI agents, RAG, and a Spec-Driven workflow baked into the core, so AI builds _with_ you instead of guessing.
 - **Dependency injection** — Built on [InversifyJS](https://inversify.io/) with decorator-driven service registration and lifecycle management (singleton, transient, request-scoped).
 - **Decorator-driven design** — Define routes, services, repositories, and middlewares using clean, expressive decorators.
 - **Type-safe** — Strict TypeScript configuration with comprehensive type checking and runtime validation via [ArkType](https://arktype.io/).
 - **Bun-first** — Optimized for the Bun runtime with fast builds via [bunup](https://github.com/nicepkg/bunup) and native Bun test runner support.
+
+📚 **Full documentation:** [docs.talosjs.com](https://docs.talosjs.com/getting-started)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -203,7 +212,45 @@ The framework is organized into 60+ packages across several categories:
   curl -fsSL https://bun.sh/install | bash
   ```
 
-### Installation
+  Verify the install:
+
+  ```sh
+  bun --version
+  ```
+
+### Quick Start
+
+The fastest way to build with Talos is the `talos` CLI. Install it globally, scaffold an app, and start the dev environment.
+
+1. Install the CLI
+
+   ```sh
+   bun add -g @talosjs/cli
+   talos help
+   ```
+
+2. Create a new application
+
+   ```sh
+   talos app:create --name=MovieApp --destination=movie-app
+   cd movie-app
+   ```
+
+3. Start the development environment (launches Docker services and runs all modules with hot reload)
+
+   ```sh
+   talos app:start            # everything
+   talos app:start --api      # API modules only
+   talos app:start --spa      # SPA modules only
+   ```
+
+   Stop it again with `talos app:stop`.
+
+For configuration, project structure, and the full framework guide, see the [getting started docs](https://docs.talosjs.com/getting-started).
+
+### Working on the Monorepo
+
+To develop the framework packages themselves:
 
 1. Clone the repository
 
@@ -312,6 +359,29 @@ Strictly enforced by decorators at registration time:
 | Service | `Service` | `UserService` |
 | Repository | `Repository` | `UserRepository` |
 | Middleware | `Middleware` | `AuthMiddleware` |
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+<!-- SPEC-DRIVEN DEVELOPMENT -->
+## Spec-Driven Development
+
+Talos turns vague requests into structured **specs** — YAML issues with context, goals, a definition of done, and dependencies — that flow through a transparent AI workflow. AI agents find, plan, and implement against your module's real conventions, and each step is verifiable against the spec's definition of done.
+
+| Step | Command | What it does |
+|------|---------|--------------|
+| **Find** | `/issue:found` | Audits a module's source code to surface concrete findings as candidate issues. |
+| **Plan** | `/issue:plan` | Turns a free-form request into a precise, reviewable spec before any code is written. |
+| **Fix** | `/issue:fix` | Implements each planned issue, runs lint, and verifies every acceptance criterion before marking it done. |
+
+Each unit of work becomes a YAML file under `issues/`, evolving through four fields — `context`, `goal`, `dod` (definition of done), and `dependencies` — and progressing through states from `Backlog` to `Done`.
+
+Get started by initializing the AI skills for your agent:
+
+```sh
+talos claude:init   # or: talos codex:init
+```
+
+Learn more in the [Spec-Driven Development guide](https://docs.talosjs.com/ai/spec-driven-development).
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
