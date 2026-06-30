@@ -1,0 +1,65 @@
+import { describe, expect, test } from "bun:test";
+import { {{NAME}}Entity } from "@module/{{MODULE}}/entities/{{NAME}}Entity";
+
+describe("{{NAME}}Entity", () => {
+  test("should have class name ending with 'Entity'", () => {
+    expect({{NAME}}Entity.name.endsWith("Entity")).toBe(true);
+  });
+
+  test("should have 'id' property with default nanoid", () => {
+    const entity = new {{NAME}}Entity();
+    expect(entity.id).toBeDefined();
+    expect(typeof entity.id).toBe("string");
+    expect(entity.id.length).toBe(25);
+  });
+
+  test("should have 'isLocked' property", () => {
+    const entity = new {{NAME}}Entity();
+    expect("isLocked" in entity).toBe(true);
+  });
+
+  test("should have 'lockedAt' property", () => {
+    const entity = new {{NAME}}Entity();
+    expect("lockedAt" in entity).toBe(true);
+  });
+
+  test("should have 'isBlocked' property", () => {
+    const entity = new {{NAME}}Entity();
+    expect("isBlocked" in entity).toBe(true);
+  });
+
+  test("should have 'blockedAt' property", () => {
+    const entity = new {{NAME}}Entity();
+    expect("blockedAt" in entity).toBe(true);
+  });
+
+  test("should have 'blockReason' property", () => {
+    const entity = new {{NAME}}Entity();
+    expect("blockReason" in entity).toBe(true);
+  });
+
+  test("should have 'isPublic' property", () => {
+    const entity = new {{NAME}}Entity();
+    expect("isPublic" in entity).toBe(true);
+  });
+
+  test("should have 'lang' property", () => {
+    const entity = new {{NAME}}Entity();
+    expect("lang" in entity).toBe(true);
+  });
+
+  test("should have 'createdAt' property", () => {
+    const entity = new {{NAME}}Entity();
+    expect("createdAt" in entity).toBe(true);
+  });
+
+  test("should have 'updatedAt' property", () => {
+    const entity = new {{NAME}}Entity();
+    expect("updatedAt" in entity).toBe(true);
+  });
+
+  test("should have 'deletedAt' property", () => {
+    const entity = new {{NAME}}Entity();
+    expect("deletedAt" in entity).toBe(true);
+  });
+});

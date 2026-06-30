@@ -1,0 +1,32 @@
+import type { ITransition } from "@talosjs/workflow";
+import { decorator } from "@talosjs/workflow";
+
+/** Data threaded through the workflow run and read by {@link {{NAME}}Transition}. */
+export type {{NAME}}TransitionDataType = Record<string, unknown>;
+
+@decorator.transition()
+export class {{NAME}}Transition implements ITransition<{{NAME}}TransitionDataType, unknown> {
+  public getName = (): string => "{{KEBAB}}";
+
+  public getDescription = (): string => "";
+
+  /** Whether this transition should run for the given data. */
+  public isActive = (_data: {{NAME}}TransitionDataType): boolean => true;
+
+  /** Performs the transition's work and returns its output. */
+  public handler = async (data: {{NAME}}TransitionDataType): Promise<unknown> => {
+    return data;
+  };
+
+  /** Undoes {@link handler} when a later transition in the workflow fails. */
+  public rollback = async (_data: {{NAME}}TransitionDataType): Promise<void> => {};
+
+  /** Runs before {@link handler}. */
+  public onStart = async (_data: {{NAME}}TransitionDataType): Promise<void> => {};
+
+  /** Runs after {@link handler} resolves successfully. */
+  public onFinish = async (_data: {{NAME}}TransitionDataType, _output: unknown): Promise<void> => {};
+
+  /** Runs when {@link handler} throws. */
+  public onFail = async (_data: {{NAME}}TransitionDataType, _error: unknown): Promise<void> => {};
+}

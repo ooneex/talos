@@ -1,0 +1,59 @@
+{
+  "name": "@talosjs/cli",
+  "description": "Interactive CLI toolkit for scaffolding Talos projects, modules, controllers, services, repositories, and more with customizable code generation templates",
+  "version": "1.0.0",
+  "type": "module",
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md",
+    "package.json"
+  ],
+  "module": "./dist/index.js",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "talos": "./dist/index.js",
+    "oo": "./dist/index.js"
+  },
+  "keywords": [
+    "bun",
+    "cli",
+    "code-generator",
+    "command-line",
+    "console",
+    "talos",
+    "scaffolding",
+    "terminal",
+    "typescript"
+  ],
+  "license": "MIT",
+  "scripts": {
+    "test": "bun test tests",
+    "build": "bunup",
+    "lint": "tsgo --noEmit && bunx biome lint",
+    "npm:publish": "bun publish --tolerate-republish --force --production --access public"
+  },
+  "dependencies": {
+    "@talosjs/command": "workspace:^",
+    "@talosjs/logger": "workspace:^",
+    "@talosjs/migrations": "workspace:^",
+    "@talosjs/seeds": "workspace:^",
+    "@talosjs/utils": "workspace:^",
+    "@talosjs/validation": "workspace:^"
+  },
+  "devDependencies": {
+    "@talosjs/app-env": "workspace:^",
+    "@talosjs/linear": "workspace:^",
+    "@talosjs/role": "workspace:^",
+    "@talosjs/types": "workspace:^",
+    "@types/pluralize": "^0.0.33",
+    "concurrently": "^10.0.3",
+    "enquirer": "^2.4.1",
+    "pluralize": "^8.0.0"
+  }
+}

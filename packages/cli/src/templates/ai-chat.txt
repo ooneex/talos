@@ -1,0 +1,13 @@
+import type { AiMiddlewareClassType, AiToolClassType } from "@talosjs/ai";
+import { Chat, decorator } from "@talosjs/ai";
+
+@decorator.chat()
+export class {{NAME}}Chat extends Chat {
+  public getModel = (): string => "anthropic/claude-sonnet-4.5";
+
+  public getSystemPrompts = (): string[] => [];
+
+  public getTools = (): AiToolClassType[] => [];
+
+  public getMiddlewares = (): AiMiddlewareClassType[] => [];
+}

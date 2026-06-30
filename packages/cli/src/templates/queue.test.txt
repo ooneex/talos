@@ -1,0 +1,54 @@
+import type { AppEnv } from "@talosjs/app-env";
+import { describe, expect, test } from "bun:test";
+import { {{NAME}}Queue } from "@module/{{MODULE}}/queues/{{NAME}}Queue";
+
+describe("{{NAME}}Queue", () => {
+  test("should have class name ending with 'Queue'", () => {
+    expect({{NAME}}Queue.name.endsWith("Queue")).toBe(true);
+  });
+
+  test("should have 'add' method", () => {
+    expect({{NAME}}Queue.prototype.add).toBeDefined();
+    expect(typeof {{NAME}}Queue.prototype.add).toBe("function");
+  });
+
+  test("should have 'addBulk' method", () => {
+    expect({{NAME}}Queue.prototype.addBulk).toBeDefined();
+    expect(typeof {{NAME}}Queue.prototype.addBulk).toBe("function");
+  });
+
+  test("should have 'removeJob' method", () => {
+    expect({{NAME}}Queue.prototype.removeJob).toBeDefined();
+    expect(typeof {{NAME}}Queue.prototype.removeJob).toBe("function");
+  });
+
+  test("should have 'close' method", () => {
+    expect({{NAME}}Queue.prototype.close).toBeDefined();
+    expect(typeof {{NAME}}Queue.prototype.close).toBe("function");
+  });
+
+  test("should have 'handler' method", () => {
+    expect({{NAME}}Queue.prototype.handler).toBeDefined();
+    expect(typeof {{NAME}}Queue.prototype.handler).toBe("function");
+  });
+
+  test("should have 'onCompleted' method", () => {
+    expect({{NAME}}Queue.prototype.onCompleted).toBeDefined();
+    expect(typeof {{NAME}}Queue.prototype.onCompleted).toBe("function");
+  });
+
+  test("should have 'onFailed' method", () => {
+    expect({{NAME}}Queue.prototype.onFailed).toBeDefined();
+    expect(typeof {{NAME}}Queue.prototype.onFailed).toBe("function");
+  });
+
+  test("should have 'onError' method", () => {
+    expect({{NAME}}Queue.prototype.onError).toBeDefined();
+    expect(typeof {{NAME}}Queue.prototype.onError).toBe("function");
+  });
+
+  test("should throw when QUEUE_REDIS_URL is not configured", () => {
+    const env = { QUEUE_REDIS_URL: undefined } as AppEnv;
+    expect(() => new {{NAME}}Queue(env)).toThrow();
+  });
+});

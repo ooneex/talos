@@ -1,0 +1,15 @@
+import type { WorkflowTransitionClassType } from "@talosjs/workflow";
+import { decorator, Workflow } from "@talosjs/workflow";
+
+/** Data threaded through {@link {{NAME}}Workflow} and each of its transitions. */
+export type {{NAME}}WorkflowDataType = Record<string, unknown>;
+
+@decorator.workflow()
+export class {{NAME}}Workflow extends Workflow<{{NAME}}WorkflowDataType> {
+  public getName = (): string => "{{KEBAB}}";
+
+  public getDescription = (): string => "";
+
+  /** Transitions run in order; each one's `isActive` decides if it executes. */
+  public getTransitions = (): WorkflowTransitionClassType[] => [];
+}

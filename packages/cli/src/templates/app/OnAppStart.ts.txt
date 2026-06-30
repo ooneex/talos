@@ -1,0 +1,20 @@
+import { decorator, type IAppEventStart } from "@talosjs/app";
+import { inject } from "@talosjs/container";
+import { TerminalLogger } from "@talosjs/logger";
+import type { Server } from "bun";
+
+@decorator.app.event.start()
+export class OnAppStart implements IAppEventStart {
+  public constructor(@inject(TerminalLogger) private readonly logger: TerminalLogger) {}
+
+  public handle(server: Server<unknown>): void | Promise<void> {
+    let hostname = server.hostname || "0.0.0.0";
+
+    if (hostname === "0.0.0.0") {
+      hostname = "localhost";
+    }
+
+    const baseUrl = `${server.protocol}://${hostname}:${server.port}`;
+    this.logger.info(`Server running at ${baseUrl}`);
+  }
+}

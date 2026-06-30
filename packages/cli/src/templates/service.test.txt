@@ -1,0 +1,13 @@
+import { describe, expect, test } from "bun:test";
+import { {{NAME}}Service } from "@module/{{MODULE}}/services/{{NAME}}Service";
+
+describe("{{NAME}}Service", () => {
+  test("should have class name ending with 'Service'", () => {
+    expect({{NAME}}Service.name.endsWith("Service")).toBe(true);
+  });
+
+  test("should have 'execute' method", () => {
+    expect({{NAME}}Service.prototype.execute).toBeDefined();
+    expect(typeof {{NAME}}Service.prototype.execute).toBe("function");
+  });
+});

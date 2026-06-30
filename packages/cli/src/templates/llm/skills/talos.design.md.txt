@@ -1,0 +1,31 @@
+---
+name: talos:design
+description: Directory structure and conventions for a design module — the front-end design system layout (components, hooks, icons, fonts, styles, utils) with per-folder usage guidance. Use when creating or navigating a design system.
+---
+
+# Design System Architecture
+
+> **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
+
+A **design module** (`oo design:create`) holds the front-end design system, not backend logic. It is **not** registered into `AppModule`/`SharedModule` and its `<name>.yml` declares `type: "design"`. `src/` is organized by asset kind:
+```
+modules/<name>/        # type: "design"
+  src/
+    components/   # React (.tsx) UI, one folder per component (~50: accordion, avatar, badge,
+                  #   button, card, dialog, form, input, select, table, tabs, tooltip, …)
+    hooks/        # Reusable React hooks — useClickOutside, useMobile, useControlledState, useAutoHeight
+    icons/        # SVG icons in fill/ + outline/ variants, grouped by category + size (sm, md, lg)
+    fonts/        # Bundled web fonts (Space Grotesk) with @font-face CSS
+    styles/       # Global stylesheets — app.css, brand.css, shape.css, status.css, typography.css
+    utils/        # Front-end helpers — cn (class-name merge), staleChunk
+```
+
+Folder usage:
+- **`components/`** — Reusable React UI, one folder per component grouping variants (e.g. `button/` has `Button.tsx`, `ButtonSave.tsx`, …). Compose these primitives instead of ad-hoc markup or duplicating internals.
+- **`hooks/`** — Shared presentation-layer hooks (state, DOM measurement, events). Keep generic; domain/data-fetching logic belongs in services.
+- **`icons/`** — Use provided SVG icons, picking `fill/` vs `outline/` and size. Add new icons to the matching category folder, not inline SVG.
+- **`fonts/`** — Reference bundled fonts + their `@font-face`; no external CDNs. Add new font files here with their CSS.
+- **`styles/`** — Edit global stylesheets for app-wide tokens, themes, base styling. Prefer shared styles + component-scoped classes over one-off CSS.
+- **`utils/`** — Front-end helpers (`cn`, `staleChunk`); add small pure presentation helpers. No backend/business logic.
+
+For the single-page app that consumes this design system, see `talos:spa`. For backend module layout, see `talos:module`.

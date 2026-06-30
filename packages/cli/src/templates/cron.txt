@@ -1,0 +1,21 @@
+import type { TimeZoneType } from "@talosjs/country";
+import type { CronTimeType } from "@talosjs/cron";
+import { Cron, decorator } from "@talosjs/cron";
+
+@decorator.cron()
+export class {{NAME}}Cron extends Cron {
+  public getTime(): CronTimeType {
+    // Examples: "every 5 minutes", "every 1 hours", "every 30 seconds"
+    return "every 1 hours";
+  }
+
+  public getTimeZone(): TimeZoneType | null {
+    // Return null to use server timezone, or specify a timezone like "Europe/Paris"
+    return null;
+  }
+
+  public async handler(): Promise<void> {
+    // Implement your cron handler logic here
+    // console.log("{{NAME}}Cron handler executed");
+  }
+}

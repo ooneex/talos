@@ -1,0 +1,60 @@
+import { Storage, decorator, StorageException } from "@talosjs/storage";
+import { inject } from "@talosjs/container";
+import { AppEnv } from "@talosjs/app-env";
+import type { S3Options } from "bun";
+
+@decorator.storage()
+export class {{NAME}}Storage extends Storage {
+  protected bucket: string;
+  private readonly accessKey: string;
+  private readonly secretKey: string;
+  private readonly endpoint: string;
+  private readonly region: string;
+
+  constructor(
+    @inject(AppEnv) private readonly env: AppEnv,
+    options?: {
+      accessKey?: string;
+      secretKey?: string;
+      endpoint?: string;
+      region?: string;
+    },
+  ) {
+    super();
+
+    const accessKey = options?.accessKey || this.env.STORAGE_{{NAME_UPPER}}_ACCESS_KEY;
+    const secretKey = options?.secretKey || this.env.STORAGE_{{NAME_UPPER}}_SECRET_KEY;
+    const endpoint = options?.endpoint || this.env.STORAGE_{{NAME_UPPER}}_ENDPOINT;
+
+    if (!accessKey) {
+      throw new StorageException(
+        "{{NAME}} access key is required. Please provide an access key either through the constructor options or set the STORAGE_{{NAME_UPPER}}_ACCESS_KEY environment variable.",
+      );
+    }
+    if (!secretKey) {
+      throw new StorageException(
+        "{{NAME}} secret key is required. Please provide a secret key either through the constructor options or set the STORAGE_{{NAME_UPPER}}_SECRET_KEY environment variable.",
+      );
+    }
+    if (!endpoint) {
+      throw new StorageException(
+        "{{NAME}} endpoint is required. Please provide an endpoint either through the constructor options or set the STORAGE_{{NAME_UPPER}}_ENDPOINT environment variable.",
+      );
+    }
+
+    this.accessKey = accessKey;
+    this.secretKey = secretKey;
+    this.endpoint = endpoint;
+    this.region = options?.region || this.env.STORAGE_{{NAME_UPPER}}_REGION || "auto";
+  }
+
+  public getOptions(): S3Options {
+    return {
+      accessKeyId: this.accessKey,
+      secretAccessKey: this.secretKey,
+      endpoint: this.endpoint,
+      bucket: this.bucket,
+      region: this.region,
+    };
+  }
+}

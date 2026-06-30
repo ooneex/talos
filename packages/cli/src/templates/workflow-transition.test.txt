@@ -1,0 +1,35 @@
+import { describe, expect, test } from "bun:test";
+import { {{NAME}}Transition } from "@module/{{MODULE}}/workflows/transitions/{{NAME}}Transition";
+
+describe("{{NAME}}Transition", () => {
+  const transition = new {{NAME}}Transition();
+
+  test("should have class name ending with 'Transition'", () => {
+    expect({{NAME}}Transition.name.endsWith("Transition")).toBe(true);
+  });
+
+  test("should expose a non-empty name", () => {
+    expect(typeof transition.getName()).toBe("string");
+    expect(transition.getName().length).toBeGreaterThan(0);
+  });
+
+  test("should expose a description", () => {
+    expect(typeof transition.getDescription()).toBe("string");
+  });
+
+  test("should expose an isActive guard", async () => {
+    expect(typeof transition.isActive).toBe("function");
+    expect(await transition.isActive({})).toBe(true);
+  });
+
+  test("should expose a handler", () => {
+    expect(typeof transition.handler).toBe("function");
+  });
+
+  test("should expose rollback and lifecycle hooks", () => {
+    expect(typeof transition.rollback).toBe("function");
+    expect(typeof transition.onStart).toBe("function");
+    expect(typeof transition.onFinish).toBe("function");
+    expect(typeof transition.onFail).toBe("function");
+  });
+});

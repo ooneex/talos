@@ -1,0 +1,11 @@
+import { decorator } from "@talosjs/analytics";
+import type { IAnalytics } from "@talosjs/analytics";
+
+type CaptureOptionsType = Record<string, unknown>;
+
+@decorator.analytics()
+export class {{NAME}}Analytics<T extends CaptureOptionsType = CaptureOptionsType> implements IAnalytics<T> {
+  public capture(options: T): void {
+    // console.log("Analytics captured:", options);
+  }
+}

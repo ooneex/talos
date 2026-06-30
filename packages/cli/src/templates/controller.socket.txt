@@ -1,0 +1,47 @@
+import type { ContextType, IController } from "@talosjs/socket";
+import { ERole } from "@talosjs/role";
+import { Route } from "@talosjs/routing";
+import { Assert } from "@talosjs/validation";
+
+export type {{TYPE_NAME}}RouteType = {
+  params: {
+
+  },
+  payload: {
+
+  },
+  queries: {
+
+  },
+  response: {
+
+  },
+};
+
+@Route.socket("{{ROUTE_PATH}}", {
+  name: "{{ROUTE_NAME}}",
+  version: 1,
+  description: "",
+  params: {
+    // id: Assert("string"),
+  },
+  payload: Assert({
+
+  }),
+  queries: Assert({
+
+  }),
+  response: Assert({
+
+  }),
+  roles: ["ROLE_USER"],
+})
+export class {{NAME}}Controller implements IController<{{TYPE_NAME}}RouteType> {
+  public async index(context: ContextType<{{TYPE_NAME}}RouteType>): Promise<void> {
+    // const { id } = context.params;
+
+    await context.channel.send({
+
+    });
+  }
+}

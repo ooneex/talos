@@ -1,0 +1,20 @@
+{
+  "welcome": {
+    "en": "Welcome, {{ name }}!",
+    "fr": "Bienvenue, {{ name }} !"
+  },
+  "cart": {
+    "items": {
+      "en": "{{ count }} item",
+      "fr": "{{ count }} article"
+    },
+    "items_plural": {
+      "en": "{{ count }} items",
+      "fr": "{{ count }} articles"
+    },
+    "items_zero": {
+      "en": "No items",
+      "fr": "Aucun article"
+    }
+  }
+}

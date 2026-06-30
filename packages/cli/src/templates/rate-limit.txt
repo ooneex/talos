@@ -1,0 +1,32 @@
+import { decorator, RateLimitException } from "@talosjs/rate-limit";
+import type { IRateLimiter, RateLimitResultType } from "@talosjs/rate-limit";
+
+@decorator.rateLimit()
+export class {{NAME}}RateLimiter implements IRateLimiter {
+  public async check(key: string): Promise<RateLimitResultType> {
+    throw new RateLimitException(
+      `Failed to check rate limit for key "${key}": Not implemented`,
+      "RATE_LIMIT_CHECK_FAILED",
+    );
+  }
+
+  public async isLimited(key: string): Promise<boolean> {
+    const result = await this.check(key);
+
+    return result.limited;
+  }
+
+  public async reset(key: string): Promise<boolean> {
+    throw new RateLimitException(
+      `Failed to reset rate limit for key "${key}": Not implemented`,
+      "RATE_LIMIT_RESET_FAILED",
+    );
+  }
+
+  public async getCount(key: string): Promise<number> {
+    throw new RateLimitException(
+      `Failed to get count for key "${key}": Not implemented`,
+      "RATE_LIMIT_COUNT_FAILED",
+    );
+  }
+}

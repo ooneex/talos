@@ -1,0 +1,17 @@
+services:
+  # Temporal - Workflow orchestration engine
+  # Docs: https://docs.temporal.io/
+  # gRPC: localhost:7233
+  # Requires PostgreSQL service
+  temporal:
+    image: temporalio/auto-setup:latest
+    container_name: temporal
+    restart: "on-failure"
+    ports:
+      - "7233:7233"
+    environment:
+      - DB=postgresql
+      - DB_PORT=5432
+      - POSTGRES_USER=talos
+      - POSTGRES_PWD=talos
+      - POSTGRES_SEEDS=postgres

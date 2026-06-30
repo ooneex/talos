@@ -1,0 +1,23 @@
+import { describe, expect, test } from "bun:test";
+import { {{NAME}}VectorDatabase } from "@module/{{MODULE}}/databases/{{NAME}}VectorDatabase";
+
+describe("{{NAME}}VectorDatabase", () => {
+  test("should have class name ending with 'VectorDatabase'", () => {
+    expect({{NAME}}VectorDatabase.name.endsWith("VectorDatabase")).toBe(true);
+  });
+
+  test("should have 'getDatabaseUri' method", () => {
+    expect({{NAME}}VectorDatabase.prototype.getDatabaseUri).toBeDefined();
+    expect(typeof {{NAME}}VectorDatabase.prototype.getDatabaseUri).toBe("function");
+  });
+
+  test("should have 'getEmbeddingModel' method", () => {
+    expect({{NAME}}VectorDatabase.prototype.getEmbeddingModel).toBeDefined();
+    expect(typeof {{NAME}}VectorDatabase.prototype.getEmbeddingModel).toBe("function");
+  });
+
+  test("should have 'getSchema' method", () => {
+    expect({{NAME}}VectorDatabase.prototype.getSchema).toBeDefined();
+    expect(typeof {{NAME}}VectorDatabase.prototype.getSchema).toBe("function");
+  });
+});

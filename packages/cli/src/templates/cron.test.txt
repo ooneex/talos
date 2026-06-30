@@ -1,0 +1,23 @@
+import { describe, expect, test } from "bun:test";
+import { {{NAME}}Cron } from "@module/{{MODULE}}/cron/{{NAME}}Cron";
+
+describe("{{NAME}}Cron", () => {
+  test("should have class name ending with 'Cron'", () => {
+    expect({{NAME}}Cron.name.endsWith("Cron")).toBe(true);
+  });
+
+  test("should have 'getTime' method", () => {
+    expect({{NAME}}Cron.prototype.getTime).toBeDefined();
+    expect(typeof {{NAME}}Cron.prototype.getTime).toBe("function");
+  });
+
+  test("should have 'getTimeZone' method", () => {
+    expect({{NAME}}Cron.prototype.getTimeZone).toBeDefined();
+    expect(typeof {{NAME}}Cron.prototype.getTimeZone).toBe("function");
+  });
+
+  test("should have 'handler' method", () => {
+    expect({{NAME}}Cron.prototype.handler).toBeDefined();
+    expect(typeof {{NAME}}Cron.prototype.handler).toBe("function");
+  });
+});

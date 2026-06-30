@@ -1,0 +1,15 @@
+services:
+  # Prometheus - Metrics collection and monitoring
+  # Docs: https://prometheus.io/docs/
+  # Web UI: http://localhost:9090
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: "on-failure"
+    ports:
+      - "9090:9090"
+    volumes:
+      - prometheus_data:/prometheus:rw
+
+volumes:
+  prometheus_data:

@@ -1,0 +1,100 @@
+---
+name: talos:commands
+description: Reference for the `oo` CLI commands — app lifecycle, module/design/spa/microservice/SDK/docker scaffolding, database migrations and seeds, releases, and issues. Use when you need the exact command or flags to run a project task from the terminal.
+---
+
+# oo CLI Commands
+
+> **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
+
+Always run from the project root.
+
+## Bootstrap
+```bash
+oo app:create [--name <name>] [--destination <path>]  # Scaffold a brand-new project (app + shared modules, deps, optional CI/CD)
+oo app:init [--name <name>] [--destination <path>]     # (Re)write project config (biome, tsconfig, git, husky, env, Claude/Codex skills)
+```
+
+`app:create` bootstraps a whole new Talos application: it generates the `app` (API) and `shared` modules, Docker files, installs runtime + dev dependencies, runs `app:init`, and optionally adds CI/CD files. `app:init` only lays down the project-level config and is run automatically by `app:create`.
+
+## Application
+```bash
+oo app:start                   # Start Docker services + all runnable modules with hot reload
+oo app:start --api             # Start only the api modules
+oo app:start --api=a,b         # Start only the api modules named "a" and "b"
+oo app:start --microservice    # Start only the microservice modules (also --microservice=a,b)
+oo app:start --spa             # Start only the spa modules (also --spa=a,b)
+oo app:start --api --spa       # Combine flags to start several types at once
+oo app:stop                    # Stop the app module's shared Docker stack
+oo app:stop --api=a,b          # Stop only the Docker stack of named modules that have a docker-compose.yml
+oo app:build                   # Compile for production (output: dist/)
+```
+
+## Generators
+```bash
+oo module:create --name <name>        # Scaffold a module
+oo module:remove --name <name>        # Remove a module + all references
+oo design:create --name <name>        # Scaffold a design module (from @talosjs/design)
+oo design:remove --name <name>        # Remove a design module + all references
+oo spa:create --name <name>           # Scaffold a spa module (from @talosjs/spa)
+oo spa:remove --name <name>           # Remove a spa module + all references
+oo microservice:create --name <name>  # Scaffold a microservice
+oo microservice:remove --name <name>  # Remove a microservice + all references
+oo sdk:create                         # Generate a browser SDK from module controllers
+oo docker:create --name <service>     # Add a Docker service to docker-compose.yml
+
+# Issues
+oo issue:create --id <id> --title <title> [--module <name>]  # YAML skeleton (non-interactive)
+oo issue:create --interactive [--module <name>]              # Prompt for ID/title/description
+oo issue:pull [--id <id>] [--module <name>]                  # Pull a Linear issue as YAML
+oo issue:push [--id <id>]                                    # Push a local issue YAML to Linear
+```
+
+Class generators share the form `oo <artifact>:create --name <Name> --module <name>`, where `<artifact>` is one of:
+`ai:chat` (chat class), `ai:middleware` (chat middleware), `ai:tool` (chat tool), `analytics` (handler), `cache` (handler), `command` (CLI/`ICommand`), `controller` (HTTP/WS), `cron` (job), `database` (adapter), `entity` (TypeORM), `event` (pub/sub), `flag` (feature flag), `logger`, `mailer` (class + JSX template), `middleware` (HTTP/WS), `permission`, `queue` (BullMQ job queue), `rate-limit` (throttling strategy / `IRateLimiter`), `repository`, `service`, `spa:feature` (SPA feature slice), `storage`, `translation` (localized dictionary), `vector-database`.
+
+The matching `/<artifact>:create` skills wrap these generators and complete the generated code + tests; they share the `talos:scaffold` workflow (run-from-root, option inference, module registration, lint/format, conventions).
+
+## Custom commands
+```bash
+oo command:create --name <Name> --module <name>  # Scaffold a custom ICommand class
+oo command:run <command-name> [args...]           # Run a custom command (matched by its getName()) across modules
+```
+
+`command:run` looks up the `getName()` of every command in `modules/*/src/commands` and executes the matching one via the module's `bin/command/run.ts`, forwarding any extra args.
+
+## Workflows
+```bash
+oo workflow:create --name <Name> --module <name>             # Scaffold a workflow (from @talosjs/workflow)
+oo workflow:transition:create --name <Name> --module <name>  # Scaffold a workflow transition (one step)
+```
+
+A workflow orchestrates an ordered list of conditional, reversible transitions with automatic rollback on failure. Generate each step with `workflow:transition:create`, then list the transition classes in the workflow's `getTransitions()`. The `/workflow:create` and `/workflow:transition:create` skills wrap these generators.
+
+## Database
+```bash
+oo migration:create --module <name>   # Generate a timestamped migration
+oo migration:up [--drop]              # Run pending migrations (--drop: drop DB first)
+oo migration:down [--version <v>]     # Roll back the latest migration (or the one matching --version)
+oo seed:create --module <name>        # Generate a seed YAML file
+oo seed:run [--drop]                  # Run all seeds (--drop: drop data first)
+```
+
+## Code Quality
+```bash
+bun run fmt    # Format with Biome
+bun run lint   # Lint with Biome + TypeScript
+bun run test   # Run all tests
+```
+
+## Release
+```bash
+oo release:create   # Detect unreleased commits, bump versions, update changelogs, tag, push
+```
+
+## Assistant & Shell setup
+```bash
+oo claude:init      # Write AGENTS.md + skills/agents into .claude/ for Claude Code
+oo codex:init       # Write AGENTS.md + skills/agents into .codex/ for Codex
+oo completion:zsh   # Install Zsh tab-completion for the oo / talos commands (~/.zsh)
+```

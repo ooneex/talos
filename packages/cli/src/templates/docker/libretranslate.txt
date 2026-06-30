@@ -1,0 +1,27 @@
+services:
+  # LibreTranslate - Self-hosted machine translation API
+  # Docs: https://libretranslate.com/docs/
+  # API: http://localhost:4000
+  # Languages: English, French, Romanian
+  libretranslate:
+    image: libretranslate/libretranslate:latest
+    container_name: libretranslate
+    restart: "on-failure"
+    ports:
+      - "4000:5000"
+    environment:
+      - LT_DEBUG=false
+      - LT_UPDATE_MODELS=true
+      - LT_SSL=false
+      - LT_SUGGESTIONS=false
+      - LT_METRICS=false
+      - LT_HOST=0.0.0.0
+      - LT_API_KEYS=false
+      - LT_THREADS=4
+      - LT_FRONTEND_TIMEOUT=2000
+      - LT_LOAD_ONLY=en,fr,ro
+    volumes:
+      - libretranslate_models:/home/libretranslate/.local:rw
+
+volumes:
+  libretranslate_models:

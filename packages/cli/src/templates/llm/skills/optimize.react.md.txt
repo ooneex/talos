@@ -1,0 +1,166 @@
+---
+name: optimize:react
+description: Recommended React patterns for design and spa modules — custom hooks, compound components, Zustand state, and TanStack Query/Virtual/Pacer/Hotkeys. Use only when building or optimizing a React module (design or spa).
+---
+
+# React Patterns (design & spa modules)
+
+> **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
+
+Apply **only** to a React module (`design` or `spa`) — `optimize` calls this for step 7.
+
+Install missing deps at the project root:
+
+```bash
+bun add zustand @tanstack/react-query @tanstack/react-virtual @tanstack/react-pacer @tanstack/react-hotkeys
+```
+
+## Hooks
+
+Extract reusable stateful logic into custom hooks (`useXxx`) instead of duplicating it or using HOCs/render props.
+
+```typescript
+import { useEffect, useState } from "react";
+
+const useWindowWidth = (): number => {
+  const [width, setWidth] = useState(window.innerWidth);
+
+  useEffect(() => {
+    const handleResize = (): void => setWidth(window.innerWidth);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  return width;
+};
+
+// usage
+const isMobile = useWindowWidth() < 768;
+```
+
+## Compound components
+
+Build flexible components as related parts sharing state via context, instead of one prop-heavy monolith.
+
+```tsx
+import { createContext, useContext, useState } from "react";
+
+type TabsContextType = {
+  active: string;
+  setActive: (id: string) => void;
+};
+
+const TabsContext = createContext<TabsContextType | null>(null);
+
+const Tabs = ({ children, defaultValue }: ITabsProps) => {
+  const [active, setActive] = useState(defaultValue);
+  return (
+    <TabsContext.Provider value={{ active, setActive }}>
+      {children}
+    </TabsContext.Provider>
+  );
+};
+
+const Tab = ({ value, children }: ITabProps) => {
+  const ctx = useContext(TabsContext);
+  return <button onClick={() => ctx?.setActive(value)}>{children}</button>;
+};
+
+const TabPanel = ({ value, children }: ITabPanelProps) => {
+  const ctx = useContext(TabsContext);
+  return ctx?.active === value ? <div>{children}</div> : null;
+};
+
+Tabs.Tab = Tab;
+Tabs.Panel = TabPanel;
+
+// usage
+<Tabs defaultValue="overview">
+  <Tabs.Tab value="overview">Overview</Tabs.Tab>
+  <Tabs.Panel value="overview">Overview content</Tabs.Panel>
+</Tabs>;
+```
+
+## Global state — Zustand
+
+Keep stores small and colocated; use selectors to avoid re-renders. https://zustand.docs.pmnd.rs/learn/getting-started/introduction
+
+```typescript
+import { create } from "zustand";
+
+type CounterStoreType = {
+  count: number;
+  increment: () => void;
+};
+
+const useCounterStore = create<CounterStoreType>((set) => ({
+  count: 0,
+  increment: () => set((state) => ({ count: state.count + 1 })),
+}));
+
+// select only what you need
+const count = useCounterStore((state) => state.count);
+```
+
+## Server state — TanStack Query
+
+Wrap each query/mutation in a custom hook. https://tanstack.com/query/latest
+
+```typescript
+import { useQuery } from "@tanstack/react-query";
+
+const useUsers = () =>
+  useQuery({
+    queryKey: ["users"],
+    queryFn: async (): Promise<UserType[]> => {
+      const response = await fetch("/api/users");
+      return response.json();
+    },
+  });
+
+// usage
+const { data, isLoading, error } = useUsers();
+```
+
+## Long lists — TanStack Virtual
+
+Render only visible rows. https://tanstack.com/virtual/latest
+
+```typescript
+import { useVirtualizer } from "@tanstack/react-virtual";
+
+const parentRef = useRef<HTMLDivElement>(null);
+const virtualizer = useVirtualizer({
+  count: rows.length,
+  getScrollElement: () => parentRef.current,
+  estimateSize: () => 40,
+});
+
+virtualizer.getVirtualItems().map((item) => rows[item.index]);
+```
+
+## Debounce / throttle / queue / batch — TanStack Pacer
+
+Rate-limit expensive work (search input, scroll handlers, API calls). https://tanstack.com/pacer/latest
+
+```typescript
+import { useDebouncedValue } from "@tanstack/react-pacer";
+
+const [search, setSearch] = useState("");
+const [debouncedSearch] = useDebouncedValue(search, { wait: 300 });
+// updates 300ms after the user stops typing
+```
+
+## Keyboard shortcuts — TanStack Hotkeys
+
+https://tanstack.com/hotkeys/latest
+
+```typescript
+import { useHotkeys } from "@tanstack/react-hotkeys";
+
+useHotkeys("mod+k", () => openCommandPalette());
+useHotkeys("mod+s", (event) => {
+  event.preventDefault();
+  save();
+});
+```

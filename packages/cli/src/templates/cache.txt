@@ -1,0 +1,21 @@
+import { CacheException, decorator } from "@talosjs/cache";
+import type { ICache } from "@talosjs/cache";
+
+@decorator.cache()
+export class {{NAME}}Cache implements ICache {
+  public async get<T = unknown>(key: string): Promise<T | undefined> {
+    throw new CacheException(`Failed to get key "${key}": Not implemented`);
+  }
+
+  public async set<T = unknown>(key: string, value: T, ttl?: number): Promise<void> {
+    throw new CacheException(`Failed to set key "${key}": Not implemented`);
+  }
+
+  public async delete(key: string): Promise<boolean> {
+    throw new CacheException(`Failed to delete key "${key}": Not implemented`);
+  }
+
+  public async has(key: string): Promise<boolean> {
+    throw new CacheException(`Failed to check if key "${key}" exists: Not implemented`);
+  }
+}

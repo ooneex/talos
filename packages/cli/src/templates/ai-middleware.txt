@@ -1,0 +1,25 @@
+import type { ChatMiddlewareContext, ErrorInfo, FinishInfo, IMiddleware } from "@talosjs/ai";
+import { decorator } from "@talosjs/ai";
+
+@decorator.middleware()
+export class {{NAME}}Middleware implements IMiddleware {
+  /** Lifecycle events recorded during the chat run. Replace with your own logger or metrics sink. */
+  public readonly events: string[] = [];
+
+  public getName = (): string => "{{KEBAB}}";
+
+  public onStart = (ctx: ChatMiddlewareContext): void => {
+    // Runs once when the chat run starts.
+    this.events.push(`start: ${ctx.requestId} on ${ctx.model}`);
+  };
+
+  public onFinish = (ctx: ChatMiddlewareContext, info: FinishInfo): void => {
+    // Runs once when the chat run completes successfully.
+    this.events.push(`finish: ${ctx.requestId} in ${info.duration}ms`);
+  };
+
+  public onError = (ctx: ChatMiddlewareContext, info: ErrorInfo): void => {
+    // Runs once when the chat run fails with an unhandled error.
+    this.events.push(`error: ${ctx.requestId} after ${info.duration}ms (${String(info.error)})`);
+  };
+}

@@ -1,0 +1,37 @@
+# Dependencies & build output (reinstalled/regenerated inside the image)
+node_modules
+**/node_modules
+dist
+**/dist
+coverage
+**/coverage
+.nx
+
+# Secrets — never bake environment files into an image
+.env
+.env.*
+!.env.yml
+!.env.example
+
+# Version control & CI
+.git
+.gitignore
+.github
+.husky
+
+# Editor / OS metadata
+.claude
+.zed
+.vscode
+**/.DS_Store
+
+# Tests, specs, issues & docs (not needed at runtime)
+**/tests
+**/*.spec.ts
+**/specs
+**/issues
+*.md
+
+# Tooling / project config not used at runtime
+.commitlintrc.ts
+lint-staged.config.js

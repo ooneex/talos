@@ -1,0 +1,11 @@
+services:
+  # MailDev - Email testing tool with web UI
+  # Docs: https://github.com/maildev/maildev
+  # Web UI: http://localhost:1080
+  # SMTP: localhost:1025
+  maildev:
+    image: maildev/maildev
+    container_name: maildev
+    ports:
+      - "1080:1080"
+      - "1025:1025"

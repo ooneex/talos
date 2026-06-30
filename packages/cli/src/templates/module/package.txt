@@ -1,0 +1,9 @@
+{
+  "name": "@module/{{NAME}}",
+  "description": "",
+  "version": "0.0.1",
+  "scripts": {
+    "test": "bun test tests",
+    "lint": "tsgo --noEmit && bunx biome lint"
+  }
+}

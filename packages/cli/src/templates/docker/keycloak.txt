@@ -1,0 +1,14 @@
+services:
+  # Keycloak - Identity and access management
+  # Docs: https://www.keycloak.org/documentation
+  # Admin Console: http://localhost:8080 (talos/talos)
+  keycloak:
+    image: quay.io/keycloak/keycloak:latest
+    container_name: keycloak
+    restart: "on-failure"
+    ports:
+      - "8080:8080"
+    environment:
+      - KEYCLOAK_ADMIN=talos
+      - KEYCLOAK_ADMIN_PASSWORD=talos
+    command: start-dev

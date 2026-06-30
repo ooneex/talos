@@ -1,0 +1,18 @@
+{
+  "name": "{{NAME}}",
+  "scripts": {
+    "fmt": "bunx biome check --write",
+    "lint": "bunx nx run-many -t lint --output-style=stream --verbose",
+    "test": "bunx nx run-many -t test --output-style=stream --verbose",
+    "check": "bun run lint && bun run test",
+    "commit": "bunx commit"
+  },
+  "workspaces": [
+    "modules/*"
+  ],
+  "lint-staged": {
+    "*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx,json,jsonc}": [
+      "biome check --files-ignore-unknown=true"
+    ]
+  }
+}

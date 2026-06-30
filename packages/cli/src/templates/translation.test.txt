@@ -1,0 +1,24 @@
+import { describe, expect, test } from "bun:test";
+import { {{NAME}}Translation } from "@module/{{MODULE}}/translations/{{NAME}}Translation";
+
+describe("{{NAME}}Translation", () => {
+  const translation = new {{NAME}}Translation();
+
+  test("should have class name ending with 'Translation'", () => {
+    expect({{NAME}}Translation.name.endsWith("Translation")).toBe(true);
+  });
+
+  test("should expose a non-empty name", () => {
+    expect(typeof translation.getName()).toBe("string");
+    expect(translation.getName().length).toBeGreaterThan(0);
+  });
+
+  test("should expose a dictionary object", () => {
+    expect(typeof translation.getDict()).toBe("object");
+  });
+
+  test("should have 'has' and 'trans' methods", () => {
+    expect(typeof translation.has).toBe("function");
+    expect(typeof translation.trans).toBe("function");
+  });
+});

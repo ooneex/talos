@@ -1,0 +1,275 @@
+#compdef oo talos
+
+_talos_modules() {
+  local -a modules
+  if [[ -d modules ]]; then
+    modules=(${(@f)"$(command ls -1 modules 2>/dev/null)"})
+    compadd -a modules
+  fi
+}
+
+_talos_custom_commands() {
+  local -a cmds
+  if [[ -d modules ]]; then
+    cmds=(${(@f)"$(command grep -rh -A1 'getName' modules/*/src/commands/*Command.ts 2>/dev/null | sed -n 's/.*return "\(.*\)".*/\1/p' | sort -u)"})
+    compadd -a cmds
+  fi
+}
+
+_talos_design_modules() {
+  local -a designs
+  if [[ -d modules ]]; then
+    designs=(${(@f)"$(command grep -rl 'type: "design"' modules/*/*.yml 2>/dev/null | sed -n 's|modules/\([^/]*\)/.*|\1|p' | sort -u)"})
+    compadd -a designs
+  fi
+}
+
+_talos_destination_modules() {
+  local -a destinations
+  if [[ -d modules ]]; then
+    destinations=(${(@f)"$(command grep -rlE 'type: "(api|microservice)"' modules/*/*.yml 2>/dev/null | sed -n 's|modules/\([^/]*\)/.*|\1|p' | sort -u)"})
+    compadd -a destinations
+  fi
+}
+
+_talos_sdk_modules() {
+  local -a targets
+  if [[ -d modules ]]; then
+    targets=(app ${(@f)"$(command grep -rl 'type: "microservice"' modules/*/*.yml 2>/dev/null | sed -n 's|modules/\([^/]*\)/.*|\1|p' | sort -u)"})
+    compadd -a targets
+  fi
+}
+
+_talos_sdk_names() {
+  local -a names
+  if [[ -d modules ]]; then
+    names=(${(@f)"$(command grep -rl 'type: "sdk"' modules/*/*.yml 2>/dev/null | sed -n 's|modules/\([^/]*\)/.*|\1|p' | sort -u)"})
+    compadd -a names
+  fi
+}
+
+_talos_api_modules() {
+  local -a modules
+  if [[ -d modules ]]; then
+    modules=(${(@f)"$(command grep -rl 'type: "api"' modules/*/*.yml 2>/dev/null | sed -n 's|modules/\([^/]*\)/.*|\1|p' | sort -u)"})
+    _values -s , 'api modules' $modules
+  fi
+}
+
+_talos_microservice_modules() {
+  local -a modules
+  if [[ -d modules ]]; then
+    modules=(${(@f)"$(command grep -rl 'type: "microservice"' modules/*/*.yml 2>/dev/null | sed -n 's|modules/\([^/]*\)/.*|\1|p' | sort -u)"})
+    _values -s , 'microservice modules' $modules
+  fi
+}
+
+_talos_spa_modules() {
+  local -a modules
+  if [[ -d modules ]]; then
+    modules=(${(@f)"$(command grep -rl 'type: "spa"' modules/*/*.yml 2>/dev/null | sed -n 's|modules/\([^/]*\)/.*|\1|p' | sort -u)"})
+    _values -s , 'spa modules' $modules
+  fi
+}
+
+_talos() {
+  local -a commands
+  commands=(
+    'app\:build:Build the application'
+    'app\:create:Create a new application'
+    'app\:init:Initialize an application'
+    'app\:start:Start the application'
+    'app\:stop:Stop the application'
+    'claude\:init:Initialize Claude configuration and skills'
+    'codex\:init:Initialize Codex configuration and skills'
+    'command\:run:Run a custom command from a module'
+    'completion\:zsh:Install Zsh completion for oo command'
+    'help:Show available commands'
+    'issue\:create:Create a YAML skeleton file for a new issue'
+    'issue\:pull:Pull an issue from Linear and save it as a YAML file'
+    'issue\:push:Push a local issue YAML to Linear (create or update)'
+    'ai\:chat\:create:Generate a new AI chat class'
+    'ai\:tool\:create:Generate a new AI tool class'
+    'ai\:middleware\:create:Generate a new AI middleware class'
+    'analytics\:create:Generate a new analytics class'
+    'cache\:create:Generate a new cache class'
+    'command\:create:Generate a new command class'
+    'controller\:create:Generate a new controller class'
+    'cron\:create:Generate a new cron class'
+    'database\:create:Generate a new database class'
+    'design\:create:Generate a new design module'
+    'design\:remove:Remove an existing design module'
+    'docker\:create:Add a docker service to docker-compose.yml'
+    'entity\:create:Generate a new entity class'
+    'flag\:create:Generate a new feature flag class'
+    'logger\:create:Generate a new logger class'
+    'mailer\:create:Generate a new mailer class'
+    'middleware\:create:Generate a new middleware class'
+    'permission\:create:Generate a new permission class'
+    'queue\:create:Generate a new queue class'
+    'rate-limit\:create:Generate a new rate limiter class'
+    'event\:create:Generate a new event class'
+    'release\:create:Release packages with version bump, changelog, and git tag'
+    'repository\:create:Generate a new repository class'
+    'sdk\:create:Generate a browser SDK from module controllers'
+    'service\:create:Generate a new service class'
+    'spa\:create:Generate a new spa module'
+    'spa\:feature\:create:Generate a new spa feature (route, layout, hooks and folders)'
+    'spa\:remove:Remove an existing spa module'
+    'storage\:create:Generate a new storage class'
+    'translation\:create:Generate a new translation class'
+    'vector-database\:create:Generate a new vector database class'
+    'workflow\:create:Generate a new workflow class'
+    'workflow\:transition\:create:Generate a new workflow transition class'
+    'microservice\:create:Generate a new microservice'
+    'microservice\:remove:Remove an existing microservice'
+    'migration\:create:Generate a new migration file'
+    'migration\:up:Run migrations for all modules'
+    'migration\:down:Roll back migrations for all modules'
+    'module\:create:Generate a new module'
+    'module\:remove:Remove an existing module'
+    'seed\:create:Generate a new seed file'
+    'seed\:run:Run seeds for all modules'
+  )
+
+  _arguments -s \
+    '1:command:->cmds' \
+    '*::options:->opts' \
+    && return 0
+
+  case "$state" in
+    cmds)
+      _describe -t commands 'talos command' commands
+      ;;
+    opts)
+      case "$words[1]" in
+        app:build|claude:init|codex:init|completion:zsh|help)
+          ;;
+        app:start|app:stop)
+          _arguments -s \
+            '--api=-[Only the api modules (optionally =name1,name2)]::api modules:_talos_api_modules' \
+            '--microservice=-[Only the microservice modules (optionally =name1,name2)]::microservice modules:_talos_microservice_modules' \
+            '--spa=-[Only the spa modules (optionally =name1,name2)]::spa modules:_talos_spa_modules'
+          ;;
+        sdk:create)
+          _arguments -s \
+            '--name=[Name of the SDK module]:name:_talos_sdk_names' \
+            '--module=[Target module the SDK is generated from]:module:_talos_sdk_modules'
+          ;;
+        app:create)
+          _arguments -s \
+            '--name=[Name of the resource]:name' \
+            '--destination=[Destination path]:destination:_files -/'
+          ;;
+        app:init)
+          _arguments -s \
+            '--name=[Name of the resource]:name' \
+            '--destination=[Destination path]:destination:_files -/' \
+            '--app-type=[Application type]:type:(cli api)'
+          ;;
+        command:run)
+          _arguments -s \
+            '1:command name:_talos_custom_commands'
+          ;;
+        issue:create)
+          _arguments -s \
+            '--title=[Issue title]:title' \
+            '--state=[Issue state]:state:(Backlog Todo Planned "In Progress" "In Review" Done Cancelled)' \
+            '--priority=[Issue priority]:priority:(Low Medium High Urgent)' \
+            '--description=[Issue description]:description' \
+            '*--labels=[Label (repeatable)]:label' \
+            '--module=[Module name]:module:_talos_modules' \
+            '--interactive[Prompt for all fields]'
+          ;;
+        issue:pull)
+          _arguments -s \
+            '--id=[Linear issue ID or identifier]:id' \
+            '--module=[Module name]:module:_talos_modules'
+          ;;
+        issue:push)
+          _arguments -s \
+            '--id=[Local issue ID to push]:id' \
+            '--module=[Module name]:module:_talos_modules'
+          ;;
+        ai:chat:create|ai:tool:create|ai:middleware:create|analytics:create|cache:create|command:create|cron:create|database:create|flag:create|logger:create|mailer:create|permission:create|queue:create|rate-limit:create|repository:create|service:create|spa:feature:create|storage:create|translation:create|vector-database:create|workflow:create|workflow:transition:create)
+          _arguments -s \
+            '--name=[Name of the resource]:name' \
+            '--module=[Module name]:module:_talos_modules' \
+            '--override[Override existing file]'
+          ;;
+        controller:create)
+          _arguments -s \
+            '--name=[Name of the resource]:name' \
+            '--module=[Module name]:module:_talos_modules' \
+            '--route-name=[Route name]:route_name' \
+            '--route-path=[Route path]:route_path' \
+            '--route-method=[Route HTTP method]:method:(GET POST PUT PATCH DELETE HEAD OPTIONS)' \
+            '--is-socket[Socket mode]' \
+            '--override[Override existing file]'
+          ;;
+        docker:create)
+          _arguments -s \
+            '--name=[Docker service name]:name:(clickhouse elasticsearch grafana jaeger keycloak libretranslate maildev memcached minio mongodb mysql nats postgres prometheus rabbitmq redis temporal vault)'
+          ;;
+        entity:create)
+          _arguments -s \
+            '--name=[Name of the resource]:name' \
+            '--module=[Module name]:module:_talos_modules' \
+            '--table-name=[Database table name]:table_name' \
+            '--override[Override existing file]'
+          ;;
+        middleware:create)
+          _arguments -s \
+            '--name=[Name of the resource]:name' \
+            '--module=[Module name]:module:_talos_modules' \
+            '--is-socket[Socket mode]' \
+            '--override[Override existing file]'
+          ;;
+        event:create)
+          _arguments -s \
+            '--name=[Name of the resource]:name' \
+            '--module=[Module name]:module:_talos_modules' \
+            '--channel=[Channel name]:channel' \
+            '--override[Override existing file]'
+          ;;
+        migration:create|release:create)
+          _arguments -s \
+            '--module=[Module name]:module:_talos_modules'
+          ;;
+        migration:up|seed:run)
+          _arguments -s \
+            '--drop[Drop the database before running]'
+          ;;
+        migration:down)
+          _arguments -s \
+            '--version=[Version of the migration to roll back]:version'
+          ;;
+        design:create|microservice:create)
+          _arguments -s \
+            '--name=[Name of the resource]:name'
+          ;;
+        module:create)
+          _arguments -s \
+            '--name=[Name of the resource]:name' \
+            '--destination=[Destination module]:destination:_talos_destination_modules'
+          ;;
+        spa:create)
+          _arguments -s \
+            '--name=[Name of the resource]:name' \
+            '--design=[Design module name]:design:_talos_design_modules'
+          ;;
+        design:remove|spa:remove|microservice:remove|module:remove)
+          _arguments -s \
+            '--name=[Module name]:name:_talos_modules'
+          ;;
+        seed:create)
+          _arguments -s \
+            '--name=[Name of the resource]:name' \
+            '--module=[Module name]:module:_talos_modules'
+          ;;
+      esac
+      ;;
+  esac
+}
+
+_talos "$@"

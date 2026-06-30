@@ -1,0 +1,22 @@
+services:
+  # RabbitMQ - Message broker for async processing
+  # Docs: https://www.rabbitmq.com/docs
+  # AMQP: amqp://talos:talos@localhost:5672/talos
+  # Management UI: http://localhost:15672 (talos/talos)
+  rabbitmq:
+    image: rabbitmq:4.2-management-alpine
+    hostname: rabbitmq
+    container_name: rabbitmq
+    restart: "on-failure"
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq:rw
+    environment:
+      - RABBITMQ_DEFAULT_USER=talos
+      - RABBITMQ_DEFAULT_PASS=talos
+      - RABBITMQ_DEFAULT_VHOST=talos
+
+volumes:
+  rabbitmq_data:

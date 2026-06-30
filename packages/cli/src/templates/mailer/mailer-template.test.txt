@@ -1,0 +1,12 @@
+import { describe, expect, test } from "bun:test";
+import { {{NAME}}MailerTemplate } from "@module/{{MODULE}}/mailers/{{NAME}}MailerTemplate";
+
+describe("{{NAME}}MailerTemplate", () => {
+  test("should have function name ending with 'MailerTemplate'", () => {
+    expect({{NAME}}MailerTemplate.name.endsWith("MailerTemplate")).toBe(true);
+  });
+
+  test("should be a function", () => {
+    expect(typeof {{NAME}}MailerTemplate).toBe("function");
+  });
+});

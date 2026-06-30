@@ -1,0 +1,21 @@
+services:
+  # Elasticsearch - Full-text search and analytics engine
+  # Docs: https://www.elastic.co/guide/en/elasticsearch/reference/current/index.html
+  # HTTP API: http://localhost:9200
+  # Transport: localhost:9300
+  elasticsearch:
+    image: elasticsearch:8.16.0
+    container_name: elasticsearch
+    restart: "on-failure"
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data:rw
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+
+volumes:
+  elasticsearch_data:

@@ -1,0 +1,20 @@
+services:
+  # MySQL - Alternative relational database
+  # Docs: https://dev.mysql.com/doc/
+  # Connection: mysql://talos:talos@localhost:3306/talos
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    restart: "on-failure"
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_db:/var/lib/mysql:rw
+    environment:
+      - MYSQL_ROOT_PASSWORD=talos
+      - MYSQL_DATABASE=talos
+      - MYSQL_USER=talos
+      - MYSQL_PASSWORD=talos
+
+volumes:
+  mysql_db:

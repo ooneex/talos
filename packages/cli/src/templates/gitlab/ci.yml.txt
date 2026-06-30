@@ -1,0 +1,86 @@
+# GitLab CI — Core CI Pipeline
+# Place at .gitlab/ci/ci.yml and include from .gitlab-ci.yml:
+#
+#   include:
+#     - local: .gitlab/ci/ci.yml
+
+stages:
+  - quality
+  - build
+
+variables:
+  DOCKER_DRIVER: overlay2
+  DOCKER_TLS_CERTDIR: /certs
+  BUN_INSTALL_CACHE_DIR: $CI_PROJECT_DIR/.bun-cache
+
+# Shared Bun setup — extended by lint and test jobs
+.bun:
+  image: oven/bun:latest
+  cache:
+    key:
+      files:
+        - bun.lock
+    paths:
+      - .bun-cache/
+    policy: pull-push
+  before_script:
+    - bun install --frozen-lockfile
+
+lint:
+  extends: .bun
+  stage: quality
+  script:
+    - bun run lint
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH =~ /^(main|develop)$/
+    - if: $CI_COMMIT_TAG
+
+test:
+  extends: .bun
+  stage: quality
+  script:
+    - bun test
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH =~ /^(main|develop)$/
+    - if: $CI_COMMIT_TAG
+
+build-image:
+  stage: build
+  image: docker:27
+  services:
+    - docker:27-dind
+  needs:
+    - lint
+    - test
+  # Only build images on branch commits and tags (not MRs)
+  rules:
+    - if: $CI_COMMIT_BRANCH =~ /^(main|develop)$/
+    - if: $CI_COMMIT_TAG
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - |
+      SHORT_SHA=$(echo $CI_COMMIT_SHA | cut -c1-7)
+      IMAGE_SHA=$CI_REGISTRY_IMAGE:sha-$SHORT_SHA
+      IMAGE_REF=$CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG
+
+      docker buildx create --use --bootstrap
+
+      docker buildx build \
+        --cache-from type=registry,ref=$CI_REGISTRY_IMAGE:cache \
+        --cache-to  type=registry,ref=$CI_REGISTRY_IMAGE:cache,mode=max \
+        --tag "$IMAGE_SHA" \
+        --tag "$IMAGE_REF" \
+        $([ -n "$CI_COMMIT_TAG" ] && echo "--tag $CI_REGISTRY_IMAGE:latest") \
+        --build-arg APP_ENV=${CI_ENVIRONMENT_NAME:-ci} \
+        --build-arg APP_VERSION=$CI_COMMIT_SHA \
+        --push \
+        .
+
+      echo "IMAGE_TAG=sha-$SHORT_SHA" > build.env
+  artifacts:
+    reports:
+      dotenv: build.env
+    expire_in: 1 day

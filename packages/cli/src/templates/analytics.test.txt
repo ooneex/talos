@@ -1,0 +1,13 @@
+import { describe, expect, test } from "bun:test";
+import { {{NAME}}Analytics } from "@module/{{MODULE}}/analytics/{{NAME}}Analytics";
+
+describe("{{NAME}}Analytics", () => {
+  test("should have class name ending with 'Analytics'", () => {
+    expect({{NAME}}Analytics.name.endsWith("Analytics")).toBe(true);
+  });
+
+  test("should have 'capture' method", () => {
+    expect({{NAME}}Analytics.prototype.capture).toBeDefined();
+    expect(typeof {{NAME}}Analytics.prototype.capture).toBe("function");
+  });
+});

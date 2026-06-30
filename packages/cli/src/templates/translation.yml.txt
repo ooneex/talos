@@ -1,0 +1,29 @@
+# Translation dictionary consumed by `trans()` from @talosjs/translation.
+#
+# Rules:
+#   - Nested keys are accessed with dot notation: trans("user.profile.name", ...)
+#   - Each leaf is an object keyed by LocaleType: en, fr, es, de, ... ("en" is the fallback)
+#   - Interpolation uses {{ param }} placeholders, filled via `params`
+#   - Pluralization uses SIBLING keys, selected by passing `count`:
+#       <key>         -> count === 1   (singular)
+#       <key>_plural  -> count > 1 or count < 0
+#       <key>_zero    -> count === 0   (optional; falls back to _plural)
+
+welcome:
+  en: "Welcome, {{ name }}!"
+  fr: "Bienvenue, {{ name }} !"
+
+# Pluralization example — the right sibling is picked from `count`:
+#   trans("cart.items", { count: 0 }) -> "No items"   (items_zero)
+#   trans("cart.items", { count: 1 }) -> "1 item"     (items)
+#   trans("cart.items", { count: 5 }) -> "5 items"    (items_plural)
+cart:
+  items:
+    en: "{{ count }} item"
+    fr: "{{ count }} article"
+  items_plural:
+    en: "{{ count }} items"
+    fr: "{{ count }} articles"
+  items_zero:
+    en: "No items"
+    fr: "Aucun article"

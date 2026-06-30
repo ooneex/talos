@@ -1,0 +1,24 @@
+import { VectorDatabase, decorator } from "@talosjs/rag";
+import type { EmbeddingModelType, EmbeddingProviderType, FieldValueType } from "@talosjs/rag";
+import { Utf8 } from "apache-arrow";
+
+type DataType = {
+  name: string;
+};
+
+@decorator.vectorDatabase()
+export class {{NAME}}VectorDatabase extends VectorDatabase<DataType> {
+  public getDatabaseUri(): string {
+    return "";
+  }
+
+  public getEmbeddingModel(): { provider: EmbeddingProviderType; model: EmbeddingModelType["model"] } {
+    return { provider: "openai", model: "text-embedding-ada-002" };
+  }
+
+  public getSchema(): { [K in keyof DataType]: FieldValueType } {
+    return {
+      name: new Utf8(),
+    };
+  }
+}

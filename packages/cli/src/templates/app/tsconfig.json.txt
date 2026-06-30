@@ -1,0 +1,35 @@
+{
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleDetection": "force",
+    "allowJs": true,
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "noEmit": true,
+    "strict": true,
+    "noImplicitAny": true,
+    "skipLibCheck": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noPropertyAccessFromIndexSignature": false,
+    "strictPropertyInitialization": false,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "strictNullChecks": true,
+    "exactOptionalPropertyTypes": false,
+    "paths": {
+      "@module/app/*": ["./modules/app/src/*"],
+      "@module/shared/*": ["./modules/shared/src/*"]
+    },
+    "types": ["bun"]
+  },
+  "include": ["**/*.ts", "**/*.tsx"],
+  "exclude": ["node_modules", ".github", ".husky", ".nx", ".zed", ".vscode"]
+}

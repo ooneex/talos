@@ -1,0 +1,26 @@
+import type { ITool } from "@talosjs/ai";
+import { decorator } from "@talosjs/ai";
+import { Assert, type AssertType } from "@talosjs/validation";
+
+/** Arguments the model supplies when calling {@link {{NAME}}Tool}. */
+export type {{NAME}}ToolInputType = {
+  query: string;
+};
+
+@decorator.tool()
+export class {{NAME}}Tool implements ITool<{{NAME}}ToolInputType, Promise<unknown>> {
+  public getName = (): string => "{{SNAKE}}";
+
+  public getDescription = (): string => "";
+
+  public getInputSchema = (): AssertType =>
+    Assert({
+      query: "string > 0",
+    });
+
+  public handler = async (param: {{NAME}}ToolInputType): Promise<unknown> => {
+    const { query } = param;
+
+    return query;
+  };
+}

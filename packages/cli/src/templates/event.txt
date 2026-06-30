@@ -1,0 +1,22 @@
+import { inject } from "@talosjs/container";
+import type { ScalarType } from "@talosjs/types";
+import { decorator, RedisPubSub, RedisPubSubClient } from "@talosjs/event";
+
+@decorator.event()
+export class {{NAME}}Event<Data extends Record<string, ScalarType> = Record<string, ScalarType>> extends RedisPubSub<Data> {
+  constructor(
+    @inject(RedisPubSubClient)
+    client: RedisPubSubClient<Data>,
+  ) {
+    super(client);
+  }
+
+  public getChannel(): string {
+    return "{{CHANNEL}}";
+  }
+
+  public async handler(context: { data: Data; channel: string }): Promise<void> {
+    console.log(context);
+    // TODO: Implement handler logic here
+  }
+}

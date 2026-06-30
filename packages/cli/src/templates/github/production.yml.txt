@@ -1,0 +1,137 @@
+name: Deploy — Production
+
+on:
+  push:
+    # Trigger on semver tags, e.g. v1.2.3
+    tags: ["v[0-9]+.[0-9]+.[0-9]+"]
+  workflow_dispatch:
+    inputs:
+      image-tag:
+        description: Image tag to deploy (default: latest sha tag)
+        type: string
+        required: false
+
+# Production deploys must never be cancelled mid-flight
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+  deployments: write
+
+jobs:
+  ci:
+    name: CI
+    uses: ./.github/workflows/ci.yml
+    with:
+      environment: production
+    secrets: inherit
+
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: ci
+    # Configure "Required reviewers" on the production environment in GitHub Settings
+    # to enforce manual approval before this job runs.
+    environment:
+      name: production
+      url: ${{ vars.PRODUCTION_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve image tag
+        id: tag
+        run: |
+          if [ -n "${{ inputs.image-tag }}" ]; then
+            echo "value=${{ inputs.image-tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "value=${{ needs.ci.outputs.image-tag }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Deploy with rollback safety
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          username: ${{ secrets.PROD_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          envs: GITHUB_TOKEN,GITHUB_ACTOR,GITHUB_REPOSITORY,IMAGE_TAG
+          script: |
+            set -e
+            IMAGE=ghcr.io/${GITHUB_REPOSITORY}:${IMAGE_TAG}
+            REGISTRY=ghcr.io/${GITHUB_REPOSITORY}
+
+            echo "${GITHUB_TOKEN}" | docker login ghcr.io -u "${GITHUB_ACTOR}" --password-stdin
+
+            # Preserve current image as rollback target before pulling new one
+            docker tag "${REGISTRY}:latest" "${REGISTRY}:rollback" 2>/dev/null || true
+
+            docker pull "${IMAGE}"
+
+            cd /opt/{{NAME}}
+
+            # Run migrations before switching traffic to catch failures early
+            docker run --rm --env-file .env "${IMAGE}" bun run db:migrate
+
+            # Zero-downtime swap: --wait blocks until the container is healthy
+            APP_IMAGE="${IMAGE}" docker compose up -d --no-deps --wait app
+            docker image prune -f --filter "until=24h"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          IMAGE_TAG: ${{ steps.tag.outputs.value }}
+
+      - name: Production health check
+        id: health
+        run: |
+          echo "Verifying production health at ${{ vars.PRODUCTION_URL }}..."
+          for i in $(seq 1 24); do
+            STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "${{ vars.PRODUCTION_URL }}/health" 2>/dev/null || echo "000")
+            if [ "$STATUS" = "200" ]; then
+              echo "Production is healthy (attempt $i)"
+              exit 0
+            fi
+            echo "Attempt $i/24 — HTTP $STATUS, retrying in 5s..."
+            sleep 5
+          done
+          echo "::error::Production health check failed after 2 minutes"
+          exit 1
+
+      - name: Rollback on failure
+        if: failure() && steps.health.conclusion == 'failure'
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          username: ${{ secrets.PROD_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          envs: GITHUB_REPOSITORY
+          script: |
+            set -e
+            REGISTRY=ghcr.io/${GITHUB_REPOSITORY}
+
+            echo "::warning::Rolling back production to previous version..."
+            cd /opt/{{NAME}}
+            APP_IMAGE="${REGISTRY}:rollback" docker compose up -d --no-deps app
+            echo "Rollback complete — verify manually before next deploy"
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          make_latest: true

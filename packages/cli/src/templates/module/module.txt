@@ -1,0 +1,9 @@
+import type { ModuleType } from "@talosjs/module";
+
+export const {{NAME}}Module: ModuleType = {
+  controllers: [],
+  entities: [],
+  middlewares: [],
+  cronJobs: [],
+  events: [],
+};

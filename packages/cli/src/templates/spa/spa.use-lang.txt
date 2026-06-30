@@ -1,0 +1,12 @@
+import { useSearch } from "@tanstack/react-router";
+
+export const DEFAULT_LANG = "en";
+
+// Reads the `lang` query param (e.g. `?lang=fr`) from the current URL and falls
+// back to the default language when it is missing. `strict: false` opts out of
+// route-specific search typing so the hook works from any route or feature.
+export const useLang = (): string => {
+  const search = useSearch({ strict: false }) as { lang?: string };
+
+  return search.lang ?? DEFAULT_LANG;
+};
