@@ -1,0 +1,43 @@
+{
+  "name": "@talosjs/socket",
+  "description": "WebSocket server implementation with room management, event broadcasting, client tracking, and middleware integration for real-time applications",
+  "version": "1.0.0",
+  "type": "module",
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md",
+    "package.json"
+  ],
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "license": "MIT",
+  "scripts": {
+    "build": "bunup",
+    "lint": "tsgo --noEmit && bunx biome lint",
+    "npm:publish": "bun publish --tolerate-republish --force --production --access public"
+  },
+  "devDependencies": {
+    "@talosjs/controller": "workspace:^",
+    "@talosjs/http-request": "workspace:^",
+    "@talosjs/http-response": "workspace:^"
+  },
+  "keywords": [
+    "bun",
+    "talos",
+    "realtime",
+    "socket",
+    "typescript",
+    "websocket",
+    "ws"
+  ]
+}
