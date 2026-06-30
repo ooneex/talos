@@ -1,0 +1,7 @@
+[test]
+coverage = true
+coveragePathIgnorePatterns = []
+pathIgnorePatterns = [
+  "packages/utils/src/sleep.ts",
+  "packages/**/*.js",
+]

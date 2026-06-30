@@ -1,0 +1,476 @@
+<svg width="900" height="320" viewBox="0 0 900 320" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Gradients -->
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="900" y2="320">
+      <stop offset="0%" stop-color="#0d0618"/>
+      <stop offset="40%" stop-color="#1a0a2e"/>
+      <stop offset="100%" stop-color="#2d1456"/>
+    </linearGradient>
+    <linearGradient id="floorGrad" x1="450" y1="160" x2="450" y2="320">
+      <stop offset="0%" stop-color="#432371" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#432371" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="glowOrange" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FAAE7B"/>
+      <stop offset="100%" stop-color="#E8542E"/>
+    </linearGradient>
+    <linearGradient id="pillarGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FAAE7B" stop-opacity="0.6"/>
+      <stop offset="100%" stop-color="#FAAE7B" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="pillarPurple" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#7c3aed" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#7c3aed" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="beamH" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#FAAE7B" stop-opacity="0"/>
+      <stop offset="50%" stop-color="#FAAE7B" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#FAAE7B" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="coreGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FAAE7B"/>
+      <stop offset="50%" stop-color="#E8542E"/>
+      <stop offset="100%" stop-color="#432371"/>
+    </linearGradient>
+    <linearGradient id="cubeTop" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FAAE7B"/>
+      <stop offset="100%" stop-color="#E8542E"/>
+    </linearGradient>
+    <linearGradient id="cubeLeft" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#7c3aed"/>
+      <stop offset="100%" stop-color="#432371"/>
+    </linearGradient>
+    <linearGradient id="cubeRight" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#5b21b6"/>
+      <stop offset="100%" stop-color="#2d1456"/>
+    </linearGradient>
+    <linearGradient id="smallCubeTop" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#9f7aea"/>
+      <stop offset="100%" stop-color="#7c3aed"/>
+    </linearGradient>
+    <linearGradient id="smallCubeLeft" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#5b21b6"/>
+      <stop offset="100%" stop-color="#3b0f6e"/>
+    </linearGradient>
+    <linearGradient id="smallCubeRight" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#4c1d95"/>
+      <stop offset="100%" stop-color="#2d1456"/>
+    </linearGradient>
+    <linearGradient id="sphereGrad" cx="40%" cy="35%" r="60%" gradientUnits="objectBoundingBox">
+      <stop offset="0%" stop-color="#FAAE7B"/>
+      <stop offset="100%" stop-color="#E8542E"/>
+    </linearGradient>
+    <radialGradient id="sphereShine" cx="35%" cy="30%" r="65%">
+      <stop offset="0%" stop-color="#FEF6F0" stop-opacity="0.8"/>
+      <stop offset="40%" stop-color="#FAAE7B" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#E8542E" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="groundGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FAAE7B" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#FAAE7B" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Filters -->
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="softGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="bigGlow" x="-100%" y="-100%" width="300%" height="300%">
+      <feGaussianBlur stdDeviation="25"/>
+    </filter>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000" flood-opacity="0.5"/>
+    </filter>
+    <filter id="innerGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="2" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="900" height="320" fill="url(#bgGrad)"/>
+
+  <!-- 3D perspective grid floor -->
+  <g opacity="0.2">
+    <!-- Horizontal lines receding into distance (perspective) -->
+    <line x1="0" y1="320" x2="900" y2="320" stroke="#7c3aed" stroke-width="0.5"/>
+    <line x1="50" y1="290" x2="850" y2="290" stroke="#7c3aed" stroke-width="0.5"/>
+    <line x1="120" y1="265" x2="780" y2="265" stroke="#7c3aed" stroke-width="0.4"/>
+    <line x1="180" y1="245" x2="720" y2="245" stroke="#7c3aed" stroke-width="0.4"/>
+    <line x1="230" y1="230" x2="670" y2="230" stroke="#7c3aed" stroke-width="0.3"/>
+    <line x1="270" y1="218" x2="630" y2="218" stroke="#7c3aed" stroke-width="0.3"/>
+    <line x1="310" y1="208" x2="590" y2="208" stroke="#7c3aed" stroke-width="0.2"/>
+    <line x1="340" y1="200" x2="560" y2="200" stroke="#7c3aed" stroke-width="0.2"/>
+
+    <!-- Vertical lines converging to vanishing point -->
+    <line x1="450" y1="190" x2="0" y2="320" stroke="#7c3aed" stroke-width="0.3"/>
+    <line x1="450" y1="190" x2="90" y2="320" stroke="#7c3aed" stroke-width="0.3"/>
+    <line x1="450" y1="190" x2="180" y2="320" stroke="#7c3aed" stroke-width="0.3"/>
+    <line x1="450" y1="190" x2="270" y2="320" stroke="#7c3aed" stroke-width="0.3"/>
+    <line x1="450" y1="190" x2="360" y2="320" stroke="#7c3aed" stroke-width="0.3"/>
+    <line x1="450" y1="190" x2="450" y2="320" stroke="#7c3aed" stroke-width="0.3"/>
+    <line x1="450" y1="190" x2="540" y2="320" stroke="#7c3aed" stroke-width="0.3"/>
+    <line x1="450" y1="190" x2="630" y2="320" stroke="#7c3aed" stroke-width="0.3"/>
+    <line x1="450" y1="190" x2="720" y2="320" stroke="#7c3aed" stroke-width="0.3"/>
+    <line x1="450" y1="190" x2="810" y2="320" stroke="#7c3aed" stroke-width="0.3"/>
+    <line x1="450" y1="190" x2="900" y2="320" stroke="#7c3aed" stroke-width="0.3"/>
+  </g>
+
+  <!-- Ground reflection glow -->
+  <ellipse cx="450" cy="280" rx="250" ry="30" fill="url(#groundGlow)"/>
+
+  <!-- Ambient glow spots -->
+  <circle cx="450" cy="130" r="120" fill="#FAAE7B" opacity="0.04" filter="url(#bigGlow)"/>
+  <circle cx="250" cy="100" r="60" fill="#7c3aed" opacity="0.06" filter="url(#bigGlow)"/>
+  <circle cx="650" cy="100" r="60" fill="#7c3aed" opacity="0.06" filter="url(#bigGlow)"/>
+
+  <!-- 3D connection beams (back layer) -->
+  <g opacity="0.35">
+    <line x1="175" y1="155" x2="410" y2="120" stroke="#7c3aed" stroke-width="1.5" filter="url(#glow)"/>
+    <line x1="175" y1="155" x2="310" y2="195" stroke="#7c3aed" stroke-width="1" filter="url(#glow)"/>
+    <line x1="725" y1="155" x2="490" y2="120" stroke="#7c3aed" stroke-width="1.5" filter="url(#glow)"/>
+    <line x1="725" y1="155" x2="590" y2="195" stroke="#7c3aed" stroke-width="1" filter="url(#glow)"/>
+    <!-- Extra back connections -->
+    <line x1="55" y1="60" x2="95" y2="105" stroke="#7c3aed" stroke-width="0.6" filter="url(#glow)"/>
+    <line x1="55" y1="160" x2="95" y2="210" stroke="#7c3aed" stroke-width="0.6" filter="url(#glow)"/>
+    <line x1="845" y1="60" x2="805" y2="105" stroke="#7c3aed" stroke-width="0.6" filter="url(#glow)"/>
+    <line x1="845" y1="160" x2="805" y2="210" stroke="#7c3aed" stroke-width="0.6" filter="url(#glow)"/>
+    <line x1="95" y1="105" x2="140" y2="60" stroke="#7c3aed" stroke-width="0.5" filter="url(#glow)"/>
+    <line x1="805" y1="105" x2="860" y2="135" stroke="#7c3aed" stroke-width="0.5" filter="url(#glow)"/>
+    <line x1="310" y1="195" x2="260" y2="250" stroke="#7c3aed" stroke-width="0.6" filter="url(#glow)"/>
+    <line x1="590" y1="195" x2="640" y2="250" stroke="#7c3aed" stroke-width="0.6" filter="url(#glow)"/>
+    <line x1="310" y1="195" x2="380" y2="240" stroke="#7c3aed" stroke-width="0.5" filter="url(#glow)"/>
+    <line x1="590" y1="195" x2="520" y2="240" stroke="#7c3aed" stroke-width="0.5" filter="url(#glow)"/>
+    <line x1="175" y1="155" x2="140" y2="250" stroke="#7c3aed" stroke-width="0.5" filter="url(#glow)"/>
+    <line x1="725" y1="155" x2="760" y2="250" stroke="#7c3aed" stroke-width="0.5" filter="url(#glow)"/>
+    <line x1="450" y1="130" x2="450" y2="70" stroke="#7c3aed" stroke-width="0.6" filter="url(#glow)"/>
+    <line x1="450" y1="70" x2="380" y2="45" stroke="#7c3aed" stroke-width="0.4" filter="url(#glow)"/>
+    <line x1="450" y1="70" x2="520" y2="45" stroke="#7c3aed" stroke-width="0.4" filter="url(#glow)"/>
+  </g>
+
+  <!-- 3D connection beams (front layer) -->
+  <g opacity="0.5">
+    <line x1="450" y1="130" x2="310" y2="195" stroke="#FAAE7B" stroke-width="1.2" filter="url(#glow)"/>
+    <line x1="450" y1="130" x2="590" y2="195" stroke="#FAAE7B" stroke-width="1.2" filter="url(#glow)"/>
+    <line x1="450" y1="130" x2="175" y2="155" stroke="#FAAE7B" stroke-width="0.8" filter="url(#glow)"/>
+    <line x1="450" y1="130" x2="725" y2="155" stroke="#FAAE7B" stroke-width="0.8" filter="url(#glow)"/>
+    <line x1="175" y1="155" x2="95" y2="105" stroke="#FAAE7B" stroke-width="0.6" filter="url(#glow)"/>
+    <line x1="175" y1="155" x2="95" y2="210" stroke="#FAAE7B" stroke-width="0.6" filter="url(#glow)"/>
+    <line x1="725" y1="155" x2="805" y2="105" stroke="#FAAE7B" stroke-width="0.6" filter="url(#glow)"/>
+    <line x1="725" y1="155" x2="805" y2="210" stroke="#FAAE7B" stroke-width="0.6" filter="url(#glow)"/>
+    <line x1="310" y1="195" x2="590" y2="195" stroke="#FAAE7B" stroke-width="0.6" stroke-dasharray="4 3" filter="url(#glow)"/>
+    <!-- Extra front connections -->
+    <line x1="95" y1="105" x2="55" y2="60" stroke="#FAAE7B" stroke-width="0.4" filter="url(#glow)"/>
+    <line x1="805" y1="105" x2="845" y2="60" stroke="#FAAE7B" stroke-width="0.4" filter="url(#glow)"/>
+    <line x1="260" y1="250" x2="380" y2="240" stroke="#FAAE7B" stroke-width="0.4" stroke-dasharray="3 3" filter="url(#glow)"/>
+    <line x1="640" y1="250" x2="520" y2="240" stroke="#FAAE7B" stroke-width="0.4" stroke-dasharray="3 3" filter="url(#glow)"/>
+  </g>
+
+  <!-- Light pillars under nodes -->
+  <g>
+    <rect x="447" y="145" width="6" height="140" fill="url(#pillarGrad)" opacity="0.4"/>
+    <rect x="307" y="205" width="6" height="100" fill="url(#pillarPurple)" opacity="0.3"/>
+    <rect x="587" y="205" width="6" height="100" fill="url(#pillarPurple)" opacity="0.3"/>
+    <rect x="172" y="165" width="6" height="120" fill="url(#pillarPurple)" opacity="0.2"/>
+    <rect x="722" y="165" width="6" height="120" fill="url(#pillarPurple)" opacity="0.2"/>
+    <rect x="257" y="255" width="4" height="55" fill="url(#pillarPurple)" opacity="0.15"/>
+    <rect x="637" y="255" width="4" height="55" fill="url(#pillarPurple)" opacity="0.15"/>
+    <rect x="377" y="245" width="4" height="65" fill="url(#pillarPurple)" opacity="0.15"/>
+    <rect x="517" y="245" width="4" height="65" fill="url(#pillarPurple)" opacity="0.15"/>
+    <rect x="137" y="255" width="3" height="50" fill="url(#pillarPurple)" opacity="0.1"/>
+    <rect x="757" y="255" width="3" height="50" fill="url(#pillarPurple)" opacity="0.1"/>
+    <rect x="447" y="75" width="4" height="45" fill="url(#pillarGrad)" opacity="0.15"/>
+  </g>
+
+  <!-- 3D CUBES - Far left top -->
+  <g transform="translate(95, 105)" filter="url(#shadow)">
+    <!-- Top face -->
+    <polygon points="0,-10 12,-16 24,-10 12,-4" fill="url(#smallCubeTop)" opacity="0.9"/>
+    <!-- Left face -->
+    <polygon points="0,-10 12,-4 12,8 0,2" fill="url(#smallCubeLeft)" opacity="0.9"/>
+    <!-- Right face -->
+    <polygon points="24,-10 12,-4 12,8 24,2" fill="url(#smallCubeRight)" opacity="0.9"/>
+    <!-- Edge highlights -->
+    <line x1="0" y1="-10" x2="12" y2="-4" stroke="#9f7aea" stroke-width="0.5" opacity="0.6"/>
+    <line x1="12" y1="-4" x2="24" y2="-10" stroke="#9f7aea" stroke-width="0.5" opacity="0.6"/>
+    <line x1="12" y1="-4" x2="12" y2="8" stroke="#7c3aed" stroke-width="0.5" opacity="0.4"/>
+  </g>
+
+  <!-- 3D CUBES - Far left bottom -->
+  <g transform="translate(95, 210)" filter="url(#shadow)">
+    <polygon points="0,-10 12,-16 24,-10 12,-4" fill="url(#smallCubeTop)" opacity="0.9"/>
+    <polygon points="0,-10 12,-4 12,8 0,2" fill="url(#smallCubeLeft)" opacity="0.9"/>
+    <polygon points="24,-10 12,-4 12,8 24,2" fill="url(#smallCubeRight)" opacity="0.9"/>
+    <line x1="0" y1="-10" x2="12" y2="-4" stroke="#9f7aea" stroke-width="0.5" opacity="0.6"/>
+    <line x1="12" y1="-4" x2="24" y2="-10" stroke="#9f7aea" stroke-width="0.5" opacity="0.6"/>
+    <line x1="12" y1="-4" x2="12" y2="8" stroke="#7c3aed" stroke-width="0.5" opacity="0.4"/>
+  </g>
+
+  <!-- 3D CUBES - Mid left -->
+  <g transform="translate(175, 155)" filter="url(#shadow)">
+    <!-- Top face -->
+    <polygon points="0,-14 16,-22 32,-14 16,-6" fill="url(#cubeTop)" opacity="0.85"/>
+    <!-- Left face -->
+    <polygon points="0,-14 16,-6 16,10 0,2" fill="url(#cubeLeft)" opacity="0.9"/>
+    <!-- Right face -->
+    <polygon points="32,-14 16,-6 16,10 32,2" fill="url(#cubeRight)" opacity="0.9"/>
+    <!-- Edge highlights -->
+    <line x1="0" y1="-14" x2="16" y2="-6" stroke="#FAAE7B" stroke-width="0.7" opacity="0.5"/>
+    <line x1="16" y1="-6" x2="32" y2="-14" stroke="#FAAE7B" stroke-width="0.7" opacity="0.5"/>
+    <line x1="16" y1="-6" x2="16" y2="10" stroke="#5b21b6" stroke-width="0.5" opacity="0.4"/>
+  </g>
+
+  <!-- 3D CUBES - Inner left (front) -->
+  <g transform="translate(310, 195)" filter="url(#shadow)">
+    <polygon points="0,-16 18,-25 36,-16 18,-7" fill="url(#cubeTop)" opacity="0.85"/>
+    <polygon points="0,-16 18,-7 18,11 0,2" fill="url(#cubeLeft)" opacity="0.9"/>
+    <polygon points="36,-16 18,-7 18,11 36,2" fill="url(#cubeRight)" opacity="0.9"/>
+    <line x1="0" y1="-16" x2="18" y2="-7" stroke="#FAAE7B" stroke-width="0.7" opacity="0.5"/>
+    <line x1="18" y1="-7" x2="36" y2="-16" stroke="#FAAE7B" stroke-width="0.7" opacity="0.5"/>
+    <line x1="18" y1="-7" x2="18" y2="11" stroke="#5b21b6" stroke-width="0.5" opacity="0.4"/>
+  </g>
+
+  <!-- 3D CUBES - Inner right (front) -->
+  <g transform="translate(590, 195)" filter="url(#shadow)">
+    <polygon points="0,-16 18,-25 36,-16 18,-7" fill="url(#cubeTop)" opacity="0.85"/>
+    <polygon points="0,-16 18,-7 18,11 0,2" fill="url(#cubeLeft)" opacity="0.9"/>
+    <polygon points="36,-16 18,-7 18,11 36,2" fill="url(#cubeRight)" opacity="0.9"/>
+    <line x1="0" y1="-16" x2="18" y2="-7" stroke="#FAAE7B" stroke-width="0.7" opacity="0.5"/>
+    <line x1="18" y1="-7" x2="36" y2="-16" stroke="#FAAE7B" stroke-width="0.7" opacity="0.5"/>
+    <line x1="18" y1="-7" x2="18" y2="11" stroke="#5b21b6" stroke-width="0.5" opacity="0.4"/>
+  </g>
+
+  <!-- 3D CUBES - Mid right -->
+  <g transform="translate(725, 155)" filter="url(#shadow)">
+    <polygon points="0,-14 16,-22 32,-14 16,-6" fill="url(#cubeTop)" opacity="0.85"/>
+    <polygon points="0,-14 16,-6 16,10 0,2" fill="url(#cubeLeft)" opacity="0.9"/>
+    <polygon points="32,-14 16,-6 16,10 32,2" fill="url(#cubeRight)" opacity="0.9"/>
+    <line x1="0" y1="-14" x2="16" y2="-6" stroke="#FAAE7B" stroke-width="0.7" opacity="0.5"/>
+    <line x1="16" y1="-6" x2="32" y2="-14" stroke="#FAAE7B" stroke-width="0.7" opacity="0.5"/>
+    <line x1="16" y1="-6" x2="16" y2="10" stroke="#5b21b6" stroke-width="0.5" opacity="0.4"/>
+  </g>
+
+  <!-- 3D CUBES - Far right top -->
+  <g transform="translate(805, 105)" filter="url(#shadow)">
+    <polygon points="0,-10 12,-16 24,-10 12,-4" fill="url(#smallCubeTop)" opacity="0.9"/>
+    <polygon points="0,-10 12,-4 12,8 0,2" fill="url(#smallCubeLeft)" opacity="0.9"/>
+    <polygon points="24,-10 12,-4 12,8 24,2" fill="url(#smallCubeRight)" opacity="0.9"/>
+    <line x1="0" y1="-10" x2="12" y2="-4" stroke="#9f7aea" stroke-width="0.5" opacity="0.6"/>
+    <line x1="12" y1="-4" x2="24" y2="-10" stroke="#9f7aea" stroke-width="0.5" opacity="0.6"/>
+    <line x1="12" y1="-4" x2="12" y2="8" stroke="#7c3aed" stroke-width="0.5" opacity="0.4"/>
+  </g>
+
+  <!-- 3D CUBES - Far right bottom -->
+  <g transform="translate(805, 210)" filter="url(#shadow)">
+    <polygon points="0,-10 12,-16 24,-10 12,-4" fill="url(#smallCubeTop)" opacity="0.9"/>
+    <polygon points="0,-10 12,-4 12,8 0,2" fill="url(#smallCubeLeft)" opacity="0.9"/>
+    <polygon points="24,-10 12,-4 12,8 24,2" fill="url(#smallCubeRight)" opacity="0.9"/>
+    <line x1="0" y1="-10" x2="12" y2="-4" stroke="#9f7aea" stroke-width="0.5" opacity="0.6"/>
+    <line x1="12" y1="-4" x2="24" y2="-10" stroke="#9f7aea" stroke-width="0.5" opacity="0.6"/>
+    <line x1="12" y1="-4" x2="12" y2="8" stroke="#7c3aed" stroke-width="0.5" opacity="0.4"/>
+  </g>
+
+  <!-- EXTRA CUBES - Top left corner (tiny) -->
+  <g transform="translate(55, 60)" filter="url(#shadow)">
+    <polygon points="0,-7 8,-11 16,-7 8,-3" fill="url(#smallCubeTop)" opacity="0.7"/>
+    <polygon points="0,-7 8,-3 8,5 0,1" fill="url(#smallCubeLeft)" opacity="0.7"/>
+    <polygon points="16,-7 8,-3 8,5 16,1" fill="url(#smallCubeRight)" opacity="0.7"/>
+    <line x1="0" y1="-7" x2="8" y2="-3" stroke="#9f7aea" stroke-width="0.4" opacity="0.5"/>
+    <line x1="8" y1="-3" x2="16" y2="-7" stroke="#9f7aea" stroke-width="0.4" opacity="0.5"/>
+  </g>
+
+  <!-- EXTRA CUBES - Top right corner (tiny) -->
+  <g transform="translate(845, 60)" filter="url(#shadow)">
+    <polygon points="0,-7 8,-11 16,-7 8,-3" fill="url(#smallCubeTop)" opacity="0.7"/>
+    <polygon points="0,-7 8,-3 8,5 0,1" fill="url(#smallCubeLeft)" opacity="0.7"/>
+    <polygon points="16,-7 8,-3 8,5 16,1" fill="url(#smallCubeRight)" opacity="0.7"/>
+    <line x1="0" y1="-7" x2="8" y2="-3" stroke="#9f7aea" stroke-width="0.4" opacity="0.5"/>
+    <line x1="8" y1="-3" x2="16" y2="-7" stroke="#9f7aea" stroke-width="0.4" opacity="0.5"/>
+  </g>
+
+  <!-- EXTRA CUBES - Upper left (tiny) -->
+  <g transform="translate(140, 60)" filter="url(#shadow)">
+    <polygon points="0,-7 8,-11 16,-7 8,-3" fill="url(#cubeTop)" opacity="0.6"/>
+    <polygon points="0,-7 8,-3 8,5 0,1" fill="url(#cubeLeft)" opacity="0.6"/>
+    <polygon points="16,-7 8,-3 8,5 16,1" fill="url(#cubeRight)" opacity="0.6"/>
+    <line x1="0" y1="-7" x2="8" y2="-3" stroke="#FAAE7B" stroke-width="0.4" opacity="0.4"/>
+    <line x1="8" y1="-3" x2="16" y2="-7" stroke="#FAAE7B" stroke-width="0.4" opacity="0.4"/>
+  </g>
+
+  <!-- EXTRA CUBES - Bottom left front (medium) -->
+  <g transform="translate(260, 250)" filter="url(#shadow)">
+    <polygon points="0,-13 14,-20 28,-13 14,-6" fill="url(#cubeTop)" opacity="0.75"/>
+    <polygon points="0,-13 14,-6 14,8 0,1" fill="url(#cubeLeft)" opacity="0.8"/>
+    <polygon points="28,-13 14,-6 14,8 28,1" fill="url(#cubeRight)" opacity="0.8"/>
+    <line x1="0" y1="-13" x2="14" y2="-6" stroke="#FAAE7B" stroke-width="0.6" opacity="0.45"/>
+    <line x1="14" y1="-6" x2="28" y2="-13" stroke="#FAAE7B" stroke-width="0.6" opacity="0.45"/>
+    <line x1="14" y1="-6" x2="14" y2="8" stroke="#5b21b6" stroke-width="0.4" opacity="0.35"/>
+  </g>
+
+  <!-- EXTRA CUBES - Bottom right front (medium) -->
+  <g transform="translate(640, 250)" filter="url(#shadow)">
+    <polygon points="0,-13 14,-20 28,-13 14,-6" fill="url(#cubeTop)" opacity="0.75"/>
+    <polygon points="0,-13 14,-6 14,8 0,1" fill="url(#cubeLeft)" opacity="0.8"/>
+    <polygon points="28,-13 14,-6 14,8 28,1" fill="url(#cubeRight)" opacity="0.8"/>
+    <line x1="0" y1="-13" x2="14" y2="-6" stroke="#FAAE7B" stroke-width="0.6" opacity="0.45"/>
+    <line x1="14" y1="-6" x2="28" y2="-13" stroke="#FAAE7B" stroke-width="0.6" opacity="0.45"/>
+    <line x1="14" y1="-6" x2="14" y2="8" stroke="#5b21b6" stroke-width="0.4" opacity="0.35"/>
+  </g>
+
+  <!-- EXTRA CUBES - Bottom center-left (small) -->
+  <g transform="translate(380, 240)" filter="url(#shadow)">
+    <polygon points="0,-10 10,-15 20,-10 10,-5" fill="url(#smallCubeTop)" opacity="0.8"/>
+    <polygon points="0,-10 10,-5 10,5 0,0" fill="url(#smallCubeLeft)" opacity="0.8"/>
+    <polygon points="20,-10 10,-5 10,5 20,0" fill="url(#smallCubeRight)" opacity="0.8"/>
+    <line x1="0" y1="-10" x2="10" y2="-5" stroke="#9f7aea" stroke-width="0.4" opacity="0.5"/>
+    <line x1="10" y1="-5" x2="20" y2="-10" stroke="#9f7aea" stroke-width="0.4" opacity="0.5"/>
+  </g>
+
+  <!-- EXTRA CUBES - Bottom center-right (small) -->
+  <g transform="translate(520, 240)" filter="url(#shadow)">
+    <polygon points="0,-10 10,-15 20,-10 10,-5" fill="url(#smallCubeTop)" opacity="0.8"/>
+    <polygon points="0,-10 10,-5 10,5 0,0" fill="url(#smallCubeLeft)" opacity="0.8"/>
+    <polygon points="20,-10 10,-5 10,5 20,0" fill="url(#smallCubeRight)" opacity="0.8"/>
+    <line x1="0" y1="-10" x2="10" y2="-5" stroke="#9f7aea" stroke-width="0.4" opacity="0.5"/>
+    <line x1="10" y1="-5" x2="20" y2="-10" stroke="#9f7aea" stroke-width="0.4" opacity="0.5"/>
+  </g>
+
+  <!-- EXTRA CUBES - Far bottom left (small, distant) -->
+  <g transform="translate(140, 250)" filter="url(#shadow)">
+    <polygon points="0,-8 9,-12 18,-8 9,-4" fill="url(#smallCubeTop)" opacity="0.6"/>
+    <polygon points="0,-8 9,-4 9,4 0,0" fill="url(#smallCubeLeft)" opacity="0.6"/>
+    <polygon points="18,-8 9,-4 9,4 18,0" fill="url(#smallCubeRight)" opacity="0.6"/>
+    <line x1="0" y1="-8" x2="9" y2="-4" stroke="#9f7aea" stroke-width="0.3" opacity="0.4"/>
+    <line x1="9" y1="-4" x2="18" y2="-8" stroke="#9f7aea" stroke-width="0.3" opacity="0.4"/>
+  </g>
+
+  <!-- EXTRA CUBES - Far bottom right (small, distant) -->
+  <g transform="translate(760, 250)" filter="url(#shadow)">
+    <polygon points="0,-8 9,-12 18,-8 9,-4" fill="url(#smallCubeTop)" opacity="0.6"/>
+    <polygon points="0,-8 9,-4 9,4 0,0" fill="url(#smallCubeLeft)" opacity="0.6"/>
+    <polygon points="18,-8 9,-4 9,4 18,0" fill="url(#smallCubeRight)" opacity="0.6"/>
+    <line x1="0" y1="-8" x2="9" y2="-4" stroke="#9f7aea" stroke-width="0.3" opacity="0.4"/>
+    <line x1="9" y1="-4" x2="18" y2="-8" stroke="#9f7aea" stroke-width="0.3" opacity="0.4"/>
+  </g>
+
+  <!-- EXTRA CUBES - Left mid-low (tiny) -->
+  <g transform="translate(55, 160)" filter="url(#shadow)">
+    <polygon points="0,-7 8,-11 16,-7 8,-3" fill="url(#cubeTop)" opacity="0.55"/>
+    <polygon points="0,-7 8,-3 8,5 0,1" fill="url(#cubeLeft)" opacity="0.55"/>
+    <polygon points="16,-7 8,-3 8,5 16,1" fill="url(#cubeRight)" opacity="0.55"/>
+    <line x1="0" y1="-7" x2="8" y2="-3" stroke="#FAAE7B" stroke-width="0.3" opacity="0.35"/>
+    <line x1="8" y1="-3" x2="16" y2="-7" stroke="#FAAE7B" stroke-width="0.3" opacity="0.35"/>
+  </g>
+
+  <!-- EXTRA CUBES - Right mid-high (tiny) -->
+  <g transform="translate(860, 135)" filter="url(#shadow)">
+    <polygon points="0,-7 8,-11 16,-7 8,-3" fill="url(#cubeTop)" opacity="0.55"/>
+    <polygon points="0,-7 8,-3 8,5 0,1" fill="url(#cubeLeft)" opacity="0.55"/>
+    <polygon points="16,-7 8,-3 8,5 16,1" fill="url(#cubeRight)" opacity="0.55"/>
+    <line x1="0" y1="-7" x2="8" y2="-3" stroke="#FAAE7B" stroke-width="0.3" opacity="0.35"/>
+    <line x1="8" y1="-3" x2="16" y2="-7" stroke="#FAAE7B" stroke-width="0.3" opacity="0.35"/>
+  </g>
+
+  <!-- EXTRA CUBES - Top center (above sphere) -->
+  <g transform="translate(450, 70)" filter="url(#shadow)">
+    <polygon points="0,-9 10,-14 20,-9 10,-4" fill="url(#cubeTop)" opacity="0.7"/>
+    <polygon points="0,-9 10,-4 10,5 0,0" fill="url(#cubeLeft)" opacity="0.7"/>
+    <polygon points="20,-9 10,-4 10,5 20,0" fill="url(#cubeRight)" opacity="0.7"/>
+    <line x1="0" y1="-9" x2="10" y2="-4" stroke="#FAAE7B" stroke-width="0.5" opacity="0.4"/>
+    <line x1="10" y1="-4" x2="20" y2="-9" stroke="#FAAE7B" stroke-width="0.5" opacity="0.4"/>
+  </g>
+
+  <!-- EXTRA CUBES - Top left of sphere (tiny) -->
+  <g transform="translate(380, 45)" filter="url(#shadow)">
+    <polygon points="0,-6 7,-9 14,-6 7,-3" fill="url(#smallCubeTop)" opacity="0.5"/>
+    <polygon points="0,-6 7,-3 7,3 0,0" fill="url(#smallCubeLeft)" opacity="0.5"/>
+    <polygon points="14,-6 7,-3 7,3 14,0" fill="url(#smallCubeRight)" opacity="0.5"/>
+  </g>
+
+  <!-- EXTRA CUBES - Top right of sphere (tiny) -->
+  <g transform="translate(520, 45)" filter="url(#shadow)">
+    <polygon points="0,-6 7,-9 14,-6 7,-3" fill="url(#smallCubeTop)" opacity="0.5"/>
+    <polygon points="0,-6 7,-3 7,3 0,0" fill="url(#smallCubeLeft)" opacity="0.5"/>
+    <polygon points="14,-6 7,-3 7,3 14,0" fill="url(#smallCubeRight)" opacity="0.5"/>
+  </g>
+
+  <!-- CENTRAL 3D SPHERE -->
+  <g transform="translate(450, 130)" filter="url(#softGlow)">
+    <!-- Shadow beneath sphere -->
+    <ellipse cx="0" cy="30" rx="20" ry="5" fill="#000" opacity="0.3" filter="url(#bigGlow)"/>
+    <!-- Sphere body -->
+    <circle cx="0" cy="0" r="22" fill="#E8542E"/>
+    <circle cx="0" cy="0" r="22" fill="url(#sphereShine)"/>
+    <!-- Longitude lines for 3D effect -->
+    <ellipse cx="0" cy="0" rx="22" ry="22" fill="none" stroke="#FEF6F0" stroke-width="0.4" opacity="0.2"/>
+    <ellipse cx="0" cy="0" rx="15" ry="22" fill="none" stroke="#FEF6F0" stroke-width="0.3" opacity="0.2"/>
+    <ellipse cx="0" cy="0" rx="7" ry="22" fill="none" stroke="#FEF6F0" stroke-width="0.3" opacity="0.15"/>
+    <!-- Latitude lines -->
+    <ellipse cx="0" cy="-8" rx="20" ry="6" fill="none" stroke="#FEF6F0" stroke-width="0.3" opacity="0.2"/>
+    <ellipse cx="0" cy="0" rx="22" ry="7" fill="none" stroke="#FEF6F0" stroke-width="0.4" opacity="0.25"/>
+    <ellipse cx="0" cy="8" rx="20" ry="6" fill="none" stroke="#FEF6F0" stroke-width="0.3" opacity="0.2"/>
+    <!-- Specular highlight -->
+    <ellipse cx="-7" cy="-9" rx="6" ry="5" fill="#FEF6F0" opacity="0.35"/>
+    <!-- Outer glow ring -->
+    <circle cx="0" cy="0" r="28" fill="none" stroke="#FAAE7B" stroke-width="0.8" opacity="0.3"/>
+    <circle cx="0" cy="0" r="34" fill="none" stroke="#FAAE7B" stroke-width="0.4" opacity="0.15"/>
+  </g>
+
+  <!-- 3D orbiting ring around sphere -->
+  <g transform="translate(450, 130)">
+    <ellipse cx="0" cy="2" rx="42" ry="12" fill="none" stroke="#FAAE7B" stroke-width="1.2" opacity="0.4" filter="url(#glow)" stroke-dasharray="3 2"/>
+    <!-- Orbiting dot -->
+    <circle cx="40" cy="5" r="3" fill="#FAAE7B" filter="url(#glow)"/>
+    <circle cx="-38" cy="-1" r="2" fill="#7c3aed" filter="url(#glow)"/>
+  </g>
+
+  <!-- Data flow particles along beams -->
+  <g fill="#FAAE7B" opacity="0.7" filter="url(#innerGlow)">
+    <circle cx="240" cy="143" r="2.5"/>
+    <circle cx="380" cy="127" r="2.5"/>
+    <circle cx="520" cy="127" r="2.5"/>
+    <circle cx="660" cy="143" r="2.5"/>
+    <circle cx="370" cy="168" r="2"/>
+    <circle cx="530" cy="168" r="2"/>
+    <circle cx="135" cy="130" r="1.5"/>
+    <circle cx="765" cy="130" r="1.5"/>
+  </g>
+
+  <!-- Floating particles (depth layers) -->
+  <g>
+    <!-- Far layer (small, dim) -->
+    <circle cx="70" cy="40" r="1" fill="#7c3aed" opacity="0.3"/>
+    <circle cx="200" cy="30" r="0.8" fill="#FAAE7B" opacity="0.2"/>
+    <circle cx="380" cy="25" r="1" fill="#FEF6F0" opacity="0.2"/>
+    <circle cx="550" cy="35" r="0.8" fill="#7c3aed" opacity="0.3"/>
+    <circle cx="700" cy="28" r="1" fill="#FAAE7B" opacity="0.2"/>
+    <circle cx="850" cy="45" r="0.8" fill="#FEF6F0" opacity="0.2"/>
+    <!-- Mid layer -->
+    <circle cx="130" cy="60" r="1.5" fill="#FAAE7B" opacity="0.4"/>
+    <circle cx="320" cy="55" r="1.2" fill="#FEF6F0" opacity="0.3"/>
+    <circle cx="580" cy="50" r="1.5" fill="#7c3aed" opacity="0.4"/>
+    <circle cx="770" cy="65" r="1.2" fill="#FAAE7B" opacity="0.3"/>
+    <!-- Near layer (larger, brighter) -->
+    <circle cx="60" cy="270" r="2" fill="#FAAE7B" opacity="0.3"/>
+    <circle cx="250" cy="280" r="1.5" fill="#7c3aed" opacity="0.25"/>
+    <circle cx="450" cy="290" r="2" fill="#FEF6F0" opacity="0.15"/>
+    <circle cx="650" cy="280" r="1.5" fill="#7c3aed" opacity="0.25"/>
+    <circle cx="840" cy="270" r="2" fill="#FAAE7B" opacity="0.3"/>
+  </g>
+
+  <!-- Corner brackets (3D beveled look) -->
+  <g opacity="0.35">
+    <path d="M2 35 L2 2 L35 2" fill="none" stroke="#FAAE7B" stroke-width="2"/>
+    <path d="M4 33 L4 4 L33 4" fill="none" stroke="#E8542E" stroke-width="0.5" opacity="0.5"/>
+    <path d="M898 35 L898 2 L865 2" fill="none" stroke="#FAAE7B" stroke-width="2"/>
+    <path d="M896 33 L896 4 L867 4" fill="none" stroke="#E8542E" stroke-width="0.5" opacity="0.5"/>
+    <path d="M2 285 L2 318 L35 318" fill="none" stroke="#FAAE7B" stroke-width="2"/>
+    <path d="M4 287 L4 316 L33 316" fill="none" stroke="#E8542E" stroke-width="0.5" opacity="0.5"/>
+    <path d="M898 285 L898 318 L865 318" fill="none" stroke="#FAAE7B" stroke-width="2"/>
+    <path d="M896 287 L896 316 L867 316" fill="none" stroke="#E8542E" stroke-width="0.5" opacity="0.5"/>
+  </g>
+</svg>

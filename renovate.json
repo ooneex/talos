@@ -1,0 +1,139 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":dependencyDashboard",
+    ":semanticCommitTypeAll(chore)",
+    ":maintainLockFilesWeekly",
+    ":prConcurrentLimitNone",
+    ":prHourlyLimitNone",
+    "group:monorepos",
+    "group:recommended",
+    "replacements:all",
+    "workarounds:all",
+    "customManagers:biomeVersions"
+  ],
+  "timezone": "UTC",
+  "schedule": ["before 6am on monday"],
+  "prCreation": "not-pending",
+  "automerge": false,
+  "platformAutomerge": false,
+  "rebaseWhen": "conflicted",
+  "lockFileMaintenance": {
+    "enabled": true,
+    "automerge": true,
+    "schedule": ["before 6am on monday"]
+  },
+  "packageRules": [
+    {
+      "description": "Automerge patch updates for non-major dependencies",
+      "matchUpdateTypes": ["patch"],
+      "automerge": true,
+      "platformAutomerge": true
+    },
+    {
+      "description": "Group all TypeScript related packages",
+      "groupName": "TypeScript",
+      "matchPackageNames": ["typescript"],
+      "matchPackagePatterns": ["^@types/"]
+    },
+    {
+      "description": "Group all Nx related packages",
+      "groupName": "Nx monorepo",
+      "matchPackagePatterns": ["^@nx/", "^nx$"]
+    },
+    {
+      "description": "Group all Biome related packages",
+      "groupName": "Biome",
+      "matchPackagePatterns": ["^@biomejs/"]
+    },
+    {
+      "description": "Group all SWC related packages",
+      "groupName": "SWC",
+      "matchPackagePatterns": ["^@swc/", "^@swc-node/"]
+    },
+    {
+      "description": "Group all commitlint related packages",
+      "groupName": "Commitlint",
+      "matchPackagePatterns": ["^@commitlint/"]
+    },
+    {
+      "description": "Group all test related packages",
+      "groupName": "Testing tools",
+      "matchPackagePatterns": ["^@types/bun", "^bun-types"]
+    },
+    {
+      "description": "Pin Biome to exact version for consistency",
+      "matchPackagePatterns": ["^@biomejs/"],
+      "rangeStrategy": "pin"
+    },
+    {
+      "description": "Use pin strategy for Bun types to avoid breaking changes",
+      "matchPackageNames": ["@types/bun", "bun-types"],
+      "rangeStrategy": "pin"
+    },
+    {
+      "description": "Major updates require manual review",
+      "matchUpdateTypes": ["major"],
+      "automerge": false,
+      "reviewersFromCodeOwners": true,
+      "labels": ["major-update"]
+    },
+    {
+      "description": "Security updates get high priority",
+      "matchDatasources": ["npm"],
+      "matchDepTypes": ["dependencies", "devDependencies"],
+      "vulnerabilityAlerts": {
+        "labels": ["security"],
+        "automerge": true,
+        "schedule": ["at any time"]
+      }
+    }
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Update Bun version in bunfig.toml",
+      "fileMatch": ["^bunfig\\.toml$"],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\s+version\\s*=\\s*\"(?<currentValue>\\S+)\""
+      ],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "oven-sh/bun"
+    },
+    {
+      "customType": "regex",
+      "description": "Update Node.js version in GitHub Actions",
+      "fileMatch": ["^\\.github/workflows/.+\\.ya?ml$"],
+      "matchStrings": [
+        "node-version:\\s*['\"]?(?<currentValue>\\d+\\.\\d+\\.\\d+)['\"]?",
+        "node_version:\\s*['\"]?(?<currentValue>\\d+\\.\\d+\\.\\d+)['\"]?"
+      ],
+      "datasourceTemplate": "node-version",
+      "depNameTemplate": "node"
+    }
+  ],
+  "ignorePaths": ["**/node_modules/**", "**/dist/**", "**/build/**", "**/.nx/**"],
+  "branchPrefix": "renovate/",
+  "commitMessagePrefix": "chore(deps): ",
+  "commitMessageTopic": "{{depName}}",
+  "commitMessageExtra": "to v{{newValue}}",
+  "semanticCommits": "enabled",
+  "semanticCommitType": "chore",
+  "semanticCommitScope": "deps",
+  "labels": ["dependencies"],
+  "assigneesFromCodeOwners": true,
+  "reviewersFromCodeOwners": false,
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "labels": ["security", "vulnerability"],
+    "automerge": true,
+    "schedule": ["at any time"]
+  },
+  "osvVulnerabilityAlerts": true,
+  "configWarningReuseIssue": false,
+  "dependencyDashboard": true,
+  "dependencyDashboardTitle": "Dependency Dashboard",
+  "dependencyDashboardHeader": "This issue lists Renovate updates and detected dependencies. Read the [Dependency Dashboard](https://docs.renovatebot.com/key-concepts/dashboard/) docs to learn more.",
+  "dependencyDashboardFooter": "- [ ] Check this box to trigger a request for Renovate to run again on this repository"
+}
