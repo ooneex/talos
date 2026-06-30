@@ -1,0 +1,47 @@
+{
+  "name": "@talosjs/url",
+  "description": "URL parsing and manipulation library with query string handling, path normalization, and route parameter extraction for web applications",
+  "version": "1.0.0",
+  "type": "module",
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md",
+    "package.json"
+  ],
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "license": "MIT",
+  "scripts": {
+    "test": "bun test tests",
+    "build": "bunup",
+    "lint": "tsgo --noEmit && bunx biome lint",
+    "npm:publish": "bun publish --tolerate-republish --force --production --access public"
+  },
+  "dependencies": {
+    "@talosjs/utils": "workspace:^"
+  },
+  "devDependencies": {
+    "@talosjs/types": "workspace:^",
+    "@talosjs/translation": "workspace:^"
+  },
+  "keywords": [
+    "bun",
+    "talos",
+    "path",
+    "query-string",
+    "routing",
+    "typescript",
+    "uri",
+    "url"
+  ]
+}
