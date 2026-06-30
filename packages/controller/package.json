@@ -1,0 +1,56 @@
+{
+  "name": "@talosjs/controller",
+  "description": "HTTP controller layer with decorator-based route binding, request/response handling, and seamless integration with the routing and middleware systems",
+  "version": "1.0.0",
+  "type": "module",
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md",
+    "package.json"
+  ],
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "license": "MIT",
+  "scripts": {
+    "build": "bunup",
+    "lint": "tsgo --noEmit && bunx biome lint",
+    "npm:publish": "bun publish --tolerate-republish --force --production --access public"
+  },
+  "devDependencies": {
+    "@talosjs/role": "workspace:^",
+    "@talosjs/rate-limit": "workspace:^",
+    "@talosjs/app-env": "workspace:^",
+    "@talosjs/cache": "workspace:^",
+    "@talosjs/http-header": "workspace:^",
+    "@talosjs/http-request": "workspace:^",
+    "@talosjs/http-request-file": "workspace:^",
+    "@talosjs/http-response": "workspace:^",
+    "@talosjs/logger": "workspace:^",
+    "@talosjs/mailer": "workspace:^",
+    "@talosjs/permission": "workspace:^",
+    "@talosjs/translation": "workspace:^",
+    "@talosjs/types": "workspace:^",
+    "@talosjs/database": "workspace:^",
+    "@talosjs/user": "workspace:^"
+  },
+  "keywords": [
+    "bun",
+    "controller",
+    "decorator",
+    "http",
+    "mvc",
+    "talos",
+    "routing",
+    "typescript"
+  ]
+}
