@@ -10,7 +10,7 @@
 <!-- PROJECT LOGO -->
 <br />
 <div align="center">
-  <a href="https://github.com/Talos/Talos">
+  <a href="https://github.com/ooneex/talos">
     <img src="assets/logo-full.svg" alt="Talos" width="180" height="38">
   </a>
 
@@ -21,9 +21,9 @@
     A modular TypeScript framework built on Bun — 60+ independent packages for building modern web applications.
     <br />
     <br />
-    <a href="https://github.com/Talos/Talos/issues/new?labels=bug">Report Bug</a>
+    <a href="https://github.com/ooneex/talos/issues/new?labels=bug">Report Bug</a>
     &middot;
-    <a href="https://github.com/Talos/Talos/issues/new?labels=enhancement">Request Feature</a>
+    <a href="https://github.com/ooneex/talos/issues/new?labels=enhancement">Request Feature</a>
   </p>
 </div>
 
@@ -208,7 +208,7 @@ The framework is organized into 60+ packages across several categories:
 1. Clone the repository
 
    ```sh
-   git clone https://github.com/Talos/Talos.git
+   git clone https://github.com/ooneex/talos.git
    cd Talos
    ```
 
@@ -360,7 +360,7 @@ chore(common): Update bun.lock dependencies
 <!-- ROADMAP -->
 ## Roadmap
 
-See the [open issues](https://github.com/Talos/Talos/issues) for a full list of proposed features and known issues.
+See the [open issues](https://github.com/ooneex/talos/issues) for a full list of proposed features and known issues.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -398,16 +398,16 @@ Distributed under the MIT License. See [`LICENSE`](LICENSE) for more information
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 <!-- MARKDOWN LINKS & IMAGES -->
-[contributors-shield]: https://img.shields.io/github/contributors/Talos/Talos.svg?style=for-the-badge&color=432371
-[contributors-url]: https://github.com/Talos/Talos/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/Talos/Talos.svg?style=for-the-badge&color=FAAE7B
-[forks-url]: https://github.com/Talos/Talos/network/members
-[stars-shield]: https://img.shields.io/github/stars/Talos/Talos.svg?style=for-the-badge&color=2ea043
-[stars-url]: https://github.com/Talos/Talos/stargazers
-[issues-shield]: https://img.shields.io/github/issues/Talos/Talos.svg?style=for-the-badge&color=e34c26
-[issues-url]: https://github.com/Talos/Talos/issues
+[contributors-shield]: https://img.shields.io/github/contributors/ooneex/talos.svg?style=for-the-badge&color=432371
+[contributors-url]: https://github.com/ooneex/talos/graphs/contributors
+[forks-shield]: https://img.shields.io/github/forks/ooneex/talos.svg?style=for-the-badge&color=FAAE7B
+[forks-url]: https://github.com/ooneex/talos/network/members
+[stars-shield]: https://img.shields.io/github/stars/ooneex/talos.svg?style=for-the-badge&color=2ea043
+[stars-url]: https://github.com/ooneex/talos/stargazers
+[issues-shield]: https://img.shields.io/github/issues/ooneex/talos.svg?style=for-the-badge&color=e34c26
+[issues-url]: https://github.com/ooneex/talos/issues
 [license-shield]: https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge&color=60A5FA
-[license-url]: https://github.com/Talos/Talos/blob/main/LICENSE
+[license-url]: https://github.com/ooneex/talos/blob/main/LICENSE
 [Bun-badge]: https://img.shields.io/badge/Bun-000000?style=for-the-badge&logo=bun&logoColor=white
 [Bun-url]: https://bun.sh
 [TypeScript-badge]: https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white
