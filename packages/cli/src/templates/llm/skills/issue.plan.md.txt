@@ -195,7 +195,7 @@ The `goal`'s technical subsection follows the module's conventions (from step 1'
 
 ### Backend module (`type: "module"`, `"api"`, `"microservice"`, or none) — `### Data Model`
 
-The module owns controllers, services, repositories, entities, migrations, and seeds under `src/`. List TypeORM relations with the exact field name on the owning entity, the decorator, and the inverse field / FK-or-join-table owner (see the block in step 5). Reference services, repositories, controllers, and DI by their `@talos` conventions; entities register in `SharedModule`.
+The module owns controllers, services, repositories, entities, migrations, and seeds under `src/`. List TypeORM relations with the exact field name on the owning entity, the decorator, and the inverse field / FK-or-join-table owner (see the block in step 5). Reference services, repositories, controllers, and DI by their `@talosjs` conventions; entities register in `SharedModule`.
 
 ### SPA module (`type: "spa"`) — `### Front-End Structure`
 

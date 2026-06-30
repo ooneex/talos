@@ -1,6 +1,6 @@
 # {{NAME}}
 
-A modular, enterprise-grade backend framework built with TypeScript and Bun, powered by the **@talos** ecosystem.
+A modular, enterprise-grade backend framework built with TypeScript and Bun, powered by the **@talosjs** ecosystem.
 
 > For more details about the Talos framework, check the documentation at [https://docs.talos.com](https://docs.talos.com).
 

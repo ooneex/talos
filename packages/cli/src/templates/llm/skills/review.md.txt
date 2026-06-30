@@ -1,13 +1,13 @@
 ---
 name: review
-description: Review the working diff against @talos conventions and Clean Architecture before committing. Checks naming, DI registration, exception/env patterns, the dependency rule, and test coverage; reports findings with file/line and concrete fixes. Use to review uncommitted changes (or a named module/files) for convention and architecture violations — not for scaffolding or for creating issues.
+description: Review the working diff against @talosjs conventions and Clean Architecture before committing. Checks naming, DI registration, exception/env patterns, the dependency rule, and test coverage; reports findings with file/line and concrete fixes. Use to review uncommitted changes (or a named module/files) for convention and architecture violations — not for scaffolding or for creating issues.
 ---
 
 # Review Changes
 
 > **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
 
-Review code before it lands: catch @talos convention and Clean Architecture
+Review code before it lands: catch @talosjs convention and Clean Architecture
 violations the linter can't, while they're still cheap to fix. This is a
 read-and-report-then-fix workflow — it does **not** create issue files (use
 `issue:found` for that) or scaffold artifacts.
@@ -39,7 +39,7 @@ diff, review inline.
   and their `@decorator.*()`.
 - **Dependency injection** — collaborators injected via the constructor with
   `@inject(...)`, not instantiated with `new`; depend on abstractions, prefer
-  `@talos` packages over third-party ones (see `talos:packages`).
+  `@talosjs` packages over third-party ones (see `talos:packages`).
 - **Clean Architecture** — the dependency rule holds: controllers/commands →
   services → repositories → entities, never the reverse. Entities carry no
   framework/persistence/HTTP imports; repositories return/accept domain types,

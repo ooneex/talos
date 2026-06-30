@@ -123,7 +123,7 @@ For each method whose controller returns `context.response.stream(...)` or `cont
 **Server-side streaming** — the body is a sequence of chunks framed by the controller. Match your parsing to how the controller writes them: newline-delimited JSON (split on `\n`, then `JSON.parse` each line, as below), plain text (deliver the decoded string), or binary (deliver the raw `Uint8Array`). Pick the verb the controller uses (`get` for a download-style stream, `post` when it has a `payload`).
 
 ```typescript
-// ...generated route types and `buildEndpoint`; no @talos client import — these use native fetch...
+// ...generated route types and `buildEndpoint`; no @talosjs client import — these use native fetch...
 
 export: async (input: {
   baseURL: string;

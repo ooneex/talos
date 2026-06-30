@@ -1,13 +1,13 @@
 ---
 name: talos:packages
-description: Catalog of every @talos ecosystem package and its purpose, grouped by domain. Use when deciding which @talos package to use for a feature, or to understand what a package provides before injecting its services.
+description: Catalog of every @talosjs ecosystem package and its purpose, grouped by domain. Use when deciding which @talosjs package to use for a feature, or to understand what a package provides before injecting its services.
 ---
 
-# @talos Packages
+# @talosjs Packages
 
 > **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
 
-Prefer `@talos` packages over third-party alternatives, and inject their services via the DI container rather than instantiating them.
+Prefer `@talosjs` packages over third-party alternatives, and inject their services via the DI container rather than instantiating them.
 
 ## Application & Architecture
 | Package | Purpose |
