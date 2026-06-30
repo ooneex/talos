@@ -1,0 +1,46 @@
+{
+  "name": "@talosjs/youtube",
+  "description": "YouTube video downloader and metadata extraction library for fetching video information, thumbnails, and media streams",
+  "version": "1.0.0",
+  "type": "module",
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md",
+    "package.json"
+  ],
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "license": "MIT",
+  "scripts": {
+    "test": "bun test tests",
+    "build": "bunup",
+    "lint": "tsgo --noEmit && bunx biome lint",
+    "npm:publish": "bun publish --tolerate-republish --force --production --access public"
+  },
+  "dependencies": {
+    "@talosjs/exception": "workspace:^",
+    "@talosjs/http-status": "workspace:^",
+    "ytdlp-nodejs": "^2.3.5"
+  },
+  "keywords": [
+    "api",
+    "bun",
+    "downloader",
+    "talos",
+    "transcript",
+    "typescript",
+    "video",
+    "youtube",
+    "ytdlp"
+  ]
+}
