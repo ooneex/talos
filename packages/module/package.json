@@ -1,0 +1,45 @@
+{
+  "name": "@talosjs/module",
+  "description": "Module system for organizing application features into cohesive units — groups controllers, entities, services, and middleware by domain",
+  "version": "1.0.0",
+  "type": "module",
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md",
+    "package.json"
+  ],
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "license": "MIT",
+  "scripts": {
+    "build": "bunup",
+    "lint": "tsgo --noEmit && bunx biome lint",
+    "npm:publish": "bun publish --tolerate-republish --force --production --access public"
+  },
+  "devDependencies": {
+    "@talosjs/middleware": "workspace:^",
+    "@talosjs/controller": "workspace:^",
+    "@talosjs/socket": "workspace:^",
+    "@talosjs/event": "workspace:^",
+    "@talosjs/cron": "workspace:^",
+    "@talosjs/entity": "workspace:^"
+  },
+  "keywords": [
+    "bun",
+    "modular",
+    "module",
+    "talos",
+    "plugin",
+    "typescript"
+  ]
+}
