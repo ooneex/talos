@@ -1,6 +1,6 @@
 {
   "name": "@talosjs/workflow",
-  "description": "Workflow utilities for Talos",
+  "description": "Transition-based workflow engine — compose business processes from small, conditional, reversible steps with automatic rollback on failure",
   "version": "1.0.0",
   "type": "module",
   "files": [
