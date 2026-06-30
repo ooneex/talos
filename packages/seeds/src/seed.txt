@@ -1,0 +1,24 @@
+import { decorator, type Environment, type ISeed, type SeedClassType } from "@talosjs/seeds";
+import data from "./{{ dataFile }}.yml";
+
+@decorator.seed()
+export class {{ name }} implements ISeed {
+  public async run<T>(): Promise<T> {
+    // Your seed logic here
+    console.log(data);
+
+    return data as T;
+  }
+
+  public isActive(): boolean {
+    return true;
+  }
+
+  public async getDependencies(): Promise<SeedClassType[]> {
+    return [];
+  }
+
+  public getEnv(): Environment[] {
+    return [];
+  }
+}
