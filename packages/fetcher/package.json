@@ -1,0 +1,47 @@
+{
+  "name": "@talosjs/fetcher",
+  "description": "Lightweight HTTP client with typed headers, response parsing, and configurable request/response handling for external API integration",
+  "version": "1.0.0",
+  "type": "module",
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md",
+    "package.json"
+  ],
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "license": "MIT",
+  "scripts": {
+    "test": "bun test tests",
+    "build": "bunup",
+    "lint": "tsgo --noEmit && bunx biome lint",
+    "npm:publish": "bun publish --tolerate-republish --force --production --access public"
+  },
+  "dependencies": {
+    "@talosjs/http-header": "workspace:^"
+  },
+  "devDependencies": {
+    "@talosjs/http-response": "workspace:^",
+    "@talosjs/http-mimes": "workspace:^",
+    "@talosjs/types": "workspace:^"
+  },
+  "keywords": [
+    "api-client",
+    "bun",
+    "fetch",
+    "fetcher",
+    "http-client",
+    "talos",
+    "typescript"
+  ]
+}
