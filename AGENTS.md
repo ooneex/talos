@@ -4,11 +4,11 @@ This file provides guidance to AI coding agents and LLMs when working with code 
 
 ## Project Overview
 
-{{NAME}} is a modular, enterprise-grade backend application built with TypeScript and Bun, powered by the **@talos** ecosystem. Code is organized into independent modules under `modules/`, each owning its own controllers, services, repositories, entities, migrations, and seeds.
+{{NAME}} is a modular, enterprise-grade backend application built with TypeScript and Bun, powered by the **@talosjs** ecosystem. Code is organized into independent modules under `modules/`, each owning its own controllers, services, repositories, entities, migrations, and seeds.
 
-## @talos Packages
+## @talosjs Packages
 
-The application is built on the `@talos` ecosystem. Prefer these packages over third-party alternatives, and always inject their services through the DI container rather than instantiating them directly.
+The application is built on the `@talosjs` ecosystem. Prefer these packages over third-party alternatives, and always inject their services through the DI container rather than instantiating them directly.
 
 ### Application & Architecture
 
@@ -24,6 +24,7 @@ The application is built on the `@talos` ecosystem. Prefer these packages over t
 | `@talosjs/exception` | Structured exception handling with HTTP status mapping, typed error data, and JSON stack traces |
 | `@talosjs/types` | Shared TypeScript type definitions and utility types used across the ecosystem |
 | `@talosjs/utils` | General-purpose utilities — unique ID generation (nanoid), type guards, and common helpers |
+| `@talosjs/cli` | Interactive CLI toolkit for scaffolding Talos projects, modules, controllers, services, and repositories with customizable templates |
 
 ### HTTP & Routing
 
@@ -93,6 +94,8 @@ The application is built on the `@talos` ecosystem. Prefer these packages over t
 | `@talosjs/validation` | Type-safe validation powered by ArkType — schemas, custom rules, and JSON Schema generation |
 | `@talosjs/feature-flag` | Define and evaluate feature flags as injectable, named, dynamically enabled toggles |
 | `@talosjs/translation` | Internationalization with locale management, key resolution, and pluralization |
+| `@talosjs/queue` | Background job queue powered by BullMQ and Redis — decorator-registered workers with retries, progress tracking, and job lifecycle management |
+| `@talosjs/workflow` | Transition-based workflow engine — compose business processes from small, conditional, reversible steps with automatic rollback on failure |
 
 ### File & Document Formats
 
@@ -151,10 +154,13 @@ oo mailer:create --name <Name> --module <name>                # Mailer class and
 oo middleware:create --name <Name> --module <name>            # HTTP or WebSocket middleware class
 oo permission:create --name <Name> --module <name>            # Permission class
 oo pubsub:create --name <Name> --module <name>                # Pub/sub event class
+oo queue:create --name <Name> --module <name>                 # BullMQ background job queue worker
 oo repository:create --name <Name> --module <name>            # Repository class
 oo service:create --name <Name> --module <name>               # Service class
 oo storage:create --name <Name> --module <name>               # File storage class
 oo vector-database:create --name <Name> --module <name>       # Vector database class
+oo workflow:create --name <Name> --module <name>              # Workflow orchestrator (ordered, reversible transitions)
+oo workflow:transition:create --name <Name> --module <name>   # Single workflow transition step
 ```
 
 ### Database
@@ -204,10 +210,12 @@ modules/<name>/
     middlewares/  # Middleware classes
     migrations/   # Versioned SQL migration files
     permissions/  # Permission classes
+    queues/       # Background job queue workers
     repositories/ # Repository classes
     seeds/        # YAML seed data files
     services/     # Service classes
     storage/      # File storage classes
+    workflows/    # Workflow orchestrators (transitions/ subfolder per step)
   tests/          # Test files mirroring src/ structure
 ```
 
@@ -314,10 +322,13 @@ This project ships with agent skills that scaffold, implement, and test artefact
 | `/middleware:create` | Generate an HTTP or WebSocket middleware class |
 | `/permission:create` | Generate a permission class centralising access rules for a domain |
 | `/pubsub:create` | Generate a pub/sub event class registered in the module |
+| `/queue:create` | Generate a BullMQ background job queue worker with a typed handler and tests |
 | `/repository:create` | Generate a repository class for typed data access |
 | `/service:create` | Generate a service class implementing `IService` with business logic and tests |
 | `/storage:create` | Generate a file storage class for asset management |
 | `/vector-database:create` | Generate a vector database class for semantic search and RAG |
+| `/workflow:create` | Generate a workflow orchestrator that runs ordered, reversible transitions |
+| `/workflow:transition:create` | Generate a single workflow transition step with execute/rollback logic |
 
 #### Database
 

@@ -18,7 +18,7 @@
   <br />
 
   <p align="center">
-    A modular TypeScript framework built on Bun — 50+ independent packages for building modern web applications.
+    A modular TypeScript framework built on Bun — 60+ independent packages for building modern web applications.
     <br />
     <br />
     <a href="https://github.com/Talos/Talos/issues/new?labels=bug">Report Bug</a>
@@ -64,7 +64,7 @@
 
 <br />
 
-Talos is a comprehensive TypeScript monorepo framework designed for the [Bun](https://bun.sh) runtime. It provides a rich ecosystem of 50+ independently versioned packages under the `@talos` namespace, covering everything from dependency injection and routing to database management, caching, authentication, and real-time communication.
+Talos is a comprehensive TypeScript monorepo framework designed for the [Bun](https://bun.sh) runtime. It provides a rich ecosystem of 60+ independently versioned packages under the `@talosjs` namespace, covering everything from dependency injection and routing to database management, caching, authentication, real-time communication, background job queues, and AI integration.
 
 **Key highlights:**
 
@@ -90,94 +90,105 @@ Talos is a comprehensive TypeScript monorepo framework designed for the [Bun](ht
 
 ### Packages
 
-The framework is organized into 50+ packages across several categories:
+The framework is organized into 60+ packages across several categories:
 
-#### Core
+#### Application & Architecture
 | Package | Description |
 |---------|-------------|
-| `@talosjs/container` | Dependency injection container built on Inversify |
-| `@talosjs/exception` | Base exception classes with HTTP status codes |
+| `@talosjs/app` | Full-featured application framework — orchestrates routing, middleware, DI, caching, logging, and WebSockets |
+| `@talosjs/app-env` | Environment detection and typed configuration for development, staging, production, and testing |
+| `@talosjs/container` | Dependency injection container built on Inversify with singleton, transient, and request scopes |
+| `@talosjs/module` | Module system for organizing application features into cohesive domain units |
+| `@talosjs/service` | Service layer foundation with decorator-based registration |
+| `@talosjs/repository` | Data access layer with decorator-based repository registration |
+| `@talosjs/command` | Command framework for building CLI commands with DI and argument parsing |
+| `@talosjs/exception` | Structured exception handling with HTTP status mapping and typed error data |
 | `@talosjs/types` | Shared TypeScript type definitions and utility types |
-| `@talosjs/http-status` | HTTP status code definitions |
-| `@talosjs/utils` | Common utility functions |
+| `@talosjs/utils` | General-purpose utilities — unique ID generation, type guards, and helpers |
+| `@talosjs/cli` | Interactive CLI toolkit for scaffolding projects, modules, controllers, services, and repositories |
 
-#### Application
+#### HTTP & Routing
 | Package | Description |
 |---------|-------------|
-| `@talosjs/app` | Main application orchestrator with middleware pipelines |
-| `@talosjs/app-env` | Application environment configuration |
-| `@talosjs/routing` | Decorator-driven HTTP routing with validation constraints |
-| `@talosjs/controller` | Controller base classes |
-| `@talosjs/middleware` | Middleware pipeline system |
-| `@talosjs/module` | Module system for organizing application features |
+| `@talosjs/routing` | Decorator-driven HTTP routing with path params, validation, permission guards, and named routes |
+| `@talosjs/controller` | HTTP controller layer with decorator-based route binding |
+| `@talosjs/middleware` | Middleware pipeline framework for HTTP and WebSocket events |
+| `@talosjs/http-request` | HTTP request abstraction — URL parsing, query params, headers, file uploads |
+| `@talosjs/http-request-file` | Multipart file upload handler with MIME validation and size constraints |
+| `@talosjs/http-response` | HTTP response builder with a fluent API for status, headers, cookies, and streams |
+| `@talosjs/http-header` | HTTP header parser with user agent detection and content negotiation |
+| `@talosjs/http-mimes` | Complete MIME type registry with TypeScript constants |
+| `@talosjs/http-status` | HTTP status code library with TypeScript enums and classification helpers |
+| `@talosjs/fetcher` | Lightweight HTTP client with typed headers and response parsing |
+| `@talosjs/url` | URL parsing and manipulation — query strings, path normalization, route params |
+| `@talosjs/rate-limit` | API rate limiting middleware with throttling strategies and per-client quotas |
 
-#### HTTP
+#### Real-Time
 | Package | Description |
 |---------|-------------|
-| `@talosjs/http-request` | HTTP request handling and parsing |
-| `@talosjs/http-request-file` | File upload handling |
-| `@talosjs/http-response` | HTTP response building |
-| `@talosjs/http-header` | HTTP header management |
-| `@talosjs/http-mimes` | MIME type definitions |
-| `@talosjs/url` | URL parsing and building |
-| `@talosjs/fetcher` | HTTP client for external requests |
+| `@talosjs/socket` | WebSocket server with room management, broadcasting, and middleware integration |
+| `@talosjs/socket-client` | WebSocket client with automatic reconnection and typed message serialization |
+| `@talosjs/event` | Event messaging for decoupled, event-driven communication with typed channels |
 
-#### Data
+#### Data & Persistence
 | Package | Description |
 |---------|-------------|
-| `@talosjs/database` | Database abstraction layer with TypeORM integration |
-| `@talosjs/entity` | Entity base classes for ORM models |
-| `@talosjs/repository` | Repository pattern implementation |
-| `@talosjs/migrations` | Database migration management |
-| `@talosjs/seeds` | Database seeding utilities |
-| `@talosjs/cache` | High-performance caching with filesystem and Redis backends |
-| `@talosjs/validation` | Data validation framework |
+| `@talosjs/database` | Database abstraction layer with TypeORM integration and connection pooling |
+| `@talosjs/entity` | Base entity classes and decorators for type-safe column mappings and relationships |
+| `@talosjs/migrations` | Database migration runner with versioned schema changes and rollback |
+| `@talosjs/seeds` | Database seeding framework for fixtures with idempotent operations |
+| `@talosjs/cache` | High-performance caching with filesystem and Redis backends and TTL expiration |
+| `@talosjs/storage` | File storage abstraction over local filesystem and cloud providers |
+| `@talosjs/rag` | Retrieval-Augmented Generation toolkit with vector DB integration and embeddings |
 
-#### Security
+#### Auth & Access Control
 | Package | Description |
 |---------|-------------|
-| `@talosjs/auth` | Authentication framework with pluggable strategies |
-| `@talosjs/jwt` | JSON Web Token handling |
-| `@talosjs/permission` | Permission management system |
-| `@talosjs/role` | Role-based access control |
-| `@talosjs/rate-limit` | Rate limiting for API protection |
-| `@talosjs/user` | User management |
+| `@talosjs/auth` | Authentication framework with pluggable token- and session-based strategies |
+| `@talosjs/jwt` | JWT toolkit using JOSE — generate, sign, verify, and decode tokens |
+| `@talosjs/permission` | Fine-grained access control using CASL with role/resource scoping |
+| `@talosjs/role` | Role-based authorization types and utilities |
+| `@talosjs/user` | User identity types — profiles, credentials, roles, and account metadata |
 
-#### Services
+#### AI & Integrations
 | Package | Description |
 |---------|-------------|
-| `@talosjs/service` | Service base classes and decorators |
-| `@talosjs/logger` | Structured logging with multiple output targets |
-| `@talosjs/mailer` | Email sending service |
-| `@talosjs/storage` | File storage abstraction |
-| `@talosjs/cron` | Scheduled task management |
-| `@talosjs/event` | Publish/subscribe messaging |
-| `@talosjs/analytics` | Analytics tracking |
+| `@talosjs/ai` | AI toolkit integrating 300+ models via OpenRouter with unified text generation and streaming |
+| `@talosjs/analytics` | PostHog-powered analytics for tracking user behavior and product events |
+| `@talosjs/linear` | Linear project management integration for issues, teams, and projects |
+| `@talosjs/mailer` | Transactional email via Nodemailer SMTP and Resend with templated emails |
+| `@talosjs/payment` | Payment and pricing type definitions with currency handling |
+| `@talosjs/youtube` | YouTube video downloader and metadata extraction |
+| `@talosjs/youtube-utils` | YouTube URL utilities for video IDs and embed/watch URLs |
 
-#### Real-Time & Communication
+#### Cross-Cutting Services
 | Package | Description |
 |---------|-------------|
-| `@talosjs/socket` | WebSocket server support |
-| `@talosjs/socket-client` | WebSocket client |
+| `@talosjs/logger` | Structured logging with multiple output targets and contextual metadata |
+| `@talosjs/cron` | Cron job scheduler with timezone-aware scheduling and lifecycle management |
+| `@talosjs/validation` | Type-safe validation powered by ArkType with JSON Schema generation |
+| `@talosjs/feature-flag` | Define and evaluate feature flags as injectable, named toggles |
+| `@talosjs/translation` | Internationalization with locale management, key resolution, and pluralization |
+| `@talosjs/queue` | Background job queue powered by BullMQ and Redis with retries and progress tracking |
+| `@talosjs/workflow` | Transition-based workflow engine with conditional steps and automatic rollback |
 
-#### AI & Content
+#### File & Document Formats
 | Package | Description |
 |---------|-------------|
-| `@talosjs/ai` | AI integration utilities |
-| `@talosjs/rag` | Retrieval-Augmented Generation support |
-| `@talosjs/pdf` | PDF generation and processing |
-| `@talosjs/html` | HTML templating and rendering |
-| `@talosjs/translation` | Internationalization and localization |
-| `@talosjs/youtube` | YouTube API integration |
+| `@talosjs/fs` | Async file system utilities for reading, writing, copying, and watching |
+| `@talosjs/csv` | CSV file loader and parser with streaming and generator-based iteration |
+| `@talosjs/json` | JSON file loader and parser with streaming and generator-based iteration |
+| `@talosjs/yml` | YAML file loader and parser using Bun's built-in YAML support |
+| `@talosjs/html` | HTML parsing and DOM manipulation powered by Cheerio |
+| `@talosjs/pdf` | PDF toolkit for generating, editing, merging, splitting, and converting documents |
 
-#### Utilities
+#### Reference Data & Helpers
 | Package | Description |
 |---------|-------------|
-| `@talosjs/fs` | File system utilities |
-| `@talosjs/country` | Country data and lookup |
-| `@talosjs/currencies` | Currency data and formatting |
-| `@talosjs/payment` | Payment processing integration |
-| `@talosjs/cli` | CLI tools and code generators |
+| `@talosjs/color` | Curated color palette with hex values, names, and TypeScript types |
+| `@talosjs/country` | Country metadata — timezones, ISO codes, and multi-language localization |
+| `@talosjs/currencies` | Currency dataset with ISO 4217 codes, symbols, and names |
+| `@talosjs/hour-utils` | Time unit conversion utilities for hours, minutes, seconds, and milliseconds |
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -272,7 +283,7 @@ const userService = Container.get<UserService>(UserService);
 
 ```
 Talos/
-├── packages/           # All 50+ independent packages
+├── packages/           # All 60+ independent packages
 │   ├── app/            # Application orchestrator
 │   ├── container/      # DI container (core dependency)
 │   ├── routing/        # HTTP routing
@@ -311,12 +322,12 @@ Strictly enforced by decorators at registration time:
 
 | Command | Description |
 |---------|-------------|
-| `bun run build` | Build all packages |
+| `bun run build` | Build all packages (Nx `run-many`) |
 | `bun run test` | Run all tests |
 | `bun run lint` | Lint all packages (Biome + TypeScript) |
-| `bun run fmt` | Format code with Biome |
-| `bun run dev` | Watch mode — rebuilds on change |
-| `bun run check` | Build + lint + test (full validation) |
+| `bun run fmt` | Format and auto-fix code with Biome |
+| `bun run check` | Install + build + lint + test (full validation) |
+| `bun run npm:publish` | Publish all packages to npm |
 | `bunx nx graph` | Visualize the dependency graph |
 
 ### Running Tests for a Specific Package
