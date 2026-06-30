@@ -1,0 +1,55 @@
+# Translation dictionary consumed by `trans()` from @talosjs/translation.
+#
+# Rules (enforced by the package):
+#   - Nested keys are accessed with dot notation: trans("user.profile.name", ...)
+#   - Each leaf is an object keyed by LocaleType: en, fr, es, de, ... ("en" is the fallback)
+#   - Interpolation uses {{ param }} placeholders, filled via `params`
+#   - Pluralization uses SIBLING keys, selected by passing `count`:
+#       <key>         -> count === 1   (singular)
+#       <key>_plural  -> count > 1 or count < 0
+#       <key>_zero    -> count === 0   (optional; falls back to _plural)
+
+# --- Simple nested key -------------------------------------------------------
+# trans("user.profile.name", { lang: "fr" })
+user:
+  profile:
+    name:
+      en: "Full name"
+      fr: "Nom complet"
+    email:
+      en: "Email address"
+      fr: "Adresse e-mail"
+
+# --- Interpolation with params ----------------------------------------------
+# trans("coach.session.welcome", { lang: "fr", params: { name: "Marie" } })
+coach:
+  session:
+    welcome:
+      en: "Welcome back, {{ name }}!"
+      fr: "Bon retour, {{ name }} !"
+    scheduled:
+      en: "Your session with {{ coach }} is set for {{ date }}"
+      fr: "Votre séance avec {{ coach }} est prévue le {{ date }}"
+
+  # --- Pluralization (singular / plural / zero) -----------------------------
+  # trans("coach.notifications.unread", { count: 3 })
+  notifications:
+    unread:
+      en: "You have {{ count }} unread notification"
+      fr: "Vous avez {{ count }} notification non lue"
+    unread_plural:
+      en: "You have {{ count }} unread notifications"
+      fr: "Vous avez {{ count }} notifications non lues"
+    unread_zero:
+      en: "No unread notifications"
+      fr: "Aucune notification non lue"
+
+# --- Validation messages with multiple params -------------------------------
+# trans("validation.min_length", { params: { field: "mot de passe", min: 8 } })
+validation:
+  required:
+    en: "The {{ field }} field is required"
+    fr: "Le champ {{ field }} est requis"
+  min_length:
+    en: "The {{ field }} must be at least {{ min }} characters"
+    fr: "Le {{ field }} doit contenir au moins {{ min }} caractères"
