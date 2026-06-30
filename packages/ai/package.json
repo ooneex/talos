@@ -1,0 +1,111 @@
+{
+  "name": "@talosjs/ai",
+  "description": "AI toolkit for TypeScript — seamlessly integrate 300+ models via OpenRouter with a unified API for text generation, streaming, and content transformation",
+  "version": "1.0.0",
+  "type": "module",
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md",
+    "package.json"
+  ],
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/src/index.d.ts",
+        "default": "./dist/src/index.js"
+      }
+    },
+    "./tools/BrightDataSearchTool": {
+      "import": {
+        "types": "./dist/src/tools/BrightDataSearchTool.d.ts",
+        "default": "./dist/src/tools/BrightDataSearchTool.js"
+      }
+    },
+    "./tools/LinearSearchTool": {
+      "import": {
+        "types": "./dist/src/tools/LinearSearchTool.d.ts",
+        "default": "./dist/src/tools/LinearSearchTool.js"
+      }
+    },
+    "./tools/ExaSearchTool": {
+      "import": {
+        "types": "./dist/src/tools/ExaSearchTool.d.ts",
+        "default": "./dist/src/tools/ExaSearchTool.js"
+      }
+    },
+    "./tools/FirecrawlSearchTool": {
+      "import": {
+        "types": "./dist/src/tools/FirecrawlSearchTool.d.ts",
+        "default": "./dist/src/tools/FirecrawlSearchTool.js"
+      }
+    },
+    "./tools/LinearIssueCreateTool": {
+      "import": {
+        "types": "./dist/src/tools/LinearIssueCreateTool.d.ts",
+        "default": "./dist/src/tools/LinearIssueCreateTool.js"
+      }
+    },
+    "./tools/LinearIssueDeleteTool": {
+      "import": {
+        "types": "./dist/src/tools/LinearIssueDeleteTool.d.ts",
+        "default": "./dist/src/tools/LinearIssueDeleteTool.js"
+      }
+    },
+    "./tools/LinearIssueUpdateTool": {
+      "import": {
+        "types": "./dist/src/tools/LinearIssueUpdateTool.d.ts",
+        "default": "./dist/src/tools/LinearIssueUpdateTool.js"
+      }
+    },
+    "./tools/PubMedSearchTool": {
+      "import": {
+        "types": "./dist/src/tools/PubMedSearchTool.d.ts",
+        "default": "./dist/src/tools/PubMedSearchTool.js"
+      }
+    },
+    "./tools/WikipediaSearchTool": {
+      "import": {
+        "types": "./dist/src/tools/WikipediaSearchTool.d.ts",
+        "default": "./dist/src/tools/WikipediaSearchTool.js"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "license": "MIT",
+  "scripts": {
+    "build": "bunup",
+    "lint": "tsgo --noEmit && bunx biome lint",
+    "npm:publish": "bun publish --tolerate-republish --force --production --access public",
+    "test": "bun test tests"
+  },
+  "dependencies": {
+    "@brightdata/sdk": "^1.1.0",
+    "@talosjs/app-env": "workspace:^",
+    "@talosjs/container": "workspace:^",
+    "@talosjs/exception": "workspace:^",
+    "@talosjs/http-status": "workspace:^",
+    "@talosjs/linear": "workspace:^",
+    "@talosjs/validation": "workspace:^",
+    "@tanstack/ai": "^0.31.0",
+    "@tanstack/ai-openrouter": "^0.13.4",
+    "exa-js": "^2.14.0",
+    "firecrawl": "^4.28.2"
+  },
+  "peerDependencies": {
+    "typeorm": ">=0.3.0"
+  },
+  "devDependencies": {
+    "typeorm": "^1.0.0"
+  },
+  "keywords": [
+    "ai",
+    "artificial-intelligence",
+    "bun",
+    "llm",
+    "machine-learning",
+    "talos",
+    "openrouter",
+    "typescript"
+  ]
+}
