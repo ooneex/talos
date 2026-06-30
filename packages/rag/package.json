@@ -1,0 +1,43 @@
+{
+  "name": "@talosjs/rag",
+  "description": "Retrieval-Augmented Generation toolkit with vector database integration, document embedding, and semantic search for AI-powered knowledge retrieval",
+  "version": "1.0.0",
+  "type": "module",
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md",
+    "package.json"
+  ],
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "license": "MIT",
+  "scripts": {
+    "test": "bun test tests",
+    "build": "bunup",
+    "lint": "tsgo --noEmit && bunx biome lint",
+    "npm:publish": "bun publish --tolerate-republish --force --production --access public"
+  },
+  "keywords": [],
+  "dependencies": {
+    "@lancedb/lancedb": "^0.27.1",
+    "@talosjs/exception": "workspace:^",
+    "@talosjs/container": "workspace:^",
+    "@talosjs/http-status": "workspace:^",
+    "@talosjs/utils": "workspace:^",
+    "@opendataloader/pdf": "^2.0.2",
+    "apache-arrow": "^21.1.0"
+  },
+  "devDependencies": {
+    "@talosjs/types": "workspace:^"
+  }
+}
