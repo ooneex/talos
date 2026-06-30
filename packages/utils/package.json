@@ -1,0 +1,138 @@
+{
+  "name": "@talosjs/utils",
+  "description": "General-purpose utility functions including unique ID generation with nanoid, type guards, and common helper methods",
+  "version": "1.0.0",
+  "type": "module",
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md",
+    "package.json"
+  ],
+  "exports": {
+    "./capitalize": {
+      "import": {
+        "types": "./dist/src/capitalize.d.ts",
+        "default": "./dist/src/capitalize.js"
+      }
+    },
+    "./dataURLtoFile": {
+      "import": {
+        "types": "./dist/src/dataURLtoFile.d.ts",
+        "default": "./dist/src/dataURLtoFile.js"
+      }
+    },
+    "./formatRelativeNumber": {
+      "import": {
+        "types": "./dist/src/formatRelativeNumber.d.ts",
+        "default": "./dist/src/formatRelativeNumber.js"
+      }
+    },
+    "./millisecondsToHMS": {
+      "import": {
+        "types": "./dist/src/millisecondsToHMS.d.ts",
+        "default": "./dist/src/millisecondsToHMS.js"
+      }
+    },
+    "./parseEnvVars": {
+      "import": {
+        "types": "./dist/src/parseEnvVars.d.ts",
+        "default": "./dist/src/parseEnvVars.js"
+      }
+    },
+    "./parseString": {
+      "import": {
+        "types": "./dist/src/parseString.d.ts",
+        "default": "./dist/src/parseString.js"
+      }
+    },
+    "./random": {
+      "import": {
+        "types": "./dist/src/random.d.ts",
+        "default": "./dist/src/random.js"
+      }
+    },
+    "./secondsToHMS": {
+      "import": {
+        "types": "./dist/src/secondsToHMS.d.ts",
+        "default": "./dist/src/secondsToHMS.js"
+      }
+    },
+    "./secondsToMS": {
+      "import": {
+        "types": "./dist/src/secondsToMS.d.ts",
+        "default": "./dist/src/secondsToMS.js"
+      }
+    },
+    "./sleep": {
+      "import": {
+        "types": "./dist/src/sleep.d.ts",
+        "default": "./dist/src/sleep.js"
+      }
+    },
+    "./splitToWords": {
+      "import": {
+        "types": "./dist/src/splitToWords.d.ts",
+        "default": "./dist/src/splitToWords.js"
+      }
+    },
+    "./toCamelCase": {
+      "import": {
+        "types": "./dist/src/toCamelCase.d.ts",
+        "default": "./dist/src/toCamelCase.js"
+      }
+    },
+    "./toKebabCase": {
+      "import": {
+        "types": "./dist/src/toKebabCase.d.ts",
+        "default": "./dist/src/toKebabCase.js"
+      }
+    },
+    "./toPascalCase": {
+      "import": {
+        "types": "./dist/src/toPascalCase.d.ts",
+        "default": "./dist/src/toPascalCase.js"
+      }
+    },
+    "./toSnakeCase": {
+      "import": {
+        "types": "./dist/src/toSnakeCase.d.ts",
+        "default": "./dist/src/toSnakeCase.js"
+      }
+    },
+    "./trans": {
+      "import": {
+        "types": "./dist/src/trans.d.ts",
+        "default": "./dist/src/trans.js"
+      }
+    },
+    "./trim": {
+      "import": {
+        "types": "./dist/src/trim.d.ts",
+        "default": "./dist/src/trim.js"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "license": "MIT",
+  "scripts": {
+    "test": "bun test tests",
+    "build": "bunup",
+    "lint": "tsgo --noEmit && bunx biome lint",
+    "npm:publish": "bun publish --tolerate-republish --force --production --access public"
+  },
+  "dependencies": {
+    "nanoid": "^5.1.6"
+  },
+  "devDependencies": {},
+  "keywords": [
+    "bun",
+    "helpers",
+    "nanoid",
+    "talos",
+    "tools",
+    "typescript",
+    "utilities",
+    "utils"
+  ]
+}
