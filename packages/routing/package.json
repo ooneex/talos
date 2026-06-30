@@ -1,0 +1,56 @@
+{
+  "name": "@talosjs/routing",
+  "description": "Decorator-driven HTTP routing with path parameters, validation constraints, permission guards, and named route generation",
+  "version": "1.0.0",
+  "type": "module",
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md",
+    "package.json"
+  ],
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "license": "MIT",
+  "scripts": {
+    "test": "bun test tests",
+    "build": "bunup",
+    "lint": "tsgo --noEmit && bunx biome lint",
+    "npm:publish": "bun publish --tolerate-republish --force --production --access public"
+  },
+  "dependencies": {
+    "@talosjs/container": "workspace:^",
+    "@talosjs/exception": "workspace:^",
+    "@talosjs/http-status": "workspace:^",
+    "@talosjs/validation": "workspace:^"
+  },
+  "devDependencies": {
+    "@talosjs/app-env": "workspace:^",
+    "@talosjs/controller": "workspace:^",
+    "@talosjs/feature-flag": "workspace:^",
+    "@talosjs/http-response": "workspace:^",
+    "@talosjs/permission": "workspace:^",
+    "@talosjs/role": "workspace:^",
+    "@talosjs/translation": "workspace:^",
+    "@talosjs/types": "workspace:^"
+  },
+  "keywords": [
+    "bun",
+    "decorator",
+    "http",
+    "talos",
+    "router",
+    "routes",
+    "routing",
+    "typescript"
+  ]
+}
