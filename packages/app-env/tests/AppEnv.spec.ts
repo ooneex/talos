@@ -809,13 +809,13 @@ describe("AppEnv", () => {
 
     test("should read mailer env vars", () => {
       Bun.env.MAILER_SENDER_NAME = "Talos";
-      Bun.env.MAILER_SENDER_ADDRESS = "noreply@talos.com";
+      Bun.env.MAILER_SENDER_ADDRESS = "noreply@talosjs.com";
       Bun.env.RESEND_API_KEY = "re_123";
 
       const appEnv = new AppEnv();
 
       expect(appEnv.MAILER_SENDER_NAME).toBe("Talos");
-      expect(appEnv.MAILER_SENDER_ADDRESS).toBe("noreply@talos.com");
+      expect(appEnv.MAILER_SENDER_ADDRESS).toBe("noreply@talosjs.com");
       expect(appEnv.RESEND_API_KEY).toBe("re_123");
     });
 
@@ -1034,13 +1034,13 @@ describe("AppEnv", () => {
 
     test("should trim mailer env vars", () => {
       Bun.env.MAILER_SENDER_NAME = "  Talos  ";
-      Bun.env.MAILER_SENDER_ADDRESS = "  noreply@talos.com  ";
+      Bun.env.MAILER_SENDER_ADDRESS = "  noreply@talosjs.com  ";
       Bun.env.RESEND_API_KEY = "  re_123  ";
 
       const appEnv = new AppEnv();
 
       expect(appEnv.MAILER_SENDER_NAME).toBe("Talos");
-      expect(appEnv.MAILER_SENDER_ADDRESS).toBe("noreply@talos.com");
+      expect(appEnv.MAILER_SENDER_ADDRESS).toBe("noreply@talosjs.com");
       expect(appEnv.RESEND_API_KEY).toBe("re_123");
     });
 
