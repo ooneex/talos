@@ -1,0 +1,45 @@
+{
+  "name": "@talosjs/user",
+  "description": "User identity types and interfaces defining profiles, authentication credentials, roles, and account metadata for user management systems",
+  "version": "1.0.0",
+  "type": "module",
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md",
+    "package.json"
+  ],
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "license": "MIT",
+  "scripts": {
+    "build": "bunup",
+    "lint": "tsgo --noEmit && bunx biome lint",
+    "npm:publish": "bun publish --tolerate-republish --force --production --access public",
+    "test": "bun test tests"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@talosjs/translation": "workspace:^",
+    "@talosjs/role": "workspace:^"
+  },
+  "keywords": [
+    "account",
+    "bun",
+    "identity",
+    "talos",
+    "profile",
+    "typescript",
+    "user",
+    "users"
+  ]
+}
