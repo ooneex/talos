@@ -1,0 +1,49 @@
+{
+  "name": "@talosjs/mailer",
+  "version": "1.0.0",
+  "module": "./dist/index.js",
+  "dependencies": {
+    "@talosjs/app-env": "workspace:^",
+    "@talosjs/container": "workspace:^",
+    "@talosjs/exception": "workspace:^",
+    "@talosjs/http-status": "workspace:^",
+    "@talosjs/translation": "workspace:^",
+    "resend": "^6.4.2"
+  },
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "description": "Transactional email service supporting Nodemailer SMTP and Resend API — send templated emails with attachments and delivery tracking",
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md",
+    "package.json"
+  ],
+  "keywords": [
+    "bun",
+    "email",
+    "mail",
+    "mailer",
+    "nodemailer",
+    "talos",
+    "resend",
+    "smtp",
+    "typescript"
+  ],
+  "license": "MIT",
+  "scripts": {
+    "test": "bun test tests",
+    "build": "bunup",
+    "lint": "tsgo --noEmit && bunx biome lint",
+    "npm:publish": "bun publish --tolerate-republish --force --production --access public"
+  },
+  "type": "module",
+  "types": "./dist/index.d.ts"
+}
