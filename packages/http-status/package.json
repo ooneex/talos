@@ -1,0 +1,39 @@
+{
+  "name": "@talosjs/http-status",
+  "description": "Complete HTTP status code library with TypeScript enums covering 1xx–5xx ranges and helper utilities for status classification and messaging",
+  "version": "1.0.0",
+  "type": "module",
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md",
+    "package.json"
+  ],
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "license": "MIT",
+  "scripts": {
+    "test": "bun test tests",
+    "build": "bunup",
+    "lint": "tsgo --noEmit && bunx biome lint",
+    "npm:publish": "bun publish --tolerate-republish --force --production --access public"
+  },
+  "devDependencies": {},
+  "keywords": [
+    "bun",
+    "http",
+    "http-status",
+    "talos",
+    "status-code",
+    "typescript"
+  ]
+}
