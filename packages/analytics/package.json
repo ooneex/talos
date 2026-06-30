@@ -1,0 +1,47 @@
+{
+  "name": "@talosjs/analytics",
+  "version": "1.0.0",
+  "module": "./dist/index.js",
+  "dependencies": {
+    "@talosjs/app-env": "workspace:^",
+    "@talosjs/container": "workspace:^",
+    "@talosjs/exception": "workspace:^",
+    "@talosjs/http-status": "workspace:^",
+    "posthog-node": "^5.11.0"
+  },
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "description": "PostHog-powered analytics integration for tracking user behavior, product events, and feature usage with decorator-based service registration",
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md",
+    "package.json"
+  ],
+  "keywords": [
+    "analytics",
+    "bun",
+    "metrics",
+    "talos",
+    "posthog",
+    "statistics",
+    "tracking",
+    "typescript"
+  ],
+  "license": "MIT",
+  "scripts": {
+    "test": "bun test tests",
+    "build": "bunup",
+    "lint": "tsgo --noEmit && bunx biome lint",
+    "npm:publish": "bun publish --tolerate-republish --force --production --access public"
+  },
+  "type": "module",
+  "types": "./dist/index.d.ts"
+}
