@@ -1,0 +1,47 @@
+{
+  "name": "@talosjs/pdf",
+  "description": "PDF document toolkit for generating, editing, merging, splitting, and converting PDF files to images with page-level content extraction",
+  "version": "1.0.0",
+  "type": "module",
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md",
+    "package.json"
+  ],
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "license": "MIT",
+  "scripts": {
+    "test": "bun test tests",
+    "build": "bunup",
+    "lint": "tsgo --noEmit && bunx biome lint",
+    "npm:publish": "bun publish --tolerate-republish --force --production --access public"
+  },
+  "dependencies": {
+    "@talosjs/exception": "workspace:^",
+    "@talosjs/http-status": "workspace:^",
+    "pdf-lib": "^1.17.1",
+    "pdf-to-img": "^5.0.0",
+    "sharp": "^0.34.0",
+    "unpdf": "^1.4.0"
+  },
+  "keywords": [
+    "bun",
+    "document",
+    "generator",
+    "talos",
+    "pdf",
+    "pdf-lib",
+    "typescript"
+  ]
+}
