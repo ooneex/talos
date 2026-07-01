@@ -51,7 +51,6 @@
         <li><a href="#build-your-first-resource">Build your first resource</a></li>
       </ul>
     </li>
-    <li><a href="#spec-driven-development">Spec-Driven Development</a></li>
     <li><a href="#roadmap">Roadmap</a></li>
     <li>
       <a href="#development">Development</a>
@@ -179,27 +178,6 @@ talos controller:create \
 ```
 
 Prefer an AI agent? Initialize the skills once (`talos claude:init` or `talos codex:init`), then describe the whole `Movie` domain in a single prompt. The agent runs the same `module:create`, `entity:create`, `repository:create`, and `controller:create` generators and writes the tests. See [Create your app](https://docs.talosjs.com/getting-started/create-app) for the full walkthrough.
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-<!-- SPEC-DRIVEN DEVELOPMENT -->
-## Spec-Driven Development
-
-Spec-Driven Development captures work as YAML issues with context, goals, a definition of done, and dependencies. AI agents find, plan, and implement against these specs using your module's existing conventions, and each step can be checked against the definition of done.
-
-| Step | Command | What it does |
-|------|---------|--------------|
-| **Find** | `/issue:found` | Audits a module's source to surface concrete findings as candidate issues. |
-| **Plan** | `/issue:plan` | Turns a free-form request into a precise, reviewable spec before any code is written. |
-| **Fix** | `/issue:fix` | Implements each planned issue, runs lint, and verifies every acceptance criterion before marking it done. |
-
-Each unit of work is a YAML file under `issues/` with four fields (`context`, `goal`, `dod` for definition of done, and `dependencies`), progressing from `Backlog` to `Done`. To get started, initialize the AI skills for your agent:
-
-```sh
-talos claude:init   # or: talos codex:init
-```
-
-Learn more in the [Spec-Driven Development guide](https://docs.talosjs.com/ai/spec-driven-development).
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
