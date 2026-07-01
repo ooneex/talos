@@ -4,7 +4,7 @@ import { decorator } from "@talosjs/command";
 import { TerminalLogger } from "@talosjs/logger";
 import concurrently from "concurrently";
 import { collectRunnableModules, type RunnableModuleType, selectModules } from "../runnableModules";
-import { LOG_OPTIONS } from "../utils";
+import { LOG_OPTIONS, loadAppModuleName, spawnStep } from "../utils";
 
 // Distinct prefix color per module type so the interleaved output stays readable.
 const PREFIX_COLORS: Record<RunnableModuleType, string> = {
@@ -31,39 +31,25 @@ export class AppStartCommand implements ICommand {
     const logger = new TerminalLogger();
     const cwd = process.cwd();
     const appDir = join(cwd, "modules", "app");
-    const packageJsonFile = Bun.file(join(appDir, "package.json"));
+    const name = await loadAppModuleName(appDir);
 
-    if (!(await packageJsonFile.exists())) {
+    if (name === null) {
       logger.error("Module app not found", undefined, LOG_OPTIONS);
       process.exitCode = 1;
       return;
     }
 
-    const packageJson = await packageJsonFile.json();
-    const name = packageJson.name ?? "app";
-
     // Start Docker services (defined in the app module) before running the modules
-    const composeFile = join(appDir, "docker-compose.yml");
-    const composeExists = await Bun.file(composeFile).exists();
+    const composeExists = await Bun.file(join(appDir, "docker-compose.yml")).exists();
 
     if (composeExists) {
-      logger.info(`Starting Docker services for ${name}...`, undefined, LOG_OPTIONS);
-
-      const docker = Bun.spawn(["docker", "compose", "up", "-d"], {
-        cwd: appDir,
-        stdout: "inherit",
-        stderr: "inherit",
+      const started = await spawnStep(logger, ["docker", "compose", "up", "-d"], appDir, {
+        start: `Starting Docker services for ${name}...`,
+        success: `Docker services started for ${name}`,
+        failure: (exitCode) => `Docker services failed for ${name} (exit code: ${exitCode})`,
       });
 
-      const dockerExitCode = await docker.exited;
-
-      if (dockerExitCode === 0) {
-        logger.success(`Docker services started for ${name}`, undefined, LOG_OPTIONS);
-      } else {
-        logger.error(`Docker services failed for ${name} (exit code: ${dockerExitCode})`, undefined, LOG_OPTIONS);
-        process.exitCode = 1;
-        return;
-      }
+      if (!started) return;
     }
 
     // Discover the spa, microservice and api modules to run together

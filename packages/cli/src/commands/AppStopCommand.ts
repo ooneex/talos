@@ -3,7 +3,7 @@ import type { ICommand } from "@talosjs/command";
 import { decorator } from "@talosjs/command";
 import { TerminalLogger } from "@talosjs/logger";
 import { collectRunnableModules, hasModuleFilter, type RunnableModule, selectModules } from "../runnableModules";
-import { LOG_OPTIONS } from "../utils";
+import { LOG_OPTIONS, spawnStep } from "../utils";
 
 @decorator.command()
 export class AppStopCommand implements ICommand {
@@ -67,21 +67,10 @@ export class AppStopCommand implements ICommand {
     const packageJson = await Bun.file(join(moduleDir, "package.json")).json();
     const name = packageJson.name ?? "app";
 
-    logger.info(`Stopping Docker services for ${name}...`, undefined, LOG_OPTIONS);
-
-    const proc = Bun.spawn(["docker", "compose", "down"], {
-      cwd: moduleDir,
-      stdout: "inherit",
-      stderr: "inherit",
+    await spawnStep(logger, ["docker", "compose", "down"], moduleDir, {
+      start: `Stopping Docker services for ${name}...`,
+      success: `Docker services stopped for ${name}`,
+      failure: (exitCode) => `Failed to stop Docker services for ${name} (exit code: ${exitCode})`,
     });
-
-    const exitCode = await proc.exited;
-
-    if (exitCode === 0) {
-      logger.success(`Docker services stopped for ${name}`, undefined, LOG_OPTIONS);
-    } else {
-      logger.error(`Failed to stop Docker services for ${name} (exit code: ${exitCode})`, undefined, LOG_OPTIONS);
-      process.exitCode = 1;
-    }
   }
 }

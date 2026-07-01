@@ -125,6 +125,43 @@ export const createSpinner = (message: string): { stop: () => void } => {
   };
 };
 
+/**
+ * Read a module's package.json name, returning null when the module has no
+ * package.json (used by the app:* commands to detect a missing app module).
+ */
+export const loadAppModuleName = async (appDir: string, fallback = "app"): Promise<string | null> => {
+  const packageJsonFile = Bun.file(join(appDir, "package.json"));
+  if (!(await packageJsonFile.exists())) return null;
+  const packageJson = await packageJsonFile.json();
+  return packageJson.name ?? fallback;
+};
+
+/**
+ * Run a child process to completion, reporting progress and success/failure
+ * through the logger. Sets `process.exitCode` to 1 on failure and returns
+ * whether the process exited cleanly.
+ */
+export const spawnStep = async (
+  logger: TerminalLogger,
+  args: string[],
+  cwd: string,
+  messages: { start?: string; success: string; failure: (exitCode: number) => string },
+): Promise<boolean> => {
+  if (messages.start) logger.info(messages.start, undefined, LOG_OPTIONS);
+
+  const proc = Bun.spawn(args, { cwd, stdout: "inherit", stderr: "inherit" });
+  const exitCode = await proc.exited;
+
+  if (exitCode === 0) {
+    logger.success(messages.success, undefined, LOG_OPTIONS);
+    return true;
+  }
+
+  logger.error(messages.failure(exitCode), undefined, LOG_OPTIONS);
+  process.exitCode = 1;
+  return false;
+};
+
 export type RunModuleScriptsOptions = {
   binPath: string[];
   label: string;

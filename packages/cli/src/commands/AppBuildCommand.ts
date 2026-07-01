@@ -2,7 +2,7 @@ import { join } from "node:path";
 import type { ICommand } from "@talosjs/command";
 import { decorator } from "@talosjs/command";
 import { TerminalLogger } from "@talosjs/logger";
-import { LOG_OPTIONS } from "../utils";
+import { LOG_OPTIONS, loadAppModuleName, spawnStep } from "../utils";
 
 @decorator.command()
 export class AppBuildCommand implements ICommand {
@@ -17,32 +17,18 @@ export class AppBuildCommand implements ICommand {
   public async run(): Promise<void> {
     const logger = new TerminalLogger();
     const appDir = join(process.cwd(), "modules", "app");
-    const packageJsonFile = Bun.file(join(appDir, "package.json"));
+    const name = await loadAppModuleName(appDir);
 
-    if (!(await packageJsonFile.exists())) {
+    if (name === null) {
       logger.error("Module app not found", undefined, LOG_OPTIONS);
       process.exitCode = 1;
       return;
     }
 
-    const packageJson = await packageJsonFile.json();
-    const name = packageJson.name ?? "app";
-
-    logger.info(`Building ${name}...`, undefined, LOG_OPTIONS);
-
-    const proc = Bun.spawn(["bun", "build", "./src/index.ts", "--outdir", "./dist", "--target", "bun"], {
-      cwd: appDir,
-      stdout: "inherit",
-      stderr: "inherit",
+    await spawnStep(logger, ["bun", "build", "./src/index.ts", "--outdir", "./dist", "--target", "bun"], appDir, {
+      start: `Building ${name}...`,
+      success: `Build completed for ${name}`,
+      failure: (exitCode) => `Build failed for ${name} (exit code: ${exitCode})`,
     });
-
-    const exitCode = await proc.exited;
-
-    if (exitCode === 0) {
-      logger.success(`Build completed for ${name}`, undefined, LOG_OPTIONS);
-    } else {
-      logger.error(`Build failed for ${name} (exit code: ${exitCode})`, undefined, LOG_OPTIONS);
-      process.exitCode = 1;
-    }
   }
 }
