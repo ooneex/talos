@@ -36,21 +36,22 @@ export class NpmPublishCommand<T extends CommandOptionsType = CommandOptionsType
   public async run(options: T): Promise<void> {
     const { package: pkg, module, access = "public", silent } = options;
     const logger = new TerminalLogger();
+    const log = (level: "error" | "success", message: string): void => {
+      if (!silent) {
+        logger[level](message, undefined, LOG_OPTIONS);
+      }
+    };
 
     const targets = await this.resolveTargets(pkg, module);
     if (targets.length === 0) {
-      if (!silent) {
-        logger.error("No packages or modules found to publish", undefined, LOG_OPTIONS);
-      }
+      log("error", "No packages or modules found to publish");
       process.exitCode = 1;
       return;
     }
 
     const token = await this.readToken();
     if (!token) {
-      if (!silent) {
-        logger.error("No npm credentials found. Run `talos npm:credentials:create` first.", undefined, LOG_OPTIONS);
-      }
+      log("error", "No npm credentials found. Run `talos npm:credentials:create` first.");
       process.exitCode = 1;
       return;
     }
@@ -60,9 +61,7 @@ export class NpmPublishCommand<T extends CommandOptionsType = CommandOptionsType
       const pkgJsonFile = Bun.file(join(targetDir, "package.json"));
 
       if (!(await pkgJsonFile.exists())) {
-        if (!silent) {
-          logger.error(`No ${target.type} named "${target.name}" found`, undefined, LOG_OPTIONS);
-        }
+        log("error", `No ${target.type} named "${target.name}" found`);
         continue;
       }
 
@@ -70,20 +69,11 @@ export class NpmPublishCommand<T extends CommandOptionsType = CommandOptionsType
       const name = pkgJson.name ?? target.name;
       const label = pkgJson.version ? `${name}@${pkgJson.version}` : name;
 
-      try {
-        const published = await this.publish(targetDir, access, token, label, silent);
-
-        if (!silent) {
-          if (published) {
-            logger.success(`Published ${label} to npm`, undefined, LOG_OPTIONS);
-          } else {
-            logger.error(`Failed to publish ${label}`, undefined, LOG_OPTIONS);
-          }
-        }
-      } catch {
-        if (!silent) {
-          logger.error(`Failed to publish ${label}`, undefined, LOG_OPTIONS);
-        }
+      const published = await this.publish(targetDir, access, token, label, silent).catch(() => false);
+      if (published) {
+        log("success", `Published ${label} to npm`);
+      } else {
+        log("error", `Failed to publish ${label}`);
       }
     }
   }
@@ -150,19 +140,20 @@ export class NpmPublishCommand<T extends CommandOptionsType = CommandOptionsType
   ): Promise<boolean> {
     const spinner = silent ? null : createSpinner(`Publishing ${label} to npm...`);
 
-    const proc = Bun.spawn(
-      ["bun", "publish", "--access", access, "--tolerate-republish", "--force", "--production"],
-      {
-        cwd: dir,
-        stdout: "ignore",
-        stderr: "ignore",
-        env: { ...process.env, [`npm_config_//${NPM_REGISTRY}/:_authToken`]: token },
-      },
-    );
+    try {
+      const proc = Bun.spawn(
+        ["bun", "publish", "--access", access, "--tolerate-republish", "--force", "--production"],
+        {
+          cwd: dir,
+          stdout: "ignore",
+          stderr: "ignore",
+          env: { ...process.env, [`npm_config_//${NPM_REGISTRY}/:_authToken`]: token },
+        },
+      );
 
-    const exitCode = await proc.exited;
-    spinner?.stop();
-
-    return exitCode === 0;
+      return (await proc.exited) === 0;
+    } finally {
+      spinner?.stop();
+    }
   }
 }
