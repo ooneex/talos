@@ -10,7 +10,9 @@ import { generateRolesTypes, type RolesConfigType, validateConfig } from "@talos
 import { router } from "@talosjs/routing";
 import type { ScalarType } from "@talosjs/types";
 import { trim } from "@talosjs/utils/trim";
-import { AssertAppEnv, AssertHostname, AssertPort } from "@talosjs/validation/constraints";
+import { AssertAppEnv } from "@talosjs/validation/constraints/AssertAppEnv";
+import { AssertHostname } from "@talosjs/validation/constraints/AssertHostname";
+import { AssertPort } from "@talosjs/validation/constraints/AssertPort";
 import type { BunRequest, Server, ServerWebSocket } from "bun";
 import { logger as loggerFunc } from "./logger";
 import { formatSocketRoutes, socketRouteHandler } from "./socketRouteUtils";
