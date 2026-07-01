@@ -1,3 +1,4 @@
+import { readdir } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import type { ICommand } from "@talosjs/command";
@@ -36,10 +37,10 @@ export class NpmPublishCommand<T extends CommandOptionsType = CommandOptionsType
     const { package: pkg, module, access = "public", silent } = options;
     const logger = new TerminalLogger();
 
-    const target = this.resolveTarget(pkg, module);
-    if (!target) {
+    const targets = await this.resolveTargets(pkg, module);
+    if (targets.length === 0) {
       if (!silent) {
-        logger.error("Specify a package with --package or a module with --module", undefined, LOG_OPTIONS);
+        logger.error("No packages or modules found to publish", undefined, LOG_OPTIONS);
       }
       process.exitCode = 1;
       return;
@@ -54,46 +55,78 @@ export class NpmPublishCommand<T extends CommandOptionsType = CommandOptionsType
       return;
     }
 
-    const targetDir = join(process.cwd(), target.base);
-    const pkgJsonFile = Bun.file(join(targetDir, "package.json"));
+    for (const target of targets) {
+      const targetDir = join(process.cwd(), target.base);
+      const pkgJsonFile = Bun.file(join(targetDir, "package.json"));
 
-    if (!(await pkgJsonFile.exists())) {
-      if (!silent) {
-        logger.error(`No ${target.type} named "${target.name}" found`, undefined, LOG_OPTIONS);
-      }
-      process.exitCode = 1;
-      return;
-    }
-
-    const pkgJson: { name?: string; version?: string } = await pkgJsonFile.json();
-    const label = pkgJson.name && pkgJson.version ? `${pkgJson.name}@${pkgJson.version}` : target.name;
-
-    try {
-      const published = await this.publish(targetDir, access, token, label, silent);
-
-      if (published) {
+      if (!(await pkgJsonFile.exists())) {
         if (!silent) {
-          logger.success(`Published ${label} to npm`, undefined, LOG_OPTIONS);
+          logger.error(`No ${target.type} named "${target.name}" found`, undefined, LOG_OPTIONS);
         }
-      } else {
-        process.exitCode = 1;
+        continue;
       }
-    } catch {
-      if (!silent) {
-        logger.error(`Failed to publish ${label}`, undefined, LOG_OPTIONS);
+
+      const pkgJson: { name?: string; version?: string } = await pkgJsonFile.json();
+      const name = pkgJson.name ?? target.name;
+      const label = pkgJson.version ? `${name}@${pkgJson.version}` : name;
+
+      try {
+        const published = await this.publish(targetDir, access, token, label, silent);
+
+        if (!silent) {
+          if (published) {
+            logger.success(`Published ${label} to npm`, undefined, LOG_OPTIONS);
+          } else {
+            logger.error(`Failed to publish ${label}`, undefined, LOG_OPTIONS);
+          }
+        }
+      } catch {
+        if (!silent) {
+          logger.error(`Failed to publish ${label}`, undefined, LOG_OPTIONS);
+        }
       }
-      process.exitCode = 1;
     }
   }
 
-  private resolveTarget(pkg?: string, module?: string): TargetType | null {
-    if (pkg) {
-      return { base: join("packages", pkg), type: "package", name: pkg };
+  // Build the list of targets to publish. With neither `--package` nor `--module`, every
+  // package and module is published. Each flag accepts a comma-separated list of names.
+  private async resolveTargets(pkg?: string, module?: string): Promise<TargetType[]> {
+    if (pkg === undefined && module === undefined) {
+      return [...(await this.discover("packages", "package")), ...(await this.discover("modules", "module"))];
     }
-    if (module) {
-      return { base: join("modules", module), type: "module", name: module };
+
+    const targets: TargetType[] = [];
+
+    for (const name of this.split(pkg)) {
+      targets.push({ base: join("packages", name), type: "package", name });
     }
-    return null;
+    for (const name of this.split(module)) {
+      targets.push({ base: join("modules", name), type: "module", name });
+    }
+
+    return targets;
+  }
+
+  // Every directory under `packages/` or `modules/` becomes a target.
+  private async discover(dirName: string, type: TargetType["type"]): Promise<TargetType[]> {
+    try {
+      const entries = await readdir(join(process.cwd(), dirName), { withFileTypes: true });
+      return entries
+        .filter((entry) => entry.isDirectory())
+        .map((entry) => ({ base: join(dirName, entry.name), type, name: entry.name }));
+    } catch {
+      return [];
+    }
+  }
+
+  private split(value?: string): string[] {
+    if (!value) {
+      return [];
+    }
+    return value
+      .split(",")
+      .map((name) => name.trim())
+      .filter(Boolean);
   }
 
   private async readToken(): Promise<string | null> {
@@ -130,14 +163,6 @@ export class NpmPublishCommand<T extends CommandOptionsType = CommandOptionsType
     const exitCode = await proc.exited;
     spinner?.stop();
 
-    if (exitCode !== 0) {
-      if (!silent) {
-        const logger = new TerminalLogger();
-        logger.error(`Failed to publish ${label} (bun publish exited with code ${exitCode})`, undefined, LOG_OPTIONS);
-      }
-      return false;
-    }
-
-    return true;
+    return exitCode === 0;
   }
 }

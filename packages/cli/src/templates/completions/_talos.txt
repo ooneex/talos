@@ -231,8 +231,8 @@ _talos() {
           ;;
         npm:publish)
           _arguments -s \
-            '--package=[Package name]:package' \
-            '--module=[Module name]:module:_talos_modules' \
+            '--package=[Package name(s), comma-separated (default: all)]:package' \
+            '--module=[Module name(s), comma-separated (default: all)]:module:_talos_modules' \
             '--access=[Registry access level]:access:(public restricted)'
           ;;
         entity:create)
