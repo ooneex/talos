@@ -95,6 +95,7 @@ oo release:create   # Detect unreleased commits, bump versions, update changelog
 ## Credentials
 ```bash
 oo npm:credentials:create [--token <token>]                                             # Save an npm Granular Access Token to ~/.talos/credentials/npm.yml
+oo github:credentials:create [--token <token>]                                          # Save a GitHub Personal Access Token to ~/.talos/credentials/github.yml
 oo docker:credentials:create [--registry <host>] [--username <user>] [--token <token>]  # Save a Docker registry access token to ~/.talos/credentials/docker.yml
 ```
 
