@@ -71,6 +71,7 @@ describe("@talosjs/cli - index", () => {
     "ModuleCreateCommand",
     "ModuleRemoveCommand",
     "NpmCredentialsCreateCommand",
+    "NpmPublishCommand",
     "PermissionCreateCommand",
     "QueueCreateCommand",
     "RateLimitCreateCommand",
