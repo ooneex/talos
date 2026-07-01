@@ -35,21 +35,24 @@ jobs:
         with:
           bun-version: latest
 
-      - name: Cache Bun dependencies
+      - name: Cache dependencies and Nx
         uses: actions/cache@v4
         with:
-          path: ~/.bun/install/cache
-          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
-          restore-keys: bun-${{ runner.os }}-
+          path: |
+            ~/.bun/install/cache
+            .nx/cache
+          key: ${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-
 
       - name: Install
-        run: bun install --frozen-lockfile
+        run: bun install
 
       - name: Lint
         run: bun run lint
 
       - name: Test
-        run: bun test
+        run: bun run test
 
   build:
     name: Build Image

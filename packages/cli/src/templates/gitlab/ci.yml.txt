@@ -22,6 +22,7 @@ variables:
         - bun.lock
     paths:
       - .bun-cache/
+      - .nx/cache/
     policy: pull-push
   before_script:
     - bun install --frozen-lockfile

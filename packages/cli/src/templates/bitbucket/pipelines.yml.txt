@@ -17,12 +17,14 @@ image: oven/bun:latest
 definitions:
   caches:
     bun: ~/.bun/install/cache
+    nx: .nx/cache
 
   steps:
     - step: &quality
         name: Quality
         caches:
           - bun
+          - nx
         script:
           - bun install --frozen-lockfile
           - bun run lint
