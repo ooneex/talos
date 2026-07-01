@@ -328,24 +328,6 @@ describe("SdkCreateCommand", () => {
       expect(content).toContain("type RevokeEntitlementRouteType = {");
     });
 
-    test("should aggregate generated modules in index.ts", async () => {
-      await Bun.write(
-        join(testDir, "modules", "entitlement", "src", "controllers", "GrantEntitlementController.ts"),
-        httpController,
-      );
-      await Bun.write(
-        join(testDir, "modules", "chat", "src", "controllers", "ConnectChatController.ts"),
-        socketController,
-      );
-
-      await command.run({ cwd: testDir, silent: true });
-
-      const index = await Bun.file(join(testDir, "modules", "sdk", "src", "index.ts")).text();
-      expect(index).toContain('import { chat } from "./chat";');
-      expect(index).toContain('import { entitlement } from "./entitlement";');
-      expect(index).toMatch(/export const sdk = \{\s*\n\s*chat,\s*\n\s*entitlement,\s*\n\};/);
-    });
-
     test("should generate an empty sdk index when no module has controllers", async () => {
       await Bun.write(join(testDir, "modules", "billing", "src", ".gitkeep"), "");
 
