@@ -1,10 +1,9 @@
-import { homedir } from "node:os";
-import { join } from "node:path";
 import type { ICommand } from "@talosjs/command";
 import { decorator } from "@talosjs/command";
 import { TerminalLogger } from "@talosjs/logger";
+import { saveCredentials } from "../credentials";
 import { askPassword } from "../prompts/askPassword";
-import { LOG_OPTIONS, toYaml } from "../utils";
+import { LOG_OPTIONS } from "../utils";
 
 type CommandOptionsType = {
   token?: string;
@@ -36,21 +35,6 @@ export class GithubCredentialsCreateCommand<T extends CommandOptionsType = Comma
       token = await askPassword({ message: "Enter GitHub Personal Access Token" });
     }
 
-    const credentials = {
-      profiles: {
-        default: {
-          token,
-        },
-      },
-    };
-
-    const credentialsPath = join(homedir(), ".talos", "credentials", "github.yml");
-    await Bun.write(credentialsPath, `${toYaml(credentials)}\n`);
-
-    if (!silent) {
-      const logger = new TerminalLogger();
-
-      logger.success(`GitHub credentials saved to ${credentialsPath}`, undefined, LOG_OPTIONS);
-    }
+    await saveCredentials("github.yml", "GitHub", { token }, silent);
   }
 }
