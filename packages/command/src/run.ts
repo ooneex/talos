@@ -89,6 +89,12 @@ export const run = async (): Promise<void> => {
       username: {
         type: "string",
       },
+      package: {
+        type: "string",
+      },
+      access: {
+        type: "string",
+      },
     },
     strict: false,
     allowPositionals: true,
@@ -128,6 +134,8 @@ export const run = async (): Promise<void> => {
     token: values.token,
     registry: values.registry,
     username: values.username,
+    package: typeof values.package === "string" ? toKebabCase(values.package) : undefined,
+    access: values.access,
     // `--api` / `--microservice` / `--spa` (bare → true, or `=name1,name2` → string)
     // restrict `app:start` to modules of that type.
     api: values.api,
