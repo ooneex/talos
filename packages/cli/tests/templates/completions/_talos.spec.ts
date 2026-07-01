@@ -134,6 +134,22 @@ describe("_talos.txt", () => {
     });
   });
 
+  describe("publish target helpers", () => {
+    test("should define _talos_publish_packages listing packages with a package.json as a comma-separated value", async () => {
+      const content = await Bun.file(templatePath).text();
+      expect(content).toContain("_talos_publish_packages()");
+      expect(content).toContain("packages=(packages/*/package.json(N))");
+      expect(content).toContain("_values -s , 'packages'");
+    });
+
+    test("should define _talos_publish_modules listing modules with a package.json as a comma-separated value", async () => {
+      const content = await Bun.file(templatePath).text();
+      expect(content).toContain("_talos_publish_modules()");
+      expect(content).toContain("modules=(modules/*/package.json(N))");
+      expect(content).toContain("_values -s , 'modules'");
+    });
+  });
+
   describe("commands list", () => {
     const expectedCommands = [
       "app\\:build",
@@ -476,6 +492,19 @@ describe("_talos.txt", () => {
       expect(match?.[1]).toContain("_talos_microservice_modules");
       expect(match?.[1]).toContain("--spa=");
       expect(match?.[1]).toContain("_talos_spa_modules");
+    });
+
+    test("npm:publish should have package, module, and access options with publish target suggestions", async () => {
+      const content = await Bun.file(templatePath).text();
+      const match = content.match(/npm:publish\)([\s\S]*?);;/);
+      expect(match).not.toBeNull();
+      expect(match?.[1]).toContain("--package=");
+      expect(match?.[1]).toContain("_talos_publish_packages");
+      expect(match?.[1]).toContain("--module=");
+      expect(match?.[1]).toContain("_talos_publish_modules");
+      expect(match?.[1]).toContain("--access=");
+      expect(match?.[1]).toContain("public");
+      expect(match?.[1]).toContain("restricted");
     });
 
     test("sdk:create should have name and module options with sdk name and target suggestions", async () => {

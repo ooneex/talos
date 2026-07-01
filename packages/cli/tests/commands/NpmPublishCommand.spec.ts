@@ -254,6 +254,15 @@ describe("NpmPublishCommand", () => {
       process.exitCode = 0;
     });
 
+    test("should log an error when there are no packages or modules to publish", async () => {
+      await writeCredentials("npm_testtoken");
+
+      await command.run({});
+
+      expect(errorCalls.some((message) => message.includes("No packages or modules found to publish"))).toBe(true);
+      process.exitCode = 0;
+    });
+
     test("should fail when no credentials are stored", async () => {
       await scaffoldTarget("packages", "cli");
 
@@ -261,6 +270,15 @@ describe("NpmPublishCommand", () => {
 
       expect(publishMock).not.toHaveBeenCalled();
       expect(process.exitCode).toBe(1);
+      process.exitCode = 0;
+    });
+
+    test("should log an error when no credentials are stored", async () => {
+      await scaffoldTarget("packages", "cli");
+
+      await command.run({ package: "cli" });
+
+      expect(errorCalls.some((message) => message.includes("No npm credentials found"))).toBe(true);
       process.exitCode = 0;
     });
 
@@ -293,6 +311,27 @@ describe("NpmPublishCommand", () => {
 
       expect(errorCalls.some((message) => message.includes("Failed to publish"))).toBe(true);
       expect(successCalls).toHaveLength(0);
+    });
+
+    test("should suppress all output in silent mode", async () => {
+      await writeCredentials("npm_testtoken");
+      await scaffoldTarget("packages", "cli");
+
+      await command.run({ package: "cli", silent: true });
+
+      expect(successCalls).toHaveLength(0);
+      expect(errorCalls).toHaveLength(0);
+    });
+
+    test("should suppress the failure message in silent mode", async () => {
+      await writeCredentials("npm_testtoken");
+      await scaffoldTarget("packages", "cli");
+      publishMock.mockImplementationOnce(() => Promise.resolve(false));
+
+      await command.run({ package: "cli", silent: true });
+
+      expect(successCalls).toHaveLength(0);
+      expect(errorCalls).toHaveLength(0);
     });
   });
 });
