@@ -202,6 +202,9 @@ describe("CompletionZshCommand", () => {
         "docker\\:credentials\\:create:Save a Docker registry access token under the user config",
       );
       expect(talosContent).toContain(
+        "github\\:credentials\\:create:Save a GitHub Personal Access Token under the user config",
+      );
+      expect(talosContent).toContain(
         "npm\\:credentials\\:create:Save an npm Granular Access Token under the user config",
       );
     });
@@ -214,6 +217,15 @@ describe("CompletionZshCommand", () => {
       expect(body).toContain("--registry=");
       expect(body).toContain("--username=");
       expect(body).toContain("--token=");
+    });
+
+    test("should include the token option for github:credentials:create", async () => {
+      await command.run();
+
+      const talosContent = await Bun.file(join(completionDir, "_talos")).text();
+      const body = caseBody(talosContent, "github:credentials:create");
+      expect(body).toContain("--token=");
+      expect(body).not.toContain("--module=");
     });
 
     test("should include the token option for npm:credentials:create", async () => {
