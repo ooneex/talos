@@ -8,6 +8,24 @@ _talos_modules() {
   fi
 }
 
+_talos_publish_packages() {
+  local -a packages
+  if [[ -d packages ]]; then
+    packages=(packages/*/package.json(N))
+    packages=(${${packages%/package.json}#packages/})
+    _values -s , 'packages' $packages
+  fi
+}
+
+_talos_publish_modules() {
+  local -a modules
+  if [[ -d modules ]]; then
+    modules=(modules/*/package.json(N))
+    modules=(${${modules%/package.json}#modules/})
+    _values -s , 'modules' $modules
+  fi
+}
+
 _talos_custom_commands() {
   local -a cmds
   if [[ -d modules ]]; then
@@ -231,8 +249,8 @@ _talos() {
           ;;
         npm:publish)
           _arguments -s \
-            '--package=[Package name(s), comma-separated (default: all)]:package' \
-            '--module=[Module name(s), comma-separated (default: all)]:module:_talos_modules' \
+            '--package=-[Package name(s), comma-separated (default: all)]::packages:_talos_publish_packages' \
+            '--module=-[Module name(s), comma-separated (default: all)]::modules:_talos_publish_modules' \
             '--access=[Registry access level]:access:(public restricted)'
           ;;
         entity:create)
