@@ -173,24 +173,25 @@ export class MicroserviceCreateCommand<T extends CommandOptionsType = CommandOpt
     const testContent = testTemplate.replace(/{{NAME}}/g, pascalName).replace(/{{name}}/g, kebabName);
     const ymlContent = ymlTemplate.replace(/{{name}}/g, kebabName).replace('type: "module"', 'type: "microservice"');
 
-    await Bun.write(join(srcDir, `${pascalName}Module.ts`), moduleContent);
-    await Bun.write(join(moduleDir, "roles.yml"), `${toYaml(rolesConfig)}\n`);
-    await Bun.write(join(moduleDir, "package.json"), packageContent);
-    await Bun.write(join(moduleDir, "tsconfig.json"), tsconfigTemplate);
-    await Bun.write(join(moduleDir, `${kebabName}.yml`), ymlContent);
-    await Bun.write(join(testsDir, `${pascalName}Module.spec.ts`), testContent);
-
-    // Add the microservice entrypoint and start hook (the index template targets
-    // the app module, so point it at this microservice's own module)
+    // The index template targets the app module, so point it at this microservice's
+    // own module. The Dockerfile lets the microservice be built and deployed alone.
     const indexContent = indexTemplate.replace(/AppModule/g, `${pascalName}Module`);
-    await Bun.write(join(srcDir, "index.ts"), indexContent);
-    await Bun.write(join(srcDir, "OnAppStart.ts"), onAppStartTemplate);
-
-    // Add a Dockerfile so the microservice can be built and deployed independently
     const dockerfileContent = dockerfileTemplate
       .replace(/{{NAME}}/g, snakeName)
       .replace(/modules\/app\//g, `modules/${kebabName}/`);
-    await Bun.write(join(moduleDir, "Dockerfile"), dockerfileContent);
+
+    // Every file below targets an independent path, so write them concurrently.
+    await Promise.all([
+      Bun.write(join(srcDir, `${pascalName}Module.ts`), moduleContent),
+      Bun.write(join(moduleDir, "roles.yml"), `${toYaml(rolesConfig)}\n`),
+      Bun.write(join(moduleDir, "package.json"), packageContent),
+      Bun.write(join(moduleDir, "tsconfig.json"), tsconfigTemplate),
+      Bun.write(join(moduleDir, `${kebabName}.yml`), ymlContent),
+      Bun.write(join(testsDir, `${pascalName}Module.spec.ts`), testContent),
+      Bun.write(join(srcDir, "index.ts"), indexContent),
+      Bun.write(join(srcDir, "OnAppStart.ts"), onAppStartTemplate),
+      Bun.write(join(moduleDir, "Dockerfile"), dockerfileContent),
+    ]);
 
     // Create the microservice env file at the module root, on its own distinct port
     const envData = structuredClone(envConfig) as {

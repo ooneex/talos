@@ -77,23 +77,27 @@ export class SpaFeatureCreateCommand<T extends CommandOptionsType = CommandOptio
 
     // Route (kebab-case) in the routes folder
     const routeLocalPath = join(srcLocalDir, "routes", `${kebabName}.tsx`);
-    await Bun.write(join(process.cwd(), routeLocalPath), render(routeTemplate));
 
     // Layouts (PascalCase) in the feature's layouts folder: the page layout plus
     // the route's pending (skeleton), error and not-found boundaries.
     const notFoundLayoutLocalPath = join(layoutsLocalDir, `${pascalName}NotFoundLayout.tsx`);
     const errorLayoutLocalPath = join(layoutsLocalDir, `${pascalName}ErrorLayout.tsx`);
     const skeletonLayoutLocalPath = join(layoutsLocalDir, `${pascalName}SkeletonLayout.tsx`);
-    await Bun.write(layoutPath, render(layoutTemplate));
-    await Bun.write(join(process.cwd(), notFoundLayoutLocalPath), render(notFoundLayoutTemplate));
-    await Bun.write(join(process.cwd(), errorLayoutLocalPath), render(errorLayoutTemplate));
-    await Bun.write(join(process.cwd(), skeletonLayoutLocalPath), render(skeletonLayoutTemplate));
 
     // TanStack Query custom hooks: one query example, one mutation example
     const queryLocalPath = join(featureLocalDir, "hooks", `useGet${pascalName}.ts`);
     const mutationLocalPath = join(featureLocalDir, "hooks", `useUpdate${pascalName}.ts`);
-    await Bun.write(join(process.cwd(), queryLocalPath), render(queryTemplate));
-    await Bun.write(join(process.cwd(), mutationLocalPath), render(mutationTemplate));
+
+    // Every file targets an independent path, so write them concurrently.
+    await Promise.all([
+      Bun.write(join(process.cwd(), routeLocalPath), render(routeTemplate)),
+      Bun.write(layoutPath, render(layoutTemplate)),
+      Bun.write(join(process.cwd(), notFoundLayoutLocalPath), render(notFoundLayoutTemplate)),
+      Bun.write(join(process.cwd(), errorLayoutLocalPath), render(errorLayoutTemplate)),
+      Bun.write(join(process.cwd(), skeletonLayoutLocalPath), render(skeletonLayoutTemplate)),
+      Bun.write(join(process.cwd(), queryLocalPath), render(queryTemplate)),
+      Bun.write(join(process.cwd(), mutationLocalPath), render(mutationTemplate)),
+    ]);
 
     const logger = new TerminalLogger();
 

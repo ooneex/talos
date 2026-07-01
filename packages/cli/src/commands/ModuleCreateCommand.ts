@@ -61,11 +61,14 @@ export class ModuleCreateCommand<T extends CommandOptionsType = CommandOptionsTy
     const packageContent = packageTemplate.replace(/{{NAME}}/g, kebabName);
     const testContent = testTemplate.replace(/{{NAME}}/g, pascalName).replace(/{{name}}/g, kebabName);
 
-    await Bun.write(join(srcDir, `${pascalName}Module.ts`), moduleContent);
-    await Bun.write(join(moduleDir, "package.json"), packageContent);
-    await Bun.write(join(moduleDir, "tsconfig.json"), tsconfigTemplate);
-    await Bun.write(join(moduleDir, `${kebabName}.yml`), ymlTemplate.replace(/{{name}}/g, kebabName));
-    await Bun.write(join(testsDir, `${pascalName}Module.spec.ts`), testContent);
+    // Every file below targets an independent path, so write them concurrently.
+    await Promise.all([
+      Bun.write(join(srcDir, `${pascalName}Module.ts`), moduleContent),
+      Bun.write(join(moduleDir, "package.json"), packageContent),
+      Bun.write(join(moduleDir, "tsconfig.json"), tsconfigTemplate),
+      Bun.write(join(moduleDir, `${kebabName}.yml`), ymlTemplate.replace(/{{name}}/g, kebabName)),
+      Bun.write(join(testsDir, `${pascalName}Module.spec.ts`), testContent),
+    ]);
 
     // Register the module into its destination. For `app` the module is added to
     // both AppModule and SharedModule (entities); for any other destination it is

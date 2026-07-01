@@ -58,18 +58,21 @@ export class MailerCreateCommand<T extends CommandOptionsType = CommandOptionsTy
       }
     }
 
-    await Bun.write(mailerFilePath, mailerContent);
-    await Bun.write(templateFilePath, templateContent);
-
-    // Generate test files
+    // Generate source and test files
     const mailerTestContent = mailerTestTemplate.replace(/{{NAME}}/g, name).replace(/{{MODULE}}/g, module);
     const templateTestContent = mailerTemplateTestTemplate.replace(/{{NAME}}/g, name).replace(/{{MODULE}}/g, module);
     const testsLocalDir = join(base, "tests", "mailers");
     const testsDir = join(process.cwd(), testsLocalDir);
     const mailerTestFilePath = join(testsDir, `${name}Mailer.spec.ts`);
     const templateTestFilePath = join(testsDir, `${name}MailerTemplate.spec.ts`);
-    await Bun.write(mailerTestFilePath, mailerTestContent);
-    await Bun.write(templateTestFilePath, templateTestContent);
+
+    // Every file targets an independent path, so write them concurrently.
+    await Promise.all([
+      Bun.write(mailerFilePath, mailerContent),
+      Bun.write(templateFilePath, templateContent),
+      Bun.write(mailerTestFilePath, mailerTestContent),
+      Bun.write(templateTestFilePath, templateTestContent),
+    ]);
 
     const logger = new TerminalLogger();
 

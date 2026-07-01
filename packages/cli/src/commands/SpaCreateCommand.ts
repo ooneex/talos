@@ -168,9 +168,7 @@ export class SpaCreateCommand<T extends CommandOptionsType = CommandOptionsType>
 
     // Ensure every shared sub-layer exists, keeping empty folders tracked via .gitkeep
     const sharedSubDirs = ["assets", "components", "hooks", "layouts", "services", "store", "styles", "types", "utils"];
-    for (const subDir of sharedSubDirs) {
-      await Bun.write(join(srcDir, "shared", subDir, ".gitkeep"), "");
-    }
+    await Promise.all(sharedSubDirs.map((subDir) => Bun.write(join(srcDir, "shared", subDir, ".gitkeep"), "")));
 
     // Install the spa dependencies from the root of the project
     const spaPackage = await Bun.file(join(tmpDir, "package.json")).json();

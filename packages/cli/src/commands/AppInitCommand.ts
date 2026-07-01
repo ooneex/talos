@@ -52,19 +52,21 @@ export class AppInitCommand<T extends CommandOptionsType = CommandOptionsType> i
     }
 
     const packageContent = packageTemplate.replace(/{{NAME}}/g, kebabName);
-
-    await Bun.write(join(destination, ".commitlintrc.ts"), commitlintTemplate);
-    await Bun.write(join(destination, ".gitignore"), gitignoreTemplate);
-    await Bun.write(join(destination, "biome.jsonc"), biomeTemplate);
-    await Bun.write(join(destination, "bunfig.toml"), bunfigTemplate);
-    await Bun.write(join(destination, "nx.json"), nxTemplate);
     const packageJsonPath = join(destination, "package.json");
-    if (!(await Bun.file(packageJsonPath).exists())) {
-      await Bun.write(packageJsonPath, packageContent);
-    }
-    await Bun.write(join(destination, "README.md"), readmeTemplate.replace(/{{NAME}}/g, kebabName));
-    await Bun.write(join(destination, "tsconfig.json"), tsconfigTemplate);
-    await Bun.write(join(destination, ".zed", "settings.json"), zedSettingsTemplate);
+    const packageJsonExists = await Bun.file(packageJsonPath).exists();
+
+    // These project files target independent paths, so write them concurrently.
+    await Promise.all([
+      Bun.write(join(destination, ".commitlintrc.ts"), commitlintTemplate),
+      Bun.write(join(destination, ".gitignore"), gitignoreTemplate),
+      Bun.write(join(destination, "biome.jsonc"), biomeTemplate),
+      Bun.write(join(destination, "bunfig.toml"), bunfigTemplate),
+      Bun.write(join(destination, "nx.json"), nxTemplate),
+      Bun.write(join(destination, "README.md"), readmeTemplate.replace(/{{NAME}}/g, kebabName)),
+      Bun.write(join(destination, "tsconfig.json"), tsconfigTemplate),
+      Bun.write(join(destination, ".zed", "settings.json"), zedSettingsTemplate),
+      ...(packageJsonExists ? [] : [Bun.write(packageJsonPath, packageContent)]),
+    ]);
 
     const envData = structuredClone(envConfig) as {
       analytics?: unknown;
@@ -130,8 +132,10 @@ export class AppInitCommand<T extends CommandOptionsType = CommandOptionsType> i
     await huskyInit.exited;
     huskySpinner?.stop();
 
-    await Bun.write(join(destination, ".husky", "pre-commit"), "lint-staged");
-    await Bun.write(join(destination, ".husky", "commit-msg"), `bunx commitlint --edit "$1"`);
+    await Promise.all([
+      Bun.write(join(destination, ".husky", "pre-commit"), "lint-staged"),
+      Bun.write(join(destination, ".husky", "commit-msg"), `bunx commitlint --edit "$1"`),
+    ]);
 
     const runClaudeSkills = await askConfirm({ message: "Add Claude skills?", initial: true });
 
