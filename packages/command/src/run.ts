@@ -80,6 +80,15 @@ export const run = async (): Promise<void> => {
       interactive: {
         type: "boolean",
       },
+      token: {
+        type: "string",
+      },
+      registry: {
+        type: "string",
+      },
+      username: {
+        type: "string",
+      },
     },
     strict: false,
     allowPositionals: true,
@@ -116,6 +125,9 @@ export const run = async (): Promise<void> => {
     description: values.description,
     labels: values.labels,
     interactive: values.interactive,
+    token: values.token,
+    registry: values.registry,
+    username: values.username,
     // `--api` / `--microservice` / `--spa` (bare → true, or `=name1,name2` → string)
     // restrict `app:start` to modules of that type.
     api: values.api,
