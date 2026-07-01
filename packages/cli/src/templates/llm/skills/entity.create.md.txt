@@ -32,6 +32,12 @@ Read `modules/<module>/src/entities/<Name>Entity.ts`, then implement:
 - Add relations if needed (`@ManyToOne`, `@OneToMany`, `@ManyToMany`, etc.)
 - Remove scaffolded columns that are not relevant
 - Adjust column types, lengths, and constraints
+- Declare the primary key with an explicit `nullable: false` and auto-generate its value with `random.id()`, e.g.:
+
+  ```typescript
+  @PrimaryColumn({ name: "id", type: "varchar", length: 20, nullable: false })
+  id: string = random.id();
+  ```
 
 ```typescript
 import type { LocaleType } from "@talosjs/translation";
@@ -42,8 +48,8 @@ import { Column, CreateDateColumn, DeleteDateColumn, PrimaryColumn, UpdateDateCo
   name: "<table_name>",
 })
 export class <Name>Entity extends BaseEntity {
-  @PrimaryColumn({ name: "id", type: "varchar", length: 25 })
-  public id: string = random.nanoid(25);
+  @PrimaryColumn({ name: "id", type: "varchar", length: 20, nullable: false })
+  id: string = random.id();
 
   @Column({ name: "is_locked", type: "boolean", default: false, nullable: true })
   public isLocked?: boolean | null;
@@ -81,7 +87,7 @@ export class <Name>Entity extends BaseEntity {
 
 Read and replace `modules/<module>/tests/entities/<Name>Entity.spec.ts`:
 
-**Coverage:** class identity (`name.endsWith("Entity")`, is constructor), ID auto-generation (string, 25 chars, unique per instance), each column property (exists via `"prop" in entity`, default value correct, accepts valid values, accepts `null` for nullable, accepts `undefined` for optional), boolean columns with defaults (verify `false`/`true` and toggling), date/timestamp columns (start as `undefined`, accept `Date`, accept `null`), instance isolation (no shared property state).
+**Coverage:** class identity (`name.endsWith("Entity")`, is constructor), ID auto-generation (string, 20 chars, unique per instance), each column property (exists via `"prop" in entity`, default value correct, accepts valid values, accepts `null` for nullable, accepts `undefined` for optional), boolean columns with defaults (verify `false`/`true` and toggling), date/timestamp columns (start as `undefined`, accept `Date`, accept `null`), instance isolation (no shared property state).
 
 Remove test blocks for removed columns. Add new test blocks for each custom column. For relation properties, add a test that the property exists and defaults to `undefined`.
 
@@ -102,11 +108,11 @@ describe("<Name>Entity", () => {
 
   // --- ID ---
 
-  test("should auto-generate a nanoid for 'id'", () => {
+  test("should auto-generate an id for 'id'", () => {
     const entity = new <Name>Entity();
     expect(entity.id).toBeDefined();
     expect(typeof entity.id).toBe("string");
-    expect(entity.id.length).toBe(25);
+    expect(entity.id.length).toBe(20);
   });
 
   test("should generate a unique 'id' for each instance", () => {
