@@ -23,6 +23,15 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: oven-sh/setup-bun@v2
+      - name: Cache dependencies and Nx
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.bun/install/cache
+            .nx/cache
+          key: ${{ runner.os }}-talos-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-talos-
       - run: bun run check
 
   renovate-config-validator:
