@@ -12,12 +12,15 @@ import { askName } from "../prompts/askName";
 import dockerfileTemplate from "../templates/app/Dockerfile.txt";
 import indexTemplate from "../templates/app/index.ts.txt";
 import onAppStartTemplate from "../templates/app/OnAppStart.ts.txt";
+import { templates as bitbucketTemplates } from "../templates/bitbucket/index";
+import { templates as githubTemplates } from "../templates/github/index";
+import { templates as gitlabTemplates } from "../templates/gitlab/index";
 import moduleTemplate from "../templates/module/module.txt";
 import packageTemplate from "../templates/module/package.txt";
 import testTemplate from "../templates/module/test.txt";
 import tsconfigTemplate from "../templates/module/tsconfig.txt";
 import ymlTemplate from "../templates/module/yml.txt";
-import { LOG_OPTIONS, toYaml } from "../utils";
+import { type CiProviderType, detectCiProvider, LOG_OPTIONS, LOG_OPTIONS_PLAIN, toYaml } from "../utils";
 
 type CommandOptionsType = {
   name?: string;
@@ -90,6 +93,63 @@ export class MicroserviceCreateCommand<T extends CommandOptionsType = CommandOpt
     }
 
     await Bun.write(envYmlPath, content);
+  }
+
+  // Register the microservice pipeline in .gitlab-ci.yml so GitLab picks it up.
+  private async addGitlabInclude(gitlabCiPath: string, kebabName: string): Promise<void> {
+    const includeLine = `  - local: .gitlab/ci/${kebabName}.yml`;
+
+    if (!(await Bun.file(gitlabCiPath).exists())) {
+      await Bun.write(gitlabCiPath, `include:\n${includeLine}\n`);
+      return;
+    }
+
+    let content = await Bun.file(gitlabCiPath).text();
+
+    // Already declared — nothing to do
+    if (content.includes(includeLine)) return;
+
+    if (content.includes("include:")) {
+      content = content.replace(/include:\n/, `include:\n${includeLine}\n`);
+    } else {
+      content = `include:\n${includeLine}\n\n${content.trimStart()}`;
+    }
+
+    await Bun.write(gitlabCiPath, content);
+  }
+
+  // Scaffold the CI/CD pipeline for the microservice, matching whichever provider
+  // the project already uses. Returns the provider, or null when none is configured.
+  private async createCiCdFiles(cwd: string, kebabName: string, snakeName: string): Promise<CiProviderType | null> {
+    const provider = detectCiProvider(cwd);
+    if (!provider) return null;
+
+    const substitute = (template: string): string =>
+      template
+        .replace(/{{NAME_UPPER}}/g, snakeName.toUpperCase())
+        .replace(/{{NAME}}/g, snakeName)
+        .replace(/{{name}}/g, kebabName);
+
+    if (provider === "github") {
+      await Bun.write(
+        join(cwd, ".github", "workflows", `${kebabName}-ci.yml`),
+        substitute(githubTemplates.microserviceCi),
+      );
+      await Bun.write(
+        join(cwd, ".github", "workflows", `${kebabName}-production.yml`),
+        substitute(githubTemplates.microserviceProduction),
+      );
+    } else if (provider === "gitlab") {
+      await Bun.write(join(cwd, ".gitlab", "ci", `${kebabName}.yml`), substitute(gitlabTemplates.microservice));
+      await this.addGitlabInclude(join(cwd, ".gitlab-ci.yml"), kebabName);
+    } else {
+      await Bun.write(
+        join(cwd, ".bitbucket", `${kebabName}-pipelines.yml`),
+        substitute(bitbucketTemplates.microservicePipelines),
+      );
+    }
+
+    return provider;
   }
 
   public async run(options: T): Promise<void> {
@@ -178,10 +238,26 @@ export class MicroserviceCreateCommand<T extends CommandOptionsType = CommandOpt
       await addModuleScope(commitlintPath, kebabName);
     }
 
+    // Scaffold the CI/CD pipeline for the microservice, matching the project's
+    // provider. Skipped in silent mode (composed/programmatic runs).
+    const ciProvider = silent ? null : await this.createCiCdFiles(cwd, kebabName, snakeName);
+
     if (!silent) {
       const logger = new TerminalLogger();
 
       logger.success(`modules/${kebabName} created successfully`, undefined, LOG_OPTIONS);
+
+      if (ciProvider) {
+        logger.success(`${ciProvider} CI/CD files created for ${kebabName}`, undefined, LOG_OPTIONS);
+
+        if (ciProvider === "bitbucket") {
+          logger.info(
+            `Merge .bitbucket/${kebabName}-pipelines.yml into bitbucket-pipelines.yml (Bitbucket supports a single pipelines file)`,
+            undefined,
+            LOG_OPTIONS_PLAIN,
+          );
+        }
+      }
     }
   }
 }

@@ -378,6 +378,90 @@ describe("MicroserviceCreateCommand", () => {
     });
   });
 
+  describe("CI/CD integration", () => {
+    test("should create GitHub workflows for the microservice when the project uses GitHub", async () => {
+      await Bun.write(join(testDir, ".github", "workflows", ".gitkeep"), "");
+
+      await command.run({ name: "Billing", cwd: testDir, silent: false });
+
+      const ciPath = join(testDir, ".github", "workflows", "billing-ci.yml");
+      const productionPath = join(testDir, ".github", "workflows", "billing-production.yml");
+      expect(await exists(ciPath)).toBe(true);
+      expect(await exists(productionPath)).toBe(true);
+
+      const ci = await read(ciPath);
+      expect(ci).toContain("file: modules/billing/Dockerfile");
+      expect(ci).toContain("github.repository }}/billing");
+      expect(ci).not.toContain("{{name}}");
+      expect(ci).not.toContain("{{NAME}}");
+
+      const production = await read(productionPath);
+      expect(production).toContain("uses: ./.github/workflows/billing-ci.yml");
+      expect(production).toContain("vars.PRODUCTION_URL_BILLING }}");
+      expect(production).toContain("cd /opt/billing");
+    });
+
+    test("should create a GitLab pipeline and register the include when the project uses GitLab", async () => {
+      await Bun.write(join(testDir, ".gitlab-ci.yml"), "include:\n  - local: .gitlab/ci/ci.yml\n");
+
+      await command.run({ name: "Billing", cwd: testDir, silent: false });
+
+      const pipelinePath = join(testDir, ".gitlab", "ci", "billing.yml");
+      expect(await exists(pipelinePath)).toBe(true);
+
+      const pipeline = await read(pipelinePath);
+      expect(pipeline).toContain("billing-build-image:");
+      expect(pipeline).toContain("-f modules/billing/Dockerfile");
+      expect(pipeline).toContain("BILLING_IMAGE_TAG");
+      expect(pipeline).not.toContain("{{name}}");
+      expect(pipeline).not.toContain("{{NAME}}");
+
+      const gitlabCi = await read(join(testDir, ".gitlab-ci.yml"));
+      expect(gitlabCi).toContain("- local: .gitlab/ci/billing.yml");
+    });
+
+    test("should not duplicate the GitLab include on repeated runs", async () => {
+      await Bun.write(join(testDir, ".gitlab-ci.yml"), "include:\n  - local: .gitlab/ci/ci.yml\n");
+
+      await command.run({ name: "Billing", cwd: testDir, silent: false });
+      await command.run({ name: "Billing", cwd: testDir, silent: false });
+
+      const gitlabCi = await read(join(testDir, ".gitlab-ci.yml"));
+      expect(gitlabCi.match(/- local: \.gitlab\/ci\/billing\.yml/g)).toHaveLength(1);
+    });
+
+    test("should create a Bitbucket pipeline reference when the project uses Bitbucket", async () => {
+      await Bun.write(join(testDir, "bitbucket-pipelines.yml"), "image: oven/bun:latest\n");
+
+      await command.run({ name: "Billing", cwd: testDir, silent: false });
+
+      const referencePath = join(testDir, ".bitbucket", "billing-pipelines.yml");
+      expect(await exists(referencePath)).toBe(true);
+
+      const reference = await read(referencePath);
+      expect(reference).toContain("-f modules/billing/Dockerfile");
+      expect(reference).toContain("&billing-build-image");
+      expect(reference).not.toContain("{{name}}");
+      expect(reference).not.toContain("{{NAME}}");
+    });
+
+    test("should not create CI/CD files when no provider is configured", async () => {
+      await command.run({ name: "Billing", cwd: testDir, silent: false });
+
+      expect(await exists(join(testDir, ".github"))).toBe(false);
+      expect(await exists(join(testDir, ".gitlab"))).toBe(false);
+      expect(await exists(join(testDir, ".bitbucket"))).toBe(false);
+    });
+
+    test("should skip CI/CD file creation in silent mode", async () => {
+      await Bun.write(join(testDir, ".github", "workflows", ".gitkeep"), "");
+
+      await command.run({ name: "Billing", cwd: testDir, silent: true });
+
+      expect(await exists(join(testDir, ".github", "workflows", "billing-ci.yml"))).toBe(false);
+    });
+  });
+
   describe("missing optional targets", () => {
     test("should still generate the microservice when no app/shared/config files exist", async () => {
       await Bun.write(join(testDir, ".gitkeep"), "");

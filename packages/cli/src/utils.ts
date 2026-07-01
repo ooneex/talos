@@ -6,6 +6,20 @@ import { ModuleCreateCommand } from "./commands/ModuleCreateCommand";
 export const LOG_OPTIONS = { showTimestamp: false, showArrow: false, useSymbol: true } as const;
 export const LOG_OPTIONS_PLAIN = { showTimestamp: false, showArrow: false, useSymbol: false } as const;
 
+export type CiProviderType = "github" | "gitlab" | "bitbucket";
+
+/**
+ * Infer which CI/CD provider a project already uses from the files scaffolded by
+ * {@link AppCreateCommand}, so new microservices can add pipelines for the same
+ * provider. Returns null when none is configured.
+ */
+export const detectCiProvider = (cwd: string): CiProviderType | null => {
+  if (existsSync(join(cwd, ".github", "workflows"))) return "github";
+  if (existsSync(join(cwd, ".gitlab-ci.yml")) || existsSync(join(cwd, ".gitlab", "ci"))) return "gitlab";
+  if (existsSync(join(cwd, "bitbucket-pipelines.yml"))) return "bitbucket";
+  return null;
+};
+
 const YAML_SCALAR_LOOKALIKE_REGEX = /^(true|false|null|yes|no|on|off|~|[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?)$/i;
 
 const needsQuoting = (value: string): boolean =>
