@@ -100,6 +100,8 @@ _talos() {
     'design\:create:Generate a new design module'
     'design\:remove:Remove an existing design module'
     'docker\:create:Add a docker service to docker-compose.yml'
+    'docker\:credentials\:create:Save a Docker registry access token under the user config'
+    'npm\:credentials\:create:Save an npm Granular Access Token under the user config'
     'entity\:create:Generate a new entity class'
     'flag\:create:Generate a new feature flag class'
     'logger\:create:Generate a new logger class'
@@ -210,6 +212,16 @@ _talos() {
         docker:create)
           _arguments -s \
             '--name=[Docker service name]:name:(clickhouse elasticsearch grafana jaeger keycloak libretranslate maildev memcached minio mongodb mysql nats postgres prometheus rabbitmq redis temporal vault)'
+          ;;
+        docker:credentials:create)
+          _arguments -s \
+            '--registry=[Docker registry]:registry' \
+            '--username=[Docker username]:username' \
+            '--token=[Docker access token]:token'
+          ;;
+        npm:credentials:create)
+          _arguments -s \
+            '--token=[npm Granular Access Token]:token'
           ;;
         entity:create)
           _arguments -s \
