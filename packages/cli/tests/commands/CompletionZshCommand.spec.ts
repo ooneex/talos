@@ -194,6 +194,37 @@ describe("CompletionZshCommand", () => {
       expect(talosContent).toContain("app\\:create:Create a new application");
     });
 
+    test("should include credential commands with their descriptions", async () => {
+      await command.run();
+
+      const talosContent = await Bun.file(join(completionDir, "_talos")).text();
+      expect(talosContent).toContain(
+        "docker\\:credentials\\:create:Save a Docker registry access token under the user config",
+      );
+      expect(talosContent).toContain(
+        "npm\\:credentials\\:create:Save an npm Granular Access Token under the user config",
+      );
+    });
+
+    test("should include registry, username and token options for docker:credentials:create", async () => {
+      await command.run();
+
+      const talosContent = await Bun.file(join(completionDir, "_talos")).text();
+      const body = caseBody(talosContent, "docker:credentials:create");
+      expect(body).toContain("--registry=");
+      expect(body).toContain("--username=");
+      expect(body).toContain("--token=");
+    });
+
+    test("should include the token option for npm:credentials:create", async () => {
+      await command.run();
+
+      const talosContent = await Bun.file(join(completionDir, "_talos")).text();
+      const body = caseBody(talosContent, "npm:credentials:create");
+      expect(body).toContain("--token=");
+      expect(body).not.toContain("--module=");
+    });
+
     test("should write completion files under the .zsh directory", async () => {
       await command.run();
 
