@@ -89,6 +89,17 @@ describe("NpmPublishCommand", () => {
     return dir;
   };
 
+  const scaffoldRawTarget = async (
+    kind: "packages" | "modules",
+    dirName: string,
+    pkgJson: Record<string, unknown>,
+  ): Promise<string> => {
+    const dir = join(testDir, kind, dirName);
+    mkdirSync(dir, { recursive: true });
+    await Bun.write(join(dir, "package.json"), JSON.stringify(pkgJson));
+    return dir;
+  };
+
   describe("Command Metadata", () => {
     test("should return correct command name", () => {
       expect(command.getName()).toBe("npm:publish");
@@ -147,14 +158,43 @@ describe("NpmPublishCommand", () => {
       expect(publishMock.mock.calls[0]?.[2]).toBe("npm_storedtoken");
     });
 
-    test("should prefer the package over the module when both are given", async () => {
+    test("should publish both packages and modules when both flags are given", async () => {
       await writeCredentials("npm_testtoken");
       const pkgDir = await scaffoldTarget("packages", "cli");
-      await scaffoldTarget("modules", "blog");
+      const modDir = await scaffoldTarget("modules", "blog");
 
       await command.run({ package: "cli", module: "blog", silent: true });
 
-      expect(publishMock.mock.calls[0]?.[0]).toBe(pkgDir);
+      const dirs = publishMock.mock.calls.map((call) => call[0]);
+      expect(dirs).toEqual([pkgDir, modDir]);
+    });
+
+    test("should publish every package and module when no target flag is given", async () => {
+      await writeCredentials("npm_testtoken");
+      const cliDir = await scaffoldTarget("packages", "cli");
+      const commandDir = await scaffoldTarget("packages", "command");
+      const blogDir = await scaffoldTarget("modules", "blog");
+
+      await command.run({ silent: true });
+
+      const dirs = publishMock.mock.calls.map((call) => call[0]);
+      expect(dirs).toHaveLength(3);
+      expect(dirs).toContain(cliDir);
+      expect(dirs).toContain(commandDir);
+      expect(dirs).toContain(blogDir);
+    });
+
+    test("should publish multiple packages from a comma-separated list", async () => {
+      await writeCredentials("npm_testtoken");
+      const cliDir = await scaffoldTarget("packages", "cli");
+      const commandDir = await scaffoldTarget("packages", "command");
+      // A third package that must be skipped because it is not requested.
+      await scaffoldTarget("packages", "logger");
+
+      await command.run({ package: "cli,command", silent: true });
+
+      const dirs = publishMock.mock.calls.map((call) => call[0]);
+      expect(dirs).toEqual([cliDir, commandDir]);
     });
 
     test("should log the published package name and version", async () => {
@@ -164,10 +204,47 @@ describe("NpmPublishCommand", () => {
       await command.run({ package: "cli" });
 
       expect(successCalls).toHaveLength(1);
-      expect(successCalls[0]).toContain("@talosjs/cli@2.3.4");
+      expect(successCalls[0]).toBe("Published @talosjs/cli@2.3.4 to npm");
     });
 
-    test("should fail when no target is specified", async () => {
+    test("should pass the name@version label to the publish step", async () => {
+      await writeCredentials("npm_testtoken");
+      await scaffoldTarget("packages", "cli", "2.3.4");
+
+      await command.run({ package: "cli", silent: true });
+
+      expect(publishMock.mock.calls[0]?.[3]).toBe("@talosjs/cli@2.3.4");
+    });
+
+    test("should use the scoped package.json name rather than the directory name", async () => {
+      await writeCredentials("npm_testtoken");
+      // Directory is `ai`, but the published name is the scoped `@talosjs/ai`.
+      await scaffoldRawTarget("packages", "ai", { name: "@talosjs/ai", version: "1.2.0" });
+
+      await command.run({ package: "ai" });
+
+      expect(successCalls[0]).toBe("Published @talosjs/ai@1.2.0 to npm");
+    });
+
+    test("should log the name without a version when package.json has no version", async () => {
+      await writeCredentials("npm_testtoken");
+      await scaffoldRawTarget("packages", "ai", { name: "@talosjs/ai" });
+
+      await command.run({ package: "ai" });
+
+      expect(successCalls[0]).toBe("Published @talosjs/ai to npm");
+    });
+
+    test("should fall back to the directory name when package.json has no name", async () => {
+      await writeCredentials("npm_testtoken");
+      await scaffoldRawTarget("packages", "ai", { version: "1.2.0" });
+
+      await command.run({ package: "ai" });
+
+      expect(successCalls[0]).toBe("Published ai@1.2.0 to npm");
+    });
+
+    test("should fail when there are no packages or modules to publish", async () => {
       await writeCredentials("npm_testtoken");
 
       await command.run({ silent: true });
@@ -187,29 +264,27 @@ describe("NpmPublishCommand", () => {
       process.exitCode = 0;
     });
 
-    test("should fail when the target does not exist", async () => {
+    test("should log an error and skip publishing when the target does not exist", async () => {
       await writeCredentials("npm_testtoken");
 
-      await command.run({ package: "missing", silent: true });
+      await command.run({ package: "missing" });
 
       expect(publishMock).not.toHaveBeenCalled();
-      expect(process.exitCode).toBe(1);
-      process.exitCode = 0;
+      expect(errorCalls.some((message) => message.includes('No package named "missing" found'))).toBe(true);
     });
 
-    test("should set a failing exit code when publishing reports a failure", async () => {
+    test("should log an error when publishing reports a failure", async () => {
       await writeCredentials("npm_testtoken");
       await scaffoldTarget("packages", "cli");
       publishMock.mockImplementationOnce(() => Promise.resolve(false));
 
-      await command.run({ package: "cli", silent: true });
+      await command.run({ package: "cli" });
 
       expect(successCalls).toHaveLength(0);
-      expect(process.exitCode).toBe(1);
-      process.exitCode = 0;
+      expect(errorCalls.some((message) => message.includes("Failed to publish"))).toBe(true);
     });
 
-    test("should set a failing exit code when publishing throws", async () => {
+    test("should log an error when publishing throws", async () => {
       await writeCredentials("npm_testtoken");
       await scaffoldTarget("packages", "cli");
       publishMock.mockImplementationOnce(() => Promise.reject(new Error("boom")));
@@ -217,8 +292,7 @@ describe("NpmPublishCommand", () => {
       await command.run({ package: "cli" });
 
       expect(errorCalls.some((message) => message.includes("Failed to publish"))).toBe(true);
-      expect(process.exitCode).toBe(1);
-      process.exitCode = 0;
+      expect(successCalls).toHaveLength(0);
     });
   });
 });
