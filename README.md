@@ -51,13 +51,6 @@
         <li><a href="#build-your-first-resource">Build your first resource</a></li>
       </ul>
     </li>
-    <li>
-      <a href="#usage">Usage</a>
-      <ul>
-        <li><a href="#routing--controllers">Routing &amp; Controllers</a></li>
-        <li><a href="#validation--access-control">Validation &amp; Access Control</a></li>
-      </ul>
-    </li>
     <li><a href="#spec-driven-development">Spec-Driven Development</a></li>
     <li><a href="#roadmap">Roadmap</a></li>
     <li>
@@ -186,87 +179,6 @@ talos controller:create \
 ```
 
 Prefer an AI agent? Initialize the skills once (`talos claude:init` or `talos codex:init`), then describe the whole `Movie` domain in a single prompt. The agent runs the same `module:create`, `entity:create`, `repository:create`, and `controller:create` generators and writes the tests. See [Create your app](https://docs.talosjs.com/getting-started/create-app) for the full walkthrough.
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-<!-- USAGE -->
-## Usage
-
-### Routing & Controllers
-
-Routing is decorator-bound, so you don't maintain a route table by hand. Decorate a controller class with `@Route` and the framework registers its path, method, and validation. A controller is a class with a single `index(context)` method; there's no base class to extend. When a request matches, the framework builds a typed `context` — request, response builder, logger, cache, user, locale, and route metadata — and calls `index`.
-
-```typescript
-import type { ContextType, IController } from "@talosjs/controller";
-import type { IResponse } from "@talosjs/http-response";
-import { Route } from "@talosjs/routing";
-
-@Route.get("/api/users", {
-  name: "api.users.list",
-  version: 1,
-  description: "List all users",
-})
-export class UserListController implements IController {
-  public async index(context: ContextType): Promise<IResponse> {
-    return context.response.json({
-      users: [{ id: 1, name: "John" }],
-    });
-  }
-}
-```
-
-Every route carries a unique `name` in `namespace.resource.action` form, so you can generate URLs from the name instead of hardcoding paths:
-
-```typescript
-import { router } from "@talosjs/routing";
-
-router.generate("api.users.show", { id: "123" }); // "/api/users/123"
-```
-
-The same decorator family declares WebSocket endpoints with `@Route.socket(...)`, whose context adds a `channel` API for subscribing and publishing.
-
-### Validation & Access Control
-
-Declare `params`, `queries`, and `payload` schemas on the route and they run before your controller, so `index` receives typed, validated data. Set `roles` (or a `permission` class, or `env`/`ip`/`host` lists) on the route to control who can reach it.
-
-```typescript
-import type { ContextType, IController } from "@talosjs/controller";
-import type { IResponse } from "@talosjs/http-response";
-import { Route } from "@talosjs/routing";
-import { Assert } from "@talosjs/validation";
-
-type UserCreateRouteType = {
-  payload: { email: string; name: string; password: string };
-  response: { id: string; name: string; email: string };
-};
-
-@Route.post("/api/users", {
-  name: "api.users.create",
-  version: 1,
-  description: "Create a new user account",
-  payload: Assert({
-    email: "string.email",
-    name: "string >= 2",
-    password: "8 <= string <= 100",
-  }),
-  response: Assert({ id: "string", name: "string", email: "string" }),
-  roles: ["ROLE_ADMIN"],
-})
-export class UserCreateController implements IController {
-  constructor(private readonly userService: UserService) {}
-
-  public async index(
-    context: ContextType<UserCreateRouteType>,
-  ): Promise<IResponse> {
-    const data = await context.request.payload();
-    const user = await this.userService.execute(data);
-
-    return context.response.json(user, 201);
-  }
-}
-```
-
-Keep controllers thin: validate and shape the request, hand the work to an injected service, and return through the `context.response` builder. Business logic belongs in the service, not in `index`. See the guides on [Routing](https://docs.talosjs.com/basics/routing) and [Controllers](https://docs.talosjs.com/components/controller) for more.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
