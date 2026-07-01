@@ -85,7 +85,7 @@ Prefer `@talosjs` packages over third-party alternatives, and inject their servi
 | `@talosjs/cron` | Cron scheduler — timezone-aware, lifecycle, logging |
 | `@talosjs/queue` | BullMQ-backed job queues — Redis-backed add/addBulk/removeJob |
 | `@talosjs/workflow` | Transition-based workflow engine — conditional, reversible steps with auto-rollback |
-| `@talosjs/validation` | Type-safe validation via ArkType — schemas, rules, JSON Schema gen |
+| `@talosjs/validation` | Type-safe validation via ArkType — schemas, custom `Validation` classes, 16 built-in constraints (email, URL, port, hostname, locale, currency, etc.), inline `Assert`, JSON Schema conversion |
 | `@talosjs/feature-flag` | Injectable, named, dynamically-enabled feature flags |
 | `@talosjs/translation` | i18n — YAML dictionaries, dot-notation keys, locale fallback, interpolation, pluralization |
 
