@@ -1171,6 +1171,39 @@ Scans every `packages/` and `modules/` directory for unreleased conventional com
 
 ---
 
+## Credentials
+
+Stores registry credentials per-user under `~/.talos/credentials/*.yml`, so tokens live outside the project and are shared across every Talos application on the machine. Each command prints the URL where the token can be created and prompts for anything not passed as a flag — the token input is masked:
+
+```bash
+oo npm:credentials:create
+oo docker:credentials:create
+```
+
+`npm:credentials:create` saves an npm **Granular Access Token** to `~/.talos/credentials/npm.yml`. `docker:credentials:create` saves a Docker registry access token (with its registry host and username) to `~/.talos/credentials/docker.yml`. Both write the values under a `profiles.default` block:
+
+```yaml
+profiles:
+  default:
+    token: "<Granular Access Token>"
+```
+
+You can run either command non-interactively by passing the values as flags (`--token`, and for Docker `--registry` / `--username`), which is useful in CI:
+
+```bash
+oo npm:credentials:create --token "$NPM_TOKEN"
+oo docker:credentials:create --registry docker.io --username "$DOCKER_USER" --token "$DOCKER_TOKEN"
+```
+
+**Why:** Registry tokens are machine-wide secrets that should never be committed to a repository or duplicated per project. Keeping them under `~/.talos/credentials` lets every application reuse the same credentials while keeping them out of source control.
+
+**Good practices:**
+- Never commit `~/.talos/credentials/*.yml` — they contain live secrets.
+- Prefer scoped tokens (npm Granular Access Tokens, Docker personal access tokens) over account passwords.
+- Rotate tokens periodically by re-running the command, which overwrites the `default` profile.
+
+---
+
 ## Scripts
 
 | Command | Description |

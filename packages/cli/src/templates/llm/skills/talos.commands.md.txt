@@ -92,6 +92,14 @@ bun run test   # Run all tests
 oo release:create   # Detect unreleased commits, bump versions, update changelogs, tag, push
 ```
 
+## Credentials
+```bash
+oo npm:credentials:create [--token <token>]                                             # Save an npm Granular Access Token to ~/.talos/credentials/npm.yml
+oo docker:credentials:create [--registry <host>] [--username <user>] [--token <token>]  # Save a Docker registry access token to ~/.talos/credentials/docker.yml
+```
+
+Credentials are stored per-user under `~/.talos/credentials/*.yml` in a `profiles.default` block. Each command prompts (token input is masked) for anything not passed as a flag and prints the URL where the token can be created.
+
 ## Assistant & Shell setup
 ```bash
 oo claude:init      # Write AGENTS.md + skills/agents into .claude/ for Claude Code
