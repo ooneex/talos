@@ -103,6 +103,7 @@ _talos() {
     'docker\:credentials\:create:Save a Docker registry access token under the user config'
     'github\:credentials\:create:Save a GitHub Personal Access Token under the user config'
     'npm\:credentials\:create:Save an npm Granular Access Token under the user config'
+    'npm\:publish:Publish a package or module to npm'
     'entity\:create:Generate a new entity class'
     'flag\:create:Generate a new feature flag class'
     'logger\:create:Generate a new logger class'
@@ -227,6 +228,12 @@ _talos() {
         npm:credentials:create)
           _arguments -s \
             '--token=[npm Granular Access Token]:token'
+          ;;
+        npm:publish)
+          _arguments -s \
+            '--package=[Package name]:package' \
+            '--module=[Module name]:module:_talos_modules' \
+            '--access=[Registry access level]:access:(public restricted)'
           ;;
         entity:create)
           _arguments -s \

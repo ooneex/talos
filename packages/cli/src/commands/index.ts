@@ -39,6 +39,7 @@ export { MigrationUpCommand } from "./MigrationUpCommand";
 export { ModuleCreateCommand } from "./ModuleCreateCommand";
 export { ModuleRemoveCommand } from "./ModuleRemoveCommand";
 export { NpmCredentialsCreateCommand } from "./NpmCredentialsCreateCommand";
+export { NpmPublishCommand } from "./NpmPublishCommand";
 export { PermissionCreateCommand } from "./PermissionCreateCommand";
 export { QueueCreateCommand } from "./QueueCreateCommand";
 export { RateLimitCreateCommand } from "./RateLimitCreateCommand";
