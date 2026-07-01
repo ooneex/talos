@@ -7,6 +7,15 @@ import type { HttpMethodType } from "@talosjs/types";
 import { toKebabCase } from "@talosjs/utils/toKebabCase";
 import { getCommand } from "./getCommand";
 
+// Kebab-case each comma-separated entry, so `--package`/`--module` accept a single
+// name (`Foo` → `foo`) or a list (`Foo,Bar` → `foo,bar`) without mangling the commas.
+const toKebabCsv = (value: string): string =>
+  value
+    .split(",")
+    .map((entry) => toKebabCase(entry))
+    .filter(Boolean)
+    .join(",");
+
 export const run = async (): Promise<void> => {
   await loadEnv();
 
@@ -118,7 +127,7 @@ export const run = async (): Promise<void> => {
     isSocket: values["is-socket"],
     tableName: values["table-name"],
     version: values.version,
-    module: typeof values.module === "string" ? toKebabCase(values.module) : undefined,
+    module: typeof values.module === "string" ? toKebabCsv(values.module) : undefined,
     design: values.design,
     destination: values.destination,
     drop: values.drop,
@@ -134,7 +143,7 @@ export const run = async (): Promise<void> => {
     token: values.token,
     registry: values.registry,
     username: values.username,
-    package: typeof values.package === "string" ? toKebabCase(values.package) : undefined,
+    package: typeof values.package === "string" ? toKebabCsv(values.package) : undefined,
     access: values.access,
     // `--api` / `--microservice` / `--spa` (bare → true, or `=name1,name2` → string)
     // restrict `app:start` to modules of that type.
