@@ -10,20 +10,22 @@
 <!-- PROJECT LOGO -->
 <br />
 <div align="center">
-  <a href="https://github.com/ooneex/talos">
-    <img src="assets/logo-full.svg" alt="Talos" width="180" height="38">
-  </a>
+  <img src="assets/logo-full.svg" alt="Talos" width="220">
 
   <br />
   <br />
 
   <p align="center">
-    A modular TypeScript framework built on Bun — 60+ independent packages and the first framework designed around Spec-Driven Development.
+    <strong>The TypeScript framework for the AI era, designed for Spec-Driven Development.</strong>
+    <br />
+    A modular framework built on Bun — 60+ independent packages, from a weekend project to a production SaaS, with no rewrite in between.
     <br />
     <br />
     <a href="https://docs.talosjs.com/getting-started"><strong>Explore the docs »</strong></a>
     <br />
     <br />
+    <a href="https://docs.talosjs.com/getting-started/create-app">Create an app</a>
+    &middot;
     <a href="https://github.com/ooneex/talos/issues/new?labels=bug">Report Bug</a>
     &middot;
     <a href="https://github.com/ooneex/talos/issues/new?labels=enhancement">Request Feature</a>
@@ -37,22 +39,35 @@
     <li>
       <a href="#about-the-project">About The Project</a>
       <ul>
+        <li><a href="#why-talos">Why Talos</a></li>
         <li><a href="#built-with">Built With</a></li>
-        <li><a href="#packages">Packages</a></li>
       </ul>
     </li>
     <li>
       <a href="#getting-started">Getting Started</a>
       <ul>
         <li><a href="#prerequisites">Prerequisites</a></li>
-        <li><a href="#installation">Installation</a></li>
+        <li><a href="#create-your-app">Create your app</a></li>
+        <li><a href="#build-your-first-resource">Build your first resource</a></li>
       </ul>
     </li>
-    <li><a href="#usage">Usage</a></li>
-    <li><a href="#architecture">Architecture</a></li>
+    <li>
+      <a href="#usage">Usage</a>
+      <ul>
+        <li><a href="#routing--controllers">Routing &amp; Controllers</a></li>
+        <li><a href="#validation--access-control">Validation &amp; Access Control</a></li>
+      </ul>
+    </li>
     <li><a href="#spec-driven-development">Spec-Driven Development</a></li>
-    <li><a href="#development">Development</a></li>
     <li><a href="#roadmap">Roadmap</a></li>
+    <li>
+      <a href="#development">Development</a>
+      <ul>
+        <li><a href="#working-on-the-monorepo">Working on the Monorepo</a></li>
+        <li><a href="#commands">Commands</a></li>
+        <li><a href="#commit-conventions">Commit Conventions</a></li>
+      </ul>
+    </li>
     <li><a href="#contributing">Contributing</a></li>
     <li><a href="#license">License</a></li>
     <li><a href="#acknowledgments">Acknowledgments</a></li>
@@ -68,20 +83,22 @@
 
 <br />
 
-Talos is a comprehensive TypeScript monorepo framework designed for the [Bun](https://bun.sh) runtime. It provides a rich ecosystem of 60+ independently versioned packages under the `@talosjs` namespace, covering everything from dependency injection and routing to database management, caching, authentication, real-time communication, background job queues, and AI integration.
+**Talos is a modular TypeScript framework built on [Bun](https://bun.sh).** It is the first framework designed around **Spec-Driven Development**, so AI agents work from your real intent rather than guesswork. Its 60+ independent packages — published under the `@talosjs` namespace and each versioned on its own — cover everything from HTTP, data, and security to real-time, AI, and utilities.
 
-It is also the first framework designed around **Spec-Driven Development** — your work lives as structured specs that AI agents can find, plan, and implement against your real conventions, with every step transparent and verifiable. See [Spec-Driven Development](#spec-driven-development) below.
-
-**Key highlights:**
-
-- **Modular architecture** — Use only the packages you need. Each package is independently versioned and published to npm.
-- **Built for the AI era** — First-class AI agents, RAG, and a Spec-Driven workflow baked into the core, so AI builds _with_ you instead of guessing.
-- **Dependency injection** — Built on [InversifyJS](https://inversify.io/) with decorator-driven service registration and lifecycle management (singleton, transient, request-scoped).
-- **Decorator-driven design** — Define routes, services, repositories, and middlewares using clean, expressive decorators.
-- **Type-safe** — Strict TypeScript configuration with comprehensive type checking and runtime validation via [ArkType](https://arktype.io/).
-- **Bun-first** — Optimized for the Bun runtime with fast builds via [bunup](https://github.com/nicepkg/bunup) and native Bun test runner support.
+Stop prompting blind. With Talos, your work lives as structured **specs** that AI agents can find, plan, and implement against your real conventions, with every step transparent and verifiable. The same framework powers a small side project, a medium product, and a large multi-service platform — start simple, grow without rewrites.
 
 📚 **Full documentation:** [docs.talosjs.com](https://docs.talosjs.com/getting-started)
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+### Why Talos
+
+- **Ship fast** — Decorator-driven routes, services, and repositories with sensible defaults. Go from idea to a running app in minutes, not days.
+- **Built for the AI era** — AI agents, RAG, and a Spec-Driven workflow live in the core, so your framework speaks the language of the tools building it.
+- **Scales with you** — One framework for side projects, products, and multi-service platforms. No rewrite between stages.
+- **Everything a SaaS needs** — Auth, JWT, roles, permissions, payments, caching, queues, mailer, and more, ready to use.
+- **Type-safe end to end** — Strict TypeScript with runtime validation via [ArkType](https://arktype.io/); your `params`, `payload`, `queries`, and `response` shapes flow through the whole handler.
+- **Easy to extend** — Dependency injection and a clean module system let you add, swap, or override anything without fighting the framework.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -97,268 +114,160 @@ It is also the first framework designed around **Spec-Driven Development** — y
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-### Packages
-
-The framework is organized into 60+ packages across several categories:
-
-#### Application & Architecture
-| Package | Description |
-|---------|-------------|
-| `@talosjs/app` | Full-featured application framework — orchestrates routing, middleware, DI, caching, logging, and WebSockets |
-| `@talosjs/app-env` | Environment detection and typed configuration for development, staging, production, and testing |
-| `@talosjs/container` | Dependency injection container built on Inversify with singleton, transient, and request scopes |
-| `@talosjs/module` | Module system for organizing application features into cohesive domain units |
-| `@talosjs/service` | Service layer foundation with decorator-based registration |
-| `@talosjs/repository` | Data access layer with decorator-based repository registration |
-| `@talosjs/command` | Command framework for building CLI commands with DI and argument parsing |
-| `@talosjs/exception` | Structured exception handling with HTTP status mapping and typed error data |
-| `@talosjs/types` | Shared TypeScript type definitions and utility types |
-| `@talosjs/utils` | General-purpose utilities — unique ID generation, type guards, and helpers |
-| `@talosjs/cli` | Interactive CLI toolkit for scaffolding projects, modules, controllers, services, and repositories |
-
-#### HTTP & Routing
-| Package | Description |
-|---------|-------------|
-| `@talosjs/routing` | Decorator-driven HTTP routing with path params, validation, permission guards, and named routes |
-| `@talosjs/controller` | HTTP controller layer with decorator-based route binding |
-| `@talosjs/middleware` | Middleware pipeline framework for HTTP and WebSocket events |
-| `@talosjs/http-request` | HTTP request abstraction — URL parsing, query params, headers, file uploads |
-| `@talosjs/http-request-file` | Multipart file upload handler with MIME validation and size constraints |
-| `@talosjs/http-response` | HTTP response builder with a fluent API for status, headers, cookies, and streams |
-| `@talosjs/http-header` | HTTP header parser with user agent detection and content negotiation |
-| `@talosjs/http-mimes` | Complete MIME type registry with TypeScript constants |
-| `@talosjs/http-status` | HTTP status code library with TypeScript enums and classification helpers |
-| `@talosjs/fetcher` | Lightweight HTTP client with typed headers and response parsing |
-| `@talosjs/url` | URL parsing and manipulation — query strings, path normalization, route params |
-| `@talosjs/rate-limit` | API rate limiting middleware with throttling strategies and per-client quotas |
-
-#### Real-Time
-| Package | Description |
-|---------|-------------|
-| `@talosjs/socket` | WebSocket server with room management, broadcasting, and middleware integration |
-| `@talosjs/socket-client` | WebSocket client with automatic reconnection and typed message serialization |
-| `@talosjs/event` | Event messaging for decoupled, event-driven communication with typed channels |
-
-#### Data & Persistence
-| Package | Description |
-|---------|-------------|
-| `@talosjs/database` | Database abstraction layer with TypeORM integration and connection pooling |
-| `@talosjs/entity` | Base entity classes and decorators for type-safe column mappings and relationships |
-| `@talosjs/migrations` | Database migration runner with versioned schema changes and rollback |
-| `@talosjs/seeds` | Database seeding framework for fixtures with idempotent operations |
-| `@talosjs/cache` | High-performance caching with filesystem and Redis backends and TTL expiration |
-| `@talosjs/storage` | File storage abstraction over local filesystem and cloud providers |
-| `@talosjs/rag` | Retrieval-Augmented Generation toolkit with vector DB integration and embeddings |
-
-#### Auth & Access Control
-| Package | Description |
-|---------|-------------|
-| `@talosjs/auth` | Authentication framework with pluggable token- and session-based strategies |
-| `@talosjs/jwt` | JWT toolkit using JOSE — generate, sign, verify, and decode tokens |
-| `@talosjs/permission` | Fine-grained access control using CASL with role/resource scoping |
-| `@talosjs/role` | Role-based authorization types and utilities |
-| `@talosjs/user` | User identity types — profiles, credentials, roles, and account metadata |
-
-#### AI & Integrations
-| Package | Description |
-|---------|-------------|
-| `@talosjs/ai` | AI toolkit integrating 300+ models via OpenRouter with unified text generation and streaming |
-| `@talosjs/analytics` | PostHog-powered analytics for tracking user behavior and product events |
-| `@talosjs/linear` | Linear project management integration for issues, teams, and projects |
-| `@talosjs/mailer` | Transactional email via Nodemailer SMTP and Resend with templated emails |
-| `@talosjs/payment` | Payment and pricing type definitions with currency handling |
-| `@talosjs/youtube` | YouTube video downloader and metadata extraction |
-| `@talosjs/youtube-utils` | YouTube URL utilities for video IDs and embed/watch URLs |
-
-#### Cross-Cutting Services
-| Package | Description |
-|---------|-------------|
-| `@talosjs/logger` | Structured logging with multiple output targets and contextual metadata |
-| `@talosjs/cron` | Cron job scheduler with timezone-aware scheduling and lifecycle management |
-| `@talosjs/validation` | Type-safe validation powered by ArkType with JSON Schema generation |
-| `@talosjs/feature-flag` | Define and evaluate feature flags as injectable, named toggles |
-| `@talosjs/translation` | Internationalization with locale management, key resolution, and pluralization |
-| `@talosjs/queue` | Background job queue powered by BullMQ and Redis with retries and progress tracking |
-| `@talosjs/workflow` | Transition-based workflow engine with conditional steps and automatic rollback |
-
-#### File & Document Formats
-| Package | Description |
-|---------|-------------|
-| `@talosjs/fs` | Async file system utilities for reading, writing, copying, and watching |
-| `@talosjs/csv` | CSV file loader and parser with streaming and generator-based iteration |
-| `@talosjs/json` | JSON file loader and parser with streaming and generator-based iteration |
-| `@talosjs/yml` | YAML file loader and parser using Bun's built-in YAML support |
-| `@talosjs/html` | HTML parsing and DOM manipulation powered by Cheerio |
-| `@talosjs/pdf` | PDF toolkit for generating, editing, merging, splitting, and converting documents |
-
-#### Reference Data & Helpers
-| Package | Description |
-|---------|-------------|
-| `@talosjs/color` | Curated color palette with hex values, names, and TypeScript types |
-| `@talosjs/country` | Country metadata — timezones, ISO codes, and multi-language localization |
-| `@talosjs/currencies` | Currency dataset with ISO 4217 codes, symbols, and names |
-| `@talosjs/hour-utils` | Time unit conversion utilities for hours, minutes, seconds, and milliseconds |
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
 <!-- GETTING STARTED -->
 ## Getting Started
 
+Go from an empty machine to a running Talos app with its first domain in a few commands.
+
 ### Prerequisites
 
-- [Bun](https://bun.sh) (latest version recommended)
+The CLI runs on [Bun](https://bun.sh). Install it first:
 
-  ```sh
-  curl -fsSL https://bun.sh/install | bash
-  ```
+```sh
+curl -fsSL https://bun.sh/install | bash
+```
 
-  Verify the install:
+Verify the install:
 
-  ```sh
-  bun --version
-  ```
+```sh
+bun --version
+```
 
-### Quick Start
+### Create your app
 
-The fastest way to build with Talos is the `talos` CLI. Install it globally, scaffold an app, and start the dev environment.
-
-1. Install the CLI
+1. **Install the CLI globally.** It exposes two interchangeable binaries, `talos` and its short alias `oo`.
 
    ```sh
    bun add -g @talosjs/cli
    talos help
    ```
 
-2. Create a new application
+   > Prefer not to install globally? Run any command through `bunx`, e.g. `bunx @talosjs/cli@latest app:create`.
+
+2. **Scaffold a complete application.** This creates the `app` and `shared` modules, the entrypoint, the shared database, roles, Docker files, and config, then installs dependencies.
 
    ```sh
    talos app:create --name=MovieApp --destination=movie-app
    cd movie-app
    ```
 
-3. Start the development environment (launches Docker services and runs all modules with hot reload)
+3. **Start the development environment.** `app:start` brings up the shared Docker stack, then runs every `api`, `microservice`, and `spa` module concurrently with hot reload. Pass a type flag to narrow what runs.
 
    ```sh
-   talos app:start            # everything
-   talos app:start --api      # API modules only
-   talos app:start --spa      # SPA modules only
+   talos app:start                            # everything
+   talos app:start --api                      # only the api modules
+   talos app:start --spa                      # only the spa modules
+   talos app:start --microservice=billing     # only the named microservice
    ```
 
-   Stop it again with `talos app:stop`.
+   Stop it again with `talos app:stop`, and build for production with `talos app:build`.
 
-For configuration, project structure, and the full framework guide, see the [getting started docs](https://docs.talosjs.com/getting-started).
+   > The environment file is generated at `modules/shared/.env.yml`. Edit it to point at your database, Redis, and other services before starting.
 
-### Working on the Monorepo
+Every business domain you add becomes its own module under `modules/<name>/` — a self-contained vertical slice with its own controllers, services, repositories, entities, and config, registered automatically into `AppModule`.
 
-To develop the framework packages themselves:
+### Build your first resource
 
-1. Clone the repository
+With the app scaffolded, build a `Movie` domain. Run the generators in order — each scaffolds the class plus a mirrored test file and registers it into the module:
 
-   ```sh
-   git clone https://github.com/ooneex/talos.git
-   cd Talos
-   ```
+```sh
+# 1. Module — generates modules/movie/ and registers it into AppModule
+talos module:create --name=movie --destination=app
 
-2. Install dependencies
+# 2. Entity — the `Entity` suffix is appended automatically → MovieEntity, table `movies`
+talos entity:create --name=Movie --module=movie --table-name=movies
 
-   ```sh
-   bun install
-   ```
+# 3. Repository — full CRUD over the entity
+talos repository:create --name=Movie --module=movie
 
-3. Build all packages
+# 4. Controller — one route per controller; repeat per endpoint
+talos controller:create \
+  --name=MovieList --module=movie \
+  --route-name=movie.list --route-path=/movies --route-method=get
+```
 
-   ```sh
-   bun run build
-   ```
-
-4. Run the test suite
-
-   ```sh
-   bun run test
-   ```
+Prefer an AI agent? Initialize the skills once (`talos claude:init` or `talos codex:init`), then describe the whole `Movie` domain in a single prompt — the agent drives the same `module:create`, `entity:create`, `repository:create`, and `controller:create` generators and writes the tests. See [Create your app](https://docs.talosjs.com/getting-started/create-app) for the full walkthrough.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 <!-- USAGE -->
 ## Usage
 
-Install individual packages from npm as needed:
+### Routing & Controllers
 
-```sh
-bun add @talosjs/app @talosjs/routing @talosjs/container
-```
-
-### Defining a Service
+Routing is decorator-bound: you never wire a route table by hand. Decorate a controller class with a `@Route` decorator, and the framework registers the path, method, and validation for you. A controller is a class with a single `index(context)` method — there is no base class and no boilerplate. When a request matches, the framework builds a fully typed `context` (request, response builder, logger, cache, user, locale, route metadata) and calls `index`.
 
 ```typescript
-import { decorator } from "@talosjs/service";
+import type { ContextType, IController } from "@talosjs/controller";
+import type { IResponse } from "@talosjs/http-response";
+import { Route } from "@talosjs/routing";
 
-@decorator.service()
-class UserService {
-  findAll() {
-    // ...
+@Route.get("/api/users", {
+  name: "api.users.list",
+  version: 1,
+  description: "List all users",
+})
+export class UserListController implements IController {
+  public async index(context: ContextType): Promise<IResponse> {
+    return context.response.json({
+      users: [{ id: 1, name: "John" }],
+    });
   }
 }
 ```
 
-### Defining a Route
+Every route carries a unique `name` in `namespace.resource.action` form, so you generate URLs from the name rather than hardcoding paths:
 
 ```typescript
-import { decorator } from "@talosjs/routing";
+import { router } from "@talosjs/routing";
 
-@decorator.controller()
-class UserController {
-  @decorator.get("/users")
-  index() {
-    // ...
+router.generate("api.users.show", { id: "123" }); // "/api/users/123"
+```
+
+The same decorator family declares WebSocket endpoints with `@Route.socket(...)`, whose context adds a `channel` API for subscribing and publishing.
+
+### Validation & Access Control
+
+Declare `params`, `queries`, and `payload` schemas on the route and they run **before** your controller, so `index` receives typed, trusted data. Set `roles` (or a `permission` class, or `env`/`ip`/`host` lists) right on the route so the contract states who may reach it.
+
+```typescript
+import type { ContextType, IController } from "@talosjs/controller";
+import type { IResponse } from "@talosjs/http-response";
+import { Route } from "@talosjs/routing";
+import { Assert } from "@talosjs/validation";
+
+type UserCreateRouteType = {
+  payload: { email: string; name: string; password: string };
+  response: { id: string; name: string; email: string };
+};
+
+@Route.post("/api/users", {
+  name: "api.users.create",
+  version: 1,
+  description: "Create a new user account",
+  payload: Assert({
+    email: "string.email",
+    name: "string >= 2",
+    password: "8 <= string <= 100",
+  }),
+  response: Assert({ id: "string", name: "string", email: "string" }),
+  roles: ["ROLE_ADMIN"],
+})
+export class UserCreateController implements IController {
+  constructor(private readonly userService: UserService) {}
+
+  public async index(
+    context: ContextType<UserCreateRouteType>,
+  ): Promise<IResponse> {
+    const data = await context.request.payload();
+    const user = await this.userService.execute(data);
+
+    return context.response.json(user, 201);
   }
 }
 ```
 
-### Using the DI Container
-
-```typescript
-import { Container } from "@talosjs/container";
-
-const userService = Container.get<UserService>(UserService);
-```
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-<!-- ARCHITECTURE -->
-## Architecture
-
-```
-Talos/
-├── packages/           # All 60+ independent packages
-│   ├── app/            # Application orchestrator
-│   ├── container/      # DI container (core dependency)
-│   ├── routing/        # HTTP routing
-│   ├── database/       # Database layer
-│   └── ...
-├── nx.json             # Nx monorepo configuration
-├── tsconfig.json       # Shared TypeScript config
-├── biome.jsonc         # Linting and formatting rules
-└── package.json        # Root workspace configuration
-```
-
-### Dependency Injection
-
-The framework uses a centralized DI container based on InversifyJS. Each package provides decorators that register classes with the container using configurable scopes:
-
-- **Singleton** (default) — One instance shared across the entire application
-- **Transient** — New instance created on every resolution
-- **Request** — One instance per HTTP request lifecycle
-
-### Naming Conventions
-
-Strictly enforced by decorators at registration time:
-
-| Type | Suffix | Example |
-|------|--------|---------|
-| Service | `Service` | `UserService` |
-| Repository | `Repository` | `UserRepository` |
-| Middleware | `Middleware` | `AuthMiddleware` |
+Keep controllers thin: validate and shape the request, hand the work to an injected service, and return through the `context.response` builder — no business logic in `index`. Read the deep dives on [Routing](https://docs.talosjs.com/basics/routing) and [Controllers](https://docs.talosjs.com/components/controller).
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -369,13 +278,11 @@ Talos turns vague requests into structured **specs** — YAML issues with contex
 
 | Step | Command | What it does |
 |------|---------|--------------|
-| **Find** | `/issue:found` | Audits a module's source code to surface concrete findings as candidate issues. |
+| **Find** | `/issue:found` | Audits a module's source to surface concrete findings as candidate issues. |
 | **Plan** | `/issue:plan` | Turns a free-form request into a precise, reviewable spec before any code is written. |
 | **Fix** | `/issue:fix` | Implements each planned issue, runs lint, and verifies every acceptance criterion before marking it done. |
 
-Each unit of work becomes a YAML file under `issues/`, evolving through four fields — `context`, `goal`, `dod` (definition of done), and `dependencies` — and progressing through states from `Backlog` to `Done`.
-
-Get started by initializing the AI skills for your agent:
+Each unit of work becomes a YAML file under `issues/`, evolving through four fields — `context`, `goal`, `dod` (definition of done), and `dependencies` — and progressing from `Backlog` to `Done`. Get started by initializing the AI skills for your agent:
 
 ```sh
 talos claude:init   # or: talos codex:init
@@ -385,8 +292,27 @@ Learn more in the [Spec-Driven Development guide](https://docs.talosjs.com/ai/sp
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
+<!-- ROADMAP -->
+## Roadmap
+
+See the [open issues](https://github.com/ooneex/talos/issues) for a full list of proposed features and known issues.
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
 <!-- DEVELOPMENT -->
 ## Development
+
+### Working on the Monorepo
+
+To develop the framework packages themselves:
+
+```sh
+git clone https://github.com/ooneex/talos.git
+cd Talos
+bun install        # install dependencies
+bun run build      # build all packages
+bun run test       # run the test suite
+```
 
 ### Commands
 
@@ -400,11 +326,7 @@ Learn more in the [Spec-Driven Development guide](https://docs.talosjs.com/ai/sp
 | `bun run npm:publish` | Publish all packages to npm |
 | `bunx nx graph` | Visualize the dependency graph |
 
-### Running Tests for a Specific Package
-
-```sh
-bun test packages/<package-name>/tests
-```
+Run the tests for a single package with `bun test packages/<package-name>/tests`.
 
 ### Commit Conventions
 
@@ -419,7 +341,6 @@ type(scope): Subject line
 **Scopes:** Package names (e.g., `routing`, `cache`) or `common` for repo-wide changes.
 
 ```sh
-# Examples
 feat(service): Add decorators and tests
 fix(routing): Resolve path parameter parsing
 chore(common): Update bun.lock dependencies
@@ -427,23 +348,18 @@ chore(common): Update bun.lock dependencies
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-<!-- ROADMAP -->
-## Roadmap
-
-See the [open issues](https://github.com/ooneex/talos/issues) for a full list of proposed features and known issues.
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
 <!-- CONTRIBUTING -->
 ## Contributing
 
-Contributions are welcome and appreciated. If you have a suggestion that would make this better, please fork the repo and create a pull request.
+Contributions are what make the open-source community such an amazing place to learn and build. Any contributions you make are **greatly appreciated**.
 
 1. Fork the project
 2. Create your feature branch (`git checkout -b feat/amazing-feature`)
 3. Commit your changes (`git commit -m 'feat(scope): Add amazing feature'`)
 4. Push to the branch (`git push origin feat/amazing-feature`)
 5. Open a pull request
+
+Don't forget to give the project a star ⭐ — thanks!
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
