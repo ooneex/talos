@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { AssertPort } from "@/constraints";
+import { AssertPort } from "@/constraints/AssertPort";
 
 describe("AssertPort", () => {
   const validator = new AssertPort();

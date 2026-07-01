@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { AssertChatQuery } from "@/constraints";
+import { AssertChatQuery } from "@/constraints/AssertChatQuery";
 
 describe("AssertChatQuery", () => {
   const validator = new AssertChatQuery();

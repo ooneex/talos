@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { AssertHexaColor } from "@/constraints";
+import { AssertHexaColor } from "@/constraints/AssertHexaColor";
 
 describe("AssertHexaColor", () => {
   const validator = new AssertHexaColor();

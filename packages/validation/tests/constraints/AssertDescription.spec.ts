@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { AssertDescription } from "@/constraints";
+import { AssertDescription } from "@/constraints/AssertDescription";
 
 describe("AssertDescription", () => {
   const validator = new AssertDescription();

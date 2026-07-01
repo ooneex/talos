@@ -9,115 +9,109 @@
     "README.md",
     "package.json"
   ],
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "module": "./dist/src/index.js",
+  "types": "./dist/src/index.d.ts",
   "exports": {
     ".": {
       "import": {
-        "types": "./dist/index.d.ts",
-        "default": "./dist/index.js"
-      }
-    },
-    "./constraints": {
-      "import": {
-        "types": "./dist/constraints/index.d.ts",
-        "default": "./dist/constraints/index.js"
+        "types": "./dist/src/index.d.ts",
+        "default": "./dist/src/index.js"
       }
     },
     "./constraints/AssertAppEnv": {
       "import": {
-        "types": "./dist/constraints/AssertAppEnv.d.ts",
-        "default": "./dist/constraints/AssertAppEnv.js"
+        "types": "./dist/src/constraints/AssertAppEnv.d.ts",
+        "default": "./dist/src/constraints/AssertAppEnv.js"
       }
     },
     "./constraints/AssertChatQuery": {
       "import": {
-        "types": "./dist/constraints/AssertChatQuery.d.ts",
-        "default": "./dist/constraints/AssertChatQuery.js"
+        "types": "./dist/src/constraints/AssertChatQuery.d.ts",
+        "default": "./dist/src/constraints/AssertChatQuery.js"
       }
     },
     "./constraints/AssertCountryCode": {
       "import": {
-        "types": "./dist/constraints/AssertCountryCode.d.ts",
-        "default": "./dist/constraints/AssertCountryCode.js"
+        "types": "./dist/src/constraints/AssertCountryCode.d.ts",
+        "default": "./dist/src/constraints/AssertCountryCode.js"
       }
     },
     "./constraints/AssertCurrency": {
       "import": {
-        "types": "./dist/constraints/AssertCurrency.d.ts",
-        "default": "./dist/constraints/AssertCurrency.js"
+        "types": "./dist/src/constraints/AssertCurrency.d.ts",
+        "default": "./dist/src/constraints/AssertCurrency.js"
       }
     },
     "./constraints/AssertDescription": {
       "import": {
-        "types": "./dist/constraints/AssertDescription.d.ts",
-        "default": "./dist/constraints/AssertDescription.js"
+        "types": "./dist/src/constraints/AssertDescription.d.ts",
+        "default": "./dist/src/constraints/AssertDescription.js"
       }
     },
     "./constraints/AssertEmail": {
       "import": {
-        "types": "./dist/constraints/AssertEmail.d.ts",
-        "default": "./dist/constraints/AssertEmail.js"
+        "types": "./dist/src/constraints/AssertEmail.d.ts",
+        "default": "./dist/src/constraints/AssertEmail.js"
       }
     },
     "./constraints/AssertFirstName": {
       "import": {
-        "types": "./dist/constraints/AssertFirstName.d.ts",
-        "default": "./dist/constraints/AssertFirstName.js"
+        "types": "./dist/src/constraints/AssertFirstName.d.ts",
+        "default": "./dist/src/constraints/AssertFirstName.js"
       }
     },
     "./constraints/AssertHexaColor": {
       "import": {
-        "types": "./dist/constraints/AssertHexaColor.d.ts",
-        "default": "./dist/constraints/AssertHexaColor.js"
+        "types": "./dist/src/constraints/AssertHexaColor.d.ts",
+        "default": "./dist/src/constraints/AssertHexaColor.js"
       }
     },
     "./constraints/AssertHostname": {
       "import": {
-        "types": "./dist/constraints/AssertHostname.d.ts",
-        "default": "./dist/constraints/AssertHostname.js"
+        "types": "./dist/src/constraints/AssertHostname.d.ts",
+        "default": "./dist/src/constraints/AssertHostname.js"
       }
     },
     "./constraints/AssertId": {
       "import": {
-        "types": "./dist/constraints/AssertId.d.ts",
-        "default": "./dist/constraints/AssertId.js"
+        "types": "./dist/src/constraints/AssertId.d.ts",
+        "default": "./dist/src/constraints/AssertId.js"
       }
     },
     "./constraints/AssertLastName": {
       "import": {
-        "types": "./dist/constraints/AssertLastName.d.ts",
-        "default": "./dist/constraints/AssertLastName.js"
+        "types": "./dist/src/constraints/AssertLastName.d.ts",
+        "default": "./dist/src/constraints/AssertLastName.js"
       }
     },
     "./constraints/AssertLocale": {
       "import": {
-        "types": "./dist/constraints/AssertLocale.d.ts",
-        "default": "./dist/constraints/AssertLocale.js"
+        "types": "./dist/src/constraints/AssertLocale.d.ts",
+        "default": "./dist/src/constraints/AssertLocale.js"
       }
     },
     "./constraints/AssertName": {
       "import": {
-        "types": "./dist/constraints/AssertName.d.ts",
-        "default": "./dist/constraints/AssertName.js"
+        "types": "./dist/src/constraints/AssertName.d.ts",
+        "default": "./dist/src/constraints/AssertName.js"
       }
     },
     "./constraints/AssertPort": {
       "import": {
-        "types": "./dist/constraints/AssertPort.d.ts",
-        "default": "./dist/constraints/AssertPort.js"
+        "types": "./dist/src/constraints/AssertPort.d.ts",
+        "default": "./dist/src/constraints/AssertPort.js"
       }
     },
     "./constraints/AssertUrl": {
       "import": {
-        "types": "./dist/constraints/AssertUrl.d.ts",
-        "default": "./dist/constraints/AssertUrl.js"
+        "types": "./dist/src/constraints/AssertUrl.d.ts",
+        "default": "./dist/src/constraints/AssertUrl.js"
       }
     },
     "./constraints/AssertYoutubeUrl": {
       "import": {
-        "types": "./dist/constraints/AssertYoutubeUrl.d.ts",
-        "default": "./dist/constraints/AssertYoutubeUrl.js"
+        "types": "./dist/src/constraints/AssertYoutubeUrl.d.ts",
+        "default": "./dist/src/constraints/AssertYoutubeUrl.js"
       }
     },
     "./package.json": "./package.json"
