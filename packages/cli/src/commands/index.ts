@@ -23,6 +23,7 @@ export { DockerCredentialsCreateCommand } from "./DockerCredentialsCreateCommand
 export { EntityCreateCommand } from "./EntityCreateCommand";
 export { EventCreateCommand } from "./EventCreateCommand";
 export { FeatureFlagCreateCommand } from "./FeatureFlagCreateCommand";
+export { GithubCredentialsCreateCommand } from "./GithubCredentialsCreateCommand";
 export { HelpCommand } from "./HelpCommand";
 export { IssueCreateCommand } from "./IssueCreateCommand";
 export { IssuePullCommand } from "./IssuePullCommand";
