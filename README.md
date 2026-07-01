@@ -16,9 +16,9 @@
   <br />
 
   <p align="center">
-    <strong>The TypeScript framework for the AI era, designed for Spec-Driven Development.</strong>
+    <strong>A modular TypeScript framework for Bun, built around Spec-Driven Development.</strong>
     <br />
-    A modular framework built on Bun — 60+ independent packages, from a weekend project to a production SaaS, with no rewrite in between.
+    60+ independent packages covering HTTP, data, security, real-time, and AI.
     <br />
     <br />
     <a href="https://docs.talosjs.com/getting-started"><strong>Explore the docs »</strong></a>
@@ -83,22 +83,21 @@
 
 <br />
 
-**Talos is a modular TypeScript framework built on [Bun](https://bun.sh).** It is the first framework designed around **Spec-Driven Development**, so AI agents work from your real intent rather than guesswork. Its 60+ independent packages — published under the `@talosjs` namespace and each versioned on its own — cover everything from HTTP, data, and security to real-time, AI, and utilities.
+Talos is a modular TypeScript framework built on [Bun](https://bun.sh). It ships as 60+ independent packages under the `@talosjs` namespace, each versioned on its own, covering HTTP, data, security, real-time, AI, and general utilities. You install only the packages you need.
 
-Stop prompting blind. With Talos, your work lives as structured **specs** that AI agents can find, plan, and implement against your real conventions, with every step transparent and verifiable. The same framework powers a small side project, a medium product, and a large multi-service platform — start simple, grow without rewrites.
+Its distinguishing feature is Spec-Driven Development. Instead of prompting an AI agent from scratch, you describe work as structured specs — YAML files with context, goals, and a definition of done — that agents can read, plan against, and implement using your module's existing conventions. The same codebase scales from a side project to a multi-service platform without a rewrite.
 
-📚 **Full documentation:** [docs.talosjs.com](https://docs.talosjs.com/getting-started)
+Full documentation: [docs.talosjs.com](https://docs.talosjs.com/getting-started).
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ### Why Talos
 
-- **Ship fast** — Decorator-driven routes, services, and repositories with sensible defaults. Go from idea to a running app in minutes, not days.
-- **Built for the AI era** — AI agents, RAG, and a Spec-Driven workflow live in the core, so your framework speaks the language of the tools building it.
-- **Scales with you** — One framework for side projects, products, and multi-service platforms. No rewrite between stages.
-- **Everything a SaaS needs** — Auth, JWT, roles, permissions, payments, caching, queues, mailer, and more, ready to use.
-- **Type-safe end to end** — Strict TypeScript with runtime validation via [ArkType](https://arktype.io/); your `params`, `payload`, `queries`, and `response` shapes flow through the whole handler.
-- **Easy to extend** — Dependency injection and a clean module system let you add, swap, or override anything without fighting the framework.
+- **Decorator-driven** — Routes, services, and repositories are declared with decorators and sensible defaults, so there's little boilerplate to write.
+- **AI in the core** — Agents, RAG, and the Spec-Driven workflow are built in rather than bolted on.
+- **SaaS building blocks** — Auth, JWT, roles, permissions, payments, caching, queues, and a mailer ship as packages.
+- **Type-safe with runtime validation** — Strict TypeScript backed by [ArkType](https://arktype.io/); your `params`, `payload`, `queries`, and `response` shapes are typed through the whole handler.
+- **Extensible** — Dependency injection and a module system let you add, swap, or override components.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -117,7 +116,7 @@ Stop prompting blind. With Talos, your work lives as structured **specs** that A
 <!-- GETTING STARTED -->
 ## Getting Started
 
-Go from an empty machine to a running Talos app with its first domain in a few commands.
+A few commands take you from an empty machine to a running Talos app with its first domain.
 
 ### Prerequisites
 
@@ -164,7 +163,7 @@ bun --version
 
    > The environment file is generated at `modules/shared/.env.yml`. Edit it to point at your database, Redis, and other services before starting.
 
-Every business domain you add becomes its own module under `modules/<name>/` — a self-contained vertical slice with its own controllers, services, repositories, entities, and config, registered automatically into `AppModule`.
+Every business domain you add becomes its own module under `modules/<name>/`: a self-contained slice with its own controllers, services, repositories, entities, and config, registered automatically into `AppModule`.
 
 ### Build your first resource
 
@@ -186,7 +185,7 @@ talos controller:create \
   --route-name=movie.list --route-path=/movies --route-method=get
 ```
 
-Prefer an AI agent? Initialize the skills once (`talos claude:init` or `talos codex:init`), then describe the whole `Movie` domain in a single prompt — the agent drives the same `module:create`, `entity:create`, `repository:create`, and `controller:create` generators and writes the tests. See [Create your app](https://docs.talosjs.com/getting-started/create-app) for the full walkthrough.
+Prefer an AI agent? Initialize the skills once (`talos claude:init` or `talos codex:init`), then describe the whole `Movie` domain in a single prompt. The agent runs the same `module:create`, `entity:create`, `repository:create`, and `controller:create` generators and writes the tests. See [Create your app](https://docs.talosjs.com/getting-started/create-app) for the full walkthrough.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -195,7 +194,7 @@ Prefer an AI agent? Initialize the skills once (`talos claude:init` or `talos co
 
 ### Routing & Controllers
 
-Routing is decorator-bound: you never wire a route table by hand. Decorate a controller class with a `@Route` decorator, and the framework registers the path, method, and validation for you. A controller is a class with a single `index(context)` method — there is no base class and no boilerplate. When a request matches, the framework builds a fully typed `context` (request, response builder, logger, cache, user, locale, route metadata) and calls `index`.
+Routing is decorator-bound, so you don't maintain a route table by hand. Decorate a controller class with `@Route` and the framework registers its path, method, and validation. A controller is a class with a single `index(context)` method; there's no base class to extend. When a request matches, the framework builds a typed `context` — request, response builder, logger, cache, user, locale, and route metadata — and calls `index`.
 
 ```typescript
 import type { ContextType, IController } from "@talosjs/controller";
@@ -216,7 +215,7 @@ export class UserListController implements IController {
 }
 ```
 
-Every route carries a unique `name` in `namespace.resource.action` form, so you generate URLs from the name rather than hardcoding paths:
+Every route carries a unique `name` in `namespace.resource.action` form, so you can generate URLs from the name instead of hardcoding paths:
 
 ```typescript
 import { router } from "@talosjs/routing";
@@ -228,7 +227,7 @@ The same decorator family declares WebSocket endpoints with `@Route.socket(...)`
 
 ### Validation & Access Control
 
-Declare `params`, `queries`, and `payload` schemas on the route and they run **before** your controller, so `index` receives typed, trusted data. Set `roles` (or a `permission` class, or `env`/`ip`/`host` lists) right on the route so the contract states who may reach it.
+Declare `params`, `queries`, and `payload` schemas on the route and they run before your controller, so `index` receives typed, validated data. Set `roles` (or a `permission` class, or `env`/`ip`/`host` lists) on the route to control who can reach it.
 
 ```typescript
 import type { ContextType, IController } from "@talosjs/controller";
@@ -267,14 +266,14 @@ export class UserCreateController implements IController {
 }
 ```
 
-Keep controllers thin: validate and shape the request, hand the work to an injected service, and return through the `context.response` builder — no business logic in `index`. Read the deep dives on [Routing](https://docs.talosjs.com/basics/routing) and [Controllers](https://docs.talosjs.com/components/controller).
+Keep controllers thin: validate and shape the request, hand the work to an injected service, and return through the `context.response` builder. Business logic belongs in the service, not in `index`. See the guides on [Routing](https://docs.talosjs.com/basics/routing) and [Controllers](https://docs.talosjs.com/components/controller) for more.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 <!-- SPEC-DRIVEN DEVELOPMENT -->
 ## Spec-Driven Development
 
-Talos turns vague requests into structured **specs** — YAML issues with context, goals, a definition of done, and dependencies — that flow through a transparent AI workflow. AI agents find, plan, and implement against your module's real conventions, and each step is verifiable against the spec's definition of done.
+Spec-Driven Development captures work as YAML issues with context, goals, a definition of done, and dependencies. AI agents find, plan, and implement against these specs using your module's existing conventions, and each step can be checked against the definition of done.
 
 | Step | Command | What it does |
 |------|---------|--------------|
@@ -282,7 +281,7 @@ Talos turns vague requests into structured **specs** — YAML issues with contex
 | **Plan** | `/issue:plan` | Turns a free-form request into a precise, reviewable spec before any code is written. |
 | **Fix** | `/issue:fix` | Implements each planned issue, runs lint, and verifies every acceptance criterion before marking it done. |
 
-Each unit of work becomes a YAML file under `issues/`, evolving through four fields — `context`, `goal`, `dod` (definition of done), and `dependencies` — and progressing from `Backlog` to `Done`. Get started by initializing the AI skills for your agent:
+Each unit of work is a YAML file under `issues/` with four fields (`context`, `goal`, `dod` for definition of done, and `dependencies`), progressing from `Backlog` to `Done`. To get started, initialize the AI skills for your agent:
 
 ```sh
 talos claude:init   # or: talos codex:init
@@ -351,15 +350,15 @@ chore(common): Update bun.lock dependencies
 <!-- CONTRIBUTING -->
 ## Contributing
 
-Contributions are what make the open-source community such an amazing place to learn and build. Any contributions you make are **greatly appreciated**.
+Contributions are welcome. To propose a change:
 
 1. Fork the project
-2. Create your feature branch (`git checkout -b feat/amazing-feature`)
-3. Commit your changes (`git commit -m 'feat(scope): Add amazing feature'`)
-4. Push to the branch (`git push origin feat/amazing-feature`)
+2. Create a feature branch (`git checkout -b feat/my-feature`)
+3. Commit your changes (`git commit -m 'feat(scope): Add my feature'`)
+4. Push to the branch (`git push origin feat/my-feature`)
 5. Open a pull request
 
-Don't forget to give the project a star ⭐ — thanks!
+If Talos is useful to you, a star on the repo is appreciated.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
