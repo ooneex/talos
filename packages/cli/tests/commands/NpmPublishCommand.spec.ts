@@ -125,7 +125,7 @@ describe("NpmPublishCommand", () => {
       await writeCredentials("npm_testtoken");
       const dir = await scaffoldTarget("packages", "cli");
 
-      await command.run({ package: "cli", silent: true });
+      await command.run({ packages: "cli", silent: true });
 
       expect(publishMock).toHaveBeenCalledTimes(1);
       expect(publishMock.mock.calls[0]?.[0]).toBe(dir);
@@ -135,7 +135,7 @@ describe("NpmPublishCommand", () => {
       await writeCredentials("npm_testtoken");
       const dir = await scaffoldTarget("modules", "blog");
 
-      await command.run({ module: "blog", silent: true });
+      await command.run({ modules: "blog", silent: true });
 
       expect(publishMock).toHaveBeenCalledTimes(1);
       expect(publishMock.mock.calls[0]?.[0]).toBe(dir);
@@ -145,7 +145,7 @@ describe("NpmPublishCommand", () => {
       await writeCredentials("npm_testtoken");
       await scaffoldTarget("packages", "cli");
 
-      await command.run({ package: "cli", silent: true });
+      await command.run({ packages: "cli", silent: true });
 
       expect(publishMock.mock.calls[0]?.[1]).toBe("public");
     });
@@ -154,7 +154,7 @@ describe("NpmPublishCommand", () => {
       await writeCredentials("npm_testtoken");
       await scaffoldTarget("packages", "cli");
 
-      await command.run({ package: "cli", access: "restricted", silent: true });
+      await command.run({ packages: "cli", access: "restricted", silent: true });
 
       expect(publishMock.mock.calls[0]?.[1]).toBe("restricted");
     });
@@ -163,7 +163,7 @@ describe("NpmPublishCommand", () => {
       await writeCredentials("npm_storedtoken");
       await scaffoldTarget("packages", "cli");
 
-      await command.run({ package: "cli", silent: true });
+      await command.run({ packages: "cli", silent: true });
 
       expect(publishMock.mock.calls[0]?.[2]).toBe("npm_storedtoken");
     });
@@ -173,7 +173,7 @@ describe("NpmPublishCommand", () => {
       const pkgDir = await scaffoldTarget("packages", "cli");
       const modDir = await scaffoldTarget("modules", "blog");
 
-      await command.run({ package: "cli", module: "blog", silent: true });
+      await command.run({ packages: "cli", modules: "blog", silent: true });
 
       const dirs = publishMock.mock.calls.map((call) => call[0]);
       expect(dirs).toEqual([pkgDir, modDir]);
@@ -201,7 +201,7 @@ describe("NpmPublishCommand", () => {
       // A third package that must be skipped because it is not requested.
       await scaffoldTarget("packages", "logger");
 
-      await command.run({ package: "cli,command", silent: true });
+      await command.run({ packages: "cli,command", silent: true });
 
       const dirs = publishMock.mock.calls.map((call) => call[0]);
       expect(dirs).toEqual([cliDir, commandDir]);
@@ -211,7 +211,7 @@ describe("NpmPublishCommand", () => {
       await writeCredentials("npm_testtoken");
       await scaffoldTarget("packages", "cli", "2.3.4");
 
-      await command.run({ package: "cli" });
+      await command.run({ packages: "cli" });
 
       expect(successCalls).toHaveLength(1);
       expect(successCalls[0]).toBe("Published @talosjs/cli@2.3.4");
@@ -221,7 +221,7 @@ describe("NpmPublishCommand", () => {
       await writeCredentials("npm_testtoken");
       await scaffoldTarget("packages", "cli", "2.3.4");
 
-      await command.run({ package: "cli", silent: true });
+      await command.run({ packages: "cli", silent: true });
 
       expect(publishMock.mock.calls[0]?.[3]).toBe("@talosjs/cli@2.3.4");
     });
@@ -231,7 +231,7 @@ describe("NpmPublishCommand", () => {
       // Directory is `ai`, but the published name is the scoped `@talosjs/ai`.
       await scaffoldRawTarget("packages", "ai", { name: "@talosjs/ai", version: "1.2.0" });
 
-      await command.run({ package: "ai" });
+      await command.run({ packages: "ai" });
 
       expect(successCalls[0]).toBe("Published @talosjs/ai@1.2.0");
     });
@@ -240,7 +240,7 @@ describe("NpmPublishCommand", () => {
       await writeCredentials("npm_testtoken");
       await scaffoldRawTarget("packages", "ai", { name: "@talosjs/ai" });
 
-      await command.run({ package: "ai" });
+      await command.run({ packages: "ai" });
 
       expect(successCalls[0]).toBe("Published @talosjs/ai");
     });
@@ -249,7 +249,7 @@ describe("NpmPublishCommand", () => {
       await writeCredentials("npm_testtoken");
       await scaffoldRawTarget("packages", "ai", { version: "1.2.0" });
 
-      await command.run({ package: "ai" });
+      await command.run({ packages: "ai" });
 
       expect(successCalls[0]).toBe("Published ai@1.2.0");
     });
@@ -276,7 +276,7 @@ describe("NpmPublishCommand", () => {
     test("should fail when no credentials are stored", async () => {
       await scaffoldTarget("packages", "cli");
 
-      await command.run({ package: "cli", silent: true });
+      await command.run({ packages: "cli", silent: true });
 
       expect(publishMock).not.toHaveBeenCalled();
       expect(process.exitCode).toBe(1);
@@ -286,7 +286,7 @@ describe("NpmPublishCommand", () => {
     test("should log an error when no credentials are stored", async () => {
       await scaffoldTarget("packages", "cli");
 
-      await command.run({ package: "cli" });
+      await command.run({ packages: "cli" });
 
       expect(errorCalls.some((message) => message.includes("No npm credentials found"))).toBe(true);
       process.exitCode = 0;
@@ -295,7 +295,7 @@ describe("NpmPublishCommand", () => {
     test("should log an error and skip publishing when the target does not exist", async () => {
       await writeCredentials("npm_testtoken");
 
-      await command.run({ package: "missing" });
+      await command.run({ packages: "missing" });
 
       expect(publishMock).not.toHaveBeenCalled();
       expect(errorCalls.some((message) => message.includes('No package named "missing" found'))).toBe(true);
@@ -306,7 +306,7 @@ describe("NpmPublishCommand", () => {
       await scaffoldTarget("packages", "cli");
       publishMock.mockImplementationOnce(() => Promise.resolve(false));
 
-      await command.run({ package: "cli" });
+      await command.run({ packages: "cli" });
 
       expect(successCalls).toHaveLength(0);
       expect(errorCalls.some((message) => message.includes("Failed to publish"))).toBe(true);
@@ -317,7 +317,7 @@ describe("NpmPublishCommand", () => {
       await scaffoldTarget("packages", "cli");
       publishMock.mockImplementationOnce(() => Promise.reject(new Error("boom")));
 
-      await command.run({ package: "cli" });
+      await command.run({ packages: "cli" });
 
       expect(errorCalls.some((message) => message.includes("Failed to publish"))).toBe(true);
       expect(successCalls).toHaveLength(0);
@@ -327,7 +327,7 @@ describe("NpmPublishCommand", () => {
       await writeCredentials("npm_testtoken");
       await scaffoldTarget("packages", "cli");
 
-      await command.run({ package: "cli", silent: true });
+      await command.run({ packages: "cli", silent: true });
 
       expect(successCalls).toHaveLength(0);
       expect(errorCalls).toHaveLength(0);
@@ -338,7 +338,7 @@ describe("NpmPublishCommand", () => {
       await scaffoldTarget("packages", "cli");
       publishMock.mockImplementationOnce(() => Promise.resolve(false));
 
-      await command.run({ package: "cli", silent: true });
+      await command.run({ packages: "cli", silent: true });
 
       expect(successCalls).toHaveLength(0);
       expect(errorCalls).toHaveLength(0);
@@ -349,7 +349,7 @@ describe("NpmPublishCommand", () => {
       await scaffoldTarget("packages", "cli", "2.3.4");
       versionExistsMock.mockImplementationOnce(() => Promise.resolve(true));
 
-      await command.run({ package: "cli" });
+      await command.run({ packages: "cli" });
 
       expect(publishMock).not.toHaveBeenCalled();
       expect(successCalls).toHaveLength(0);
@@ -361,7 +361,7 @@ describe("NpmPublishCommand", () => {
       await scaffoldTarget("packages", "cli", "2.3.4");
       versionExistsMock.mockImplementationOnce(() => Promise.resolve(true));
 
-      await command.run({ package: "cli" });
+      await command.run({ packages: "cli" });
 
       expect(infoCalls).toContain("Skipped @talosjs/cli@2.3.4 (already published)");
     });
@@ -371,7 +371,7 @@ describe("NpmPublishCommand", () => {
       await scaffoldTarget("packages", "cli", "2.3.4");
       versionExistsMock.mockImplementationOnce(() => Promise.resolve(true));
 
-      await command.run({ package: "cli", silent: true });
+      await command.run({ packages: "cli", silent: true });
 
       expect(infoCalls).toHaveLength(0);
     });
@@ -380,7 +380,7 @@ describe("NpmPublishCommand", () => {
       await writeCredentials("npm_testtoken");
       await scaffoldTarget("packages", "cli", "2.3.4");
 
-      await command.run({ package: "cli" });
+      await command.run({ packages: "cli" });
 
       expect(versionExistsMock).toHaveBeenCalledTimes(1);
       expect(versionExistsMock.mock.calls[0]?.slice(0, 2)).toEqual(["@talosjs/cli", "2.3.4"]);
@@ -390,7 +390,7 @@ describe("NpmPublishCommand", () => {
       await writeCredentials("npm_testtoken");
       await scaffoldRawTarget("packages", "ai", { name: "@talosjs/ai" });
 
-      await command.run({ package: "ai" });
+      await command.run({ packages: "ai" });
 
       expect(versionExistsMock).not.toHaveBeenCalled();
       expect(publishMock).toHaveBeenCalledTimes(1);
@@ -402,7 +402,7 @@ describe("NpmPublishCommand", () => {
       await scaffoldTarget("packages", "ai", "1.2.0");
       versionExistsMock.mockImplementationOnce(() => Promise.resolve(true));
 
-      await command.run({ package: "cli,ai" });
+      await command.run({ packages: "cli,ai" });
 
       expect(infoCalls).toContain("Summary: 1 published, 1 ignored");
     });
@@ -411,7 +411,7 @@ describe("NpmPublishCommand", () => {
       await writeCredentials("npm_testtoken");
       await scaffoldTarget("packages", "cli");
 
-      await command.run({ package: "cli", silent: true });
+      await command.run({ packages: "cli", silent: true });
 
       expect(infoCalls).toHaveLength(0);
     });

@@ -9,8 +9,8 @@ import { createSpinner, LOG_OPTIONS } from "../utils";
 type NpmAccessType = "public" | "restricted";
 
 type CommandOptionsType = {
-  package?: string;
-  module?: string;
+  packages?: string;
+  modules?: string;
   access?: NpmAccessType;
   silent?: boolean;
 };
@@ -34,7 +34,7 @@ export class NpmPublishCommand<T extends CommandOptionsType = CommandOptionsType
   }
 
   public async run(options: T): Promise<void> {
-    const { package: pkg, module, access = "public", silent } = options;
+    const { packages, modules, access = "public", silent } = options;
     const logger = new TerminalLogger();
     const log = (level: "error" | "success" | "info", message: string): void => {
       if (!silent) {
@@ -42,7 +42,7 @@ export class NpmPublishCommand<T extends CommandOptionsType = CommandOptionsType
       }
     };
 
-    const targets = await this.resolveTargets(pkg, module);
+    const targets = await this.resolveTargets(packages, modules);
     if (targets.length === 0) {
       log("error", "No packages or modules found to publish");
       process.exitCode = 1;
@@ -91,19 +91,19 @@ export class NpmPublishCommand<T extends CommandOptionsType = CommandOptionsType
     log("info", `Summary: ${succeeded} published, ${ignored} ignored`);
   }
 
-  // Build the list of targets to publish. With neither `--package` nor `--module`, every
+  // Build the list of targets to publish. With neither `--packages` nor `--modules`, every
   // package and module is published. Each flag accepts a comma-separated list of names.
-  private async resolveTargets(pkg?: string, module?: string): Promise<TargetType[]> {
-    if (pkg === undefined && module === undefined) {
+  private async resolveTargets(packages?: string, modules?: string): Promise<TargetType[]> {
+    if (packages === undefined && modules === undefined) {
       return [...(await this.discover("packages", "package")), ...(await this.discover("modules", "module"))];
     }
 
     const targets: TargetType[] = [];
 
-    for (const name of this.split(pkg)) {
+    for (const name of this.split(packages)) {
       targets.push({ base: join("packages", name), type: "package", name });
     }
-    for (const name of this.split(module)) {
+    for (const name of this.split(modules)) {
       targets.push({ base: join("modules", name), type: "module", name });
     }
 

@@ -268,12 +268,22 @@ describe("_talos.txt", () => {
       expect(match?.[1]).toContain("--override");
     });
 
-    test("migration:create and release:create should have module option", async () => {
+    test("migration:create should have module option", async () => {
       const content = await Bun.file(templatePath).text();
-      const match = content.match(/migration:create\|release:create\)([\s\S]*?);;/);
+      const match = content.match(/migration:create\)([\s\S]*?);;/);
       expect(match).not.toBeNull();
       expect(match?.[1]).toContain("--module=");
       expect(match?.[1]).toContain("_talos_modules");
+    });
+
+    test("release:create should have packages and modules options", async () => {
+      const content = await Bun.file(templatePath).text();
+      const match = content.match(/release:create\)([\s\S]*?);;/);
+      expect(match).not.toBeNull();
+      expect(match?.[1]).toContain("--packages=");
+      expect(match?.[1]).toContain("_talos_publish_packages");
+      expect(match?.[1]).toContain("--modules=");
+      expect(match?.[1]).toContain("_talos_publish_modules");
     });
 
     test("seed:create should have name and module options", async () => {
@@ -494,13 +504,13 @@ describe("_talos.txt", () => {
       expect(match?.[1]).toContain("_talos_spa_modules");
     });
 
-    test("npm:publish should have package, module, and access options with publish target suggestions", async () => {
+    test("npm:publish should have packages, modules, and access options with publish target suggestions", async () => {
       const content = await Bun.file(templatePath).text();
       const match = content.match(/npm:publish\)([\s\S]*?);;/);
       expect(match).not.toBeNull();
-      expect(match?.[1]).toContain("--package=");
+      expect(match?.[1]).toContain("--packages=");
       expect(match?.[1]).toContain("_talos_publish_packages");
-      expect(match?.[1]).toContain("--module=");
+      expect(match?.[1]).toContain("--modules=");
       expect(match?.[1]).toContain("_talos_publish_modules");
       expect(match?.[1]).toContain("--access=");
       expect(match?.[1]).toContain("public");

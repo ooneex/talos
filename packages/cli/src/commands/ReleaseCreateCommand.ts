@@ -8,8 +8,8 @@ import { askConfirm } from "../prompts/askConfirm";
 import { LOG_OPTIONS } from "../utils";
 
 type CommandOptionsType = {
-  module?: string;
-  package?: string;
+  modules?: string;
+  packages?: string;
 };
 
 type PackageJsonType = {
@@ -53,7 +53,15 @@ export class ReleaseCreateCommand<T extends CommandOptionsType = CommandOptionsT
   }
 
   public async run(options?: T): Promise<void> {
-    const { module, package: pkg } = options ?? {};
+    const { modules, packages } = options ?? {};
+    const moduleNames = modules
+      ?.split(",")
+      .map((name) => name.trim())
+      .filter(Boolean);
+    const packageNames = packages
+      ?.split(",")
+      .map((name) => name.trim())
+      .filter(Boolean);
     const logger = new TerminalLogger();
     const cwd = process.cwd();
 
@@ -83,17 +91,21 @@ export class ReleaseCreateCommand<T extends CommandOptionsType = CommandOptionsT
       return;
     }
 
-    const hasFilter = module !== undefined || pkg !== undefined;
+    const hasFilter =
+      (moduleNames !== undefined && moduleNames.length > 0) || (packageNames !== undefined && packageNames.length > 0);
     const targetDirs = hasFilter
       ? dirs.filter(
           (dir) =>
-            (pkg !== undefined && dir.type === "package" && basename(dir.base) === pkg) ||
-            (module !== undefined && dir.type === "module" && basename(dir.base) === module),
+            (packageNames !== undefined && dir.type === "package" && packageNames.includes(basename(dir.base))) ||
+            (moduleNames !== undefined && dir.type === "module" && moduleNames.includes(basename(dir.base))),
         )
       : dirs;
 
     if (targetDirs.length === 0) {
-      const requested = [pkg !== undefined && `package "${pkg}"`, module !== undefined && `module "${module}"`]
+      const requested = [
+        packageNames !== undefined && packageNames.length > 0 && `package(s) "${packageNames.join(", ")}"`,
+        moduleNames !== undefined && moduleNames.length > 0 && `module(s) "${moduleNames.join(", ")}"`,
+      ]
         .filter(Boolean)
         .join(" or ");
       logger.error(`No ${requested} found`, undefined, LOG_OPTIONS);

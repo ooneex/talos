@@ -249,8 +249,8 @@ _talos() {
           ;;
         npm:publish)
           _arguments -s \
-            '--package=-[Package name(s), comma-separated (default: all)]::packages:_talos_publish_packages' \
-            '--module=-[Module name(s), comma-separated (default: all)]::modules:_talos_publish_modules' \
+            '--packages=-[Package name(s), comma-separated (default: all)]::packages:_talos_publish_packages' \
+            '--modules=-[Module name(s), comma-separated (default: all)]::modules:_talos_publish_modules' \
             '--access=[Registry access level]:access:(public restricted)'
           ;;
         entity:create)
@@ -274,9 +274,14 @@ _talos() {
             '--channel=[Channel name]:channel' \
             '--override[Override existing file]'
           ;;
-        migration:create|release:create)
+        migration:create)
           _arguments -s \
             '--module=[Module name]:module:_talos_modules'
+          ;;
+        release:create)
+          _arguments -s \
+            '--packages=-[Package name(s), comma-separated (default: all)]::packages:_talos_publish_packages' \
+            '--modules=-[Module name(s), comma-separated (default: all)]::modules:_talos_publish_modules'
           ;;
         migration:up|seed:run)
           _arguments -s \
