@@ -1,4 +1,4 @@
-import { readdir } from "node:fs/promises";
+import { readdir, rm } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import type { ICommand } from "@talosjs/command";
@@ -164,21 +164,79 @@ export class NpmPublishCommand<T extends CommandOptionsType = CommandOptionsType
     silent?: boolean,
   ): Promise<boolean> {
     const spinner = silent ? null : createSpinner(`Publishing ${label} to npm...`);
+    const distDir = join(dir, "dist");
+    const publishDir = join(distDir, "publish");
 
     try {
-      const proc = Bun.spawn(
-        ["npm", "publish", "--access", access],
-        {
-          cwd: dir,
-          stdout: "ignore",
-          stderr: "ignore",
-          env: { ...process.env, [`npm_config_//${NPM_REGISTRY}/:_authToken`]: token },
-        },
-      );
+      // Clear leftovers first so a stale tarball or publish folder never leaks
+      // into the packed artifact (dist/ ships as-is).
+      await this.cleanArtifacts(distDir, publishDir);
 
-      return (await proc.exited) === 0;
+      // Pack with bun so workspace dependencies resolve to real version ranges,
+      // then publish the extracted copy with npm. `bun publish` is avoided
+      // because it forces an interactive web-OTP flow.
+      if (!(await this.spawn(["bun", "pm", "pack", "--destination", "./dist"], dir, token))) {
+        return false;
+      }
+
+      const tarball = await this.findTarball(distDir);
+      if (!tarball) {
+        return false;
+      }
+
+      // Extract the packed tarball into dist/publish. npm tarballs nest every
+      // entry under a `package/` directory, so strip that prefix to land the
+      // resolved package.json directly in dist/publish.
+      const files = await new Bun.Archive(await Bun.file(tarball).bytes()).files();
+      if (files.size === 0) {
+        return false;
+      }
+      for (const [path, file] of files) {
+        await Bun.write(join(publishDir, path.replace(/^package\//, "")), file);
+      }
+
+      return await this.spawn(["npm", "publish", "--access", access], publishDir, token);
     } finally {
+      await this.cleanArtifacts(distDir, publishDir);
       spinner?.stop();
+    }
+  }
+
+  // Spawn a command with the npm auth token wired into the environment.
+  private async spawn(cmd: string[], cwd: string, token: string): Promise<boolean> {
+    const proc = Bun.spawn(cmd, {
+      cwd,
+      stdout: "ignore",
+      stderr: "ignore",
+      env: { ...process.env, [`npm_config_//${NPM_REGISTRY}/:_authToken`]: token },
+    });
+
+    return (await proc.exited) === 0;
+  }
+
+  // Locate the `.tgz` bun produced in the dist directory.
+  private async findTarball(distDir: string): Promise<string | null> {
+    try {
+      const tarball = (await readdir(distDir)).find((entry) => entry.endsWith(".tgz"));
+      return tarball ? join(distDir, tarball) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  // Remove the extracted publish folder and any tarball so they are never
+  // bundled into the published package.
+  private async cleanArtifacts(distDir: string, publishDir: string): Promise<void> {
+    await rm(publishDir, { recursive: true, force: true }).catch(() => {});
+
+    try {
+      for (const entry of await readdir(distDir)) {
+        if (entry.endsWith(".tgz")) {
+          await rm(join(distDir, entry), { force: true }).catch(() => {});
+        }
+      }
+    } catch {
+      // dist/ may not exist yet; nothing to clean.
     }
   }
 }
