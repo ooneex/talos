@@ -141,7 +141,7 @@ export class App {
     // Prefer the project root .env.yml, falling back to the module's own .env.yml.
     const moduleRoot = dirname(dirname(Bun.main));
     const cwd = process.cwd();
-    await loadEnv([join(cwd, ".env.yml"), join(cwd, "modules", "shared", ".env.yml"), join(moduleRoot, ".env.yml")]);
+    await loadEnv([join(cwd, ".env.yml"), join(moduleRoot, ".env.yml")]);
 
     const logger = new TerminalLogger();
 
