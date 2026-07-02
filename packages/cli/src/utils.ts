@@ -308,6 +308,7 @@ export const generateIssueId = async (issuesDir?: string): Promise<string> => {
 
 export type IssueYamlType = {
   id?: string | null | undefined;
+  module?: string | null | undefined;
   title?: string | null | undefined;
   state?: string | null | undefined;
   priority?: string | null | undefined;
@@ -330,6 +331,7 @@ export const issueToYaml = (issue: IssueYamlType): string => {
   const lines: string[] = [];
 
   if (issue.id !== undefined) lines.push(`id: ${quoteScalar(issue.id)}`);
+  if (issue.module !== undefined) lines.push(`module: ${quoteScalar(issue.module)}`);
   if (issue.title !== undefined) lines.push(`title: ${quoteScalar(issue.title)}`);
   if (issue.state !== undefined) lines.push(`state: ${quoteScalar(issue.state)}`);
   if (issue.priority !== undefined) lines.push(`priority: ${quoteScalar(issue.priority)}`);

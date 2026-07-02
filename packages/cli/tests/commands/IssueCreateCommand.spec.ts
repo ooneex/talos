@@ -67,6 +67,7 @@ describe("IssueCreateCommand", () => {
       const content = await Bun.file(join(testDir, "modules", "shared", "issues", ymlFile)).text();
 
       expect(content).toMatch(/id: "[A-F]{3}-\d{6}"/);
+      expect(content).toContain('module: "shared"');
       expect(content).toContain('title: "My Issue"');
       expect(content).toContain("description: |");
       expect(content).toContain("  My desc");
@@ -110,6 +111,9 @@ describe("IssueCreateCommand", () => {
       const files = await readdir(join(testDir, "modules", "my-module", "issues"));
       const ymlFiles = files.filter((f) => f.endsWith(".yml"));
       expect(ymlFiles.length).toBe(1);
+
+      const content = await Bun.file(join(testDir, "modules", "my-module", "issues", ymlFiles[0] ?? "")).text();
+      expect(content).toContain('module: "my-module"');
     });
   });
 

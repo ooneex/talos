@@ -86,6 +86,7 @@ export class IssueCreateCommand<T extends CommandOptionsType = CommandOptionsTyp
     const resolvedId = await generateIssueId(issuesDir);
     const yaml = issueToYaml({
       id: resolvedId,
+      module,
       title: title?.trim() ?? null,
       state: state?.trim() ?? null,
       priority: priority?.trim() ?? null,
