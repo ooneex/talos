@@ -385,7 +385,7 @@ describe("ReleaseCreateCommand", () => {
       expect(bunLockCommitIndex).toBeGreaterThan(bunLockAddIndex);
     });
 
-    test("should release only the package matching the module option", async () => {
+    test("should release only the package matching the package option", async () => {
       const tagged: string[] = [];
 
       // @ts-expect-error accessing private method for testing
@@ -414,19 +414,79 @@ describe("ReleaseCreateCommand", () => {
       );
 
       process.chdir(testDir);
-      await command.run({ module: "alpha" });
+      await command.run({ package: "alpha" });
 
       expect(tagged).toEqual(["@talosjs/alpha@1.1.0"]);
     });
 
-    test("should not fail when the module option matches nothing", async () => {
+    test("should release only the module matching the module option", async () => {
+      const tagged: string[] = [];
+
+      // @ts-expect-error accessing private method for testing
+      command.getLastTag = mock(() => Promise.resolve(null));
+      // @ts-expect-error accessing private method for testing
+      command.getCommitsSinceTag = mock(() =>
+        Promise.resolve([{ hash: "abc12345", type: "feat", scope: "test", subject: "Add feature", author: "Test" }]),
+      );
+      // @ts-expect-error accessing private method for testing
+      command.gitAdd = mock(() => Promise.resolve());
+      // @ts-expect-error accessing private method for testing
+      command.gitCommit = mock(() => Promise.resolve());
+      // @ts-expect-error accessing private method for testing
+      command.gitTag = mock((tag: string) => {
+        tagged.push(tag);
+        return Promise.resolve();
+      });
+
+      await Bun.write(
+        join(testDir, "modules", "billing", "package.json"),
+        JSON.stringify({ name: "@app/billing", version: "1.0.0" }),
+      );
       await Bun.write(
         join(testDir, "packages", "alpha", "package.json"),
         JSON.stringify({ name: "@talosjs/alpha", version: "1.0.0" }),
       );
 
       process.chdir(testDir);
-      await command.run({ module: "missing" });
+      await command.run({ module: "billing" });
+
+      expect(tagged).toEqual(["@app/billing@1.1.0"]);
+    });
+
+    test("should not release a package when only the module option matches its name", async () => {
+      const tagged: string[] = [];
+
+      // @ts-expect-error accessing private method for testing
+      command.getLastTag = mock(() => Promise.resolve(null));
+      // @ts-expect-error accessing private method for testing
+      command.getCommitsSinceTag = mock(() =>
+        Promise.resolve([{ hash: "abc12345", type: "feat", scope: "test", subject: "Add feature", author: "Test" }]),
+      );
+      // @ts-expect-error accessing private method for testing
+      command.gitTag = mock((tag: string) => {
+        tagged.push(tag);
+        return Promise.resolve();
+      });
+
+      await Bun.write(
+        join(testDir, "packages", "alpha", "package.json"),
+        JSON.stringify({ name: "@talosjs/alpha", version: "1.0.0" }),
+      );
+
+      process.chdir(testDir);
+      await command.run({ module: "alpha" });
+
+      expect(tagged).toEqual([]);
+    });
+
+    test("should not fail when the package option matches nothing", async () => {
+      await Bun.write(
+        join(testDir, "packages", "alpha", "package.json"),
+        JSON.stringify({ name: "@talosjs/alpha", version: "1.0.0" }),
+      );
+
+      process.chdir(testDir);
+      await command.run({ package: "missing" });
     });
   });
 });

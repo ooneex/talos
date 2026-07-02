@@ -69,7 +69,7 @@ describe("NpmPublishCommand", () => {
     // match what the command sees via process.cwd().
     testDir = process.cwd();
 
-    // Stub the real `bun publish` subprocess so tests never hit the network.
+    // Stub the real `npm publish` subprocess so tests never hit the network.
     publishMock = mock(() => Promise.resolve(true));
     // @ts-expect-error overriding a private method for testing
     command.publish = publishMock;
