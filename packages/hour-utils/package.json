@@ -1,7 +1,7 @@
 {
   "name": "@talosjs/hour-utils",
   "description": "Time unit conversion utilities for hours, minutes, seconds, and milliseconds",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "files": [
     "dist",
