@@ -9,6 +9,7 @@ import { LOG_OPTIONS } from "../utils";
 
 type CommandOptionsType = {
   module?: string;
+  package?: string;
 };
 
 type PackageJsonType = {
@@ -52,7 +53,7 @@ export class ReleaseCreateCommand<T extends CommandOptionsType = CommandOptionsT
   }
 
   public async run(options?: T): Promise<void> {
-    const { module } = options ?? {};
+    const { module, package: pkg } = options ?? {};
     const logger = new TerminalLogger();
     const cwd = process.cwd();
 
@@ -76,10 +77,20 @@ export class ReleaseCreateCommand<T extends CommandOptionsType = CommandOptionsT
       return;
     }
 
-    const targetDirs = module ? dirs.filter((dir) => basename(dir.base) === module) : dirs;
+    const hasFilter = module !== undefined || pkg !== undefined;
+    const targetDirs = hasFilter
+      ? dirs.filter(
+          (dir) =>
+            (pkg !== undefined && dir.type === "package" && basename(dir.base) === pkg) ||
+            (module !== undefined && dir.type === "module" && basename(dir.base) === module),
+        )
+      : dirs;
 
     if (targetDirs.length === 0) {
-      logger.error(`No package or module named "${module}" found`, undefined, LOG_OPTIONS);
+      const requested = [pkg !== undefined && `package "${pkg}"`, module !== undefined && `module "${module}"`]
+        .filter(Boolean)
+        .join(" or ");
+      logger.error(`No ${requested} found`, undefined, LOG_OPTIONS);
       process.exitCode = 1;
       return;
     }
