@@ -57,6 +57,12 @@ export class ReleaseCreateCommand<T extends CommandOptionsType = CommandOptionsT
     const logger = new TerminalLogger();
     const cwd = process.cwd();
 
+    if (await this.hasPendingChanges()) {
+      logger.error("Working tree has pending changes. Commit or stash them before releasing", undefined, LOG_OPTIONS);
+      process.exitCode = 1;
+      return;
+    }
+
     const dirs: { base: string; type: string }[] = [];
 
     for (const { name, type } of [
@@ -162,6 +168,15 @@ export class ReleaseCreateCommand<T extends CommandOptionsType = CommandOptionsT
         logger.error("Failed to push to remote", undefined, LOG_OPTIONS);
         process.exitCode = 1;
       }
+    }
+  }
+
+  private async hasPendingChanges(): Promise<boolean> {
+    try {
+      const result = await $`git --no-pager status --porcelain`.quiet();
+      return result.text().trim().length > 0;
+    } catch {
+      return false;
     }
   }
 
