@@ -1,7 +1,7 @@
 {
   "name": "@talosjs/socket",
   "description": "WebSocket server implementation with room management, event broadcasting, client tracking, and middleware integration for real-time applications",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "files": [
     "dist",
