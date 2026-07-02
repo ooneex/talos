@@ -1,7 +1,7 @@
 {
   "name": "@talosjs/event",
   "description": "Event messaging system for decoupled, event-driven communication between application components with typed event channels",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "files": [
     "dist",
