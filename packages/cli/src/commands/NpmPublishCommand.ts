@@ -167,7 +167,7 @@ export class NpmPublishCommand<T extends CommandOptionsType = CommandOptionsType
 
     try {
       const proc = Bun.spawn(
-        ["bun", "publish", "--access", access, "--tolerate-republish", "--force", "--production"],
+        ["npm", "publish", "--access", access],
         {
           cwd: dir,
           stdout: "ignore",
