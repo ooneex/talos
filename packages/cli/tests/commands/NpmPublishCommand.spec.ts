@@ -356,6 +356,26 @@ describe("NpmPublishCommand", () => {
       expect(errorCalls).toHaveLength(0);
     });
 
+    test("should log that an already-published version was skipped", async () => {
+      await writeCredentials("npm_testtoken");
+      await scaffoldTarget("packages", "cli", "2.3.4");
+      versionExistsMock.mockImplementationOnce(() => Promise.resolve(true));
+
+      await command.run({ package: "cli" });
+
+      expect(infoCalls).toContain("Skipped @talosjs/cli@2.3.4 (already published)");
+    });
+
+    test("should suppress the skip message in silent mode", async () => {
+      await writeCredentials("npm_testtoken");
+      await scaffoldTarget("packages", "cli", "2.3.4");
+      versionExistsMock.mockImplementationOnce(() => Promise.resolve(true));
+
+      await command.run({ package: "cli", silent: true });
+
+      expect(infoCalls).toHaveLength(0);
+    });
+
     test("should check the registry with the resolved name and version", async () => {
       await writeCredentials("npm_testtoken");
       await scaffoldTarget("packages", "cli", "2.3.4");

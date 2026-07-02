@@ -22,6 +22,9 @@ describe("ReleaseCreateCommand", () => {
     // Mock getRepoUrl to return null for predictable changelog output
     // @ts-expect-error accessing private method for testing
     command.getRepoUrl = mock(() => Promise.resolve(null));
+    // Assume a clean working tree unless a test overrides it
+    // @ts-expect-error accessing private method for testing
+    command.hasPendingChanges = mock(() => Promise.resolve(false));
   });
 
   afterEach(() => {
@@ -321,6 +324,36 @@ describe("ReleaseCreateCommand", () => {
   });
 
   describe("run()", () => {
+    test("should stop without releasing when the working tree has pending changes", async () => {
+      const tagged: string[] = [];
+
+      // @ts-expect-error accessing private method for testing
+      command.hasPendingChanges = mock(() => Promise.resolve(true));
+      // @ts-expect-error accessing private method for testing
+      command.getLastTag = mock(() => Promise.resolve(null));
+      // @ts-expect-error accessing private method for testing
+      command.getCommitsSinceTag = mock(() =>
+        Promise.resolve([{ hash: "abc12345", type: "feat", scope: "test", subject: "Add feature", author: "Test" }]),
+      );
+      // @ts-expect-error accessing private method for testing
+      command.gitTag = mock((tag: string) => {
+        tagged.push(tag);
+        return Promise.resolve();
+      });
+
+      await Bun.write(
+        join(testDir, "packages", "alpha", "package.json"),
+        JSON.stringify({ name: "@talosjs/alpha", version: "1.0.0" }),
+      );
+
+      process.chdir(testDir);
+      await command.run();
+
+      expect(tagged).toEqual([]);
+      expect(process.exitCode).toBe(1);
+      process.exitCode = 0;
+    });
+
     test("should not fail when no packages or modules directories exist", async () => {
       await Bun.write(join(testDir, ".gitkeep"), "");
       process.chdir(testDir);
