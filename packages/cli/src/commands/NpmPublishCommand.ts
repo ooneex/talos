@@ -36,7 +36,7 @@ export class NpmPublishCommand<T extends CommandOptionsType = CommandOptionsType
   public async run(options: T): Promise<void> {
     const { package: pkg, module, access = "public", silent } = options;
     const logger = new TerminalLogger();
-    const log = (level: "error" | "success", message: string): void => {
+    const log = (level: "error" | "success" | "info", message: string): void => {
       if (!silent) {
         logger[level](message, undefined, LOG_OPTIONS);
       }
@@ -56,6 +56,9 @@ export class NpmPublishCommand<T extends CommandOptionsType = CommandOptionsType
       return;
     }
 
+    let succeeded = 0;
+    let ignored = 0;
+
     for (const target of targets) {
       const targetDir = join(process.cwd(), target.base);
       const pkgJsonFile = Bun.file(join(targetDir, "package.json"));
@@ -69,13 +72,22 @@ export class NpmPublishCommand<T extends CommandOptionsType = CommandOptionsType
       const name = pkgJson.name ?? target.name;
       const label = pkgJson.version ? `${name}@${pkgJson.version}` : name;
 
+      // Skip versions already on the registry without logging noise.
+      if (pkgJson.version && (await this.versionExists(name, pkgJson.version, token))) {
+        ignored++;
+        continue;
+      }
+
       const published = await this.publish(targetDir, access, token, label, silent).catch(() => false);
       if (published) {
-        log("success", `Published ${label} to npm`);
+        succeeded++;
+        log("success", `Published ${label}`);
       } else {
         log("error", `Failed to publish ${label}`);
       }
     }
+
+    log("info", `Summary: ${succeeded} published, ${ignored} ignored`);
   }
 
   // Build the list of targets to publish. With neither `--package` nor `--module`, every
@@ -117,6 +129,19 @@ export class NpmPublishCommand<T extends CommandOptionsType = CommandOptionsType
       .split(",")
       .map((name) => name.trim())
       .filter(Boolean);
+  }
+
+  // Query the registry for a specific version. A 200 means it is already published,
+  // so the caller can skip it. Network failures fall through to a publish attempt.
+  private async versionExists(name: string, version: string, token: string): Promise<boolean> {
+    const url = `https://${NPM_REGISTRY}/${encodeURIComponent(name)}/${encodeURIComponent(version)}`;
+
+    try {
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      return res.ok;
+    } catch {
+      return false;
+    }
   }
 
   private async readToken(): Promise<string | null> {
