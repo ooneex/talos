@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.5.0) - 2026-07-02
+
+### Added
+
+- Add --publish flag to release:create for npm publishing| — Franck ([f292e029](https://github.com/ooneex/talos/commit/f292e029))
+- Rename publish and release flags to plural with multi-value support| — Franck ([312238ca](https://github.com/ooneex/talos/commit/312238ca))
+
 ## [1.4.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.4.0) - 2026-07-02
 
 ### Added
