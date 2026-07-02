@@ -86,6 +86,8 @@ Rules:
 
 ### 3. Extract Labels, Set State and Priority
 
+**Module** — Preserve the existing `module` field (set by `oo issue:create`), and give every sub-issue the same `module` value as the parent. It mirrors the `modules/<module>/` directory the issue lives in — never drop it when rewriting the YAML.
+
 **Labels** — Suggest relevant labels: short (1–3 words), Title Case for general terms, uppercase for acronyms. Deduplicate against existing YAML labels. Vocabulary (exact casing): `Feature`, `Bug`, `Improvement`, `Enhancement`, `Performance`, `Refactor`, `Security`, `Breaking Change`, `Documentation`, `Testing`, `Database`, `API`, `UI`, `Infrastructure`, `Cleanup`.
 
 **State** — Valid: `Todo`, `Planned`, `In Progress`, `Done`. This skill produces a plan, so always set `state: "Planned"` (on every sub-issue when split, or the parent when not). `Planned` means ready to pick up — `/issue:fix` takes over. Never set any other state.
@@ -128,6 +130,7 @@ After writing all sub-issues, **delete the parent issue file** — the sub-issue
 Sub-issue YAML:
 ```yaml
 id: "<generated-id>"
+module: "<module>"
 title: "<action-oriented title: verb + noun>"
 state: "Planned"
 priority: "<parent priority>"
@@ -164,6 +167,7 @@ Once every target is planned, report a batch summary. Per issue: `id`, `title`, 
 Parent issue when not split — same structure as a sub-issue, plus any existing `comments`:
 ```yaml
 id: "OON-123456"
+module: "user"
 title: "Add user validation"
 state: "Planned"
 priority: "High"

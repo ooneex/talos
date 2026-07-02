@@ -30,6 +30,7 @@ A planned issue YML (produced by `/issue:plan`) looks like:
 
 ```yaml
 id: "ENG-45"
+module: "organization"
 title: "Add organization create feature"
 state: "Planned"
 priority: "High"
