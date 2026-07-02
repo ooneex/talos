@@ -110,6 +110,9 @@ export const run = async (): Promise<void> => {
       access: {
         type: "string",
       },
+      publish: {
+        type: "boolean",
+      },
     },
     strict: false,
     allowPositionals: true,
@@ -153,6 +156,7 @@ export const run = async (): Promise<void> => {
     package: typeof values.package === "string" ? toKebabCsv(values.package) : undefined,
     packages: typeof values.packages === "string" ? toKebabCsv(values.packages) : undefined,
     access: values.access,
+    publish: values.publish,
     // `--api` / `--microservice` / `--spa` (bare → true, or `=name1,name2` → string)
     // restrict `app:start` to modules of that type.
     api: values.api,

@@ -445,6 +445,33 @@ describe("run", () => {
       expect(args[0].drop).toBe(true);
     });
 
+    test("should pass publish option", async () => {
+      const runFn = mock(async () => {});
+
+      class PublishCommand implements ICommand {
+        public run = runFn;
+        public getName(): string {
+          return "publish-cmd";
+        }
+        public getDescription(): string {
+          return "publish command";
+        }
+      }
+
+      container.add(PublishCommand);
+      COMMANDS_CONTAINER.push(PublishCommand);
+
+      mockParseArgsResult = {
+        values: { publish: true },
+        positionals: ["bun", "script.ts", "publish-cmd"],
+      };
+
+      await run();
+
+      const args = runFn.mock.calls[0] as unknown as [Record<string, unknown>];
+      expect(args[0].publish).toBe(true);
+    });
+
     test("should pass override option", async () => {
       const runFn = mock(async () => {});
 
@@ -893,6 +920,7 @@ describe("run", () => {
       expect(args[0].packages).toBeUndefined();
       expect(args[0].destination).toBeUndefined();
       expect(args[0].drop).toBeUndefined();
+      expect(args[0].publish).toBeUndefined();
       expect(args[0].override).toBeUndefined();
       expect(args[0].target).toBeUndefined();
       expect(args[0].id).toBeUndefined();
