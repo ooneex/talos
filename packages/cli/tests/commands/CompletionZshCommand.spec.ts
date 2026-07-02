@@ -163,7 +163,9 @@ describe("CompletionZshCommand", () => {
       const talosContent = await Bun.file(join(completionDir, "_talos")).text();
 
       // completion:zsh and related commands should have no options at all
-      const noOptsMatch = talosContent.match(/app:build\|claude:init\|codex:init\|completion:zsh\|help\)\s*;;/);
+      const noOptsMatch = talosContent.match(
+        /app:build\|claude:init\|codex:init\|completion:zsh\|help\|version\|upgrade\)\s*;;/,
+      );
       expect(noOptsMatch).not.toBeNull();
 
       // module:create should only have --name, not --module
@@ -235,6 +237,14 @@ describe("CompletionZshCommand", () => {
       const body = caseBody(talosContent, "npm:credentials:create");
       expect(body).toContain("--token=");
       expect(body).not.toContain("--module=");
+    });
+
+    test("should include version and upgrade commands with their descriptions", async () => {
+      await command.run();
+
+      const talosContent = await Bun.file(join(completionDir, "_talos")).text();
+      expect(talosContent).toContain("version:Print the installed CLI version");
+      expect(talosContent).toContain("upgrade:Upgrade the CLI to its latest version");
     });
 
     test("should write completion files under the .zsh directory", async () => {

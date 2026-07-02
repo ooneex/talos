@@ -103,6 +103,8 @@ _talos() {
     'command\:run:Run a custom command from a module'
     'completion\:zsh:Install Zsh completion for oo command'
     'help:Show available commands'
+    'version:Print the installed CLI version'
+    'upgrade:Upgrade the CLI to its latest version'
     'issue\:create:Create a YAML skeleton file for a new issue'
     'issue\:pull:Pull an issue from Linear and save it as a YAML file'
     'issue\:push:Push a local issue YAML to Linear (create or update)'
@@ -165,7 +167,7 @@ _talos() {
       ;;
     opts)
       case "$words[1]" in
-        app:build|claude:init|codex:init|completion:zsh|help)
+        app:build|claude:init|codex:init|completion:zsh|help|version|upgrade)
           ;;
         app:start|app:stop)
           _arguments -s \

@@ -54,6 +54,8 @@ export { SpaFeatureCreateCommand } from "./SpaFeatureCreateCommand";
 export { SpaRemoveCommand } from "./SpaRemoveCommand";
 export { StorageCreateCommand } from "./StorageCreateCommand";
 export { TranslationCreateCommand } from "./TranslationCreateCommand";
+export { UpgradeCommand } from "./UpgradeCommand";
 export { VectorDatabaseCreateCommand } from "./VectorDatabaseCreateCommand";
+export { VersionCommand } from "./VersionCommand";
 export { WorkflowCreateCommand } from "./WorkflowCreateCommand";
 export { WorkflowTransitionCreateCommand } from "./WorkflowTransitionCreateCommand";

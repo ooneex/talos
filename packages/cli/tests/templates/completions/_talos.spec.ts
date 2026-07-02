@@ -159,6 +159,8 @@ describe("_talos.txt", () => {
       "command\\:run",
       "completion\\:zsh",
       "help",
+      "version",
+      "upgrade",
       "ai\\:chat\\:create",
       "ai\\:tool\\:create",
       "ai\\:middleware\\:create",
@@ -486,9 +488,9 @@ describe("_talos.txt", () => {
       expect(match?.[1]).toContain("--version=");
     });
 
-    test("completion:zsh, claude:init, and codex:init should have no options", async () => {
+    test("completion:zsh, claude:init, codex:init, version, and upgrade should have no options", async () => {
       const content = await Bun.file(templatePath).text();
-      const match = content.match(/app:build\|claude:init\|codex:init\|completion:zsh\|help\)\s*;;/);
+      const match = content.match(/app:build\|claude:init\|codex:init\|completion:zsh\|help\|version\|upgrade\)\s*;;/);
       expect(match).not.toBeNull();
     });
 

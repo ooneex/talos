@@ -7,9 +7,16 @@ mock.module("enquirer", () => ({
   prompt: mock(() => Promise.resolve({ name: "Test" })),
 }));
 
-const { ensureModule, extractYamlComments, runModuleScripts, toYaml } = await import("@/utils");
+const { ensureModule, extractYamlComments, getCliVersion, runModuleScripts, toYaml } = await import("@/utils");
 const { ModuleCreateCommand } = await import("@/commands/ModuleCreateCommand");
 const { TerminalLogger } = await import("@talosjs/logger");
+
+describe("getCliVersion", () => {
+  test("should resolve the version from the CLI package.json", async () => {
+    const packageVersion = (await Bun.file(join(import.meta.dir, "../package.json")).json()).version as string;
+    expect(await getCliVersion()).toBe(packageVersion);
+  });
+});
 
 describe("toYaml", () => {
   test("should serialize a flat object to block-style YAML", () => {

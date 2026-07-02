@@ -1,10 +1,38 @@
 import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import type { TerminalLogger } from "@talosjs/logger";
 import { ModuleCreateCommand } from "./commands/ModuleCreateCommand";
 
 export const LOG_OPTIONS = { showTimestamp: false, showArrow: false, useSymbol: true } as const;
 export const LOG_OPTIONS_PLAIN = { showTimestamp: false, showArrow: false, useSymbol: false } as const;
+
+export const CLI_PACKAGE_NAME = "@talosjs/cli";
+
+/**
+ * Resolve the installed version of the CLI by walking up from this module's
+ * directory until the `@talosjs/cli` package.json is found. Walking up (rather
+ * than importing package.json) keeps the same code working both when run from
+ * source (`src/commands`) and when bundled into `dist/index.js`. Returns
+ * `"unknown"` when the package.json cannot be located.
+ */
+export const getCliVersion = async (): Promise<string> => {
+  let dir = import.meta.dir;
+
+  while (true) {
+    const packageJsonFile = Bun.file(join(dir, "package.json"));
+
+    if (await packageJsonFile.exists()) {
+      const packageJson = await packageJsonFile.json();
+      if (packageJson.name === CLI_PACKAGE_NAME && typeof packageJson.version === "string") {
+        return packageJson.version;
+      }
+    }
+
+    const parent = dirname(dir);
+    if (parent === dir) return "unknown";
+    dir = parent;
+  }
+};
 
 export type CiProviderType = "github" | "gitlab" | "bitbucket";
 
