@@ -12,12 +12,15 @@ mock.module("enquirer", () => ({
 
 let errorCalls: string[] = [];
 let successCalls: string[] = [];
+let infoCalls: string[] = [];
 
 // Mock logger to capture output
 mock.module("@talosjs/logger", () => ({
   TerminalLogger: class {
     init() {}
-    info() {}
+    info(message: string) {
+      infoCalls.push(message);
+    }
     error(message: string) {
       errorCalls.push(message);
     }
@@ -50,6 +53,7 @@ const writeCredentials = async (token: string): Promise<void> => {
 describe("NpmPublishCommand", () => {
   let command: InstanceType<typeof NpmPublishCommand>;
   let publishMock: ReturnType<typeof mock>;
+  let versionExistsMock: ReturnType<typeof mock>;
   let originalCwd: string;
   let testDir: string;
 
@@ -57,6 +61,7 @@ describe("NpmPublishCommand", () => {
     command = new NpmPublishCommand();
     errorCalls = [];
     successCalls = [];
+    infoCalls = [];
 
     originalCwd = process.cwd();
     process.chdir(mkdtempSync(join(nodeOs.tmpdir(), "talos-npm-publish-cwd-")));
@@ -68,6 +73,11 @@ describe("NpmPublishCommand", () => {
     publishMock = mock(() => Promise.resolve(true));
     // @ts-expect-error overriding a private method for testing
     command.publish = publishMock;
+
+    // Stub the registry lookup so tests never hit the network; default to "not published".
+    versionExistsMock = mock(() => Promise.resolve(false));
+    // @ts-expect-error overriding a private method for testing
+    command.versionExists = versionExistsMock;
   });
 
   afterEach(() => {
@@ -204,7 +214,7 @@ describe("NpmPublishCommand", () => {
       await command.run({ package: "cli" });
 
       expect(successCalls).toHaveLength(1);
-      expect(successCalls[0]).toBe("Published @talosjs/cli@2.3.4 to npm");
+      expect(successCalls[0]).toBe("Published @talosjs/cli@2.3.4");
     });
 
     test("should pass the name@version label to the publish step", async () => {
@@ -223,7 +233,7 @@ describe("NpmPublishCommand", () => {
 
       await command.run({ package: "ai" });
 
-      expect(successCalls[0]).toBe("Published @talosjs/ai@1.2.0 to npm");
+      expect(successCalls[0]).toBe("Published @talosjs/ai@1.2.0");
     });
 
     test("should log the name without a version when package.json has no version", async () => {
@@ -232,7 +242,7 @@ describe("NpmPublishCommand", () => {
 
       await command.run({ package: "ai" });
 
-      expect(successCalls[0]).toBe("Published @talosjs/ai to npm");
+      expect(successCalls[0]).toBe("Published @talosjs/ai");
     });
 
     test("should fall back to the directory name when package.json has no name", async () => {
@@ -241,7 +251,7 @@ describe("NpmPublishCommand", () => {
 
       await command.run({ package: "ai" });
 
-      expect(successCalls[0]).toBe("Published ai@1.2.0 to npm");
+      expect(successCalls[0]).toBe("Published ai@1.2.0");
     });
 
     test("should fail when there are no packages or modules to publish", async () => {
@@ -332,6 +342,58 @@ describe("NpmPublishCommand", () => {
 
       expect(successCalls).toHaveLength(0);
       expect(errorCalls).toHaveLength(0);
+    });
+
+    test("should skip publishing when the version already exists on the registry", async () => {
+      await writeCredentials("npm_testtoken");
+      await scaffoldTarget("packages", "cli", "2.3.4");
+      versionExistsMock.mockImplementationOnce(() => Promise.resolve(true));
+
+      await command.run({ package: "cli" });
+
+      expect(publishMock).not.toHaveBeenCalled();
+      expect(successCalls).toHaveLength(0);
+      expect(errorCalls).toHaveLength(0);
+    });
+
+    test("should check the registry with the resolved name and version", async () => {
+      await writeCredentials("npm_testtoken");
+      await scaffoldTarget("packages", "cli", "2.3.4");
+
+      await command.run({ package: "cli" });
+
+      expect(versionExistsMock).toHaveBeenCalledTimes(1);
+      expect(versionExistsMock.mock.calls[0]?.slice(0, 2)).toEqual(["@talosjs/cli", "2.3.4"]);
+    });
+
+    test("should still publish when the package.json has no version", async () => {
+      await writeCredentials("npm_testtoken");
+      await scaffoldRawTarget("packages", "ai", { name: "@talosjs/ai" });
+
+      await command.run({ package: "ai" });
+
+      expect(versionExistsMock).not.toHaveBeenCalled();
+      expect(publishMock).toHaveBeenCalledTimes(1);
+    });
+
+    test("should log a summary counting published and ignored targets", async () => {
+      await writeCredentials("npm_testtoken");
+      await scaffoldTarget("packages", "cli", "2.3.4");
+      await scaffoldTarget("packages", "ai", "1.2.0");
+      versionExistsMock.mockImplementationOnce(() => Promise.resolve(true));
+
+      await command.run({ package: "cli,ai" });
+
+      expect(infoCalls).toContain("Summary: 1 published, 1 ignored");
+    });
+
+    test("should suppress the summary in silent mode", async () => {
+      await writeCredentials("npm_testtoken");
+      await scaffoldTarget("packages", "cli");
+
+      await command.run({ package: "cli", silent: true });
+
+      expect(infoCalls).toHaveLength(0);
     });
   });
 });
