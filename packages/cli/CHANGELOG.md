@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.3.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.3.0) - 2026-07-02
+
+### Added
+
+- Support package filter in release create command| — Franck ([5285aede](https://github.com/ooneex/talos/commit/5285aede))
+
+### Changed
+
+- Cover npm publish tooling and release package filter| — Franck ([b983caa7](https://github.com/ooneex/talos/commit/b983caa7))
+
+### Fixed
+
+- Publish with npm instead of bun| — Franck ([0544c925](https://github.com/ooneex/talos/commit/0544c925))
+
 ## [1.2.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.2.0) - 2026-07-02
 
 ### Added
