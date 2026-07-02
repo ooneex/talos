@@ -1,7 +1,7 @@
 {
   "name": "@talosjs/controller",
   "description": "HTTP controller layer with decorator-based route binding, request/response handling, and seamless integration with the routing and middleware systems",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "files": [
     "dist",
