@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.4.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.4.0) - 2026-07-02
+
+### Added
+
+- Require a clean working tree before releasing| — Franck ([de8e3543](https://github.com/ooneex/talos/commit/de8e3543))
+- Log skipped already-published versions| — Franck ([c55c72a8](https://github.com/ooneex/talos/commit/c55c72a8))
+
+### Changed
+
+- Cover skip logging and clean-tree release guard| — Franck ([cb569ba4](https://github.com/ooneex/talos/commit/cb569ba4))
+- Cover pack-and-publish tarball flow| — Franck ([df2f4d78](https://github.com/ooneex/talos/commit/df2f4d78))
+
+### Fixed
+
+- Pack with bun and publish resolved tarball via npm| — Franck ([6a47ac90](https://github.com/ooneex/talos/commit/6a47ac90))
+
 ## [1.3.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.3.0) - 2026-07-02
 
 ### Added
