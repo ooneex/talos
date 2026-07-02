@@ -72,9 +72,10 @@ export class NpmPublishCommand<T extends CommandOptionsType = CommandOptionsType
       const name = pkgJson.name ?? target.name;
       const label = pkgJson.version ? `${name}@${pkgJson.version}` : name;
 
-      // Skip versions already on the registry without logging noise.
+      // Skip versions already on the registry.
       if (pkgJson.version && (await this.versionExists(name, pkgJson.version, token))) {
         ignored++;
+        log("info", `Skipped ${label} (already published)`);
         continue;
       }
 
