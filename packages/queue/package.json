@@ -1,7 +1,7 @@
 {
   "name": "@talosjs/queue",
   "description": "Background job queue powered by BullMQ and Redis — decorator-registered workers with retries, progress tracking, and job lifecycle events",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "files": [
     "dist",
