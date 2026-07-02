@@ -8,7 +8,7 @@ import { toCamelCase } from "@talosjs/utils/toCamelCase";
 import { toKebabCase } from "@talosjs/utils/toKebabCase";
 import { toPascalCase } from "@talosjs/utils/toPascalCase";
 import { removeFromAppModule, removeFromSharedModule } from "../moduleRegistry";
-import { createSpinner, LOG_OPTIONS } from "../utils";
+import { LOG_OPTIONS, spawnStep } from "../utils";
 import { ModuleCreateCommand } from "./ModuleCreateCommand";
 
 type CommandOptionsType = {
@@ -374,24 +374,30 @@ ${members}
     await Bun.write(join(sdkSrcDir, "index.ts"), indexContent);
 
     // Install the runtime dependencies the generated SDK files import.
-    const depsSpinner = silent ? null : createSpinner("Installing dependencies...");
-    const addDeps = Bun.spawn(["bun", "add", "@talosjs/fetcher", "@talosjs/http-response", "@talosjs/socket-client"], {
-      cwd: sdkDir,
-      stdout: "ignore",
-      stderr: "ignore",
-    });
-    await addDeps.exited;
-    depsSpinner?.stop();
+    const depsInstalled = await spawnStep(
+      logger,
+      ["bun", "add", "@talosjs/fetcher", "@talosjs/http-response", "@talosjs/socket-client"],
+      sdkDir,
+      {
+        start: "Installing dependencies...",
+        failure: (exitCode) => `Failed to install dependencies (exit code: ${exitCode})`,
+      },
+      { silent },
+    );
+    if (!depsInstalled) return;
 
     // Install bunup as a dev dependency for the sdk module.
-    const installSpinner = silent ? null : createSpinner("Installing bunup...");
-    const install = Bun.spawn(["bun", "add", "-D", "bunup"], {
-      cwd: sdkDir,
-      stdout: "ignore",
-      stderr: "ignore",
-    });
-    await install.exited;
-    installSpinner?.stop();
+    const bunupInstalled = await spawnStep(
+      logger,
+      ["bun", "add", "-D", "bunup"],
+      sdkDir,
+      {
+        start: "Installing bunup...",
+        failure: (exitCode) => `Failed to install bunup (exit code: ${exitCode})`,
+      },
+      { silent },
+    );
+    if (!bunupInstalled) return;
 
     if (!silent) {
       logger.success(`modules/${sdkName} generated with ${generated.length} module(s)`, undefined, LOG_OPTIONS);

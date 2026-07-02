@@ -137,27 +137,63 @@ export const loadAppModuleName = async (appDir: string, fallback = "app"): Promi
 };
 
 /**
- * Run a child process to completion, reporting progress and success/failure
- * through the logger. Sets `process.exitCode` to 1 on failure and returns
- * whether the process exited cleanly.
+ * Run a child process to completion while a spinner shows progress instead of
+ * streaming the child's logs. The child's stdout/stderr are captured and, on
+ * failure, surfaced as the error details so the user sees what went wrong.
+ * Reports success/failure through the logger, sets `process.exitCode` to 1 on
+ * failure and returns whether the process exited cleanly.
+ *
+ * Pass `silent` to suppress the spinner and success message (the failure log is
+ * always emitted); pass `env` to extend the child's environment.
  */
 export const spawnStep = async (
   logger: TerminalLogger,
   args: string[],
   cwd: string,
-  messages: { start?: string; success: string; failure: (exitCode: number) => string },
+  messages: { start?: string; success?: string; failure: (exitCode: number) => string },
+  options?: { silent?: boolean | undefined; env?: Record<string, string> | undefined },
 ): Promise<boolean> => {
-  if (messages.start) logger.info(messages.start, undefined, LOG_OPTIONS);
+  const spinner = !options?.silent && messages.start ? createSpinner(messages.start) : null;
 
-  const proc = Bun.spawn(args, { cwd, stdout: "inherit", stderr: "inherit" });
-  const exitCode = await proc.exited;
+  let stdout = "";
+  let stderr = "";
+  let exitCode: number;
+
+  try {
+    const proc = Bun.spawn(args, {
+      cwd,
+      stdout: "pipe",
+      stderr: "pipe",
+      ...(options?.env ? { env: { ...process.env, ...options.env } } : {}),
+    });
+
+    // Drain both pipes concurrently with the exit to avoid deadlocking on large output.
+    [stdout, stderr, exitCode] = await Promise.all([
+      new Response(proc.stdout).text(),
+      new Response(proc.stderr).text(),
+      proc.exited,
+    ]);
+  } catch (error) {
+    // Bun.spawn throws synchronously when the binary cannot be launched.
+    spinner?.stop();
+    const reason = error instanceof Error ? error.message : String(error);
+    logger.error(messages.failure(1), { message: reason }, LOG_OPTIONS);
+    process.exitCode = 1;
+    return false;
+  }
+
+  spinner?.stop();
 
   if (exitCode === 0) {
-    logger.success(messages.success, undefined, LOG_OPTIONS);
+    if (!options?.silent && messages.success) logger.success(messages.success, undefined, LOG_OPTIONS);
     return true;
   }
 
-  logger.error(messages.failure(exitCode), undefined, LOG_OPTIONS);
+  const details = [stdout, stderr]
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .join("\n");
+  logger.error(messages.failure(exitCode), details ? { message: details } : undefined, LOG_OPTIONS);
   process.exitCode = 1;
   return false;
 };
@@ -202,8 +238,6 @@ export const runModuleScripts = async (
   }
 
   for (const { name, dir } of modules) {
-    logger.info(`Running ${label} for ${name}...`, undefined, LOG_OPTIONS);
-
     const args = ["bun", "run", join(dir, ...binPath)];
     if (drop) {
       args.push("--drop");
@@ -212,18 +246,19 @@ export const runModuleScripts = async (
       args.push("--version", version);
     }
 
-    try {
-      Bun.spawn(args, {
-        cwd: dir,
-        stdout: "inherit",
-        stderr: "inherit",
-        env: env ? { ...process.env, APP_ENV: env } : process.env,
-      });
+    const succeeded = await spawnStep(
+      logger,
+      args,
+      dir,
+      {
+        start: `Running ${label} for ${name}...`,
+        success: `${titledLabel} completed for ${name}`,
+        failure: (exitCode) => `${titledLabel} failed for ${name} (exit code: ${exitCode})`,
+      },
+      env ? { env: { APP_ENV: env } } : undefined,
+    );
 
-      logger.success(`${titledLabel} completed for ${name}`, undefined, LOG_OPTIONS);
-    } catch (error) {
-      logger.error(error instanceof Error ? error.message : String(error), undefined, LOG_OPTIONS_PLAIN);
-      logger.error(`${titledLabel} failed for ${name}`, undefined, LOG_OPTIONS);
+    if (!succeeded) {
       process.exit(1);
     }
   }

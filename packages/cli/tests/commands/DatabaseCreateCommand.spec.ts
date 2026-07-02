@@ -129,7 +129,7 @@ describe("DatabaseCreateCommand", () => {
       await command.run({ name: "Postgres" });
 
       expect(installCalls.length).toBeGreaterThan(0);
-      expect(installCalls[0]?.stderr).toBe("ignore");
+      expect(installCalls[0]?.stderr).toBe("pipe");
     });
 
     test("should remove Database suffix if provided", async () => {

@@ -3,7 +3,7 @@ import { TerminalLogger } from "@talosjs/logger";
 import { toPascalCase } from "@talosjs/utils/toPascalCase";
 import { askConfirm } from "./prompts/askConfirm";
 import { askName } from "./prompts/askName";
-import { ensureModule, LOG_OPTIONS } from "./utils";
+import { ensureModule, LOG_OPTIONS, spawnStep } from "./utils";
 
 export type ScaffoldConfigType = {
   /** Human-readable resource label used in messages (e.g. "Cache") */
@@ -69,12 +69,11 @@ export const installDependency = async (dependency: string): Promise<void> => {
   const devDeps = packageJson.devDependencies ?? {};
 
   if (!deps[dependency] && !devDeps[dependency]) {
-    const install = Bun.spawn(["bun", "add", dependency], {
-      cwd: process.cwd(),
-      stdout: "ignore",
-      stderr: "inherit",
+    const logger = new TerminalLogger();
+    await spawnStep(logger, ["bun", "add", dependency], process.cwd(), {
+      start: `Installing ${dependency}...`,
+      failure: (exitCode) => `Failed to install ${dependency} (exit code: ${exitCode})`,
     });
-    await install.exited;
   }
 };
 

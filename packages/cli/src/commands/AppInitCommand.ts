@@ -16,7 +16,7 @@ import packageTemplate from "../templates/app/package.json.txt";
 import readmeTemplate from "../templates/app/README.md.txt";
 import tsconfigTemplate from "../templates/app/tsconfig.json.txt";
 import zedSettingsTemplate from "../templates/app/zed-settings.json.txt";
-import { createSpinner, extractYamlComments, LOG_OPTIONS, toYaml } from "../utils";
+import { extractYamlComments, LOG_OPTIONS, spawnStep, toYaml } from "../utils";
 import { ClaudeInitCommand } from "./ClaudeInitCommand";
 import { CodexInitCommand } from "./CodexInitCommand";
 
@@ -40,6 +40,7 @@ export class AppInitCommand<T extends CommandOptionsType = CommandOptionsType> i
   public async run(options: T): Promise<void> {
     let { name, destination, silent } = options;
     const { appType } = options;
+    const logger = new TerminalLogger();
 
     if (!name) {
       name = await askName({ message: "Enter application name" });
@@ -93,7 +94,8 @@ export class AppInitCommand<T extends CommandOptionsType = CommandOptionsType> i
     await Bun.write(envPath, `${toYaml(envData, 0, envComments)}\n`);
 
     // Install dev dependencies
-    const addDevDeps = Bun.spawn(
+    const devDepsInstalled = await spawnStep(
+      logger,
       [
         "bun",
         "add",
@@ -114,23 +116,40 @@ export class AppInitCommand<T extends CommandOptionsType = CommandOptionsType> i
         "typescript",
         "undici-types",
       ],
-      { cwd: destination, stdout: "ignore", stderr: "ignore" },
+      destination,
+      {
+        start: "Installing dev dependencies...",
+        failure: (exitCode) => `Failed to install dev dependencies (exit code: ${exitCode})`,
+      },
+      { silent },
     );
-    const devDepsSpinner = silent ? null : createSpinner("Installing dev dependencies...");
-    await addDevDeps.exited;
-    devDepsSpinner?.stop();
+    if (!devDepsInstalled) return;
 
     // Initialize git repository
-    const gitSpinner = silent ? null : createSpinner("Initializing git repository...");
-    const gitInit = Bun.spawn(["git", "init"], { cwd: destination, stdout: "ignore", stderr: "ignore" });
-    await gitInit.exited;
-    gitSpinner?.stop();
+    const gitInitialized = await spawnStep(
+      logger,
+      ["git", "init"],
+      destination,
+      {
+        start: "Initializing git repository...",
+        failure: (exitCode) => `Failed to initialize git repository (exit code: ${exitCode})`,
+      },
+      { silent },
+    );
+    if (!gitInitialized) return;
 
     // Configure husky
-    const huskySpinner = silent ? null : createSpinner("Configuring husky...");
-    const huskyInit = Bun.spawn(["bunx", "husky", "init"], { cwd: destination, stdout: "ignore", stderr: "ignore" });
-    await huskyInit.exited;
-    huskySpinner?.stop();
+    const huskyConfigured = await spawnStep(
+      logger,
+      ["bunx", "husky", "init"],
+      destination,
+      {
+        start: "Configuring husky...",
+        failure: (exitCode) => `Failed to configure husky (exit code: ${exitCode})`,
+      },
+      { silent },
+    );
+    if (!huskyConfigured) return;
 
     await Promise.all([
       Bun.write(join(destination, ".husky", "pre-commit"), "lint-staged"),
@@ -150,8 +169,6 @@ export class AppInitCommand<T extends CommandOptionsType = CommandOptionsType> i
     }
 
     if (!silent) {
-      const logger = new TerminalLogger();
-
       logger.success(`${kebabName} initialized successfully at ${destination}`, undefined, LOG_OPTIONS);
     }
   }

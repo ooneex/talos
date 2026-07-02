@@ -11,7 +11,7 @@ import redisTestTemplate from "../templates/database.redis.test.txt";
 import redisTemplate from "../templates/database.redis.txt";
 import sqliteTemplate from "../templates/database.sqlite.txt";
 import testTemplate from "../templates/database.test.txt";
-import { createSpinner, ensureModule, LOG_OPTIONS } from "../utils";
+import { ensureModule, LOG_OPTIONS, spawnStep } from "../utils";
 
 type CommandOptionsType = {
   name?: string;
@@ -85,14 +85,10 @@ export class DatabaseCreateCommand<T extends CommandOptionsType = CommandOptions
     const devDeps = packageJson.devDependencies ?? {};
 
     if (!deps["@talosjs/database"] && !devDeps["@talosjs/database"]) {
-      const spinner = createSpinner("Installing @talosjs/database...");
-      const install = Bun.spawn(["bun", "add", "@talosjs/database"], {
-        cwd: process.cwd(),
-        stdout: "ignore",
-        stderr: "ignore",
+      await spawnStep(logger, ["bun", "add", "@talosjs/database"], process.cwd(), {
+        start: "Installing @talosjs/database...",
+        failure: (exitCode) => `Failed to install @talosjs/database (exit code: ${exitCode})`,
       });
-      await install.exited;
-      spinner.stop();
     }
   }
 }

@@ -8,7 +8,7 @@ import { toKebabCase } from "@talosjs/utils/toKebabCase";
 import { toPascalCase } from "@talosjs/utils/toPascalCase";
 import { removeFromAppModule, removeFromSharedModule } from "../moduleRegistry";
 import { askName } from "../prompts/askName";
-import { createSpinner, LOG_OPTIONS } from "../utils";
+import { LOG_OPTIONS, spawnStep } from "../utils";
 import { ModuleCreateCommand } from "./ModuleCreateCommand";
 
 const DESIGN_REPOSITORY = "https://github.com/talos/skeleton-design.git";
@@ -32,6 +32,7 @@ export class DesignCreateCommand<T extends CommandOptionsType = CommandOptionsTy
   public async run(options: T): Promise<void> {
     const { cwd = process.cwd(), silent = false } = options;
     let { name } = options;
+    const logger = new TerminalLogger();
 
     if (!name) {
       name = await askName({ message: "Enter design name" });
@@ -66,13 +67,17 @@ export class DesignCreateCommand<T extends CommandOptionsType = CommandOptionsTy
     const tmpDir = join(tmpdir(), `talos-design-${kebabName}`);
     await rm(tmpDir, { recursive: true, force: true });
 
-    const cloneSpinner = silent ? null : createSpinner("Cloning design source...");
-    const clone = Bun.spawn(["git", "clone", "--depth", "1", DESIGN_REPOSITORY, tmpDir], {
-      stdout: "ignore",
-      stderr: "ignore",
-    });
-    await clone.exited;
-    cloneSpinner?.stop();
+    const cloned = await spawnStep(
+      logger,
+      ["git", "clone", "--depth", "1", DESIGN_REPOSITORY, tmpDir],
+      cwd,
+      {
+        start: "Cloning design source...",
+        failure: (exitCode) => `Failed to clone design source (exit code: ${exitCode})`,
+      },
+      { silent },
+    );
+    if (!cloned) return;
 
     // Use the repository's src as the module src content
     await cp(join(tmpDir, "src"), srcDir, { recursive: true });
@@ -83,24 +88,36 @@ export class DesignCreateCommand<T extends CommandOptionsType = CommandOptionsTy
     const devDeps = Object.keys(designPackage.devDependencies ?? {});
 
     if (deps.length > 0) {
-      const depsSpinner = silent ? null : createSpinner("Installing design dependencies...");
-      const addDeps = Bun.spawn(["bun", "add", ...deps], { cwd, stdout: "ignore", stderr: "ignore" });
-      await addDeps.exited;
-      depsSpinner?.stop();
+      const depsInstalled = await spawnStep(
+        logger,
+        ["bun", "add", ...deps],
+        cwd,
+        {
+          start: "Installing design dependencies...",
+          failure: (exitCode) => `Failed to install design dependencies (exit code: ${exitCode})`,
+        },
+        { silent },
+      );
+      if (!depsInstalled) return;
     }
 
     if (devDeps.length > 0) {
-      const devDepsSpinner = silent ? null : createSpinner("Installing design dev dependencies...");
-      const addDevDeps = Bun.spawn(["bun", "add", "-D", ...devDeps], { cwd, stdout: "ignore", stderr: "ignore" });
-      await addDevDeps.exited;
-      devDepsSpinner?.stop();
+      const devDepsInstalled = await spawnStep(
+        logger,
+        ["bun", "add", "-D", ...devDeps],
+        cwd,
+        {
+          start: "Installing design dev dependencies...",
+          failure: (exitCode) => `Failed to install design dev dependencies (exit code: ${exitCode})`,
+        },
+        { silent },
+      );
+      if (!devDepsInstalled) return;
     }
 
     await rm(tmpDir, { recursive: true, force: true });
 
     if (!silent) {
-      const logger = new TerminalLogger();
-
       logger.success(`modules/${kebabName} created successfully`, undefined, LOG_OPTIONS);
     }
   }

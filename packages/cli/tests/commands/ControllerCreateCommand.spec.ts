@@ -126,7 +126,7 @@ describe("ControllerCreateCommand", () => {
       await command.run({ name: "User", isSocket: false });
 
       expect(installCalls.length).toBeGreaterThan(0);
-      expect(installCalls[0]?.stderr).toBe("ignore");
+      expect(installCalls[0]?.stderr).toBe("pipe");
     });
 
     test("should generate test file for controller", async () => {

@@ -20,7 +20,7 @@ import { templates as bitbucketTemplates } from "../templates/bitbucket/index";
 import { templates as githubTemplates } from "../templates/github/index";
 import { templates as gitlabTemplates } from "../templates/gitlab/index";
 import renovateTemplate from "../templates/renovate.json.txt";
-import { createSpinner, LOG_OPTIONS, LOG_OPTIONS_PLAIN, toYaml } from "../utils";
+import { LOG_OPTIONS, LOG_OPTIONS_PLAIN, spawnStep, toYaml } from "../utils";
 import { AppInitCommand } from "./AppInitCommand";
 import { ModuleCreateCommand } from "./ModuleCreateCommand";
 
@@ -41,6 +41,7 @@ export class AppCreateCommand<T extends CommandOptionsType = CommandOptionsType>
 
   public async run(options: T): Promise<void> {
     let { name, destination } = options;
+    const logger = new TerminalLogger();
 
     if (!name) {
       name = await askName({ message: "Enter application name" });
@@ -94,7 +95,8 @@ export class AppCreateCommand<T extends CommandOptionsType = CommandOptionsType>
     await appInitCommand.run({ name, destination, silent: true, appType: "api" });
 
     // Install dependencies
-    const addDeps = Bun.spawn(
+    const depsInstalled = await spawnStep(
+      logger,
       [
         "bun",
         "add",
@@ -126,21 +128,25 @@ export class AppCreateCommand<T extends CommandOptionsType = CommandOptionsType>
         "reflect-metadata",
         "typeorm@^1.0.0",
       ],
-      { cwd: destination, stdout: "ignore", stderr: "ignore" },
+      destination,
+      {
+        start: "Installing dependencies...",
+        failure: (exitCode) => `Failed to install dependencies (exit code: ${exitCode})`,
+      },
     );
-    const depsSpinner = createSpinner("Installing dependencies...");
-    await addDeps.exited;
-    depsSpinner.stop();
+    if (!depsInstalled) return;
 
     // Install dev dependencies
-    const devDepsSpinner = createSpinner("Installing dev dependencies...");
-    const addDevDeps = Bun.spawn(["bun", "add", "-D", "@talosjs/command", "@talosjs/migrations", "@talosjs/seeds"], {
-      cwd: destination,
-      stdout: "ignore",
-      stderr: "ignore",
-    });
-    await addDevDeps.exited;
-    devDepsSpinner.stop();
+    const devDepsInstalled = await spawnStep(
+      logger,
+      ["bun", "add", "-D", "@talosjs/command", "@talosjs/migrations", "@talosjs/seeds"],
+      destination,
+      {
+        start: "Installing dev dependencies...",
+        failure: (exitCode) => `Failed to install dev dependencies (exit code: ${exitCode})`,
+      },
+    );
+    if (!devDepsInstalled) return;
 
     // Ensure scripts, workspaces, and lint-staged are preserved after bun add rewrites package.json
     const rootPackagePath = join(destination, "package.json");
@@ -150,8 +156,6 @@ export class AppCreateCommand<T extends CommandOptionsType = CommandOptionsType>
     rootPackage.workspaces ??= templatePackage.workspaces;
     rootPackage["lint-staged"] ??= templatePackage["lint-staged"];
     await Bun.write(rootPackagePath, `${JSON.stringify(rootPackage, null, 2)}\n`);
-
-    const logger = new TerminalLogger();
 
     logger.success(`${kebabName} created successfully at ${destination}`, undefined, LOG_OPTIONS);
 

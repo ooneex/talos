@@ -181,7 +181,7 @@ describe("SdkCreateCommand", () => {
 
       expect(installCalls.length).toBeGreaterThan(0);
       for (const call of installCalls) {
-        expect(call.stderr).toBe("ignore");
+        expect(call.stderr).toBe("pipe");
       }
     });
 

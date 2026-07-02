@@ -3,7 +3,7 @@ import { join } from "node:path";
 import type { ICommand } from "@talosjs/command";
 import { decorator } from "@talosjs/command";
 import { TerminalLogger } from "@talosjs/logger";
-import { LOG_OPTIONS_PLAIN } from "../utils";
+import { createSpinner, LOG_OPTIONS_PLAIN } from "../utils";
 
 const commandNamePattern = /getName\(\)\s*(?::\s*string)?\s*{\s*return\s*["']([^"']+)["'];?\s*}/;
 
@@ -82,18 +82,25 @@ export class CommandRunCommand<T extends CommandOptionsType = CommandOptionsType
     for (const { name, dir, confirmed } of modules) {
       const commandRunPath = join(dir, "bin", "command", "run.ts");
 
-      logger.info(`Running "${commandName}" for ${name}...`, undefined, LOG_OPTIONS_PLAIN);
+      const spinner = createSpinner(`Running "${commandName}" for ${name}...`);
 
       const proc = Bun.spawn(["bun", "run", commandRunPath, commandName, ...extraArgs], {
         cwd: process.cwd(),
-        stdout: "inherit",
+        stdout: "pipe",
         stderr: "pipe",
       });
 
-      const stderrPromise = new Response(proc.stderr).text();
-      const exitCode = await proc.exited;
-      const errorOutput = await stderrPromise;
-      const trimmed = errorOutput.trim();
+      const [stdout, stderr, exitCode] = await Promise.all([
+        new Response(proc.stdout).text(),
+        new Response(proc.stderr).text(),
+        proc.exited,
+      ]);
+      spinner.stop();
+
+      const trimmed = [stdout, stderr]
+        .map((part) => part.trim())
+        .filter(Boolean)
+        .join("\n");
 
       if (exitCode === 0) {
         logger.success(`Command "${commandName}" completed for ${name}`, undefined, LOG_OPTIONS_PLAIN);

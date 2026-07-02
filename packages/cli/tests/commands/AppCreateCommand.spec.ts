@@ -370,7 +370,7 @@ describe("AppCreateCommand", () => {
       const installCalls = spawnOpts.filter((call) => call.cmd[0] === "bun" && call.cmd[1] === "add");
       expect(installCalls.length).toBeGreaterThan(0);
       for (const call of installCalls) {
-        expect(call.stderr).toBe("ignore");
+        expect(call.stderr).toBe("pipe");
       }
     });
 

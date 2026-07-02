@@ -134,7 +134,7 @@ describe("DesignCreateCommand", () => {
       );
       expect(setupCalls.length).toBeGreaterThan(0);
       for (const call of setupCalls) {
-        expect(call.stderr).toBe("ignore");
+        expect(call.stderr).toBe("pipe");
       }
     });
   });

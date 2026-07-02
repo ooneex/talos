@@ -122,7 +122,7 @@ describe("MailerCreateCommand", () => {
       await command.run({ name: "Welcome" });
 
       expect(installCalls.length).toBeGreaterThan(0);
-      expect(installCalls[0]?.stderr).toBe("ignore");
+      expect(installCalls[0]?.stderr).toBe("pipe");
     });
 
     test("should generate test file for mailer", async () => {

@@ -79,12 +79,19 @@ export class NpmPublishCommand<T extends CommandOptionsType = CommandOptionsType
         continue;
       }
 
-      const published = await this.publish(targetDir, access, token, label, silent).catch(() => false);
-      if (published) {
+      const published = await this.publish(targetDir, access, token, label, silent).catch((error) => ({
+        ok: false,
+        output: error instanceof Error ? error.message : String(error),
+      }));
+      if (published.ok) {
         succeeded++;
         log("success", `Published ${label}`);
-      } else {
-        log("error", `Failed to publish ${label}`);
+      } else if (!silent) {
+        logger.error(
+          `Failed to publish ${label}`,
+          published.output ? { message: published.output } : undefined,
+          LOG_OPTIONS,
+        );
       }
     }
 
@@ -163,7 +170,7 @@ export class NpmPublishCommand<T extends CommandOptionsType = CommandOptionsType
     token: string,
     label: string,
     silent?: boolean,
-  ): Promise<boolean> {
+  ): Promise<{ ok: boolean; output: string }> {
     const spinner = silent ? null : createSpinner(`Publishing ${label} to npm...`);
     const distDir = join(dir, "dist");
     const publishDir = join(distDir, "publish");
@@ -176,13 +183,14 @@ export class NpmPublishCommand<T extends CommandOptionsType = CommandOptionsType
       // Pack with bun so workspace dependencies resolve to real version ranges,
       // then publish the extracted copy with npm. `bun publish` is avoided
       // because it forces an interactive web-OTP flow.
-      if (!(await this.spawn(["bun", "pm", "pack", "--destination", "./dist"], dir, token))) {
-        return false;
+      const packed = await this.spawn(["bun", "pm", "pack", "--destination", "./dist"], dir, token);
+      if (!packed.ok) {
+        return packed;
       }
 
       const tarball = await this.findTarball(distDir);
       if (!tarball) {
-        return false;
+        return { ok: false, output: "bun pm pack produced no tarball" };
       }
 
       // Extract the packed tarball into dist/publish. npm tarballs nest every
@@ -190,7 +198,7 @@ export class NpmPublishCommand<T extends CommandOptionsType = CommandOptionsType
       // resolved package.json directly in dist/publish.
       const files = await new Bun.Archive(await Bun.file(tarball).bytes()).files();
       if (files.size === 0) {
-        return false;
+        return { ok: false, output: "packed tarball was empty" };
       }
       for (const [path, file] of files) {
         await Bun.write(join(publishDir, path.replace(/^package\//, "")), file);
@@ -203,16 +211,29 @@ export class NpmPublishCommand<T extends CommandOptionsType = CommandOptionsType
     }
   }
 
-  // Spawn a command with the npm auth token wired into the environment.
-  private async spawn(cmd: string[], cwd: string, token: string): Promise<boolean> {
+  // Spawn a command with the npm auth token wired into the environment. Output is
+  // captured (not streamed) so the spinner stays clean and the details can be
+  // surfaced when the command fails.
+  private async spawn(cmd: string[], cwd: string, token: string): Promise<{ ok: boolean; output: string }> {
     const proc = Bun.spawn(cmd, {
       cwd,
-      stdout: "ignore",
-      stderr: "ignore",
+      stdout: "pipe",
+      stderr: "pipe",
       env: { ...process.env, [`npm_config_//${NPM_REGISTRY}/:_authToken`]: token },
     });
 
-    return (await proc.exited) === 0;
+    const [stdout, stderr, exitCode] = await Promise.all([
+      new Response(proc.stdout).text(),
+      new Response(proc.stderr).text(),
+      proc.exited,
+    ]);
+
+    const output = [stdout, stderr]
+      .map((part) => part.trim())
+      .filter(Boolean)
+      .join("\n");
+
+    return { ok: exitCode === 0, output };
   }
 
   // Locate the `.tgz` bun produced in the dist directory.

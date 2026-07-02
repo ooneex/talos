@@ -7,7 +7,7 @@ import { askConfirm } from "../prompts/askConfirm";
 import { askName } from "../prompts/askName";
 import testTemplate from "../templates/repository.test.txt";
 import template from "../templates/repository.txt";
-import { createSpinner, ensureModule, LOG_OPTIONS } from "../utils";
+import { ensureModule, LOG_OPTIONS, spawnStep } from "../utils";
 
 type CommandOptionsType = {
   name?: string;
@@ -77,14 +77,10 @@ export class RepositoryCreateCommand<T extends CommandOptionsType = CommandOptio
     const devDeps = packageJson.devDependencies ?? {};
 
     if (!deps["@talosjs/repository"] && !devDeps["@talosjs/repository"]) {
-      const spinner = createSpinner("Installing @talosjs/repository...");
-      const install = Bun.spawn(["bun", "add", "@talosjs/repository"], {
-        cwd: process.cwd(),
-        stdout: "ignore",
-        stderr: "ignore",
+      await spawnStep(logger, ["bun", "add", "@talosjs/repository"], process.cwd(), {
+        start: "Installing @talosjs/repository...",
+        failure: (exitCode) => `Failed to install @talosjs/repository (exit code: ${exitCode})`,
       });
-      await install.exited;
-      spinner.stop();
     }
   }
 }

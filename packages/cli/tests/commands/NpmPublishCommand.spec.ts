@@ -70,7 +70,7 @@ describe("NpmPublishCommand", () => {
     testDir = process.cwd();
 
     // Stub the real `npm publish` subprocess so tests never hit the network.
-    publishMock = mock(() => Promise.resolve(true));
+    publishMock = mock(() => Promise.resolve({ ok: true, output: "" }));
     // @ts-expect-error overriding a private method for testing
     command.publish = publishMock;
 
@@ -304,7 +304,7 @@ describe("NpmPublishCommand", () => {
     test("should log an error when publishing reports a failure", async () => {
       await writeCredentials("npm_testtoken");
       await scaffoldTarget("packages", "cli");
-      publishMock.mockImplementationOnce(() => Promise.resolve(false));
+      publishMock.mockImplementationOnce(() => Promise.resolve({ ok: false, output: "npm error" }));
 
       await command.run({ packages: "cli" });
 
@@ -336,7 +336,7 @@ describe("NpmPublishCommand", () => {
     test("should suppress the failure message in silent mode", async () => {
       await writeCredentials("npm_testtoken");
       await scaffoldTarget("packages", "cli");
-      publishMock.mockImplementationOnce(() => Promise.resolve(false));
+      publishMock.mockImplementationOnce(() => Promise.resolve({ ok: false, output: "npm error" }));
 
       await command.run({ packages: "cli", silent: true });
 
@@ -453,13 +453,13 @@ describe("NpmPublishCommand", () => {
         } else {
           extracted = await Bun.file(join(cwd, "package.json")).json();
         }
-        return true;
+        return { ok: true, output: "" };
       });
 
       // @ts-expect-error calling a private method for testing
       const ok = await publishCommand.publish(dir, "public", "npm_tok", "@talosjs/cli@1.0.0", true);
 
-      expect(ok).toBe(true);
+      expect(ok.ok).toBe(true);
       // First `bun pm pack` runs in the package directory.
       expect(calls[0]?.cmd).toEqual(["bun", "pm", "pack", "--destination", "./dist"]);
       expect(calls[0]?.cwd).toBe(dir);
@@ -486,7 +486,7 @@ describe("NpmPublishCommand", () => {
         } else {
           publishCmd = cmd;
         }
-        return true;
+        return { ok: true, output: "" };
       });
 
       // @ts-expect-error calling a private method for testing
@@ -503,7 +503,7 @@ describe("NpmPublishCommand", () => {
         if (cmd[0] === "bun") {
           await writeTarball(dir, {});
         }
-        return true;
+        return { ok: true, output: "" };
       });
 
       // @ts-expect-error calling a private method for testing
@@ -527,7 +527,7 @@ describe("NpmPublishCommand", () => {
           staleSeen = existsSync(join(dir, "dist", "publish", "stale.txt"));
           await writeTarball(dir, {});
         }
-        return true;
+        return { ok: true, output: "" };
       });
 
       // @ts-expect-error calling a private method for testing
@@ -543,13 +543,13 @@ describe("NpmPublishCommand", () => {
       // @ts-expect-error overriding a private method for testing
       publishCommand.spawn = mock(async (cmd: string[]) => {
         cmds.push(cmd);
-        return cmd[0] !== "bun"; // packing fails
+        return { ok: cmd[0] !== "bun", output: "pack failed" }; // packing fails
       });
 
       // @ts-expect-error calling a private method for testing
       const ok = await publishCommand.publish(dir, "public", "npm_tok", "@talosjs/cli@1.0.0", true);
 
-      expect(ok).toBe(false);
+      expect(ok.ok).toBe(false);
       expect(cmds).toEqual([["bun", "pm", "pack", "--destination", "./dist"]]);
     });
 
@@ -560,13 +560,13 @@ describe("NpmPublishCommand", () => {
       // @ts-expect-error overriding a private method for testing
       publishCommand.spawn = mock(async (cmd: string[]) => {
         cmds.push(cmd);
-        return true; // reports success but writes no tarball
+        return { ok: true, output: "" }; // reports success but writes no tarball
       });
 
       // @ts-expect-error calling a private method for testing
       const ok = await publishCommand.publish(dir, "public", "npm_tok", "@talosjs/cli@1.0.0", true);
 
-      expect(ok).toBe(false);
+      expect(ok.ok).toBe(false);
       // npm publish is never reached because there is no tarball to extract.
       expect(cmds).toEqual([["bun", "pm", "pack", "--destination", "./dist"]]);
     });

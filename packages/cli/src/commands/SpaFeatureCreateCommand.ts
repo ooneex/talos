@@ -13,7 +13,7 @@ import notFoundLayoutTemplate from "../templates/spa/spa-feature.not-found-layou
 import queryTemplate from "../templates/spa/spa-feature.query.txt";
 import routeTemplate from "../templates/spa/spa-feature.route.txt";
 import skeletonLayoutTemplate from "../templates/spa/spa-feature.skeleton-layout.txt";
-import { createSpinner, LOG_OPTIONS } from "../utils";
+import { LOG_OPTIONS, spawnStep } from "../utils";
 
 type CommandOptionsType = {
   name?: string;
@@ -116,14 +116,10 @@ export class SpaFeatureCreateCommand<T extends CommandOptionsType = CommandOptio
     const devDeps = packageJson.devDependencies ?? {};
 
     if (!deps["@tanstack/react-query"] && !devDeps["@tanstack/react-query"]) {
-      const spinner = createSpinner("Installing @tanstack/react-query...");
-      const install = Bun.spawn(["bun", "add", "@tanstack/react-query"], {
-        cwd: process.cwd(),
-        stdout: "ignore",
-        stderr: "ignore",
+      await spawnStep(logger, ["bun", "add", "@tanstack/react-query"], process.cwd(), {
+        start: "Installing @tanstack/react-query...",
+        failure: (exitCode) => `Failed to install @tanstack/react-query (exit code: ${exitCode})`,
       });
-      await install.exited;
-      spinner.stop();
     }
   }
 }

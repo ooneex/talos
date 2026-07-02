@@ -185,7 +185,7 @@ describe("runModuleScripts", () => {
     expect(spawnCalls).toHaveLength(1);
     expect(spawnCalls[0]?.cmd).toEqual(["bun", "run", join(moduleDir, "bin", "seed", "run.ts")]);
     expect(spawnCalls[0]?.cwd).toBe(moduleDir);
-    expect(spawnCalls[0]?.stderr).toBe("inherit");
+    expect(spawnCalls[0]?.stderr).toBe("pipe");
   });
 
   test("should resolve the bin path from the provided binPath segments", async () => {
@@ -238,7 +238,7 @@ describe("runModuleScripts", () => {
     await runModuleScripts(logger, SEEDS);
 
     expect(spawnCalls).toHaveLength(1);
-    expect(logger.info).toHaveBeenCalledWith("Running seeds for auth...", undefined, expect.anything());
+    expect(logger.success).toHaveBeenCalledWith("Seeds completed for auth", undefined, expect.anything());
   });
 
   test("should pass the --drop flag when drop is true", async () => {
@@ -314,7 +314,8 @@ describe("runModuleScripts", () => {
 
     await runModuleScripts(logger, SEEDS);
 
-    expect(spawnCalls[0]?.env).toBe(process.env);
+    // With no env override, spawnStep omits the env option and lets Bun inherit process.env.
+    expect(spawnCalls[0]?.env).toBeUndefined();
   });
 
   test("should log a capitalized success message using the label", async () => {
@@ -340,8 +341,11 @@ describe("runModuleScripts", () => {
 
     await runModuleScripts(logger, SEEDS);
 
-    expect(logger.error).toHaveBeenCalledWith("Database connection failed", undefined, expect.anything());
-    expect(logger.error).toHaveBeenCalledWith("Seeds failed for @acme/auth", undefined, expect.anything());
+    expect(logger.error).toHaveBeenCalledWith(
+      "Seeds failed for @acme/auth (exit code: 1)",
+      { message: "Database connection failed" },
+      expect.anything(),
+    );
     expect(exitCalls).toEqual([1]);
   });
 
@@ -357,7 +361,11 @@ describe("runModuleScripts", () => {
 
     await runModuleScripts(logger, SEEDS);
 
-    expect(logger.error).toHaveBeenCalledWith("boom", undefined, expect.anything());
+    expect(logger.error).toHaveBeenCalledWith(
+      "Seeds failed for @acme/auth (exit code: 1)",
+      { message: "boom" },
+      expect.anything(),
+    );
     expect(exitCalls).toEqual([1]);
   });
 });

@@ -15,7 +15,7 @@ import { addClassToModule } from "../scaffold";
 import socketTemplate from "../templates/controller.socket.txt";
 import testTemplate from "../templates/controller.test.txt";
 import template from "../templates/controller.txt";
-import { createSpinner, ensureModule, LOG_OPTIONS } from "../utils";
+import { ensureModule, LOG_OPTIONS, spawnStep } from "../utils";
 
 type CommandOptionsType = {
   name?: string;
@@ -125,14 +125,10 @@ export class ControllerCreateCommand<T extends CommandOptionsType = CommandOptio
     const devDeps = packageJson.devDependencies ?? {};
 
     if (!deps["@talosjs/controller"] && !devDeps["@talosjs/controller"]) {
-      const spinner = createSpinner("Installing @talosjs/controller...");
-      const install = Bun.spawn(["bun", "add", "@talosjs/controller"], {
-        cwd: process.cwd(),
-        stdout: "ignore",
-        stderr: "ignore",
+      await spawnStep(logger, ["bun", "add", "@talosjs/controller"], process.cwd(), {
+        start: "Installing @talosjs/controller...",
+        failure: (exitCode) => `Failed to install @talosjs/controller (exit code: ${exitCode})`,
       });
-      await install.exited;
-      spinner.stop();
     }
   }
 }

@@ -9,7 +9,7 @@ import mailerTestTemplate from "../templates/mailer/mailer.test.txt";
 import mailerTemplate from "../templates/mailer/mailer.txt";
 import mailerTemplateTestTemplate from "../templates/mailer/mailer-template.test.txt";
 import mailerTemplateTemplate from "../templates/mailer/mailer-template.txt";
-import { createSpinner, ensureModule, LOG_OPTIONS } from "../utils";
+import { ensureModule, LOG_OPTIONS, spawnStep } from "../utils";
 
 type CommandOptionsType = {
   name?: string;
@@ -91,14 +91,10 @@ export class MailerCreateCommand<T extends CommandOptionsType = CommandOptionsTy
     const devDeps = packageJson.devDependencies ?? {};
 
     if (!deps["@talosjs/mailer"] && !devDeps["@talosjs/mailer"]) {
-      const spinner = createSpinner("Installing @talosjs/mailer...");
-      const install = Bun.spawn(["bun", "add", "@talosjs/mailer"], {
-        cwd: process.cwd(),
-        stdout: "ignore",
-        stderr: "ignore",
+      await spawnStep(logger, ["bun", "add", "@talosjs/mailer"], process.cwd(), {
+        start: "Installing @talosjs/mailer...",
+        failure: (exitCode) => `Failed to install @talosjs/mailer (exit code: ${exitCode})`,
       });
-      await install.exited;
-      spinner.stop();
     }
   }
 }

@@ -167,7 +167,7 @@ describe("SpaFeatureCreateCommand", () => {
 
       expect(installCalls.length).toBeGreaterThan(0);
       expect(installCalls[0]?.cmd).toContain("@tanstack/react-query");
-      expect(installCalls[0]?.stderr).toBe("ignore");
+      expect(installCalls[0]?.stderr).toBe("pipe");
     });
 
     test("should not install @tanstack/react-query when already a dependency", async () => {
