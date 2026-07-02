@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.6.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.6.0) - 2026-07-02
+
+### Added
+
+- Add version and upgrade commands| — Franck ([56f7dca5](https://github.com/ooneex/talos/commit/56f7dca5))
+
+### Changed
+
+- Route command spawning through spawnStep with spinner and captured output| — Franck ([9e017b8f](https://github.com/ooneex/talos/commit/9e017b8f))
+
 ## [1.5.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.5.0) - 2026-07-02
 
 ### Added
