@@ -145,9 +145,20 @@ export class ReleaseCreateCommand<T extends CommandOptionsType = CommandOptionsT
       await Bun.write(pkgJsonPath, `${JSON.stringify(pkgJson, null, 2)}\n`);
       await this.updateChangelog(fullDir, newVersion, tag, commits);
 
-      await this.gitAdd(join(dir.base, "package.json"), join(dir.base, "CHANGELOG.md"));
-      await this.gitCommit(`chore(release): ${pkgJson.name}@${newVersion}`);
-      await this.gitTag(tag, `chore(release): ${pkgJson.name}@${newVersion}`);
+      try {
+        await this.gitAdd(join(dir.base, "package.json"), join(dir.base, "CHANGELOG.md"));
+        await this.gitCommit(`chore(release): ${pkgJson.name}@${newVersion}`);
+        await this.gitTag(tag, `chore(release): ${pkgJson.name}@${newVersion}`);
+      } catch (error) {
+        const details = this.getShellErrorDetails(error);
+        logger.error(
+          `Failed to release ${pkgJson.name}@${newVersion}`,
+          details ? { message: details } : undefined,
+          LOG_OPTIONS,
+        );
+        process.exitCode = 1;
+        return;
+      }
 
       logger.success(
         `${pkgJson.name}@${newVersion} released (${bumpType} bump, ${commits.length} commit(s))`,
@@ -186,8 +197,9 @@ export class ReleaseCreateCommand<T extends CommandOptionsType = CommandOptionsT
         logger.success("Updated and committed bun.lock", undefined, LOG_OPTIONS);
         await this.gitPush();
         logger.success("Pushed commits and tags to remote", undefined, LOG_OPTIONS);
-      } catch {
-        logger.error("Failed to push to remote", undefined, LOG_OPTIONS);
+      } catch (error) {
+        const details = this.getShellErrorDetails(error);
+        logger.error("Failed to push to remote", details ? { message: details } : undefined, LOG_OPTIONS);
         process.exitCode = 1;
       }
     }
@@ -375,22 +387,40 @@ ${section}
   }
 
   private async gitAdd(...files: string[]): Promise<void> {
-    await $`git add ${files}`;
+    await $`git add ${files}`.quiet();
   }
 
   private async gitCommit(message: string): Promise<void> {
-    await $`git commit --no-verify -m ${message}`;
+    await $`git commit --no-verify -m ${message}`.quiet();
   }
 
   private async gitTag(tag: string, message: string): Promise<void> {
-    await $`git tag -a ${tag} -m ${message}`;
+    await $`git tag -a ${tag} -m ${message}`.quiet();
   }
 
   private async bunInstall(): Promise<void> {
-    await $`bun install`;
+    await $`bun install`.quiet();
   }
 
   private async gitPush(): Promise<void> {
-    await $`git push && git push --tags`;
+    await $`git push`.quiet();
+    await $`git push --tags`.quiet();
+  }
+
+  /**
+   * Extract the captured stdout/stderr from a failed `.quiet()` shell command so
+   * the details are surfaced only when a git command actually fails.
+   */
+  private getShellErrorDetails(error: unknown): string | undefined {
+    if (error && typeof error === "object") {
+      const stdout = "stdout" in error ? String((error as { stdout?: unknown }).stdout ?? "") : "";
+      const stderr = "stderr" in error ? String((error as { stderr?: unknown }).stderr ?? "") : "";
+      const details = [stdout, stderr]
+        .map((part) => part.trim())
+        .filter(Boolean)
+        .join("\n");
+      if (details) return details;
+    }
+    return error instanceof Error ? error.message : undefined;
   }
 }

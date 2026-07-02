@@ -324,7 +324,106 @@ describe("ReleaseCreateCommand", () => {
     });
   });
 
+  describe("getShellErrorDetails", () => {
+    test("should join captured stdout and stderr of a failed command", () => {
+      const error = { stdout: Buffer.from("some output\n"), stderr: Buffer.from("fatal: boom\n") };
+      // @ts-expect-error accessing private method for testing
+      expect(command.getShellErrorDetails(error)).toBe("some output\nfatal: boom");
+    });
+
+    test("should return only stderr when stdout is empty", () => {
+      const error = { stdout: Buffer.from(""), stderr: Buffer.from("nothing to commit\n") };
+      // @ts-expect-error accessing private method for testing
+      expect(command.getShellErrorDetails(error)).toBe("nothing to commit");
+    });
+
+    test("should fall back to the error message when no output is captured", () => {
+      // @ts-expect-error accessing private method for testing
+      expect(command.getShellErrorDetails(new Error("spawn failed"))).toBe("spawn failed");
+    });
+
+    test("should prefer captured output over the error message", () => {
+      const error = Object.assign(new Error("Command failed"), { stdout: "", stderr: "git: real reason" });
+      // @ts-expect-error accessing private method for testing
+      expect(command.getShellErrorDetails(error)).toBe("git: real reason");
+    });
+
+    test("should return undefined when there is nothing to report", () => {
+      // @ts-expect-error accessing private method for testing
+      expect(command.getShellErrorDetails("boom")).toBeUndefined();
+    });
+  });
+
   describe("run()", () => {
+    test("should stop and flag failure when a git command fails during release", async () => {
+      const tagged: string[] = [];
+
+      // @ts-expect-error accessing private method for testing
+      command.getLastTag = mock(() => Promise.resolve(null));
+      // @ts-expect-error accessing private method for testing
+      command.getCommitsSinceTag = mock(() =>
+        Promise.resolve([{ hash: "abc12345", type: "feat", scope: "test", subject: "Add feature", author: "Test" }]),
+      );
+      // @ts-expect-error accessing private method for testing
+      command.gitAdd = mock(() => Promise.resolve());
+      // @ts-expect-error accessing private method for testing
+      command.gitCommit = mock(() =>
+        Promise.reject(Object.assign(new Error("Command failed"), { stdout: "", stderr: "fatal: cannot commit" })),
+      );
+      // @ts-expect-error accessing private method for testing
+      command.gitTag = mock((tag: string) => {
+        tagged.push(tag);
+        return Promise.resolve();
+      });
+
+      await Bun.write(
+        join(testDir, "packages", "alpha", "package.json"),
+        JSON.stringify({ name: "@talosjs/alpha", version: "1.0.0" }),
+      );
+
+      process.chdir(testDir);
+      await command.run();
+
+      // The failing commit aborts the release before tagging, and signals failure.
+      expect(tagged).toEqual([]);
+      expect(process.exitCode).toBe(1);
+      process.exitCode = 0;
+    });
+
+    test("should flag failure when pushing to remote fails", async () => {
+      mockPrompt.mockImplementationOnce(() => Promise.resolve({ confirm: true }));
+
+      // @ts-expect-error accessing private method for testing
+      command.getLastTag = mock(() => Promise.resolve(null));
+      // @ts-expect-error accessing private method for testing
+      command.getCommitsSinceTag = mock(() =>
+        Promise.resolve([{ hash: "abc12345", type: "feat", scope: "test", subject: "Add feature", author: "Test" }]),
+      );
+      // @ts-expect-error accessing private method for testing
+      command.gitAdd = mock(() => Promise.resolve());
+      // @ts-expect-error accessing private method for testing
+      command.gitCommit = mock(() => Promise.resolve());
+      // @ts-expect-error accessing private method for testing
+      command.gitTag = mock(() => Promise.resolve());
+      // @ts-expect-error accessing private method for testing
+      command.bunInstall = mock(() => Promise.resolve());
+      // @ts-expect-error accessing private method for testing
+      command.gitPush = mock(() =>
+        Promise.reject(Object.assign(new Error("Command failed"), { stdout: "", stderr: "fatal: no upstream" })),
+      );
+
+      await Bun.write(
+        join(testDir, "packages", "alpha", "package.json"),
+        JSON.stringify({ name: "@talosjs/alpha", version: "1.0.0" }),
+      );
+
+      process.chdir(testDir);
+      await command.run({ packages: "alpha" });
+
+      expect(process.exitCode).toBe(1);
+      process.exitCode = 0;
+    });
+
     test("should stop without releasing when the working tree has pending changes", async () => {
       const tagged: string[] = [];
 
