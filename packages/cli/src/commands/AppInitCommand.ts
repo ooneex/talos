@@ -39,7 +39,6 @@ export class AppInitCommand<T extends CommandOptionsType = CommandOptionsType> i
 
   public async run(options: T): Promise<void> {
     let { name, destination, silent } = options;
-    const { appType } = options;
     const logger = new TerminalLogger();
 
     if (!name) {
@@ -89,10 +88,8 @@ export class AppInitCommand<T extends CommandOptionsType = CommandOptionsType> i
     envData.database.url = "postgresql://talos:talos@localhost:5432/talos";
     envData.database.redis.url = "redis://localhost:6379";
 
-    const envPath =
-      appType === "api" ? join(destination, "modules", "shared", ".env.yml") : join(destination, ".env.yml");
     const envComments = extractYamlComments(envContent);
-    await Bun.write(envPath, `${toYaml(envData, 0, envComments)}\n`);
+    await Bun.write(join(destination, ".env.yml"), `${toYaml(envData, 0, envComments)}\n`);
 
     // Install dev dependencies
     const devDepsInstalled = await spawnStep(

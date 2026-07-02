@@ -19,7 +19,7 @@ bun install
 
 ### Environment Configuration
 
-The environment file is created automatically at `modules/app/.env.yml`. Edit it to fill in the required values.
+The environment file is created automatically at `.env.yml` in the project root. Edit it to fill in the required values.
 
 ### Start the App
 
@@ -113,11 +113,11 @@ Not every domain belongs inside the monolithic `app` process. CPU-heavy workload
 - Keep cross-service calls explicit and resilient: always read the target URL from its `MICROSERVICE_<NAME>_URL` env var and handle timeouts and failures gracefully.
 - Communicate between services through HTTP or pub/sub events, never by sharing process state.
 - Give each service its own host port in `docker-compose.yml` (assigned automatically) to avoid local collisions.
-- Set the `MICROSERVICE_<NAME>_URL` value per environment in `modules/shared/.env.yml`.
+- Set the `MICROSERVICE_<NAME>_URL` value per environment in the project root `.env.yml`.
 
 ### Create a Microservice
 
-Scaffolds a microservice module with all the standard structure plus a standalone entrypoint (`src/index.ts`), an `OnAppStart.ts` start hook, and a `Dockerfile`. It sets the module's `type` to `microservice`, registers it in `AppModule` and its entities in `SharedModule`, declares it in `modules/app/app.yml` and `modules/shared/.env.yml`, adds a service to `modules/app/docker-compose.yml` with a distinct host port, and updates `tsconfig.json` path aliases and commitlint config:
+Scaffolds a microservice module with all the standard structure plus a standalone entrypoint (`src/index.ts`), an `OnAppStart.ts` start hook, and a `Dockerfile`. It sets the module's `type` to `microservice`, registers it in `AppModule` and its entities in `SharedModule`, declares it in `modules/app/app.yml` and the project root `.env.yml`, adds a service to `modules/app/docker-compose.yml` with a distinct host port, and updates `tsconfig.json` path aliases and commitlint config:
 
 ```bash
 oo microservice:create
@@ -126,7 +126,7 @@ oo microservice:create --name payment
 
 ### Delete a Microservice
 
-Removes a microservice and cleans up all references from `AppModule`, `SharedModule`, `tsconfig.json`, and commitlint config, as well as its declarations in `modules/app/app.yml`, `modules/shared/.env.yml`, and the service in `modules/app/docker-compose.yml`. The `app` and `shared` core modules cannot be removed:
+Removes a microservice and cleans up all references from `AppModule`, `SharedModule`, `tsconfig.json`, and commitlint config, as well as its declarations in `modules/app/app.yml`, the project root `.env.yml`, and the service in `modules/app/docker-compose.yml`. The `app` and `shared` core modules cannot be removed:
 
 ```bash
 oo microservice:remove
@@ -361,7 +361,7 @@ oo seed:run --drop   # drop data before seeding
 
 Issues bridge your Linear project management board and your local codebase. Each issue is represented as a YAML file under `modules/<name>/issues/` and serves as the single source of truth for what is being built, why, and what "done" looks like.
 
-**Requirements:** `linear.api_key` must be set in the environment for commands that talk to Linear (`issue:pull`, `issue:push`). Add it to `modules/app/.env.yml`:
+**Requirements:** `linear.api_key` must be set in the environment for commands that talk to Linear (`issue:pull`, `issue:push`). Add it to the project root `.env.yml`:
 
 ```yaml
 linear:
@@ -497,7 +497,7 @@ Use this when you are defining a new feature locally before it exists in Linear:
 - **Commit issue YAMLs alongside implementation commits** — the file is the authoritative record of what was planned and why. Future reviewers and `git blame` will thank you.
 - **Use the description improvement step** — a well-structured description (Context / Goal / Acceptance Criteria) makes the issue easier to implement and review.
 - **Keep state in sync** — before marking a PR ready for review, run `issue:push` to move the Linear ticket to "In Review" so the board reflects reality.
-- **Never commit `linear.api_key`** — keep it in `modules/app/.env.yml` and ensure `.env.yml` is in `.gitignore`.
+- **Never commit `linear.api_key`** — keep it in the project root `.env.yml` and ensure `.env.yml` is in `.gitignore`.
 
 ---
 

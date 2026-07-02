@@ -192,20 +192,20 @@ describe("MicroserviceRemoveCommand", () => {
   describe(".env.yml integration", () => {
     test("should remove the microservice entry", async () => {
       await Bun.write(
-        join(testDir, "modules", "shared", ".env.yml"),
+        join(testDir, ".env.yml"),
         'app:\n  url: ""\n\nmicroservices:\n  billing:\n    url: ""\n',
       );
 
       await makeCommand.run({ name: "Billing", cwd: testDir, silent: true });
       await removeCommand.run({ name: "Billing", cwd: testDir, silent: true });
 
-      const content = await read(join(testDir, "modules", "shared", ".env.yml"));
+      const content = await read(join(testDir, ".env.yml"));
       expect(content).not.toContain("  billing:");
     });
 
     test("should preserve other microservice entries when removing one", async () => {
       await Bun.write(
-        join(testDir, "modules", "shared", ".env.yml"),
+        join(testDir, ".env.yml"),
         'app:\n  url: ""\n\nmicroservices:\n  billing:\n    url: ""\n  shipping:\n    url: ""\n',
       );
 
@@ -213,7 +213,7 @@ describe("MicroserviceRemoveCommand", () => {
       await makeCommand.run({ name: "Shipping", cwd: testDir, silent: true });
       await removeCommand.run({ name: "Billing", cwd: testDir, silent: true });
 
-      const content = await read(join(testDir, "modules", "shared", ".env.yml"));
+      const content = await read(join(testDir, ".env.yml"));
       expect(content).not.toContain("  billing:");
       expect(content).toContain("  shipping:");
     });

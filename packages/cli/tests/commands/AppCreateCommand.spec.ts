@@ -218,13 +218,14 @@ describe("AppCreateCommand", () => {
     test("should generate environment files", async () => {
       await command.run({ name: "MyApp", destination: testDir });
 
-      expect(await exists(join(testDir, "modules", "shared", ".env.yml"))).toBe(true);
+      expect(await exists(join(testDir, ".env.yml"))).toBe(true);
+      expect(await exists(join(testDir, "modules", "shared", ".env.yml"))).toBe(false);
     });
 
     test("should populate .env with default values", async () => {
       await command.run({ name: "MyApp", destination: testDir });
 
-      const content = await Bun.file(join(testDir, "modules", "shared", ".env.yml")).text();
+      const content = await Bun.file(join(testDir, ".env.yml")).text();
       expect(content).toContain("postgresql://talos:talos@localhost:5432/talos");
       expect(content).toContain("redis://localhost:6379");
     });
@@ -232,7 +233,7 @@ describe("AppCreateCommand", () => {
     test("should write .env.yml in block-style YAML format", async () => {
       await command.run({ name: "MyApp", destination: testDir });
 
-      const content = await Bun.file(join(testDir, "modules", "shared", ".env.yml")).text();
+      const content = await Bun.file(join(testDir, ".env.yml")).text();
       expect(content).not.toMatch(/^\{/);
       expect(content).toMatch(/^app:$/m);
       expect(content).toMatch(/^database:$/m);
@@ -243,7 +244,7 @@ describe("AppCreateCommand", () => {
     test('should write empty string values as quoted "" in .env.yml', async () => {
       await command.run({ name: "MyApp", destination: testDir });
 
-      const content = await Bun.file(join(testDir, "modules", "shared", ".env.yml")).text();
+      const content = await Bun.file(join(testDir, ".env.yml")).text();
       expect(content).toContain('host: ""');
       expect(content).toContain('database_url: ""');
       expect(content).toContain('source_token: ""');

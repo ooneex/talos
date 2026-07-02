@@ -70,7 +70,7 @@ describe("index.ts.txt", () => {
 
   test("should import env yml", async () => {
     const content = await Bun.file(templatePath).text();
-    expect(content).toContain('import "../../shared/.env.yml"');
+    expect(content).toContain('import "../../../.env.yml"');
   });
 
   test("should create new App instance", async () => {

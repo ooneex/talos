@@ -123,8 +123,8 @@ export class MicroserviceRemoveCommand<T extends CommandOptionsType = CommandOpt
     const appYmlPath = join(cwd, "modules", "app", "app.yml");
     await this.removeFromAppYml(appYmlPath, kebabName);
 
-    // Remove the microservice URL env var from the shared env config
-    const envYmlPath = join(cwd, "modules", "shared", ".env.yml");
+    // Remove the microservice URL env var from the project root env config
+    const envYmlPath = join(cwd, ".env.yml");
     await this.removeFromEnvYml(envYmlPath, kebabName);
 
     // Remove the microservice service from the app docker-compose

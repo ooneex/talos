@@ -150,17 +150,17 @@ describe("AppInitCommand", () => {
       expect(await exists(join(testDir, "modules", "shared", ".env.yml"))).toBe(false);
     });
 
-    test("should write .env.yml to shared module when appType is api", async () => {
+    test("should write .env.yml to destination root when appType is api", async () => {
       await command.run({ name: "MyApp", destination: testDir, silent: true, appType: "api" });
 
-      expect(await exists(join(testDir, "modules", "shared", ".env.yml"))).toBe(true);
-      expect(await exists(join(testDir, ".env.yml"))).toBe(false);
+      expect(await exists(join(testDir, ".env.yml"))).toBe(true);
+      expect(await exists(join(testDir, "modules", "shared", ".env.yml"))).toBe(false);
     });
 
-    test("should populate shared module .env.yml with default values when appType is api", async () => {
+    test("should populate .env.yml with default values when appType is api", async () => {
       await command.run({ name: "MyApp", destination: testDir, silent: true, appType: "api" });
 
-      const content = await Bun.file(join(testDir, "modules", "shared", ".env.yml")).text();
+      const content = await Bun.file(join(testDir, ".env.yml")).text();
       expect(content).toContain("postgresql://talos:talos@localhost:5432/talos");
       expect(content).toContain("redis://localhost:6379");
     });
