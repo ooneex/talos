@@ -1,7 +1,7 @@
 {
   "name": "@talosjs/pdf",
   "description": "PDF document toolkit for generating, editing, merging, splitting, and converting PDF files to images with page-level content extraction",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "files": [
     "dist",
