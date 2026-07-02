@@ -7,7 +7,7 @@ import type { HttpMethodType } from "@talosjs/types";
 import { toKebabCase } from "@talosjs/utils/toKebabCase";
 import { getCommand } from "./getCommand";
 
-// Kebab-case each comma-separated entry, so `--package`/`--module` accept a single
+// Kebab-case each comma-separated entry, so `--package(s)`/`--module(s)` accept a single
 // name (`Foo` → `foo`) or a list (`Foo,Bar` → `foo,bar`) without mangling the commas.
 const toKebabCsv = (value: string): string =>
   value
@@ -50,6 +50,9 @@ export const run = async (): Promise<void> => {
         type: "string",
       },
       module: {
+        type: "string",
+      },
+      modules: {
         type: "string",
       },
       design: {
@@ -101,6 +104,9 @@ export const run = async (): Promise<void> => {
       package: {
         type: "string",
       },
+      packages: {
+        type: "string",
+      },
       access: {
         type: "string",
       },
@@ -128,6 +134,7 @@ export const run = async (): Promise<void> => {
     tableName: values["table-name"],
     version: values.version,
     module: typeof values.module === "string" ? toKebabCsv(values.module) : undefined,
+    modules: typeof values.modules === "string" ? toKebabCsv(values.modules) : undefined,
     design: values.design,
     destination: values.destination,
     drop: values.drop,
@@ -144,6 +151,7 @@ export const run = async (): Promise<void> => {
     registry: values.registry,
     username: values.username,
     package: typeof values.package === "string" ? toKebabCsv(values.package) : undefined,
+    packages: typeof values.packages === "string" ? toKebabCsv(values.packages) : undefined,
     access: values.access,
     // `--api` / `--microservice` / `--spa` (bare → true, or `=name1,name2` → string)
     // restrict `app:start` to modules of that type.

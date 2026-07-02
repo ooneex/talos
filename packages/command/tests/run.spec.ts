@@ -221,6 +221,88 @@ describe("run", () => {
       expect(args[0].module).toBe("user-profile");
     });
 
+    test("should convert modules to a kebab-case comma-separated list", async () => {
+      const runFn = mock(async () => {});
+
+      class ModulesKebabCommand implements ICommand {
+        public run = runFn;
+        public getName(): string {
+          return "modules-kebab-cmd";
+        }
+        public getDescription(): string {
+          return "modules kebab command";
+        }
+      }
+
+      container.add(ModulesKebabCommand);
+      COMMANDS_CONTAINER.push(ModulesKebabCommand);
+
+      mockParseArgsResult = {
+        values: { modules: "UserProfile,BillingAccount" },
+        positionals: ["bun", "script.ts", "modules-kebab-cmd"],
+      };
+
+      await run();
+
+      const args = runFn.mock.calls[0] as unknown as [Record<string, unknown>];
+      expect(args[0].modules).toBe("user-profile,billing-account");
+    });
+
+    test("should convert packages to a kebab-case comma-separated list", async () => {
+      const runFn = mock(async () => {});
+
+      class PackagesKebabCommand implements ICommand {
+        public run = runFn;
+        public getName(): string {
+          return "packages-kebab-cmd";
+        }
+        public getDescription(): string {
+          return "packages kebab command";
+        }
+      }
+
+      container.add(PackagesKebabCommand);
+      COMMANDS_CONTAINER.push(PackagesKebabCommand);
+
+      mockParseArgsResult = {
+        values: { packages: "Cli,Command" },
+        positionals: ["bun", "script.ts", "packages-kebab-cmd"],
+      };
+
+      await run();
+
+      const args = runFn.mock.calls[0] as unknown as [Record<string, unknown>];
+      expect(args[0].packages).toBe("cli,command");
+    });
+
+    test("should pass modules and packages as undefined when passed as bare flags", async () => {
+      const runFn = mock(async () => {});
+
+      class BooleanPluralCommand implements ICommand {
+        public run = runFn;
+        public getName(): string {
+          return "boolean-plural-cmd";
+        }
+        public getDescription(): string {
+          return "boolean plural command";
+        }
+      }
+
+      container.add(BooleanPluralCommand);
+      COMMANDS_CONTAINER.push(BooleanPluralCommand);
+
+      mockParseArgsResult = {
+        values: { modules: true, packages: true },
+        positionals: ["bun", "script.ts", "boolean-plural-cmd"],
+      };
+
+      await run();
+
+      const args = runFn.mock.calls[0] as unknown as [Record<string, unknown>];
+      expect(args[0].modules).toBeUndefined();
+      expect(args[0].packages).toBeUndefined();
+    });
+
     test("should pass route options correctly", async () => {
       const runFn = mock(async () => {});
 
@@ -807,6 +889,8 @@ describe("run", () => {
       expect(args[0].tableName).toBeUndefined();
       expect(args[0].version).toBeUndefined();
       expect(args[0].module).toBeUndefined();
+      expect(args[0].modules).toBeUndefined();
+      expect(args[0].packages).toBeUndefined();
       expect(args[0].destination).toBeUndefined();
       expect(args[0].drop).toBeUndefined();
       expect(args[0].override).toBeUndefined();
