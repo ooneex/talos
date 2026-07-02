@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 import { join } from "node:path";
 
 // `@/utils` transitively imports enquirer (via ModuleCreateCommand's prompts);
@@ -7,30 +7,26 @@ mock.module("enquirer", () => ({
   prompt: mock(() => Promise.resolve({ name: "Test" })),
 }));
 
-const infoMessages: string[] = [];
-
-// Capture logger output so the printed version can be asserted.
-mock.module("@talosjs/logger", () => ({
-  TerminalLogger: class {
-    info(message: string) {
-      infoMessages.push(message);
-    }
-    success() {}
-    error() {}
-    warn() {}
-  },
-}));
-
 const { VersionCommand } = await import("@/commands/VersionCommand");
 
 const packageVersion = (await Bun.file(join(import.meta.dir, "../../package.json")).json()).version as string;
 
 describe("VersionCommand", () => {
   let command: InstanceType<typeof VersionCommand>;
+  const written: string[] = [];
+  const originalWrite = process.stdout.write.bind(process.stdout);
 
   beforeEach(() => {
     command = new VersionCommand();
-    infoMessages.length = 0;
+    written.length = 0;
+    process.stdout.write = ((chunk: string | Uint8Array) => {
+      written.push(chunk.toString());
+      return true;
+    }) as typeof process.stdout.write;
+  });
+
+  afterEach(() => {
+    process.stdout.write = originalWrite;
   });
 
   describe("Command Metadata", () => {
@@ -44,11 +40,11 @@ describe("VersionCommand", () => {
   });
 
   describe("run()", () => {
-    test("should print the installed CLI version prefixed with v", async () => {
+    test("should print the installed CLI version", async () => {
       await command.run();
 
-      expect(infoMessages).toHaveLength(1);
-      expect(infoMessages[0]).toBe(`v${packageVersion}`);
+      expect(written).toHaveLength(1);
+      expect(written[0]).toBe(`${packageVersion}\n`);
     });
   });
 });
