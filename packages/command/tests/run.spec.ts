@@ -772,6 +772,154 @@ describe("run", () => {
     });
   });
 
+  describe("Version Flag", () => {
+    class VersionFlagCommand implements ICommand {
+      public static runFn = mock(async () => {});
+      public run = VersionFlagCommand.runFn;
+      public getName(): string {
+        return "version";
+      }
+      public getDescription(): string {
+        return "print the installed CLI version";
+      }
+    }
+
+    const registerVersionCommand = () => {
+      VersionFlagCommand.runFn.mockReset();
+      container.add(VersionFlagCommand);
+      COMMANDS_CONTAINER.push(VersionFlagCommand);
+    };
+
+    test("should run the version command for -v when no command is given", async () => {
+      registerVersionCommand();
+
+      mockParseArgsResult = {
+        values: { v: true },
+        positionals: ["bun", "script.ts"],
+      };
+
+      await run();
+
+      expect(VersionFlagCommand.runFn).toHaveBeenCalledTimes(1);
+    });
+
+    test("should run the version command for --version when no command is given", async () => {
+      registerVersionCommand();
+
+      mockParseArgsResult = {
+        values: { version: true },
+        positionals: ["bun", "script.ts"],
+      };
+
+      await run();
+
+      expect(VersionFlagCommand.runFn).toHaveBeenCalledTimes(1);
+    });
+
+    test("should not run the version command when a command is given", async () => {
+      registerVersionCommand();
+
+      const helpFn = mock(async () => {});
+
+      class HelpForVersionCommand implements ICommand {
+        public run = helpFn;
+        public getName(): string {
+          return "help";
+        }
+        public getDescription(): string {
+          return "help command";
+        }
+      }
+
+      container.add(HelpForVersionCommand);
+      COMMANDS_CONTAINER.push(HelpForVersionCommand);
+
+      mockParseArgsResult = {
+        values: { v: true },
+        positionals: ["bun", "script.ts", "help"],
+      };
+
+      await run();
+
+      expect(helpFn).toHaveBeenCalledTimes(1);
+      expect(VersionFlagCommand.runFn).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("Help Flag", () => {
+    class HelpFlagCommand implements ICommand {
+      public static runFn = mock(async () => {});
+      public run = HelpFlagCommand.runFn;
+      public getName(): string {
+        return "help";
+      }
+      public getDescription(): string {
+        return "help command";
+      }
+    }
+
+    const registerHelpCommand = () => {
+      HelpFlagCommand.runFn.mockReset();
+      container.add(HelpFlagCommand);
+      COMMANDS_CONTAINER.push(HelpFlagCommand);
+    };
+
+    test("should run the help command for -h when no command is given", async () => {
+      registerHelpCommand();
+
+      mockParseArgsResult = {
+        values: { h: true },
+        positionals: ["bun", "script.ts"],
+      };
+
+      await run();
+
+      expect(HelpFlagCommand.runFn).toHaveBeenCalledTimes(1);
+    });
+
+    test("should run the help command for --help when no command is given", async () => {
+      registerHelpCommand();
+
+      mockParseArgsResult = {
+        values: { help: true },
+        positionals: ["bun", "script.ts"],
+      };
+
+      await run();
+
+      expect(HelpFlagCommand.runFn).toHaveBeenCalledTimes(1);
+    });
+
+    test("should prefer the version command when both -v and -h are given", async () => {
+      registerHelpCommand();
+
+      const versionFn = mock(async () => {});
+
+      class VersionForHelpCommand implements ICommand {
+        public run = versionFn;
+        public getName(): string {
+          return "version";
+        }
+        public getDescription(): string {
+          return "version command";
+        }
+      }
+
+      container.add(VersionForHelpCommand);
+      COMMANDS_CONTAINER.push(VersionForHelpCommand);
+
+      mockParseArgsResult = {
+        values: { v: true, h: true },
+        positionals: ["bun", "script.ts"],
+      };
+
+      await run();
+
+      expect(versionFn).toHaveBeenCalledTimes(1);
+      expect(HelpFlagCommand.runFn).not.toHaveBeenCalled();
+    });
+  });
+
   describe("Error Handling", () => {
     test("should exit with code 1 when command is not found", async () => {
       mockParseArgsResult = {

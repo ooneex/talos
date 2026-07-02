@@ -120,7 +120,11 @@ export const run = async (): Promise<void> => {
 
   const logger = new TerminalLogger();
 
-  const commandName = positionals[2] ?? "help";
+  // With no command, `-v` / `--version` prints the version and `-h` / `--help` shows help.
+  const hasVersionFlag = values.v === true || values.version === true;
+  const hasHelpFlag = values.h === true || values.help === true;
+  const flagCommand = hasVersionFlag ? "version" : hasHelpFlag ? "help" : undefined;
+  const commandName = positionals[2] ?? flagCommand ?? "help";
 
   const command = getCommand(commandName);
 
