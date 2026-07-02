@@ -95,7 +95,7 @@ const flatten = (node: { [key: string]: YamlNode }, prefix = ""): Record<string,
 
 export const loadEnv = async (candidates?: string[]): Promise<void> => {
   const cwd = process.cwd();
-  const paths = candidates ?? [join(cwd, ".env.yml"), join(cwd, "modules", "shared", ".env.yml")];
+  const paths = candidates ?? [join(cwd, ".env.yml")];
 
   let parsed: { [key: string]: YamlNode } | null = null;
 

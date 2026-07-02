@@ -37,7 +37,7 @@ describe("loadEnv", () => {
     expect(Bun.env.APP_ENV).toBe("local");
   });
 
-  test("prefers root .env.yml over modules/shared/.env.yml", async () => {
+  test("loads only the project root .env.yml, ignoring modules/shared/.env.yml", async () => {
     mkdirSync(`${testDir}/modules/shared`, { recursive: true });
     await Bun.write(`${testDir}/.env.yml`, 'app:\n  env: "production"\n');
     await Bun.write(`${testDir}/modules/shared/.env.yml`, 'app:\n  env: "local"\n');
@@ -45,11 +45,11 @@ describe("loadEnv", () => {
     expect(Bun.env.APP_ENV).toBe("production");
   });
 
-  test("falls back to modules/shared/.env.yml when root .env.yml is absent", async () => {
+  test("does not fall back to modules/shared/.env.yml when root .env.yml is absent", async () => {
     mkdirSync(`${testDir}/modules/shared`, { recursive: true });
     await Bun.write(`${testDir}/modules/shared/.env.yml`, 'app:\n  env: "local"\n');
     await loadEnv();
-    expect(Bun.env.APP_ENV).toBe("local");
+    expect(Bun.env.APP_ENV).toBeUndefined();
   });
 
   test("loads from custom candidate paths when provided", async () => {
