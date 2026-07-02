@@ -10,7 +10,6 @@ import { askName } from "../prompts/askName";
 import commitlintTemplate from "../templates/app/.commitlintrc.ts.txt";
 import gitignoreTemplate from "../templates/app/.gitignore.txt";
 import biomeTemplate from "../templates/app/biome.jsonc.txt";
-import bunfigTemplate from "../templates/app/bunfig.toml.txt";
 import nxTemplate from "../templates/app/nx.json.txt";
 import packageTemplate from "../templates/app/package.json.txt";
 import readmeTemplate from "../templates/app/README.md.txt";
@@ -60,7 +59,6 @@ export class AppInitCommand<T extends CommandOptionsType = CommandOptionsType> i
       Bun.write(join(destination, ".commitlintrc.ts"), commitlintTemplate),
       Bun.write(join(destination, ".gitignore"), gitignoreTemplate),
       Bun.write(join(destination, "biome.jsonc"), biomeTemplate),
-      Bun.write(join(destination, "bunfig.toml"), bunfigTemplate),
       Bun.write(join(destination, "nx.json"), nxTemplate),
       Bun.write(join(destination, "README.md"), readmeTemplate.replace(/{{NAME}}/g, kebabName)),
       Bun.write(join(destination, "tsconfig.json"), tsconfigTemplate),

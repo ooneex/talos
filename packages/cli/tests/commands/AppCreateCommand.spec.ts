@@ -97,12 +97,17 @@ describe("AppCreateCommand", () => {
       expect(await exists(join(testDir, ".commitlintrc.ts"))).toBe(true);
       expect(await exists(join(testDir, ".gitignore"))).toBe(true);
       expect(await exists(join(testDir, "biome.jsonc"))).toBe(true);
-      expect(await exists(join(testDir, "bunfig.toml"))).toBe(true);
       expect(await exists(join(testDir, "nx.json"))).toBe(true);
       expect(await exists(join(testDir, "package.json"))).toBe(true);
       expect(await exists(join(testDir, "README.md"))).toBe(true);
       expect(await exists(join(testDir, "tsconfig.json"))).toBe(true);
       expect(await exists(join(testDir, ".zed", "settings.json"))).toBe(true);
+    });
+
+    test("should not generate bunfig.toml", async () => {
+      await command.run({ name: "MyApp", destination: testDir });
+
+      expect(await exists(join(testDir, "bunfig.toml"))).toBe(false);
     });
 
     test("should generate husky hooks", async () => {
