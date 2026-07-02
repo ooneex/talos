@@ -1,7 +1,7 @@
 {
   "name": "@talosjs/rag",
   "description": "Retrieval-Augmented Generation toolkit with vector database integration, document embedding, and semantic search for AI-powered knowledge retrieval",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "files": [
     "dist",
