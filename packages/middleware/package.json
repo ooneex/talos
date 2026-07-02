@@ -1,7 +1,7 @@
 {
   "name": "@talosjs/middleware",
   "description": "Middleware pipeline framework with decorator-based registration for processing HTTP requests, responses, and WebSocket events in sequence",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "files": [
     "dist",
