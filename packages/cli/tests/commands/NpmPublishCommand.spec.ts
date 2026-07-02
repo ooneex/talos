@@ -396,4 +396,159 @@ describe("NpmPublishCommand", () => {
       expect(infoCalls).toHaveLength(0);
     });
   });
+
+  describe("publish()", () => {
+    const distTarball = (dir: string): string => join(dir, "dist", "pkg-1.0.0.tgz");
+
+    // Build a gzipped npm-style tarball (every entry nested under `package/`, as
+    // `bun pm pack` produces) so extraction runs without spawning a real pack.
+    const writeTarball = async (dir: string, deps: Record<string, string>): Promise<void> => {
+      const archive = new Bun.Archive(
+        {
+          "package/package.json": JSON.stringify({ name: "@talosjs/cli", version: "1.0.0", dependencies: deps }),
+          "package/dist/index.js": "console.log('build');",
+        },
+        { compress: "gzip" },
+      );
+      await Bun.write(distTarball(dir), archive);
+    };
+
+    const scaffold = (): string => {
+      const dir = join(testDir, "packages", "cli");
+      mkdirSync(join(dir, "dist"), { recursive: true });
+      return dir;
+    };
+
+    test("should pack with bun, then publish the extracted copy with npm", async () => {
+      const dir = scaffold();
+      const publishCommand = new NpmPublishCommand();
+      const calls: { cmd: string[]; cwd: string; token: string }[] = [];
+      let extracted: { name?: string; dependencies?: Record<string, string> } | undefined;
+
+      // @ts-expect-error overriding a private method for testing
+      publishCommand.spawn = mock(async (cmd: string[], cwd: string, token: string) => {
+        calls.push({ cmd, cwd, token });
+        if (cmd[0] === "bun") {
+          await writeTarball(dir, { "@talosjs/logger": "^1.0.0" });
+        } else {
+          extracted = await Bun.file(join(cwd, "package.json")).json();
+        }
+        return true;
+      });
+
+      // @ts-expect-error calling a private method for testing
+      const ok = await publishCommand.publish(dir, "public", "npm_tok", "@talosjs/cli@1.0.0", true);
+
+      expect(ok).toBe(true);
+      // First `bun pm pack` runs in the package directory.
+      expect(calls[0]?.cmd).toEqual(["bun", "pm", "pack", "--destination", "./dist"]);
+      expect(calls[0]?.cwd).toBe(dir);
+      // Then `npm publish` runs from the extracted dist/publish folder.
+      expect(calls[1]?.cmd).toEqual(["npm", "publish", "--access", "public"]);
+      expect(calls[1]?.cwd).toBe(join(dir, "dist", "publish"));
+      // The tarball's `package/` prefix is stripped, so package.json lands at the
+      // root of dist/publish with its workspace dependency resolved.
+      expect(extracted?.name).toBe("@talosjs/cli");
+      expect(extracted?.dependencies?.["@talosjs/logger"]).toBe("^1.0.0");
+      // The auth token is forwarded to every spawned command.
+      expect(calls.every((call) => call.token === "npm_tok")).toBe(true);
+    });
+
+    test("should forward the requested access level to npm publish", async () => {
+      const dir = scaffold();
+      const publishCommand = new NpmPublishCommand();
+      let publishCmd: string[] | undefined;
+
+      // @ts-expect-error overriding a private method for testing
+      publishCommand.spawn = mock(async (cmd: string[]) => {
+        if (cmd[0] === "bun") {
+          await writeTarball(dir, {});
+        } else {
+          publishCmd = cmd;
+        }
+        return true;
+      });
+
+      // @ts-expect-error calling a private method for testing
+      await publishCommand.publish(dir, "restricted", "npm_tok", "@talosjs/cli@1.0.0", true);
+
+      expect(publishCmd).toEqual(["npm", "publish", "--access", "restricted"]);
+    });
+
+    test("should remove the tarball and extracted folder after publishing", async () => {
+      const dir = scaffold();
+      const publishCommand = new NpmPublishCommand();
+      // @ts-expect-error overriding a private method for testing
+      publishCommand.spawn = mock(async (cmd: string[]) => {
+        if (cmd[0] === "bun") {
+          await writeTarball(dir, {});
+        }
+        return true;
+      });
+
+      // @ts-expect-error calling a private method for testing
+      await publishCommand.publish(dir, "public", "npm_tok", "@talosjs/cli@1.0.0", true);
+
+      expect(existsSync(join(dir, "dist", "publish"))).toBe(false);
+      expect(existsSync(distTarball(dir))).toBe(false);
+    });
+
+    test("should clear a stale publish folder before packing", async () => {
+      const dir = scaffold();
+      // A leftover from a previous run that must not survive into the new publish.
+      mkdirSync(join(dir, "dist", "publish"), { recursive: true });
+      await Bun.write(join(dir, "dist", "publish", "stale.txt"), "old");
+
+      const publishCommand = new NpmPublishCommand();
+      let staleSeen = true;
+      // @ts-expect-error overriding a private method for testing
+      publishCommand.spawn = mock(async (cmd: string[]) => {
+        if (cmd[0] === "bun") {
+          staleSeen = existsSync(join(dir, "dist", "publish", "stale.txt"));
+          await writeTarball(dir, {});
+        }
+        return true;
+      });
+
+      // @ts-expect-error calling a private method for testing
+      await publishCommand.publish(dir, "public", "npm_tok", "@talosjs/cli@1.0.0", true);
+
+      expect(staleSeen).toBe(false);
+    });
+
+    test("should return false and skip npm publish when packing fails", async () => {
+      const dir = scaffold();
+      const publishCommand = new NpmPublishCommand();
+      const cmds: string[][] = [];
+      // @ts-expect-error overriding a private method for testing
+      publishCommand.spawn = mock(async (cmd: string[]) => {
+        cmds.push(cmd);
+        return cmd[0] !== "bun"; // packing fails
+      });
+
+      // @ts-expect-error calling a private method for testing
+      const ok = await publishCommand.publish(dir, "public", "npm_tok", "@talosjs/cli@1.0.0", true);
+
+      expect(ok).toBe(false);
+      expect(cmds).toEqual([["bun", "pm", "pack", "--destination", "./dist"]]);
+    });
+
+    test("should return false when packing produces no tarball", async () => {
+      const dir = scaffold();
+      const publishCommand = new NpmPublishCommand();
+      const cmds: string[][] = [];
+      // @ts-expect-error overriding a private method for testing
+      publishCommand.spawn = mock(async (cmd: string[]) => {
+        cmds.push(cmd);
+        return true; // reports success but writes no tarball
+      });
+
+      // @ts-expect-error calling a private method for testing
+      const ok = await publishCommand.publish(dir, "public", "npm_tok", "@talosjs/cli@1.0.0", true);
+
+      expect(ok).toBe(false);
+      // npm publish is never reached because there is no tarball to extract.
+      expect(cmds).toEqual([["bun", "pm", "pack", "--destination", "./dist"]]);
+    });
+  });
 });
