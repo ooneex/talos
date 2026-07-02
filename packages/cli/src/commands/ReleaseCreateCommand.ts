@@ -6,10 +6,12 @@ import { TerminalLogger } from "@talosjs/logger";
 import { $ } from "bun";
 import { askConfirm } from "../prompts/askConfirm";
 import { LOG_OPTIONS } from "../utils";
+import { NpmPublishCommand } from "./NpmPublishCommand";
 
 type CommandOptionsType = {
   modules?: string;
   packages?: string;
+  publish?: boolean;
 };
 
 type PackageJsonType = {
@@ -53,7 +55,7 @@ export class ReleaseCreateCommand<T extends CommandOptionsType = CommandOptionsT
   }
 
   public async run(options?: T): Promise<void> {
-    const { modules, packages } = options ?? {};
+    const { modules, packages, publish } = options ?? {};
     const moduleNames = modules
       ?.split(",")
       .map((name) => name.trim())
@@ -114,6 +116,8 @@ export class ReleaseCreateCommand<T extends CommandOptionsType = CommandOptionsT
     }
 
     let releasedCount = 0;
+    const releasedPackages: string[] = [];
+    const releasedModules: string[] = [];
 
     for (const dir of targetDirs) {
       const fullDir = join(cwd, dir.base);
@@ -151,6 +155,12 @@ export class ReleaseCreateCommand<T extends CommandOptionsType = CommandOptionsT
         LOG_OPTIONS,
       );
 
+      if (dir.type === "package") {
+        releasedPackages.push(basename(dir.base));
+      } else {
+        releasedModules.push(basename(dir.base));
+      }
+
       releasedCount++;
     }
 
@@ -180,6 +190,17 @@ export class ReleaseCreateCommand<T extends CommandOptionsType = CommandOptionsT
         logger.error("Failed to push to remote", undefined, LOG_OPTIONS);
         process.exitCode = 1;
       }
+    }
+
+    if (publish) {
+      const publishOptions: { packages?: string; modules?: string } = {};
+      if (releasedPackages.length > 0) {
+        publishOptions.packages = releasedPackages.join(",");
+      }
+      if (releasedModules.length > 0) {
+        publishOptions.modules = releasedModules.join(",");
+      }
+      await new NpmPublishCommand().run(publishOptions);
     }
   }
 

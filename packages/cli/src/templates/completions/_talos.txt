@@ -281,7 +281,8 @@ _talos() {
         release:create)
           _arguments -s \
             '--packages=-[Package name(s), comma-separated (default: all)]::packages:_talos_publish_packages' \
-            '--modules=-[Module name(s), comma-separated (default: all)]::modules:_talos_publish_modules'
+            '--modules=-[Module name(s), comma-separated (default: all)]::modules:_talos_publish_modules' \
+            '--publish[Publish released packages to npm]'
           ;;
         migration:up|seed:run)
           _arguments -s \

@@ -9,6 +9,7 @@ mock.module("enquirer", () => ({
 }));
 
 const { ReleaseCreateCommand } = await import("@/commands/ReleaseCreateCommand");
+const { NpmPublishCommand } = await import("@/commands/NpmPublishCommand");
 
 describe("ReleaseCreateCommand", () => {
   let command: InstanceType<typeof ReleaseCreateCommand>;
@@ -596,6 +597,96 @@ describe("ReleaseCreateCommand", () => {
 
       process.chdir(testDir);
       await command.run({ packages: "missing" });
+    });
+  });
+
+  describe("run() with --publish", () => {
+    let originalPublishRun: typeof NpmPublishCommand.prototype.run;
+    let publishOptions: Array<{ packages?: string; modules?: string }>;
+
+    beforeEach(() => {
+      publishOptions = [];
+      originalPublishRun = NpmPublishCommand.prototype.run;
+      NpmPublishCommand.prototype.run = mock((options: { packages?: string; modules?: string }) => {
+        publishOptions.push(options);
+        return Promise.resolve();
+      });
+
+      // @ts-expect-error accessing private method for testing
+      command.getLastTag = mock(() => Promise.resolve(null));
+      // @ts-expect-error accessing private method for testing
+      command.getCommitsSinceTag = mock(() =>
+        Promise.resolve([{ hash: "abc12345", type: "feat", scope: "test", subject: "Add feature", author: "Test" }]),
+      );
+      // @ts-expect-error accessing private method for testing
+      command.gitAdd = mock(() => Promise.resolve());
+      // @ts-expect-error accessing private method for testing
+      command.gitCommit = mock(() => Promise.resolve());
+      // @ts-expect-error accessing private method for testing
+      command.gitTag = mock(() => Promise.resolve());
+    });
+
+    afterEach(() => {
+      NpmPublishCommand.prototype.run = originalPublishRun;
+    });
+
+    test("should not publish when the publish flag is absent", async () => {
+      await Bun.write(
+        join(testDir, "packages", "alpha", "package.json"),
+        JSON.stringify({ name: "@talosjs/alpha", version: "1.0.0" }),
+      );
+
+      process.chdir(testDir);
+      await command.run({ packages: "alpha" });
+
+      expect(publishOptions).toEqual([]);
+    });
+
+    test("should publish only the released package when the publish flag is set", async () => {
+      await Bun.write(
+        join(testDir, "packages", "alpha", "package.json"),
+        JSON.stringify({ name: "@talosjs/alpha", version: "1.0.0" }),
+      );
+      await Bun.write(
+        join(testDir, "packages", "beta", "package.json"),
+        JSON.stringify({ name: "@talosjs/beta", version: "1.0.0" }),
+      );
+
+      process.chdir(testDir);
+      await command.run({ packages: "alpha", publish: true });
+
+      expect(publishOptions).toEqual([{ packages: "alpha" }]);
+    });
+
+    test("should publish released packages and modules by type", async () => {
+      await Bun.write(
+        join(testDir, "packages", "alpha", "package.json"),
+        JSON.stringify({ name: "@talosjs/alpha", version: "1.0.0" }),
+      );
+      await Bun.write(
+        join(testDir, "modules", "billing", "package.json"),
+        JSON.stringify({ name: "@app/billing", version: "1.0.0" }),
+      );
+
+      process.chdir(testDir);
+      await command.run({ packages: "alpha", modules: "billing", publish: true });
+
+      expect(publishOptions).toEqual([{ packages: "alpha", modules: "billing" }]);
+    });
+
+    test("should not publish when no package has unreleased commits", async () => {
+      // @ts-expect-error accessing private method for testing
+      command.getCommitsSinceTag = mock(() => Promise.resolve([]));
+
+      await Bun.write(
+        join(testDir, "packages", "alpha", "package.json"),
+        JSON.stringify({ name: "@talosjs/alpha", version: "1.0.0" }),
+      );
+
+      process.chdir(testDir);
+      await command.run({ packages: "alpha", publish: true });
+
+      expect(publishOptions).toEqual([]);
     });
   });
 });
