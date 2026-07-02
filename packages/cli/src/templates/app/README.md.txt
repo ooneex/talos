@@ -1178,10 +1178,11 @@ Stores registry credentials per-user under `~/.talos/credentials/*.yml`, so toke
 ```bash
 oo npm:credentials:create
 oo github:credentials:create
+oo linear:credentials:create
 oo docker:credentials:create
 ```
 
-`npm:credentials:create` saves an npm **Granular Access Token** to `~/.talos/credentials/npm.yml`. `github:credentials:create` saves a GitHub **Personal Access Token** to `~/.talos/credentials/github.yml`. `docker:credentials:create` saves a Docker registry access token (with its registry host and username) to `~/.talos/credentials/docker.yml`. All write the values under a `profiles.default` block:
+`npm:credentials:create` saves an npm **Granular Access Token** to `~/.talos/credentials/npm.yml`. `github:credentials:create` saves a GitHub **Personal Access Token** to `~/.talos/credentials/github.yml`. `linear:credentials:create` saves a Linear **Personal API key** to `~/.talos/credentials/linear.yml`. `docker:credentials:create` saves a Docker registry access token (with its registry host and username) to `~/.talos/credentials/docker.yml`. All write the values under a `profiles.default` block:
 
 ```yaml
 profiles:
@@ -1194,6 +1195,7 @@ You can run either command non-interactively by passing the values as flags (`--
 ```bash
 oo npm:credentials:create --token "$NPM_TOKEN"
 oo github:credentials:create --token "$GITHUB_TOKEN"
+oo linear:credentials:create --token "$LINEAR_TOKEN"
 oo docker:credentials:create --registry docker.io --username "$DOCKER_USER" --token "$DOCKER_TOKEN"
 ```
 

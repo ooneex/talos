@@ -122,6 +122,7 @@ _talos() {
     'docker\:create:Add a docker service to docker-compose.yml'
     'docker\:credentials\:create:Save a Docker registry access token under the user config'
     'github\:credentials\:create:Save a GitHub Personal Access Token under the user config'
+    'linear\:credentials\:create:Save a Linear Personal API key under the user config'
     'npm\:credentials\:create:Save an npm Granular Access Token under the user config'
     'npm\:publish:Publish a package or module to npm'
     'entity\:create:Generate a new entity class'
@@ -244,6 +245,10 @@ _talos() {
         github:credentials:create)
           _arguments -s \
             '--token=[GitHub Personal Access Token]:token'
+          ;;
+        linear:credentials:create)
+          _arguments -s \
+            '--token=[Linear Personal API key]:token'
           ;;
         npm:credentials:create)
           _arguments -s \

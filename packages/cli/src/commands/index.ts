@@ -28,6 +28,7 @@ export { HelpCommand } from "./HelpCommand";
 export { IssueCreateCommand } from "./IssueCreateCommand";
 export { IssuePullCommand } from "./IssuePullCommand";
 export { IssuePushCommand } from "./IssuePushCommand";
+export { LinearCredentialsCreateCommand } from "./LinearCredentialsCreateCommand";
 export { LoggerCreateCommand } from "./LoggerCreateCommand";
 export { MailerCreateCommand } from "./MailerCreateCommand";
 export { MicroserviceCreateCommand } from "./MicroserviceCreateCommand";

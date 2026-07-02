@@ -207,6 +207,9 @@ describe("CompletionZshCommand", () => {
         "github\\:credentials\\:create:Save a GitHub Personal Access Token under the user config",
       );
       expect(talosContent).toContain(
+        "linear\\:credentials\\:create:Save a Linear Personal API key under the user config",
+      );
+      expect(talosContent).toContain(
         "npm\\:credentials\\:create:Save an npm Granular Access Token under the user config",
       );
     });
@@ -226,6 +229,15 @@ describe("CompletionZshCommand", () => {
 
       const talosContent = await Bun.file(join(completionDir, "_talos")).text();
       const body = caseBody(talosContent, "github:credentials:create");
+      expect(body).toContain("--token=");
+      expect(body).not.toContain("--module=");
+    });
+
+    test("should include the token option for linear:credentials:create", async () => {
+      await command.run();
+
+      const talosContent = await Bun.file(join(completionDir, "_talos")).text();
+      const body = caseBody(talosContent, "linear:credentials:create");
       expect(body).toContain("--token=");
       expect(body).not.toContain("--module=");
     });

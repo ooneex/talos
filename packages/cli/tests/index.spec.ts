@@ -60,6 +60,7 @@ describe("@talosjs/cli - index", () => {
     "EventCreateCommand",
     "FeatureFlagCreateCommand",
     "GithubCredentialsCreateCommand",
+    "LinearCredentialsCreateCommand",
     "LoggerCreateCommand",
     "MailerCreateCommand",
     "MicroserviceCreateCommand",
