@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.2.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.2.0) - 2026-07-02
+
+### Added
+
+- Skip already-published versions and report a publish summary| — Franck ([4b5d6372](https://github.com/ooneex/talos/commit/4b5d6372))
+
+### Changed
+
+- Cover version-skipping and publish summary| — Franck ([ca2001d5](https://github.com/ooneex/talos/commit/ca2001d5))
+
 ## [1.1.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.1.0) - 2026-07-02
 
 ### Added
