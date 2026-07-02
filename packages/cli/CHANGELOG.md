@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.6.1](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.6.1) - 2026-07-02
+
+### Fixed
+
+- Surface git command failures during release with captured output| — Franck ([92472f2c](https://github.com/ooneex/talos/commit/92472f2c))
+
 ## [1.6.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.6.0) - 2026-07-02
 
 ### Added
