@@ -1,7 +1,7 @@
 {
   "name": "@talosjs/service",
   "description": "Service layer foundation with decorator-based registration and dependency injection for encapsulating business logic and domain operations",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "files": [
     "dist",
