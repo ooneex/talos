@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/ooneex/talos/releases/tag/@talosjs/command@1.2.0) - 2026-07-02
+
+### Added
+
+- Add --publish boolean flag| — Franck ([073f77d1](https://github.com/ooneex/talos/commit/073f77d1))
+- Accept plural --packages and --modules flags| — Franck ([0593263a](https://github.com/ooneex/talos/commit/0593263a))
+
 ## [1.1.0](https://github.com/ooneex/talos/releases/tag/@talosjs/command@1.1.0) - 2026-07-02
 
 ### Added
