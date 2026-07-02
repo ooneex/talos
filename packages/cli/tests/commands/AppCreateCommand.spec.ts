@@ -325,6 +325,12 @@ describe("AppCreateCommand", () => {
       expect(await exists(join(testDir, "modules", "app", "var", ".gitkeep"))).toBe(true);
     });
 
+    test("should generate root var directory with .gitkeep", async () => {
+      await command.run({ name: "MyApp", destination: testDir });
+
+      expect(await exists(join(testDir, "var", ".gitkeep"))).toBe(true);
+    });
+
     test("should add app scope to commitlint config", async () => {
       await command.run({ name: "MyApp", destination: testDir });
 

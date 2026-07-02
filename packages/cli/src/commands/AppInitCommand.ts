@@ -66,6 +66,7 @@ export class AppInitCommand<T extends CommandOptionsType = CommandOptionsType> i
       Bun.write(join(destination, "README.md"), readmeTemplate.replace(/{{NAME}}/g, kebabName)),
       Bun.write(join(destination, "tsconfig.json"), tsconfigTemplate),
       Bun.write(join(destination, ".zed", "settings.json"), zedSettingsTemplate),
+      Bun.write(join(destination, "var", ".gitkeep"), ""),
       ...(packageJsonExists ? [] : [Bun.write(packageJsonPath, packageContent)]),
     ]);
 

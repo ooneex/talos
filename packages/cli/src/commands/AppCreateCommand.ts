@@ -88,6 +88,7 @@ export class AppCreateCommand<T extends CommandOptionsType = CommandOptionsType>
     await Bun.write(join(destination, "modules", "app", "Dockerfile"), dockerfileContent);
     await Bun.write(join(destination, ".dockerignore"), dockerignoreTemplate);
     await Bun.write(join(destination, "modules", "app", "var", ".gitkeep"), "");
+    await Bun.write(join(destination, "var", ".gitkeep"), "");
 
     // Initialize app (config files, env, git, husky) before installing deps
     // so that package.json exists at destination when bun add runs

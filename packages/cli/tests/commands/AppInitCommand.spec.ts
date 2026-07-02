@@ -97,6 +97,12 @@ describe("AppInitCommand", () => {
       expect(await exists(join(testDir, ".zed", "settings.json"))).toBe(true);
     });
 
+    test("should generate root var directory with .gitkeep", async () => {
+      await command.run({ name: "MyApp", destination: testDir, silent: true });
+
+      expect(await exists(join(testDir, "var", ".gitkeep"))).toBe(true);
+    });
+
     test("should generate husky hooks", async () => {
       await command.run({ name: "MyApp", destination: testDir, silent: true });
 
