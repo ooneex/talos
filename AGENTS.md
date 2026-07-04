@@ -124,7 +124,6 @@ The application is built on the `@talosjs` ecosystem. Prefer these packages over
 ```bash
 oo app:start   # Start Docker services and launch the app with hot reload
 oo app:stop    # Stop all Docker services
-oo app:build   # Compile for production (output: dist/)
 ```
 
 ### Generators

@@ -151,7 +151,7 @@ bun --version
    talos app:start --microservice=billing     # only the named microservice
    ```
 
-   Stop it again with `talos app:stop`, and build for production with `talos app:build`.
+   Stop it again with `talos app:stop`.
 
    > The environment file is generated at `modules/shared/.env.yml`. Edit it to point at your database, Redis, and other services before starting.
 
