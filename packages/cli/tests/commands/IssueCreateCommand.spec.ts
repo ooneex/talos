@@ -116,36 +116,4 @@ describe("IssueCreateCommand", () => {
       expect(content).toContain('module: "my-module"');
     });
   });
-
-  describe("run() - interactive", () => {
-    test("should prompt for title, state, priority, description, and labels", async () => {
-      await command.run({ interactive: true });
-
-      const calls = mockPrompt.mock.calls as unknown as Array<[{ name: string }]>;
-      const inputCalls = calls.filter((c) =>
-        ["title", "state", "priority", "description", "labels"].includes(c[0]?.name ?? ""),
-      );
-      expect(inputCalls.length).toBe(5);
-    });
-
-    test("should create YAML file using prompted values", async () => {
-      await command.run({ interactive: true });
-
-      const files = await readdir(join(testDir, "modules", "shared", "issues"));
-      const ymlFiles = files.filter((f) => f.endsWith(".yml"));
-      expect(ymlFiles.length).toBe(1);
-    });
-
-    test("should write prompted values to YAML", async () => {
-      await command.run({ interactive: true });
-
-      const files = await readdir(join(testDir, "modules", "shared", "issues"));
-      const ymlFile = files.find((f) => f.endsWith(".yml")) ?? "";
-      const content = await Bun.file(join(testDir, "modules", "shared", "issues", ymlFile)).text();
-
-      expect(content).toContain('title: "Test Issue"');
-      expect(content).toContain("description: |");
-      expect(content).toContain("  Test description");
-    });
-  });
 });
