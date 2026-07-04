@@ -33,8 +33,15 @@ type TaskType = {
   key: string;
   /** Display label, e.g. `billing:build`. */
   label: string;
-  target: MonorepoTargetType;
+  /** The target this task runs a script for, or null for root-level tasks like `install`. */
+  target: MonorepoTargetType | null;
   command: string;
+  /** Directory the process is spawned in. */
+  cwd: string;
+  /** The process to run, e.g. `["bun", "run", "build"]` or `["bun", "install"]`. */
+  argv: string[];
+  /** Whether this task consults and writes the task cache. Root tasks are not cached. */
+  cacheable: boolean;
   /** Keys of tasks in the same group that must finish first. */
   deps: string[];
   status: TaskStatusType;
@@ -59,6 +66,9 @@ type RunContextType = {
   aborted: boolean;
   failedTask: TaskType | null;
 };
+
+// `install` is not a per-target script: it runs `bun install` once at the project root.
+const INSTALL_COMMAND = "install";
 
 const COLORS = { info: "#007AFF", success: "#00C851", error: "#FF3B30", dim: "#8E8E93" } as const;
 
@@ -106,7 +116,8 @@ export class MonorepoRunCommand<T extends CommandOptionsType = CommandOptionsTyp
       process.exitCode = 1;
       return;
     }
-    if (targets.length === 0) {
+    // `install` needs no targets; only per-target commands do.
+    if (targets.length === 0 && commandList.some((command) => command !== INSTALL_COMMAND)) {
       logger.error("No packages or modules found to run", undefined, LOG_OPTIONS);
       process.exitCode = 1;
       return;
@@ -114,7 +125,9 @@ export class MonorepoRunCommand<T extends CommandOptionsType = CommandOptionsTyp
 
     const sorted = sortTargetsByDependencies(targets);
     const includedKeys = new Set(sorted.map((target) => target.key));
-    const groups = commandList.map((command) => this.buildGroup(sorted, includedKeys, command));
+    const groups = commandList.map((command) =>
+      command === INSTALL_COMMAND ? this.buildInstallGroup(rootDir) : this.buildGroup(sorted, includedKeys, command),
+    );
 
     const context: RunContextType = {
       logger,
@@ -216,6 +229,9 @@ export class MonorepoRunCommand<T extends CommandOptionsType = CommandOptionsTyp
       label: `${target.name}:${command}`,
       target,
       command,
+      cwd: target.dir,
+      argv: ["bun", "run", command],
+      cacheable: true,
       deps: target.workspaceDeps.filter((key) => includedKeys.has(key)).map((key) => `${key}#${command}`),
       status: target.scripts[command] === undefined ? "skipped" : "pending",
       output: "",
@@ -223,6 +239,28 @@ export class MonorepoRunCommand<T extends CommandOptionsType = CommandOptionsTyp
       durationMs: 0,
       hash: null,
     }));
+  }
+
+  // A single root-level `bun install`. It is not tied to a target and is never
+  // cached, since bun already skips work when the lockfile is unchanged.
+  private buildInstallGroup(rootDir: string): TaskType[] {
+    return [
+      {
+        key: `root#${INSTALL_COMMAND}`,
+        label: INSTALL_COMMAND,
+        target: null,
+        command: INSTALL_COMMAND,
+        cwd: rootDir,
+        argv: ["bun", "install"],
+        cacheable: false,
+        deps: [],
+        status: "pending",
+        output: "",
+        exitCode: null,
+        durationMs: 0,
+        hash: null,
+      },
+    ];
   }
 
   // Run one command group with bounded concurrency, launching a task as soon
@@ -267,7 +305,7 @@ export class MonorepoRunCommand<T extends CommandOptionsType = CommandOptionsTyp
       context.logger.info(`Running ${task.label} ...`, undefined, LOG_OPTIONS);
     }
 
-    if (!context.noCache) {
+    if (task.cacheable && task.target && !context.noCache) {
       try {
         task.hash = await computeTaskHash(
           task.target,
@@ -299,7 +337,7 @@ export class MonorepoRunCommand<T extends CommandOptionsType = CommandOptionsTyp
 
     let proc: ReturnType<typeof Bun.spawn>;
     try {
-      proc = Bun.spawn(["bun", "run", task.command], { cwd: task.target.dir, stdout: "pipe", stderr: "pipe" });
+      proc = Bun.spawn(task.argv, { cwd: task.cwd, stdout: "pipe", stderr: "pipe" });
     } catch (error) {
       task.output = error instanceof Error ? error.message : String(error);
       task.exitCode = 1;
@@ -333,7 +371,7 @@ export class MonorepoRunCommand<T extends CommandOptionsType = CommandOptionsTyp
 
     if (exitCode === 0) {
       task.status = "success";
-      if (!context.noCache && task.hash) {
+      if (task.cacheable && task.target && !context.noCache && task.hash) {
         await writeCacheEntry(
           context.cacheDir,
           {

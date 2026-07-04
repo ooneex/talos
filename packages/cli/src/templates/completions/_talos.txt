@@ -34,6 +34,23 @@ _talos_custom_commands() {
   fi
 }
 
+_talos_run_commands() {
+  local -a pkgfiles cmds
+  pkgfiles=(modules/*/package.json(N) packages/*/package.json(N))
+  # `install` is a built-in monorepo:run command, not a package.json script.
+  cmds=(install)
+  if (( ${#pkgfiles} )); then
+    cmds+=(${(f)"$(command awk '
+      /"scripts"[[:space:]]*:[[:space:]]*\{/ { inside=1; next }
+      inside && /^[[:space:]]*\}/ { inside=0; next }
+      inside { if (match($0, /"[^"]+"/)) print substr($0, RSTART+1, RLENGTH-2) }
+    ' $pkgfiles 2>/dev/null)"})
+  fi
+  # Deduplicate script names collected across every package and module.
+  cmds=(${(u)cmds})
+  _values -s , 'commands' $cmds
+}
+
 _talos_design_modules() {
   local -a designs
   if [[ -d modules ]]; then
@@ -270,7 +287,7 @@ _talos() {
           ;;
         monorepo:run)
           _arguments -s \
-            '--commands=[Command name(s), comma-separated (required)]:commands:_values -s , commands build lint test fmt' \
+            '--commands=[Command name(s), comma-separated (required)]:commands:_talos_run_commands' \
             '--packages=-[Package name(s), comma-separated (default: all)]::packages:_talos_publish_packages' \
             '--modules=-[Module name(s), comma-separated (default: all)]::modules:_talos_publish_modules' \
             '--logs[Stream plain logs instead of the interactive view]' \

@@ -81,6 +81,38 @@ describe("MonorepoRunCommand", () => {
       expect(process.exitCode).toBe(1);
     });
 
+    const writeRootPackageJson = async (): Promise<void> => {
+      await Bun.write(
+        join(testDir, "package.json"),
+        JSON.stringify(
+          { name: "root", version: "1.0.0", private: true, workspaces: ["packages/*", "modules/*"] },
+          null,
+          2,
+        ),
+      );
+    };
+
+    test("should run bun install at the project root for the install command", async () => {
+      await writeRootPackageJson();
+
+      await command.run({ commands: "install", logs: true });
+
+      expect(process.exitCode ?? 0).toBe(0);
+      // bun install ran at the root, producing a lockfile there.
+      expect(existsSync(join(testDir, "bun.lock"))).toBe(true);
+    });
+
+    test("should run install before per-target commands", async () => {
+      await writeRootPackageJson();
+
+      await command.run({ commands: "install,build", logs: true });
+
+      expect(process.exitCode ?? 0).toBe(0);
+      expect(existsSync(join(testDir, "bun.lock"))).toBe(true);
+      // The per-target build group still runs after install.
+      expect((await readLines("order.log")).sort()).toEqual(["alpha", "beta", "billing"]);
+    });
+
     test("should run the command across all packages and modules", async () => {
       await command.run({ commands: "build", logs: true });
 
