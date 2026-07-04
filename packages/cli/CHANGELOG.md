@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.7.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.7.0) - 2026-07-04
+
+### Added
+
+- Add monorepo:run command with task engine and caching| — Franck ([5565d43d](https://github.com/ooneex/talos/commit/5565d43d))
+- Add jira:credentials:create command| — Franck ([53fcf273](https://github.com/ooneex/talos/commit/53fcf273))
+- Support pulling issues from Jira in issue:pull| — Franck ([a29e8315](https://github.com/ooneex/talos/commit/a29e8315))
+- Include module field in generated issue YAML| — Franck ([2131b74f](https://github.com/ooneex/talos/commit/2131b74f))
+- Add linear:credentials:create command| — Franck ([ad5d90d8](https://github.com/ooneex/talos/commit/ad5d90d8))
+- Scaffold var directory placeholder for new apps| — Franck ([13c250e1](https://github.com/ooneex/talos/commit/13c250e1))
+
+### Changed
+
+- Remove app:build command| — Franck ([22bac334](https://github.com/ooneex/talos/commit/22bac334))
+- Remove interactive mode from issue:create| — Franck ([fb2a4c31](https://github.com/ooneex/talos/commit/fb2a4c31))
+- Assert non-null fetch call in IssuePullCommand spec| — Franck ([a8069460](https://github.com/ooneex/talos/commit/a8069460))
+- Document module field in issue skill templates| — Franck ([91b6384b](https://github.com/ooneex/talos/commit/91b6384b))
+- Remove bunfig.toml from app scaffolding| — Franck ([b3a2856b](https://github.com/ooneex/talos/commit/b3a2856b))
+- Move app env config to project root .env.yml| — Franck ([8d7b7feb](https://github.com/ooneex/talos/commit/8d7b7feb))
+- Print plain version to stdout| — Franck ([0a93b92a](https://github.com/ooneex/talos/commit/0a93b92a))
+
 ## [1.6.1](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.6.1) - 2026-07-02
 
 ### Fixed
