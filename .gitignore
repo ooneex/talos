@@ -146,6 +146,7 @@ packages/pnpm-lock.yaml
 
 .nx/cache
 .nx/workspace-data
+var/
 .cursor/rules/nx-rules.mdc
 .github/instructions/nx.instructions.md
 packages/app/docs
