@@ -116,6 +116,15 @@ export const run = async (): Promise<void> => {
       publish: {
         type: "boolean",
       },
+      commands: {
+        type: "string",
+      },
+      logs: {
+        type: "boolean",
+      },
+      "no-cache": {
+        type: "boolean",
+      },
     },
     strict: false,
     allowPositionals: true,
@@ -165,6 +174,9 @@ export const run = async (): Promise<void> => {
     packages: typeof values.packages === "string" ? toKebabCsv(values.packages) : undefined,
     access: values.access,
     publish: values.publish,
+    commands: values.commands,
+    logs: values.logs,
+    noCache: values["no-cache"],
     // `--api` / `--microservice` / `--spa` (bare → true, or `=name1,name2` → string)
     // restrict `app:start` to modules of that type.
     api: values.api,
