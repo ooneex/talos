@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.8.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.8.0) - 2026-07-04
+
+### Added
+
+- Support install command and dynamic script completion in monorepo:run| — Franck ([b8a94130](https://github.com/ooneex/talos/commit/b8a94130))
+- Fingerprint monorepo targets via git to skip ignored files| — Franck ([17ab85ea](https://github.com/ooneex/talos/commit/17ab85ea))
+
+### Changed
+
+- Extract monorepo:run presentation into monorepoRunLogger| — Franck ([93cd0442](https://github.com/ooneex/talos/commit/93cd0442))
+
 ## [1.7.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.7.0) - 2026-07-04
 
 ### Added
