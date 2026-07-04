@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.3.0](https://github.com/ooneex/talos/releases/tag/@talosjs/command@1.3.0) - 2026-07-04
+
+### Added
+
+- Add commands, logs, and no-cache flags| — Franck ([7db07145](https://github.com/ooneex/talos/commit/7db07145))
+- Add --provider flag| — Franck ([82e48257](https://github.com/ooneex/talos/commit/82e48257))
+- Route -v/--version and -h/--help flags to commands| — Franck ([baac535f](https://github.com/ooneex/talos/commit/baac535f))
+
 ## [1.2.0](https://github.com/ooneex/talos/releases/tag/@talosjs/command@1.2.0) - 2026-07-02
 
 ### Added
