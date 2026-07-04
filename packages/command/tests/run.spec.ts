@@ -553,6 +553,33 @@ describe("run", () => {
       expect(args[0].id).toBe("abc-123");
     });
 
+    test("should pass provider option", async () => {
+      const runFn = mock(async () => {});
+
+      class ProviderCommand implements ICommand {
+        public run = runFn;
+        public getName(): string {
+          return "provider-cmd";
+        }
+        public getDescription(): string {
+          return "provider command";
+        }
+      }
+
+      container.add(ProviderCommand);
+      COMMANDS_CONTAINER.push(ProviderCommand);
+
+      mockParseArgsResult = {
+        values: { provider: "jira" },
+        positionals: ["bun", "script.ts", "provider-cmd"],
+      };
+
+      await run();
+
+      const args = runFn.mock.calls[0] as unknown as [Record<string, unknown>];
+      expect(args[0].provider).toBe("jira");
+    });
+
     test("should pass title option", async () => {
       const runFn = mock(async () => {});
 
@@ -1072,6 +1099,7 @@ describe("run", () => {
       expect(args[0].override).toBeUndefined();
       expect(args[0].target).toBeUndefined();
       expect(args[0].id).toBeUndefined();
+      expect(args[0].provider).toBeUndefined();
       expect(args[0].title).toBeUndefined();
       expect(args[0].state).toBeUndefined();
       expect(args[0].priority).toBeUndefined();

@@ -73,6 +73,9 @@ export const run = async (): Promise<void> => {
       id: {
         type: "string",
       },
+      provider: {
+        type: "string",
+      },
       title: {
         type: "string",
       },
@@ -148,6 +151,7 @@ export const run = async (): Promise<void> => {
     override: values.override,
     target: values.target,
     id: values.id ?? positionals[3],
+    provider: values.provider,
     title: values.title,
     state: values.state,
     priority: values.priority,
