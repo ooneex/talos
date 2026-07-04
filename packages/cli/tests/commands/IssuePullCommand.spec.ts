@@ -278,7 +278,7 @@ describe("IssuePullCommand", () => {
       await command.run({ id: "PROJ-1", provider: "jira" });
 
       const calls = mockFetch.mock.calls as unknown as Array<[string, { headers: Record<string, string> }]>;
-      const [url, init] = calls[0];
+      const [url, init] = calls[0]!;
       expect(url).toBe(
         "https://acme.atlassian.net/rest/api/3/issue/PROJ-1?fields=summary,status,priority,description,labels,comment",
       );
