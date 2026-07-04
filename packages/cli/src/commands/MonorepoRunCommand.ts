@@ -7,6 +7,7 @@ import {
   computeTaskHash,
   discoverTargets,
   hashRootInputs,
+  isGitWorkspaceRoot,
   MONOREPO_CACHE_DIR,
   MONOREPO_CACHE_VERSION,
   type MonorepoTargetType,
@@ -49,6 +50,7 @@ type RunContextType = {
   cacheDir: string;
   rootHash: string;
   fingerprints: Map<string, Promise<string>>;
+  useGit: boolean;
   noCache: boolean;
   interactive: boolean;
   concurrency: number;
@@ -120,6 +122,7 @@ export class MonorepoRunCommand<T extends CommandOptionsType = CommandOptionsTyp
       cacheDir: join(rootDir, MONOREPO_CACHE_DIR),
       rootHash: await hashRootInputs(rootDir),
       fingerprints: new Map(),
+      useGit: await isGitWorkspaceRoot(rootDir),
       noCache,
       interactive: !logs && process.stdout.isTTY === true && process.stdin.isTTY === true,
       concurrency: Math.max(1, Math.min(4, availableParallelism())),
@@ -272,6 +275,7 @@ export class MonorepoRunCommand<T extends CommandOptionsType = CommandOptionsTyp
           context.targets,
           context.rootHash,
           context.fingerprints,
+          context.useGit,
         );
         const entry = await readCacheEntry(context.cacheDir, task.hash);
         if (entry) {

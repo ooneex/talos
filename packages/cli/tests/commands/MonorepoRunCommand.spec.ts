@@ -173,6 +173,25 @@ describe("MonorepoRunCommand", () => {
       expect(await readLines("lint.log")).toEqual([]);
     });
 
+    test("should not invalidate the cache when a task writes git-ignored files", async () => {
+      // Make the workspace a git repository root so git-aware hashing is used.
+      Bun.spawnSync(["git", "init", "-q"], { cwd: testDir });
+      await Bun.write(join(testDir, ".gitignore"), "tmp/\n*.log\nnode_modules/\ndist/\nvar/\n");
+      await writeTarget("packages/scratch", {
+        name: "@test/scratch",
+        scripts: {
+          test: `bun -e "await Bun.write('tmp/' + Date.now() + '.txt', 'x')" && echo scratch >> ../../scratch.log`,
+        },
+      });
+
+      await command.run({ commands: "test", packages: "scratch", logs: true });
+      await command.run({ commands: "test", packages: "scratch", logs: true });
+
+      expect(process.exitCode ?? 0).toBe(0);
+      // The second run is a cache hit even though tmp/ gained a new random file.
+      expect(await readLines("scratch.log")).toEqual(["scratch"]);
+    });
+
     test("should not cache failed tasks", async () => {
       await writeTarget("packages/gamma", {
         name: "@test/gamma",

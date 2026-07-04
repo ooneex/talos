@@ -1,6 +1,6 @@
 import type { Dirent } from "node:fs";
 import { cp, mkdir, readdir, rename, rm, stat } from "node:fs/promises";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 
 /**
  * Monorepo task engine backing the `monorepo:run` command. It reimplements the
@@ -171,26 +171,83 @@ const collectFiles = async (dir: string, base = ""): Promise<string[]> => {
   return files.sort();
 };
 
-const hashFile = async (path: string): Promise<string> => {
-  const hasher = new Bun.CryptoHasher("sha256");
-  hasher.update(await Bun.file(path).arrayBuffer());
-  return hasher.digest("hex");
+/**
+ * True when `rootDir` is itself the top level of a git repository. Only then
+ * can `git ls-files` be trusted for input hashing: in a nested, repo-less
+ * folder the surrounding repository's ignore rules could hide every file.
+ */
+export const isGitWorkspaceRoot = async (rootDir: string): Promise<boolean> => {
+  try {
+    const proc = Bun.spawn(["git", "rev-parse", "--show-toplevel"], {
+      cwd: rootDir,
+      stdout: "pipe",
+      stderr: "ignore",
+    });
+    const [stdout, exitCode] = await Promise.all([new Response(proc.stdout).text(), proc.exited]);
+    if (exitCode !== 0) return false;
+    return resolve(stdout.trim()) === resolve(rootDir);
+  } catch {
+    return false;
+  }
+};
+
+// List a target's files through git: tracked files plus untracked ones that are
+// not ignored. This keeps git-ignored artifacts (temp dirs written by tests,
+// local scratch files) out of the fingerprint. Returns null when git fails.
+const collectFilesWithGit = async (dir: string): Promise<string[] | null> => {
+  try {
+    const proc = Bun.spawn(["git", "ls-files", "--cached", "--others", "--exclude-standard", "-z"], {
+      cwd: dir,
+      stdout: "pipe",
+      stderr: "ignore",
+    });
+    const [stdout, exitCode] = await Promise.all([new Response(proc.stdout).text(), proc.exited]);
+    if (exitCode !== 0) return null;
+
+    const files = stdout
+      .split("\0")
+      .filter(Boolean)
+      .filter((file) => !file.split("/").some((segment) => EXCLUDED_DIRS.has(segment)));
+
+    return [...new Set(files)].sort();
+  } catch {
+    return null;
+  }
+};
+
+// Hash a file's content, or null when it cannot be read (e.g. tracked by git
+// but deleted from the working tree — its manifest line is simply omitted).
+const hashFile = async (path: string): Promise<string | null> => {
+  try {
+    const hasher = new Bun.CryptoHasher("sha256");
+    hasher.update(await Bun.file(path).arrayBuffer());
+    return hasher.digest("hex");
+  } catch {
+    return null;
+  }
 };
 
 /**
- * Content-hash every file of a target into a single fingerprint. Fingerprints
- * are memoized per target key in `memo` so shared dependencies are hashed once
- * per run.
+ * Content-hash every file of a target into a single fingerprint. When the
+ * workspace is a git repository, files are listed through git so ignored
+ * artifacts never invalidate the cache; otherwise the directory is walked.
+ * Fingerprints are memoized per target key in `memo` so shared dependencies
+ * are hashed once per run.
  */
-export const fingerprintTarget = (target: MonorepoTargetType, memo: Map<string, Promise<string>>): Promise<string> => {
+export const fingerprintTarget = (
+  target: MonorepoTargetType,
+  memo: Map<string, Promise<string>>,
+  useGit = false,
+): Promise<string> => {
   const memoized = memo.get(target.key);
   if (memoized) return memoized;
 
   const promise = (async () => {
-    const files = await collectFiles(target.dir);
+    const files = (useGit ? await collectFilesWithGit(target.dir) : null) ?? (await collectFiles(target.dir));
     const hasher = new Bun.CryptoHasher("sha256");
     for (const file of files) {
-      hasher.update(`${file}=${await hashFile(join(target.dir, file))}\n`);
+      const fileHash = await hashFile(join(target.dir, file));
+      if (fileHash !== null) hasher.update(`${file}=${fileHash}\n`);
     }
     return hasher.digest("hex");
   })();
@@ -203,10 +260,8 @@ export const fingerprintTarget = (target: MonorepoTargetType, memo: Map<string, 
 export const hashRootInputs = async (rootDir: string): Promise<string> => {
   const hasher = new Bun.CryptoHasher("sha256");
   for (const name of ROOT_INPUT_FILES) {
-    const path = join(rootDir, name);
-    if (await Bun.file(path).exists()) {
-      hasher.update(`${name}=${await hashFile(path)}\n`);
-    }
+    const fileHash = await hashFile(join(rootDir, name));
+    if (fileHash !== null) hasher.update(`${name}=${fileHash}\n`);
   }
   return hasher.digest("hex");
 };
@@ -242,10 +297,13 @@ export const computeTaskHash = async (
   targets: MonorepoTargetType[],
   rootHash: string,
   memo: Map<string, Promise<string>>,
+  useGit = false,
 ): Promise<string> => {
   const byKey = new Map(targets.map((entry) => [entry.key, entry]));
   const deps = transitiveDeps(target, byKey);
-  const depLines = await Promise.all(deps.map(async (dep) => `${dep.key}=${await fingerprintTarget(dep, memo)}`));
+  const depLines = await Promise.all(
+    deps.map(async (dep) => `${dep.key}=${await fingerprintTarget(dep, memo, useGit)}`),
+  );
 
   const hasher = new Bun.CryptoHasher("sha256");
   hasher.update(
@@ -255,7 +313,7 @@ export const computeTaskHash = async (
       `command=${command}`,
       `script=${target.scripts[command] ?? ""}`,
       `root=${rootHash}`,
-      `self=${await fingerprintTarget(target, memo)}`,
+      `self=${await fingerprintTarget(target, memo, useGit)}`,
       ...depLines.sort(),
     ].join("\n"),
   );
