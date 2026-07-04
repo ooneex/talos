@@ -1,6 +1,6 @@
 ---
 name: talos:commands
-description: Reference for the `oo` CLI commands — app lifecycle, module/design/spa/microservice/SDK/docker scaffolding, database migrations and seeds, releases, and issues. Use when you need the exact command or flags to run a project task from the terminal.
+description: Reference for the `oo` CLI commands — app lifecycle, module/design/spa/microservice/SDK/docker scaffolding, database migrations and seeds, monorepo task running, releases, and issues. Use when you need the exact command or flags to run a project task from the terminal.
 ---
 
 # oo CLI Commands
@@ -85,6 +85,16 @@ bun run fmt    # Format with Biome
 bun run lint   # Lint with Biome + TypeScript
 bun run test   # Run all tests
 ```
+
+## Monorepo tasks
+```bash
+oo monorepo:run --commands=build,lint,test                # Run scripts across every package and module, with caching
+oo monorepo:run --commands=build --modules=billing,user   # Only the named modules (also --packages=a,b)
+oo monorepo:run --commands=test --logs                    # Stream plain logs (use in CI/non-interactive runs)
+oo monorepo:run --commands=build --no-cache               # Ignore the task cache and re-run everything
+```
+
+`monorepo:run` executes each command as a group (all `build`, then all `lint`, ...) in workspace dependency order. Targets whose package.json lacks the script are skipped without error; the first failure stops the run and prints the failing task's output. Results are cached in `var/cache/monorepo/` keyed by the content of the target's files, its transitive workspace dependencies, the script text, and root configs — a cache hit replays logs and restores output artifacts (`dist/` by default). Always pass `--logs` when running as an agent.
 
 ## Release
 ```bash

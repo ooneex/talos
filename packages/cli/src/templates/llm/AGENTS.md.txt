@@ -18,7 +18,7 @@ Skills load on demand based on the task — invoke or let them activate when rel
 **Reference**
 - `talos:packages` — the full @talosjs package catalog (choosing the right package for a feature).
 - `talos:architecture` — choosing and combining execution architectures (event-driven, queue, workflow, cron, real-time).
-- `talos:commands` — the `oo` CLI commands (app lifecycle, generators, database, release, issues).
+- `talos:commands` — the `oo` CLI commands (app lifecycle, generators, database, monorepo tasks, release, issues).
 - `talos:module` — backend module directory structure and the DI, exception, and TypeScript patterns with examples.
 - `talos:design` — design-system (front-end design module) directory structure with per-folder guidance.
 - `talos:spa` — single-page-app module directory structure with per-folder guidance.
