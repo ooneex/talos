@@ -2,7 +2,6 @@ import { availableParallelism } from "node:os";
 import { join } from "node:path";
 import type { ICommand } from "@talosjs/command";
 import { decorator } from "@talosjs/command";
-import { TerminalLogger } from "@talosjs/logger";
 import {
   computeTaskHash,
   discoverTargets,
@@ -16,7 +15,8 @@ import {
   sortTargetsByDependencies,
   writeCacheEntry,
 } from "../monorepo";
-import { LOG_OPTIONS } from "../utils";
+import { bold, COLORS, colorize, formatDuration, MonorepoRunLogger, SYMBOLS, taskColor } from "../monorepoRunLogger";
+import { createSpinner } from "../utils";
 
 type CommandOptionsType = {
   commands?: string;
@@ -52,7 +52,7 @@ type TaskType = {
 };
 
 type RunContextType = {
-  logger: TerminalLogger;
+  logger: MonorepoRunLogger;
   targets: MonorepoTargetType[];
   cacheDir: string;
   rootHash: string;
@@ -70,17 +70,6 @@ type RunContextType = {
 // `install` is not a per-target script: it runs `bun install` once at the project root.
 const INSTALL_COMMAND = "install";
 
-const COLORS = { info: "#007AFF", success: "#00C851", error: "#FF3B30", dim: "#8E8E93" } as const;
-
-const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
-
-const colorize = (text: string, color: string): string => {
-  const ansi = Bun.color(color, "ansi");
-  return ansi ? `${ansi}${text}\u001b[0m` : text;
-};
-
-const formatDuration = (ms: number): string => (ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(1)}s`);
-
 @decorator.command()
 export class MonorepoRunCommand<T extends CommandOptionsType = CommandOptionsType> implements ICommand<T> {
   public getName(): string {
@@ -93,7 +82,11 @@ export class MonorepoRunCommand<T extends CommandOptionsType = CommandOptionsTyp
 
   public async run(options: T): Promise<void> {
     const { commands, packages, modules, logs = false, noCache = false } = options;
-    const logger = new TerminalLogger();
+    const logger = new MonorepoRunLogger();
+    const fail = (message: string): void => {
+      logger.persist(colorize(`${SYMBOLS.error} ${message}`, COLORS.error));
+      process.exitCode = 1;
+    };
 
     const commandList =
       typeof commands === "string"
@@ -104,22 +97,24 @@ export class MonorepoRunCommand<T extends CommandOptionsType = CommandOptionsTyp
         : [];
 
     if (commandList.length === 0) {
-      logger.error("The --commands option is required (e.g. --commands=build,lint)", undefined, LOG_OPTIONS);
-      process.exitCode = 1;
+      fail("The --commands option is required (e.g. --commands=build,lint)");
       return;
     }
 
     const rootDir = process.cwd();
+
+    // Discovering targets is the one visibly slow step before tasks start
+    // streaming, so cover it with a spinner from utils. Stop it before any
+    // other output so its in-place `\r` line never collides with a log line.
+    const spinner = createSpinner("Analyzing workspace");
     const allTargets = await discoverTargets(rootDir);
-    const targets = this.filterTargets(allTargets, packages, modules, logger);
-    if (!targets) {
-      process.exitCode = 1;
-      return;
-    }
+    spinner.stop();
+
+    const targets = this.filterTargets(allTargets, packages, modules, fail);
+    if (!targets) return;
     // `install` needs no targets; only per-target commands do.
     if (targets.length === 0 && commandList.some((command) => command !== INSTALL_COMMAND)) {
-      logger.error("No packages or modules found to run", undefined, LOG_OPTIONS);
-      process.exitCode = 1;
+      fail("No packages or modules found to run");
       return;
     }
 
@@ -147,6 +142,14 @@ export class MonorepoRunCommand<T extends CommandOptionsType = CommandOptionsTyp
 
     const startedAt = performance.now();
     const allTasks = groups.flat();
+    logger.persist(
+      colorize(`${SYMBOLS.running} `, COLORS.accent) +
+        colorize(bold(commandList.join(", ")), COLORS.accent) +
+        colorize(
+          `  ${allTasks.length} task${allTasks.length === 1 ? "" : "s"} across ${sorted.length} target${sorted.length === 1 ? "" : "s"}`,
+          COLORS.dim,
+        ),
+    );
     const renderer = context.interactive ? this.startRenderer(allTasks, context) : null;
 
     try {
@@ -158,16 +161,12 @@ export class MonorepoRunCommand<T extends CommandOptionsType = CommandOptionsTyp
       renderer?.stop();
     }
 
-    if (context.interactive) {
-      for (const task of allTasks) this.reportFinish(task, context, true);
-    }
-
     if (context.failedTask) {
       process.exitCode = 1;
       return;
     }
     if (context.aborted) {
-      logger.error("Aborted", undefined, LOG_OPTIONS);
+      logger.persist(colorize(`${SYMBOLS.error} Aborted`, COLORS.error));
       process.exitCode = 1;
       return;
     }
@@ -175,12 +174,12 @@ export class MonorepoRunCommand<T extends CommandOptionsType = CommandOptionsTyp
     const completed = allTasks.filter((task) => task.status === "success").length;
     const cached = allTasks.filter((task) => task.status === "cached").length;
     const skipped = allTasks.filter((task) => task.status === "skipped").length;
-    const parts = [`${completed} completed`, `${cached} from cache`];
+    const parts = [`${completed} run`, `${cached} cached`];
     if (skipped > 0) parts.push(`${skipped} skipped`);
-    logger.success(
-      `Ran ${commandList.join(", ")}: ${parts.join(", ")} in ${formatDuration(Math.round(performance.now() - startedAt))}`,
-      undefined,
-      LOG_OPTIONS,
+    logger.persist(
+      colorize(`${SYMBOLS.success} `, COLORS.success) +
+        colorize(`Ran ${commandList.join(", ")}`, COLORS.success) +
+        colorize(`  ${parts.join(" · ")}  in ${formatDuration(Math.round(performance.now() - startedAt))}`, COLORS.dim),
     );
   }
 
@@ -190,7 +189,7 @@ export class MonorepoRunCommand<T extends CommandOptionsType = CommandOptionsTyp
     targets: MonorepoTargetType[],
     packages: string | undefined,
     modules: string | undefined,
-    logger: TerminalLogger,
+    fail: (message: string) => void,
   ): MonorepoTargetType[] | null {
     if (packages === undefined && modules === undefined) return targets;
 
@@ -203,7 +202,7 @@ export class MonorepoRunCommand<T extends CommandOptionsType = CommandOptionsTyp
     for (const { type, name } of wanted) {
       const target = targets.find((entry) => entry.type === type && entry.name === name);
       if (!target) {
-        logger.error(`No ${type} named "${name}" found`, undefined, LOG_OPTIONS);
+        fail(`No ${type} named "${name}" found`);
         return null;
       }
       selected.push(target);
@@ -301,8 +300,10 @@ export class MonorepoRunCommand<T extends CommandOptionsType = CommandOptionsTyp
     task.status = "running";
     const startedAt = performance.now();
 
+    // In the live view the footer shows what is running; without it, announce
+    // the start so the streamed, label-prefixed output has a header.
     if (!context.interactive) {
-      context.logger.info(`Running ${task.label} ...`, undefined, LOG_OPTIONS);
+      context.logger.persist(`${this.taskPrefix(task)} ${colorize("started", COLORS.dim)}`);
     }
 
     if (task.cacheable && task.target && !context.noCache) {
@@ -332,6 +333,7 @@ export class MonorepoRunCommand<T extends CommandOptionsType = CommandOptionsTyp
 
     if (context.stopped) {
       task.status = "aborted";
+      this.reportFinish(task, context);
       return;
     }
 
@@ -347,15 +349,31 @@ export class MonorepoRunCommand<T extends CommandOptionsType = CommandOptionsTyp
 
     context.procs.add(proc);
 
-    // Capture stdout and stderr incrementally so the interactive view can show
-    // logs while the task is still running.
+    // Capture stdout and stderr incrementally. In the live view the footer shows
+    // each running task's latest line; without it, stream every complete line
+    // prefixed with the task label so concurrent tasks stay distinguishable.
     const capture = async (stream: ReadableStream<Uint8Array>): Promise<void> => {
       const decoder = new TextDecoder();
       const reader = stream.getReader();
+      let pending = "";
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        task.output += decoder.decode(value, { stream: true });
+        const chunk = decoder.decode(value, { stream: true });
+        task.output += chunk;
+        if (context.interactive) continue;
+
+        pending += chunk;
+        const lastBreak = pending.lastIndexOf("\n");
+        if (lastBreak === -1) continue;
+        const prefix = this.taskPrefix(task);
+        for (const line of pending.slice(0, lastBreak).split("\n")) {
+          context.logger.persist(`${prefix} ${line}`);
+        }
+        pending = pending.slice(lastBreak + 1);
+      }
+      if (!context.interactive && pending.length > 0) {
+        context.logger.persist(`${this.taskPrefix(task)} ${pending}`);
       }
     };
 
@@ -394,6 +412,7 @@ export class MonorepoRunCommand<T extends CommandOptionsType = CommandOptionsTyp
     // A task killed because another one already failed is not itself the failure.
     if (context.stopped) {
       task.status = "aborted";
+      this.reportFinish(task, context);
       return;
     }
 
@@ -408,135 +427,125 @@ export class MonorepoRunCommand<T extends CommandOptionsType = CommandOptionsTyp
     this.reportFinish(task, context);
   }
 
-  // Log a task's final state. In interactive mode this only happens once the
-  // live view has been torn down (`force`), as a persistent summary.
-  private reportFinish(task: TaskType, context: RunContextType, force = false): void {
-    if (context.interactive && !force) return;
+  // The colored `label ┃` used to prefix a task's streamed log lines.
+  private taskPrefix(task: TaskType): string {
+    return `${colorize(task.label, taskColor(task.key))}${colorize(" ┃", COLORS.dim)}`;
+  }
 
+  // Persist a task's final state as one scrollback line (above the live footer),
+  // with the full output dumped only on failure — and only when it was not
+  // already streamed line-by-line in non-interactive mode.
+  private reportFinish(task: TaskType, context: RunContextType): void {
     const { logger } = context;
-    const output = task.output.trim();
 
     switch (task.status) {
       case "skipped":
-        logger.log(`Skipped ${task.label} (no "${task.command}" script)`, undefined, LOG_OPTIONS);
+        logger.persist(
+          colorize(`${SYMBOLS.skipped} `, COLORS.dim) +
+            colorize(task.label, COLORS.dim) +
+            colorize(`  no "${task.command}" script`, COLORS.dim),
+        );
         break;
       case "cached":
-        logger.success(`${task.label} done in ${formatDuration(task.durationMs)} (cache hit)`, undefined, LOG_OPTIONS);
+        logger.persist(
+          colorize(`${SYMBOLS.success} `, COLORS.success) +
+            task.label +
+            colorize("  cached", COLORS.warn) +
+            colorize(`  ${formatDuration(task.durationMs)}`, COLORS.dim),
+        );
         break;
       case "success":
-        logger.success(`${task.label} done in ${formatDuration(task.durationMs)}`, undefined, LOG_OPTIONS);
+        logger.persist(
+          colorize(`${SYMBOLS.success} `, COLORS.success) +
+            task.label +
+            colorize(`  ${formatDuration(task.durationMs)}`, COLORS.dim),
+        );
         break;
-      case "failed":
-        logger.error(`${task.label} failed (exit code ${task.exitCode ?? 1})`, undefined, LOG_OPTIONS);
-        if (output) process.stderr.write(`${output}\n`);
+      case "failed": {
+        logger.persist(
+          colorize(`${SYMBOLS.error} `, COLORS.error) +
+            task.label +
+            colorize("  failed", COLORS.error) +
+            colorize(`  exit ${task.exitCode ?? 1}  ${formatDuration(task.durationMs)}`, COLORS.dim),
+        );
+        const output = task.output.trim();
+        if (context.interactive && output) {
+          logger.persist(...output.split("\n").map((line) => `${colorize("┃", COLORS.error)} ${line}`));
+        }
         break;
+      }
       case "aborted":
-        logger.log(`${task.label} aborted`, undefined, LOG_OPTIONS);
+        logger.persist(colorize(`${SYMBOLS.aborted} ${task.label}  aborted`, COLORS.dim));
         break;
       default:
         break;
     }
   }
 
-  // Live TTY view: one line per task with a spinner, redrawn on the alternate
-  // screen buffer. Clicking a task line toggles its captured logs; ctrl+c (or
-  // q) aborts the run. Returns a handle that restores the terminal.
+  // Live TTY view: finished tasks stream into scrollback (see `reportFinish`)
+  // while a footer pinned to the bottom shows a progress bar and every currently
+  // running task with its latest log line. ctrl+c / q aborts. Returns a handle
+  // that tears the footer down and restores the terminal.
   private startRenderer(tasks: TaskType[], context: RunContextType): { stop: () => void } {
-    const write = (text: string): void => {
-      process.stdout.write(text);
-    };
-    const expanded = new Set<string>();
-    let lineTaskKeys: (string | null)[] = [];
-    let frame = 0;
+    const { logger } = context;
+    const startedAt = performance.now();
 
-    const taskLine = (task: TaskType): string => {
-      switch (task.status) {
-        case "running":
-          return colorize(`${SPINNER_FRAMES[frame % SPINNER_FRAMES.length]} Running ${task.label} ...`, COLORS.info);
-        case "success":
-          return colorize(`✔ ${task.label} (${formatDuration(task.durationMs)})`, COLORS.success);
-        case "cached":
-          return colorize(`✔ ${task.label} (cache hit)`, COLORS.success);
-        case "failed":
-          return colorize(`✖ ${task.label} (exit code ${task.exitCode ?? 1})`, COLORS.error);
-        case "skipped":
-          return colorize(`- ${task.label} (no script)`, COLORS.dim);
-        case "aborted":
-          return colorize(`- ${task.label} (aborted)`, COLORS.dim);
-        default:
-          return colorize(`◌ ${task.label}`, COLORS.dim);
-      }
-    };
+    logger.start(() => {
+      context.aborted = true;
+      context.stopped = true;
+      for (const proc of context.procs) proc.kill();
+    });
 
     const render = (): void => {
-      const rows = process.stdout.rows ?? 24;
-      const columns = process.stdout.columns ?? 80;
-      const lines: string[] = [];
-      lineTaskKeys = [];
-
-      const push = (line: string, key: string | null): void => {
-        lines.push(line);
-        lineTaskKeys.push(key);
-      };
-
-      push(
-        colorize("monorepo:run", COLORS.info) +
-          colorize(" · click a task to toggle logs · ctrl+c to abort", COLORS.dim),
-        null,
-      );
-
-      for (const task of tasks) {
-        push(taskLine(task), task.key);
-        if (!expanded.has(task.key)) continue;
-
-        const logLines = task.output.split("\n").filter((line) => line.trim().length > 0);
-        const visibleLogs = logLines.length > 0 ? logLines.slice(-10) : ["(no output)"];
-        for (const line of visibleLogs) {
-          push(colorize(`    ${line.slice(0, Math.max(0, columns - 5))}`, COLORS.dim), task.key);
-        }
-      }
-
-      write(`\u001b[H\u001b[0J${lines.slice(0, rows - 1).join("\n")}\n`);
-      frame++;
+      logger.tick();
+      logger.renderFooter(this.buildFooter(tasks, logger.spinner, performance.now() - startedAt));
     };
 
-    const onData = (data: Buffer): void => {
-      const input = data.toString();
-
-      if (input.includes("\u0003") || input === "q") {
-        context.aborted = true;
-        context.stopped = true;
-        for (const proc of context.procs) proc.kill();
-        return;
-      }
-
-      // SGR mouse reports: ESC [ < button ; column ; row (M = press, m = release).
-      for (const match of input.matchAll(/\u001b\[<(\d+);(\d+);(\d+)M/g)) {
-        if (Number(match[1]) !== 0) continue;
-        const key = lineTaskKeys[Number(match[3]) - 1];
-        if (!key) continue;
-        if (expanded.has(key)) expanded.delete(key);
-        else expanded.add(key);
-        render();
-      }
-    };
-
-    // Alternate screen + hidden cursor + SGR mouse tracking.
-    write("\u001b[?1049h\u001b[?25l\u001b[?1000h\u001b[?1006h");
-    process.stdin.setRawMode(true);
-    process.stdin.resume();
-    process.stdin.on("data", onData);
     const interval = setInterval(render, 80);
     render();
 
     return {
       stop: (): void => {
         clearInterval(interval);
-        process.stdin.off("data", onData);
-        process.stdin.setRawMode(false);
-        process.stdin.pause();
-        write("\u001b[?1006l\u001b[?1000l\u001b[?25h\u001b[?1049l");
+        logger.stop();
       },
     };
+  }
+
+  // Build the live footer: a progress bar with a running/failed/elapsed summary,
+  // followed by one line per running task showing its latest output line.
+  private buildFooter(tasks: TaskType[], spinner: string, elapsedMs: number): string[] {
+    const total = tasks.length;
+    const finished = tasks.filter((task) => task.status !== "pending" && task.status !== "running").length;
+    const running = tasks.filter((task) => task.status === "running");
+    const failed = tasks.filter((task) => task.status === "failed").length;
+
+    const width = 22;
+    const ratio = total === 0 ? 1 : finished / total;
+    const filled = Math.min(width, Math.round(ratio * width));
+    const bar =
+      colorize("█".repeat(filled), failed > 0 ? COLORS.error : COLORS.success) +
+      colorize("░".repeat(width - filled), COLORS.dim);
+
+    const summary = [`${finished}/${total}`];
+    if (running.length > 0) summary.push(`${running.length} running`);
+    if (failed > 0) summary.push(`${failed} failed`);
+
+    const lines = [
+      "",
+      `  ${bar}  ${colorize(summary.join(" · "), COLORS.info)}` +
+        colorize(`  ${formatDuration(Math.round(elapsedMs))} · ctrl+c to abort`, COLORS.dim),
+    ];
+
+    for (const task of running) {
+      const last = task.output
+        .split("\n")
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .at(-1);
+      lines.push(`  ${colorize(spinner, COLORS.info)} ${task.label}${last ? colorize(`  ${last}`, COLORS.dim) : ""}`);
+    }
+
+    return lines;
   }
 }

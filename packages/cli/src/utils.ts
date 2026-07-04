@@ -137,12 +137,14 @@ export const toYaml = (value: unknown, indent = 0, comments?: Map<string, string
   return entries.join(comments && indent === 0 ? "\n\n" : "\n");
 };
 
+/** Braille spinner frames shared by {@link createSpinner} and the monorepo runner's live footer. */
+export const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"] as const;
+
 export const createSpinner = (message: string): { stop: () => void } => {
   if (!process.stdout.isTTY) return { stop: () => {} };
-  const frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
   let i = 0;
   const id = setInterval(() => {
-    process.stdout.write(`\r${frames[i % frames.length]} ${message}`);
+    process.stdout.write(`\r${SPINNER_FRAMES[i % SPINNER_FRAMES.length]} ${message}`);
     i++;
   }, 80);
   return {

@@ -7,7 +7,8 @@ mock.module("enquirer", () => ({
   prompt: mock(() => Promise.resolve({ name: "Test" })),
 }));
 
-const { ensureModule, extractYamlComments, getCliVersion, runModuleScripts, toYaml } = await import("@/utils");
+const { createSpinner, ensureModule, extractYamlComments, getCliVersion, runModuleScripts, SPINNER_FRAMES, toYaml } =
+  await import("@/utils");
 const { ModuleCreateCommand } = await import("@/commands/ModuleCreateCommand");
 const { TerminalLogger } = await import("@talosjs/logger");
 
@@ -433,5 +434,50 @@ describe("ensureModule", () => {
       cwd: testDir,
       silent: true,
     });
+  });
+});
+
+describe("SPINNER_FRAMES", () => {
+  test("should expose a non-empty set of unique braille frames", () => {
+    expect(SPINNER_FRAMES.length).toBeGreaterThan(0);
+    expect(SPINNER_FRAMES.every((frame) => typeof frame === "string" && frame.length > 0)).toBe(true);
+    expect(new Set(SPINNER_FRAMES).size).toBe(SPINNER_FRAMES.length);
+  });
+});
+
+describe("createSpinner", () => {
+  const originalIsTTY = process.stdout.isTTY;
+  let writeSpy: ReturnType<typeof spyOn>;
+
+  afterEach(() => {
+    writeSpy?.mockRestore();
+    Object.defineProperty(process.stdout, "isTTY", { value: originalIsTTY, configurable: true });
+  });
+
+  test("should be an inert no-op when stdout is not a TTY", () => {
+    Object.defineProperty(process.stdout, "isTTY", { value: false, configurable: true });
+    writeSpy = spyOn(process.stdout, "write").mockReturnValue(true);
+
+    const spinner = createSpinner("Working");
+    spinner.stop();
+
+    expect(writeSpy).not.toHaveBeenCalled();
+  });
+
+  test("should render a frame and clear the line on stop when stdout is a TTY", async () => {
+    Object.defineProperty(process.stdout, "isTTY", { value: true, configurable: true });
+    writeSpy = spyOn(process.stdout, "write").mockReturnValue(true);
+
+    const spinner = createSpinner("Working");
+    // The interval fires every 80ms; wait for at least one frame to be drawn.
+    await Bun.sleep(120);
+    spinner.stop();
+
+    const written = (writeSpy.mock.calls as unknown[][]).map((call) => String(call[0]));
+    expect(
+      written.some((chunk) => chunk.includes("Working") && SPINNER_FRAMES.some((frame) => chunk.includes(frame))),
+    ).toBe(true);
+    // stop() erases the spinner line so it never lingers above later output.
+    expect(written.at(-1)).toContain("\r");
   });
 });
