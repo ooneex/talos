@@ -27,7 +27,6 @@ oo app:start --spa             # Start only the spa modules (also --spa=a,b)
 oo app:start --api --spa       # Combine flags to start several types at once
 oo app:stop                    # Stop the app module's shared Docker stack
 oo app:stop --api=a,b          # Stop only the Docker stack of named modules that have a docker-compose.yml
-oo app:build                   # Compile for production (output: dist/)
 ```
 
 ## Generators

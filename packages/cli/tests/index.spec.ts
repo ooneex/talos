@@ -31,7 +31,6 @@ type CommandConstructor = new () => {
 
 describe("@talosjs/cli - index", () => {
   const expectedCommands = [
-    "AppBuildCommand",
     "AppStartCommand",
     "AppStopCommand",
     "CommandRunCommand",

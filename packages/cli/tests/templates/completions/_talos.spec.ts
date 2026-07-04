@@ -152,7 +152,6 @@ describe("_talos.txt", () => {
 
   describe("commands list", () => {
     const expectedCommands = [
-      "app\\:build",
       "app\\:init",
       "app\\:start",
       "app\\:stop",
@@ -490,7 +489,7 @@ describe("_talos.txt", () => {
 
     test("completion:zsh, claude:init, codex:init, version, and upgrade should have no options", async () => {
       const content = await Bun.file(templatePath).text();
-      const match = content.match(/app:build\|claude:init\|codex:init\|completion:zsh\|help\|version\|upgrade\)\s*;;/);
+      const match = content.match(/claude:init\|codex:init\|completion:zsh\|help\|version\|upgrade\)\s*;;/);
       expect(match).not.toBeNull();
     });
 

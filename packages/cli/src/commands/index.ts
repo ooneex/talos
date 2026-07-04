@@ -2,7 +2,6 @@ export { AiChatCreateCommand } from "./AiChatCreateCommand";
 export { AiMiddlewareCreateCommand } from "./AiMiddlewareCreateCommand";
 export { AiToolCreateCommand } from "./AiToolCreateCommand";
 export { AnalyticsCreateCommand } from "./AnalyticsCreateCommand";
-export { AppBuildCommand } from "./AppBuildCommand";
 export { AppCreateCommand } from "./AppCreateCommand";
 export { AppInitCommand } from "./AppInitCommand";
 export { AppStartCommand } from "./AppStartCommand";

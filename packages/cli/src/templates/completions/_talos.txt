@@ -93,7 +93,6 @@ _talos_spa_modules() {
 _talos() {
   local -a commands
   commands=(
-    'app\:build:Build the application'
     'app\:create:Create a new application'
     'app\:init:Initialize an application'
     'app\:start:Start the application'
@@ -169,7 +168,7 @@ _talos() {
       ;;
     opts)
       case "$words[1]" in
-        app:build|claude:init|codex:init|completion:zsh|help|version|upgrade)
+        claude:init|codex:init|completion:zsh|help|version|upgrade)
           ;;
         app:start|app:stop)
           _arguments -s \

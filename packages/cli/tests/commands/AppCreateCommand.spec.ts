@@ -417,7 +417,6 @@ describe("AppCreateCommand", () => {
       expect(messages.some((msg) => msg.includes(`cd ${testDir}`))).toBe(true);
       expect(messages.some((msg) => msg.includes("talos app:start"))).toBe(true);
       expect(messages.some((msg) => msg.includes("talos app:stop"))).toBe(true);
-      expect(messages.some((msg) => msg.includes("talos app:build"))).toBe(true);
     });
 
     test("should not create CI/CD files when user declines", async () => {

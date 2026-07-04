@@ -37,14 +37,6 @@ Stops all Docker services:
 oo app:stop
 ```
 
-### Build the App
-
-Compiles the application for production. Output is written to the `dist` directory:
-
-```bash
-oo app:build
-```
-
 ---
 
 ## Modules

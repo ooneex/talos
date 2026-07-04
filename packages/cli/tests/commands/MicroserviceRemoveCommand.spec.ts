@@ -191,10 +191,7 @@ describe("MicroserviceRemoveCommand", () => {
 
   describe(".env.yml integration", () => {
     test("should remove the microservice entry", async () => {
-      await Bun.write(
-        join(testDir, ".env.yml"),
-        'app:\n  url: ""\n\nmicroservices:\n  billing:\n    url: ""\n',
-      );
+      await Bun.write(join(testDir, ".env.yml"), 'app:\n  url: ""\n\nmicroservices:\n  billing:\n    url: ""\n');
 
       await makeCommand.run({ name: "Billing", cwd: testDir, silent: true });
       await removeCommand.run({ name: "Billing", cwd: testDir, silent: true });

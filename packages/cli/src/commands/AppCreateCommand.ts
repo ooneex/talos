@@ -166,8 +166,6 @@ export class AppCreateCommand<T extends CommandOptionsType = CommandOptionsType>
 
     logger.info("Stop the app:\n  talos app:stop", undefined, LOG_OPTIONS_PLAIN);
 
-    logger.info("Build the app:\n  talos app:build", undefined, LOG_OPTIONS_PLAIN);
-
     const createCiCd = await askConfirm({ message: "Create CI/CD files?", initial: true });
 
     if (createCiCd) {

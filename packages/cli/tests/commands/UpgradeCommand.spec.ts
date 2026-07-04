@@ -32,8 +32,7 @@ const mockFetch = (impl: () => Promise<Response> | Response): void => {
   globalThis.fetch = mock(impl) as unknown as typeof fetch;
 };
 
-const jsonResponse = (body: unknown, ok = true): Response =>
-  ({ ok, json: async () => body }) as unknown as Response;
+const jsonResponse = (body: unknown, ok = true): Response => ({ ok, json: async () => body }) as unknown as Response;
 
 describe("UpgradeCommand", () => {
   let command: InstanceType<typeof UpgradeCommand>;
@@ -41,9 +40,9 @@ describe("UpgradeCommand", () => {
   const originalSpawn = Bun.spawn;
   const originalExitCode = process.exitCode;
 
-  // Real spawnStep runs, but the underlying process is faked (mirrors
-  // AppBuildCommand.spec) so no `bun add -g` is ever executed. Capturing here
-  // rather than stubbing @/utils keeps the mock from leaking to other suites.
+  // Real spawnStep runs, but the underlying process is faked so no `bun add -g`
+  // is ever executed. Capturing here rather than stubbing @/utils keeps the mock
+  // from leaking to other suites.
   let spawnCalls: string[][];
   let spawnExitCode: number;
 

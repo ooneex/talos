@@ -43,11 +43,7 @@ export class UpgradeCommand implements ICommand {
     });
 
     if (!succeeded) {
-      logger.info(
-        `You can upgrade manually with: bun add -g ${CLI_PACKAGE_NAME}@latest`,
-        undefined,
-        LOG_OPTIONS,
-      );
+      logger.info(`You can upgrade manually with: bun add -g ${CLI_PACKAGE_NAME}@latest`, undefined, LOG_OPTIONS);
     }
   }
 
