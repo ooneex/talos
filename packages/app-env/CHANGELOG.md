@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.1.1](https://github.com/ooneex/talos/releases/tag/@talosjs/app-env@1.1.1) - 2026-07-04
+
+### Changed
+
+- Drop modules/shared fallback from default env candidates| — Franck ([a75932a9](https://github.com/ooneex/talos/commit/a75932a9))
+
 ## [1.1.0](https://github.com/ooneex/talos/releases/tag/@talosjs/app-env@1.1.0) - 2026-07-02
 
 ### Added
