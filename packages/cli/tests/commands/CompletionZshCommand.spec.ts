@@ -206,6 +206,7 @@ describe("CompletionZshCommand", () => {
       expect(talosContent).toContain(
         "github\\:credentials\\:create:Save a GitHub Personal Access Token under the user config",
       );
+      expect(talosContent).toContain("jira\\:credentials\\:create:Save a Jira API token under the user config");
       expect(talosContent).toContain(
         "linear\\:credentials\\:create:Save a Linear Personal API key under the user config",
       );
@@ -231,6 +232,16 @@ describe("CompletionZshCommand", () => {
       const body = caseBody(talosContent, "github:credentials:create");
       expect(body).toContain("--token=");
       expect(body).not.toContain("--module=");
+    });
+
+    test("should include base-url, email and token options for jira:credentials:create", async () => {
+      await command.run();
+
+      const talosContent = await Bun.file(join(completionDir, "_talos")).text();
+      const body = caseBody(talosContent, "jira:credentials:create");
+      expect(body).toContain("--base-url=");
+      expect(body).toContain("--email=");
+      expect(body).toContain("--token=");
     });
 
     test("should include the token option for linear:credentials:create", async () => {

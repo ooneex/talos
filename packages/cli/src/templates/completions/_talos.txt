@@ -122,6 +122,7 @@ _talos() {
     'docker\:create:Add a docker service to docker-compose.yml'
     'docker\:credentials\:create:Save a Docker registry access token under the user config'
     'github\:credentials\:create:Save a GitHub Personal Access Token under the user config'
+    'jira\:credentials\:create:Save a Jira API token under the user config'
     'linear\:credentials\:create:Save a Linear Personal API key under the user config'
     'npm\:credentials\:create:Save an npm Granular Access Token under the user config'
     'npm\:publish:Publish a package or module to npm'
@@ -246,6 +247,12 @@ _talos() {
         github:credentials:create)
           _arguments -s \
             '--token=[GitHub Personal Access Token]:token'
+          ;;
+        jira:credentials:create)
+          _arguments -s \
+            '--base-url=[Jira base URL]:baseUrl' \
+            '--email=[Jira account email]:email' \
+            '--token=[Jira API token]:token'
           ;;
         linear:credentials:create)
           _arguments -s \
