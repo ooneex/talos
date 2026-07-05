@@ -1,7 +1,7 @@
 {
   "name": "@talosjs/repository",
   "description": "Data access layer with decorator-based repository registration, query abstraction, and dependency injection for clean persistence patterns",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "type": "module",
   "files": [
     "dist",
