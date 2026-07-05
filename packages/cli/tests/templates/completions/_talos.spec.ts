@@ -486,10 +486,19 @@ describe("_talos.txt", () => {
       expect(match?.[1]).toContain("--version=");
     });
 
-    test("agent:skills:create, completion:zsh, version, and upgrade should have no options", async () => {
+    test("completion:zsh, version, and upgrade should have no options", async () => {
       const content = await Bun.file(templatePath).text();
-      const match = content.match(/agent:skills:create\|completion:zsh\|help\|version\|upgrade\)\s*;;/);
+      const match = content.match(/completion:zsh\|help\|version\|upgrade\)\s*;;/);
       expect(match).not.toBeNull();
+    });
+
+    test("agent:skills:create should have --agents and --cwd options", async () => {
+      const content = await Bun.file(templatePath).text();
+      const match = content.match(/agent:skills:create\)([\s\S]*?);;/);
+      expect(match).not.toBeNull();
+      expect(match?.[1]).toContain("--agents=");
+      expect(match?.[1]).toContain("_talos_agent_dirs");
+      expect(match?.[1]).toContain("--cwd=");
     });
 
     test("app:start and app:stop should have --api, --microservice, and --spa options with module suggestions", async () => {

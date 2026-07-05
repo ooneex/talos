@@ -99,6 +99,23 @@ _talos_microservice_modules() {
   fi
 }
 
+_talos_agent_dirs() {
+  local -a dirs
+  dirs=(
+    '.claude:Claude'
+    '.codex:Codex'
+    '.cursor:Cursor'
+    '.gemini:Gemini'
+    '.windsurf:Windsurf'
+    '.cline:Cline'
+    '.junie:JetBrains Junie'
+    '.roo:Roo Code'
+    '.continue:Continue'
+    '.zed:Zed'
+  )
+  _values -s , 'agents' $dirs
+}
+
 _talos_spa_modules() {
   local -a modules
   if [[ -d modules ]]; then
@@ -186,7 +203,12 @@ _talos() {
       ;;
     opts)
       case "$words[1]" in
-        agent:skills:create|completion:zsh|help|version|upgrade)
+        completion:zsh|help|version|upgrade)
+          ;;
+        agent:skills:create)
+          _arguments -s \
+            '--agents=-[Assistant config dir(s), comma-separated]::agents:_talos_agent_dirs' \
+            '--cwd=[Working directory]:cwd:_files -/'
           ;;
         app:start|app:stop)
           _arguments -s \
