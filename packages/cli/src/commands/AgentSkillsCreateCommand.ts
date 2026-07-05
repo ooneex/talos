@@ -24,7 +24,7 @@ export class AgentSkillsCreateCommand<T extends CommandOptionsType = CommandOpti
   }
 
   public async run(options?: T): Promise<void> {
-    const agentDirs = options?.agents ?? (await askAgentSkills({ message: "Add skills for which assistants?" }));
+    const agentDirs = options?.agents ?? (await askAgentSkills({ name: "Add skills for which assistants?" }));
 
     for (const configDir of agentDirs) {
       await scaffoldAgentConfig(configDir, options?.cwd);
