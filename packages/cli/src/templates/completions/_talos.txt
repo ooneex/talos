@@ -114,8 +114,7 @@ _talos() {
     'app\:init:Initialize an application'
     'app\:start:Start the application'
     'app\:stop:Stop the application'
-    'claude\:init:Initialize Claude configuration and skills'
-    'codex\:init:Initialize Codex configuration and skills'
+    'agent\:skills\:create:Scaffold skills and configuration for coding assistants'
     'command\:run:Run a custom command from a module'
     'completion\:zsh:Install Zsh completion for oo command'
     'help:Show available commands'
@@ -187,7 +186,7 @@ _talos() {
       ;;
     opts)
       case "$words[1]" in
-        claude:init|codex:init|completion:zsh|help|version|upgrade)
+        agent:skills:create|completion:zsh|help|version|upgrade)
           ;;
         app:start|app:stop)
           _arguments -s \

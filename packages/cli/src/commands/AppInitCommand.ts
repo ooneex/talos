@@ -4,8 +4,6 @@ import type { ICommand } from "@talosjs/command";
 import { decorator } from "@talosjs/command";
 import { TerminalLogger } from "@talosjs/logger";
 import { toKebabCase } from "@talosjs/utils/toKebabCase";
-import { scaffoldAgentConfig } from "../agentConfig";
-import { askAgentSkills } from "../prompts/askAgentSkills";
 import { askConfirm } from "../prompts/askConfirm";
 import { askDestination } from "../prompts/askDestination";
 import { askName } from "../prompts/askName";
@@ -16,6 +14,7 @@ import readmeTemplate from "../templates/app/README.md.txt";
 import tsconfigTemplate from "../templates/app/tsconfig.json.txt";
 import zedSettingsTemplate from "../templates/app/zed-settings.json.txt";
 import { extractYamlComments, LOG_OPTIONS, spawnStep, toYaml } from "../utils";
+import { AgentSkillsCreateCommand } from "./AgentSkillsCreateCommand";
 import { CommitlintInitCommand } from "./CommitlintInitCommand";
 
 type CommandOptionsType = {
@@ -133,11 +132,7 @@ export class AppInitCommand<T extends CommandOptionsType = CommandOptionsType> i
     }
 
     // Scaffold shared skills/config for whichever assistants the user selects.
-    const agentDirs = await askAgentSkills({ message: "Add skills for which assistants?" });
-
-    for (const configDir of agentDirs) {
-      await scaffoldAgentConfig(configDir, destination);
-    }
+    await new AgentSkillsCreateCommand().run({ cwd: destination });
 
     if (!silent) {
       logger.success(`${kebabName} initialized successfully at ${destination}`, undefined, LOG_OPTIONS);

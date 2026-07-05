@@ -1,3 +1,4 @@
+export { AgentSkillsCreateCommand } from "./AgentSkillsCreateCommand";
 export { AiChatCreateCommand } from "./AiChatCreateCommand";
 export { AiMiddlewareCreateCommand } from "./AiMiddlewareCreateCommand";
 export { AiToolCreateCommand } from "./AiToolCreateCommand";
