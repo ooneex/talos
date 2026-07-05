@@ -1,7 +1,7 @@
 {
   "name": "@talosjs/yml",
   "description": "YAML file loader and parser using Bun's built-in YAML support with generator-based streaming",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "type": "module",
   "files": [
     "dist",
