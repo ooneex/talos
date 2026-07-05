@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test } from "bun:test";
-import type { AGUIEvent } from "@tanstack/ai";
 import { Container, EContainerScope } from "@talosjs/container";
+import type { AGUIEvent } from "@tanstack/ai";
 import { decorator } from "@/decorators";
 import type { ChatInputType, IChat, IMiddleware, ITool } from "@/types";
 

@@ -560,11 +560,13 @@ hierarchy:
         const rootYml = validRolesYml.replace("description: Guest", "description: RootGuest");
         const sharedYml = validRolesYml.replace("description: Guest", "description: SharedGuest");
 
-        const spy = spyOn(Bun, "file").mockImplementation(((path: string) =>
-          ({
-            exists: () => Promise.resolve(true),
-            text: () => Promise.resolve(path.includes("modules") ? sharedYml : rootYml),
-          }) as unknown as ReturnType<typeof Bun.file>) as unknown as typeof Bun.file);
+        const spy = spyOn(Bun, "file").mockImplementation(
+          ((path: string) =>
+            ({
+              exists: () => Promise.resolve(true),
+              text: () => Promise.resolve(path.includes("modules") ? sharedYml : rootYml),
+            }) as unknown as ReturnType<typeof Bun.file>) as unknown as typeof Bun.file,
+        );
 
         const config = createMockConfig();
         const app = new App(config);
@@ -578,11 +580,13 @@ hierarchy:
       test("falls back to the shared module roles.yml when the root has none", async () => {
         const sharedYml = validRolesYml.replace("description: Guest", "description: SharedGuest");
 
-        const spy = spyOn(Bun, "file").mockImplementation(((path: string) =>
-          ({
-            exists: () => Promise.resolve(path.includes("modules")),
-            text: () => Promise.resolve(sharedYml),
-          }) as unknown as ReturnType<typeof Bun.file>) as unknown as typeof Bun.file);
+        const spy = spyOn(Bun, "file").mockImplementation(
+          ((path: string) =>
+            ({
+              exists: () => Promise.resolve(path.includes("modules")),
+              text: () => Promise.resolve(sharedYml),
+            }) as unknown as ReturnType<typeof Bun.file>) as unknown as typeof Bun.file,
+        );
 
         const config = createMockConfig();
         const app = new App(config);

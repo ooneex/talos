@@ -93,8 +93,7 @@ export class FirecrawlSearchTool implements ITool<unknown, Promise<FirecrawlSear
   // `param` is validated against `getInputSchema` by the chat runtime before it
   // reaches here, so the narrowing cast is safe.
   public handler = async (param: unknown): Promise<FirecrawlSearchResultType[]> => {
-    const { query, limit, sources, includeDomains, excludeDomains, location } =
-      param as FirecrawlSearchInputType;
+    const { query, limit, sources, includeDomains, excludeDomains, location } = param as FirecrawlSearchInputType;
 
     const data = await this.getClient().search(query, {
       limit: Math.min(limit ?? DEFAULT_LIMIT, MAX_LIMIT),

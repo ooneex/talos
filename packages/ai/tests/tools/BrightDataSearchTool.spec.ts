@@ -115,10 +115,7 @@ describe("BrightDataSearchTool.handler", () => {
   });
 
   test("should fall back to url/global_rank and drop entries without a link", async () => {
-    searchResult = serp([
-      { url: "https://example.com/a", global_rank: 2 },
-      { title: "No link here" },
-    ]);
+    searchResult = serp([{ url: "https://example.com/a", global_rank: 2 }, { title: "No link here" }]);
 
     const results = await makeTool().handler({ query: "ai" });
 
@@ -126,11 +123,7 @@ describe("BrightDataSearchTool.handler", () => {
   });
 
   test("should cap projected results at the requested limit", async () => {
-    searchResult = serp([
-      { link: "https://a" },
-      { link: "https://b" },
-      { link: "https://c" },
-    ]);
+    searchResult = serp([{ link: "https://a" }, { link: "https://b" }, { link: "https://c" }]);
 
     const results = await makeTool().handler({ query: "ai", limit: 2 });
 

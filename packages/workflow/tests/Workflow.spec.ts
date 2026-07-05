@@ -18,10 +18,7 @@ beforeEach(() => {
  * The transition classes are registered in the container so run() can resolve
  * them via container.get().
  */
-const makeWorkflow = (
-  transitions: WorkflowTransitionClassType[],
-  name = "test-workflow",
-): Workflow<Data> => {
+const makeWorkflow = (transitions: WorkflowTransitionClassType[], name = "test-workflow"): Workflow<Data> => {
   for (const transition of transitions) {
     container.add(transition);
   }
@@ -291,9 +288,7 @@ describe("Workflow.run lifecycle events", () => {
     const context = { requestId: "req-3" };
     const workflow = makeWorkflow([Failing]);
 
-    expect(workflow.run(data, context)).rejects.toBeInstanceOf(
-      WorkflowException,
-    );
+    expect(workflow.run(data, context)).rejects.toBeInstanceOf(WorkflowException);
 
     // onFinish never runs; onFail receives the raw error and the context.
     expect(log).toEqual(["onFail"]);
@@ -342,11 +337,7 @@ describe("Workflow.run lifecycle events", () => {
 
     // The handler of the failing transition never runs; onFail fires, then the
     // previously executed transition rolls back.
-    expect(log).toEqual([
-      "handle:executed",
-      "onFail:failing",
-      "rollback:executed",
-    ]);
+    expect(log).toEqual(["handle:executed", "onFail:failing", "rollback:executed"]);
   });
 
   test("a throw from onFinish fires onFail and rolls back the transition", async () => {
@@ -461,13 +452,7 @@ describe("Workflow.run rollback", () => {
 
     // The failing transition's rollback is NOT called (it was never marked
     // executed); already-executed transitions roll back in reverse order.
-    expect(log).toEqual([
-      "handle:one",
-      "handle:two",
-      "handle:failing",
-      "rollback:two",
-      "rollback:one",
-    ]);
+    expect(log).toEqual(["handle:one", "handle:two", "handle:failing", "rollback:two", "rollback:one"]);
   });
 
   test("does not roll back when the first transition fails", async () => {
@@ -510,16 +495,11 @@ describe("Workflow.run rollback", () => {
 
     try {
       await workflow.run({});
-      throw new WorkflowException(
-        "run() should have thrown",
-        "TEST_EXPECTED_THROW",
-      );
+      throw new WorkflowException("run() should have thrown", "TEST_EXPECTED_THROW");
     } catch (error) {
       expect(error).toBeInstanceOf(WorkflowException);
       const exception = error as WorkflowException;
-      expect(exception.message).toBe(
-        'Workflow "broken-workflow" failed at transition "failing".',
-      );
+      expect(exception.message).toBe('Workflow "broken-workflow" failed at transition "failing".');
       expect(exception.key).toBe("WORKFLOW_RUN_FAILED");
       expect(exception.data).toEqual({
         workflow: "broken-workflow",
@@ -547,10 +527,7 @@ describe("Workflow.run rollback", () => {
 
     try {
       await workflow.run({});
-      throw new WorkflowException(
-        "run() should have thrown",
-        "TEST_EXPECTED_THROW",
-      );
+      throw new WorkflowException("run() should have thrown", "TEST_EXPECTED_THROW");
     } catch (error) {
       const exception = error as WorkflowException;
       expect(exception).toBeInstanceOf(WorkflowException);

@@ -1,7 +1,7 @@
-import Exa from "exa-js";
 import { AppEnv } from "@talosjs/app-env";
 import { inject } from "@talosjs/container";
 import { Assert, type AssertType } from "@talosjs/validation";
+import Exa from "exa-js";
 import { decorator } from "../decorators";
 import type { ITool } from "../types";
 
@@ -93,8 +93,7 @@ export class ExaSearchTool implements ITool<unknown, Promise<ExaSearchResultType
       query: "string > 0",
       "numResults?": "number > 0",
       "type?": "'auto' | 'fast' | 'deep-lite' | 'deep' | 'deep-reasoning' | 'instant'",
-      "category?":
-        "'company' | 'research paper' | 'news' | 'pdf' | 'personal site' | 'financial report' | 'people'",
+      "category?": "'company' | 'research paper' | 'news' | 'pdf' | 'personal site' | 'financial report' | 'people'",
       "includeDomains?": "string[]",
       "excludeDomains?": "string[]",
     });
@@ -102,8 +101,7 @@ export class ExaSearchTool implements ITool<unknown, Promise<ExaSearchResultType
   // `param` is validated against `getInputSchema` by the chat runtime before it
   // reaches here, so the narrowing cast is safe.
   public handler = async (param: unknown): Promise<ExaSearchResultType[]> => {
-    const { query, numResults, type, category, includeDomains, excludeDomains } =
-      param as ExaSearchInputType;
+    const { query, numResults, type, category, includeDomains, excludeDomains } = param as ExaSearchInputType;
 
     const { results } = await this.getClient().search(query, {
       numResults: Math.min(numResults ?? DEFAULT_NUM_RESULTS, MAX_NUM_RESULTS),

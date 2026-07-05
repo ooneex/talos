@@ -1,7 +1,7 @@
+import { Polar } from "@polar-sh/sdk";
 import { AppEnv } from "@talosjs/app-env";
 import { inject, injectable } from "@talosjs/container";
 import type { CurrencyCodeType } from "@talosjs/currencies";
-import { Polar } from "@polar-sh/sdk";
 import { PaymentException } from "./PaymentException";
 import type { DiscountDurationType, DiscountResponseType, DiscountType, IDiscount, IProduct } from "./types";
 

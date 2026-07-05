@@ -23,8 +23,7 @@ mock.module("@talosjs/app-env", () => ({ AppEnv: class {} }));
 
 const { PubMedSearchTool } = await import("@/tools/PubMedSearchTool");
 
-const makeTool = (key: string | undefined = undefined) =>
-  new PubMedSearchTool({ SEARCH_PUBMED_API_KEY: key } as never);
+const makeTool = (key: string | undefined = undefined) => new PubMedSearchTool({ SEARCH_PUBMED_API_KEY: key } as never);
 
 // Queues the ESearch (idlist) then ESummary (result) bodies the next handler
 // call will consume, in request order.

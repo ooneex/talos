@@ -82,8 +82,7 @@ describe("buildModelOptions", () => {
 });
 
 describe("composeOnConfig", () => {
-  const makeCtx = (phase: string): ChatMiddlewareContext =>
-    ({ phase }) as unknown as ChatMiddlewareContext;
+  const makeCtx = (phase: string): ChatMiddlewareContext => ({ phase }) as unknown as ChatMiddlewareContext;
   const config = {} as ChatMiddlewareConfig;
 
   test("should return undefined when neither hook is defined", () => {

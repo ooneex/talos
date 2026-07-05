@@ -1,5 +1,5 @@
 import { type ChatMiddleware, toolDefinition } from "@tanstack/ai";
-import { openRouterText, type OpenRouterTextModelOptions } from "@tanstack/ai-openrouter";
+import { type OpenRouterTextModelOptions, openRouterText } from "@tanstack/ai-openrouter";
 import type { ChatInputType, IMiddleware, ITool, MessageType } from "./types";
 
 /** Adapter created by {@link openRouterText}, used as the chat transport. */
@@ -42,7 +42,7 @@ export const toServerTools = (tools: ITool[]): any[] =>
       name: tool.getName(),
       description: tool.getDescription(),
       ...(inputSchema ? { inputSchema } : {}),
-      lazy: true
+      lazy: true,
     });
 
     return definition.server(async (args: unknown) => tool.handler(args));

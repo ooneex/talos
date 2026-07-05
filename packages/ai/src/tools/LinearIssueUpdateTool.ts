@@ -1,10 +1,5 @@
 import { inject } from "@talosjs/container";
-import {
-  Issue,
-  type LinearProjectType,
-  LinearService,
-  type LinearUserType,
-} from "@talosjs/linear";
+import { Issue, type LinearProjectType, LinearService, type LinearUserType } from "@talosjs/linear";
 import { Assert, type AssertType } from "@talosjs/validation";
 import { decorator } from "../decorators";
 import type { ITool } from "../types";

@@ -1,6 +1,6 @@
 import type { IContainer } from "@talosjs/container";
 import type { IException } from "@talosjs/exception";
-import type { ILogger, LoggerClassType, LogDataType } from "@talosjs/logger";
+import type { ILogger, LogDataType, LoggerClassType } from "@talosjs/logger";
 import type { ScalarType } from "@talosjs/types";
 
 export const logger = (loggers: LoggerClassType[], container: IContainer) => {

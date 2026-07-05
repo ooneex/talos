@@ -1,15 +1,9 @@
 import { container } from "@talosjs/container";
-import type {
-  ITransition,
-  IWorkflow,
-  WorkflowTransitionClassType,
-} from "./types";
+import type { ITransition, IWorkflow, WorkflowTransitionClassType } from "./types";
 import { WorkflowException } from "./WorkflowException";
 
-export abstract class Workflow<
-  Data extends Record<string, unknown> = Record<string, unknown>,
-  Output = unknown,
-> implements IWorkflow<Data, Output>
+export abstract class Workflow<Data extends Record<string, unknown> = Record<string, unknown>, Output = unknown>
+  implements IWorkflow<Data, Output>
 {
   public abstract getName(): string;
 
@@ -17,13 +11,8 @@ export abstract class Workflow<
 
   public abstract getTransitions(): WorkflowTransitionClassType[];
 
-  public async run<Context = unknown>(
-    data: Data,
-    context?: Context,
-  ): Promise<Output> {
-    const transitions = this.getTransitions().map((transition) =>
-      container.get<ITransition>(transition),
-    );
+  public async run<Context = unknown>(data: Data, context?: Context): Promise<Output> {
+    const transitions = this.getTransitions().map((transition) => container.get<ITransition>(transition));
 
     const activeTransitions: ITransition[] = [];
     for (const transition of transitions) {
@@ -60,11 +49,7 @@ export abstract class Workflow<
     return output;
   }
 
-  private async rollback<Context = unknown>(
-    executed: ITransition[],
-    data: Data,
-    context?: Context,
-  ): Promise<void> {
+  private async rollback<Context = unknown>(executed: ITransition[], data: Data, context?: Context): Promise<void> {
     for (const transition of [...executed].reverse()) {
       await transition.rollback(data, context);
     }

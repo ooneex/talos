@@ -1,9 +1,5 @@
 import { container, EContainerScope } from "@talosjs/container";
-import type {
-  AiChatClassType,
-  AiMiddlewareClassType,
-  AiToolClassType,
-} from "./types";
+import type { AiChatClassType, AiMiddlewareClassType, AiToolClassType } from "./types";
 
 export const decorator = {
   chat: (scope: EContainerScope = EContainerScope.Singleton) => {

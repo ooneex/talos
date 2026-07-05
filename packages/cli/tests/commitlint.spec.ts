@@ -42,9 +42,9 @@ describe("lintCommitMessage", () => {
   });
 
   test("should reject a lower-case subject", () => {
-    expect(
-      lintCommitMessage("fix(cli): add thing", SCOPES).some((error) => error.includes("upper-case letter")),
-    ).toBe(true);
+    expect(lintCommitMessage("fix(cli): add thing", SCOPES).some((error) => error.includes("upper-case letter"))).toBe(
+      true,
+    );
   });
 
   test("should reject a trailing period in the subject", () => {
@@ -86,9 +86,12 @@ describe("lintCommitMessage", () => {
 
 describe("stripCommitComments", () => {
   test("should drop comment lines and the verbose scissors diff", () => {
-    const raw = ["feat(cli): Add thing", "# a git comment", "# ------------------------ >8 ------------------------", "diff --git a b"].join(
-      "\n",
-    );
+    const raw = [
+      "feat(cli): Add thing",
+      "# a git comment",
+      "# ------------------------ >8 ------------------------",
+      "diff --git a b",
+    ].join("\n");
     expect(stripCommitComments(raw)).toBe("feat(cli): Add thing");
   });
 });

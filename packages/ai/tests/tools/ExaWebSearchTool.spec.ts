@@ -1,5 +1,5 @@
-import { ExaSearchTool } from "@/tools/ExaSearchTool";
 import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { ExaSearchTool } from "@/tools/ExaSearchTool";
 
 // Records every `search` call so assertions can inspect the query and options
 // the tool assembles, and replays `searchResult` back as the response.
@@ -30,8 +30,7 @@ mock.module("exa-js", () => ({
 // supplies directly through the constructor.
 mock.module("@talosjs/app-env", () => ({ AppEnv: class {} }));
 
-const makeTool = (key: string | undefined = "exa-key") =>
-  new ExaSearchTool({ SEARCH_EXA_API_KEY: key } as never);
+const makeTool = (key: string | undefined = "exa-key") => new ExaSearchTool({ SEARCH_EXA_API_KEY: key } as never);
 
 beforeEach(() => {
   searchCalls.length = 0;

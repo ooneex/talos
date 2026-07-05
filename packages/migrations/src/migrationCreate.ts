@@ -3,9 +3,7 @@ import { Glob } from "bun";
 import { generateMigrationVersion } from "./generateMigrationVersion";
 import template from "./migration.txt";
 
-export const migrationCreate = async (config?: {
-  migrationsDir?: string;
-}): Promise<{ migrationPath: string }> => {
+export const migrationCreate = async (config?: { migrationsDir?: string }): Promise<{ migrationPath: string }> => {
   const version = generateMigrationVersion();
   const name = `Migration${version}`;
   const migrationsDir = config?.migrationsDir || "migrations";

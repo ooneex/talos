@@ -1,7 +1,7 @@
-import { AppEnv } from "@talosjs/app-env";
-import { inject, injectable } from "@talosjs/container";
 import { Polar } from "@polar-sh/sdk";
 import type { SubscriptionRecurringInterval } from "@polar-sh/sdk/models/components/subscriptionrecurringinterval.js";
+import { AppEnv } from "@talosjs/app-env";
+import { inject, injectable } from "@talosjs/container";
 import { PaymentException } from "./PaymentException";
 import type { BenefitType, CustomFieldType, IProduct, PriceType, SubscriptionPeriodType } from "./types";
 

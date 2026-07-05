@@ -1,6 +1,6 @@
 import path from "node:path";
-import { random } from "@talosjs/utils/random";
 import { convert } from "@opendataloader/pdf";
+import { random } from "@talosjs/utils/random";
 import { ConvertorException } from "./ConvertorException";
 import type { ChunkType, ConvertorFileType, ConvertorOptionsType, IConvertor } from "./types";
 

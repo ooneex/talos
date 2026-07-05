@@ -1,8 +1,5 @@
 import { container, EContainerScope } from "@talosjs/container";
-import type {
-  WorkflowClassType,
-  WorkflowTransitionClassType,
-} from "./types";
+import type { WorkflowClassType, WorkflowTransitionClassType } from "./types";
 
 export const decorator = {
   workflow: (scope: EContainerScope = EContainerScope.Singleton) => {

@@ -25,9 +25,7 @@ describe("decorator.workflow", () => {
       public getTransitions = (): WorkflowTransitionClassType[] => [];
     }
 
-    expect(container.get(SingletonWorkflow)).toBe(
-      container.get(SingletonWorkflow),
-    );
+    expect(container.get(SingletonWorkflow)).toBe(container.get(SingletonWorkflow));
   });
 
   test("creates a new instance per resolution in transient scope", () => {
@@ -38,9 +36,7 @@ describe("decorator.workflow", () => {
       public getTransitions = (): WorkflowTransitionClassType[] => [];
     }
 
-    expect(container.get(TransientWorkflow)).not.toBe(
-      container.get(TransientWorkflow),
-    );
+    expect(container.get(TransientWorkflow)).not.toBe(container.get(TransientWorkflow));
   });
 });
 
@@ -59,9 +55,7 @@ describe("decorator.transition", () => {
     }
 
     expect(container.has(RegisteredTransition)).toBe(true);
-    expect(container.get(RegisteredTransition)).toBeInstanceOf(
-      RegisteredTransition,
-    );
+    expect(container.get(RegisteredTransition)).toBeInstanceOf(RegisteredTransition);
   });
 
   test("uses singleton scope by default", () => {
@@ -77,9 +71,7 @@ describe("decorator.transition", () => {
       public onFail = () => {};
     }
 
-    expect(container.get(SingletonTransition)).toBe(
-      container.get(SingletonTransition),
-    );
+    expect(container.get(SingletonTransition)).toBe(container.get(SingletonTransition));
   });
 
   test("creates a new instance per resolution in transient scope", () => {
@@ -95,8 +87,6 @@ describe("decorator.transition", () => {
       public onFail = () => {};
     }
 
-    expect(container.get(TransientTransition)).not.toBe(
-      container.get(TransientTransition),
-    );
+    expect(container.get(TransientTransition)).not.toBe(container.get(TransientTransition));
   });
 });

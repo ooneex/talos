@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import { Container, EContainerScope } from "@talosjs/container";
 import { decorator } from "@/decorators";
-import type { ITranslation, TransOptionsType, TranslationDictType } from "@/types";
+import type { ITranslation, TranslationDictType, TransOptionsType } from "@/types";
 
 class StubTranslation implements ITranslation {
   public getName = (): string => "stub";

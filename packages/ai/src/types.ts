@@ -1,3 +1,4 @@
+import type { AssertType } from "@talosjs/validation";
 import type {
   AbortInfo,
   AfterToolCallInfo,
@@ -17,7 +18,6 @@ import type {
   ToolPhaseCompleteInfo,
   UsageInfo,
 } from "@tanstack/ai";
-import type { AssertType } from "@talosjs/validation";
 
 // biome-ignore lint/suspicious/noExplicitAny: trust me
 export type AiChatClassType = new (...args: any[]) => IChat;
@@ -134,10 +134,7 @@ export interface ITool<P = unknown, R = unknown> {
     ctx: ChatMiddlewareContext,
     hookCtx: ToolCallHookContext,
   ) => BeforeToolCallDecision | Promise<BeforeToolCallDecision>;
-  onAfterCall?: (
-    ctx: ChatMiddlewareContext,
-    info: AfterToolCallInfo,
-  ) => void | Promise<void>;
+  onAfterCall?: (ctx: ChatMiddlewareContext, info: AfterToolCallInfo) => void | Promise<void>;
 }
 
 /**
@@ -181,11 +178,7 @@ export interface IMiddleware<TContext = unknown> {
   onConfig?: (
     ctx: ChatMiddlewareContext<TContext>,
     config: ChatMiddlewareConfig,
-  ) =>
-    | void
-    | null
-    | Partial<ChatMiddlewareConfig>
-    | Promise<void | null | Partial<ChatMiddlewareConfig>>;
+  ) => void | null | Partial<ChatMiddlewareConfig> | Promise<void | null | Partial<ChatMiddlewareConfig>>;
   /**
    * Transform the final structured-output call's config — including the JSON
    * Schema sent to the provider. Fires only when `outputSchema` is set and the
@@ -211,18 +204,11 @@ export interface IMiddleware<TContext = unknown> {
   onBeforeModel?: (
     ctx: ChatMiddlewareContext<TContext>,
     config: ChatMiddlewareConfig,
-  ) =>
-    | void
-    | null
-    | Partial<ChatMiddlewareConfig>
-    | Promise<void | null | Partial<ChatMiddlewareConfig>>;
+  ) => void | null | Partial<ChatMiddlewareConfig> | Promise<void | null | Partial<ChatMiddlewareConfig>>;
   /** Called once when the run starts, after the initial `onConfig`. */
   onStart?: (ctx: ChatMiddlewareContext<TContext>) => void | Promise<void>;
   /** Called at the start of each agent loop iteration, after its message ID is created. */
-  onIteration?: (
-    ctx: ChatMiddlewareContext<TContext>,
-    info: IterationInfo,
-  ) => void | Promise<void>;
+  onIteration?: (ctx: ChatMiddlewareContext<TContext>, info: IterationInfo) => void | Promise<void>;
   /**
    * Called for every chunk streamed by `chat()`. Narrow on `chunk.type`.
    *
@@ -232,35 +218,15 @@ export interface IMiddleware<TContext = unknown> {
   onChunk?: (
     ctx: ChatMiddlewareContext<TContext>,
     chunk: StreamChunk,
-  ) =>
-    | void
-    | StreamChunk
-    | Array<StreamChunk>
-    | null
-    | Promise<void | StreamChunk | Array<StreamChunk> | null>;
+  ) => void | StreamChunk | Array<StreamChunk> | null | Promise<void | StreamChunk | Array<StreamChunk> | null>;
   /** Called after all tool calls in an iteration have been processed. */
-  onToolPhaseComplete?: (
-    ctx: ChatMiddlewareContext<TContext>,
-    info: ToolPhaseCompleteInfo,
-  ) => void | Promise<void>;
+  onToolPhaseComplete?: (ctx: ChatMiddlewareContext<TContext>, info: ToolPhaseCompleteInfo) => void | Promise<void>;
   /** Called once per model iteration that reports usage in its RUN_FINISHED chunk. */
-  onUsage?: (
-    ctx: ChatMiddlewareContext<TContext>,
-    usage: UsageInfo,
-  ) => void | Promise<void>;
+  onUsage?: (ctx: ChatMiddlewareContext<TContext>, usage: UsageInfo) => void | Promise<void>;
   /** Terminal hook — the run completed normally. Mutually exclusive with onAbort/onError. */
-  onFinish?: (
-    ctx: ChatMiddlewareContext<TContext>,
-    info: FinishInfo,
-  ) => void | Promise<void>;
+  onFinish?: (ctx: ChatMiddlewareContext<TContext>, info: FinishInfo) => void | Promise<void>;
   /** Terminal hook — the run was aborted. Mutually exclusive with onFinish/onError. */
-  onAbort?: (
-    ctx: ChatMiddlewareContext<TContext>,
-    info: AbortInfo,
-  ) => void | Promise<void>;
+  onAbort?: (ctx: ChatMiddlewareContext<TContext>, info: AbortInfo) => void | Promise<void>;
   /** Terminal hook — an unhandled error occurred. Mutually exclusive with onFinish/onAbort. */
-  onError?: (
-    ctx: ChatMiddlewareContext<TContext>,
-    info: ErrorInfo,
-  ) => void | Promise<void>;
+  onError?: (ctx: ChatMiddlewareContext<TContext>, info: ErrorInfo) => void | Promise<void>;
 }

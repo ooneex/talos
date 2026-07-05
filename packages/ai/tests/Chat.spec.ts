@@ -35,6 +35,7 @@ mock.module("@tanstack/ai-openrouter", () => ({
 
 const { Chat } = await import("@/Chat");
 const { decorator } = await import("@/decorators");
+
 import type { AiMiddlewareClassType, AiToolClassType, IMiddleware, ITool } from "@/types";
 
 class TestChat extends Chat {
