@@ -1,4 +1,3 @@
-import { availableParallelism } from "node:os";
 import { join } from "node:path";
 import type { ICommand } from "@talosjs/command";
 import { decorator } from "@talosjs/command";
@@ -60,7 +59,6 @@ type RunContextType = {
   useGit: boolean;
   noCache: boolean;
   interactive: boolean;
-  concurrency: number;
   procs: Set<ReturnType<typeof Bun.spawn>>;
   stopped: boolean;
   aborted: boolean;
@@ -139,7 +137,6 @@ export class MonorepoRunCommand<T extends CommandOptionsType = CommandOptionsTyp
       useGit,
       noCache,
       interactive: !logs && process.stdout.isTTY === true && process.stdin.isTTY === true,
-      concurrency: Math.max(1, Math.min(4, availableParallelism())),
       procs: new Set(),
       stopped: false,
       aborted: false,
@@ -268,8 +265,8 @@ export class MonorepoRunCommand<T extends CommandOptionsType = CommandOptionsTyp
     ];
   }
 
-  // Run one command group with bounded concurrency, launching a task as soon
-  // as its workspace dependencies are done. Skipped tasks count as done.
+  // Run one command group's tasks one at a time, taking the next task whose
+  // workspace dependencies are done. Skipped tasks count as done.
   private async runGroup(tasks: TaskType[], context: RunContextType): Promise<void> {
     const done = new Set<string>();
     for (const task of tasks.filter((entry) => entry.status === "skipped")) {
@@ -278,28 +275,16 @@ export class MonorepoRunCommand<T extends CommandOptionsType = CommandOptionsTyp
     }
 
     const queue = tasks.filter((task) => task.status === "pending");
-    const running = new Map<string, Promise<void>>();
 
-    while ((queue.length > 0 || running.size > 0) && !context.stopped) {
-      while (running.size < context.concurrency && !context.stopped) {
-        let index = queue.findIndex((task) => task.deps.every((dep) => done.has(dep)));
-        // Nothing ready and nothing running means a dependency cycle: run anyway.
-        if (index === -1 && running.size === 0 && queue.length > 0) index = 0;
-        if (index === -1) break;
+    while (queue.length > 0 && !context.stopped) {
+      let index = queue.findIndex((task) => task.deps.every((dep) => done.has(dep)));
+      // Nothing ready means a dependency cycle: run the next task anyway.
+      if (index === -1) index = 0;
 
-        const task = queue.splice(index, 1)[0] as TaskType;
-        const promise = this.runTask(task, context).finally(() => {
-          running.delete(task.key);
-          done.add(task.key);
-        });
-        running.set(task.key, promise);
-      }
-
-      if (running.size === 0) break;
-      await Promise.race(running.values());
+      const task = queue.splice(index, 1)[0] as TaskType;
+      await this.runTask(task, context);
+      done.add(task.key);
     }
-
-    await Promise.all(running.values());
   }
 
   private async runTask(task: TaskType, context: RunContextType): Promise<void> {

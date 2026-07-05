@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 import { existsSync, rmSync } from "node:fs";
-import { availableParallelism } from "node:os";
 import { join } from "node:path";
 
 mock.module("enquirer", () => ({
@@ -129,17 +128,17 @@ describe("MonorepoRunCommand", () => {
       expect(order.indexOf("alpha")).toBeLessThan(order.indexOf("beta"));
     });
 
-    // A mutual barrier: each task writes its own marker, then refuses to finish
-    // until it sees the other's marker (giving up after a timeout). Both markers
-    // can only appear if the two tasks are alive at the same time, so a clean run
-    // proves they executed concurrently rather than one after another.
-    test.skipIf(availableParallelism() < 2)("should run independent tasks in parallel", async () => {
-      const barrier = (name: string, other: string): string =>
-        `bun -e "const fs=require('fs');fs.writeFileSync('../../ready-${name}','');` +
-        `const t=Date.now()+5000;while(!fs.existsSync('../../ready-${other}')){if(Date.now()>t)process.exit(1);Bun.sleepSync(15);}` +
-        `fs.writeFileSync('../../done-${name}','ok');"`;
-      await writeTarget("packages/one", { name: "@test/one", scripts: { build: barrier("one", "two") } });
-      await writeTarget("packages/two", { name: "@test/two", scripts: { build: barrier("two", "one") } });
+    // Each task writes a live marker on entry, sleeps, then checks that no other
+    // task's marker exists before clearing its own. Overlapping markers can only
+    // appear if two tasks are alive at once, so a clean run proves the tasks ran
+    // one after another rather than concurrently.
+    test("should run independent tasks sequentially", async () => {
+      const solo = (name: string): string =>
+        `bun -e "const fs=require('fs');fs.writeFileSync('../../run-${name}','');Bun.sleepSync(150);` +
+        `const others=fs.readdirSync('../..').filter(f=>f.startsWith('run-')&&f!=='run-${name}');` +
+        `fs.unlinkSync('../../run-${name}');if(others.length)process.exit(1);fs.writeFileSync('../../done-${name}','ok');"`;
+      await writeTarget("packages/one", { name: "@test/one", scripts: { build: solo("one") } });
+      await writeTarget("packages/two", { name: "@test/two", scripts: { build: solo("two") } });
 
       await command.run({ commands: "build", packages: "one,two", logs: true });
 
