@@ -48,11 +48,6 @@
       "matchPackagePatterns": ["^@swc/", "^@swc-node/"]
     },
     {
-      "description": "Group all commitlint related packages",
-      "groupName": "Commitlint",
-      "matchPackagePatterns": ["^@commitlint/"]
-    },
-    {
       "description": "Group all test related packages",
       "groupName": "Testing tools",
       "matchPackagePatterns": ["^@types/bun", "^bun-types"]
