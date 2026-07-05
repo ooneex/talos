@@ -60,7 +60,6 @@ The generated application includes:
 - Configured `package.json` with all necessary dependencies
 - TypeScript configuration
 - Biome linting setup
-- Nx workspace configuration
 - Git configuration with `.gitignore`
 - Initial app module
 
@@ -301,7 +300,6 @@ my-app/
 ├── .gitignore
 ├── biome.jsonc
 ├── bunfig.toml
-├── nx.json
 ├── package.json
 └── tsconfig.json
 ```

@@ -5,7 +5,6 @@ dist
 **/dist
 coverage
 **/coverage
-.nx
 
 # Secrets — never bake environment files into an image
 .env

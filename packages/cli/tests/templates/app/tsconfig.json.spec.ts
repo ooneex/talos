@@ -78,6 +78,6 @@ describe("tsconfig.json.txt", () => {
     const content = await Bun.file(templatePath).text();
     const config = JSON.parse(content);
 
-    expect(config.exclude).toEqual(["node_modules", ".github", ".husky", ".nx", ".zed", ".vscode"]);
+    expect(config.exclude).toEqual(["node_modules", ".github", ".husky", ".zed", ".vscode"]);
   });
 });

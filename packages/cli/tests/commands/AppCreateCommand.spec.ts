@@ -97,7 +97,6 @@ describe("AppCreateCommand", () => {
       expect(await exists(join(testDir, ".commitlintrc.ts"))).toBe(true);
       expect(await exists(join(testDir, ".gitignore"))).toBe(true);
       expect(await exists(join(testDir, "biome.jsonc"))).toBe(true);
-      expect(await exists(join(testDir, "nx.json"))).toBe(true);
       expect(await exists(join(testDir, "package.json"))).toBe(true);
       expect(await exists(join(testDir, "README.md"))).toBe(true);
       expect(await exists(join(testDir, "tsconfig.json"))).toBe(true);

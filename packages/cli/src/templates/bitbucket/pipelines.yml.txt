@@ -17,14 +17,14 @@ image: oven/bun:latest
 definitions:
   caches:
     bun: ~/.bun/install/cache
-    nx: .nx/cache
+    monorepo: var/cache/monorepo
 
   steps:
     - step: &quality
         name: Quality
         caches:
           - bun
-          - nx
+          - monorepo
         script:
           - bun install --frozen-lockfile
           - bun run lint

@@ -31,5 +31,5 @@
     "types": ["bun"]
   },
   "include": ["**/*.ts", "**/*.tsx"],
-  "exclude": ["node_modules", ".github", ".husky", ".nx", ".zed", ".vscode"]
+  "exclude": ["node_modules", ".github", ".husky", ".zed", ".vscode"]
 }

@@ -35,12 +35,12 @@ jobs:
         with:
           bun-version: latest
 
-      - name: Cache dependencies and Nx
+      - name: Cache dependencies and monorepo task cache
         uses: actions/cache@v4
         with:
           path: |
             ~/.bun/install/cache
-            .nx/cache
+            var/cache/monorepo
           key: ${{ runner.os }}-${{ hashFiles('bun.lock') }}
           restore-keys: |
             ${{ runner.os }}-

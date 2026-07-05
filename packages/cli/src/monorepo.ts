@@ -3,9 +3,9 @@ import { cp, mkdir, readdir, rename, rm, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
 
 /**
- * Monorepo task engine backing the `monorepo:run` command. It reimplements the
- * parts of Nx the Talos workspace relies on — project discovery, a workspace
- * dependency graph and content-addressed task caching — with a more granular
+ * Monorepo task engine backing the `monorepo:run` command. It provides the
+ * pieces the Talos workspace relies on — project discovery, a workspace
+ * dependency graph and content-addressed task caching — with a granular
  * hash: every non-artifact file of a target and of its transitive workspace
  * dependencies is content-hashed individually, together with the script text,
  * the root config files and a cache version. Cache entries live under
@@ -49,10 +49,10 @@ const TARGET_ROOTS: { dirName: string; type: MonorepoTargetTypeName }[] = [
 ];
 
 // Build artifacts and dependency folders never participate in the input hash.
-const EXCLUDED_DIRS = new Set(["node_modules", "dist", "var", "coverage", ".git", ".temp", ".turbo", ".nx"]);
+const EXCLUDED_DIRS = new Set(["node_modules", "dist", "var", "coverage", ".git", ".temp", ".turbo"]);
 
 // Root-level files whose content invalidates every task when they change.
-const ROOT_INPUT_FILES = ["package.json", "bun.lock", "tsconfig.json", "biome.jsonc", "nx.json"];
+const ROOT_INPUT_FILES = ["package.json", "bun.lock", "tsconfig.json", "biome.jsonc"];
 
 const DEFAULT_OUTPUTS = ["dist"];
 
@@ -122,9 +122,9 @@ export const discoverTargets = async (rootDir: string): Promise<MonorepoTargetTy
 };
 
 /**
- * Order targets so every target comes after its workspace dependencies (the
- * equivalent of Nx's `dependsOn: ["^build"]`). Cycles are tolerated: members
- * of a cycle keep their discovery order.
+ * Order targets so every target comes after its workspace dependencies, so a
+ * target's `build` runs only once its dependencies have built. Cycles are
+ * tolerated: members of a cycle keep their discovery order.
  */
 export const sortTargetsByDependencies = (targets: MonorepoTargetType[]): MonorepoTargetType[] => {
   const byKey = new Map(targets.map((target) => [target.key, target]));

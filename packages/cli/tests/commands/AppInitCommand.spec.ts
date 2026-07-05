@@ -89,7 +89,6 @@ describe("AppInitCommand", () => {
       expect(await exists(join(testDir, ".commitlintrc.ts"))).toBe(true);
       expect(await exists(join(testDir, ".gitignore"))).toBe(true);
       expect(await exists(join(testDir, "biome.jsonc"))).toBe(true);
-      expect(await exists(join(testDir, "nx.json"))).toBe(true);
       expect(await exists(join(testDir, "package.json"))).toBe(true);
       expect(await exists(join(testDir, "README.md"))).toBe(true);
       expect(await exists(join(testDir, "tsconfig.json"))).toBe(true);
@@ -242,7 +241,7 @@ describe("AppInitCommand", () => {
       expect(existsSync(skillsDir)).toBe(false);
     });
 
-    test("should install dev dependencies including husky and nx", async () => {
+    test("should install dev dependencies including husky and @talosjs/cli", async () => {
       const spawnCalls: string[][] = [];
 
       Bun.spawn = ((...args: unknown[]) => {
@@ -258,7 +257,8 @@ describe("AppInitCommand", () => {
       const devDepsCall = spawnCalls.find((cmd) => cmd[0] === "bun" && cmd[1] === "add" && cmd[2] === "-D");
       expect(devDepsCall).toBeDefined();
       expect(devDepsCall).toContain("husky");
-      expect(devDepsCall).toContain("nx");
+      expect(devDepsCall).toContain("@talosjs/cli");
+      expect(devDepsCall).not.toContain("nx");
       expect(devDepsCall).toContain("typescript");
     });
 

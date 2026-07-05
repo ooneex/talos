@@ -10,7 +10,6 @@ import { askName } from "../prompts/askName";
 import commitlintTemplate from "../templates/app/.commitlintrc.ts.txt";
 import gitignoreTemplate from "../templates/app/.gitignore.txt";
 import biomeTemplate from "../templates/app/biome.jsonc.txt";
-import nxTemplate from "../templates/app/nx.json.txt";
 import packageTemplate from "../templates/app/package.json.txt";
 import readmeTemplate from "../templates/app/README.md.txt";
 import tsconfigTemplate from "../templates/app/tsconfig.json.txt";
@@ -59,7 +58,6 @@ export class AppInitCommand<T extends CommandOptionsType = CommandOptionsType> i
       Bun.write(join(destination, ".commitlintrc.ts"), commitlintTemplate),
       Bun.write(join(destination, ".gitignore"), gitignoreTemplate),
       Bun.write(join(destination, "biome.jsonc"), biomeTemplate),
-      Bun.write(join(destination, "nx.json"), nxTemplate),
       Bun.write(join(destination, "README.md"), readmeTemplate.replace(/{{NAME}}/g, kebabName)),
       Bun.write(join(destination, "tsconfig.json"), tsconfigTemplate),
       Bun.write(join(destination, ".zed", "settings.json"), zedSettingsTemplate),
@@ -106,9 +104,9 @@ export class AppInitCommand<T extends CommandOptionsType = CommandOptionsType> i
         "@types/react",
         "@types/react-dom",
         "@typescript/native-preview@beta",
+        "@talosjs/cli",
         "husky",
         "lint-staged",
-        "nx",
         "typescript",
         "undici-types",
       ],

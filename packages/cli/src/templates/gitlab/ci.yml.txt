@@ -22,7 +22,7 @@ variables:
         - bun.lock
     paths:
       - .bun-cache/
-      - .nx/cache/
+      - var/cache/monorepo/
     policy: pull-push
   before_script:
     - bun install --frozen-lockfile

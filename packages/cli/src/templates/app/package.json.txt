@@ -2,8 +2,8 @@
   "name": "{{NAME}}",
   "scripts": {
     "fmt": "bunx biome check --write",
-    "lint": "bunx nx run-many -t lint --output-style=stream --verbose",
-    "test": "bunx nx run-many -t test --output-style=stream --verbose",
+    "lint": "talos monorepo:run --commands=lint --logs",
+    "test": "talos monorepo:run --commands=test --logs",
     "check": "bun run lint && bun run test",
     "commit": "bunx commit"
   },

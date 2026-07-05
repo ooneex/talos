@@ -140,9 +140,5 @@ vite.config.ts.timestamp-*
 .DS_Store
 **/.DS_Store
 
-# Nx cache
-.nx/cache
-.nx/workspace-data
-
 # Application
 var/
