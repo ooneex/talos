@@ -1,7 +1,7 @@
 {
   "name": "@talosjs/youtube",
   "description": "YouTube video downloader and metadata extraction library for fetching video information, thumbnails, and media streams",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "type": "module",
   "files": [
     "dist",
