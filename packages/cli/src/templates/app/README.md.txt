@@ -1012,13 +1012,13 @@ Running `oo service:create` creates a skeleton. A Claude skill does that *and* c
 
 ### Setup
 
-Before using skills, generate the `.claude/` directory with all skill files and the project `CLAUDE.md`:
+Before using skills, generate the skill files and the shared `AGENTS.md`:
 
 ```bash
-oo claude:init
+oo agent:skills:create
 ```
 
-This writes `.claude/CLAUDE.md` and one `SKILL.md` per skill under `.claude/skills/<skill-name>/`. Re-run any time you upgrade the CLI to pick up new or updated skills. Commit the generated files so every team member gets the same skill definitions without running the command themselves.
+`agent:skills:create` lets you select which assistants to scaffold (Claude, Codex, Cursor, Gemini, and more). It writes the shared `AGENTS.md` at the project root and, for each selected assistant, one `SKILL.md` per skill under `<assistant>/skills/<skill-name>/` plus the supporting agents under `<assistant>/agents/`. Re-run any time you upgrade the CLI to pick up new or updated skills. Commit the generated files so every team member gets the same skill definitions without running the command themselves.
 
 ### How to Use
 
@@ -1088,7 +1088,7 @@ If you omit arguments, Claude will prompt you for the required values.
 |---|---|
 | `/translation:translate` | Translate and complete one or more modules' `translations.json` / `translations.yml` dictionaries into the target locales — optionally extracting hardcoded UI text into keys first — translating meaning-for-meaning, never word by word |
 
-The skill orchestrates two agents installed by `oo claude:init`: **`translation-extractor`** pulls hardcoded user-facing text into dictionary keys and rewires it to `trans(...)`, and **`translation-translator`** fills every target locale from the `en` source while keeping `{{ placeholders }}` and pluralization siblings intact.
+The skill orchestrates two agents installed by `oo agent:skills:create`: **`translation-extractor`** pulls hardcoded user-facing text into dictionary keys and rewires it to `trans(...)`, and **`translation-translator`** fills every target locale from the `en` source while keeping `{{ placeholders }}` and pluralization siblings intact.
 
 ### Coding Conventions Enforced by Skills
 
@@ -1103,17 +1103,17 @@ All generator skills automatically apply the conventions defined in `/optimize`:
 
 ---
 
-## Codex
+## Other Assistants
 
-The same skills and agents that power Claude Code are also generated for [Codex](https://openai.com/codex/), so the project's conventions and workflows are available regardless of which assistant you use.
+The same skills and agents that power Claude Code are also generated for [Codex](https://openai.com/codex/), Cursor, Gemini, and other coding assistants, so the project's conventions and workflows are available regardless of which assistant you use. Pick the assistants you want when running:
 
 ```bash
-oo codex:init
+oo agent:skills:create
 ```
 
-This writes `AGENTS.md` at the project root and one `SKILL.md` per skill under `.codex/skills/<skill-name>/`, plus the supporting agents under `.codex/agents/`. Re-run any time you upgrade the CLI to pick up new or updated skills, and commit the generated files so every team member shares the same definitions.
+For each selected assistant this writes `AGENTS.md` at the project root and one `SKILL.md` per skill under `<assistant>/skills/<skill-name>/`, plus the supporting agents under `<assistant>/agents/`. Re-run any time you upgrade the CLI to pick up new or updated skills, and commit the generated files so every team member shares the same definitions.
 
-> Both `oo claude:init` and `oo codex:init` are offered interactively when an application is first created with `oo app:init`.
+> `oo agent:skills:create` is also offered interactively when an application is first created with `oo app:init`.
 
 ---
 
