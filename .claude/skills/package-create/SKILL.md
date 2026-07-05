@@ -60,6 +60,7 @@ Create the following files under `packages/<name>/`.
   "scripts": {
     "test": "bun test tests",
     "build": "bunup",
+    "fmt": "bunx biome check --write",
     "lint": "tsgo --noEmit && bunx biome lint",
   },
   "dependencies": {},
