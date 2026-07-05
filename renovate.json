@@ -38,11 +38,6 @@
       "matchPackagePatterns": ["^@types/"]
     },
     {
-      "description": "Group all Nx related packages",
-      "groupName": "Nx monorepo",
-      "matchPackagePatterns": ["^@nx/", "^nx$"]
-    },
-    {
       "description": "Group all Biome related packages",
       "groupName": "Biome",
       "matchPackagePatterns": ["^@biomejs/"]
@@ -113,7 +108,7 @@
       "depNameTemplate": "node"
     }
   ],
-  "ignorePaths": ["**/node_modules/**", "**/dist/**", "**/build/**", "**/.nx/**"],
+  "ignorePaths": ["**/node_modules/**", "**/dist/**", "**/build/**"],
   "branchPrefix": "renovate/",
   "commitMessagePrefix": "chore(deps): ",
   "commitMessageTopic": "{{depName}}",
