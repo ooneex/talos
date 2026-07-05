@@ -136,11 +136,11 @@ describe("AppCreateCommand", () => {
       expect(pkg.scripts.commit).toBeDefined();
     });
 
-    test("should set check script to install, build, lint, and test", async () => {
+    test("should set check script to run monorepo:check", async () => {
       await command.run({ name: "MyApp", destination: testDir });
 
       const pkg = await Bun.file(join(testDir, "package.json")).json();
-      expect(pkg.scripts.check).toBe("bun run lint && bun run test");
+      expect(pkg.scripts.check).toBe("talos monorepo:check --logs");
     });
 
     test("should include workspaces pointing to modules/* in root package.json", async () => {
@@ -180,7 +180,7 @@ describe("AppCreateCommand", () => {
 
       const pkg = await Bun.file(join(testDir, "package.json")).json();
       expect(pkg.scripts).toBeDefined();
-      expect(pkg.scripts.check).toBe("bun run lint && bun run test");
+      expect(pkg.scripts.check).toBe("talos monorepo:check --logs");
       expect(pkg.workspaces).toEqual(["modules/*"]);
       expect(pkg["lint-staged"]).toBeDefined();
     });

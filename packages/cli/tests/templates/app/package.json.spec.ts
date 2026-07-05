@@ -27,7 +27,7 @@ describe("package.json.txt", () => {
   test("should contain check script", async () => {
     const content = await Bun.file(templatePath).text();
     expect(content).toContain('"check"');
-    expect(content).toContain("bun run lint && bun run test");
+    expect(content).toContain("talos monorepo:check --logs");
   });
 
   test("should not contain dev, build, or stop scripts", async () => {
