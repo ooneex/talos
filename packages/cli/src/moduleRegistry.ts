@@ -93,8 +93,7 @@ export const addToSharedModule = async (
 };
 
 export const addPathAlias = async (tsconfigPath: string, kebabName: string): Promise<void> => {
-  const content = await Bun.file(tsconfigPath).text();
-  const tsconfig = JSON.parse(content);
+  const tsconfig = await Bun.file(tsconfigPath).json();
 
   tsconfig.compilerOptions ??= {};
   tsconfig.compilerOptions.paths ??= {};
@@ -138,8 +137,7 @@ export const removeFromSharedModule = async (
 export const removePathAlias = async (tsconfigPath: string, kebabName: string): Promise<void> => {
   if (!(await Bun.file(tsconfigPath).exists())) return;
 
-  const content = await Bun.file(tsconfigPath).text();
-  const tsconfig = JSON.parse(content);
+  const tsconfig = await Bun.file(tsconfigPath).json();
 
   if (tsconfig.compilerOptions?.paths) {
     delete tsconfig.compilerOptions.paths[`@module/${kebabName}/*`];

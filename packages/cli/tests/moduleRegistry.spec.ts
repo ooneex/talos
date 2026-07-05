@@ -1,7 +1,13 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { rmSync } from "node:fs";
 import { join } from "node:path";
-import { addToAppModule, addToMicroserviceModule, addToSharedModule } from "@/moduleRegistry";
+import {
+  addPathAlias,
+  addToAppModule,
+  addToMicroserviceModule,
+  addToSharedModule,
+  removePathAlias,
+} from "@/moduleRegistry";
 import moduleTemplate from "@/templates/module/module.txt";
 
 describe("moduleRegistry", () => {
@@ -76,6 +82,80 @@ describe("moduleRegistry", () => {
       const content = await Bun.file(sharedModulePath).text();
       expect(content).toContain("...BlogModule.entities");
       expect(content).not.toContain("...BlogModule.controllers");
+    });
+  });
+
+  describe("addPathAlias", () => {
+    let tsconfigPath: string;
+
+    beforeEach(() => {
+      tsconfigPath = join(testDir, "tsconfig.json");
+    });
+
+    test("should add the module path mapping", async () => {
+      await Bun.write(tsconfigPath, `${JSON.stringify({ compilerOptions: { strict: true } }, null, 2)}\n`);
+
+      await addPathAlias(tsconfigPath, "blog");
+
+      const tsconfig = await Bun.file(tsconfigPath).json();
+      expect(tsconfig.compilerOptions.paths["@module/blog/*"]).toEqual(["./modules/blog/src/*"]);
+      expect(tsconfig.compilerOptions.strict).toBe(true);
+    });
+
+    test("should create compilerOptions and paths when absent", async () => {
+      await Bun.write(tsconfigPath, `${JSON.stringify({}, null, 2)}\n`);
+
+      await addPathAlias(tsconfigPath, "blog");
+
+      const tsconfig = await Bun.file(tsconfigPath).json();
+      expect(tsconfig.compilerOptions.paths["@module/blog/*"]).toEqual(["./modules/blog/src/*"]);
+    });
+
+    test("should preserve existing path mappings", async () => {
+      await Bun.write(
+        tsconfigPath,
+        `${JSON.stringify({ compilerOptions: { paths: { "@module/shop/*": ["./modules/shop/src/*"] } } }, null, 2)}\n`,
+      );
+
+      await addPathAlias(tsconfigPath, "blog");
+
+      const tsconfig = await Bun.file(tsconfigPath).json();
+      expect(tsconfig.compilerOptions.paths["@module/shop/*"]).toEqual(["./modules/shop/src/*"]);
+      expect(tsconfig.compilerOptions.paths["@module/blog/*"]).toEqual(["./modules/blog/src/*"]);
+    });
+  });
+
+  describe("removePathAlias", () => {
+    let tsconfigPath: string;
+
+    beforeEach(() => {
+      tsconfigPath = join(testDir, "tsconfig.json");
+    });
+
+    test("should remove only the targeted module path mapping", async () => {
+      await Bun.write(
+        tsconfigPath,
+        `${JSON.stringify(
+          {
+            compilerOptions: {
+              paths: { "@module/blog/*": ["./modules/blog/src/*"], "@module/shop/*": ["./modules/shop/src/*"] },
+            },
+          },
+          null,
+          2,
+        )}\n`,
+      );
+
+      await removePathAlias(tsconfigPath, "blog");
+
+      const tsconfig = await Bun.file(tsconfigPath).json();
+      expect(tsconfig.compilerOptions.paths["@module/blog/*"]).toBeUndefined();
+      expect(tsconfig.compilerOptions.paths["@module/shop/*"]).toEqual(["./modules/shop/src/*"]);
+    });
+
+    test("should be a no-op when the tsconfig does not exist", async () => {
+      await expect(removePathAlias(tsconfigPath, "blog")).resolves.toBeUndefined();
+      expect(await Bun.file(tsconfigPath).exists()).toBe(false);
     });
   });
 });
