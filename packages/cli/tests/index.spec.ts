@@ -38,6 +38,7 @@ describe("@talosjs/cli - index", () => {
     "HelpCommand",
     "IssueCreateCommand",
     "IssuePullCommand",
+    "AgentSkillsCreateCommand",
     "AiChatCreateCommand",
     "AiMiddlewareCreateCommand",
     "AiToolCreateCommand",

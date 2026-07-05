@@ -221,26 +221,14 @@ describe("AppInitCommand", () => {
       return files.length;
     };
 
-    test("should generate skills in the selected assistant's directory", async () => {
+    // The exhaustive per-assistant scaffolding is covered by
+    // AgentSkillsCreateCommand.spec; here we only assert that app:init delegates
+    // to it for the selected assistants.
+    test("should delegate skills scaffolding for the selected assistants", async () => {
       selectedAgents = [".claude"];
       await command.run({ name: "MyApp", destination: testDir, silent: true });
 
       expect(await skillFileCount(join(testDir, ".claude", "skills"))).toBeGreaterThan(0);
-    });
-
-    test("should generate skills for every selected assistant", async () => {
-      selectedAgents = [".codex", ".cursor", ".windsurf"];
-      await command.run({ name: "MyApp", destination: testDir, silent: true });
-
-      expect(await skillFileCount(join(testDir, ".codex", "skills"))).toBeGreaterThan(0);
-      expect(await skillFileCount(join(testDir, ".cursor", "skills"))).toBeGreaterThan(0);
-      expect(await skillFileCount(join(testDir, ".windsurf", "skills"))).toBeGreaterThan(0);
-    });
-
-    test("should write the shared AGENTS.md when an assistant is selected", async () => {
-      selectedAgents = [".codex"];
-      await command.run({ name: "MyApp", destination: testDir, silent: true });
-
       expect(await exists(join(testDir, "AGENTS.md"))).toBe(true);
     });
 
