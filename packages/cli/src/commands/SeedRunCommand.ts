@@ -1,7 +1,7 @@
 import type { ICommand } from "@talosjs/command";
 import { decorator } from "@talosjs/command";
 import { TerminalLogger } from "@talosjs/logger";
-import { SEEDS_CACHE_DIR } from "../monorepo";
+import { SEEDS_CACHE_DIR } from "@talosjs/seeds";
 import { runModuleScripts } from "../utils";
 
 @decorator.command()

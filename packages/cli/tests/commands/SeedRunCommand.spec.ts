@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 import { TerminalLogger } from "@talosjs/logger";
-import { SEEDS_CACHE_DIR } from "@/monorepo";
+import { SEEDS_CACHE_DIR } from "@talosjs/seeds";
 
 const runModuleScripts = mock((..._args: unknown[]) => Promise.resolve());
 
