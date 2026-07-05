@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.11.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.11.0) - 2026-07-05
+
+### Added
+
+- Add shell completion for agent:skills:create flags| — Franck ([d7af0b4c](https://github.com/ooneex/talos/commit/d7af0b4c))
+- Add agent:skills:create command replacing claude and codex init| — Franck ([31126e5b](https://github.com/ooneex/talos/commit/31126e5b))
+- Add multiselect assistant skills prompt to app:init| — Franck ([d4dcef9b](https://github.com/ooneex/talos/commit/d4dcef9b))
+
+### Changed
+
+- Run monorepo task groups sequentially| — Franck ([86f9c379](https://github.com/ooneex/talos/commit/86f9c379))
+- Rename askAgentSkills config field to name| — Franck ([5961e06b](https://github.com/ooneex/talos/commit/5961e06b))
+- Document fmt step in monorepo:check skill template| — Franck ([3307be77](https://github.com/ooneex/talos/commit/3307be77))
+- Use monorepo:check in talos.commands skill template| — Franck ([a0e0936c](https://github.com/ooneex/talos/commit/a0e0936c))
+- Drop claude/codex init tests and update for agent:skills:create| — Franck ([facb57b8](https://github.com/ooneex/talos/commit/facb57b8))
+- Update templates for agent:skills:create command| — Franck ([054e9c93](https://github.com/ooneex/talos/commit/054e9c93))
+- Remove ClaudeInitCommand and CodexInitCommand| — Franck ([86cfc329](https://github.com/ooneex/talos/commit/86cfc329))
+- Cover agent:skills:create command| — Franck ([0f010877](https://github.com/ooneex/talos/commit/0f010877))
+- Cover multiselect assistant skills prompt in app:init| — Franck ([c70c778e](https://github.com/ooneex/talos/commit/c70c778e))
+
 ## [1.10.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.10.0) - 2026-07-05
 
 ### Added
