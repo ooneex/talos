@@ -1,7 +1,7 @@
 {
   "name": "@talosjs/role",
   "description": "Role-based authorization types and utilities for defining user roles, hierarchies, and access levels in multi-tenant applications",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "type": "module",
   "files": [
     "dist",
