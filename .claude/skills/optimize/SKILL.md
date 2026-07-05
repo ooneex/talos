@@ -176,17 +176,10 @@ Scan and fix across all files:
 - Remove unused imports and empty files
 - Ensure consistent formatting
 
-### 8. Lint and format
+### 8. Check
 
 ```bash
-bunx biome check --write
-oo monorepo:run --commands=lint
-```
-
-### 9. Run tests
-
-```bash
-oo monorepo:run --commands=test
+talos monorepo:check
 ```
 
 Fix any failures before completing.

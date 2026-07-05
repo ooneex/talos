@@ -1,8 +1,8 @@
 ---
 name: optimize
-description: Use when the user asks to optimize, clean up, refactor, harden, lint, test, or improve an Talos package for quality, performance, API clarity, or repository conventions.
+description: Use when the user asks to optimize, clean up, refactor, harden, lint, test, or improve a Talos package for quality, performance, API clarity, or repository conventions.
 metadata:
-  short-description: Optimize an Talos package
+  short-description: Optimize a Talos package
 ---
 
 # Optimize Package
@@ -143,19 +143,21 @@ Throw typed package exceptions instead of returning `null` or string error codes
 
 ## Validation
 
-Prefer package-level validation:
+Prefer package-scoped validation. `monorepo:check` runs `install → build → fmt → lint → test` for the target and its workspace dependencies, with granular caching:
 
 ```bash
-bun test packages/<name>/tests
-bunx nx run @talosjs/<name>:build
-bunx nx run @talosjs/<name>:lint
+talos monorepo:check --packages=<name>
 ```
 
-For broad or cross-package changes:
+To scope to individual scripts, or to iterate on a single step:
 
 ```bash
-bunx biome check --write
-oo monorepo:run --commands=build
-oo monorepo:run --commands=lint
-oo monorepo:run --commands=test
+talos monorepo:run --commands=build,lint,test --packages=<name>
+talos monorepo:run --commands=test --packages=<name>
+```
+
+For broad or cross-package changes, run the whole workspace:
+
+```bash
+talos monorepo:check
 ```

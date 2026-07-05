@@ -88,9 +88,7 @@ bunx nx run @talosjs/<package>:lint
 For cross-package changes, run broader validation:
 
 ```bash
-oo monorepo:run --commands=build
-oo monorepo:run --commands=lint
-oo monorepo:run --commands=test
+talos monorepo:check
 ```
 
 Fix failures caused by the implementation.
