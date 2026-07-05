@@ -148,5 +148,5 @@ Fix every failure before completing.
 Invoke it by its `getName()` value (extra args are forwarded):
 
 ```bash
-oo command:run <command:name> [args...]
+talos command:run <command:name> [args...]
 ```

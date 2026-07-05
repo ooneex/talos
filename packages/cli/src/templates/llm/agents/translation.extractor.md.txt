@@ -13,7 +13,7 @@ the translation system. For each literal you keep, you add a key to the module's
 dictionary with its `en` source value and replace the literal with a `trans(...)`
 call. You add only the **`en`** entry — the `translation-translator` agent fills
 the other locales afterward. You edit source files and the dictionary; you never
-run generator/`oo` commands.
+run generator/`talos` commands.
 
 Run any command from the **monorepo root**.
 

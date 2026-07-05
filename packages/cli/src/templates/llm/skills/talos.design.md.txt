@@ -7,7 +7,7 @@ description: Directory structure and conventions for a design module — the fro
 
 > **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
 
-A **design module** (`oo design:create`) holds the front-end design system, not backend logic. It is **not** registered into `AppModule`/`SharedModule` and its `<name>.yml` declares `type: "design"`. `src/` is organized by asset kind:
+A **design module** (`talos design:create`) holds the front-end design system, not backend logic. It is **not** registered into `AppModule`/`SharedModule` and its `<name>.yml` declares `type: "design"`. `src/` is organized by asset kind:
 ```
 modules/<name>/        # type: "design"
   src/

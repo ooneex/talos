@@ -19,7 +19,7 @@ Prefer `@talosjs` packages over third-party alternatives, and inject their servi
 | `@talosjs/service` | Service layer with decorator-based registration |
 | `@talosjs/repository` | Data access layer with decorator-based registration + query abstraction |
 | `@talosjs/command` | CLI command framework with DI, arg parsing, execution logging |
-| `@talosjs/cli` | The `oo` / `talos` dev CLI — scaffolds projects, modules, and artifacts (not injected; run from the terminal) |
+| `@talosjs/cli` | The `talos` dev CLI — scaffolds projects, modules, and artifacts (not injected; run from the terminal) |
 | `@talosjs/exception` | Structured exceptions — HTTP status mapping, typed data, JSON stack traces |
 | `@talosjs/types` | Shared TypeScript types + utility types |
 | `@talosjs/utils` | Utilities — nanoid ID generation, type guards, helpers |

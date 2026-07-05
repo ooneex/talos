@@ -1,6 +1,6 @@
 ---
 name: module:create
-description: Scaffold a complete backend business-domain module and complete its initial artifacts. Use when creating a whole new module (a new domain like `billing`, `catalog`, `order`) — not a single artifact. Runs oo module:create, then drives the per-artifact create skills to fill in the entity, repository, service, controller, and any other artifacts the domain needs.
+description: Scaffold a complete backend business-domain module and complete its initial artifacts. Use when creating a whole new module (a new domain like `billing`, `catalog`, `order`) — not a single artifact. Runs talos module:create, then drives the per-artifact create skills to fill in the entity, repository, service, controller, and any other artifacts the domain needs.
 ---
 
 # Make Module
@@ -14,7 +14,7 @@ lint/format, conventions); this skill covers only the module-level orchestration
 
 For a **single** artifact inside an existing module, use the matching
 `<artifact>:create` skill instead. For a front-end design system or SPA, use
-`oo design:create` / `oo spa:create` (see `talos:commands`).
+`talos design:create` / `talos spa:create` (see `talos:commands`).
 
 ## Steps
 

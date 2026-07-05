@@ -41,7 +41,7 @@ Read `modules/<module>/src/migrations/Migration<version>.ts`, then implement:
 
 Drop each index explicitly in `down()` before dropping the table or column it covers.
 
-`down()` is executed by `oo migration:down` (roll back the latest) and `oo migration:down --version <version>` (roll back this specific migration), so it must reverse `up()` exactly — a rollback that leaves the schema dirty is a bug.
+`down()` is executed by `talos migration:down` (roll back the latest) and `talos migration:down --version <version>` (roll back this specific migration), so it must reverse `up()` exactly — a rollback that leaves the schema dirty is a bug.
 
 ### 3. Lint, format, and test
 

@@ -23,7 +23,7 @@ Get the failure in front of you with the exact command:
 
 ```bash
 talos monorepo:run --commands=test            # or scope to one file: bun test modules/<module>/tests/...
-oo app:start            # for boot / runtime failures
+talos app:start            # for boot / runtime failures
 ```
 
 Capture the full error and stack trace. Don't theorize before you've seen it.

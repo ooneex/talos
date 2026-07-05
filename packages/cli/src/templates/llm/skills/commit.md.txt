@@ -13,7 +13,7 @@ Create separate commits per modified module, following the project's conventiona
 
 Always run all commands from the **root of the project** (the monorepo root), not from inside individual packages.
 
-Commit messages are linted by a git `commit-msg` hook (installed with `oo commitlint:init`, which runs `oo commitlint:check`). The available types, scopes, and other rules are described below.
+Commit messages are linted by a git `commit-msg` hook (installed with `talos commitlint:init`, which runs `talos commitlint:check`). The available types, scopes, and other rules are described below.
 
 ## Workflow
 

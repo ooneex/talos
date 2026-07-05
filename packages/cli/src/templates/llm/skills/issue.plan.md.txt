@@ -1,6 +1,6 @@
 ---
 name: issue:plan
-description: Create and plan one or more YAML issues from the user's input. Infers target issues and modules from whatever the user says — existing issue files/IDs and/or free-form descriptions, across one or more modules. For each description it scaffolds the issue with oo issue:create (inferring the module), then plans it — restructuring into context, goal, definition of done, and dependencies, extracting labels, and optionally splitting into ordered sub-issues with the same structure. Reads/writes modules/<module>/issues/<ID>.yml.
+description: Create and plan one or more YAML issues from the user's input. Infers target issues and modules from whatever the user says — existing issue files/IDs and/or free-form descriptions, across one or more modules. For each description it scaffolds the issue with talos issue:create (inferring the module), then plans it — restructuring into context, goal, definition of done, and dependencies, extracting labels, and optionally splitting into ordered sub-issues with the same structure. Reads/writes modules/<module>/issues/<ID>.yml.
 ---
 
 # Issue Plan
@@ -13,7 +13,7 @@ Infer which issues to plan from the user's input — one or more issues across o
 
 ### Switch to Plan Mode First
 
-Before anything else, switch to **plan mode** (Claude Code's read-only mode — distinct from this skill's create/plan *target* modes in step 0). Do all investigation there: resolve targets, read existing issue files and module configs, work out how each issue is restructured, labelled, and split. Present the plan, then **exit plan mode to execute** — repo writes (`oo issue:create`, rewriting/Editing YAML, deleting a parent on split) only happen after you leave plan mode.
+Before anything else, switch to **plan mode** (Claude Code's read-only mode — distinct from this skill's create/plan *target* modes in step 0). Do all investigation there: resolve targets, read existing issue files and module configs, work out how each issue is restructured, labelled, and split. Present the plan, then **exit plan mode to execute** — repo writes (`talos issue:create`, rewriting/Editing YAML, deleting a parent on split) only happen after you leave plan mode.
 
 ### 0. Resolve the Targets and Mode
 
@@ -45,7 +45,7 @@ Build the full target list first, then run steps 0a–6 for **each** target. If 
 `state` is **always** `Todo` at creation — never ask. Planning moves it to `Planned`.
 
 ```bash
-oo issue:create \
+talos issue:create \
   --title="<title>" \
   --module=<module> \
   --state="Todo" \
@@ -86,7 +86,7 @@ Rules:
 
 ### 3. Extract Labels, Set State and Priority
 
-**Module** — Preserve the existing `module` field (set by `oo issue:create`), and give every sub-issue the same `module` value as the parent. It mirrors the `modules/<module>/` directory the issue lives in — never drop it when rewriting the YAML.
+**Module** — Preserve the existing `module` field (set by `talos issue:create`), and give every sub-issue the same `module` value as the parent. It mirrors the `modules/<module>/` directory the issue lives in — never drop it when rewriting the YAML.
 
 **Labels** — Suggest relevant labels: short (1–3 words), Title Case for general terms, uppercase for acronyms. Deduplicate against existing YAML labels. Vocabulary (exact casing): `Feature`, `Bug`, `Improvement`, `Enhancement`, `Performance`, `Refactor`, `Security`, `Breaking Change`, `Documentation`, `Testing`, `Database`, `API`, `UI`, `Infrastructure`, `Cleanup`.
 
@@ -209,7 +209,7 @@ A front-end SPA (TanStack Router + TanStack Query), **not** registered into `App
 - `src/features/<feature>/` — self-contained slice owning its `assets/`, `components/`, `hooks/` (data fetching / API calls / local UI state), `layouts/`, `services/` (the only layer talking to the backend), `store/` (client state), `styles/`, `types/`, `utils/`. A feature must not import another feature's internals — promote shared code to `src/shared/`.
 - `src/shared/<sub-layer>/` — the only place ≥2 features may import from in common (same sub-layout as a feature).
 
-For a new feature, note that `oo spa:feature:create --name <Name> --module <module>` (skill `/spa:feature:create`) scaffolds the route, the page/skeleton/error/not-found layouts under `features/<feature>/layouts/`, and example query (`useGet<Name>`) + mutation (`useUpdate<Name>`) hooks under `features/<feature>/hooks/`. Describe the feature, its route path, the layouts, and the hooks needed. Spell hooks as `useGet<Name>` / `useUpdate<Name>` and components/layouts in PascalCase.
+For a new feature, note that `talos spa:feature:create --name <Name> --module <module>` (skill `/spa:feature:create`) scaffolds the route, the page/skeleton/error/not-found layouts under `features/<feature>/layouts/`, and example query (`useGet<Name>`) + mutation (`useUpdate<Name>`) hooks under `features/<feature>/hooks/`. Describe the feature, its route path, the layouts, and the hooks needed. Spell hooks as `useGet<Name>` / `useUpdate<Name>` and components/layouts in PascalCase.
 
 ### Design module (`type: "design"`) — `### Design System Structure`
 

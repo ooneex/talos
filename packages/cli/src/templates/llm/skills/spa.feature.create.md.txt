@@ -64,7 +64,7 @@ Also installs `@tanstack/react-query` if it is not already a dependency.
 Before writing any UI, find which design module this SPA builds on and what it offers — the layouts must be composed from its components, not styled from scratch.
 
 1. Read the SPA module's yml config at `modules/<module>/<module>.yml` and read the `design:` field. Its value is the kebab-case name of the design module (e.g. `design: "ui"`).
-   - If there is **no** `design:` field, the SPA was created without a linked design module. Skip the design-specific guidance below and build the UI with plain elements (suggest the user run `oo spa:create --design <name>` or `oo design:create` if they want a shared design system).
+   - If there is **no** `design:` field, the SPA was created without a linked design module. Skip the design-specific guidance below and build the UI with plain elements (suggest the user run `talos spa:create --design <name>` or `talos design:create` if they want a shared design system).
 2. List the design module's source to learn the available primitives:
 
    ```bash

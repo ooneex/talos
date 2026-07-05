@@ -1,9 +1,9 @@
 ---
 name: talos:commands
-description: Reference for the `oo` CLI commands — app lifecycle, module/design/spa/microservice/SDK/docker scaffolding, database migrations and seeds, monorepo task running, releases, and issues. Use when you need the exact command or flags to run a project task from the terminal.
+description: Reference for the `talos` CLI commands — app lifecycle, module/design/spa/microservice/SDK/docker scaffolding, database migrations and seeds, monorepo task running, releases, and issues. Use when you need the exact command or flags to run a project task from the terminal.
 ---
 
-# oo CLI Commands
+# talos CLI Commands
 
 > **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
 
@@ -11,74 +11,74 @@ Always run from the project root.
 
 ## Bootstrap
 ```bash
-oo app:create [--name <name>] [--destination <path>]  # Scaffold a brand-new project (app + shared modules, deps, optional CI/CD)
-oo app:init [--name <name>] [--destination <path>]     # (Re)write project config (biome, tsconfig, git, commit-msg hook, env, assistant skills)
-oo commitlint:init                                     # Install a git commit-msg hook that lints commit messages (runs commitlint:check)
-oo commitlint:check --file <path>                      # Lint a commit message file against the type(scope): Subject rules
+talos app:create [--name <name>] [--destination <path>]  # Scaffold a brand-new project (app + shared modules, deps, optional CI/CD)
+talos app:init [--name <name>] [--destination <path>]     # (Re)write project config (biome, tsconfig, git, commit-msg hook, env, assistant skills)
+talos commitlint:init                                     # Install a git commit-msg hook that lints commit messages (runs commitlint:check)
+talos commitlint:check --file <path>                      # Lint a commit message file against the type(scope): Subject rules
 ```
 
 `app:create` bootstraps a whole new Talos application: it generates the `app` (API) and `shared` modules, Docker files, installs runtime + dev dependencies, runs `app:init`, and optionally adds CI/CD files. `app:init` only lays down the project-level config and is run automatically by `app:create`.
 
 ## Application
 ```bash
-oo app:start                   # Start Docker services + all runnable modules with hot reload
-oo app:start --api             # Start only the api modules
-oo app:start --api=a,b         # Start only the api modules named "a" and "b"
-oo app:start --microservice    # Start only the microservice modules (also --microservice=a,b)
-oo app:start --spa             # Start only the spa modules (also --spa=a,b)
-oo app:start --api --spa       # Combine flags to start several types at once
-oo app:stop                    # Stop the app module's shared Docker stack
-oo app:stop --api=a,b          # Stop only the Docker stack of named modules that have a docker-compose.yml
+talos app:start                   # Start Docker services + all runnable modules with hot reload
+talos app:start --api             # Start only the api modules
+talos app:start --api=a,b         # Start only the api modules named "a" and "b"
+talos app:start --microservice    # Start only the microservice modules (also --microservice=a,b)
+talos app:start --spa             # Start only the spa modules (also --spa=a,b)
+talos app:start --api --spa       # Combine flags to start several types at once
+talos app:stop                    # Stop the app module's shared Docker stack
+talos app:stop --api=a,b          # Stop only the Docker stack of named modules that have a docker-compose.yml
 ```
 
 ## Generators
 ```bash
-oo module:create --name <name>        # Scaffold a module
-oo module:remove --name <name>        # Remove a module + all references
-oo design:create --name <name>        # Scaffold a design module (from @talosjs/design)
-oo design:remove --name <name>        # Remove a design module + all references
-oo spa:create --name <name>           # Scaffold a spa module (from @talosjs/spa)
-oo spa:remove --name <name>           # Remove a spa module + all references
-oo microservice:create --name <name>  # Scaffold a microservice
-oo microservice:remove --name <name>  # Remove a microservice + all references
-oo sdk:create                         # Generate a browser SDK from module controllers
-oo docker:create --name <service>     # Add a Docker service to docker-compose.yml
+talos module:create --name <name>        # Scaffold a module
+talos module:remove --name <name>        # Remove a module + all references
+talos design:create --name <name>        # Scaffold a design module (from @talosjs/design)
+talos design:remove --name <name>        # Remove a design module + all references
+talos spa:create --name <name>           # Scaffold a spa module (from @talosjs/spa)
+talos spa:remove --name <name>           # Remove a spa module + all references
+talos microservice:create --name <name>  # Scaffold a microservice
+talos microservice:remove --name <name>  # Remove a microservice + all references
+talos sdk:create                         # Generate a browser SDK from module controllers
+talos docker:create --name <service>     # Add a Docker service to docker-compose.yml
 
 # Issues
-oo issue:create --id <id> --title <title> [--module <name>]  # YAML skeleton (non-interactive)
-oo issue:create --interactive [--module <name>]              # Prompt for ID/title/description
-oo issue:pull [--id <id>] [--module <name>]                  # Pull a Linear issue as YAML
-oo issue:push [--id <id>]                                    # Push a local issue YAML to Linear
+talos issue:create --id <id> --title <title> [--module <name>]  # YAML skeleton (non-interactive)
+talos issue:create --interactive [--module <name>]              # Prompt for ID/title/description
+talos issue:pull [--id <id>] [--module <name>]                  # Pull a Linear issue as YAML
+talos issue:push [--id <id>]                                    # Push a local issue YAML to Linear
 ```
 
-Class generators share the form `oo <artifact>:create --name <Name> --module <name>`, where `<artifact>` is one of:
+Class generators share the form `talos <artifact>:create --name <Name> --module <name>`, where `<artifact>` is one of:
 `ai:chat` (chat class), `ai:middleware` (chat middleware), `ai:tool` (chat tool), `analytics` (handler), `cache` (handler), `command` (CLI/`ICommand`), `controller` (HTTP/WS), `cron` (job), `database` (adapter), `entity` (TypeORM), `event` (pub/sub), `flag` (feature flag), `logger`, `mailer` (class + JSX template), `middleware` (HTTP/WS), `permission`, `queue` (BullMQ job queue), `rate-limit` (throttling strategy / `IRateLimiter`), `repository`, `service`, `spa:feature` (SPA feature slice), `storage`, `translation` (localized dictionary), `vector-database`.
 
 The matching `/<artifact>:create` skills wrap these generators and complete the generated code + tests; they share the `talos:scaffold` workflow (run-from-root, option inference, module registration, lint/format, conventions).
 
 ## Custom commands
 ```bash
-oo command:create --name <Name> --module <name>  # Scaffold a custom ICommand class
-oo command:run <command-name> [args...]           # Run a custom command (matched by its getName()) across modules
+talos command:create --name <Name> --module <name>  # Scaffold a custom ICommand class
+talos command:run <command-name> [args...]           # Run a custom command (matched by its getName()) across modules
 ```
 
 `command:run` looks up the `getName()` of every command in `modules/*/src/commands` and executes the matching one via the module's `bin/command/run.ts`, forwarding any extra args.
 
 ## Workflows
 ```bash
-oo workflow:create --name <Name> --module <name>             # Scaffold a workflow (from @talosjs/workflow)
-oo workflow:transition:create --name <Name> --module <name>  # Scaffold a workflow transition (one step)
+talos workflow:create --name <Name> --module <name>             # Scaffold a workflow (from @talosjs/workflow)
+talos workflow:transition:create --name <Name> --module <name>  # Scaffold a workflow transition (one step)
 ```
 
 A workflow orchestrates an ordered list of conditional, reversible transitions with automatic rollback on failure. Generate each step with `workflow:transition:create`, then list the transition classes in the workflow's `getTransitions()`. The `/workflow:create` and `/workflow:transition:create` skills wrap these generators.
 
 ## Database
 ```bash
-oo migration:create --module <name>   # Generate a timestamped migration
-oo migration:up [--drop]              # Run pending migrations (--drop: drop DB first)
-oo migration:down [--version <v>]     # Roll back the latest migration (or the one matching --version)
-oo seed:create --module <name>        # Generate a seed YAML file
-oo seed:run [--drop]                  # Run all seeds (--drop: drop data first)
+talos migration:create --module <name>   # Generate a timestamped migration
+talos migration:up [--drop]              # Run pending migrations (--drop: drop DB first)
+talos migration:down [--version <v>]     # Roll back the latest migration (or the one matching --version)
+talos seed:create --module <name>        # Generate a seed YAML file
+talos seed:run [--drop]                  # Run all seeds (--drop: drop data first)
 ```
 
 ## Code Quality
@@ -88,12 +88,12 @@ talos monorepo:check   # Install, build, fmt, lint and test — the full gate
 
 ## Monorepo tasks
 ```bash
-oo monorepo:run --commands=build,lint,test                # Run scripts across every package and module, with caching
-oo monorepo:run --commands=build --modules=billing,user   # Only the named modules (also --packages=a,b)
-oo monorepo:run --commands=test --logs                    # Stream plain logs (use in CI/non-interactive runs)
-oo monorepo:run --commands=build --no-cache               # Ignore the task cache and re-run everything
-oo monorepo:check                                         # Run install, build, fmt, lint and test — the full gate
-oo monorepo:check --modules=billing,user --logs           # Scope the gate to the named modules (also --packages=a,b)
+talos monorepo:run --commands=build,lint,test                # Run scripts across every package and module, with caching
+talos monorepo:run --commands=build --modules=billing,user   # Only the named modules (also --packages=a,b)
+talos monorepo:run --commands=test --logs                    # Stream plain logs (use in CI/non-interactive runs)
+talos monorepo:run --commands=build --no-cache               # Ignore the task cache and re-run everything
+talos monorepo:check                                         # Run install, build, fmt, lint and test — the full gate
+talos monorepo:check --modules=billing,user --logs           # Scope the gate to the named modules (also --packages=a,b)
 ```
 
 `monorepo:run` executes each command as a group (all `build`, then all `lint`, ...) in workspace dependency order. Targets whose package.json lacks the script are skipped without error; the first failure stops the run and prints the failing task's output. Results are cached in `var/cache/monorepo/` keyed by the content of the target's files, its transitive workspace dependencies, the script text, and root configs — a cache hit replays logs and restores output artifacts (`dist/` by default). Always pass `--logs` when running as an agent.
@@ -102,22 +102,22 @@ oo monorepo:check --modules=billing,user --logs           # Scope the gate to th
 
 ## Release
 ```bash
-oo release:create   # Detect unreleased commits, bump versions, update changelogs, tag, push
+talos release:create   # Detect unreleased commits, bump versions, update changelogs, tag, push
 ```
 
 ## Credentials
 ```bash
-oo npm:credentials:create [--token <token>]                                             # Save an npm Granular Access Token to ~/.talos/credentials/npm.yml
-oo github:credentials:create [--token <token>]                                          # Save a GitHub Personal Access Token to ~/.talos/credentials/github.yml
-oo linear:credentials:create [--token <token>]                                          # Save a Linear Personal API key to ~/.talos/credentials/linear.yml
-oo jira:credentials:create [--base-url <url>] [--email <email>] [--token <token>]       # Save a Jira API token to ~/.talos/credentials/jira.yml
-oo docker:credentials:create [--registry <host>] [--username <user>] [--token <token>]  # Save a Docker registry access token to ~/.talos/credentials/docker.yml
+talos npm:credentials:create [--token <token>]                                             # Save an npm Granular Access Token to ~/.talos/credentials/npm.yml
+talos github:credentials:create [--token <token>]                                          # Save a GitHub Personal Access Token to ~/.talos/credentials/github.yml
+talos linear:credentials:create [--token <token>]                                          # Save a Linear Personal API key to ~/.talos/credentials/linear.yml
+talos jira:credentials:create [--base-url <url>] [--email <email>] [--token <token>]       # Save a Jira API token to ~/.talos/credentials/jira.yml
+talos docker:credentials:create [--registry <host>] [--username <user>] [--token <token>]  # Save a Docker registry access token to ~/.talos/credentials/docker.yml
 ```
 
 Credentials are stored per-user under `~/.talos/credentials/*.yml` in a `profiles.default` block. Each command prompts (token input is masked) for anything not passed as a flag and prints the URL where the token can be created.
 
 ## Assistant & Shell setup
 ```bash
-oo agent:skills:create  # Write AGENTS.md + skills/agents for the selected assistants (.claude, .codex, ...)
-oo completion:zsh       # Install Zsh tab-completion for the oo / talos commands (~/.zsh)
+talos agent:skills:create  # Write AGENTS.md + skills/agents for the selected assistants (.claude, .codex, ...)
+talos completion:zsh       # Install Zsh tab-completion for the talos commands (~/.zsh)
 ```
