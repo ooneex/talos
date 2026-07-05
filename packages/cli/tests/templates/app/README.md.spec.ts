@@ -36,7 +36,7 @@ describe("README.md.txt", () => {
     expect(content).toContain("## Generators");
     expect(content).toContain("## Custom Commands");
     expect(content).toContain("## Claude");
-    expect(content).toContain("## Codex");
+    expect(content).toContain("## Other Assistants");
     expect(content).toContain("## Shell Completion");
     expect(content).toContain("## Release");
     expect(content).toContain("## Credentials");
@@ -193,9 +193,10 @@ describe("README.md.txt", () => {
     expect(content).toContain("oo command:run");
   });
 
-  test("should document the Codex section", async () => {
+  test("should document the other assistants section", async () => {
     const content = await Bun.file(templatePath).text();
-    expect(content).toContain("oo codex:init");
+    expect(content).toContain("## Other Assistants");
+    expect(content).toContain("oo agent:skills:create");
   });
 
   test("should document Zsh shell completion", async () => {
@@ -206,7 +207,7 @@ describe("README.md.txt", () => {
   test("should contain Claude skills section with setup, why and how to use", async () => {
     const content = await Bun.file(templatePath).text();
     expect(content).toContain("### Setup");
-    expect(content).toContain("oo claude:init");
+    expect(content).toContain("oo agent:skills:create");
     expect(content).toContain("### Why Skills?");
     expect(content).toContain("### How to Use");
     expect(content).toContain("### Available Skills");
