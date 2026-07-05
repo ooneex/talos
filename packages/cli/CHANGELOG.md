@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.11.2](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.11.2) - 2026-07-05
+
+### Changed
+
+- Run monorepo task groups in parallel bounded by CPU count| — Franck ([21cbc117](https://github.com/ooneex/talos/commit/21cbc117))
+- Filter passing-test noise from failure excerpts| — Franck ([439816c0](https://github.com/ooneex/talos/commit/439816c0))
+- Log successful tasks in monorepo:run output| — Franck ([31bf5dd2](https://github.com/ooneex/talos/commit/31bf5dd2))
+
 ## [1.11.1](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.11.1) - 2026-07-05
 
 ### Changed
