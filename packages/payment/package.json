@@ -1,7 +1,7 @@
 {
   "name": "@talosjs/payment",
   "description": "Payment and pricing type definitions with currency handling, product categorization, and billing metadata for e-commerce integrations",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "type": "module",
   "files": [
     "dist",
