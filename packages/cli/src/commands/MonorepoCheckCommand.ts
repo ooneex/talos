@@ -11,8 +11,8 @@ type CommandOptionsType = {
 
 // The full verification pipeline, run in order: dependencies first, then the
 // per-target scripts. `monorepo:run` already sequences one command group after
-// another, so listing them here gives install → build → lint → test.
-const CHECK_COMMANDS = ["install", "build", "lint", "test"].join(",");
+// another, so listing them here gives install → build → fmt → lint → test.
+const CHECK_COMMANDS = ["install", "build", "fmt", "lint", "test"].join(",");
 
 @decorator.command()
 export class MonorepoCheckCommand<T extends CommandOptionsType = CommandOptionsType> implements ICommand<T> {
@@ -21,7 +21,7 @@ export class MonorepoCheckCommand<T extends CommandOptionsType = CommandOptionsT
   }
 
   public getDescription(): string {
-    return "Run install, build, lint and test across packages and modules with granular caching";
+    return "Run install, build, fmt, lint and test across packages and modules with granular caching";
   }
 
   public async run(options: T): Promise<void> {
