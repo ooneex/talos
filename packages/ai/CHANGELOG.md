@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.3](https://github.com/ooneex/talos/releases/tag/@talosjs/ai@1.1.3) - 2026-07-05
+
+### Changed
+
+- Expect defined adapter for known provider| — Franck ([d1313064](https://github.com/ooneex/talos/commit/d1313064))
+- Expect undefined adapter for unknown provider| — Franck ([ec210d87](https://github.com/ooneex/talos/commit/ec210d87))
+
 ## [1.1.2](https://github.com/ooneex/talos/releases/tag/@talosjs/ai@1.1.2) - 2026-07-05
 
 ### Changed
