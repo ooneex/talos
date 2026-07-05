@@ -1,5 +1,6 @@
 import { rm } from "node:fs/promises";
 import { join } from "node:path";
+import { MIGRATIONS_CACHE_DIR } from "./constants";
 import type { IMigration } from "./types";
 
 /**
@@ -25,8 +26,8 @@ export const MIGRATION_CACHE_VERSION = 1;
 // Fallback cache location, relative to `process.cwd()`, used only when `up`/`down`
 // are invoked directly (not through the CLI). The `migration:up`/`migration:down`
 // commands instead pass an explicit per-module directory under the workspace root
-// via `--cache-dir` (see `MIGRATIONS_CACHE_DIR` in packages/cli/src/monorepo.ts).
-const CACHE_SUBPATH = join("var", "cache", "migrations");
+// via `--cache-dir` (built from {@link MIGRATIONS_CACHE_DIR}).
+const CACHE_SUBPATH = MIGRATIONS_CACHE_DIR;
 
 export type MigrationCacheEntryType = {
   version: number;

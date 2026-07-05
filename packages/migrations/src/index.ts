@@ -1,3 +1,4 @@
+export { MIGRATIONS_CACHE_DIR } from "./constants";
 export { createMigrationTable } from "./createMigrationTable";
 export { decorator } from "./decorators";
 export { down } from "./down";
