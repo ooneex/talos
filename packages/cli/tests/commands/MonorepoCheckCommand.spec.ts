@@ -81,7 +81,7 @@ describe("MonorepoCheckCommand", () => {
 
     test("should return correct description", () => {
       expect(command.getDescription()).toBe(
-        "Run install, build, lint and test across packages and modules with granular caching",
+        "Run install, build, fmt, lint and test across packages and modules with granular caching",
       );
     });
   });
