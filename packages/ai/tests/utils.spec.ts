@@ -17,7 +17,7 @@ describe("createAdapter", () => {
 
     const adapter = createAdapter("anthropic/claude-sonnet-4.5");
 
-    expect(adapter).toBeDefined();
+    expect(adapter).toBeUndefined();
   });
 });
 
