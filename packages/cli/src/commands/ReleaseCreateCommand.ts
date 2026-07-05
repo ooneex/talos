@@ -3,7 +3,6 @@ import { basename, join } from "node:path";
 import type { ICommand } from "@talosjs/command";
 import { decorator } from "@talosjs/command";
 import { TerminalLogger } from "@talosjs/logger";
-import { $ } from "bun";
 import { askConfirm } from "../prompts/askConfirm";
 import { LOG_OPTIONS } from "../utils";
 import { NpmPublishCommand } from "./NpmPublishCommand";
@@ -27,6 +26,17 @@ type CommitInfoType = {
   subject: string;
   author: string;
   breaking?: boolean;
+};
+
+type ReleasePlanType = {
+  dir: { base: string; type: string };
+  fullDir: string;
+  pkgJsonPath: string;
+  pkgJson: PackageJsonType;
+  commits: CommitInfoType[];
+  bumpType: "major" | "minor" | "patch";
+  newVersion: string;
+  tag: string;
 };
 
 type ChangelogCategory = "Added" | "Changed" | "Deprecated" | "Removed" | "Fixed" | "Security";
@@ -119,31 +129,48 @@ export class ReleaseCreateCommand<T extends CommandOptionsType = CommandOptionsT
     const releasedPackages: string[] = [];
     const releasedModules: string[] = [];
 
-    for (const dir of targetDirs) {
-      const fullDir = join(cwd, dir.base);
-      const pkgJsonPath = join(fullDir, "package.json");
+    // Analyze every target directory concurrently: reading package.json and
+    // querying git history are independent, read-only operations per package.
+    // getRepoUrl is constant across packages, so fetch it once alongside the analysis.
+    const repoUrlPromise = this.getRepoUrl();
+    const analyzed = await Promise.all(
+      targetDirs.map(async (dir): Promise<ReleasePlanType | null> => {
+        const fullDir = join(cwd, dir.base);
+        const pkgJsonPath = join(fullDir, "package.json");
 
-      const pkgJsonFile = Bun.file(pkgJsonPath);
-      if (!(await pkgJsonFile.exists())) {
-        continue;
-      }
+        const pkgJsonFile = Bun.file(pkgJsonPath);
+        if (!(await pkgJsonFile.exists())) {
+          return null;
+        }
 
-      const pkgJson: PackageJsonType = await pkgJsonFile.json();
-      const lastTag = await this.getLastTag(pkgJson.name);
-      const commits = await this.getCommitsSinceTag(lastTag, dir.base);
+        const pkgJson: PackageJsonType = await pkgJsonFile.json();
+        const lastTag = await this.getLastTag(pkgJson.name);
+        const commits = await this.getCommitsSinceTag(lastTag, dir.base);
 
-      if (commits.length === 0) {
-        continue;
-      }
+        if (commits.length === 0) {
+          return null;
+        }
 
-      const bumpType = this.determineBumpType(commits);
-      const newVersion = this.bumpVersion(pkgJson.version, bumpType);
+        const bumpType = this.determineBumpType(commits);
+        const newVersion = this.bumpVersion(pkgJson.version, bumpType);
 
-      pkgJson.version = newVersion;
-      const tag = `${pkgJson.name}@${newVersion}`;
+        pkgJson.version = newVersion;
+        const tag = `${pkgJson.name}@${newVersion}`;
+
+        return { dir, fullDir, pkgJsonPath, pkgJson, commits, bumpType, newVersion, tag };
+      }),
+    );
+
+    const plans = analyzed.filter((plan): plan is ReleasePlanType => plan !== null);
+    const repoUrl = await repoUrlPromise;
+
+    // Git add/commit/tag mutate a single repository index and history, so they
+    // must run sequentially and in a deterministic order.
+    for (const plan of plans) {
+      const { dir, fullDir, pkgJsonPath, pkgJson, commits, bumpType, newVersion, tag } = plan;
 
       await Bun.write(pkgJsonPath, `${JSON.stringify(pkgJson, null, 2)}\n`);
-      await this.updateChangelog(fullDir, newVersion, tag, commits);
+      await this.updateChangelog(fullDir, newVersion, tag, commits, repoUrl);
 
       try {
         await this.gitAdd(join(dir.base, "package.json"), join(dir.base, "CHANGELOG.md"));
@@ -216,10 +243,33 @@ export class ReleaseCreateCommand<T extends CommandOptionsType = CommandOptionsT
     }
   }
 
+  /**
+   * Run a command via Bun.spawn (no shell), capturing stdout/stderr. On a
+   * non-zero exit the thrown error carries `stdout`/`stderr` so that
+   * getShellErrorDetails can surface them.
+   */
+  private async exec(cmd: string[]): Promise<string> {
+    const proc = Bun.spawn(cmd, { stdout: "pipe", stderr: "pipe" });
+    const [stdout, stderr, exitCode] = await Promise.all([
+      new Response(proc.stdout).text(),
+      new Response(proc.stderr).text(),
+      proc.exited,
+    ]);
+
+    if (exitCode !== 0) {
+      const error = new Error(`Command failed: ${cmd.join(" ")}`) as Error & { stdout: string; stderr: string };
+      error.stdout = stdout;
+      error.stderr = stderr;
+      throw error;
+    }
+
+    return stdout;
+  }
+
   private async hasPendingChanges(): Promise<boolean> {
     try {
-      const result = await $`git --no-pager status --porcelain`.quiet();
-      return result.text().trim().length > 0;
+      const stdout = await this.exec(["git", "--no-pager", "status", "--porcelain"]);
+      return stdout.trim().length > 0;
     } catch {
       return false;
     }
@@ -227,8 +277,8 @@ export class ReleaseCreateCommand<T extends CommandOptionsType = CommandOptionsT
 
   private async getLastTag(packageName: string): Promise<string | null> {
     try {
-      const result = await $`git --no-pager tag --list "${packageName}@*" --sort=-v:refname`.quiet();
-      const tags = result.text().trim();
+      const stdout = await this.exec(["git", "--no-pager", "tag", "--list", `${packageName}@*`, "--sort=-v:refname"]);
+      const tags = stdout.trim();
 
       if (!tags) {
         return null;
@@ -245,8 +295,8 @@ export class ReleaseCreateCommand<T extends CommandOptionsType = CommandOptionsT
     const format = "%H|%an|%s|%b%x1e";
 
     try {
-      const result = await $`git --no-pager log ${range} --format=${format} -- ${dirPath}`.quiet();
-      const output = result.text().trim();
+      const stdout = await this.exec(["git", "--no-pager", "log", range, `--format=${format}`, "--", dirPath]);
+      const output = stdout.trim();
 
       if (!output) {
         return [];
@@ -317,8 +367,8 @@ export class ReleaseCreateCommand<T extends CommandOptionsType = CommandOptionsT
 
   private async getRepoUrl(): Promise<string | null> {
     try {
-      const result = await $`git --no-pager remote get-url origin`.quiet();
-      const url = result.text().trim();
+      const stdout = await this.exec(["git", "--no-pager", "remote", "get-url", "origin"]);
+      const url = stdout.trim();
 
       return url.replace(/\.git$/, "").replace(/^git@([^:]+):/, "https://$1/");
     } catch {
@@ -326,10 +376,15 @@ export class ReleaseCreateCommand<T extends CommandOptionsType = CommandOptionsT
     }
   }
 
-  private async updateChangelog(dir: string, version: string, tag: string, commits: CommitInfoType[]): Promise<void> {
+  private async updateChangelog(
+    dir: string,
+    version: string,
+    tag: string,
+    commits: CommitInfoType[],
+    repoUrl: string | null,
+  ): Promise<void> {
     const changelogPath = join(dir, "CHANGELOG.md");
     const today = new Date().toISOString().split("T")[0];
-    const repoUrl = await this.getRepoUrl();
 
     const grouped = new Map<ChangelogCategory, CommitInfoType[]>();
     for (const commit of commits) {
@@ -387,29 +442,29 @@ ${section}
   }
 
   private async gitAdd(...files: string[]): Promise<void> {
-    await $`git add ${files}`.quiet();
+    await this.exec(["git", "add", ...files]);
   }
 
   private async gitCommit(message: string): Promise<void> {
-    await $`git commit --no-verify -m ${message}`.quiet();
+    await this.exec(["git", "commit", "--no-verify", "-m", message]);
   }
 
   private async gitTag(tag: string, message: string): Promise<void> {
-    await $`git tag -a ${tag} -m ${message}`.quiet();
+    await this.exec(["git", "tag", "-a", tag, "-m", message]);
   }
 
   private async bunInstall(): Promise<void> {
-    await $`bun install`.quiet();
+    await this.exec(["bun", "install"]);
   }
 
   private async gitPush(): Promise<void> {
-    await $`git push`.quiet();
-    await $`git push --tags`.quiet();
+    await this.exec(["git", "push"]);
+    await this.exec(["git", "push", "--tags"]);
   }
 
   /**
-   * Extract the captured stdout/stderr from a failed `.quiet()` shell command so
-   * the details are surfaced only when a git command actually fails.
+   * Extract the captured stdout/stderr from a failed command so the details are
+   * surfaced only when a git command actually fails.
    */
   private getShellErrorDetails(error: unknown): string | undefined {
     if (error && typeof error === "object") {

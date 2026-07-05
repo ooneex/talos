@@ -154,7 +154,7 @@ describe("ReleaseCreateCommand", () => {
       ];
 
       // @ts-expect-error accessing private method for testing
-      await command.updateChangelog(testDir, "1.1.0", "v1.1.0", commits);
+      await command.updateChangelog(testDir, "1.1.0", "v1.1.0", commits, null);
 
       const changelogPath = join(testDir, "CHANGELOG.md");
       expect(existsSync(changelogPath)).toBe(true);
@@ -182,7 +182,7 @@ describe("ReleaseCreateCommand", () => {
       const commits = [{ hash: "abc12345", type: "fix", scope: "cli", subject: "Fix a bug", author: "Test Author" }];
 
       // @ts-expect-error accessing private method for testing
-      await command.updateChangelog(testDir, "1.0.1", "v1.0.1", commits);
+      await command.updateChangelog(testDir, "1.0.1", "v1.0.1", commits, null);
 
       const content = await Bun.file(join(testDir, "CHANGELOG.md")).text();
       expect(content).toContain("## [Unreleased]");
@@ -207,7 +207,7 @@ describe("ReleaseCreateCommand", () => {
       ];
 
       // @ts-expect-error accessing private method for testing
-      await command.updateChangelog(testDir, "1.1.0", "v1.1.0", commits);
+      await command.updateChangelog(testDir, "1.1.0", "v1.1.0", commits, null);
 
       const content = await Bun.file(join(testDir, "CHANGELOG.md")).text();
       expect(content).toContain("### Added");
@@ -225,7 +225,7 @@ describe("ReleaseCreateCommand", () => {
       const commits = [{ hash: "abc12345", type: "feat", scope: "cli", subject: "Add feature", author: "Test Author" }];
 
       // @ts-expect-error accessing private method for testing
-      await command.updateChangelog(testDir, "1.1.0", "v1.1.0", commits);
+      await command.updateChangelog(testDir, "1.1.0", "v1.1.0", commits, null);
 
       const content = await Bun.file(join(testDir, "CHANGELOG.md")).text();
       expect(content).toContain(`## [1.1.0] - ${today}`);
@@ -245,7 +245,7 @@ describe("ReleaseCreateCommand", () => {
       ];
 
       // @ts-expect-error accessing private method for testing
-      await command.updateChangelog(testDir, "1.1.0", "v1.1.0", commits);
+      await command.updateChangelog(testDir, "1.1.0", "v1.1.0", commits, null);
 
       const content = await Bun.file(join(testDir, "CHANGELOG.md")).text();
 
@@ -275,7 +275,7 @@ describe("ReleaseCreateCommand", () => {
       const commits = [{ hash: "abc12345", type: "feat", scope: "cli", subject: "Add feature", author: "Test Author" }];
 
       // @ts-expect-error accessing private method for testing
-      await command.updateChangelog(testDir, "1.1.0", "v1.1.0", commits);
+      await command.updateChangelog(testDir, "1.1.0", "v1.1.0", commits, null);
 
       const content = await Bun.file(join(testDir, "CHANGELOG.md")).text();
       expect(content).toContain("### Added");
@@ -300,7 +300,7 @@ describe("ReleaseCreateCommand", () => {
       const commits = [{ hash: "abc12345", type: "feat", scope: "cli", subject: "New feature", author: "Test Author" }];
 
       // @ts-expect-error accessing private method for testing
-      await command.updateChangelog(testDir, "1.1.0", "v1.1.0", commits);
+      await command.updateChangelog(testDir, "1.1.0", "v1.1.0", commits, null);
 
       const content = await Bun.file(join(testDir, "CHANGELOG.md")).text();
       const newVersionIndex = content.indexOf("## [1.1.0]");
@@ -309,13 +309,10 @@ describe("ReleaseCreateCommand", () => {
     });
 
     test("should include commit links when repo URL is available", async () => {
-      // @ts-expect-error accessing private method for testing
-      command.getRepoUrl = mock(() => Promise.resolve("https://github.com/test/repo"));
-
       const commits = [{ hash: "abc12345", type: "feat", scope: "cli", subject: "Add feature", author: "Test Author" }];
 
       // @ts-expect-error accessing private method for testing
-      await command.updateChangelog(testDir, "1.1.0", "v1.1.0", commits);
+      await command.updateChangelog(testDir, "1.1.0", "v1.1.0", commits, "https://github.com/test/repo");
 
       const content = await Bun.file(join(testDir, "CHANGELOG.md")).text();
       expect(content).toContain(
@@ -351,6 +348,31 @@ describe("ReleaseCreateCommand", () => {
     test("should return undefined when there is nothing to report", () => {
       // @ts-expect-error accessing private method for testing
       expect(command.getShellErrorDetails("boom")).toBeUndefined();
+    });
+  });
+
+  describe("exec", () => {
+    test("should return the captured stdout of a successful command", async () => {
+      // @ts-expect-error accessing private method for testing
+      const stdout = await command.exec(["echo", "hello"]);
+      expect(stdout).toBe("hello\n");
+    });
+
+    test("should throw an error carrying stdout and stderr on non-zero exit", async () => {
+      let caught: (Error & { stdout?: string; stderr?: string }) | undefined;
+      try {
+        // @ts-expect-error accessing private method for testing
+        await command.exec(["sh", "-c", "echo out; echo err >&2; exit 3"]);
+      } catch (error) {
+        caught = error as Error & { stdout?: string; stderr?: string };
+      }
+
+      expect(caught).toBeDefined();
+      expect(caught?.stdout).toBe("out\n");
+      expect(caught?.stderr).toBe("err\n");
+      // The thrown error is consumable by getShellErrorDetails.
+      // @ts-expect-error accessing private method for testing
+      expect(command.getShellErrorDetails(caught)).toBe("out\nerr");
     });
   });
 
