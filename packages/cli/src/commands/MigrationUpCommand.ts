@@ -13,11 +13,13 @@ export class MigrationUpCommand implements ICommand {
     return "Run migrations for all modules";
   }
 
-  public async run(options: { drop?: boolean }): Promise<void> {
+  public async run(options: { drop?: boolean; noCache?: boolean }): Promise<void> {
     await runModuleScripts(new TerminalLogger(), {
       binPath: ["bin", "migration", "up.ts"],
       label: "migrations",
       drop: options.drop,
+      cache: true,
+      noCache: options.noCache,
     });
   }
 }

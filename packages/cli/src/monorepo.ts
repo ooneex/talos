@@ -228,11 +228,25 @@ const hashFile = async (path: string): Promise<string | null> => {
 };
 
 /**
- * Content-hash every file of a target into a single fingerprint. When the
+ * Content-hash every file of a directory into a single fingerprint. When the
  * workspace is a git repository, files are listed through git so ignored
- * artifacts never invalidate the cache; otherwise the directory is walked.
- * Fingerprints are memoized per target key in `memo` so shared dependencies
- * are hashed once per run.
+ * artifacts never invalidate the fingerprint; otherwise the directory is walked
+ * (build and dependency folders are always excluded).
+ */
+export const fingerprintDir = async (dir: string, useGit = false): Promise<string> => {
+  const files = (useGit ? await collectFilesWithGit(dir) : null) ?? (await collectFiles(dir));
+  const hasher = new Bun.CryptoHasher("sha256");
+  for (const file of files) {
+    const fileHash = await hashFile(join(dir, file));
+    if (fileHash !== null) hasher.update(`${file}=${fileHash}\n`);
+  }
+  return hasher.digest("hex");
+};
+
+/**
+ * Content-hash every file of a target into a single fingerprint. Fingerprints
+ * are memoized per target key in `memo` so shared dependencies are hashed once
+ * per run.
  */
 export const fingerprintTarget = (
   target: MonorepoTargetType,
@@ -242,16 +256,7 @@ export const fingerprintTarget = (
   const memoized = memo.get(target.key);
   if (memoized) return memoized;
 
-  const promise = (async () => {
-    const files = (useGit ? await collectFilesWithGit(target.dir) : null) ?? (await collectFiles(target.dir));
-    const hasher = new Bun.CryptoHasher("sha256");
-    for (const file of files) {
-      const fileHash = await hashFile(join(target.dir, file));
-      if (fileHash !== null) hasher.update(`${file}=${fileHash}\n`);
-    }
-    return hasher.digest("hex");
-  })();
-
+  const promise = fingerprintDir(target.dir, useGit);
   memo.set(target.key, promise);
   return promise;
 };
@@ -389,6 +394,85 @@ export const writeCacheEntry = async (
 
   await Bun.write(join(tempDir, "meta.json"), JSON.stringify({ ...meta, outputs: capturedOutputs }, null, 2));
   await Bun.write(join(tempDir, "output.log"), output);
+
+  await rm(entryDir, { recursive: true, force: true });
+  await rename(tempDir, entryDir);
+};
+
+/**
+ * A lighter cache used by the per-module script runners (`migration:up`,
+ * `seed:run`, …). Unlike the task cache above, these scripts produce no
+ * restorable artifacts — their effect lives in a database — so an entry only
+ * records that a given module's inputs already ran successfully. A hit lets the
+ * runner skip re-spawning the script (and re-connecting to the database) when
+ * nothing the script could read has changed. Entries live under
+ * `var/cache/<name>/<hash>/`, where `name` is the runner's label (e.g.
+ * `migrations`).
+ */
+export const MODULE_SCRIPT_CACHE_VERSION = 1;
+export const MODULE_SCRIPT_CACHE_DIR = join("var", "cache");
+
+export type ModuleScriptCacheMetaType = {
+  version: number;
+  /** The script this entry is for, e.g. `bin/migration/up.ts`. */
+  script: string;
+  /** The module the script ran for. */
+  module: string;
+  hash: string;
+  createdAt: string;
+  durationMs: number;
+};
+
+/** Directory holding the cache entries for one module script kind, named by its label. */
+export const moduleScriptCacheDir = (rootDir: string, name: string): string =>
+  join(rootDir, MODULE_SCRIPT_CACHE_DIR, name.replace(/[^\w.-]+/g, "-"));
+
+/**
+ * Compute the cache hash of one module script run. It covers the cache version,
+ * the script identity, an optional environment selector and the content
+ * fingerprint of the whole module directory — so the entry is invalidated when
+ * any file the script could read (its migrations, its source, its bin) changes.
+ */
+export const computeModuleScriptHash = async (moduleDir: string, script: string, env?: string): Promise<string> => {
+  const hasher = new Bun.CryptoHasher("sha256");
+  hasher.update(
+    [
+      `version=${MODULE_SCRIPT_CACHE_VERSION}`,
+      `script=${script}`,
+      `env=${env ?? ""}`,
+      `dir=${await fingerprintDir(moduleDir)}`,
+    ].join("\n"),
+  );
+  return hasher.digest("hex");
+};
+
+/** Read a module script cache entry, returning its metadata or null on a miss. */
+export const readModuleScriptCache = async (
+  cacheDir: string,
+  hash: string,
+): Promise<ModuleScriptCacheMetaType | null> => {
+  const metaFile = Bun.file(join(cacheDir, hash, "meta.json"));
+  if (!(await metaFile.exists())) return null;
+
+  try {
+    return await metaFile.json();
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Persist a successful module script run. The entry is assembled in a temp
+ * directory and renamed into place so a crashed run never leaves a half-written
+ * entry behind.
+ */
+export const writeModuleScriptCache = async (cacheDir: string, meta: ModuleScriptCacheMetaType): Promise<void> => {
+  const tempDir = join(cacheDir, `.tmp-${meta.hash}`);
+  const entryDir = join(cacheDir, meta.hash);
+
+  await rm(tempDir, { recursive: true, force: true });
+  await mkdir(tempDir, { recursive: true });
+  await Bun.write(join(tempDir, "meta.json"), JSON.stringify(meta, null, 2));
 
   await rm(entryDir, { recursive: true, force: true });
   await rename(tempDir, entryDir);
