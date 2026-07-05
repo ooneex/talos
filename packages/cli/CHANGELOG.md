@@ -1,5 +1,33 @@
 # Changelog
 
+## [1.9.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.9.0) - 2026-07-05
+
+### Added
+
+- Add fmt step to monorepo:check pipeline| — Franck ([1948de03](https://github.com/ooneex/talos/commit/1948de03))
+- Add commitlint:init and commitlint:check commands| — Franck ([f12b4b88](https://github.com/ooneex/talos/commit/f12b4b88))
+- Wire monorepo:check into completions, docs, and app template| — Franck ([f4832f25](https://github.com/ooneex/talos/commit/f4832f25))
+- Add monorepo:check command| — Franck ([ad3591b1](https://github.com/ooneex/talos/commit/ad3591b1))
+- Show trimmed failure excerpt instead of streaming monorepo:run output| — Franck ([676bfd24](https://github.com/ooneex/talos/commit/676bfd24))
+
+### Changed
+
+- Update monorepo:check tests for fmt step| — Franck ([1861a7c7](https://github.com/ooneex/talos/commit/1861a7c7))
+- Use talos monorepo:check in LLM scaffold templates| — Franck ([f3753943](https://github.com/ooneex/talos/commit/f3753943))
+- Revise package READMEs| — Franck ([1b72f01f](https://github.com/ooneex/talos/commit/1b72f01f))
+- Update app scaffold tests for removed root scripts block| — Franck ([f15d5279](https://github.com/ooneex/talos/commit/f15d5279))
+- Update READMEs and skill docs for bun commands and workflow| — Franck ([04ad0400](https://github.com/ooneex/talos/commit/04ad0400))
+- Update scaffold templates for bun commands and workflow| — Franck ([c50fcf1d](https://github.com/ooneex/talos/commit/c50fcf1d))
+- Add fmt script to package.json across packages| — Franck ([11513a2f](https://github.com/ooneex/talos/commit/11513a2f))
+- Update scaffold templates for fmt script and drop app scripts block| — Franck ([1a8fd30e](https://github.com/ooneex/talos/commit/1a8fd30e))
+- Shell out to talos CLI in commit-msg hook instead of baked path| — Franck ([d68775ba](https://github.com/ooneex/talos/commit/d68775ba))
+- Remove Husky ENV from app Dockerfile template| — Franck ([358906f6](https://github.com/ooneex/talos/commit/358906f6))
+- Update docs for native commitlint workflow| — Franck ([abfdb668](https://github.com/ooneex/talos/commit/abfdb668))
+- Drop commitlint scope-enum editing and scaffolding for native commitlint| — Franck ([f70faae0](https://github.com/ooneex/talos/commit/f70faae0))
+- Remove per-package npm:publish scripts| — Franck ([90149112](https://github.com/ooneex/talos/commit/90149112))
+- Update check script assertions for monorepo:check| — Franck ([57deff70](https://github.com/ooneex/talos/commit/57deff70))
+- Remove Nx from generated apps and task engine| — Franck ([f6d22d09](https://github.com/ooneex/talos/commit/f6d22d09))
+
 ## [1.8.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.8.0) - 2026-07-04
 
 ### Added
