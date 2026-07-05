@@ -75,7 +75,7 @@ callers.
 ## 3. Verify
 
 ```bash
-bun run fmt && bun run lint && bun run test
+bunx biome check --write && talos monorepo:run --commands=lint && talos monorepo:run --commands=test
 ```
 
 Tests must pass after just as they did before. Fix every failure you introduced

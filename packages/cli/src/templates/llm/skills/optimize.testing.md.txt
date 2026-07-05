@@ -12,7 +12,7 @@ Apply when pruning or improving a module's tests (the `optimize` skill calls thi
 ## Conventions
 
 - Test files mirror `src/` under `tests/` with the `.spec.ts` suffix.
-- Run `bun run test` (all modules) or `bun test tests` (inside a module).
+- Run `talos monorepo:run --commands=test` (all modules) or `bun test tests` (inside a module).
 - Every public method with logic needs ≥1 happy-path + ≥1 edge-case test.
 - Avoid trivial existence checks — test actual behavior.
 - Keep tests deterministic: no random values, no time-dependent data.

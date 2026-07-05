@@ -27,8 +27,8 @@ definitions:
           - monorepo
         script:
           - bun install --frozen-lockfile
-          - bun run lint
-          - bun test
+          - talos monorepo:run --commands=lint --logs
+          - talos monorepo:run --commands=test --logs
 
     - step: &build-image
         name: Build Image

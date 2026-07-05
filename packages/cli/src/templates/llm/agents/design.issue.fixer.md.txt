@@ -71,8 +71,8 @@ and utils stay generic and free of domain or data-fetching logic.
 
 1. **Lint & format** — from the project root:
    ```bash
-   bun run fmt
-   bun run lint
+   bunx biome check --write
+   talos monorepo:run --commands=lint
    ```
 2. **Satisfy the Definition of Done** — verify every `dod` checkbox is met and
    check each satisfied box off in the YAML (`- [ ]` → `- [x]`). Leave any

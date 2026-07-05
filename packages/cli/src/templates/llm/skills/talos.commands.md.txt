@@ -83,9 +83,9 @@ oo seed:run [--drop]                  # Run all seeds (--drop: drop data first)
 
 ## Code Quality
 ```bash
-bun run fmt    # Format with Biome
-bun run lint   # Lint with Biome + TypeScript
-bun run test   # Run all tests
+bunx biome check --write    # Format with Biome
+talos monorepo:run --commands=lint   # Lint with Biome + TypeScript
+talos monorepo:run --commands=test   # Run all tests
 ```
 
 ## Monorepo tasks

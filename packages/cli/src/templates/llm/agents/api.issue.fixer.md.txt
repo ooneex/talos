@@ -90,8 +90,8 @@ injection; no leakage across boundaries; no circular dependencies.
 
 1. **Lint & format** — from the project root:
    ```bash
-   bun run fmt
-   bun run lint
+   bunx biome check --write
+   talos monorepo:run --commands=lint
    ```
 2. **Satisfy the Definition of Done** — verify every `dod` checkbox is met and
    check each satisfied box off in the YAML (`- [ ]` → `- [x]`). Leave any

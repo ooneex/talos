@@ -22,7 +22,7 @@ Run every command from the **monorepo root**.
 Get the failure in front of you with the exact command:
 
 ```bash
-bun run test            # or scope to one file: bun test modules/<module>/tests/...
+talos monorepo:run --commands=test            # or scope to one file: bun test modules/<module>/tests/...
 oo app:start            # for boot / runtime failures
 ```
 
@@ -57,7 +57,7 @@ underlying defect. If the test itself was wrong, fix the test and say so.
 ### 4. Verify
 
 ```bash
-bun run fmt && bun run lint && bun run test
+bunx biome check --write && talos monorepo:run --commands=lint && talos monorepo:run --commands=test
 ```
 
 Confirm the original failure is gone and nothing else broke. Report the root

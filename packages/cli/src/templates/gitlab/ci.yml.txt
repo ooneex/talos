@@ -31,7 +31,7 @@ lint:
   extends: .bun
   stage: quality
   script:
-    - bun run lint
+    - talos monorepo:run --commands=lint --logs
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH =~ /^(main|develop)$/
@@ -41,7 +41,7 @@ test:
   extends: .bun
   stage: quality
   script:
-    - bun test
+    - talos monorepo:run --commands=test --logs
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH =~ /^(main|develop)$/

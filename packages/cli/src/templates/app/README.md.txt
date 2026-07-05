@@ -1202,14 +1202,16 @@ oo docker:credentials:create --registry docker.io --username "$DOCKER_USER" --to
 
 ---
 
-## Scripts
+## Commands
+
+Tooling runs through the `talos` CLI, which reaches every module in the workspace — the root `package.json` ships no scripts of its own.
 
 | Command | Description |
 |---|---|
-| `bun run fmt` | Format all source files with Biome |
-| `bun run lint` | Lint all modules with Biome and TypeScript |
-| `bun run test` | Run tests across all modules |
-| `bun run check` | Install deps, then build, lint and test across all modules |
+| `bunx biome check --write` | Format and auto-fix all source files with Biome |
+| `talos monorepo:run --commands=lint` | Lint all modules with Biome and TypeScript |
+| `talos monorepo:run --commands=test` | Run tests across all modules |
+| `talos monorepo:check` | Install deps, then build, lint and test across all modules |
 
 ---
 

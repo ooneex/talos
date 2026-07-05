@@ -262,7 +262,7 @@ stream: (input: {
 ### 8. Lint, format, and test
 
 ```bash
-bun run fmt && bun run lint && bun run test
+bunx biome check --write && talos monorepo:run --commands=lint && talos monorepo:run --commands=test
 ```
 
 Fix every failure before completing.

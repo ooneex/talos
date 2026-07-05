@@ -62,7 +62,7 @@ When you change an entity's columns/relations:
 
 ## Verify and troubleshoot
 
-- **Verify** — after applying, run `bun run test` (repository/entity tests fail
+- **Verify** — after applying, run `talos monorepo:run --commands=test` (repository/entity tests fail
   fast on a schema mismatch). Confirm every entity column has a matching
   migrated column with the same nullability/length.
 - **Migration failed mid-way** — read the error, fix the offending `up()`, and
