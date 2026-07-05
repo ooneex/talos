@@ -376,6 +376,90 @@ describe("runModuleScripts", () => {
     );
     expect(exitCalls).toEqual([1]);
   });
+
+  const CACHED_MIGRATIONS = { ...MIGRATIONS, cache: true };
+
+  test("should skip a module on a second run when its inputs are unchanged", async () => {
+    const moduleDir = join(testDir, "modules", "auth");
+    await Bun.write(join(moduleDir, "package.json"), JSON.stringify({ name: "@acme/auth" }));
+    await Bun.write(join(moduleDir, "bin", "migration", "up.ts"), "// migration");
+    process.chdir(testDir);
+
+    await runModuleScripts(logger, CACHED_MIGRATIONS);
+    await runModuleScripts(logger, CACHED_MIGRATIONS);
+
+    expect(spawnCalls).toHaveLength(1);
+    expect(logger.success).toHaveBeenCalledWith(
+      "Migrations up to date for @acme/auth (cached)",
+      undefined,
+      expect.anything(),
+    );
+  });
+
+  test("should re-run a module when its inputs change", async () => {
+    const moduleDir = join(testDir, "modules", "auth");
+    await Bun.write(join(moduleDir, "package.json"), JSON.stringify({ name: "@acme/auth" }));
+    await Bun.write(join(moduleDir, "bin", "migration", "up.ts"), "// migration");
+    process.chdir(testDir);
+
+    await runModuleScripts(logger, CACHED_MIGRATIONS);
+    await Bun.write(join(moduleDir, "src", "migrations", "20240101120000.ts"), "// new migration");
+    await runModuleScripts(logger, CACHED_MIGRATIONS);
+
+    expect(spawnCalls).toHaveLength(2);
+  });
+
+  test("should not cache when caching is not enabled", async () => {
+    const moduleDir = join(testDir, "modules", "auth");
+    await Bun.write(join(moduleDir, "package.json"), JSON.stringify({ name: "@acme/auth" }));
+    await Bun.write(join(moduleDir, "bin", "migration", "up.ts"), "// migration");
+    process.chdir(testDir);
+
+    await runModuleScripts(logger, MIGRATIONS);
+    await runModuleScripts(logger, MIGRATIONS);
+
+    expect(spawnCalls).toHaveLength(2);
+  });
+
+  test("should bypass the cache when noCache is set", async () => {
+    const moduleDir = join(testDir, "modules", "auth");
+    await Bun.write(join(moduleDir, "package.json"), JSON.stringify({ name: "@acme/auth" }));
+    await Bun.write(join(moduleDir, "bin", "migration", "up.ts"), "// migration");
+    process.chdir(testDir);
+
+    await runModuleScripts(logger, { ...CACHED_MIGRATIONS, noCache: true });
+    await runModuleScripts(logger, { ...CACHED_MIGRATIONS, noCache: true });
+
+    expect(spawnCalls).toHaveLength(2);
+  });
+
+  test("should bypass the cache when drop is set so the reset always re-runs", async () => {
+    const moduleDir = join(testDir, "modules", "auth");
+    await Bun.write(join(moduleDir, "package.json"), JSON.stringify({ name: "@acme/auth" }));
+    await Bun.write(join(moduleDir, "bin", "migration", "up.ts"), "// migration");
+    process.chdir(testDir);
+
+    await runModuleScripts(logger, { ...CACHED_MIGRATIONS, drop: true });
+    await runModuleScripts(logger, { ...CACHED_MIGRATIONS, drop: true });
+
+    expect(spawnCalls).toHaveLength(2);
+  });
+
+  test("should not write a cache entry when the script fails", async () => {
+    mockSpawn(1, "migration error");
+    const moduleDir = join(testDir, "modules", "auth");
+    await Bun.write(join(moduleDir, "package.json"), JSON.stringify({ name: "@acme/auth" }));
+    await Bun.write(join(moduleDir, "bin", "migration", "up.ts"), "// migration");
+    process.chdir(testDir);
+
+    await runModuleScripts(logger, CACHED_MIGRATIONS);
+    mockSpawn(0);
+    await runModuleScripts(logger, CACHED_MIGRATIONS);
+
+    // The failing first run exits, so only the second run's spawn is recorded;
+    // crucially the failure is not cached, so the module runs again.
+    expect(spawnCalls).toHaveLength(2);
+  });
 });
 
 describe("ensureModule", () => {

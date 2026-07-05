@@ -36,6 +36,8 @@ describe("MigrationUpCommand", () => {
         binPath: ["bin", "migration", "up.ts"],
         label: "migrations",
         drop: true,
+        cache: true,
+        noCache: undefined,
       });
     });
 
@@ -47,6 +49,21 @@ describe("MigrationUpCommand", () => {
         binPath: ["bin", "migration", "up.ts"],
         label: "migrations",
         drop: undefined,
+        cache: true,
+        noCache: undefined,
+      });
+    });
+
+    test("should forward the noCache opt-out to runModuleScripts", async () => {
+      await command.run({ noCache: true });
+
+      const [, options] = runModuleScripts.mock.calls[0] ?? [];
+      expect(options).toEqual({
+        binPath: ["bin", "migration", "up.ts"],
+        label: "migrations",
+        drop: undefined,
+        cache: true,
+        noCache: true,
       });
     });
 
