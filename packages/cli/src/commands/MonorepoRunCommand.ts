@@ -407,6 +407,13 @@ export class MonorepoRunCommand<T extends CommandOptionsType = CommandOptionsTyp
     const lines = output.replace(/\r/g, "").split("\n");
     const signal =
       /\b(?:error|fail(?:ed|ure|s|ing)?|panic|exception|uncaught|unhandled|throw(?:s|n)?|assert\w*|not ok|refus\w*)\b|error TS\d|\(fail\)|[✗✕×✖✘]/i;
+    // Passing test lines describe themselves with words like "throw", "exception"
+    // or "fails", so they match `signal` and would otherwise anchor the excerpt
+    // and drag in whole runs of unrelated `(pass)` lines (and the file headers
+    // sitting next to them). A bare caret pointer is likewise meaningless on its
+    // own. Neither carries failure information, so never anchor on them and never
+    // keep them.
+    const noise = /\(pass\)|^\s*\^+\s*$/;
     const before = 1;
     const after = 3;
     const maxLines = 120;
@@ -414,24 +421,42 @@ export class MonorepoRunCommand<T extends CommandOptionsType = CommandOptionsTyp
     const keep = new Array<boolean>(lines.length).fill(false);
     let matched = false;
     for (let i = 0; i < lines.length; i++) {
-      if (!signal.test(lines[i] as string)) continue;
+      const line = lines[i] as string;
+      if (noise.test(line) || !signal.test(line)) continue;
       matched = true;
       for (let j = Math.max(0, i - before); j <= Math.min(lines.length - 1, i + after); j++) keep[j] = true;
     }
 
-    if (!matched) {
-      return lines.filter((line) => line.trim().length > 0).slice(-20);
+    // A context window can still cover a neighbouring noise line; drop those.
+    for (let i = 0; i < lines.length; i++) {
+      if (noise.test(lines[i] as string)) keep[i] = false;
     }
 
-    const excerpt: string[] = [];
-    let previous = -2;
-    for (let i = 0; i < lines.length && excerpt.length < maxLines; i++) {
-      if (!keep[i]) continue;
-      if (previous >= 0 && i - previous > 1) excerpt.push("…");
-      excerpt.push(lines[i] as string);
-      previous = i;
+    if (!matched) {
+      return lines.filter((line) => line.trim().length > 0 && !noise.test(line)).slice(-20);
     }
-    return excerpt;
+
+    // Group kept lines into contiguous runs, trim blank edges off each run, and
+    // join the runs with a single `…`. Dropping the noise lines above can leave
+    // isolated blanks or back-to-back gaps between runs; this keeps the excerpt
+    // to the failure blocks themselves without stray whitespace or doubled `…`.
+    const isBlank = (line: string): boolean => line.trim().length === 0;
+    const excerpt: string[] = [];
+    let run: string[] = [];
+    const flush = (): void => {
+      while (run.length > 0 && isBlank(run[0] as string)) run.shift();
+      while (run.length > 0 && isBlank(run[run.length - 1] as string)) run.pop();
+      if (run.length === 0) return;
+      if (excerpt.length > 0) excerpt.push("…");
+      excerpt.push(...run);
+      run = [];
+    };
+    for (let i = 0; i < lines.length; i++) {
+      if (keep[i]) run.push(lines[i] as string);
+      else flush();
+    }
+    flush();
+    return excerpt.slice(0, maxLines);
   }
 
   // Persist a task's final state to scrollback (above the live footer). A

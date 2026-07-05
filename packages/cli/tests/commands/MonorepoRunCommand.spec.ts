@@ -329,5 +329,91 @@ describe("MonorepoRunCommand", () => {
       // ...and its captured output is surfaced as a ┃-prefixed excerpt.
       expect(logged).toContain("error: boom happened");
     });
+
+    test("should strip passing-test noise from the failure excerpt", async () => {
+      // Mimic a `bun test` run: one real failure surrounded by many `(pass)`
+      // lines whose descriptions mention words ("throw", "exception") that would
+      // otherwise be mistaken for failure signals. One `echo` per line so the
+      // captured output has real newlines.
+      const report = [
+        "error: boom",
+        "(fail) createAdapter > should build an adapter [1.42ms]",
+        "(pass) buildMessages > should throw on bad input [0.03ms]",
+        "(pass) AiException > should expose the exception name [0.02ms]",
+        "(pass) tool > should report a failed deletion [0.01ms]",
+        "1 tests failed:",
+        " 137 pass",
+        " 1 fail",
+      ];
+      const script = `${report.map((line) => `echo ${JSON.stringify(line)} >&2`).join("; ")}; exit 1`;
+      await writeTarget("packages/gamma", {
+        name: "@test/gamma",
+        scripts: { build: script },
+      });
+
+      await command.run({ commands: "build", packages: "gamma", logs: true });
+
+      const logged = output();
+      expect(process.exitCode).toBe(1);
+      // The real failure and the summary counts survive...
+      expect(logged).toContain("error: boom");
+      expect(logged).toContain("(fail) createAdapter");
+      expect(logged).toContain("1 tests failed:");
+      expect(logged).toContain("137 pass");
+      // ...but none of the passing-test lines are echoed.
+      expect(logged).not.toContain("(pass)");
+      expect(logged).not.toContain("buildMessages");
+      expect(logged).not.toContain("AiException");
+    });
+
+    test("should drop bare caret pointer lines from the failure excerpt", async () => {
+      // A code-frame caret is meaningless without the source line it points at.
+      const report = ["error: assertion failed", "                    ^", "  expected 1 to be 2"];
+      const script = `${report.map((line) => `echo ${JSON.stringify(line)} >&2`).join("; ")}; exit 1`;
+      await writeTarget("packages/gamma", {
+        name: "@test/gamma",
+        scripts: { build: script },
+      });
+
+      await command.run({ commands: "build", packages: "gamma", logs: true });
+
+      const logged = output();
+      expect(process.exitCode).toBe(1);
+      expect(logged).toContain("error: assertion failed");
+      expect(logged).toContain("expected 1 to be 2");
+      // The lone `┃ ^` pointer line is gone.
+      expect(logged).not.toMatch(/┃ +\^\s*\n/);
+    });
+
+    test("should collapse gaps to a single … with no stray blank lines", async () => {
+      // Two failure blocks separated by irrelevant `(pass)` chatter and blanks.
+      // The excerpt should bridge them with exactly one … and no orphaned blanks.
+      const report = [
+        "error: first failure",
+        "",
+        "(pass) something > should throw when unhappy [0.01ms]",
+        "(pass) another > raises an exception [0.02ms]",
+        "",
+        "1 tests failed:",
+      ];
+      const script = `${report.map((line) => `echo ${JSON.stringify(line)} >&2`).join("; ")}; exit 1`;
+      await writeTarget("packages/gamma", {
+        name: "@test/gamma",
+        scripts: { build: script },
+      });
+
+      await command.run({ commands: "build", packages: "gamma", logs: true });
+
+      const excerptLines = output()
+        .split("\n")
+        .filter((line) => line.trimStart().startsWith("┃"))
+        .map((line) => line.replace(/^\s*┃ ?/, ""));
+      // Both failure anchors are present, joined by exactly one … gap marker...
+      expect(excerptLines).toContain("error: first failure");
+      expect(excerptLines).toContain("1 tests failed:");
+      expect(excerptLines.filter((line) => line === "…")).toHaveLength(1);
+      // ...and no empty excerpt lines survive from the dropped noise/blanks.
+      expect(excerptLines.filter((line) => line.trim() === "")).toHaveLength(0);
+    });
   });
 });
