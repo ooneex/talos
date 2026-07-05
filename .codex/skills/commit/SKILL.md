@@ -1,106 +1,99 @@
 ---
 name: commit
-description: Use when the user asks to create commits, commit current changes, group changes by Talos package, or apply this repository's conventional commit workflow.
-metadata:
-  short-description: Create package-scoped conventional commits
+description: Create commit messages grouped by module. Analyzes git changes, groups files under modules/ by module name, and creates separate commits following the project's conventional-commit rules. Uses common scope for non-module changes.
 ---
 
-# Commit by Package
+# Commit by Module
 
-Create separate commits per changed package, following this repository's Conventional Commit rules.
+> **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
+
+Create separate commits per modified module, following the project's conventional-commit rules.
 
 ## Important
 
-Always run commands from the monorepo root.
+Always run all commands from the **root of the project** (the monorepo root), not from inside individual packages.
 
-Do not add any `Co-Authored-By` trailer.
+Commit messages are linted by a git `commit-msg` hook (installed with `oo commitlint:init`, which runs `oo commitlint:check`). The available types, scopes, and other rules are described below.
 
 ## Workflow
 
-1. Run `git status --porcelain` and inspect the changed files.
-2. Group files under `packages/<name>/` by `<name>`.
-3. Group root files, workspace config, lockfiles, and cross-package tooling as `common`.
-4. Stage and commit each independent group separately.
-5. Use a commit header in this exact format:
+1. **Analyze changes** — run `git status --porcelain`
+2. **Group by module** — files under `modules/<name>/` → scope is the module name; all other files → scope `common`
+3. **For each group** — stage the files, pick the commit type, commit with `type(scope): Subject`
+4. **Push** — after all commits are created, run `git push`
 
-```text
+## Commit Message Format
+
+```
 type(scope): Subject line
 ```
 
-## Valid Types
+### Valid Types
 
 | Type | Use for |
-| --- | --- |
-| `feat` | New public behavior or package capability |
+|------|---------|
+| `feat` | New feature |
 | `fix` | Bug fix |
-| `refactor` | Restructuring, renaming, or API-neutral code change |
+| `refactor` | Code restructuring, renaming |
 | `test` | Tests only |
-| `chore` | Dependencies, metadata, generated release noise, maintenance |
-| `docs` | Documentation only |
+| `chore` | Deps, configs, maintenance |
+| `docs` | Documentation |
 | `style` | Formatting only |
-| `perf` | Performance improvement |
-| `build` | Build system, package exports, workspace scripts |
+| `perf` | Performance |
+| `build` | Build system |
 | `ci` | CI/CD |
 | `revert` | Revert previous commit |
 
-## Scope Rules
+### Scope Rules
 
-- Files under `packages/<name>/` use `<name>` as the scope, for example `routing`, `cache`, or `http-request`.
-- Repo-wide files use `common`.
-- Release version bumps use `release`.
-- Multiple scopes are allowed when one coherent change spans packages, for example `feat(app,routing): Add route cache metadata`.
-- The scope must be lower-case, non-empty, and must exist in `.commitlintrc.ts`.
-- If a package name is not in `.commitlintrc.ts`, stop and mention the missing scope instead of inventing one.
+- Files under `modules/<name>/` → module name in lower-case (e.g., `user`, `product`)
+- All other files → `common`
+- Scope must never be empty
+- Any `modules/<name>` or `packages/<name>` directory name is automatically a valid scope — scopes are discovered at commit time, so there is no config to edit for a new module or package. If a meaningful scope cannot be determined, fall back to `common`
 
-## Subject Rules
+### Subject Rules
 
-- Subject must be sentence-case, start-case, pascal-case, or upper-case.
-- Use imperative mood: `Add`, `Fix`, `Remove`, not `Added`.
-- No trailing period.
-- Header max length is 100 characters.
+- Sentence-case, no trailing period, max 100 chars total
+- Imperative mood ("Add" not "Added")
 
-## Type Selection
+## Determining Commit Type
 
 | Change | Type |
-| --- | --- |
-| New public API or new behavior | `feat` |
-| Correct broken behavior | `fix` |
-| Restructure without behavior change | `refactor` |
-| Only `tests/` or `*.spec.ts` changes | `test` |
-| Only Markdown docs | `docs` |
-| Dependency or lockfile changes | `chore` |
-| Package exports, bundling, Bun, or build scripts | `build` |
-| GitHub Actions or CI config | `ci` |
+|--------|------|
+| New files with functionality | `feat` |
+| Bug fixes | `fix` |
+| Restructuring, renaming | `refactor` |
+| Only `*.spec.ts` files | `test` |
+| Only `*.md` files | `docs` |
+| Lock files, deps | `chore` |
+| Build configs, scripts | `build` |
+| CI/CD files | `ci` |
 | Formatting only | `style` |
 
 ## Examples
 
 ```bash
-git add packages/routing
-git commit -m "feat(routing): Add route parameter validation"
+# Multiple module changes + non-module files
+git add modules/user/
+git commit -m "feat(user): Add AuthService and update UserService"
 
-git add packages/cache packages/app
-git commit -m "fix(app,cache): Preserve cache ttl on route responses"
+git add modules/product/
+git commit -m "refactor(product): Update Product entity and repository"
 
-git add package.json bun.lock nx.json
-git commit -m "chore(common): Update workspace dependencies"
+git add bun.lock packages/cache/
+git commit -m "chore(common): Update dependencies and cache package"
 ```
 
-## Validation
+## Handling Special Cases
 
-Before committing, run the narrowest useful validation for the affected change. Prefer package-level commands for package-only work:
+- **Mixed feat + fix in one module**: use `feat` if primary change is new functionality; `fix` if primary is a bug fix; split into multiple commits if truly independent
+- **Deleted files only**: use `refactor` (e.g., `refactor(user): Remove deprecated UserAdapter`)
+- **Renamed/moved files**: use `refactor` (e.g., `refactor(product): Reorganize service file structure`)
 
-```bash
-bun test packages/<name>/tests
-bunx nx run @talosjs/<name>:build
-```
+## Commit Trailers
 
-For broad changes, use:
+Do not add any `Co-Authored-By` trailer to commits.
 
-```bash
-bun run build
-bun run lint
-bun run test
-```
+## Coding Conventions
 
-Apply the coding conventions from the `optimize` skill.
+Apply all coding conventions from the `optimize` skill.

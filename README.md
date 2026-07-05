@@ -217,7 +217,7 @@ Run the tests for a single package with `bun test packages/<package-name>/tests`
 
 ### Commit Conventions
 
-This project uses [Conventional Commits](https://www.conventionalcommits.org/) enforced by commitlint and Husky pre-commit hooks.
+This project uses [Conventional Commits](https://www.conventionalcommits.org/), enforced by a git `commit-msg` hook installed with `oo commitlint:init`.
 
 ```
 type(scope): Subject line

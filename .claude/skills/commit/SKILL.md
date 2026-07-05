@@ -1,17 +1,19 @@
 ---
 name: commit
-description: Create commit messages grouped by module. Analyzes git changes, groups files under modules/ by module name, and creates separate commits following commitlint conventions. Uses common scope for non-module changes.
+description: Create commit messages grouped by module. Analyzes git changes, groups files under modules/ by module name, and creates separate commits following the project's conventional-commit rules. Uses common scope for non-module changes.
 ---
 
 # Commit by Module
 
-Create separate commits per modified module, following the project's commitlint conventions.
+> **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
+
+Create separate commits per modified module, following the project's conventional-commit rules.
 
 ## Important
 
 Always run all commands from the **root of the project** (the monorepo root), not from inside individual packages.
 
-Check the `.commitlintrc.ts` file in the root of the project to know the available types, scopes, and other rules.
+Commit messages are linted by a git `commit-msg` hook (installed with `oo commitlint:init`, which runs `oo commitlint:check`). The available types, scopes, and other rules are described below.
 
 ## Workflow
 
@@ -47,7 +49,7 @@ type(scope): Subject line
 - Files under `modules/<name>/` → module name in lower-case (e.g., `user`, `product`)
 - All other files → `common`
 - Scope must never be empty
-- If the module name doesn't match a valid commitlint scope, add the missing scope to the `scope-enum` list in `.commitlintrc.ts` (keep it lower-case and alphabetically grouped with related scopes); only fall back to `module` if a meaningful scope cannot be determined
+- Any `modules/<name>` or `packages/<name>` directory name is automatically a valid scope — scopes are discovered at commit time, so there is no config to edit for a new module or package. If a meaningful scope cannot be determined, fall back to `common`
 
 ### Subject Rules
 

@@ -61,7 +61,6 @@ Create the following files under `packages/<name>/`.
     "test": "bun test tests",
     "build": "bunup",
     "lint": "tsgo --noEmit && bunx biome lint",
-    "npm:publish": "bun publish --tolerate-republish --force --production --access public"
   },
   "dependencies": {},
   "keywords": [
