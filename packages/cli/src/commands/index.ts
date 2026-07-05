@@ -8,8 +8,6 @@ export { AppInitCommand } from "./AppInitCommand";
 export { AppStartCommand } from "./AppStartCommand";
 export { AppStopCommand } from "./AppStopCommand";
 export { CacheCreateCommand } from "./CacheCreateCommand";
-export { ClaudeInitCommand } from "./ClaudeInitCommand";
-export { CodexInitCommand } from "./CodexInitCommand";
 export { CommandCreateCommand } from "./CommandCreateCommand";
 export { CommandRunCommand } from "./CommandRunCommand";
 export { CommitlintCheckCommand } from "./CommitlintCheckCommand";
