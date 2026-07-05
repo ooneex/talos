@@ -32,7 +32,8 @@ jobs:
           key: ${{ runner.os }}-talos-${{ hashFiles('bun.lock') }}
           restore-keys: |
             ${{ runner.os }}-talos-
-      - run: bunx talos monorepo:check
+      - run: bun add -g @talosjs/cli
+      - run: talos monorepo:check
 
   renovate-config-validator:
     runs-on: ubuntu-latest
