@@ -434,15 +434,25 @@ export class MonorepoRunCommand<T extends CommandOptionsType = CommandOptionsTyp
     return excerpt;
   }
 
-  // Persist a task's final state to scrollback (above the live footer). Only a
-  // failed task surfaces anything: its status line plus the trimmed excerpt that
-  // explains the failure. Successful, cached, skipped and aborted tasks stay
-  // silent, so the log is nothing but failures — the closing summary still
-  // reports the run/cached/skipped counts.
+  // Persist a task's final state to scrollback (above the live footer). A
+  // successful task gets a one-line `✔ label duration`; a failed task gets its
+  // status line plus the trimmed excerpt that explains the failure. Cached,
+  // skipped and aborted tasks stay silent — the closing summary still reports
+  // their counts.
   private reportFinish(task: TaskType, context: RunContextType): void {
+    const { logger } = context;
+
+    if (task.status === "success") {
+      logger.persist(
+        colorize(`${SYMBOLS.success} `, COLORS.success) +
+          task.label +
+          colorize(`  ${formatDuration(task.durationMs)}`, COLORS.dim),
+      );
+      return;
+    }
+
     if (task.status !== "failed") return;
 
-    const { logger } = context;
     logger.persist(
       colorize(`${SYMBOLS.error} `, COLORS.error) +
         task.label +

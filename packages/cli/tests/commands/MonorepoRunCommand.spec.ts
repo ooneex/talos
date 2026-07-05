@@ -276,31 +276,39 @@ describe("MonorepoRunCommand", () => {
   });
 
   describe("logging", () => {
-    test("should not log successful tasks, only the run header and summary", async () => {
+    test("should log successful tasks with their duration", async () => {
       await command.run({ commands: "build", logs: true });
 
       const logged = output();
-      // The header and closing summary still frame the run.
+      expect(process.exitCode ?? 0).toBe(0);
+      // The header and closing summary frame the run.
       expect(logged).toContain("build  3 tasks across 3 targets");
       expect(logged).toContain("Ran build");
-      // No per-task line for any of the tasks that succeeded.
-      expect(logged).not.toContain("alpha:build");
-      expect(logged).not.toContain("beta:build");
-      expect(logged).not.toContain("billing:build");
+      // Each successful task gets its own ✔ line.
+      expect(logged).toContain("alpha:build");
+      expect(logged).toContain("beta:build");
+      expect(logged).toContain("billing:build");
+      // No per-task "started" chatter and nothing marked failed.
       expect(logged).not.toContain("started");
+      expect(logged).not.toContain("failed");
     });
 
     test("should not log skipped or cached tasks", async () => {
-      // beta and billing have no "lint" script, so they are skipped.
+      // beta and billing have no "lint" script (skipped); alpha:lint succeeds
+      // and is logged on the first run.
       await command.run({ commands: "lint", logs: true });
-      // A second identical run turns alpha:lint into a cache hit.
+      expect(output()).toContain("alpha:lint");
+
+      // A second identical run turns alpha:lint into a cache hit. Inspect only
+      // this run's output.
+      stdoutChunks.length = 0;
       await command.run({ commands: "lint", logs: true });
 
       const logged = output();
-      // No per-task lines for the skipped (beta, billing) or cached (alpha) tasks.
+      // Cached (alpha) and skipped (beta, billing) tasks produce no per-task line.
       expect(logged).not.toContain("alpha:lint");
       expect(logged).not.toContain('no "lint" script');
-      // The counts still show up in the closing summary, though.
+      // Their counts still show up in the closing summary, though.
       expect(logged).toContain("2 skipped");
       expect(logged).toContain("1 cached");
     });
@@ -320,22 +328,6 @@ describe("MonorepoRunCommand", () => {
       expect(logged).toContain("failed");
       // ...and its captured output is surfaced as a ┃-prefixed excerpt.
       expect(logged).toContain("error: boom happened");
-    });
-
-    test("should log only the failed task when others succeed", async () => {
-      await writeTarget("packages/gamma", {
-        name: "@test/gamma",
-        scripts: { build: "exit 1" },
-      });
-
-      await command.run({ commands: "build", logs: true });
-
-      const logged = output();
-      expect(process.exitCode).toBe(1);
-      expect(logged).toContain("gamma:build");
-      // Tasks that succeeded before the failure stay silent.
-      expect(logged).not.toContain("alpha:build");
-      expect(logged).not.toContain("billing:build");
     });
   });
 });
