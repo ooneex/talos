@@ -65,7 +65,7 @@ A flat codebase quickly becomes hard to navigate and reason about as an applicat
 
 ### Create a Module
 
-Scaffolds a new module with all required structure, registers it in `AppModule`, adds its entities to `SharedModule`, and updates `tsconfig.json` path aliases and commitlint config:
+Scaffolds a new module with all required structure, registers it in `AppModule`, adds its entities to `SharedModule`, and updates `tsconfig.json` path aliases:
 
 ```bash
 oo module:create
@@ -74,7 +74,7 @@ oo module:create --name user
 
 ### Delete a Module
 
-Removes a module and cleans up all references from `AppModule`, `SharedModule`, `tsconfig.json`, and commitlint config. The `app` and `shared` core modules cannot be removed:
+Removes a module and cleans up all references from `AppModule`, `SharedModule`, and `tsconfig.json`. The `app` and `shared` core modules cannot be removed:
 
 ```bash
 oo module:remove
@@ -109,7 +109,7 @@ Not every domain belongs inside the monolithic `app` process. CPU-heavy workload
 
 ### Create a Microservice
 
-Scaffolds a microservice module with all the standard structure plus a standalone entrypoint (`src/index.ts`), an `OnAppStart.ts` start hook, and a `Dockerfile`. It sets the module's `type` to `microservice`, registers it in `AppModule` and its entities in `SharedModule`, declares it in `modules/app/app.yml` and the project root `.env.yml`, adds a service to `modules/app/docker-compose.yml` with a distinct host port, and updates `tsconfig.json` path aliases and commitlint config:
+Scaffolds a microservice module with all the standard structure plus a standalone entrypoint (`src/index.ts`), an `OnAppStart.ts` start hook, and a `Dockerfile`. It sets the module's `type` to `microservice`, registers it in `AppModule` and its entities in `SharedModule`, declares it in `modules/app/app.yml` and the project root `.env.yml`, adds a service to `modules/app/docker-compose.yml` with a distinct host port, and updates `tsconfig.json` path aliases:
 
 ```bash
 oo microservice:create
@@ -118,7 +118,7 @@ oo microservice:create --name payment
 
 ### Delete a Microservice
 
-Removes a microservice and cleans up all references from `AppModule`, `SharedModule`, `tsconfig.json`, and commitlint config, as well as its declarations in `modules/app/app.yml`, the project root `.env.yml`, and the service in `modules/app/docker-compose.yml`. The `app` and `shared` core modules cannot be removed:
+Removes a microservice and cleans up all references from `AppModule`, `SharedModule`, and `tsconfig.json`, as well as its declarations in `modules/app/app.yml`, the project root `.env.yml`, and the service in `modules/app/docker-compose.yml`. The `app` and `shared` core modules cannot be removed:
 
 ```bash
 oo microservice:remove
@@ -163,7 +163,7 @@ Use `--design` to choose the design module the SPA builds on. If the named desig
 
 ### Delete a SPA
 
-Removes a SPA and cleans up any leftover references from `AppModule`, `SharedModule`, `tsconfig.json`, and commitlint config. Only modules whose `type` is `spa` can be removed this way, and the `app` and `shared` core modules cannot be removed:
+Removes a SPA and cleans up any leftover references from `AppModule`, `SharedModule`, and `tsconfig.json`. Only modules whose `type` is `spa` can be removed this way, and the `app` and `shared` core modules cannot be removed:
 
 ```bash
 oo spa:remove
@@ -217,7 +217,7 @@ oo design:create --name ui
 
 ### Delete a Design Module
 
-Removes a design module and cleans up any leftover references from `AppModule`, `SharedModule`, `tsconfig.json`, and commitlint config. Only modules whose `type` is `design` can be removed this way, and the `app` and `shared` core modules cannot be removed:
+Removes a design module and cleans up any leftover references from `AppModule`, `SharedModule`, and `tsconfig.json`. Only modules whose `type` is `design` can be removed this way, and the `app` and `shared` core modules cannot be removed:
 
 ```bash
 oo design:remove
@@ -1209,7 +1209,7 @@ oo docker:credentials:create --registry docker.io --username "$DOCKER_USER" --to
 | `bun run fmt` | Format all source files with Biome |
 | `bun run lint` | Lint all modules with Biome and TypeScript |
 | `bun run test` | Run tests across all modules |
-| `bun run commit` | Interactive conventional commit prompt |
+| `bun run check` | Install deps, then build, lint and test across all modules |
 
 ---
 

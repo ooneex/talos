@@ -151,6 +151,7 @@ Installs Zsh completions for the `oo` and `talos` commands with context-aware op
 | `translation:create` | Generate a new translation class |
 | `vector-database:create` | Generate a new vector database class |
 | `claude:init` | Initialize Claude configuration and skills |
+| `commitlint:init` | Install a git commit-msg hook that lints commit messages |
 
 ## API Reference
 
@@ -281,9 +282,6 @@ When running `app:create`, the following structure is created:
 
 ```
 my-app/
-├── .husky/
-│   ├── commit-msg
-│   └── pre-commit
 ├── modules/
 │   └── app/
 │       ├── src/
@@ -294,7 +292,6 @@ my-app/
 │       ├── var/
 │       ├── package.json
 │       └── tsconfig.json
-├── .commitlintrc.ts
 ├── .env
 ├── .env.example
 ├── .gitignore

@@ -31,7 +31,7 @@ This skill uses the GitHub CLI (`gh`). It must be installed and authenticated (`
 type(scope): Subject line
 ```
 
-- Same `type(scope)` rules as the `commit` skill (check `.commitlintrc.ts` for valid types and scopes).
+- Same `type(scope)` rules as the `commit` skill (scope is `common` or a package/module directory name).
 - If the branch touches a single module, scope is that module name; if it spans several, pick the dominant scope or `common`.
 - Subject: sentence-case, imperative mood, no trailing period, max 100 chars.
 - When the branch is a single commit, reuse that commit's subject as the title.

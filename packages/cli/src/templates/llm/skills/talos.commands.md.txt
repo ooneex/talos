@@ -12,7 +12,9 @@ Always run from the project root.
 ## Bootstrap
 ```bash
 oo app:create [--name <name>] [--destination <path>]  # Scaffold a brand-new project (app + shared modules, deps, optional CI/CD)
-oo app:init [--name <name>] [--destination <path>]     # (Re)write project config (biome, tsconfig, git, husky, env, Claude/Codex skills)
+oo app:init [--name <name>] [--destination <path>]     # (Re)write project config (biome, tsconfig, git, commit-msg hook, env, Claude/Codex skills)
+oo commitlint:init                                     # Install a git commit-msg hook that lints commit messages (runs commitlint:check)
+oo commitlint:check --file <path>                      # Lint a commit message file against the type(scope): Subject rules
 ```
 
 `app:create` bootstraps a whole new Talos application: it generates the `app` (API) and `shared` modules, Docker files, installs runtime + dev dependencies, runs `app:init`, and optionally adds CI/CD files. `app:init` only lays down the project-level config and is run automatically by `app:create`.
