@@ -22,16 +22,6 @@
     "typescript": "^5.9.3",
     "undici-types": "^7.16.0"
   },
-  "scripts": {
-    "cli:build": "bun run --filter='@talosjs/cli' build",
-    "build": "bun run cli:build && bun packages/cli/dist/index.js monorepo:run --commands=build --logs",
-    "test": "bun run cli:build && bun packages/cli/dist/index.js monorepo:run --commands=test --logs",
-    "check": "bun install && bun run build && bun run lint && bun run test",
-    "fmt": "bunx biome check --write",
-    "lint": "bun run cli:build && bun packages/cli/dist/index.js monorepo:run --commands=lint --logs",
-    "npm:publish": "bun run cli:build && bun packages/cli/dist/index.js monorepo:run --commands=npm:publish --logs",
-    "prepare": "bun run cli:build && bun packages/cli/dist/index.js commitlint:init"
-  },
   "workspaces": [
     "packages/*"
   ]
