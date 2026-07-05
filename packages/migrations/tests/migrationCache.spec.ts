@@ -107,6 +107,39 @@ describe("migration cache entries", () => {
   });
 
   test("should treat deleting a missing entry as a no-op", async () => {
-    await expect(deleteMigrationCache(cacheDir, "does-not-exist")).resolves.toBeUndefined();
+    expect(deleteMigrationCache(cacheDir, "does-not-exist")).resolves.toBeUndefined();
+  });
+
+  test("should cache each migration version independently (per file, not per module)", async () => {
+    const first = makeMigration("20240101120000", async (tx) => {
+      await tx`CREATE TABLE first ()`;
+    });
+    const second = makeMigration("20240101120001", async (tx) => {
+      await tx`CREATE TABLE second ()`;
+    });
+
+    const firstHash = computeMigrationHash(first, "migrations", "postgres://db");
+    const secondHash = computeMigrationHash(second, "migrations", "postgres://db");
+
+    await writeMigrationCache(cacheDir, first.getVersion(), firstHash);
+    await writeMigrationCache(cacheDir, second.getVersion(), secondHash);
+
+    // One JSON file per version — not one entry for the whole module.
+    expect(await Bun.file(join(cacheDir, "20240101120000.json")).exists()).toBe(true);
+    expect(await Bun.file(join(cacheDir, "20240101120001.json")).exists()).toBe(true);
+    expect(await isMigrationCached(cacheDir, first.getVersion(), firstHash)).toBe(true);
+    expect(await isMigrationCached(cacheDir, second.getVersion(), secondHash)).toBe(true);
+
+    // Editing only the first migration changes only its fingerprint.
+    const editedFirst = makeMigration("20240101120000", async (tx) => {
+      await tx`CREATE TABLE first_v2 ()`;
+    });
+    const editedFirstHash = computeMigrationHash(editedFirst, "migrations", "postgres://db");
+
+    // The edited migration is now a miss (must be re-applied)...
+    expect(await isMigrationCached(cacheDir, editedFirst.getVersion(), editedFirstHash)).toBe(false);
+    // ...but the untouched sibling stays a hit — a per-module cache would have
+    // dropped it too.
+    expect(await isMigrationCached(cacheDir, second.getVersion(), secondHash)).toBe(true);
   });
 });
