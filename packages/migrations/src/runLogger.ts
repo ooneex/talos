@@ -20,7 +20,13 @@ export const SYMBOLS = {
 } as const;
 
 export const colorize = (text: string, color: string): string => {
-  const ansi = Bun.color(color, "ansi");
+  // Bun.color(color, "ansi") returns null when the runtime detects no color support
+  // (or the color is invalid), so use it as the support/validity probe. Emit truecolor
+  // ("ansi-16m") for the actual sequence: the auto-depth "ansi" encoding is buggy in
+  // 16-color terminals (e.g. CI), where it writes the palette index as a raw byte and
+  // can produce a malformed escape such as \x1b[38;5;\nm.
+  if (!Bun.color(color, "ansi")) return text;
+  const ansi = Bun.color(color, "ansi-16m");
   return ansi ? `${ansi}${text}${RESET}` : text;
 };
 
