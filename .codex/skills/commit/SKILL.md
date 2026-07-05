@@ -69,7 +69,7 @@ type(scope): Subject line
 | Only `tests/` or `*.spec.ts` changes | `test` |
 | Only Markdown docs | `docs` |
 | Dependency or lockfile changes | `chore` |
-| Package exports, bundling, Nx, Bun, or build scripts | `build` |
+| Package exports, bundling, Bun, or build scripts | `build` |
 | GitHub Actions or CI config | `ci` |
 | Formatting only | `style` |
 

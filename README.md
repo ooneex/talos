@@ -97,7 +97,6 @@ Full documentation: [docs.talosjs.com](https://docs.talosjs.com/getting-started)
 
 [![Bun][Bun-badge]][Bun-url]
 [![TypeScript][TypeScript-badge]][TypeScript-url]
-[![Nx][Nx-badge]][Nx-url]
 [![Biome][Biome-badge]][Biome-url]
 [![InversifyJS][Inversify-badge]][Inversify-url]
 [![TypeORM][TypeORM-badge]][TypeORM-url]
@@ -207,13 +206,12 @@ bun run test       # run the test suite
 
 | Command | Description |
 |---------|-------------|
-| `bun run build` | Build all packages (Nx `run-many`) |
+| `bun run build` | Build all packages (`talos monorepo:run`) |
 | `bun run test` | Run all tests |
 | `bun run lint` | Lint all packages (Biome + TypeScript) |
 | `bun run fmt` | Format and auto-fix code with Biome |
 | `bun run check` | Install + build + lint + test (full validation) |
 | `bun run npm:publish` | Publish all packages to npm |
-| `bunx nx graph` | Visualize the dependency graph |
 
 Run the tests for a single package with `bun test packages/<package-name>/tests`.
 
@@ -263,7 +261,6 @@ Distributed under the MIT License. See [`LICENSE`](LICENSE) for more information
 ## Acknowledgments
 
 - [Bun](https://bun.sh) — Fast all-in-one JavaScript runtime
-- [Nx](https://nx.dev) — Smart monorepo build system
 - [InversifyJS](https://inversify.io/) — Powerful IoC container for TypeScript
 - [TypeORM](https://typeorm.io/) — ORM for TypeScript and JavaScript
 - [ArkType](https://arktype.io/) — TypeScript's 1:1 validator
@@ -287,8 +284,6 @@ Distributed under the MIT License. See [`LICENSE`](LICENSE) for more information
 [Bun-url]: https://bun.sh
 [TypeScript-badge]: https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white
 [TypeScript-url]: https://www.typescriptlang.org/
-[Nx-badge]: https://img.shields.io/badge/Nx-143055?style=for-the-badge&logo=nx&logoColor=white
-[Nx-url]: https://nx.dev
 [Biome-badge]: https://img.shields.io/badge/Biome-60A5FA?style=for-the-badge&logo=biome&logoColor=white
 [Biome-url]: https://biomejs.dev
 [Inversify-badge]: https://img.shields.io/badge/InversifyJS-E8542E?style=for-the-badge
