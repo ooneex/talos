@@ -14,11 +14,12 @@ export class MigrationUpCommand implements ICommand {
   }
 
   public async run(options: { drop?: boolean; noCache?: boolean }): Promise<void> {
+    // Caching is per migration file (version) and lives in the module's
+    // `bin/migration/up.ts`; the CLI only forwards the `--no-cache` opt-out.
     await runModuleScripts(new TerminalLogger(), {
       binPath: ["bin", "migration", "up.ts"],
       label: "migrations",
       drop: options.drop,
-      cache: true,
       noCache: options.noCache,
     });
   }

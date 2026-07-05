@@ -353,7 +353,12 @@ _talos() {
             '--modules=-[Module name(s), comma-separated (default: all)]::modules:_talos_publish_modules' \
             '--publish[Publish released packages to npm]'
           ;;
-        migration:up|seed:run)
+        migration:up)
+          _arguments -s \
+            '--drop[Drop the database before running]' \
+            '--no-cache[Skip the per-migration run cache]'
+          ;;
+        seed:run)
           _arguments -s \
             '--drop[Drop the database before running]'
           ;;

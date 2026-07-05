@@ -2,13 +2,6 @@ import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import type { TerminalLogger } from "@talosjs/logger";
 import { ModuleCreateCommand } from "./commands/ModuleCreateCommand";
-import {
-  computeModuleScriptHash,
-  MODULE_SCRIPT_CACHE_VERSION,
-  moduleScriptCacheDir,
-  readModuleScriptCache,
-  writeModuleScriptCache,
-} from "./monorepo";
 
 export const LOG_OPTIONS = { showTimestamp: false, showArrow: false, useSymbol: true } as const;
 export const LOG_OPTIONS_PLAIN = { showTimestamp: false, showArrow: false, useSymbol: false } as const;
@@ -242,30 +235,20 @@ export type RunModuleScriptsOptions = {
   env?: string | undefined;
   version?: string | undefined;
   /**
-   * Enable the module script cache: a module whose inputs are unchanged since
-   * its last successful run is skipped instead of re-spawned. Only safe for
-   * scripts that are a no-op when nothing changed (e.g. `migration:up`, whose
-   * already-applied migrations are skipped by the database).
+   * Forward the `--no-cache` flag to the module script so it bypasses its own
+   * run cache. Caching is the script's concern (e.g. `migration:up` caches per
+   * migration version); the runner only relays the opt-out.
    */
-  cache?: boolean | undefined;
-  /** User escape hatch (`--no-cache`) to force every module to run. */
   noCache?: boolean | undefined;
 };
 
 export const runModuleScripts = async (
   logger: TerminalLogger,
-  { binPath, label, drop, env, version, cache, noCache }: RunModuleScriptsOptions,
+  { binPath, label, drop, env, version, noCache }: RunModuleScriptsOptions,
 ): Promise<void> => {
   const titledLabel = `${label.charAt(0).toUpperCase()}${label.slice(1)}`;
   const rootDir = process.cwd();
   const modulesDir = join(rootDir, "modules");
-
-  // `--drop` resets state before running, so a cache hit would wrongly skip the
-  // rebuild; disable the cache whenever it (or `--no-cache`) is set. Entries are
-  // stored under `var/cache/<label>` (e.g. `var/cache/migrations`).
-  const script = binPath.join("/");
-  const cacheEnabled = Boolean(cache) && !drop && !noCache;
-  const cacheDir = moduleScriptCacheDir(rootDir, label);
 
   if (!existsSync(modulesDir)) {
     logger.warn(`No modules with ${label} found`, undefined, LOG_OPTIONS);
@@ -292,30 +275,20 @@ export const runModuleScripts = async (
   }
 
   for (const { name, dir } of modules) {
-    // Skip a module whose inputs are unchanged since its last successful run.
-    // Hashing or cache reads must never break the run, so fall through on error.
-    let hash: string | null = null;
-    if (cacheEnabled) {
-      try {
-        hash = await computeModuleScriptHash(dir, script, env);
-        if (await readModuleScriptCache(cacheDir, hash)) {
-          logger.success(`${titledLabel} up to date for ${name} (cached)`, undefined, LOG_OPTIONS);
-          continue;
-        }
-      } catch {
-        hash = null;
-      }
-    }
-
     const args = ["bun", "run", join(dir, ...binPath)];
     if (drop) {
       args.push("--drop");
     }
+    // Not the CLI's own `-v`/`--version` flag: this is `migration:down`'s target
+    // version, forwarded to each module's `bin/migration/down.ts` so it rolls
+    // back that specific migration (it falls back to the latest when omitted).
     if (version) {
       args.push("--version", version);
     }
+    if (noCache) {
+      args.push("--no-cache");
+    }
 
-    const startedAt = performance.now();
     const succeeded = await spawnStep(
       logger,
       args,
@@ -328,19 +301,9 @@ export const runModuleScripts = async (
       env ? { env: { APP_ENV: env } } : undefined,
     );
 
-    // A failed run exits and must never be cached; only a successful run
-    // records an entry so the module can be skipped next time.
+    // A failed run must abort the whole command so the failure is not masked.
     if (!succeeded) {
       process.exit(1);
-    } else if (cacheEnabled && hash) {
-      await writeModuleScriptCache(cacheDir, {
-        version: MODULE_SCRIPT_CACHE_VERSION,
-        script,
-        module: name,
-        hash,
-        createdAt: new Date().toISOString(),
-        durationMs: Math.round(performance.now() - startedAt),
-      }).catch(() => {});
     }
   }
 };
