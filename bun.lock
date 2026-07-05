@@ -590,7 +590,6 @@
       "version": "1.1.1",
       "dependencies": {
         "@talosjs/container": "workspace:^",
-        "@talosjs/logger": "workspace:^",
         "@talosjs/utils": "workspace:^",
       },
       "devDependencies": {
