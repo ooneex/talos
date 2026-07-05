@@ -4,6 +4,8 @@ import type { ICommand } from "@talosjs/command";
 import { decorator } from "@talosjs/command";
 import { TerminalLogger } from "@talosjs/logger";
 import { toKebabCase } from "@talosjs/utils/toKebabCase";
+import { scaffoldAgentConfig } from "../agentConfig";
+import { askAgentSkills } from "../prompts/askAgentSkills";
 import { askConfirm } from "../prompts/askConfirm";
 import { askDestination } from "../prompts/askDestination";
 import { askName } from "../prompts/askName";
@@ -14,8 +16,6 @@ import readmeTemplate from "../templates/app/README.md.txt";
 import tsconfigTemplate from "../templates/app/tsconfig.json.txt";
 import zedSettingsTemplate from "../templates/app/zed-settings.json.txt";
 import { extractYamlComments, LOG_OPTIONS, spawnStep, toYaml } from "../utils";
-import { ClaudeInitCommand } from "./ClaudeInitCommand";
-import { CodexInitCommand } from "./CodexInitCommand";
 import { CommitlintInitCommand } from "./CommitlintInitCommand";
 
 type CommandOptionsType = {
@@ -132,16 +132,11 @@ export class AppInitCommand<T extends CommandOptionsType = CommandOptionsType> i
       await new CommitlintInitCommand().run({ cwd: destination });
     }
 
-    const runClaudeSkills = await askConfirm({ message: "Add Claude skills?", initial: true });
+    // Scaffold shared skills/config for whichever assistants the user selects.
+    const agentDirs = await askAgentSkills({ message: "Add skills for which assistants?" });
 
-    if (runClaudeSkills) {
-      await new ClaudeInitCommand().run({ cwd: destination });
-    }
-
-    const runCodexSkills = await askConfirm({ message: "Add Codex skills?", initial: true });
-
-    if (runCodexSkills) {
-      await new CodexInitCommand().run({ cwd: destination });
+    for (const configDir of agentDirs) {
+      await scaffoldAgentConfig(configDir, destination);
     }
 
     if (!silent) {
