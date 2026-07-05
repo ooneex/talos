@@ -119,6 +119,9 @@ export const run = async (): Promise<void> => {
       commands: {
         type: "string",
       },
+      file: {
+        type: "string",
+      },
       logs: {
         type: "boolean",
       },
@@ -175,6 +178,7 @@ export const run = async (): Promise<void> => {
     access: values.access,
     publish: values.publish,
     commands: values.commands,
+    file: values.file,
     logs: values.logs,
     noCache: values["no-cache"],
     // `--api` / `--microservice` / `--spa` (bare → true, or `=name1,name2` → string)
