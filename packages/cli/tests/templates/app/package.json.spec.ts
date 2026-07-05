@@ -19,7 +19,6 @@ describe("package.json.txt", () => {
   test("should contain package.json structure", async () => {
     const content = await Bun.file(templatePath).text();
     expect(content).toContain('"name"');
-    expect(content).toContain('"scripts"');
     expect(content).toContain('"workspaces"');
   });
 
@@ -28,10 +27,9 @@ describe("package.json.txt", () => {
     expect(content).not.toContain("lint-staged");
   });
 
-  test("should contain check script", async () => {
+  test("should not contain a scripts block", async () => {
     const content = await Bun.file(templatePath).text();
-    expect(content).toContain('"check"');
-    expect(content).toContain("talos monorepo:check --logs");
+    expect(content).not.toContain('"scripts"');
   });
 
   test("should not contain dev, build, or stop scripts", async () => {
@@ -41,10 +39,8 @@ describe("package.json.txt", () => {
     expect(content).not.toContain('"stop"');
   });
 
-  test("should install the commit hook via a commitlint:init prepare script, not husky", async () => {
+  test("should not reference husky (commit hook is installed via oo commitlint:init)", async () => {
     const content = await Bun.file(templatePath).text();
-    expect(content).toContain('"prepare"');
-    expect(content).toContain("commitlint:init");
     expect(content).not.toContain("husky");
   });
 

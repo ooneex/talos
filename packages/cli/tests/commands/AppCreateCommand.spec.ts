@@ -116,23 +116,18 @@ describe("AppCreateCommand", () => {
       expect(content).not.toContain("{{NAME}}");
     });
 
-    test("should include scripts in root package.json", async () => {
+    test("should not add scripts to root package.json", async () => {
       await command.run({ name: "MyApp", destination: testDir });
 
       const pkg = await Bun.file(join(testDir, "package.json")).json();
-      expect(pkg.scripts).toBeDefined();
-      expect(pkg.scripts.fmt).toBeDefined();
-      expect(pkg.scripts.lint).toBeDefined();
-      expect(pkg.scripts.test).toBeDefined();
-      expect(pkg.scripts.check).toBeDefined();
-      expect(pkg.scripts.prepare).toBeDefined();
+      expect(pkg.scripts).toBeUndefined();
     });
 
-    test("should set check script to run monorepo:check", async () => {
+    test("should ship a root package.json with only name and workspaces", async () => {
       await command.run({ name: "MyApp", destination: testDir });
 
       const pkg = await Bun.file(join(testDir, "package.json")).json();
-      expect(pkg.scripts.check).toBe("talos monorepo:check --logs");
+      expect(Object.keys(pkg).sort()).toEqual(["name", "workspaces"]);
     });
 
     test("should include workspaces pointing to modules/* in root package.json", async () => {
@@ -142,16 +137,15 @@ describe("AppCreateCommand", () => {
       expect(pkg.workspaces).toEqual(["modules/*"]);
     });
 
-    test("should merge scripts and workspaces into package.json when fields are missing", async () => {
-      // Simulate a package.json that bun add may have rewritten without those fields
+    test("should merge workspaces into package.json when the field is missing", async () => {
+      // Simulate a package.json that bun add may have rewritten without the field
       await Bun.write(join(testDir, "package.json"), JSON.stringify({ name: "my-app" }, null, 2));
 
       await command.run({ name: "MyApp", destination: testDir });
 
       const pkg = await Bun.file(join(testDir, "package.json")).json();
-      expect(pkg.scripts).toBeDefined();
-      expect(pkg.scripts.check).toBe("talos monorepo:check --logs");
       expect(pkg.workspaces).toEqual(["modules/*"]);
+      expect(pkg.scripts).toBeUndefined();
     });
 
     test("should replace {{NAME}} in README.md with kebab-case name", async () => {

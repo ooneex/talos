@@ -39,7 +39,8 @@ describe("README.md.txt", () => {
     expect(content).toContain("## Codex");
     expect(content).toContain("## Shell Completion");
     expect(content).toContain("## Release");
-    expect(content).toContain("## Scripts");
+    expect(content).toContain("## Credentials");
+    expect(content).toContain("## Commands");
     expect(content).toContain("## Learn More");
   });
 
@@ -48,12 +49,12 @@ describe("README.md.txt", () => {
     expect(content).toContain("https://docs.talos.com");
   });
 
-  test("should document scripts", async () => {
+  test("should document commands", async () => {
     const content = await Bun.file(templatePath).text();
-    expect(content).toContain("bun run fmt");
-    expect(content).toContain("bun run lint");
-    expect(content).toContain("bun run test");
-    expect(content).toContain("bun run commit");
+    expect(content).toContain("bunx biome check --write");
+    expect(content).toContain("talos monorepo:run --commands=lint");
+    expect(content).toContain("talos monorepo:run --commands=test");
+    expect(content).toContain("talos monorepo:check");
   });
 
   test("should list prerequisites", async () => {
