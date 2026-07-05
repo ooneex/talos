@@ -25,7 +25,6 @@
     "bunup": "^0.16.31",
     "husky": "^9.1.7",
     "lint-staged": "^16.2.7",
-    "nx": "22.6.2",
     "typescript": "^5.9.3",
     "undici-types": "^7.16.0"
   },
@@ -33,12 +32,13 @@
     "*.{js,jsx,ts,tsx,json,jsonc,css,scss,md,mdx}": []
   },
   "scripts": {
-    "build": "bunx nx run-many -t build --output-style=stream --verbose",
-    "test": "bunx nx run-many -t test --output-style=stream --verbose",
+    "cli:build": "bun run --filter='@talosjs/cli' build",
+    "build": "bun run cli:build && bun packages/cli/dist/index.js monorepo:run --commands=build --logs",
+    "test": "bun run cli:build && bun packages/cli/dist/index.js monorepo:run --commands=test --logs",
     "check": "bun install && bun run build && bun run lint && bun run test",
     "fmt": "bunx biome check --write",
-    "lint": "bunx nx run-many -t lint --output-style=stream --verbose",
-    "npm:publish": "bunx nx run-many -t npm:publish --output-style=stream --verbose",
+    "lint": "bun run cli:build && bun packages/cli/dist/index.js monorepo:run --commands=lint --logs",
+    "npm:publish": "bun run cli:build && bun packages/cli/dist/index.js monorepo:run --commands=npm:publish --logs",
     "commit": "bunx commit",
     "prepare": "husky"
   },

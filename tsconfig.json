@@ -28,5 +28,5 @@
       "@module/app/*": ["./modules/app/src/*"]
     }
   },
-  "exclude": ["node_modules", ".claude", ".github", ".husky", ".nx", ".zed", ".vscode"]
+  "exclude": ["node_modules", ".claude", ".github", ".husky", ".zed", ".vscode"]
 }
