@@ -125,8 +125,12 @@ export class AppInitCommand<T extends CommandOptionsType = CommandOptionsType> i
     );
     if (!gitInitialized) return;
 
-    // Install the commit-msg hook that lints commit messages.
-    await new CommitlintInitCommand().run({ cwd: destination });
+    const runCommitlintHook = await askConfirm({ message: "Install the commit-msg hook?", initial: true });
+
+    if (runCommitlintHook) {
+      // Install the commit-msg hook that lints commit messages.
+      await new CommitlintInitCommand().run({ cwd: destination });
+    }
 
     const runClaudeSkills = await askConfirm({ message: "Add Claude skills?", initial: true });
 

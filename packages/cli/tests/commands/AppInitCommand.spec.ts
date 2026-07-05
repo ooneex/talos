@@ -228,6 +228,13 @@ describe("AppInitCommand", () => {
       expect(existsSync(skillsDir)).toBe(false);
     });
 
+    test("should not install the commit-msg hook when confirmation is declined", async () => {
+      claudeSkillsConfirm = false;
+      await command.run({ name: "MyApp", destination: testDir, silent: true });
+
+      expect(await exists(join(testDir, ".git", "hooks", "commit-msg"))).toBe(false);
+    });
+
     test("should install dev dependencies including @talosjs/cli without husky or commitlint", async () => {
       const spawnCalls: string[][] = [];
 
