@@ -1,7 +1,7 @@
 {
   "name": "@talosjs/currencies",
   "description": "Comprehensive currency dataset with ISO 4217 codes, symbols, names, and TypeScript type definitions for financial and e-commerce applications",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "type": "module",
   "files": [
     "dist",
