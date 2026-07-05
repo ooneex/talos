@@ -48,6 +48,8 @@ describe("@talosjs/cli - index", () => {
     "ClaudeInitCommand",
     "CodexInitCommand",
     "CommandCreateCommand",
+    "CommitlintCheckCommand",
+    "CommitlintInitCommand",
     "ControllerCreateCommand",
     "CronCreateCommand",
     "DatabaseCreateCommand",

@@ -11,6 +11,8 @@ export { ClaudeInitCommand } from "./ClaudeInitCommand";
 export { CodexInitCommand } from "./CodexInitCommand";
 export { CommandCreateCommand } from "./CommandCreateCommand";
 export { CommandRunCommand } from "./CommandRunCommand";
+export { CommitlintCheckCommand } from "./CommitlintCheckCommand";
+export { CommitlintInitCommand } from "./CommitlintInitCommand";
 export { CompletionZshCommand } from "./CompletionZshCommand";
 export { ControllerCreateCommand } from "./ControllerCreateCommand";
 export { CronCreateCommand } from "./CronCreateCommand";
