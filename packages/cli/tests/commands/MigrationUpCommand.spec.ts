@@ -36,7 +36,6 @@ describe("MigrationUpCommand", () => {
         binPath: ["bin", "migration", "up.ts"],
         label: "migrations",
         drop: true,
-        cache: true,
         noCache: undefined,
       });
     });
@@ -49,7 +48,6 @@ describe("MigrationUpCommand", () => {
         binPath: ["bin", "migration", "up.ts"],
         label: "migrations",
         drop: undefined,
-        cache: true,
         noCache: undefined,
       });
     });
@@ -62,7 +60,6 @@ describe("MigrationUpCommand", () => {
         binPath: ["bin", "migration", "up.ts"],
         label: "migrations",
         drop: undefined,
-        cache: true,
         noCache: true,
       });
     });

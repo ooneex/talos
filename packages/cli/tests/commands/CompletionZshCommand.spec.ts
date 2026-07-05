@@ -143,11 +143,19 @@ describe("CompletionZshCommand", () => {
       return match?.[1] ?? "";
     };
 
-    test("should include --drop option for migration:up and seed:run commands", async () => {
+    test("should include --drop and --no-cache options for migration:up command", async () => {
       await command.run();
 
       const talosContent = await Bun.file(join(completionDir, "_talos")).text();
-      expect(caseBody(talosContent, "migration:up|seed:run")).toContain("--drop");
+      expect(caseBody(talosContent, "migration:up")).toContain("--drop");
+      expect(caseBody(talosContent, "migration:up")).toContain("--no-cache");
+    });
+
+    test("should include --drop option for seed:run command", async () => {
+      await command.run();
+
+      const talosContent = await Bun.file(join(completionDir, "_talos")).text();
+      expect(caseBody(talosContent, "seed:run")).toContain("--drop");
     });
 
     test("should include --version option for migration:down command", async () => {

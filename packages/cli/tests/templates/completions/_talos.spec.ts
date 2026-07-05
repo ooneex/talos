@@ -472,9 +472,17 @@ describe("_talos.txt", () => {
       expect(match?.[1]).not.toContain("--module=");
     });
 
-    test("migration:up and seed:run should have --drop option", async () => {
+    test("migration:up should have --drop and --no-cache options", async () => {
       const content = await Bun.file(templatePath).text();
-      const match = content.match(/migration:up\|seed:run\)([\s\S]*?);;/);
+      const match = content.match(/migration:up\)([\s\S]*?);;/);
+      expect(match).not.toBeNull();
+      expect(match?.[1]).toContain("--drop");
+      expect(match?.[1]).toContain("--no-cache");
+    });
+
+    test("seed:run should have --drop option", async () => {
+      const content = await Bun.file(templatePath).text();
+      const match = content.match(/seed:run\)([\s\S]*?);;/);
       expect(match).not.toBeNull();
       expect(match?.[1]).toContain("--drop");
     });
