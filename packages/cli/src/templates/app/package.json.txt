@@ -5,14 +5,9 @@
     "lint": "talos monorepo:run --commands=lint --logs",
     "test": "talos monorepo:run --commands=test --logs",
     "check": "talos monorepo:check --logs",
-    "commit": "bunx commit"
+    "prepare": "talos commitlint:init"
   },
   "workspaces": [
     "modules/*"
-  ],
-  "lint-staged": {
-    "*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx,json,jsonc}": [
-      "biome check --files-ignore-unknown=true"
-    ]
-  }
+  ]
 }

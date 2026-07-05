@@ -4,13 +4,7 @@ import { decorator } from "@talosjs/command";
 import { TerminalLogger } from "@talosjs/logger";
 import { toKebabCase } from "@talosjs/utils/toKebabCase";
 import { toPascalCase } from "@talosjs/utils/toPascalCase";
-import {
-  addModuleScope,
-  addPathAlias,
-  addToAppModule,
-  addToMicroserviceModule,
-  addToSharedModule,
-} from "../moduleRegistry";
+import { addPathAlias, addToAppModule, addToMicroserviceModule, addToSharedModule } from "../moduleRegistry";
 import { askDestinationModule } from "../prompts/askDestinationModule";
 import { askName } from "../prompts/askName";
 import moduleTemplate from "../templates/module/module.txt";
@@ -99,12 +93,6 @@ export class ModuleCreateCommand<T extends CommandOptionsType = CommandOptionsTy
     const appTsconfigPath = join(cwd, "tsconfig.json");
     if (await Bun.file(appTsconfigPath).exists()) {
       await addPathAlias(appTsconfigPath, kebabName);
-    }
-
-    // Add module scope to commitlint config if it exists
-    const commitlintPath = join(cwd, ".commitlintrc.ts");
-    if (await Bun.file(commitlintPath).exists()) {
-      await addModuleScope(commitlintPath, kebabName);
     }
 
     if (!silent) {

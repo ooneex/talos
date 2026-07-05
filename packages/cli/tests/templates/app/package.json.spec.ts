@@ -21,7 +21,11 @@ describe("package.json.txt", () => {
     expect(content).toContain('"name"');
     expect(content).toContain('"scripts"');
     expect(content).toContain('"workspaces"');
-    expect(content).toContain('"lint-staged"');
+  });
+
+  test("should not contain lint-staged", async () => {
+    const content = await Bun.file(templatePath).text();
+    expect(content).not.toContain("lint-staged");
   });
 
   test("should contain check script", async () => {
@@ -37,13 +41,14 @@ describe("package.json.txt", () => {
     expect(content).not.toContain('"stop"');
   });
 
-  test("should not contain husky prepare script", async () => {
+  test("should install the commit hook via a commitlint:init prepare script, not husky", async () => {
     const content = await Bun.file(templatePath).text();
-    expect(content).not.toContain('"prepare"');
+    expect(content).toContain('"prepare"');
+    expect(content).toContain("commitlint:init");
     expect(content).not.toContain("husky");
   });
 
-  test("should not contain tsgo in lint-staged", async () => {
+  test("should not reference tsgo", async () => {
     const content = await Bun.file(templatePath).text();
     expect(content).not.toContain("tsgo");
   });

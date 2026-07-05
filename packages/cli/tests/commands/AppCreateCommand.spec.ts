@@ -64,7 +64,7 @@ describe("AppCreateCommand", () => {
       const cmd = Array.isArray(args[0]) ? args[0] : (args[0] as { cmd?: string[] })?.cmd;
       if (
         Array.isArray(cmd) &&
-        ((cmd[0] === "bun" && (cmd[1] === "update" || cmd[1] === "add")) || (cmd[0] === "git" && cmd[1] === "init"))
+        ((cmd[0] === "bun" && (cmd[1] === "update" || cmd[1] === "add")) || cmd[0] === "git")
       ) {
         return { exited: Promise.resolve(0) } as unknown as ReturnType<typeof Bun.spawn>;
       }
@@ -94,7 +94,6 @@ describe("AppCreateCommand", () => {
     test("should generate root configuration files", async () => {
       await command.run({ name: "MyApp", destination: testDir });
 
-      expect(await exists(join(testDir, ".commitlintrc.ts"))).toBe(true);
       expect(await exists(join(testDir, ".gitignore"))).toBe(true);
       expect(await exists(join(testDir, "biome.jsonc"))).toBe(true);
       expect(await exists(join(testDir, "package.json"))).toBe(true);
@@ -107,13 +106,6 @@ describe("AppCreateCommand", () => {
       await command.run({ name: "MyApp", destination: testDir });
 
       expect(await exists(join(testDir, "bunfig.toml"))).toBe(false);
-    });
-
-    test("should generate husky hooks", async () => {
-      await command.run({ name: "MyApp", destination: testDir });
-
-      expect(await exists(join(testDir, ".husky", "commit-msg"))).toBe(true);
-      expect(await exists(join(testDir, ".husky", "pre-commit"))).toBe(true);
     });
 
     test("should replace {{NAME}} in package.json with kebab-case name", async () => {
@@ -133,7 +125,7 @@ describe("AppCreateCommand", () => {
       expect(pkg.scripts.lint).toBeDefined();
       expect(pkg.scripts.test).toBeDefined();
       expect(pkg.scripts.check).toBeDefined();
-      expect(pkg.scripts.commit).toBeDefined();
+      expect(pkg.scripts.prepare).toBeDefined();
     });
 
     test("should set check script to run monorepo:check", async () => {
@@ -150,39 +142,16 @@ describe("AppCreateCommand", () => {
       expect(pkg.workspaces).toEqual(["modules/*"]);
     });
 
-    test("should include lint-staged in root package.json", async () => {
-      await command.run({ name: "MyApp", destination: testDir });
-
-      const pkg = await Bun.file(join(testDir, "package.json")).json();
-      expect(pkg["lint-staged"]).toBeDefined();
-    });
-
-    test("should merge scripts, workspaces, and lint-staged into package.json when fields are missing", async () => {
+    test("should merge scripts and workspaces into package.json when fields are missing", async () => {
       // Simulate a package.json that bun add may have rewritten without those fields
       await Bun.write(join(testDir, "package.json"), JSON.stringify({ name: "my-app" }, null, 2));
 
-      // bunx husky init (not mocked in beforeEach) adds scripts.prepare to package.json,
-      // which makes scripts defined and causes ??= to skip the merge — intercept it here.
-      const savedSpawn = Bun.spawn;
-      Bun.spawn = ((...args: unknown[]) => {
-        const cmd = Array.isArray(args[0]) ? args[0] : (args[0] as { cmd?: string[] })?.cmd;
-        if (Array.isArray(cmd) && cmd[0] === "bunx") {
-          return { exited: Promise.resolve(0) } as unknown as ReturnType<typeof Bun.spawn>;
-        }
-        return savedSpawn.apply(Bun, args as Parameters<typeof Bun.spawn>);
-      }) as typeof Bun.spawn;
-
-      try {
-        await command.run({ name: "MyApp", destination: testDir });
-      } finally {
-        Bun.spawn = savedSpawn;
-      }
+      await command.run({ name: "MyApp", destination: testDir });
 
       const pkg = await Bun.file(join(testDir, "package.json")).json();
       expect(pkg.scripts).toBeDefined();
       expect(pkg.scripts.check).toBe("talos monorepo:check --logs");
       expect(pkg.workspaces).toEqual(["modules/*"]);
-      expect(pkg["lint-staged"]).toBeDefined();
     });
 
     test("should replace {{NAME}} in README.md with kebab-case name", async () => {
@@ -334,14 +303,6 @@ describe("AppCreateCommand", () => {
       await command.run({ name: "MyApp", destination: testDir });
 
       expect(await exists(join(testDir, "var", ".gitkeep"))).toBe(true);
-    });
-
-    test("should add app scope to commitlint config", async () => {
-      await command.run({ name: "MyApp", destination: testDir });
-
-      const content = await Bun.file(join(testDir, ".commitlintrc.ts")).text();
-      expect(content).toContain('"app"');
-      expect(content).toContain('"common"');
     });
 
     test("should install @talosjs/command as dev dependency", async () => {

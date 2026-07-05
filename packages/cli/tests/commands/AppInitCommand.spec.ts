@@ -54,9 +54,7 @@ describe("AppInitCommand", () => {
       const cmd = Array.isArray(args[0]) ? args[0] : (args[0] as { cmd?: string[] })?.cmd;
       if (
         Array.isArray(cmd) &&
-        ((cmd[0] === "bun" && (cmd[1] === "update" || cmd[1] === "add")) ||
-          (cmd[0] === "git" && cmd[1] === "init") ||
-          (cmd[0] === "bunx" && cmd[1] === "husky"))
+        ((cmd[0] === "bun" && (cmd[1] === "update" || cmd[1] === "add")) || cmd[0] === "git")
       ) {
         return { exited: Promise.resolve(0) } as unknown as ReturnType<typeof Bun.spawn>;
       }
@@ -86,7 +84,6 @@ describe("AppInitCommand", () => {
     test("should generate root configuration files", async () => {
       await command.run({ name: "MyApp", destination: testDir, silent: true });
 
-      expect(await exists(join(testDir, ".commitlintrc.ts"))).toBe(true);
       expect(await exists(join(testDir, ".gitignore"))).toBe(true);
       expect(await exists(join(testDir, "biome.jsonc"))).toBe(true);
       expect(await exists(join(testDir, "package.json"))).toBe(true);
@@ -105,13 +102,6 @@ describe("AppInitCommand", () => {
       await command.run({ name: "MyApp", destination: testDir, silent: true });
 
       expect(await exists(join(testDir, "var", ".gitkeep"))).toBe(true);
-    });
-
-    test("should generate husky hooks", async () => {
-      await command.run({ name: "MyApp", destination: testDir, silent: true });
-
-      expect(await exists(join(testDir, ".husky", "commit-msg"))).toBe(true);
-      expect(await exists(join(testDir, ".husky", "pre-commit"))).toBe(true);
     });
 
     test("should replace {{NAME}} in package.json with kebab-case name", async () => {
@@ -241,7 +231,7 @@ describe("AppInitCommand", () => {
       expect(existsSync(skillsDir)).toBe(false);
     });
 
-    test("should install dev dependencies including husky and @talosjs/cli", async () => {
+    test("should install dev dependencies including @talosjs/cli without husky or commitlint", async () => {
       const spawnCalls: string[][] = [];
 
       Bun.spawn = ((...args: unknown[]) => {
@@ -256,10 +246,12 @@ describe("AppInitCommand", () => {
 
       const devDepsCall = spawnCalls.find((cmd) => cmd[0] === "bun" && cmd[1] === "add" && cmd[2] === "-D");
       expect(devDepsCall).toBeDefined();
-      expect(devDepsCall).toContain("husky");
       expect(devDepsCall).toContain("@talosjs/cli");
-      expect(devDepsCall).not.toContain("nx");
       expect(devDepsCall).toContain("typescript");
+      expect(devDepsCall).not.toContain("husky");
+      expect(devDepsCall).not.toContain("lint-staged");
+      expect(devDepsCall?.some((dep) => dep.startsWith("@commitlint/"))).toBe(false);
+      expect(devDepsCall).not.toContain("nx");
     });
 
     test("should initialize git repository", async () => {
@@ -295,9 +287,7 @@ describe("AppInitCommand", () => {
 
       const setupCalls = spawnOpts.filter(
         (call) =>
-          (call.cmd[0] === "bun" && call.cmd[1] === "add") ||
-          (call.cmd[0] === "git" && call.cmd[1] === "init") ||
-          (call.cmd[0] === "bunx" && call.cmd[1] === "husky"),
+          (call.cmd[0] === "bun" && call.cmd[1] === "add") || (call.cmd[0] === "git" && call.cmd[1] === "init"),
       );
       expect(setupCalls.length).toBeGreaterThan(0);
       for (const call of setupCalls) {

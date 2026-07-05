@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 import { rmSync } from "node:fs";
 import { join } from "node:path";
-import commitlintTemplate from "@/templates/app/.commitlintrc.ts.txt";
 import dockerfileTemplate from "@/templates/app/Dockerfile.txt";
 import onAppStartTemplate from "@/templates/app/OnAppStart.ts.txt";
 import moduleTemplate from "@/templates/module/module.txt";
@@ -355,26 +354,6 @@ describe("MicroserviceCreateCommand", () => {
 
       expect(billingPort).toBe(3001);
       expect(shippingPort).toBe(3002);
-    });
-  });
-
-  describe("commitlint integration", () => {
-    beforeEach(async () => {
-      await Bun.write(join(testDir, ".commitlintrc.ts"), commitlintTemplate);
-    });
-
-    test("should add the microservice scope", async () => {
-      await command.run({ name: "Billing", cwd: testDir, silent: true });
-
-      expect(await read(join(testDir, ".commitlintrc.ts"))).toContain('"billing"');
-    });
-
-    test("should not duplicate an existing scope", async () => {
-      await command.run({ name: "Billing", cwd: testDir, silent: true });
-      await command.run({ name: "Billing", cwd: testDir, silent: true });
-
-      const content = await read(join(testDir, ".commitlintrc.ts"));
-      expect(content.match(/"billing"/g)).toHaveLength(1);
     });
   });
 

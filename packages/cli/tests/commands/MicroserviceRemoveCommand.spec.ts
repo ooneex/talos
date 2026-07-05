@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 import { rmSync } from "node:fs";
 import { join } from "node:path";
-import commitlintTemplate from "@/templates/app/.commitlintrc.ts.txt";
 import moduleTemplate from "@/templates/module/module.txt";
 
 // Mock enquirer before importing commands
@@ -274,36 +273,6 @@ describe("MicroserviceRemoveCommand", () => {
       expect(content).not.toContain("dockerfile: modules/billing/Dockerfile");
       expect(content).toContain("dockerfile: modules/shipping/Dockerfile");
       expect(content).toContain("container_name: talos_db");
-    });
-  });
-
-  describe("commitlint integration", () => {
-    beforeEach(async () => {
-      await Bun.write(join(testDir, ".commitlintrc.ts"), commitlintTemplate);
-    });
-
-    test("should remove the microservice scope", async () => {
-      await makeCommand.run({ name: "Billing", cwd: testDir, silent: true });
-      await removeCommand.run({ name: "Billing", cwd: testDir, silent: true });
-
-      expect(await read(join(testDir, ".commitlintrc.ts"))).not.toContain('"billing"');
-    });
-
-    test("should preserve other scopes when removing one", async () => {
-      await makeCommand.run({ name: "Billing", cwd: testDir, silent: true });
-      await makeCommand.run({ name: "Shipping", cwd: testDir, silent: true });
-      await removeCommand.run({ name: "Billing", cwd: testDir, silent: true });
-
-      const content = await read(join(testDir, ".commitlintrc.ts"));
-      expect(content).not.toContain('"billing"');
-      expect(content).toContain('"shipping"');
-    });
-
-    test("should not fail when commitlint config does not exist", async () => {
-      rmSync(join(testDir, ".commitlintrc.ts"), { force: true });
-      await makeCommand.run({ name: "Billing", cwd: testDir, silent: true });
-
-      await removeCommand.run({ name: "Billing", cwd: testDir, silent: true });
     });
   });
 });

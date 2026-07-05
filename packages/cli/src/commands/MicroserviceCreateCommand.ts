@@ -7,7 +7,7 @@ import { rolesConfig } from "@talosjs/role";
 import { toKebabCase } from "@talosjs/utils/toKebabCase";
 import { toPascalCase } from "@talosjs/utils/toPascalCase";
 import { toSnakeCase } from "@talosjs/utils/toSnakeCase";
-import { addModuleScope, addPathAlias } from "../moduleRegistry";
+import { addPathAlias } from "../moduleRegistry";
 import { askName } from "../prompts/askName";
 import dockerfileTemplate from "../templates/app/Dockerfile.txt";
 import indexTemplate from "../templates/app/index.ts.txt";
@@ -231,12 +231,6 @@ export class MicroserviceCreateCommand<T extends CommandOptionsType = CommandOpt
     const appTsconfigPath = join(cwd, "tsconfig.json");
     if (await Bun.file(appTsconfigPath).exists()) {
       await addPathAlias(appTsconfigPath, kebabName);
-    }
-
-    // Add module scope to commitlint config if it exists
-    const commitlintPath = join(cwd, ".commitlintrc.ts");
-    if (await Bun.file(commitlintPath).exists()) {
-      await addModuleScope(commitlintPath, kebabName);
     }
 
     // Scaffold the CI/CD pipeline for the microservice, matching the project's

@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import commitlintTemplate from "@/templates/app/.commitlintrc.ts.txt";
 import moduleTemplate from "@/templates/module/module.txt";
 
 // Mock enquirer before importing commands
@@ -129,27 +128,6 @@ describe("SpaRemoveCommand", () => {
       const content = await Bun.file(join(testDir, "tsconfig.json")).text();
       const tsconfig = JSON.parse(content);
       expect(tsconfig.compilerOptions.paths?.["@module/spa/*"]).toBeUndefined();
-    });
-  });
-
-  describe("Commitlint integration", () => {
-    beforeEach(async () => {
-      await Bun.write(join(testDir, ".commitlintrc.ts"), commitlintTemplate);
-    });
-
-    test("should remove module scope from commitlint config", async () => {
-      await makeCommand.run({ name: "Spa", cwd: testDir, silent: true });
-      await removeCommand.run({ name: "Spa", cwd: testDir, silent: true });
-
-      const content = await Bun.file(join(testDir, ".commitlintrc.ts")).text();
-      expect(content).not.toContain('"spa"');
-    });
-
-    test("should not fail when commitlint config does not exist", async () => {
-      rmSync(join(testDir, ".commitlintrc.ts"), { force: true });
-      await makeCommand.run({ name: "Spa", cwd: testDir, silent: true });
-
-      await removeCommand.run({ name: "Spa", cwd: testDir, silent: true });
     });
   });
 });

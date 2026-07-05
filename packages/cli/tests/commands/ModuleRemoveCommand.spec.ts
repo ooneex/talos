@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 import { rmSync } from "node:fs";
 import { join } from "node:path";
-import commitlintTemplate from "@/templates/app/.commitlintrc.ts.txt";
 import moduleTemplate from "@/templates/module/module.txt";
 
 // Mock enquirer before importing commands
@@ -166,46 +165,6 @@ describe("ModuleRemoveCommand", () => {
       expect(content).not.toContain("BlogModule");
       expect(content).toContain('import { ShopModule } from "@module/shop/ShopModule"');
       expect(content).toContain("...ShopModule.entities");
-    });
-  });
-
-  describe("Commitlint integration", () => {
-    beforeEach(async () => {
-      await Bun.write(join(testDir, ".commitlintrc.ts"), commitlintTemplate);
-    });
-
-    test("should remove module scope from commitlint config", async () => {
-      await makeCommand.run({ name: "Blog", cwd: testDir, silent: true });
-      await removeCommand.run({ name: "Blog", cwd: testDir, silent: true });
-
-      const content = await Bun.file(join(testDir, ".commitlintrc.ts")).text();
-      expect(content).not.toContain('"blog"');
-    });
-
-    test("should preserve other scopes when removing one", async () => {
-      await makeCommand.run({ name: "Blog", cwd: testDir, silent: true });
-      await makeCommand.run({ name: "Shop", cwd: testDir, silent: true });
-      await removeCommand.run({ name: "Blog", cwd: testDir, silent: true });
-
-      const content = await Bun.file(join(testDir, ".commitlintrc.ts")).text();
-      expect(content).not.toContain('"blog"');
-      expect(content).toContain('"shop"');
-    });
-
-    test("should preserve default scopes", async () => {
-      await makeCommand.run({ name: "Blog", cwd: testDir, silent: true });
-      await removeCommand.run({ name: "Blog", cwd: testDir, silent: true });
-
-      const content = await Bun.file(join(testDir, ".commitlintrc.ts")).text();
-      expect(content).toContain('"common"');
-      expect(content).toContain('"app"');
-    });
-
-    test("should not fail when commitlint config does not exist", async () => {
-      rmSync(join(testDir, ".commitlintrc.ts"), { force: true });
-      await makeCommand.run({ name: "Blog", cwd: testDir, silent: true });
-
-      await removeCommand.run({ name: "Blog", cwd: testDir, silent: true });
     });
   });
 });

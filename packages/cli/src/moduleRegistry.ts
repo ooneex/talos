@@ -92,23 +92,6 @@ export const addToSharedModule = async (
   await Bun.write(sharedModulePath, content);
 };
 
-export const addModuleScope = async (commitlintPath: string, kebabName: string): Promise<void> => {
-  let content = await Bun.file(commitlintPath).text();
-
-  const regex = /("scope-enum":\s*\[\s*RuleConfigSeverity\.Error,\s*"always",\s*\[)([\s\S]*?)(\])/;
-  const match = content.match(regex);
-  if (match) {
-    // Strip the trailing comma so the appended scope never produces ",,"
-    const existing = (match[2] ?? "").trim().replace(/,$/, "");
-    const newScope = `"${kebabName}"`;
-    if (!existing.includes(newScope)) {
-      const newValue = existing ? `${existing},\n        ${newScope},` : `\n        ${newScope},`;
-      content = content.replace(regex, `$1${newValue}\n      $3`);
-      await Bun.write(commitlintPath, content);
-    }
-  }
-};
-
 export const addPathAlias = async (tsconfigPath: string, kebabName: string): Promise<void> => {
   const content = await Bun.file(tsconfigPath).text();
   const tsconfig = JSON.parse(content);
@@ -150,22 +133,6 @@ export const removeFromSharedModule = async (
   content = removeSpreadFromFields(content, moduleName, ["entities"]);
 
   await Bun.write(sharedModulePath, content);
-};
-
-export const removeModuleScope = async (commitlintPath: string, kebabName: string): Promise<void> => {
-  if (!(await Bun.file(commitlintPath).exists())) return;
-
-  let content = await Bun.file(commitlintPath).text();
-  const scope = `"${kebabName}"`;
-
-  // Remove the scope entry (with optional trailing comma and whitespace)
-  content = content.replace(new RegExp(`\\s*${scope.replace(/"/g, '\\"')}\\s*,?`, "g"), "");
-  // Clean up any double commas left behind
-  content = content.replace(/,\s*,/g, ",");
-  // Clean up trailing comma before closing bracket
-  content = content.replace(/,(\s*\])/g, "$1");
-
-  await Bun.write(commitlintPath, content);
 };
 
 export const removePathAlias = async (tsconfigPath: string, kebabName: string): Promise<void> => {

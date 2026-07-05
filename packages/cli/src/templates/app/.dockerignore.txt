@@ -16,7 +16,6 @@ coverage
 .git
 .gitignore
 .github
-.husky
 
 # Editor / OS metadata
 .claude
@@ -30,7 +29,3 @@ coverage
 **/specs
 **/issues
 *.md
-
-# Tooling / project config not used at runtime
-.commitlintrc.ts
-lint-staged.config.js

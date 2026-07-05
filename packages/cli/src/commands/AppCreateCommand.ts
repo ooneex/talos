@@ -90,7 +90,7 @@ export class AppCreateCommand<T extends CommandOptionsType = CommandOptionsType>
     await Bun.write(join(destination, "modules", "app", "var", ".gitkeep"), "");
     await Bun.write(join(destination, "var", ".gitkeep"), "");
 
-    // Initialize app (config files, env, git, husky) before installing deps
+    // Initialize app (config files, env, git, commit hook) before installing deps
     // so that package.json exists at destination when bun add runs
     const appInitCommand = new AppInitCommand();
     await appInitCommand.run({ name, destination, silent: true, appType: "api" });
@@ -149,13 +149,12 @@ export class AppCreateCommand<T extends CommandOptionsType = CommandOptionsType>
     );
     if (!devDepsInstalled) return;
 
-    // Ensure scripts, workspaces, and lint-staged are preserved after bun add rewrites package.json
+    // Ensure scripts and workspaces are preserved after bun add rewrites package.json
     const rootPackagePath = join(destination, "package.json");
     const rootPackage = await Bun.file(rootPackagePath).json();
     const templatePackage = JSON.parse(packageTemplate.replace(/{{NAME}}/g, kebabName));
     rootPackage.scripts ??= templatePackage.scripts;
     rootPackage.workspaces ??= templatePackage.workspaces;
-    rootPackage["lint-staged"] ??= templatePackage["lint-staged"];
     await Bun.write(rootPackagePath, `${JSON.stringify(rootPackage, null, 2)}\n`);
 
     logger.success(`${kebabName} created successfully at ${destination}`, undefined, LOG_OPTIONS);

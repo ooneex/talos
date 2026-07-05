@@ -5,7 +5,7 @@ import { decorator } from "@talosjs/command";
 import { TerminalLogger } from "@talosjs/logger";
 import { toKebabCase } from "@talosjs/utils/toKebabCase";
 import { toPascalCase } from "@talosjs/utils/toPascalCase";
-import { removeFromAppModule, removeFromSharedModule, removeModuleScope, removePathAlias } from "../moduleRegistry";
+import { removeFromAppModule, removeFromSharedModule, removePathAlias } from "../moduleRegistry";
 import { askConfirm } from "../prompts/askConfirm";
 import { askName } from "../prompts/askName";
 import { LOG_OPTIONS } from "../utils";
@@ -134,10 +134,6 @@ export class MicroserviceRemoveCommand<T extends CommandOptionsType = CommandOpt
     // Remove path alias from tsconfig
     const appTsconfigPath = join(cwd, "tsconfig.json");
     await removePathAlias(appTsconfigPath, kebabName);
-
-    // Remove module scope from commitlint config
-    const commitlintPath = join(cwd, ".commitlintrc.ts");
-    await removeModuleScope(commitlintPath, kebabName);
 
     // Remove the microservice directory
     await rm(moduleDir, { recursive: true, force: true });

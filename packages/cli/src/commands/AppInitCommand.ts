@@ -7,7 +7,6 @@ import { toKebabCase } from "@talosjs/utils/toKebabCase";
 import { askConfirm } from "../prompts/askConfirm";
 import { askDestination } from "../prompts/askDestination";
 import { askName } from "../prompts/askName";
-import commitlintTemplate from "../templates/app/.commitlintrc.ts.txt";
 import gitignoreTemplate from "../templates/app/.gitignore.txt";
 import biomeTemplate from "../templates/app/biome.jsonc.txt";
 import packageTemplate from "../templates/app/package.json.txt";
@@ -17,6 +16,7 @@ import zedSettingsTemplate from "../templates/app/zed-settings.json.txt";
 import { extractYamlComments, LOG_OPTIONS, spawnStep, toYaml } from "../utils";
 import { ClaudeInitCommand } from "./ClaudeInitCommand";
 import { CodexInitCommand } from "./CodexInitCommand";
+import { CommitlintInitCommand } from "./CommitlintInitCommand";
 
 type CommandOptionsType = {
   name?: string;
@@ -55,7 +55,6 @@ export class AppInitCommand<T extends CommandOptionsType = CommandOptionsType> i
 
     // These project files target independent paths, so write them concurrently.
     await Promise.all([
-      Bun.write(join(destination, ".commitlintrc.ts"), commitlintTemplate),
       Bun.write(join(destination, ".gitignore"), gitignoreTemplate),
       Bun.write(join(destination, "biome.jsonc"), biomeTemplate),
       Bun.write(join(destination, "README.md"), readmeTemplate.replace(/{{NAME}}/g, kebabName)),
@@ -95,18 +94,12 @@ export class AppInitCommand<T extends CommandOptionsType = CommandOptionsType> i
         "add",
         "-D",
         "@biomejs/biome",
-        "@commitlint/cli",
-        "@commitlint/config-conventional",
-        "@commitlint/prompt-cli",
-        "@commitlint/types",
         "@types/bun",
         "@types/node",
         "@types/react",
         "@types/react-dom",
         "@typescript/native-preview@beta",
         "@talosjs/cli",
-        "husky",
-        "lint-staged",
         "typescript",
         "undici-types",
       ],
@@ -132,23 +125,8 @@ export class AppInitCommand<T extends CommandOptionsType = CommandOptionsType> i
     );
     if (!gitInitialized) return;
 
-    // Configure husky
-    const huskyConfigured = await spawnStep(
-      logger,
-      ["bunx", "husky", "init"],
-      destination,
-      {
-        start: "Configuring husky...",
-        failure: (exitCode) => `Failed to configure husky (exit code: ${exitCode})`,
-      },
-      { silent },
-    );
-    if (!huskyConfigured) return;
-
-    await Promise.all([
-      Bun.write(join(destination, ".husky", "pre-commit"), "lint-staged"),
-      Bun.write(join(destination, ".husky", "commit-msg"), `bunx commitlint --edit "$1"`),
-    ]);
+    // Install the commit-msg hook that lints commit messages.
+    await new CommitlintInitCommand().run({ cwd: destination });
 
     const runClaudeSkills = await askConfirm({ message: "Add Claude skills?", initial: true });
 
