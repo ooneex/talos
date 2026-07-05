@@ -25,7 +25,6 @@
     "test": "bun test tests",
     "build": "bunup",
     "lint": "tsgo --noEmit && bunx biome lint",
-    ,
     "wuchale": "bunx wuchale"
   },
   "dependencies": {

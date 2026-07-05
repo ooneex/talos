@@ -25,7 +25,6 @@
     "compile": "tsc ./src/index.ts --declaration --emitDeclarationOnly --target ES2022 --moduleResolution bundler --outfile dist/index.d.ts",
     "build": "bunup",
     "lint": "tsgo --noEmit && bunx biome lint",
-    ,
     "test": "bun test tests"
   },
   "dependencies": {

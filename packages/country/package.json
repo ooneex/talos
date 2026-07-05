@@ -42,7 +42,6 @@
   "scripts": {
     "build": "bunup",
     "lint": "tsgo --noEmit && bunx biome lint",
-    ,
     "test": "bun test tests"
   },
   "dependencies": {
