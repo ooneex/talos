@@ -1,7 +1,7 @@
 {
   "name": "@talosjs/http-request-file",
   "description": "Multipart file upload handler with MIME type validation, size constraints, and temporary file management for HTTP request processing",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "type": "module",
   "files": [
     "dist",
