@@ -301,7 +301,7 @@ export class MonorepoRunCommand<T extends CommandOptionsType = CommandOptionsTyp
     const startedAt = performance.now();
 
     // In the live view the footer shows what is running; without it, announce
-    // the start so the streamed, label-prefixed output has a header.
+    // the start so progress is visible even though task output is not streamed.
     if (!context.interactive) {
       context.logger.persist(`${this.taskPrefix(task)} ${colorize("started", COLORS.dim)}`);
     }
@@ -349,31 +349,17 @@ export class MonorepoRunCommand<T extends CommandOptionsType = CommandOptionsTyp
 
     context.procs.add(proc);
 
-    // Capture stdout and stderr incrementally. In the live view the footer shows
-    // each running task's latest line; without it, stream every complete line
-    // prefixed with the task label so concurrent tasks stay distinguishable.
+    // Capture stdout and stderr into the task's buffer. Output is not streamed
+    // live: a successful task stays quiet and only a failed task surfaces its
+    // logs (see `reportFinish`), trimmed to the lines that explain the failure —
+    // so a failure is never buried under the whole module's output.
     const capture = async (stream: ReadableStream<Uint8Array>): Promise<void> => {
       const decoder = new TextDecoder();
       const reader = stream.getReader();
-      let pending = "";
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        task.output += chunk;
-        if (context.interactive) continue;
-
-        pending += chunk;
-        const lastBreak = pending.lastIndexOf("\n");
-        if (lastBreak === -1) continue;
-        const prefix = this.taskPrefix(task);
-        for (const line of pending.slice(0, lastBreak).split("\n")) {
-          context.logger.persist(`${prefix} ${line}`);
-        }
-        pending = pending.slice(lastBreak + 1);
-      }
-      if (!context.interactive && pending.length > 0) {
-        context.logger.persist(`${this.taskPrefix(task)} ${pending}`);
+        task.output += decoder.decode(value, { stream: true });
       }
     };
 
@@ -427,9 +413,45 @@ export class MonorepoRunCommand<T extends CommandOptionsType = CommandOptionsTyp
     this.reportFinish(task, context);
   }
 
-  // The colored `label ┃` used to prefix a task's streamed log lines.
+  // The colored `label ┃` used to prefix a task's log lines.
   private taskPrefix(task: TaskType): string {
     return `${colorize(task.label, taskColor(task.key))}${colorize(" ┃", COLORS.dim)}`;
+  }
+
+  // Reduce a failed task's captured output to just the lines that explain the
+  // failure — each line carrying a failure signal (from `bun test`, `biome`,
+  // `tsgo`/`tsc`, or a thrown error), plus a little surrounding context, with
+  // `…` marking skipped gaps. When nothing matches (an opaque failure), the
+  // tail of the output is shown as a fallback so the user is never left blind.
+  private failureExcerpt(output: string): string[] {
+    const lines = output.replace(/\r/g, "").split("\n");
+    const signal =
+      /\b(?:error|fail(?:ed|ure|s|ing)?|panic|exception|uncaught|unhandled|throw(?:s|n)?|assert\w*|not ok|refus\w*)\b|error TS\d|\(fail\)|[✗✕×✖✘]/i;
+    const before = 1;
+    const after = 3;
+    const maxLines = 120;
+
+    const keep = new Array<boolean>(lines.length).fill(false);
+    let matched = false;
+    for (let i = 0; i < lines.length; i++) {
+      if (!signal.test(lines[i] as string)) continue;
+      matched = true;
+      for (let j = Math.max(0, i - before); j <= Math.min(lines.length - 1, i + after); j++) keep[j] = true;
+    }
+
+    if (!matched) {
+      return lines.filter((line) => line.trim().length > 0).slice(-20);
+    }
+
+    const excerpt: string[] = [];
+    let previous = -2;
+    for (let i = 0; i < lines.length && excerpt.length < maxLines; i++) {
+      if (!keep[i]) continue;
+      if (previous >= 0 && i - previous > 1) excerpt.push("…");
+      excerpt.push(lines[i] as string);
+      previous = i;
+    }
+    return excerpt;
   }
 
   // Persist a task's final state as one scrollback line (above the live footer),
@@ -468,9 +490,9 @@ export class MonorepoRunCommand<T extends CommandOptionsType = CommandOptionsTyp
             colorize("  failed", COLORS.error) +
             colorize(`  exit ${task.exitCode ?? 1}  ${formatDuration(task.durationMs)}`, COLORS.dim),
         );
-        const output = task.output.trim();
-        if (context.interactive && output) {
-          logger.persist(...output.split("\n").map((line) => `${colorize("┃", COLORS.error)} ${line}`));
+        const excerpt = this.failureExcerpt(task.output);
+        if (excerpt.length > 0) {
+          logger.persist(...excerpt.map((line) => `${colorize("┃", COLORS.error)} ${line}`));
         }
         break;
       }
