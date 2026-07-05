@@ -5,7 +5,7 @@ import { SQL } from "bun";
 import { createMigrationTable } from "./createMigrationTable";
 import { getMigrations } from "./getMigrations";
 import { computeMigrationHash, isMigrationCached, migrationCacheDir, writeMigrationCache } from "./migrationCache";
-import { terminalLogger } from "./terminalLogger";
+import { COLORS, colorize, formatDuration, runLogger, SYMBOLS } from "./runLogger";
 import type { IMigration } from "./types";
 
 // biome-ignore lint/suspicious/noExplicitAny: trust me
@@ -41,12 +41,12 @@ export const up = async (config?: { databaseUrl?: string; tableName?: string; ca
   const tableName = config?.tableName || "migrations";
   const databaseUrl = config?.databaseUrl || Bun.env.DATABASE_URL;
 
-  const logger = terminalLogger;
+  const logger = runLogger;
 
   const migrations = getMigrations();
 
   if (migrations.length === 0 && !values.drop) {
-    logger.info("No migrations found\n");
+    logger.persist(colorize(`${SYMBOLS.skipped} No migrations found`, COLORS.dim));
     process.exit(0);
   }
 
@@ -76,7 +76,11 @@ export const up = async (config?: { databaseUrl?: string; tableName?: string; ca
     // unchanged, there is nothing to run — skip opening a database connection.
     if (cachedIds.size === migrations.length) {
       for (const migration of migrations) {
-        logger.success(`Migration ${migration.getVersion()} up to date (cached)\n`);
+        logger.persist(
+          colorize(`${SYMBOLS.success} `, COLORS.success) +
+            migration.getVersion() +
+            colorize("  up to date (cached)", COLORS.dim),
+        );
       }
       process.exit(0);
     }
@@ -103,11 +107,11 @@ export const up = async (config?: { databaseUrl?: string; tableName?: string; ca
   if (values.drop) {
     await sql`DROP SCHEMA public CASCADE`;
     await sql`CREATE SCHEMA public`;
-    logger.info("Database dropped\n");
+    logger.persist(colorize(`${SYMBOLS.success} Database dropped`, COLORS.success));
   }
 
   if (migrations.length === 0) {
-    logger.info("No migrations found\n");
+    logger.persist(colorize(`${SYMBOLS.skipped} No migrations found`, COLORS.dim));
     await sql.close();
     process.exit(0);
   }
@@ -119,7 +123,9 @@ export const up = async (config?: { databaseUrl?: string; tableName?: string; ca
     const migrationName = id;
 
     if (cachedIds.has(id)) {
-      logger.success(`Migration ${migrationName} up to date (cached)\n`);
+      logger.persist(
+        colorize(`${SYMBOLS.success} `, COLORS.success) + migrationName + colorize("  up to date (cached)", COLORS.dim),
+      );
       continue;
     }
 
@@ -135,12 +141,18 @@ export const up = async (config?: { databaseUrl?: string; tableName?: string; ca
       continue;
     }
 
+    const startedAt = performance.now();
     try {
       await sql.begin(async (tx) => {
         await run(migration, tx, sql);
         await tx`INSERT INTO ${sql(tableName)} (id) VALUES (${id})`;
-        logger.success(`Migration ${migrationName} completed\n`);
       });
+
+      logger.persist(
+        colorize(`${SYMBOLS.success} `, COLORS.success) +
+          migrationName +
+          colorize(`  ${formatDuration(Math.round(performance.now() - startedAt))}`, COLORS.dim),
+      );
 
       // Only cache once the transaction has committed successfully.
       const hash = hashById.get(id);
@@ -148,8 +160,14 @@ export const up = async (config?: { databaseUrl?: string; tableName?: string; ca
         await writeMigrationCache(cacheDir, id, hash);
       }
     } catch (error: unknown) {
-      logger.error(`Migration ${migrationName} failed\n`);
-      logger.error(error as IException);
+      logger.persist(
+        colorize(`${SYMBOLS.error} `, COLORS.error) +
+          migrationName +
+          colorize("  failed", COLORS.error) +
+          colorize(`  ${formatDuration(Math.round(performance.now() - startedAt))}`, COLORS.dim),
+      );
+      const detail = (error as IException)?.message ?? String(error);
+      logger.persist(...detail.split("\n").map((line) => `${colorize("┃", COLORS.error)} ${line}`));
       await sql.close({ timeout: 0 });
       process.exit(1);
     }
