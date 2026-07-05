@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.1](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.9.1) - 2026-07-05
+
+### Changed
+
+- Apply biome formatting across packages| — Franck ([5da156c4](https://github.com/ooneex/talos/commit/5da156c4))
+- Analyze release targets concurrently and use Bun.spawn over shell| — Franck ([0c900b57](https://github.com/ooneex/talos/commit/0c900b57))
+
 ## [1.9.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.9.0) - 2026-07-05
 
 ### Added
