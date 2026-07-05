@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.11.1](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.11.1) - 2026-07-05
+
+### Changed
+
+- Log only failed tasks in monorepo:run output| — Franck ([10819ee5](https://github.com/ooneex/talos/commit/10819ee5))
+
 ## [1.11.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.11.0) - 2026-07-05
 
 ### Added
