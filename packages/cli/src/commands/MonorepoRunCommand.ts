@@ -107,7 +107,13 @@ export class MonorepoRunCommand<T extends CommandOptionsType = CommandOptionsTyp
     // streaming, so cover it with a spinner from utils. Stop it before any
     // other output so its in-place `\r` line never collides with a log line.
     const spinner = createSpinner("Analyzing workspace");
-    const allTargets = await discoverTargets(rootDir);
+    // These three probes only depend on `rootDir` and never on each other, so
+    // overlap them instead of paying for each round-trip in series.
+    const [allTargets, rootHash, useGit] = await Promise.all([
+      discoverTargets(rootDir),
+      hashRootInputs(rootDir),
+      isGitWorkspaceRoot(rootDir),
+    ]);
     spinner.stop();
 
     const targets = this.filterTargets(allTargets, packages, modules, fail);
@@ -128,9 +134,9 @@ export class MonorepoRunCommand<T extends CommandOptionsType = CommandOptionsTyp
       logger,
       targets: allTargets,
       cacheDir: join(rootDir, MONOREPO_CACHE_DIR),
-      rootHash: await hashRootInputs(rootDir),
+      rootHash,
       fingerprints: new Map(),
-      useGit: await isGitWorkspaceRoot(rootDir),
+      useGit,
       noCache,
       interactive: !logs && process.stdout.isTTY === true && process.stdin.isTTY === true,
       concurrency: Math.max(1, Math.min(4, availableParallelism())),
