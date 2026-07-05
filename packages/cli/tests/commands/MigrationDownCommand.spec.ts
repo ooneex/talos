@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 import { TerminalLogger } from "@talosjs/logger";
+import { MIGRATIONS_CACHE_DIR } from "@/monorepo";
 
 const runModuleScripts = mock((..._args: unknown[]) => Promise.resolve());
 
@@ -36,6 +37,7 @@ describe("MigrationDownCommand", () => {
         binPath: ["bin", "migration", "down.ts"],
         label: "migrations",
         version: "20240101120000",
+        cacheDir: MIGRATIONS_CACHE_DIR,
       });
     });
 
@@ -47,6 +49,7 @@ describe("MigrationDownCommand", () => {
         binPath: ["bin", "migration", "down.ts"],
         label: "migrations",
         version: undefined,
+        cacheDir: MIGRATIONS_CACHE_DIR,
       });
     });
 

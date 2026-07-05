@@ -398,6 +398,36 @@ describe("runModuleScripts", () => {
 
     expect(spawnCalls[0]?.cmd).toEqual(["bun", "run", join(moduleDir, "bin", "migration", "up.ts")]);
   });
+
+  test("should forward a root-level, per-module --cache-dir when cacheDir is set", async () => {
+    const moduleDir = join(testDir, "modules", "auth");
+    await Bun.write(join(moduleDir, "package.json"), JSON.stringify({ name: "@acme/auth" }));
+    await Bun.write(join(moduleDir, "bin", "migration", "up.ts"), "// migration");
+    process.chdir(testDir);
+
+    await runModuleScripts(logger, { ...MIGRATIONS, cacheDir: join("var", "cache", "migrations") });
+
+    // The module name (`@acme/auth`) is namespaced by its directory name (`auth`)
+    // under the workspace root, not its scoped package name.
+    expect(spawnCalls[0]?.cmd).toEqual([
+      "bun",
+      "run",
+      join(moduleDir, "bin", "migration", "up.ts"),
+      "--cache-dir",
+      join(testDir, "var", "cache", "migrations", "auth"),
+    ]);
+  });
+
+  test("should not forward --cache-dir when cacheDir is omitted", async () => {
+    const moduleDir = join(testDir, "modules", "auth");
+    await Bun.write(join(moduleDir, "package.json"), JSON.stringify({ name: "@acme/auth" }));
+    await Bun.write(join(moduleDir, "bin", "migration", "up.ts"), "// migration");
+    process.chdir(testDir);
+
+    await runModuleScripts(logger, MIGRATIONS);
+
+    expect(spawnCalls[0]?.cmd).not.toContain("--cache-dir");
+  });
 });
 
 describe("ensureModule", () => {

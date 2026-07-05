@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 import { TerminalLogger } from "@talosjs/logger";
+import { MIGRATIONS_CACHE_DIR } from "@/monorepo";
 
 const runModuleScripts = mock((..._args: unknown[]) => Promise.resolve());
 
@@ -37,6 +38,7 @@ describe("MigrationUpCommand", () => {
         label: "migrations",
         drop: true,
         noCache: undefined,
+        cacheDir: MIGRATIONS_CACHE_DIR,
       });
     });
 
@@ -49,6 +51,7 @@ describe("MigrationUpCommand", () => {
         label: "migrations",
         drop: undefined,
         noCache: undefined,
+        cacheDir: MIGRATIONS_CACHE_DIR,
       });
     });
 
@@ -61,6 +64,7 @@ describe("MigrationUpCommand", () => {
         label: "migrations",
         drop: undefined,
         noCache: true,
+        cacheDir: MIGRATIONS_CACHE_DIR,
       });
     });
 
