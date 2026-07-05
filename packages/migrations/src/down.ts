@@ -6,11 +6,19 @@ import { getMigrations } from "./getMigrations";
 import { deleteMigrationCache, migrationCacheDir } from "./migrationCache";
 import { terminalLogger } from "./terminalLogger";
 
-export const down = async (config?: { databaseUrl?: string; tableName?: string; version?: string }): Promise<void> => {
+export const down = async (config?: {
+  databaseUrl?: string;
+  tableName?: string;
+  version?: string;
+  cacheDir?: string;
+}): Promise<void> => {
   const { values } = parseArgs({
     args: Bun.argv,
     options: {
       version: {
+        type: "string",
+      },
+      "cache-dir": {
         type: "string",
       },
     },
@@ -20,6 +28,9 @@ export const down = async (config?: { databaseUrl?: string; tableName?: string; 
 
   const tableName = config?.tableName || "migrations";
   const version = config?.version || (values.version as string | undefined);
+  // Mirror `up`'s cache directory so the entry is dropped from where it was
+  // written; fall back to the cwd-relative default for direct invocation.
+  const cacheDir = config?.cacheDir || (values["cache-dir"] as string | undefined) || migrationCacheDir();
 
   const sql = new SQL({
     url: config?.databaseUrl || Bun.env.DATABASE_URL,
@@ -85,7 +96,7 @@ export const down = async (config?: { databaseUrl?: string; tableName?: string; 
 
       // Drop the up-cache entry so the next `migration:up` re-applies it instead
       // of treating the rolled-back migration as still up to date.
-      await deleteMigrationCache(migrationCacheDir(), id);
+      await deleteMigrationCache(cacheDir, id);
     } catch (error: unknown) {
       logger.error(`Migration ${migrationName} rollback failed\n`);
       logger.error(error as IException);

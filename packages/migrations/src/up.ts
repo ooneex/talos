@@ -20,7 +20,7 @@ const run = async (migration: IMigration, tx: any, sql: SQL): Promise<void> => {
   await migration.up(tx, sql);
 };
 
-export const up = async (config?: { databaseUrl?: string; tableName?: string }): Promise<void> => {
+export const up = async (config?: { databaseUrl?: string; tableName?: string; cacheDir?: string }): Promise<void> => {
   const { values } = parseArgs({
     args: Bun.argv,
     options: {
@@ -29,6 +29,9 @@ export const up = async (config?: { databaseUrl?: string; tableName?: string }):
       },
       "no-cache": {
         type: "boolean",
+      },
+      "cache-dir": {
+        type: "string",
       },
     },
     strict: false,
@@ -52,7 +55,10 @@ export const up = async (config?: { databaseUrl?: string; tableName?: string }):
   // the database (so a hit would wrongly skip the rebuild) and `--no-cache` is
   // the escape hatch — both disable it. Entries live under `var/cache/migrations`.
   const cacheEnabled = !values.drop && !values["no-cache"];
-  const cacheDir = migrationCacheDir();
+  // The runner (`migration:up`) passes an explicit, per-module cache directory
+  // under the workspace root; fall back to the cwd-relative default when `up` is
+  // invoked directly.
+  const cacheDir = config?.cacheDir || (values["cache-dir"] as string | undefined) || migrationCacheDir();
   const hashById = new Map<string, string>();
   const cachedIds = new Set<string>();
 
