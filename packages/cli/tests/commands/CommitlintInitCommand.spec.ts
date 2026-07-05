@@ -36,7 +36,8 @@ describe("CommitlintInitCommand", () => {
     expect(existsSync(hookPath)).toBe(true);
 
     const content = await Bun.file(hookPath).text();
-    expect(content).toContain("commitlint:check --file");
+    // The hook shells out to the `talos` CLI resolved from PATH — no baked-in path.
+    expect(content).toContain(`exec talos commitlint:check --file "$1"`);
 
     // The hook must be executable for git to run it.
     expect(statSync(hookPath).mode & 0o111).toBeGreaterThan(0);

@@ -30,14 +30,12 @@ const runGit = async (cwd: string, args: string[]): Promise<void> => {
   }
 };
 
-// The hook re-invokes this very CLI to lint the message, so it needs no global
-// install and stays in sync with the framework's rules. The absolute entry path
-// is baked in at install time; re-run `commitlint:init` if the repo is moved.
-const buildHook = (cliEntry: string): string =>
+// The hook shells out to the `talos` CLI to lint the message, so it stays in
+// sync with the framework's rules and requires no path baked in at install time.
+const buildHook = (): string =>
   `#!/usr/bin/env sh
 # Talos commit-message linter — installed by \`oo commitlint:init\`.
-# Re-run \`oo commitlint:init\` if this repository moves to a new path.
-exec bun "${cliEntry}" commitlint:check --file "$1"
+exec talos commitlint:check --file "$1"
 `;
 
 /**
@@ -72,7 +70,7 @@ export class CommitlintInitCommand<T extends CommandOptionsType = CommandOptions
 
     const hookPath = join(hooksDir, "commit-msg");
     await mkdir(hooksDir, { recursive: true });
-    await Bun.write(hookPath, buildHook(resolve(Bun.main)));
+    await Bun.write(hookPath, buildHook());
     await chmod(hookPath, 0o755);
 
     logger.success(`${hookPath} installed successfully`, undefined, LOG_OPTIONS);
