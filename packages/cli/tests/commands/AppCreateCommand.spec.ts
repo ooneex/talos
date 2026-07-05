@@ -14,6 +14,9 @@ mock.module("enquirer", () => ({
     if (config?.type === "select" && config?.name === "provider") {
       return Promise.resolve({ provider: ciProvider });
     }
+    if (config?.type === "multiselect") {
+      return Promise.resolve({ agents: [] });
+    }
     return Promise.resolve({ name: "Test" });
   }),
 }));

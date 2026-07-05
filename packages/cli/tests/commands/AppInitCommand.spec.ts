@@ -3,13 +3,17 @@ import { existsSync, mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { Glob } from "bun";
 
-let claudeSkillsConfirm = true;
+let installCommitHook = true;
+let selectedAgents: string[] = [".claude"];
 
 // Mock enquirer before importing commands
 mock.module("enquirer", () => ({
   prompt: mock((config: { type?: string }) => {
     if (config?.type === "confirm") {
-      return Promise.resolve({ confirm: claudeSkillsConfirm });
+      return Promise.resolve({ confirm: installCommitHook });
+    }
+    if (config?.type === "multiselect") {
+      return Promise.resolve({ agents: selectedAgents });
     }
     return Promise.resolve({ name: "Test" });
   }),
@@ -42,7 +46,8 @@ describe("AppInitCommand", () => {
   let originalSpawn: typeof Bun.spawn;
 
   beforeEach(() => {
-    claudeSkillsConfirm = true;
+    installCommitHook = true;
+    selectedAgents = [".claude"];
     command = new AppInitCommand();
     originalCwd = process.cwd();
     testDir = join(originalCwd, ".temp", `app-init-${Date.now()}`);
@@ -205,11 +210,7 @@ describe("AppInitCommand", () => {
       expect(content).toContain('source_token: ""');
     });
 
-    test("should generate Claude skills in destination directory when confirmed", async () => {
-      claudeSkillsConfirm = true;
-      await command.run({ name: "MyApp", destination: testDir, silent: true });
-
-      const skillsDir = join(testDir, ".claude", "skills");
+    const skillFileCount = async (skillsDir: string) => {
       const glob = new Glob("*/SKILL.md");
       const files: string[] = [];
 
@@ -217,19 +218,42 @@ describe("AppInitCommand", () => {
         files.push(file);
       }
 
-      expect(files.length).toBeGreaterThan(0);
-    });
+      return files.length;
+    };
 
-    test("should not generate Claude skills when confirmation is declined", async () => {
-      claudeSkillsConfirm = false;
+    test("should generate skills in the selected assistant's directory", async () => {
+      selectedAgents = [".claude"];
       await command.run({ name: "MyApp", destination: testDir, silent: true });
 
-      const skillsDir = join(testDir, ".claude", "skills");
-      expect(existsSync(skillsDir)).toBe(false);
+      expect(await skillFileCount(join(testDir, ".claude", "skills"))).toBeGreaterThan(0);
+    });
+
+    test("should generate skills for every selected assistant", async () => {
+      selectedAgents = [".codex", ".cursor", ".windsurf"];
+      await command.run({ name: "MyApp", destination: testDir, silent: true });
+
+      expect(await skillFileCount(join(testDir, ".codex", "skills"))).toBeGreaterThan(0);
+      expect(await skillFileCount(join(testDir, ".cursor", "skills"))).toBeGreaterThan(0);
+      expect(await skillFileCount(join(testDir, ".windsurf", "skills"))).toBeGreaterThan(0);
+    });
+
+    test("should write the shared AGENTS.md when an assistant is selected", async () => {
+      selectedAgents = [".codex"];
+      await command.run({ name: "MyApp", destination: testDir, silent: true });
+
+      expect(await exists(join(testDir, "AGENTS.md"))).toBe(true);
+    });
+
+    test("should not generate any assistant skills when none are selected", async () => {
+      selectedAgents = [];
+      await command.run({ name: "MyApp", destination: testDir, silent: true });
+
+      expect(existsSync(join(testDir, ".claude", "skills"))).toBe(false);
+      expect(existsSync(join(testDir, ".codex", "skills"))).toBe(false);
     });
 
     test("should not install the commit-msg hook when confirmation is declined", async () => {
-      claudeSkillsConfirm = false;
+      installCommitHook = false;
       await command.run({ name: "MyApp", destination: testDir, silent: true });
 
       expect(await exists(join(testDir, ".git", "hooks", "commit-msg"))).toBe(false);
