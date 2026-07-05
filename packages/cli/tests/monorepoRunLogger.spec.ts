@@ -30,7 +30,10 @@ const captureStdout = (fn: () => void): string[] => {
   return chunks;
 };
 
-const visibleWidth = (text: string): number => text.replace(new RegExp(`${ESC}\\[[0-9;]*m`, "g"), "").length;
+// Strip SGR escapes up to the terminating `m`. The class allows any non-`m` byte
+// (not just `[0-9;]`) because Bun's low-depth "ansi" encoding can emit a malformed
+// sequence with a stray byte, e.g. \x1b[38;5;\nm, in 16-color terminals like CI.
+const visibleWidth = (text: string): number => text.replace(new RegExp(`${ESC}\\[[^m]*m`, "g"), "").length;
 
 describe("colorize", () => {
   // Bun.color emits ANSI only when the runtime detects color support, so these

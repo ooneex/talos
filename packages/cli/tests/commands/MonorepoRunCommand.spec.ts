@@ -22,7 +22,10 @@ describe("MonorepoRunCommand", () => {
   let stdoutChunks: string[];
 
   // Everything the command wrote to stdout, ANSI colors stripped, as one string.
-  const ansiRegex = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g");
+  // The class allows any non-`m` byte (not just `[0-9;]`) because Bun's low-depth
+  // "ansi" encoding can emit a malformed sequence with a stray byte, e.g.
+  // \x1b[38;5;\nm, in 16-color terminals like CI.
+  const ansiRegex = new RegExp(`${String.fromCharCode(27)}\\[[^m]*m`, "g");
   const output = (): string => stdoutChunks.join("").replace(ansiRegex, "");
 
   const writeTarget = async (base: string, packageJson: PackageJsonShapeType): Promise<void> => {
