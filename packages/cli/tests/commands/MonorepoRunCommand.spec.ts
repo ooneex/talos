@@ -145,15 +145,16 @@ describe("MonorepoRunCommand", () => {
       expect(order.indexOf("alpha")).toBeLessThan(order.indexOf("beta"));
     });
 
-    // Each task writes a live marker on entry, sleeps, then checks that no other
-    // task's marker exists before clearing its own. Overlapping markers can only
-    // appear if two tasks are alive at once, so a clean run proves the tasks ran
-    // one after another rather than concurrently.
-    test("should run independent tasks sequentially", async () => {
+    // Each task writes a live marker on entry, sleeps, then records whether any
+    // other task's marker was present before clearing its own. An overlapping
+    // marker can only be observed if two tasks are alive at once, so a `saw-*`
+    // file proves the independent tasks ran concurrently rather than serially.
+    test("should run independent tasks in parallel", async () => {
       const solo = (name: string): string =>
         `bun -e "const fs=require('fs');fs.writeFileSync('../../run-${name}','');Bun.sleepSync(150);` +
         `const others=fs.readdirSync('../..').filter(f=>f.startsWith('run-')&&f!=='run-${name}');` +
-        `fs.unlinkSync('../../run-${name}');if(others.length)process.exit(1);fs.writeFileSync('../../done-${name}','ok');"`;
+        `if(others.length)fs.writeFileSync('../../saw-${name}','');fs.unlinkSync('../../run-${name}');` +
+        `fs.writeFileSync('../../done-${name}','ok');"`;
       await writeTarget("packages/one", { name: "@test/one", scripts: { build: solo("one") } });
       await writeTarget("packages/two", { name: "@test/two", scripts: { build: solo("two") } });
 
@@ -162,6 +163,8 @@ describe("MonorepoRunCommand", () => {
       expect(process.exitCode ?? 0).toBe(0);
       expect(existsSync(join(testDir, "done-one"))).toBe(true);
       expect(existsSync(join(testDir, "done-two"))).toBe(true);
+      // At least one task saw the other alive: the two ran at the same time.
+      expect(existsSync(join(testDir, "saw-one")) || existsSync(join(testDir, "saw-two"))).toBe(true);
     });
 
     test("should skip targets without the script and not fail", async () => {

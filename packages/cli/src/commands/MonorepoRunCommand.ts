@@ -1,3 +1,4 @@
+import { availableParallelism } from "node:os";
 import { join } from "node:path";
 import type { ICommand } from "@talosjs/command";
 import { decorator } from "@talosjs/command";
@@ -265,8 +266,9 @@ export class MonorepoRunCommand<T extends CommandOptionsType = CommandOptionsTyp
     ];
   }
 
-  // Run one command group's tasks one at a time, taking the next task whose
-  // workspace dependencies are done. Skipped tasks count as done.
+  // Run a command group's tasks in parallel, launching every task whose
+  // workspace dependencies are already done and bounding concurrency to the
+  // available CPU parallelism. Skipped tasks count as done up front.
   private async runGroup(tasks: TaskType[], context: RunContextType): Promise<void> {
     const done = new Set<string>();
     for (const task of tasks.filter((entry) => entry.status === "skipped")) {
@@ -274,17 +276,50 @@ export class MonorepoRunCommand<T extends CommandOptionsType = CommandOptionsTyp
       this.reportFinish(task, context);
     }
 
-    const queue = tasks.filter((task) => task.status === "pending");
+    const pending = tasks.filter((task) => task.status === "pending");
+    const limit = this.concurrency();
+    const running = new Set<Promise<void>>();
 
-    while (queue.length > 0 && !context.stopped) {
-      let index = queue.findIndex((task) => task.deps.every((dep) => done.has(dep)));
-      // Nothing ready means a dependency cycle: run the next task anyway.
-      if (index === -1) index = 0;
+    while ((pending.length > 0 || running.size > 0) && !context.stopped) {
+      // Launch every ready task until we hit the concurrency limit. Each task's
+      // process, output buffer and cache write are self-contained, and shared
+      // state (`context.procs`, `context.fingerprints`) is concurrency-safe.
+      while (running.size < limit) {
+        const index = pending.findIndex((task) => task.deps.every((dep) => done.has(dep)));
+        if (index === -1) break;
+        const task = pending.splice(index, 1)[0] as TaskType;
+        // `runTask` handles its own failures; the guard is a safety net so a
+        // stray rejection can never surface as an unhandled promise below.
+        const promise = this.runTask(task, context)
+          .catch(() => {})
+          .then(() => {
+            done.add(task.key);
+            running.delete(promise);
+          });
+        running.add(promise);
+      }
 
-      const task = queue.splice(index, 1)[0] as TaskType;
-      await this.runTask(task, context);
-      done.add(task.key);
+      // Nothing running and nothing ready means the remaining tasks form a
+      // dependency cycle: run the next one anyway to make progress.
+      if (running.size === 0 && pending.length > 0) {
+        const task = pending.shift() as TaskType;
+        await this.runTask(task, context);
+        done.add(task.key);
+        continue;
+      }
+
+      await Promise.race(running);
     }
+
+    // A failure stops new launches; let the in-flight tasks settle (their
+    // processes are already being killed) before returning to the next group.
+    await Promise.allSettled(running);
+  }
+
+  // How many tasks in a group may run concurrently. Each task spawns its own
+  // subprocess, so bound it by the machine's available parallelism.
+  private concurrency(): number {
+    return Math.max(1, availableParallelism());
   }
 
   private async runTask(task: TaskType, context: RunContextType): Promise<void> {
