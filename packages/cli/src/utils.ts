@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import type { TerminalLogger } from "@talosjs/logger";
 import { ModuleCreateCommand } from "./commands/ModuleCreateCommand";
 
@@ -240,11 +240,19 @@ export type RunModuleScriptsOptions = {
    * migration version); the runner only relays the opt-out.
    */
   noCache?: boolean | undefined;
+  /**
+   * Root-relative base directory for the script's run cache (e.g.
+   * {@link MIGRATIONS_CACHE_DIR}). When set, each module is given its own
+   * subdirectory under the workspace root — `<cacheDir>/<module>` — forwarded as
+   * `--cache-dir` so the caches live at the root and never collide between
+   * modules.
+   */
+  cacheDir?: string | undefined;
 };
 
 export const runModuleScripts = async (
   logger: TerminalLogger,
-  { binPath, label, drop, env, version, noCache }: RunModuleScriptsOptions,
+  { binPath, label, drop, env, version, noCache, cacheDir }: RunModuleScriptsOptions,
 ): Promise<void> => {
   const titledLabel = `${label.charAt(0).toUpperCase()}${label.slice(1)}`;
   const rootDir = process.cwd();
@@ -287,6 +295,11 @@ export const runModuleScripts = async (
     }
     if (noCache) {
       args.push("--no-cache");
+    }
+    if (cacheDir) {
+      // Give each module its own cache subdirectory under the workspace root so
+      // identically-versioned entries from different modules never collide.
+      args.push("--cache-dir", join(rootDir, cacheDir, basename(dir)));
     }
 
     const succeeded = await spawnStep(

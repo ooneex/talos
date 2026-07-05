@@ -1,6 +1,7 @@
 import type { ICommand } from "@talosjs/command";
 import { decorator } from "@talosjs/command";
 import { TerminalLogger } from "@talosjs/logger";
+import { MIGRATIONS_CACHE_DIR } from "../monorepo";
 import { runModuleScripts } from "../utils";
 
 @decorator.command()
@@ -18,6 +19,9 @@ export class MigrationDownCommand implements ICommand {
       binPath: ["bin", "migration", "down.ts"],
       label: "migrations",
       version: options.version,
+      // Point at the same per-module cache the `up` runner uses, so a rollback
+      // deletes the entry from where it was written.
+      cacheDir: MIGRATIONS_CACHE_DIR,
     });
   }
 }
