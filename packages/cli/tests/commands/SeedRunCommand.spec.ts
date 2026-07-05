@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 import { TerminalLogger } from "@talosjs/logger";
+import { SEEDS_CACHE_DIR } from "@/monorepo";
 
 const runModuleScripts = mock((..._args: unknown[]) => Promise.resolve());
 
@@ -37,6 +38,8 @@ describe("SeedRunCommand", () => {
         label: "seeds",
         drop: true,
         env: "production",
+        noCache: undefined,
+        cacheDir: SEEDS_CACHE_DIR,
       });
     });
 
@@ -49,6 +52,22 @@ describe("SeedRunCommand", () => {
         label: "seeds",
         drop: undefined,
         env: undefined,
+        noCache: undefined,
+        cacheDir: SEEDS_CACHE_DIR,
+      });
+    });
+
+    test("should forward the noCache opt-out to runModuleScripts", async () => {
+      await command.run({ noCache: true });
+
+      const [, options] = runModuleScripts.mock.calls[0] ?? [];
+      expect(options).toEqual({
+        binPath: ["bin", "seed", "run.ts"],
+        label: "seeds",
+        drop: undefined,
+        env: undefined,
+        noCache: true,
+        cacheDir: SEEDS_CACHE_DIR,
       });
     });
 
