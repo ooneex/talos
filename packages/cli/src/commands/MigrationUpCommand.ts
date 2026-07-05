@@ -1,7 +1,7 @@
 import type { ICommand } from "@talosjs/command";
 import { decorator } from "@talosjs/command";
 import { TerminalLogger } from "@talosjs/logger";
-import { MIGRATIONS_CACHE_DIR } from "../monorepo";
+import { MIGRATIONS_CACHE_DIR } from "@talosjs/migrations";
 import { runModuleScripts } from "../utils";
 
 @decorator.command()

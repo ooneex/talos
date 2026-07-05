@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 import { TerminalLogger } from "@talosjs/logger";
-import { MIGRATIONS_CACHE_DIR } from "@/monorepo";
+import { MIGRATIONS_CACHE_DIR } from "@talosjs/migrations";
 
 const runModuleScripts = mock((..._args: unknown[]) => Promise.resolve());
 
