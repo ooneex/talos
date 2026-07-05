@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.10.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.10.0) - 2026-07-05
+
+### Added
+
+- Prompt before installing commit-msg hook in app:init| — Franck ([af0bd816](https://github.com/ooneex/talos/commit/af0bd816))
+
+### Changed
+
+- Parallelize workspace probes in monorepo:run| — Franck ([0bfbe62c](https://github.com/ooneex/talos/commit/0bfbe62c))
+
 ## [1.9.1](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.9.1) - 2026-07-05
 
 ### Changed
