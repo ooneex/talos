@@ -28,7 +28,7 @@
     },
     "packages/ai": {
       "name": "@talosjs/ai",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "dependencies": {
         "@brightdata/sdk": "^1.1.0",
         "@talosjs/app-env": "workspace:^",
@@ -51,7 +51,7 @@
     },
     "packages/analytics": {
       "name": "@talosjs/analytics",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "dependencies": {
         "@talosjs/app-env": "workspace:^",
         "@talosjs/container": "workspace:^",
@@ -62,7 +62,7 @@
     },
     "packages/app": {
       "name": "@talosjs/app",
-      "version": "1.1.1",
+      "version": "1.1.2",
       "dependencies": {
         "@talosjs/app-env": "workspace:^",
         "@talosjs/cache": "workspace:^",
@@ -93,7 +93,7 @@
     },
     "packages/app-env": {
       "name": "@talosjs/app-env",
-      "version": "1.1.1",
+      "version": "1.1.2",
       "dependencies": {
         "@talosjs/container": "workspace:^",
         "@talosjs/exception": "workspace:^",
@@ -103,7 +103,7 @@
     },
     "packages/auth": {
       "name": "@talosjs/auth",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "dependencies": {
         "@clerk/backend": "^1.24.1",
         "@talosjs/app-env": "workspace:^",
@@ -120,7 +120,7 @@
     },
     "packages/cache": {
       "name": "@talosjs/cache",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "dependencies": {
         "@talosjs/app-env": "workspace:^",
         "@talosjs/container": "workspace:^",
@@ -130,7 +130,7 @@
     },
     "packages/cli": {
       "name": "@talosjs/cli",
-      "version": "1.8.0",
+      "version": "1.9.0",
       "bin": {
         "talos": "./dist/index.js",
         "oo": "./dist/index.js",
@@ -156,11 +156,11 @@
     },
     "packages/color": {
       "name": "@talosjs/color",
-      "version": "1.1.0",
+      "version": "1.1.1",
     },
     "packages/command": {
       "name": "@talosjs/command",
-      "version": "1.3.0",
+      "version": "1.4.0",
       "dependencies": {
         "@talosjs/app-env": "workspace:^",
         "@talosjs/container": "workspace:^",
@@ -175,7 +175,7 @@
     },
     "packages/container": {
       "name": "@talosjs/container",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "dependencies": {
         "@talosjs/exception": "workspace:^",
         "@talosjs/http-status": "workspace:^",
@@ -184,7 +184,7 @@
     },
     "packages/controller": {
       "name": "@talosjs/controller",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "devDependencies": {
         "@talosjs/app-env": "workspace:^",
         "@talosjs/cache": "workspace:^",
@@ -205,7 +205,7 @@
     },
     "packages/country": {
       "name": "@talosjs/country",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "dependencies": {
         "@vvo/tzdb": "^6.198.0",
       },
@@ -215,7 +215,7 @@
     },
     "packages/cron": {
       "name": "@talosjs/cron",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "dependencies": {
         "@talosjs/container": "workspace:^",
         "@talosjs/exception": "workspace:^",
@@ -227,7 +227,7 @@
     },
     "packages/csv": {
       "name": "@talosjs/csv",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "dependencies": {
         "@talosjs/exception": "workspace:*",
         "@talosjs/http-status": "workspace:*",
@@ -235,14 +235,14 @@
     },
     "packages/currencies": {
       "name": "@talosjs/currencies",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "devDependencies": {
         "@talosjs/types": "workspace:^",
       },
     },
     "packages/database": {
       "name": "@talosjs/database",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "dependencies": {
         "@talosjs/app-env": "workspace:^",
         "@talosjs/container": "workspace:^",
@@ -258,11 +258,11 @@
     },
     "packages/entity": {
       "name": "@talosjs/entity",
-      "version": "1.1.0",
+      "version": "1.1.1",
     },
     "packages/event": {
       "name": "@talosjs/event",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "dependencies": {
         "@talosjs/app-env": "workspace:^",
         "@talosjs/container": "workspace:^",
@@ -275,21 +275,21 @@
     },
     "packages/exception": {
       "name": "@talosjs/exception",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "dependencies": {
         "@talosjs/http-status": "workspace:^",
       },
     },
     "packages/feature-flag": {
       "name": "@talosjs/feature-flag",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "dependencies": {
         "@talosjs/container": "workspace:^",
       },
     },
     "packages/fetcher": {
       "name": "@talosjs/fetcher",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "dependencies": {
         "@talosjs/http-header": "workspace:^",
       },
@@ -301,7 +301,7 @@
     },
     "packages/fs": {
       "name": "@talosjs/fs",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "dependencies": {
         "@talosjs/exception": "workspace:^",
         "@talosjs/http-status": "workspace:^",
@@ -309,11 +309,11 @@
     },
     "packages/hour-utils": {
       "name": "@talosjs/hour-utils",
-      "version": "1.1.0",
+      "version": "1.1.1",
     },
     "packages/html": {
       "name": "@talosjs/html",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "dependencies": {
         "@talosjs/exception": "workspace:^",
         "@talosjs/http-status": "workspace:^",
@@ -322,7 +322,7 @@
     },
     "packages/http-header": {
       "name": "@talosjs/http-header",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "dependencies": {
         "ua-parser-js": "^2.0.6",
       },
@@ -333,11 +333,11 @@
     },
     "packages/http-mimes": {
       "name": "@talosjs/http-mimes",
-      "version": "1.1.0",
+      "version": "1.1.1",
     },
     "packages/http-request": {
       "name": "@talosjs/http-request",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "dependencies": {
         "@talosjs/http-header": "workspace:^",
         "@talosjs/http-request-file": "workspace:^",
@@ -352,7 +352,7 @@
     },
     "packages/http-request-file": {
       "name": "@talosjs/http-request-file",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "dependencies": {
         "@talosjs/http-mimes": "workspace:^",
         "@talosjs/utils": "workspace:^",
@@ -360,7 +360,7 @@
     },
     "packages/http-response": {
       "name": "@talosjs/http-response",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "dependencies": {
         "@talosjs/app-env": "workspace:^",
         "@talosjs/http-header": "workspace:^",
@@ -369,11 +369,11 @@
     },
     "packages/http-status": {
       "name": "@talosjs/http-status",
-      "version": "1.1.0",
+      "version": "1.1.1",
     },
     "packages/json": {
       "name": "@talosjs/json",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "dependencies": {
         "@talosjs/exception": "workspace:*",
         "@talosjs/http-status": "workspace:*",
@@ -381,7 +381,7 @@
     },
     "packages/jwt": {
       "name": "@talosjs/jwt",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "dependencies": {
         "@talosjs/app-env": "workspace:^",
         "@talosjs/container": "workspace:^",
@@ -392,7 +392,7 @@
     },
     "packages/linear": {
       "name": "@talosjs/linear",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "dependencies": {
         "@linear/sdk": "^84.0.0",
         "@talosjs/app-env": "workspace:^",
@@ -403,7 +403,7 @@
     },
     "packages/logger": {
       "name": "@talosjs/logger",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "dependencies": {
         "@logtail/node": "^0.5.8",
         "@sentry/node": "^10.46.0",
@@ -418,7 +418,7 @@
     },
     "packages/mailer": {
       "name": "@talosjs/mailer",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "dependencies": {
         "@talosjs/app-env": "workspace:^",
         "@talosjs/container": "workspace:^",
@@ -430,7 +430,7 @@
     },
     "packages/middleware": {
       "name": "@talosjs/middleware",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "dependencies": {
         "@talosjs/app-env": "workspace:^",
         "@talosjs/container": "workspace:^",
@@ -443,7 +443,7 @@
     },
     "packages/migrations": {
       "name": "@talosjs/migrations",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "dependencies": {
         "@talosjs/container": "workspace:^",
       },
@@ -453,7 +453,7 @@
     },
     "packages/module": {
       "name": "@talosjs/module",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "devDependencies": {
         "@talosjs/controller": "workspace:^",
         "@talosjs/cron": "workspace:^",
@@ -465,7 +465,7 @@
     },
     "packages/payment": {
       "name": "@talosjs/payment",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "dependencies": {
         "@polar-sh/sdk": "^0.30.0",
         "@talosjs/app-env": "workspace:^",
@@ -480,7 +480,7 @@
     },
     "packages/pdf": {
       "name": "@talosjs/pdf",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "dependencies": {
         "@talosjs/exception": "workspace:^",
         "@talosjs/http-status": "workspace:^",
@@ -492,7 +492,7 @@
     },
     "packages/permission": {
       "name": "@talosjs/permission",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "dependencies": {
         "@casl/ability": "^6.7.3",
         "@talosjs/container": "workspace:^",
@@ -505,7 +505,7 @@
     },
     "packages/queue": {
       "name": "@talosjs/queue",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "dependencies": {
         "@talosjs/container": "workspace:^",
         "@talosjs/exception": "workspace:^",
@@ -518,7 +518,7 @@
     },
     "packages/rag": {
       "name": "@talosjs/rag",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "dependencies": {
         "@lancedb/lancedb": "^0.27.1",
         "@opendataloader/pdf": "^2.0.2",
@@ -534,7 +534,7 @@
     },
     "packages/rate-limit": {
       "name": "@talosjs/rate-limit",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "dependencies": {
         "@talosjs/app-env": "workspace:^",
         "@talosjs/container": "workspace:^",
@@ -549,7 +549,7 @@
     },
     "packages/repository": {
       "name": "@talosjs/repository",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "dependencies": {
         "@talosjs/container": "workspace:^",
       },
@@ -559,7 +559,7 @@
     },
     "packages/role": {
       "name": "@talosjs/role",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "dependencies": {
         "@talosjs/exception": "workspace:*",
         "@talosjs/http-status": "workspace:*",
@@ -567,7 +567,7 @@
     },
     "packages/routing": {
       "name": "@talosjs/routing",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "dependencies": {
         "@talosjs/container": "workspace:^",
         "@talosjs/exception": "workspace:^",
@@ -587,7 +587,7 @@
     },
     "packages/seeds": {
       "name": "@talosjs/seeds",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "dependencies": {
         "@talosjs/container": "workspace:^",
         "@talosjs/logger": "workspace:^",
@@ -600,14 +600,14 @@
     },
     "packages/service": {
       "name": "@talosjs/service",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "dependencies": {
         "@talosjs/container": "workspace:^",
       },
     },
     "packages/socket": {
       "name": "@talosjs/socket",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "devDependencies": {
         "@talosjs/controller": "workspace:^",
         "@talosjs/http-request": "workspace:^",
@@ -616,7 +616,7 @@
     },
     "packages/socket-client": {
       "name": "@talosjs/socket-client",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "devDependencies": {
         "@talosjs/app-env": "workspace:^",
         "@talosjs/http-response": "workspace:^",
@@ -625,7 +625,7 @@
     },
     "packages/storage": {
       "name": "@talosjs/storage",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "dependencies": {
         "@bunny.net/storage-sdk": "^0.3.1",
         "@talosjs/app-env": "workspace:^",
@@ -636,7 +636,7 @@
     },
     "packages/translation": {
       "name": "@talosjs/translation",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "dependencies": {
         "@talosjs/container": "workspace:^",
         "@talosjs/exception": "workspace:^",
@@ -646,14 +646,14 @@
     },
     "packages/types": {
       "name": "@talosjs/types",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "devDependencies": {
         "@talosjs/translation": "workspace:^",
       },
     },
     "packages/url": {
       "name": "@talosjs/url",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "dependencies": {
         "@talosjs/utils": "workspace:^",
       },
@@ -664,7 +664,7 @@
     },
     "packages/user": {
       "name": "@talosjs/user",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "devDependencies": {
         "@talosjs/role": "workspace:^",
         "@talosjs/translation": "workspace:^",
@@ -672,14 +672,14 @@
     },
     "packages/utils": {
       "name": "@talosjs/utils",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "dependencies": {
         "nanoid": "^5.1.6",
       },
     },
     "packages/validation": {
       "name": "@talosjs/validation",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "dependencies": {
         "@talosjs/app-env": "workspace:^",
         "@talosjs/currencies": "workspace:^",
@@ -689,7 +689,7 @@
     },
     "packages/workflow": {
       "name": "@talosjs/workflow",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "dependencies": {
         "@talosjs/container": "workspace:^",
         "@talosjs/exception": "workspace:^",
@@ -698,7 +698,7 @@
     },
     "packages/yml": {
       "name": "@talosjs/yml",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "dependencies": {
         "@talosjs/exception": "workspace:^",
         "@talosjs/http-status": "workspace:^",
@@ -706,7 +706,7 @@
     },
     "packages/youtube": {
       "name": "@talosjs/youtube",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "dependencies": {
         "@talosjs/exception": "workspace:^",
         "@talosjs/http-status": "workspace:^",
@@ -715,7 +715,7 @@
     },
     "packages/youtube-utils": {
       "name": "@talosjs/youtube-utils",
-      "version": "1.1.0",
+      "version": "1.1.1",
     },
   },
   "packages": {
