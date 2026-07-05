@@ -46,7 +46,7 @@ Drop each index explicitly in `down()` before dropping the table or column it co
 ### 3. Lint, format, and test
 
 ```bash
-bunx biome check --write && talos monorepo:run --commands=lint && talos monorepo:run --commands=test
+talos monorepo:check
 ```
 
 Fix every failure before completing.

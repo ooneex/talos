@@ -50,7 +50,7 @@ Run the target's tests and iterate until green:
 
 ```bash
 bun test modules/<module>/tests/...    # scope to the target
-bunx biome check --write && talos monorepo:run --commands=lint
+talos monorepo:check
 ```
 
 If a test fails because the **production code** is wrong, leave the failing test

@@ -73,7 +73,7 @@ Implementation is owned entirely by the **fixer sub-agents** — this skill neve
 | `spa` | `spa-issue-fixer` |
 | `design` | `design-issue-fixer` |
 
-Each fixer analyses the issue (`context` / `goal` / `dod` / `dependencies`, plus any `resources`/`spec` block), implements the artefacts the `goal` calls for following that module's conventions and Clean Architecture, runs `bunx biome check --write` / `talos monorepo:run --commands=lint` from the project root, checks off every satisfied `dod` box, sets `state: "Done"` when all boxes pass, and returns a report.
+Each fixer analyses the issue (`context` / `goal` / `dod` / `dependencies`, plus any `resources`/`spec` block), implements the artefacts the `goal` calls for following that module's conventions and Clean Architecture, runs `talos monorepo:check` from the project root, checks off every satisfied `dod` box, sets `state: "Done"` when all boxes pass, and returns a report.
 
 When an issue's `goal` describes a multi-step business process — a sequence of conditional, reversible steps that should roll back together when a later step fails — the fixer should use the `@talosjs/workflow` package (`packages/workflow/`), scaffolding it with `/workflow:create` and `/workflow:transition:create` (or `oo workflow:create` / `oo workflow:transition:create`) instead of hand-rolling the orchestration. Only reach for it when the work actually calls for it; a simple single-step change does not need a workflow.
 

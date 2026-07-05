@@ -90,7 +90,7 @@ existing keys.
 ## Finish
 
 ```bash
-bunx biome check --write && talos monorepo:run --commands=lint
+talos monorepo:check
 ```
 
 Confirm the dictionary still parses and the rewired files typecheck/lint. Fix

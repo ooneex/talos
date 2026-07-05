@@ -70,7 +70,7 @@ Add `<Name>Middleware` to the `getMiddlewares()` array of the chat it should app
 ### 5. Lint, format, and test
 
 ```bash
-bunx biome check --write && talos monorepo:run --commands=lint && talos monorepo:run --commands=test
+talos monorepo:check
 ```
 
 Fix every failure before completing.

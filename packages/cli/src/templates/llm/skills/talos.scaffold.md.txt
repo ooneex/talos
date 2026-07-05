@@ -50,8 +50,7 @@ Generated `.spec.ts` files share a baseline that the artifact skill builds on: c
 ## Lint and format
 
 ```bash
-bunx biome check --write
-talos monorepo:run --commands=lint
+talos monorepo:check
 ```
 
 ## Coding conventions
