@@ -1,7 +1,7 @@
 {
   "name": "@talosjs/entity",
   "description": "Base entity classes and decorators for defining database models with type-safe column mappings, relationships, and lifecycle hooks",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "type": "module",
   "files": [
     "dist",
