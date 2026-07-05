@@ -30,7 +30,9 @@ describe("Convertor", () => {
     expect(files.markdown.name).toMatch(/^[0-9a-f]{20}\.md$/);
     const mdFile = Bun.file(files.markdown.path);
     expect(await mdFile.exists()).toBe(true);
-  });
+    // The underlying @opendataloader/pdf convert spins up a JVM; its cold start on a
+    // slow CI runner exceeds Bun's default 5s timeout, so allow generous headroom.
+  }, 30000);
 
   test("should throw ConvertorException for non-existent source file", async () => {
     const convertor = new Convertor("tests/non-existent.pdf");
@@ -42,5 +44,5 @@ describe("Convertor", () => {
         result = await generator.next();
       }
     }).toThrow(ConvertorException);
-  });
+  }, 30000);
 });
