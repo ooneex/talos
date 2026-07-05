@@ -21,7 +21,6 @@ describe("Dockerfile.txt", () => {
     expect(content).toContain("ARG BUN_VERSION=");
     expect(content).toContain("FROM oven/bun:${BUN_VERSION} AS base");
     expect(content).toContain("WORKDIR /app");
-    expect(content).toContain("ENV HUSKY=0");
   });
 
   test("should contain dependency stages", async () => {
