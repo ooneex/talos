@@ -1,7 +1,7 @@
 {
   "name": "@talosjs/http-status",
   "description": "Complete HTTP status code library with TypeScript enums covering 1xx–5xx ranges and helper utilities for status classification and messaging",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "type": "module",
   "files": [
     "dist",
