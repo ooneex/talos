@@ -39,6 +39,7 @@ export { MigrationDownCommand } from "./MigrationDownCommand";
 export { MigrationUpCommand } from "./MigrationUpCommand";
 export { ModuleCreateCommand } from "./ModuleCreateCommand";
 export { ModuleRemoveCommand } from "./ModuleRemoveCommand";
+export { MonorepoCheckCommand } from "./MonorepoCheckCommand";
 export { MonorepoRunCommand } from "./MonorepoRunCommand";
 export { NpmCredentialsCreateCommand } from "./NpmCredentialsCreateCommand";
 export { NpmPublishCommand } from "./NpmPublishCommand";
