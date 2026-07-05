@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.1.3](https://github.com/ooneex/talos/releases/tag/@talosjs/app@1.1.3) - 2026-07-05
+
+### Changed
+
+- Apply biome formatting across packages| — Franck ([5da156c4](https://github.com/ooneex/talos/commit/5da156c4))
+
 ## [1.1.2](https://github.com/ooneex/talos/releases/tag/@talosjs/app@1.1.2) - 2026-07-05
 
 ### Changed
