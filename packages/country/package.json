@@ -42,7 +42,7 @@
   "scripts": {
     "build": "bunup",
     "lint": "tsgo --noEmit && bunx biome lint",
-    "npm:publish": "bun publish --tolerate-republish --force --production --access public",
+    ,
     "test": "bun test tests"
   },
   "dependencies": {
