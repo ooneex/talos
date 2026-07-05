@@ -1,5 +1,6 @@
 import { rm } from "node:fs/promises";
 import { join } from "node:path";
+import { SEEDS_CACHE_DIR } from "./constants";
 import type { ISeed } from "./types";
 
 /**
@@ -24,8 +25,8 @@ export const SEED_CACHE_VERSION = 1;
 // Fallback cache location, relative to `process.cwd()`, used only when `run` is
 // invoked directly (not through the CLI). The `seed:run` command instead passes
 // an explicit per-module directory under the workspace root via `--cache-dir`
-// (see `SEEDS_CACHE_DIR` in packages/cli/src/monorepo.ts).
-const CACHE_SUBPATH = join("var", "cache", "seeds");
+// (built from {@link SEEDS_CACHE_DIR}).
+const CACHE_SUBPATH = SEEDS_CACHE_DIR;
 
 export type SeedCacheEntryType = {
   version: number;
