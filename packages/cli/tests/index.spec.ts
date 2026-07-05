@@ -72,6 +72,7 @@ describe("@talosjs/cli - index", () => {
     "ModuleCreateCommand",
     "ModuleRemoveCommand",
     "MonorepoRunCommand",
+    "MonorepoCheckCommand",
     "NpmCredentialsCreateCommand",
     "NpmPublishCommand",
     "PermissionCreateCommand",
