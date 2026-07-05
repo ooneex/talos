@@ -176,9 +176,9 @@ oo seed:run --drop                    # Drop data then seed
 ### Code Quality
 
 ```bash
-bun run fmt    # Format all source files with Biome
-bun run lint   # Lint all modules with Biome and TypeScript
-bun run test   # Run tests across all modules
+bunx biome check --write         # Format all source files with Biome
+oo monorepo:run --commands=lint  # Lint all modules with Biome and TypeScript
+oo monorepo:run --commands=test  # Run tests across all modules
 ```
 
 ### Release
@@ -404,7 +404,7 @@ Do not add any `Co-Authored-By` trailer to commits.
 ## Testing
 
 - Test files mirror `src/` under `tests/` with `.spec.ts` suffix
-- Run tests: `bun run test` (all modules) or `bun test tests` (inside a module)
+- Run tests: `oo monorepo:run --commands=test` (all modules) or `bun test tests` (inside a module)
 - Every public method with logic must have at least one happy-path and one edge-case test
 - Avoid trivial existence checks — test actual behavior
 - Make tests deterministic: no random values, no time-dependent data

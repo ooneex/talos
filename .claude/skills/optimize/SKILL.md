@@ -179,14 +179,14 @@ Scan and fix across all files:
 ### 8. Lint and format
 
 ```bash
-bun run fmt
-bun run lint
+bunx biome check --write
+oo monorepo:run --commands=lint
 ```
 
 ### 9. Run tests
 
 ```bash
-bun run test
+oo monorepo:run --commands=test
 ```
 
 Fix any failures before completing.

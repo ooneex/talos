@@ -154,8 +154,8 @@ bunx nx run @talosjs/<name>:lint
 For broad or cross-package changes:
 
 ```bash
-bun run fmt
-bun run build
-bun run lint
-bun run test
+bunx biome check --write
+oo monorepo:run --commands=build
+oo monorepo:run --commands=lint
+oo monorepo:run --commands=test
 ```

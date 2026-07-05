@@ -568,8 +568,8 @@ Contributions are welcome! Please feel free to submit a Pull Request. For major 
 
 1. Clone the repository
 2. Install dependencies: `bun install`
-3. Run tests: `bun run test`
-4. Build the project: `bun run build`
+3. Run tests: `bun test tests`
+4. Build the project: `bun run build` (from the package dir)
 
 ### Guidelines
 

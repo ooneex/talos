@@ -97,7 +97,7 @@ For every public method or function with logic touched by the issue, ensure `pac
 ### 5. Lint, format, and test
 
 ```bash
-bun run fmt
+bunx biome check --write
 bunx nx run @talosjs/<package>:lint
 bun test packages/<package>/tests
 ```

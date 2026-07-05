@@ -197,21 +197,24 @@ To develop the framework packages themselves:
 ```sh
 git clone https://github.com/ooneex/talos.git
 cd Talos
-bun install        # install dependencies
-bun run build      # build all packages
-bun run test       # run the test suite
+bun install                             # install dependencies
+bun run --filter='@talosjs/cli' build   # build the CLI first
+bun packages/cli/dist/index.js monorepo:run --commands=build,test --logs
 ```
 
 ### Commands
 
+The repo root ships no scripts; tasks run through the CLI. Build it once with `bun run --filter='@talosjs/cli' build`, then invoke it as `bun packages/cli/dist/index.js <command>`.
+
 | Command | Description |
 |---------|-------------|
-| `bun run build` | Build all packages (`talos monorepo:run`) |
-| `bun run test` | Run all tests |
-| `bun run lint` | Lint all packages (Biome + TypeScript) |
-| `bun run fmt` | Format and auto-fix code with Biome |
-| `bun run check` | Install + build + lint + test (full validation) |
-| `bun run npm:publish` | Publish all packages to npm |
+| `bun run --filter='@talosjs/cli' build` | Build the CLI package |
+| `bun packages/cli/dist/index.js monorepo:run --commands=build --logs` | Build all packages |
+| `bun packages/cli/dist/index.js monorepo:run --commands=test --logs` | Run all tests |
+| `bun packages/cli/dist/index.js monorepo:run --commands=lint --logs` | Lint all packages (Biome + TypeScript) |
+| `bunx biome check --write` | Format and auto-fix code with Biome |
+| `bun packages/cli/dist/index.js monorepo:check --logs` | Install + build + lint + test (full validation) |
+| `bun packages/cli/dist/index.js npm:publish --logs` | Publish all packages to npm |
 
 Run the tests for a single package with `bun test packages/<package-name>/tests`.
 
