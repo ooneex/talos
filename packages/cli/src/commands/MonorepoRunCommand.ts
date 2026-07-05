@@ -14,7 +14,7 @@ import {
   sortTargetsByDependencies,
   writeCacheEntry,
 } from "../monorepo";
-import { bold, COLORS, colorize, formatDuration, MonorepoRunLogger, SYMBOLS, taskColor } from "../monorepoRunLogger";
+import { bold, COLORS, colorize, formatDuration, MonorepoRunLogger, SYMBOLS } from "../monorepoRunLogger";
 import { createSpinner } from "../utils";
 
 type CommandOptionsType = {
@@ -291,12 +291,6 @@ export class MonorepoRunCommand<T extends CommandOptionsType = CommandOptionsTyp
     task.status = "running";
     const startedAt = performance.now();
 
-    // In the live view the footer shows what is running; without it, announce
-    // the start so progress is visible even though task output is not streamed.
-    if (!context.interactive) {
-      context.logger.persist(`${this.taskPrefix(task)} ${colorize("started", COLORS.dim)}`);
-    }
-
     if (task.cacheable && task.target && !context.noCache) {
       try {
         task.hash = await computeTaskHash(
@@ -404,11 +398,6 @@ export class MonorepoRunCommand<T extends CommandOptionsType = CommandOptionsTyp
     this.reportFinish(task, context);
   }
 
-  // The colored `label ┃` used to prefix a task's log lines.
-  private taskPrefix(task: TaskType): string {
-    return `${colorize(task.label, taskColor(task.key))}${colorize(" ┃", COLORS.dim)}`;
-  }
-
   // Reduce a failed task's captured output to just the lines that explain the
   // failure — each line carrying a failure signal (from `bun test`, `biome`,
   // `tsgo`/`tsc`, or a thrown error), plus a little surrounding context, with
@@ -445,53 +434,24 @@ export class MonorepoRunCommand<T extends CommandOptionsType = CommandOptionsTyp
     return excerpt;
   }
 
-  // Persist a task's final state as one scrollback line (above the live footer),
-  // with the full output dumped only on failure — and only when it was not
-  // already streamed line-by-line in non-interactive mode.
+  // Persist a task's final state to scrollback (above the live footer). Only a
+  // failed task surfaces anything: its status line plus the trimmed excerpt that
+  // explains the failure. Successful, cached, skipped and aborted tasks stay
+  // silent, so the log is nothing but failures — the closing summary still
+  // reports the run/cached/skipped counts.
   private reportFinish(task: TaskType, context: RunContextType): void {
-    const { logger } = context;
+    if (task.status !== "failed") return;
 
-    switch (task.status) {
-      case "skipped":
-        logger.persist(
-          colorize(`${SYMBOLS.skipped} `, COLORS.dim) +
-            colorize(task.label, COLORS.dim) +
-            colorize(`  no "${task.command}" script`, COLORS.dim),
-        );
-        break;
-      case "cached":
-        logger.persist(
-          colorize(`${SYMBOLS.success} `, COLORS.success) +
-            task.label +
-            colorize("  cached", COLORS.warn) +
-            colorize(`  ${formatDuration(task.durationMs)}`, COLORS.dim),
-        );
-        break;
-      case "success":
-        logger.persist(
-          colorize(`${SYMBOLS.success} `, COLORS.success) +
-            task.label +
-            colorize(`  ${formatDuration(task.durationMs)}`, COLORS.dim),
-        );
-        break;
-      case "failed": {
-        logger.persist(
-          colorize(`${SYMBOLS.error} `, COLORS.error) +
-            task.label +
-            colorize("  failed", COLORS.error) +
-            colorize(`  exit ${task.exitCode ?? 1}  ${formatDuration(task.durationMs)}`, COLORS.dim),
-        );
-        const excerpt = this.failureExcerpt(task.output);
-        if (excerpt.length > 0) {
-          logger.persist(...excerpt.map((line) => `${colorize("┃", COLORS.error)} ${line}`));
-        }
-        break;
-      }
-      case "aborted":
-        logger.persist(colorize(`${SYMBOLS.aborted} ${task.label}  aborted`, COLORS.dim));
-        break;
-      default:
-        break;
+    const { logger } = context;
+    logger.persist(
+      colorize(`${SYMBOLS.error} `, COLORS.error) +
+        task.label +
+        colorize("  failed", COLORS.error) +
+        colorize(`  exit ${task.exitCode ?? 1}  ${formatDuration(task.durationMs)}`, COLORS.dim),
+    );
+    const excerpt = this.failureExcerpt(task.output);
+    if (excerpt.length > 0) {
+      logger.persist(...excerpt.map((line) => `${colorize("┃", COLORS.error)} ${line}`));
     }
   }
 

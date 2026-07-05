@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, mock, spyOn, test } from "bun:test";
 import { existsSync, rmSync } from "node:fs";
 import { join } from "node:path";
 
@@ -18,6 +18,7 @@ describe("MonorepoCheckCommand", () => {
   let command: InstanceType<typeof MonorepoCheckCommand>;
   let testDir: string;
   let originalCwd: string;
+  let stdoutSpy: ReturnType<typeof spyOn>;
 
   const writeTarget = async (base: string, packageJson: PackageJsonShapeType): Promise<void> => {
     await Bun.write(join(testDir, base, "package.json"), JSON.stringify(packageJson, null, 2));
@@ -42,6 +43,9 @@ describe("MonorepoCheckCommand", () => {
   };
 
   beforeEach(async () => {
+    // The underlying runner streams its progress to `process.stdout`. Swallow it
+    // here so those lines don't interleave with the test reporter's output.
+    stdoutSpy = spyOn(process.stdout, "write").mockReturnValue(true);
     command = new MonorepoCheckCommand();
     originalCwd = process.cwd();
     testDir = join(originalCwd, ".temp", `monorepo-check-${Date.now()}-${Math.floor(Math.random() * 10000)}`);
@@ -68,6 +72,7 @@ describe("MonorepoCheckCommand", () => {
   });
 
   afterEach(() => {
+    stdoutSpy.mockRestore();
     process.chdir(originalCwd);
     if (existsSync(testDir)) {
       rmSync(testDir, { recursive: true, force: true });

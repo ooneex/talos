@@ -163,7 +163,7 @@ describe("CompletionZshCommand", () => {
       const talosContent = await Bun.file(join(completionDir, "_talos")).text();
 
       // completion:zsh and related commands should have no options at all
-      const noOptsMatch = talosContent.match(/agent:skills:create\|completion:zsh\|help\|version\|upgrade\)\s*;;/);
+      const noOptsMatch = talosContent.match(/completion:zsh\|help\|version\|upgrade\)\s*;;/);
       expect(noOptsMatch).not.toBeNull();
 
       // module:create should only have --name, not --module

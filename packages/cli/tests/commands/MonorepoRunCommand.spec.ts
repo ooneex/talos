@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, mock, spyOn, test } from "bun:test";
 import { existsSync, rmSync } from "node:fs";
 import { join } from "node:path";
 
@@ -18,6 +18,12 @@ describe("MonorepoRunCommand", () => {
   let command: InstanceType<typeof MonorepoRunCommand>;
   let testDir: string;
   let originalCwd: string;
+  let stdoutSpy: ReturnType<typeof spyOn>;
+  let stdoutChunks: string[];
+
+  // Everything the command wrote to stdout, ANSI colors stripped, as one string.
+  const ansiRegex = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g");
+  const output = (): string => stdoutChunks.join("").replace(ansiRegex, "");
 
   const writeTarget = async (base: string, packageJson: PackageJsonShapeType): Promise<void> => {
     await Bun.write(join(testDir, base, "package.json"), JSON.stringify(packageJson, null, 2));
@@ -31,6 +37,16 @@ describe("MonorepoRunCommand", () => {
   };
 
   beforeEach(async () => {
+    // The command under test streams its progress to `process.stdout`. Capture
+    // it here (instead of letting it through) so those lines don't interleave
+    // with the test reporter's output — e.g. when `oo monorepo:run
+    // --commands=…,test` runs this very suite — while still letting tests assert
+    // on what was logged via `output()`.
+    stdoutChunks = [];
+    stdoutSpy = spyOn(process.stdout, "write").mockImplementation((chunk: string | Uint8Array): boolean => {
+      stdoutChunks.push(typeof chunk === "string" ? chunk : Buffer.from(chunk).toString());
+      return true;
+    });
     command = new MonorepoRunCommand();
     originalCwd = process.cwd();
     testDir = join(originalCwd, ".temp", `monorepo-run-${Date.now()}-${Math.floor(Math.random() * 10000)}`);
@@ -56,6 +72,7 @@ describe("MonorepoRunCommand", () => {
   });
 
   afterEach(() => {
+    stdoutSpy.mockRestore();
     process.chdir(originalCwd);
     if (existsSync(testDir)) {
       rmSync(testDir, { recursive: true, force: true });
@@ -255,6 +272,70 @@ describe("MonorepoRunCommand", () => {
 
       expect(process.exitCode).toBe(1);
       expect(await readLines("gamma.log")).toEqual(["gamma", "gamma"]);
+    });
+  });
+
+  describe("logging", () => {
+    test("should not log successful tasks, only the run header and summary", async () => {
+      await command.run({ commands: "build", logs: true });
+
+      const logged = output();
+      // The header and closing summary still frame the run.
+      expect(logged).toContain("build  3 tasks across 3 targets");
+      expect(logged).toContain("Ran build");
+      // No per-task line for any of the tasks that succeeded.
+      expect(logged).not.toContain("alpha:build");
+      expect(logged).not.toContain("beta:build");
+      expect(logged).not.toContain("billing:build");
+      expect(logged).not.toContain("started");
+    });
+
+    test("should not log skipped or cached tasks", async () => {
+      // beta and billing have no "lint" script, so they are skipped.
+      await command.run({ commands: "lint", logs: true });
+      // A second identical run turns alpha:lint into a cache hit.
+      await command.run({ commands: "lint", logs: true });
+
+      const logged = output();
+      // No per-task lines for the skipped (beta, billing) or cached (alpha) tasks.
+      expect(logged).not.toContain("alpha:lint");
+      expect(logged).not.toContain('no "lint" script');
+      // The counts still show up in the closing summary, though.
+      expect(logged).toContain("2 skipped");
+      expect(logged).toContain("1 cached");
+    });
+
+    test("should log a failed task with its failure excerpt", async () => {
+      await writeTarget("packages/gamma", {
+        name: "@test/gamma",
+        scripts: { build: 'echo "error: boom happened" >&2 && exit 1' },
+      });
+
+      await command.run({ commands: "build", packages: "gamma", logs: true });
+
+      const logged = output();
+      expect(process.exitCode).toBe(1);
+      // The failed task is announced with its exit status...
+      expect(logged).toContain("gamma:build");
+      expect(logged).toContain("failed");
+      // ...and its captured output is surfaced as a ┃-prefixed excerpt.
+      expect(logged).toContain("error: boom happened");
+    });
+
+    test("should log only the failed task when others succeed", async () => {
+      await writeTarget("packages/gamma", {
+        name: "@test/gamma",
+        scripts: { build: "exit 1" },
+      });
+
+      await command.run({ commands: "build", logs: true });
+
+      const logged = output();
+      expect(process.exitCode).toBe(1);
+      expect(logged).toContain("gamma:build");
+      // Tasks that succeeded before the failure stay silent.
+      expect(logged).not.toContain("alpha:build");
+      expect(logged).not.toContain("billing:build");
     });
   });
 });
