@@ -1,7 +1,7 @@
 {
   "name": "@talosjs/database",
   "description": "Database abstraction layer with TypeORM integration — provides connection pooling, query building, and migration support for relational databases",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "type": "module",
   "files": [
     "dist",
