@@ -3,6 +3,7 @@ import type { IException } from "@talosjs/exception";
 import { SQL } from "bun";
 import { createMigrationTable } from "./createMigrationTable";
 import { getMigrations } from "./getMigrations";
+import { deleteMigrationCache, migrationCacheDir } from "./migrationCache";
 import { terminalLogger } from "./terminalLogger";
 
 export const down = async (config?: { databaseUrl?: string; tableName?: string; version?: string }): Promise<void> => {
@@ -81,6 +82,10 @@ export const down = async (config?: { databaseUrl?: string; tableName?: string; 
         await tx`DELETE FROM ${sql(tableName)} WHERE id = ${id}`;
         logger.success(`Migration ${migrationName} rolled back\n`);
       });
+
+      // Drop the up-cache entry so the next `migration:up` re-applies it instead
+      // of treating the rolled-back migration as still up to date.
+      await deleteMigrationCache(migrationCacheDir(), id);
     } catch (error: unknown) {
       logger.error(`Migration ${migrationName} rollback failed\n`);
       logger.error(error as IException);

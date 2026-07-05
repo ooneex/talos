@@ -4,6 +4,7 @@ import type { IException } from "@talosjs/exception";
 import { SQL } from "bun";
 import { createMigrationTable } from "./createMigrationTable";
 import { getMigrations } from "./getMigrations";
+import { computeMigrationHash, isMigrationCached, migrationCacheDir, writeMigrationCache } from "./migrationCache";
 import { terminalLogger } from "./terminalLogger";
 import type { IMigration } from "./types";
 
@@ -26,15 +27,57 @@ export const up = async (config?: { databaseUrl?: string; tableName?: string }):
       drop: {
         type: "boolean",
       },
+      "no-cache": {
+        type: "boolean",
+      },
     },
     strict: false,
     allowPositionals: true,
   });
 
   const tableName = config?.tableName || "migrations";
+  const databaseUrl = config?.databaseUrl || Bun.env.DATABASE_URL;
+
+  const logger = terminalLogger;
+
+  const migrations = getMigrations();
+
+  if (migrations.length === 0 && !values.drop) {
+    logger.info("No migrations found\n");
+    process.exit(0);
+  }
+
+  // Per-version run cache: a migration whose code is unchanged since its last
+  // successful apply is skipped without touching the database. `--drop` resets
+  // the database (so a hit would wrongly skip the rebuild) and `--no-cache` is
+  // the escape hatch — both disable it. Entries live under `var/cache/migrations`.
+  const cacheEnabled = !values.drop && !values["no-cache"];
+  const cacheDir = migrationCacheDir();
+  const hashById = new Map<string, string>();
+  const cachedIds = new Set<string>();
+
+  if (cacheEnabled) {
+    for (const migration of migrations) {
+      const id = migration.getVersion();
+      const hash = computeMigrationHash(migration, tableName, databaseUrl);
+      hashById.set(id, hash);
+      if (await isMigrationCached(cacheDir, id, hash)) {
+        cachedIds.add(id);
+      }
+    }
+
+    // Fast path: when every migration is already recorded as applied and
+    // unchanged, there is nothing to run — skip opening a database connection.
+    if (cachedIds.size === migrations.length) {
+      for (const migration of migrations) {
+        logger.success(`Migration ${migration.getVersion()} up to date (cached)\n`);
+      }
+      process.exit(0);
+    }
+  }
 
   const sql = new SQL({
-    url: config?.databaseUrl || Bun.env.DATABASE_URL,
+    url: databaseUrl,
 
     // Connection pool settings.
     // Migrations run sequentially (one transaction at a time), so a small
@@ -51,15 +94,11 @@ export const up = async (config?: { databaseUrl?: string; tableName?: string }):
     prepare: false,
   });
 
-  const logger = terminalLogger;
-
   if (values.drop) {
     await sql`DROP SCHEMA public CASCADE`;
     await sql`CREATE SCHEMA public`;
     logger.info("Database dropped\n");
   }
-
-  const migrations = getMigrations();
 
   if (migrations.length === 0) {
     logger.info("No migrations found\n");
@@ -71,14 +110,24 @@ export const up = async (config?: { databaseUrl?: string; tableName?: string }):
 
   for (const migration of migrations) {
     const id = migration.getVersion();
+    const migrationName = id;
+
+    if (cachedIds.has(id)) {
+      logger.success(`Migration ${migrationName} up to date (cached)\n`);
+      continue;
+    }
 
     const entities = await sql`SELECT * FROM ${sql(tableName)} WHERE id = ${id}`;
 
     if (entities.length > 0) {
+      // Applied on a previous run (e.g. before this cache existed, or by another
+      // process). Record it so the next run skips even the lookup.
+      const hash = hashById.get(id);
+      if (cacheEnabled && hash) {
+        await writeMigrationCache(cacheDir, id, hash);
+      }
       continue;
     }
-
-    const migrationName = id;
 
     try {
       await sql.begin(async (tx) => {
@@ -86,6 +135,12 @@ export const up = async (config?: { databaseUrl?: string; tableName?: string }):
         await tx`INSERT INTO ${sql(tableName)} (id) VALUES (${id})`;
         logger.success(`Migration ${migrationName} completed\n`);
       });
+
+      // Only cache once the transaction has committed successfully.
+      const hash = hashById.get(id);
+      if (cacheEnabled && hash) {
+        await writeMigrationCache(cacheDir, id, hash);
+      }
     } catch (error: unknown) {
       logger.error(`Migration ${migrationName} failed\n`);
       logger.error(error as IException);
