@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.18.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.18.0) - 2026-07-06
+
+### Added
+
+- Copy vite config and mark SPA module as ES module| — Franck ([c62ec232](https://github.com/ooneex/talos/commit/c62ec232))
+
 ## [1.17.1](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.17.1) - 2026-07-06
 
 ### Fixed
