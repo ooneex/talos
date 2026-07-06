@@ -128,6 +128,11 @@ talos docker:credentials:create [--registry <host>] [--username <user>] [--token
 
 Credentials are stored per-user under `~/.talos/credentials/*.yml` in a `profiles.default` block. Each command prompts (token input is masked) for anything not passed as a flag and prints the URL where the token can be created.
 
+`github:secret:push` creates or updates a GitHub Actions secret on a repository. It resolves the repository from the `origin` remote in `.git/config` in the current directory, reads the token from `~/.talos/credentials/github.yml`, passes it to `gh secret set` (which encrypts the value locally before uploading), and prints the settings URL where the secret can be seen. It prompts (the value input is masked) for anything not passed as a flag:
+```bash
+talos github:secret:push [--name <name>] [--value <value>]                                 # Create/update a GitHub Actions secret via gh
+```
+
 ## Assistant & Shell setup
 ```bash
 talos agent:skills:create  # Write AGENTS.md + skills/agents for the selected assistants (.claude, .codex, ...)

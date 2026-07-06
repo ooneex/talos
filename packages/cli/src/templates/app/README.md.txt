@@ -1200,6 +1200,12 @@ oo docker:credentials:create --registry docker.io --username "$DOCKER_USER" --to
 - Prefer scoped tokens (npm Granular Access Tokens, Docker personal access tokens) over account passwords.
 - Rotate tokens periodically by re-running the command, which overwrites the `default` profile.
 
+Once the GitHub token is saved, `github:secret:push` creates or updates a **GitHub Actions secret** on a repository. It resolves the repository from the `origin` remote in `.git/config` in the current directory, reads the token from `~/.talos/credentials/github.yml`, and hands the value to `gh secret set`, which encrypts it locally before uploading, then prints the settings URL where the secret can be seen. The value prompt is masked; pass `--name` and `--value` to run it non-interactively in CI (the `gh` CLI must be installed):
+
+```bash
+oo github:secret:push --name MY_SECRET --value "$MY_SECRET"
+```
+
 ---
 
 ## Commands

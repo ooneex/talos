@@ -175,6 +175,7 @@ _talos() {
     'docker\:credentials\:create:Save a Docker registry access token under the user config'
     'docker\:publish:Build and push a package or module Docker image to Docker Hub'
     'github\:credentials\:create:Save a GitHub Personal Access Token under the user config'
+    'github\:secret\:push:Create or update a GitHub Actions secret on a repository'
     'jira\:credentials\:create:Save a Jira API token under the user config'
     'linear\:credentials\:create:Save a Linear Personal API key under the user config'
     'npm\:credentials\:create:Save an npm Granular Access Token under the user config'
@@ -319,6 +320,11 @@ _talos() {
         github:credentials:create)
           _arguments -s \
             '--token=[GitHub Personal Access Token]:token'
+          ;;
+        github:secret:push)
+          _arguments -s \
+            '--name=[Secret name]:name' \
+            '--value=[Secret value]:value'
           ;;
         jira:credentials:create)
           _arguments -s \

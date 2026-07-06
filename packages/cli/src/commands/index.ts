@@ -30,6 +30,7 @@ export { EventCreateCommand } from "./EventCreateCommand";
 export { FeatureFlagCreateCommand } from "./FeatureFlagCreateCommand";
 export { FmtCommand } from "./FmtCommand";
 export { GithubCredentialsCreateCommand } from "./GithubCredentialsCreateCommand";
+export { GithubSecretPushCommand } from "./GithubSecretPushCommand";
 export { HelpCommand } from "./HelpCommand";
 export { IssueCreateCommand } from "./IssueCreateCommand";
 export { IssuePullCommand } from "./IssuePullCommand";
