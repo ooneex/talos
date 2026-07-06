@@ -4,7 +4,7 @@ import { renderToString } from "react-dom/server";
 import { Resend } from "resend";
 import { decorator } from "./decorators";
 import { MailerException } from "./MailerException";
-import type { IMailer } from "./types";
+import type { IMailer, MailerAttachmentType } from "./types";
 
 @decorator.mailer()
 export class ResendMailer implements IMailer {
@@ -34,6 +34,7 @@ export class ResendMailer implements IMailer {
     subject: string;
     content: React.ReactNode;
     from?: { name: string; address: string };
+    attachments?: MailerAttachmentType[];
   }): Promise<void> {
     const senderName = config.from?.name || this.from?.name || "";
     const senderAddress = config.from?.address || this.from?.address || "";
@@ -57,6 +58,7 @@ export class ResendMailer implements IMailer {
       from: `${senderName} <${senderAddress}>`,
       subject: `${config.subject}`,
       html: renderToString(config.content),
+      ...(config.attachments && { attachments: config.attachments }),
     });
   }
 }

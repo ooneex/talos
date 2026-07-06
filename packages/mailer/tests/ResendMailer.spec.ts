@@ -149,5 +149,61 @@ describe("ResendMailer", () => {
         }),
       );
     });
+
+    test("should send email with attachments", async () => {
+      const mailer = new ResendMailer(new AppEnv());
+
+      await mailer.send({
+        to: ["recipient@example.com"],
+        subject: "Test Subject",
+        content: "Hello World",
+        attachments: [{ filename: "invoice.pdf", content: "base64content" }],
+      });
+
+      expect(mockSend).toHaveBeenCalledWith(
+        expect.objectContaining({
+          attachments: [{ filename: "invoice.pdf", content: "base64content" }],
+        }),
+      );
+    });
+
+    test("should send email with multiple attachments", async () => {
+      const mailer = new ResendMailer(new AppEnv());
+
+      await mailer.send({
+        to: ["recipient@example.com"],
+        subject: "Test Subject",
+        content: "Hello World",
+        attachments: [
+          { filename: "invoice.pdf", content: "base64content" },
+          { filename: "logo.png", path: "https://example.com/logo.png" },
+        ],
+      });
+
+      expect(mockSend).toHaveBeenCalledWith(
+        expect.objectContaining({
+          attachments: [
+            { filename: "invoice.pdf", content: "base64content" },
+            { filename: "logo.png", path: "https://example.com/logo.png" },
+          ],
+        }),
+      );
+    });
+
+    test("should not include attachments key when none are provided", async () => {
+      const mailer = new ResendMailer(new AppEnv());
+
+      await mailer.send({
+        to: ["recipient@example.com"],
+        subject: "Test Subject",
+        content: "Hello World",
+      });
+
+      expect(mockSend).toHaveBeenCalledWith(
+        expect.not.objectContaining({
+          attachments: expect.anything(),
+        }),
+      );
+    });
   });
 });
