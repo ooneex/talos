@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.14.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.14.0) - 2026-07-06
+
+### Added
+
+- Add build, fmt, lint, and test script alias commands| — Franck ([c620c3ca](https://github.com/ooneex/talos/commit/c620c3ca))
+
 ## [1.13.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.13.0) - 2026-07-06
 
 ### Added
