@@ -97,19 +97,18 @@ export const loadEnv = async (candidates?: string[]): Promise<void> => {
   const cwd = process.cwd();
   const paths = candidates ?? [join(cwd, ".env.yml")];
 
-  let parsed: { [key: string]: YamlNode } | null = null;
+  // Layer every existing candidate in order, later files overriding earlier keys.
+  // Empty values are skipped by flatten(), so a module's .env.yml overrides only
+  // the keys it actually sets (e.g. its own PORT) while inheriting shared config.
+  const vars: Record<string, string> = {};
 
   for (const path of paths) {
     const file = Bun.file(path);
     if (await file.exists()) {
-      parsed = Bun.YAML.parse(await file.text()) as { [key: string]: YamlNode };
-      break;
+      const parsed = Bun.YAML.parse(await file.text()) as { [key: string]: YamlNode };
+      Object.assign(vars, flatten(parsed));
     }
   }
-
-  if (!parsed) return;
-
-  const vars = flatten(parsed);
 
   for (const [key, value] of Object.entries(vars)) {
     Bun.env[key] = value;

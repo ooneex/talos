@@ -58,10 +58,27 @@ describe("loadEnv", () => {
     expect(Bun.env.APP_ENV).toBe("staging");
   });
 
-  test("uses the first existing custom candidate", async () => {
+  test("skips missing candidates and loads the existing one", async () => {
     await Bun.write(`${testDir}/second.env.yml`, 'app:\n  env: "production"\n');
     await loadEnv([`${testDir}/missing.env.yml`, `${testDir}/second.env.yml`]);
     expect(Bun.env.APP_ENV).toBe("production");
+  });
+
+  test("layers candidates, later files overriding earlier keys", async () => {
+    await Bun.write(`${testDir}/base.env.yml`, 'app:\n  env: "production"\n  port: 3000\n');
+    await Bun.write(`${testDir}/override.env.yml`, "app:\n  port: 3001\n");
+    await loadEnv([`${testDir}/base.env.yml`, `${testDir}/override.env.yml`]);
+    // The later file overrides the port...
+    expect(Bun.env.PORT).toBe("3001");
+    // ...but inherits keys it does not set.
+    expect(Bun.env.APP_ENV).toBe("production");
+  });
+
+  test("does not override earlier keys with empty later values", async () => {
+    await Bun.write(`${testDir}/base.env.yml`, 'jwt:\n  secret: "root-secret"\n');
+    await Bun.write(`${testDir}/override.env.yml`, 'jwt:\n  secret: ""\n');
+    await loadEnv([`${testDir}/base.env.yml`, `${testDir}/override.env.yml`]);
+    expect(Bun.env.JWT_SECRET).toBe("root-secret");
   });
 
   test("maps app.host to HOST_NAME not APP_HOST", async () => {
