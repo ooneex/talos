@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.2.0](https://github.com/ooneex/talos/releases/tag/@talosjs/seeds@1.2.0) - 2026-07-06
+
+### Added
+
+- Add per-seed run cache and styled runLogger output| — Franck ([cc96432f](https://github.com/ooneex/talos/commit/cc96432f))
+
+### Changed
+
+- Harden visibleWidth to strip malformed ANSI escapes| — Franck ([8d175504](https://github.com/ooneex/talos/commit/8d175504))
+- Extract SEEDS_CACHE_DIR into constants module| — Franck ([9cdc66e6](https://github.com/ooneex/talos/commit/9cdc66e6))
+- Remove @talosjs/logger dependency| — Franck ([47bb05ed](https://github.com/ooneex/talos/commit/47bb05ed))
+- Cover seed cache and runLogger| — Franck ([3357ab9a](https://github.com/ooneex/talos/commit/3357ab9a))
+
 ## [1.1.1](https://github.com/ooneex/talos/releases/tag/@talosjs/seeds@1.1.1) - 2026-07-05
 
 ### Changed
