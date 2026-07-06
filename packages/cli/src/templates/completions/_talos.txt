@@ -180,6 +180,7 @@ _talos() {
     'monorepo\:run:Run package.json scripts across packages and modules with granular caching'
     'run:Alias for monorepo:run — run package.json scripts across packages and modules with granular caching'
     'monorepo\:check:Run install, build, lint and test across packages and modules with granular caching'
+    'check:Alias for monorepo:check — run install, build, fmt, lint and test across packages and modules with granular caching'
     'entity\:create:Generate a new entity class'
     'flag\:create:Generate a new feature flag class'
     'logger\:create:Generate a new logger class'
@@ -341,7 +342,7 @@ _talos() {
             '--logs[Stream plain logs instead of the interactive view]' \
             '--no-cache[Skip reading and writing the task cache]'
           ;;
-        monorepo:check)
+        monorepo:check|check)
           _arguments -s \
             '--packages=-[Package name(s), comma-separated (default: all)]::packages:_talos_publish_packages' \
             '--modules=-[Module name(s), comma-separated (default: all)]::modules:_talos_publish_modules' \

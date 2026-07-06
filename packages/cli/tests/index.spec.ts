@@ -46,6 +46,7 @@ describe("@talosjs/cli - index", () => {
     "AppCreateCommand",
     "AppInitCommand",
     "CacheCreateCommand",
+    "CheckCommand",
     "CommandCreateCommand",
     "CommitlintCheckCommand",
     "CommitlintInitCommand",
