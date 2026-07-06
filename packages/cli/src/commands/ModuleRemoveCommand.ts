@@ -26,6 +26,32 @@ export class ModuleRemoveCommand<T extends CommandOptionsType = CommandOptionsTy
     return "Remove an existing module";
   }
 
+  // Read the `type` declared in the module's `<name>.yml` config, or null when absent.
+  private async readModuleType(moduleDir: string, kebabName: string): Promise<string | null> {
+    const ymlFile = Bun.file(join(moduleDir, `${kebabName}.yml`));
+    if (!(await ymlFile.exists())) return null;
+
+    const match = (await ymlFile.text()).match(/^type:\s*"?([a-z]+)"?/m);
+    return match?.[1] ?? null;
+  }
+
+  private async removeFromAppYml(appYmlPath: string, kebabName: string): Promise<void> {
+    if (!(await Bun.file(appYmlPath).exists())) return;
+
+    let content = await Bun.file(appYmlPath).text();
+    const esc = kebabName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+    // Remove the optional comment line and the microservice list item (name + indented lines)
+    const regex = new RegExp(
+      `(?:^[ \\t]*# ${esc} microservice[^\\n]*\\n)?^  - name: "${esc}"\\n(?:^ {4,}[^\\n]*\\n)*`,
+      "m",
+    );
+    content = content.replace(regex, "");
+    content = content.replace(/\n{3,}/g, "\n\n");
+
+    await Bun.write(appYmlPath, content);
+  }
+
   public async run(options: T): Promise<void> {
     const { cwd = process.cwd(), silent = false } = options;
     let { name } = options;
@@ -73,6 +99,13 @@ export class ModuleRemoveCommand<T extends CommandOptionsType = CommandOptionsTy
     // Remove from SharedModule
     const sharedModulePath = join(cwd, "modules", "shared", "src", "SharedModule.ts");
     await removeFromSharedModule(sharedModulePath, pascalName, kebabName);
+
+    // A microservice is declared in the app module config, so remove it from there
+    const moduleType = await this.readModuleType(moduleDir, kebabName);
+    if (moduleType === "microservice") {
+      const appYmlPath = join(cwd, "modules", "app", "app.yml");
+      await this.removeFromAppYml(appYmlPath, kebabName);
+    }
 
     // Remove path alias from tsconfig
     const appTsconfigPath = join(cwd, "tsconfig.json");

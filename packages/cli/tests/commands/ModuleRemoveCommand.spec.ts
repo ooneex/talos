@@ -10,20 +10,24 @@ mock.module("enquirer", () => ({
 
 const { ModuleCreateCommand } = await import("@/commands/ModuleCreateCommand");
 const { ModuleRemoveCommand } = await import("@/commands/ModuleRemoveCommand");
+const { MicroserviceCreateCommand } = await import("@/commands/MicroserviceCreateCommand");
 
 const exists = (path: string) => Bun.file(path).exists();
+const read = (path: string) => Bun.file(path).text();
 
 describe("ModuleRemoveCommand", () => {
   let makeCommand: InstanceType<typeof ModuleCreateCommand>;
   let removeCommand: InstanceType<typeof ModuleRemoveCommand>;
+  let makeMicroservice: InstanceType<typeof MicroserviceCreateCommand>;
   let testDir: string;
   let originalCwd: string;
 
   beforeEach(() => {
     makeCommand = new ModuleCreateCommand();
     removeCommand = new ModuleRemoveCommand();
+    makeMicroservice = new MicroserviceCreateCommand();
     originalCwd = process.cwd();
-    testDir = join(originalCwd, ".temp", `remove-module-${Date.now()}`);
+    testDir = join(originalCwd, ".temp", `remove-module-${Date.now()}-${Math.random().toString(36).slice(2)}`);
   });
 
   afterEach(() => {
@@ -165,6 +169,45 @@ describe("ModuleRemoveCommand", () => {
       expect(content).not.toContain("BlogModule");
       expect(content).toContain('import { ShopModule } from "@module/shop/ShopModule"');
       expect(content).toContain("...ShopModule.entities");
+    });
+  });
+
+  describe("app.yml integration", () => {
+    test("should remove the microservice declaration when removing a microservice", async () => {
+      await Bun.write(join(testDir, "modules", "app", "app.yml"), 'name: app\ntype: "api"\n');
+
+      await makeMicroservice.run({ name: "Billing", cwd: testDir, silent: true });
+      await removeCommand.run({ name: "Billing", cwd: testDir, silent: true });
+
+      const content = await read(join(testDir, "modules", "app", "app.yml"));
+      expect(content).not.toContain('- name: "billing"');
+      expect(content).not.toContain("MICROSERVICE_BILLING_URL");
+    });
+
+    test("should preserve other microservices when removing one", async () => {
+      await Bun.write(join(testDir, "modules", "app", "app.yml"), 'name: app\ntype: "api"\n');
+
+      await makeMicroservice.run({ name: "Billing", cwd: testDir, silent: true });
+      await makeMicroservice.run({ name: "Shipping", cwd: testDir, silent: true });
+      await removeCommand.run({ name: "Billing", cwd: testDir, silent: true });
+
+      const content = await read(join(testDir, "modules", "app", "app.yml"));
+      expect(content).not.toContain('- name: "billing"');
+      expect(content).toContain('- name: "shipping"');
+      expect(content).toContain("MICROSERVICE_SHIPPING_URL");
+    });
+
+    test("should leave app.yml untouched when removing a regular module", async () => {
+      await Bun.write(join(testDir, "modules", "app", "app.yml"), 'name: app\ntype: "api"\n');
+
+      await makeMicroservice.run({ name: "Billing", cwd: testDir, silent: true });
+      await makeCommand.run({ name: "Blog", cwd: testDir, silent: true });
+      await removeCommand.run({ name: "Blog", cwd: testDir, silent: true });
+
+      // Removing the plain module must not touch the microservice declaration
+      const content = await read(join(testDir, "modules", "app", "app.yml"));
+      expect(content).toContain('- name: "billing"');
+      expect(content).toContain("MICROSERVICE_BILLING_URL");
     });
   });
 });
