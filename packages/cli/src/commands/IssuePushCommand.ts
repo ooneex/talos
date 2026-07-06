@@ -90,7 +90,6 @@ export class IssuePushCommand<T extends CommandOptionsType = CommandOptionsType>
     const logger = new TerminalLogger();
     const credentials = await readCredentials("linear.yml");
     const apiKey = credentials?.token;
-    const teamId = credentials?.teamId;
 
     if (!apiKey) {
       logger.error("No Linear credentials found. Run `talos linear:credentials:create`", undefined, LOG_OPTIONS);
@@ -111,7 +110,7 @@ export class IssuePushCommand<T extends CommandOptionsType = CommandOptionsType>
     const content = await Bun.file(filePath).text();
     const parsed = parseIssueYaml(content);
 
-    const service = new LinearService(new AppEnv(), { apiKey, ...(teamId ? { teamId } : {}) });
+    const service = new LinearService(new AppEnv(), { apiKey });
 
     let existingIssue: Issue | null = null;
     try {
@@ -125,7 +124,7 @@ export class IssuePushCommand<T extends CommandOptionsType = CommandOptionsType>
     if (existingIssue) {
       await this.pushUpdate(service, existingIssue, parsed, logger);
     } else {
-      await this.pushCreate(service, parsed, logger, issuesDir, id, filePath, content, teamId);
+      await this.pushCreate(service, parsed, logger, issuesDir, id, filePath, content);
     }
   }
 
@@ -167,7 +166,6 @@ export class IssuePushCommand<T extends CommandOptionsType = CommandOptionsType>
     localId: string,
     filePath: string,
     content: string,
-    teamId?: string,
   ): Promise<void> {
     if (!parsed.title) {
       logger.error("Issue title is required to create in Linear", undefined, LOG_OPTIONS);
@@ -184,24 +182,13 @@ export class IssuePushCommand<T extends CommandOptionsType = CommandOptionsType>
       return;
     }
 
-    let team: (typeof teams)[0] | undefined;
-
-    if (teamId) {
-      team = teams.find((t) => t.id === teamId);
-      if (!team) {
-        logger.error(`Team "${teamId}" (linear credentials) not found in Linear`, undefined, LOG_OPTIONS);
-        process.exitCode = 1;
-        return;
-      }
-    } else {
-      const { teamKey } = await prompt<{ teamKey: string }>({
-        type: "select",
-        name: "teamKey",
-        message: "Select target team",
-        choices: teams.map((t) => ({ name: t.key, message: `${t.name} (${t.key})` })),
-      } as Parameters<typeof prompt>[0]);
-      team = teams.find((t) => t.key === teamKey);
-    }
+    const { teamKey } = await prompt<{ teamKey: string }>({
+      type: "select",
+      name: "teamKey",
+      message: "Select target team",
+      choices: teams.map((t) => ({ name: t.key, message: `${t.name} (${t.key})` })),
+    } as Parameters<typeof prompt>[0]);
+    const team = teams.find((t) => t.key === teamKey);
 
     if (!team) return;
 

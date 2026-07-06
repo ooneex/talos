@@ -415,8 +415,7 @@ describe("IssuePushCommand", () => {
       expect(mockLoggerSuccess).toHaveBeenCalled();
     });
 
-    test("should use teamId from credentials to select team without prompting", async () => {
-      linearCredentials = { token: "test-api-key", teamId: "team-1" };
+    test("should prompt to select the target team", async () => {
       await writeIssueFile("ENG-123", 'title: "New Issue"\n');
 
       await command.run({ id: "ENG-123" });
@@ -427,17 +426,7 @@ describe("IssuePushCommand", () => {
 
       const promptCalls = mockPrompt.mock.calls as unknown as Array<[{ name: string }]>;
       const teamCall = promptCalls.find((c) => c[0]?.name === "teamKey");
-      expect(teamCall).toBeUndefined();
-    });
-
-    test("should log error when teamId from credentials does not match any team", async () => {
-      linearCredentials = { token: "test-api-key", teamId: "nonexistent-team" };
-      await writeIssueFile("ENG-123", 'title: "New Issue"\n');
-
-      await command.run({ id: "ENG-123" });
-
-      expect(mockLoggerError).toHaveBeenCalledTimes(1);
-      expect(mockCreateIssue).not.toHaveBeenCalled();
+      expect(teamCall).toBeDefined();
     });
   });
 
