@@ -1,5 +1,29 @@
 # Changelog
 
+## [1.12.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.12.0) - 2026-07-06
+
+### Added
+
+- Suggest only Dockerfile targets for docker:publish completions| — Franck ([df0f679d](https://github.com/ooneex/talos/commit/df0f679d))
+- Add docker:publish command to build and push images to Docker Hub| — Franck ([3d24f305](https://github.com/ooneex/talos/commit/3d24f305))
+- Pass per-module seed cache directory to seed:run| — Franck ([4c839f6d](https://github.com/ooneex/talos/commit/4c839f6d))
+- Pass per-module cache directory to migration scripts| — Franck ([59cf20d9](https://github.com/ooneex/talos/commit/59cf20d9))
+- Cache module script runs to skip unchanged modules on migration:up| — Franck ([4661b054](https://github.com/ooneex/talos/commit/4661b054))
+
+### Changed
+
+- Strip malformed ANSI escapes up to terminating m byte| — Franck ([db6ddfcc](https://github.com/ooneex/talos/commit/db6ddfcc))
+- Import MIGRATIONS_CACHE_DIR from @talosjs/migrations| — Franck ([ceb6c4ff](https://github.com/ooneex/talos/commit/ceb6c4ff))
+- Import SEEDS_CACHE_DIR from @talosjs/seeds| — Franck ([e975d5fc](https://github.com/ooneex/talos/commit/e975d5fc))
+- Cover per-module cache directory for seed:run| — Franck ([340f24dc](https://github.com/ooneex/talos/commit/340f24dc))
+- Cover per-module cache directory for migration scripts| — Franck ([110c460a](https://github.com/ooneex/talos/commit/110c460a))
+- Update migration runner tests for relocated cache| — Franck ([e1a4a5b3](https://github.com/ooneex/talos/commit/e1a4a5b3))
+- Move migration caching into the migrations package| — Franck ([bd11c1ac](https://github.com/ooneex/talos/commit/bd11c1ac))
+- Document utils folder in module scaffold skill template| — Franck ([6e03717e](https://github.com/ooneex/talos/commit/6e03717e))
+- Cover module script cache in migration:up and runModuleScripts| — Franck ([febf8710](https://github.com/ooneex/talos/commit/febf8710))
+- Use monorepo:check in LLM scaffold templates| — Franck ([7770ebac](https://github.com/ooneex/talos/commit/7770ebac))
+- Read tsconfig via Bun.file().json() in moduleRegistry| — Franck ([b1e529c7](https://github.com/ooneex/talos/commit/b1e529c7))
+
 ## [1.11.2](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.11.2) - 2026-07-05
 
 ### Changed
