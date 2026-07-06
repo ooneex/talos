@@ -225,16 +225,14 @@ export class App {
       await appEventStart.handle(server);
     }
 
-    if (!this.config.onStart) {
-      hostname = server.hostname || "0.0.0.0";
+    hostname = server.hostname || "0.0.0.0";
 
-      if (hostname === "0.0.0.0") {
-        hostname = "localhost";
-      }
-
-      const baseUrl = `${server.protocol}://${hostname}:${server.port}`;
-      logServerStart({ baseUrl, appEnv: env.APP_ENV, port: server.port ?? port, isLocal: env.isLocal });
+    if (hostname === "0.0.0.0") {
+      hostname = "localhost";
     }
+
+    const baseUrl = `${server.protocol}://${hostname}:${server.port}`;
+    logServerStart({ baseUrl, appEnv: env.APP_ENV, port: server.port ?? port, isLocal: env.isLocal });
 
     this.config.cronJobs?.forEach((cronJob) => {
       const cron = container.get<ICron>(cronJob);
