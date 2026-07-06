@@ -87,7 +87,6 @@ export class AppCreateCommand<T extends CommandOptionsType = CommandOptionsType>
     const dockerfileContent = dockerfileTemplate.replace(/{{NAME}}/g, snakeName);
     await Bun.write(join(destination, "modules", "app", "Dockerfile"), dockerfileContent);
     await Bun.write(join(destination, ".dockerignore"), dockerignoreTemplate);
-    await Bun.write(join(destination, "modules", "app", "var", ".gitkeep"), "");
     await Bun.write(join(destination, "var", ".gitkeep"), "");
 
     // Initialize app (config files, env, git, commit hook) before installing deps

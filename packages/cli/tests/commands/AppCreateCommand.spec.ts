@@ -287,12 +287,6 @@ describe("AppCreateCommand", () => {
       expect(content).toMatch(/inherits:\n {6}- ROLE_/m);
     });
 
-    test("should generate var directory with .gitkeep", async () => {
-      await command.run({ name: "MyApp", destination: testDir });
-
-      expect(await exists(join(testDir, "modules", "app", "var", ".gitkeep"))).toBe(true);
-    });
-
     test("should generate root var directory with .gitkeep", async () => {
       await command.run({ name: "MyApp", destination: testDir });
 
