@@ -130,7 +130,7 @@
     },
     "packages/cli": {
       "name": "@talosjs/cli",
-      "version": "1.15.0",
+      "version": "1.16.0",
       "bin": {
         "talos": "./dist/index.js",
         "oo": "./dist/index.js",
@@ -160,7 +160,7 @@
     },
     "packages/command": {
       "name": "@talosjs/command",
-      "version": "1.4.0",
+      "version": "1.5.0",
       "dependencies": {
         "@talosjs/app-env": "workspace:^",
         "@talosjs/container": "workspace:^",
