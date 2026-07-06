@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.1.3](https://github.com/ooneex/talos/releases/tag/@talosjs/rag@1.1.3) - 2026-07-06
+
+### Changed
+
+- Increase Convertor test timeouts for slow JVM cold start| — Franck ([fcc61d7c](https://github.com/ooneex/talos/commit/fcc61d7c))
+
 ## [1.1.2](https://github.com/ooneex/talos/releases/tag/@talosjs/rag@1.1.2) - 2026-07-05
 
 ### Changed
