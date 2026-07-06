@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.21.1](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.21.1) - 2026-07-06
+
+### Changed
+
+- Remove server url logging from OnAppStart template| — Franck ([e9710092](https://github.com/ooneex/talos/commit/e9710092))
+
 ## [1.21.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.21.0) - 2026-07-06
 
 ### Added
