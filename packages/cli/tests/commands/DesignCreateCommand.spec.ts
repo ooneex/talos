@@ -141,7 +141,7 @@ describe("DesignCreateCommand", () => {
 
       const cloneCall = spawnCalls.find((call) => call.cmd[0] === "git" && call.cmd[1] === "clone");
       expect(cloneCall).toBeDefined();
-      expect(cloneCall?.cmd).toContain("https://github.com/talos/skeleton-design.git");
+      expect(cloneCall?.cmd).toContain("https://github.com/ooneex/skeleton-design.git");
     });
 
     test("should run clone and installs silently without inheriting output", async () => {

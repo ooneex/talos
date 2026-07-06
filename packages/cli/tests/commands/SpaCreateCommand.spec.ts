@@ -294,7 +294,7 @@ describe("SpaCreateCommand", () => {
       expect(await read(designYml)).toContain('type: "design"');
 
       const cloneCall = spawnCalls.find(
-        (call) => call.cmd[0] === "git" && call.cmd.includes("https://github.com/talos/skeleton-design.git"),
+        (call) => call.cmd[0] === "git" && call.cmd.includes("https://github.com/ooneex/skeleton-design.git"),
       );
       expect(cloneCall).toBeDefined();
     });
@@ -309,7 +309,7 @@ describe("SpaCreateCommand", () => {
       expect(content).toContain('design: "my-design"');
 
       const cloneCall = spawnCalls.find(
-        (call) => call.cmd[0] === "git" && call.cmd.includes("https://github.com/talos/skeleton-design.git"),
+        (call) => call.cmd[0] === "git" && call.cmd.includes("https://github.com/ooneex/skeleton-design.git"),
       );
       expect(cloneCall).toBeUndefined();
     });

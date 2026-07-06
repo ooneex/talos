@@ -11,7 +11,7 @@ import { askName } from "../prompts/askName";
 import { ensureBin, LOG_OPTIONS, spawnStep } from "../utils";
 import { ModuleCreateCommand } from "./ModuleCreateCommand";
 
-const DESIGN_REPOSITORY = "https://github.com/talos/skeleton-design.git";
+const DESIGN_REPOSITORY = "https://github.com/ooneex/skeleton-design.git";
 
 type CommandOptionsType = {
   name?: string;
