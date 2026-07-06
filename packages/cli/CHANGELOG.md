@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.16.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.16.0) - 2026-07-06
+
+### Added
+
+- Add github:secret:push command| — Franck ([7436fdad](https://github.com/ooneex/talos/commit/7436fdad))
+
+### Changed
+
+- Simplify GitLab and Bitbucket pipeline templates| — Franck ([cdaaa538](https://github.com/ooneex/talos/commit/cdaaa538))
+- Simplify GitHub production deployment workflow templates| — Franck ([250f65f1](https://github.com/ooneex/talos/commit/250f65f1))
+- Update GitHub workflow templates| — Franck ([296f8e0f](https://github.com/ooneex/talos/commit/296f8e0f))
+- Consolidate CI templates to install talos globally and run monorepo:check| — Franck ([d34dacf0](https://github.com/ooneex/talos/commit/d34dacf0))
+
 ## [1.15.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.15.0) - 2026-07-06
 
 ### Added
