@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.2.0](https://github.com/ooneex/talos/releases/tag/@talosjs/mailer@1.2.0) - 2026-07-06
+
+### Added
+
+- Support attachments in ResendMailer send config| — Bidou ([2b685c53](https://github.com/ooneex/talos/commit/2b685c53))
+
+### Changed
+
+- Add tests for ResendMailer attachments support| — Bidou ([62fdfffa](https://github.com/ooneex/talos/commit/62fdfffa))
+
 ## [1.1.1](https://github.com/ooneex/talos/releases/tag/@talosjs/mailer@1.1.1) - 2026-07-05
 
 ### Changed
