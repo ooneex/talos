@@ -150,6 +150,22 @@ describe("_talos.txt", () => {
     });
   });
 
+  describe("docker publish target helpers", () => {
+    test("should define _talos_docker_publish_packages listing packages with a Dockerfile as a comma-separated value", async () => {
+      const content = await Bun.file(templatePath).text();
+      expect(content).toContain("_talos_docker_publish_packages()");
+      expect(content).toContain("packages=(packages/*/Dockerfile(N))");
+      expect(content).toContain("_values -s , 'packages'");
+    });
+
+    test("should define _talos_docker_publish_modules listing modules with a Dockerfile as a comma-separated value", async () => {
+      const content = await Bun.file(templatePath).text();
+      expect(content).toContain("_talos_docker_publish_modules()");
+      expect(content).toContain("modules=(modules/*/Dockerfile(N))");
+      expect(content).toContain("_values -s , 'modules'");
+    });
+  });
+
   describe("commands list", () => {
     const expectedCommands = [
       "app\\:init",
@@ -534,14 +550,14 @@ describe("_talos.txt", () => {
       expect(match?.[1]).toContain("restricted");
     });
 
-    test("docker:publish should have packages, modules, and tag options with publish target suggestions", async () => {
+    test("docker:publish should have packages, modules, and tag options with Dockerfile target suggestions", async () => {
       const content = await Bun.file(templatePath).text();
       const match = content.match(/docker:publish\)([\s\S]*?);;/);
       expect(match).not.toBeNull();
       expect(match?.[1]).toContain("--packages=");
-      expect(match?.[1]).toContain("_talos_publish_packages");
+      expect(match?.[1]).toContain("_talos_docker_publish_packages");
       expect(match?.[1]).toContain("--modules=");
-      expect(match?.[1]).toContain("_talos_publish_modules");
+      expect(match?.[1]).toContain("_talos_docker_publish_modules");
       expect(match?.[1]).toContain("--tag=");
     });
 

@@ -26,6 +26,24 @@ _talos_publish_modules() {
   fi
 }
 
+_talos_docker_publish_packages() {
+  local -a packages
+  if [[ -d packages ]]; then
+    packages=(packages/*/Dockerfile(N))
+    packages=(${${packages%/Dockerfile}#packages/})
+    _values -s , 'packages' $packages
+  fi
+}
+
+_talos_docker_publish_modules() {
+  local -a modules
+  if [[ -d modules ]]; then
+    modules=(modules/*/Dockerfile(N))
+    modules=(${${modules%/Dockerfile}#modules/})
+    _values -s , 'modules' $modules
+  fi
+}
+
 _talos_custom_commands() {
   local -a cmds
   if [[ -d modules ]]; then
@@ -286,8 +304,8 @@ _talos() {
           ;;
         docker:publish)
           _arguments -s \
-            '--packages=-[Package name(s), comma-separated (default: all)]::packages:_talos_publish_packages' \
-            '--modules=-[Module name(s), comma-separated (default: all)]::modules:_talos_publish_modules' \
+            '--packages=-[Package name(s), comma-separated (default: all)]::packages:_talos_docker_publish_packages' \
+            '--modules=-[Module name(s), comma-separated (default: all)]::modules:_talos_docker_publish_modules' \
             '--tag=[Image tag (default: package.json version or latest)]:tag'
           ;;
         github:credentials:create)
