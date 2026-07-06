@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.5.0](https://github.com/ooneex/talos/releases/tag/@talosjs/command@1.5.0) - 2026-07-06
+
+### Added
+
+- Parse tag and silent CLI options| — Franck ([623397e1](https://github.com/ooneex/talos/commit/623397e1))
+
 ## [1.4.0](https://github.com/ooneex/talos/releases/tag/@talosjs/command@1.4.0) - 2026-07-05
 
 ### Added
