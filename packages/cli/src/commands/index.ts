@@ -14,6 +14,8 @@ export { CommandCreateCommand } from "./CommandCreateCommand";
 export { CommandRunCommand } from "./CommandRunCommand";
 export { CommitlintCheckCommand } from "./CommitlintCheckCommand";
 export { CommitlintInitCommand } from "./CommitlintInitCommand";
+export { CompletionBashCommand } from "./CompletionBashCommand";
+export { CompletionFishCommand } from "./CompletionFishCommand";
 export { CompletionZshCommand } from "./CompletionZshCommand";
 export { ControllerCreateCommand } from "./ControllerCreateCommand";
 export { CronCreateCommand } from "./CronCreateCommand";

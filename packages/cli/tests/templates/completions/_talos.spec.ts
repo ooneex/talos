@@ -173,6 +173,8 @@ describe("_talos.txt", () => {
       "app\\:stop",
       "command\\:run",
       "completion\\:zsh",
+      "completion\\:bash",
+      "completion\\:fish",
       "help",
       "version",
       "upgrade",
@@ -510,9 +512,9 @@ describe("_talos.txt", () => {
       expect(match?.[1]).toContain("--version=");
     });
 
-    test("completion:zsh, version, and upgrade should have no options", async () => {
+    test("completion commands, version, and upgrade should have no options", async () => {
       const content = await Bun.file(templatePath).text();
-      const match = content.match(/completion:zsh\|help\|version\|upgrade\)\s*;;/);
+      const match = content.match(/completion:zsh\|completion:bash\|completion:fish\|help\|version\|upgrade\)\s*;;/);
       expect(match).not.toBeNull();
     });
 

@@ -1,0 +1,334 @@
+# Bash completion for the Talos CLI (oo / talos)
+#
+# https://www.gnu.org/software/bash/manual/html_node/Programmable-Completion.html
+#
+# Command names use a "group:action" form (e.g. app:create). Bash treats ':'
+# (and '=') as word-break characters, so the words are reassembled below and
+# candidates are colon-trimmed before being handed back to Readline.
+
+# ---- Dynamic candidate helpers ---------------------------------------------
+
+_talos_modules() {
+  [[ -d modules ]] && command ls -1 modules 2>/dev/null
+}
+
+_talos_packages() {
+  [[ -d packages ]] || return
+  local f
+  for f in packages/*/package.json; do
+    [[ -f $f ]] && { f=${f%/package.json}; printf '%s\n' "${f#packages/}"; }
+  done
+}
+
+_talos_pkg_modules() {
+  [[ -d modules ]] || return
+  local f
+  for f in modules/*/package.json; do
+    [[ -f $f ]] && { f=${f%/package.json}; printf '%s\n' "${f#modules/}"; }
+  done
+}
+
+_talos_docker_packages() {
+  [[ -d packages ]] || return
+  local f
+  for f in packages/*/Dockerfile; do
+    [[ -f $f ]] && { f=${f%/Dockerfile}; printf '%s\n' "${f#packages/}"; }
+  done
+}
+
+_talos_docker_modules() {
+  [[ -d modules ]] || return
+  local f
+  for f in modules/*/Dockerfile; do
+    [[ -f $f ]] && { f=${f%/Dockerfile}; printf '%s\n' "${f#modules/}"; }
+  done
+}
+
+_talos_yaml_modules() {
+  [[ -d modules ]] || return
+  command grep -rl "type: \"$1\"" modules/*/*.yml 2>/dev/null \
+    | command sed -n 's|modules/\([^/]*\)/.*|\1|p' | command sort -u
+}
+
+_talos_destination_modules() {
+  [[ -d modules ]] || return
+  command grep -rlE 'type: "(api|microservice)"' modules/*/*.yml 2>/dev/null \
+    | command sed -n 's|modules/\([^/]*\)/.*|\1|p' | command sort -u
+}
+
+_talos_sdk_modules() {
+  printf '%s\n' app
+  _talos_yaml_modules microservice
+}
+
+_talos_custom_commands() {
+  [[ -d modules ]] || return
+  command grep -rh -A1 getName modules/*/src/commands/*Command.ts 2>/dev/null \
+    | command sed -n 's/.*return "\(.*\)".*/\1/p' | command sort -u
+}
+
+_talos_run_commands() {
+  printf '%s\n' install
+  local pkgfiles=(modules/*/package.json packages/*/package.json)
+  local existing=()
+  local f
+  for f in "${pkgfiles[@]}"; do
+    [[ -f $f ]] && existing+=("$f")
+  done
+  ((${#existing[@]})) || return
+  command awk '
+    /"scripts"[[:space:]]*:[[:space:]]*\{/ { inside=1; next }
+    inside && /^[[:space:]]*\}/ { inside=0; next }
+    inside { if (match($0, /"[^"]+"/)) print substr($0, RSTART+1, RLENGTH-2) }
+  ' "${existing[@]}" 2>/dev/null | command sort -u
+}
+
+# ---- Word reassembly / colon handling --------------------------------------
+
+# Rebuild COMP_WORDS into `words` and `cword`, merging the ':' and '=' word-break
+# tokens back into the surrounding words so "group:action" and "--flag=value"
+# stay intact.
+_talos_reassemble_words() {
+  words=()
+  cword=0
+  local i w last
+  for ((i = 0; i < ${#COMP_WORDS[@]}; i++)); do
+    w=${COMP_WORDS[i]}
+    if ((${#words[@]})); then
+      last=${words[${#words[@]} - 1]}
+      if [[ $w == ":" || $w == "=" || $last == *: || $last == *= ]]; then
+        words[${#words[@]} - 1]="$last$w"
+        ((i <= COMP_CWORD)) && cword=$((${#words[@]} - 1))
+        continue
+      fi
+    fi
+    words+=("$w")
+    ((i <= COMP_CWORD)) && cword=$((${#words[@]} - 1))
+  done
+}
+
+# Drop the "prefix:" portion (up to and including the last colon) from every
+# candidate, since Readline inserts relative to the last word-break character.
+_talos_ltrim_colon() {
+  if [[ $1 == *:* && $COMP_WORDBREAKS == *:* ]]; then
+    local prefix=${1%"${1##*:}"}
+    local i
+    for ((i = 0; i < ${#COMPREPLY[@]}; i++)); do
+      COMPREPLY[i]=${COMPREPLY[i]#"$prefix"}
+    done
+  fi
+}
+
+_talos() {
+  COMPREPLY=()
+
+  local words cword
+  _talos_reassemble_words
+
+  local cur=${words[cword]}
+
+  local commands="app:create app:init app:start app:stop agent:skills:create \
+command:run completion:zsh completion:bash completion:fish help version upgrade \
+issue:create issue:pull issue:push ai:chat:create ai:tool:create ai:middleware:create \
+analytics:create cache:create command:create controller:create cron:create database:create \
+design:create design:remove docker:create docker:credentials:create docker:publish \
+github:credentials:create jira:credentials:create linear:credentials:create \
+npm:credentials:create npm:publish monorepo:run run monorepo:check check build fmt lint test \
+entity:create flag:create logger:create mailer:create middleware:create permission:create \
+queue:create rate-limit:create event:create release:create repository:create sdk:create \
+service:create spa:create spa:feature:create spa:remove storage:create translation:create \
+vector-database:create workflow:create workflow:transition:create microservice:create \
+microservice:remove migration:create migration:up migration:down module:create module:remove \
+seed:create seed:run"
+
+  # Locate the (sub)command: first non-option word after argv[0].
+  local cmd="" i
+  for ((i = 1; i < cword; i++)); do
+    if [[ ${words[i]} != -* ]]; then
+      cmd=${words[i]}
+      break
+    fi
+  done
+
+  # No command chosen yet: complete the command name.
+  if [[ -z $cmd ]]; then
+    COMPREPLY=($(compgen -W "$commands" -- "$cur"))
+    _talos_ltrim_colon "$cur"
+    return 0
+  fi
+
+  # Split "--flag=value" so the value part can be completed on its own.
+  local flag="" value=$cur
+  if [[ $cur == --*=* ]]; then
+    flag=${cur%%=*}
+    value=${cur#*=}
+  fi
+
+  local opts="" candidates="" dirs=""
+  case "$cmd" in
+    completion:zsh | completion:bash | completion:fish | help | version | upgrade) ;;
+    agent:skills:create)
+      opts="--agents --cwd"
+      [[ $flag == --agents ]] && candidates=".claude .codex .cursor .gemini .windsurf .cline .junie .roo .continue .zed"
+      [[ $flag == --cwd ]] && dirs=1
+      ;;
+    app:start | app:stop)
+      opts="--api --microservice --spa"
+      [[ $flag == --api ]] && candidates="$(_talos_yaml_modules api)"
+      [[ $flag == --microservice ]] && candidates="$(_talos_yaml_modules microservice)"
+      [[ $flag == --spa ]] && candidates="$(_talos_yaml_modules spa)"
+      ;;
+    sdk:create)
+      opts="--name --module"
+      [[ $flag == --name ]] && candidates="$(_talos_yaml_modules sdk)"
+      [[ $flag == --module ]] && candidates="$(_talos_sdk_modules)"
+      ;;
+    app:create)
+      opts="--name --destination"
+      [[ $flag == --destination ]] && dirs=1
+      ;;
+    app:init)
+      opts="--name --destination --app-type"
+      [[ $flag == --destination ]] && dirs=1
+      [[ $flag == --app-type ]] && candidates="cli api"
+      ;;
+    command:run)
+      [[ $cur != -* ]] && candidates="$(_talos_custom_commands)"
+      ;;
+    issue:create)
+      opts="--title --state --priority --description --labels --module --interactive"
+      [[ $flag == --state ]] && candidates="Backlog Todo Planned Done Cancelled"
+      [[ $flag == --priority ]] && candidates="Low Medium High Urgent"
+      [[ $flag == --module ]] && candidates="$(_talos_modules)"
+      ;;
+    issue:pull)
+      opts="--id --provider --module"
+      [[ $flag == --provider ]] && candidates="linear jira"
+      [[ $flag == --module ]] && candidates="$(_talos_modules)"
+      ;;
+    issue:push)
+      opts="--id --module"
+      [[ $flag == --module ]] && candidates="$(_talos_modules)"
+      ;;
+    ai:chat:create | ai:tool:create | ai:middleware:create | analytics:create | cache:create | \
+      command:create | cron:create | database:create | flag:create | logger:create | \
+      mailer:create | permission:create | queue:create | rate-limit:create | repository:create | \
+      service:create | spa:feature:create | storage:create | translation:create | \
+      vector-database:create | workflow:create | workflow:transition:create)
+      opts="--name --module --override"
+      [[ $flag == --module ]] && candidates="$(_talos_modules)"
+      ;;
+    controller:create)
+      opts="--name --module --route-name --route-path --route-method --is-socket --override"
+      [[ $flag == --module ]] && candidates="$(_talos_modules)"
+      [[ $flag == --route-method ]] && candidates="GET POST PUT PATCH DELETE HEAD OPTIONS"
+      ;;
+    docker:create)
+      opts="--name"
+      [[ $flag == --name ]] && candidates="clickhouse elasticsearch grafana jaeger keycloak libretranslate maildev memcached minio mongodb mysql nats postgres prometheus rabbitmq redis temporal vault"
+      ;;
+    docker:credentials:create)
+      opts="--registry --username --token"
+      ;;
+    docker:publish)
+      opts="--packages --modules --tag"
+      [[ $flag == --packages ]] && candidates="$(_talos_docker_packages)"
+      [[ $flag == --modules ]] && candidates="$(_talos_docker_modules)"
+      ;;
+    github:credentials:create)
+      opts="--token"
+      ;;
+    jira:credentials:create)
+      opts="--base-url --email --token"
+      ;;
+    linear:credentials:create | npm:credentials:create)
+      opts="--token"
+      ;;
+    npm:publish)
+      opts="--packages --modules --access"
+      [[ $flag == --packages ]] && candidates="$(_talos_packages)"
+      [[ $flag == --modules ]] && candidates="$(_talos_pkg_modules)"
+      [[ $flag == --access ]] && candidates="public restricted"
+      ;;
+    monorepo:run | run)
+      opts="--commands --packages --modules --logs --no-cache"
+      [[ $flag == --commands ]] && candidates="$(_talos_run_commands)"
+      [[ $flag == --packages ]] && candidates="$(_talos_packages)"
+      [[ $flag == --modules ]] && candidates="$(_talos_pkg_modules)"
+      ;;
+    monorepo:check | check | build | fmt | lint | test)
+      opts="--packages --modules --logs --no-cache"
+      [[ $flag == --packages ]] && candidates="$(_talos_packages)"
+      [[ $flag == --modules ]] && candidates="$(_talos_pkg_modules)"
+      ;;
+    entity:create)
+      opts="--name --module --table-name --override"
+      [[ $flag == --module ]] && candidates="$(_talos_modules)"
+      ;;
+    middleware:create)
+      opts="--name --module --is-socket --override"
+      [[ $flag == --module ]] && candidates="$(_talos_modules)"
+      ;;
+    event:create)
+      opts="--name --module --channel --override"
+      [[ $flag == --module ]] && candidates="$(_talos_modules)"
+      ;;
+    migration:create)
+      opts="--module"
+      [[ $flag == --module ]] && candidates="$(_talos_modules)"
+      ;;
+    release:create)
+      opts="--packages --modules --publish"
+      [[ $flag == --packages ]] && candidates="$(_talos_packages)"
+      [[ $flag == --modules ]] && candidates="$(_talos_pkg_modules)"
+      ;;
+    migration:up)
+      opts="--drop --no-cache"
+      ;;
+    seed:run)
+      opts="--drop"
+      ;;
+    migration:down)
+      opts="--version"
+      ;;
+    design:create | microservice:create)
+      opts="--name"
+      ;;
+    module:create)
+      opts="--name --destination"
+      [[ $flag == --destination ]] && candidates="$(_talos_destination_modules)"
+      ;;
+    spa:create)
+      opts="--name --design"
+      [[ $flag == --design ]] && candidates="$(_talos_yaml_modules design)"
+      ;;
+    design:remove | spa:remove | microservice:remove | module:remove)
+      opts="--name"
+      [[ $flag == --name ]] && candidates="$(_talos_modules)"
+      ;;
+    seed:create)
+      opts="--name --module"
+      [[ $flag == --module ]] && candidates="$(_talos_modules)"
+      ;;
+  esac
+
+  # Completing the value part of a "--flag=value" token.
+  if [[ -n $flag ]]; then
+    if [[ -n $dirs ]]; then
+      COMPREPLY=($(compgen -d -- "$value"))
+    else
+      COMPREPLY=($(compgen -W "$candidates" -- "$value"))
+    fi
+    return 0
+  fi
+
+  # Completing a flag name, or the positional value for commands that take one.
+  if [[ $cur == -* || -z $candidates ]]; then
+    COMPREPLY=($(compgen -W "$opts" -- "$cur"))
+  else
+    COMPREPLY=($(compgen -W "$candidates" -- "$cur"))
+  fi
+  _talos_ltrim_colon "$cur"
+}
+
+complete -F _talos oo talos

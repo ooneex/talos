@@ -35,6 +35,8 @@ describe("@talosjs/cli - index", () => {
     "AppStopCommand",
     "CommandRunCommand",
     "CompletionZshCommand",
+    "CompletionBashCommand",
+    "CompletionFishCommand",
     "HelpCommand",
     "IssueCreateCommand",
     "IssuePullCommand",

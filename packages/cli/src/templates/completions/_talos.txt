@@ -152,6 +152,8 @@ _talos() {
     'agent\:skills\:create:Scaffold skills and configuration for coding assistants'
     'command\:run:Run a custom command from a module'
     'completion\:zsh:Install Zsh completion for oo command'
+    'completion\:bash:Install Bash completion for oo command'
+    'completion\:fish:Install Fish completion for oo command'
     'help:Show available commands'
     'version:Print the installed CLI version'
     'upgrade:Upgrade the CLI to its latest version'
@@ -228,7 +230,7 @@ _talos() {
       ;;
     opts)
       case "$words[1]" in
-        completion:zsh|help|version|upgrade)
+        completion:zsh|completion:bash|completion:fish|help|version|upgrade)
           ;;
         agent:skills:create)
           _arguments -s \
