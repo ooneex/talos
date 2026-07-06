@@ -14,7 +14,7 @@ import { ensureBin, LOG_OPTIONS, spawnStep } from "../utils";
 import { DesignCreateCommand } from "./DesignCreateCommand";
 import { ModuleCreateCommand } from "./ModuleCreateCommand";
 
-const SPA_REPOSITORY = "https://github.com/talos/skeleton-spa.git";
+const SPA_REPOSITORY = "https://github.com/ooneex/skeleton-spa.git";
 
 const DEFAULT_PORT = 5000;
 
