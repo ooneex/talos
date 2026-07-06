@@ -369,15 +369,14 @@ describe("MicroserviceCreateCommand", () => {
       expect(await exists(productionPath)).toBe(true);
 
       const ci = await read(ciPath);
-      expect(ci).toContain("file: modules/billing/Dockerfile");
-      expect(ci).toContain("github.repository }}/billing");
+      expect(ci).toContain("talos docker:publish --modules billing");
       expect(ci).not.toContain("{{name}}");
       expect(ci).not.toContain("{{NAME}}");
 
       const production = await read(productionPath);
       expect(production).toContain("uses: ./.github/workflows/billing-ci.yml");
       expect(production).toContain("vars.PRODUCTION_URL_BILLING }}");
-      expect(production).toContain("cd /opt/billing");
+      expect(production).toContain("talos docker:publish --modules billing");
     });
 
     test("should create a GitLab pipeline and register the include when the project uses GitLab", async () => {
@@ -390,8 +389,8 @@ describe("MicroserviceCreateCommand", () => {
 
       const pipeline = await read(pipelinePath);
       expect(pipeline).toContain("billing-build-image:");
-      expect(pipeline).toContain("-f modules/billing/Dockerfile");
-      expect(pipeline).toContain("BILLING_IMAGE_TAG");
+      expect(pipeline).toContain("talos docker:publish --modules billing");
+      expect(pipeline).toContain("$PRODUCTION_URL_BILLING");
       expect(pipeline).not.toContain("{{name}}");
       expect(pipeline).not.toContain("{{NAME}}");
 
@@ -418,7 +417,7 @@ describe("MicroserviceCreateCommand", () => {
       expect(await exists(referencePath)).toBe(true);
 
       const reference = await read(referencePath);
-      expect(reference).toContain("-f modules/billing/Dockerfile");
+      expect(reference).toContain("talos docker:publish --modules billing");
       expect(reference).toContain("&billing-build-image");
       expect(reference).not.toContain("{{name}}");
       expect(reference).not.toContain("{{NAME}}");

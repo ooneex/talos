@@ -413,13 +413,13 @@ describe("AppCreateCommand", () => {
       expect(Array.isArray(content.packageRules)).toBe(true);
     });
 
-    test("should replace {{NAME}} in GitHub production workflow with snake_case name", async () => {
+    test("should render the GitHub production workflow without leftover placeholders", async () => {
       createCiCdConfirm = true;
       ciProvider = "github";
       await command.run({ name: "MyApp", destination: testDir });
 
       const content = await Bun.file(join(testDir, ".github", "workflows", "production.yml")).text();
-      expect(content).toContain("my_app");
+      expect(content).toContain("talos docker:publish");
       expect(content).not.toContain("{{NAME}}");
     });
 
@@ -490,13 +490,13 @@ describe("AppCreateCommand", () => {
       expect(content).toContain(".gitlab/ci/production.yml");
     });
 
-    test("should replace {{NAME}} in GitLab production pipeline with snake_case name", async () => {
+    test("should render the GitLab production pipeline without leftover placeholders", async () => {
       createCiCdConfirm = true;
       ciProvider = "gitlab";
       await command.run({ name: "MyApp", destination: testDir });
 
       const content = await Bun.file(join(testDir, ".gitlab", "ci", "production.yml")).text();
-      expect(content).toContain("my_app");
+      expect(content).toContain("talos docker:publish");
       expect(content).not.toContain("{{NAME}}");
     });
 
@@ -517,13 +517,13 @@ describe("AppCreateCommand", () => {
       expect(await exists(join(testDir, "bitbucket-pipelines.yml"))).toBe(true);
     });
 
-    test("should replace {{NAME}} in Bitbucket pipelines with snake_case name", async () => {
+    test("should render the Bitbucket pipelines without leftover placeholders", async () => {
       createCiCdConfirm = true;
       ciProvider = "bitbucket";
       await command.run({ name: "MyApp", destination: testDir });
 
       const content = await Bun.file(join(testDir, "bitbucket-pipelines.yml")).text();
-      expect(content).toContain("my_app");
+      expect(content).toContain("talos docker:publish");
       expect(content).not.toContain("{{NAME}}");
     });
 

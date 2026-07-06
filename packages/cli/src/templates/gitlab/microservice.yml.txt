@@ -8,105 +8,69 @@
 # Repo-wide lint/test run in the core ci.yml pipeline, so they are not repeated here.
 #
 # Required CI/CD variable (in addition to the app's):
-#   PRODUCTION_URL_{{NAME_UPPER}}  — {{name}} URL used for health checks
+#   PRODUCTION_URL_{{NAME_UPPER}}  — {{name}} environment URL shown in GitLab
 
 {{name}}-build-image:
   stage: build
   image: docker:27
   services:
     - docker:27-dind
-  # Only build on branch commits and tags that touch this microservice
+  variables:
+    DOCKER_DRIVER: overlay2
+    DOCKER_TLS_CERTDIR: /certs
+  # Only build on branch commits that touch this microservice
   rules:
-    - if: $CI_COMMIT_BRANCH =~ /^(main|develop)$/
+    - if: $CI_COMMIT_BRANCH =~ /^(main|staging|develop)$/
       changes:
         - modules/{{name}}/**/*
-    - if: $CI_COMMIT_TAG
+  # Install Bun and the Talos CLI into the Docker image so `talos docker:publish`
+  # can build and push. Bun's global bin (with `talos`) lands in ~/.bun/bin.
   before_script:
-    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    - apk add --no-cache bash curl unzip
+    - curl -fsSL https://bun.sh/install | bash
+    - export PATH="$HOME/.bun/bin:$PATH"
+    - bun add -g @talosjs/cli
   script:
-    - |
-      SHORT_SHA=$(echo $CI_COMMIT_SHA | cut -c1-7)
-      IMAGE=$CI_REGISTRY_IMAGE/{{name}}
-
-      docker buildx create --use --bootstrap
-
-      docker buildx build \
-        --cache-from type=registry,ref=$IMAGE:cache \
-        --cache-to  type=registry,ref=$IMAGE:cache,mode=max \
-        --tag "$IMAGE:sha-$SHORT_SHA" \
-        --tag "$IMAGE:$CI_COMMIT_REF_SLUG" \
-        $([ -n "$CI_COMMIT_TAG" ] && echo "--tag $IMAGE:latest") \
-        --build-arg APP_ENV=${CI_ENVIRONMENT_NAME:-ci} \
-        --build-arg APP_VERSION=$CI_COMMIT_SHA \
-        --push \
-        -f modules/{{name}}/Dockerfile \
-        .
-
-      echo "{{NAME_UPPER}}_IMAGE_TAG=sha-$SHORT_SHA" > {{name}}.env
-  artifacts:
-    reports:
-      dotenv: {{name}}.env
-    expire_in: 1 day
+    - SHORT_SHA=$(echo "$CI_COMMIT_SHA" | cut -c1-7)
+    - >-
+      talos docker:credentials:create
+      --registry "${DOCKER_REGISTRY:-docker.io}"
+      --username "$DOCKER_USERNAME"
+      --token "$DOCKER_TOKEN"
+      --silent
+    # Builds and pushes only the {{name}} microservice image from
+    # modules/{{name}}/Dockerfile, tagged with the short commit SHA.
+    - talos docker:publish --modules {{name}} --tag "sha-$SHORT_SHA" --silent
 
 {{name}}-deploy-production:
   stage: deploy
-  image: alpine:latest
-  needs:
-    - job: {{name}}-build-image
-      artifacts: true
+  image: docker:27
+  services:
+    - docker:27-dind
+  variables:
+    DOCKER_DRIVER: overlay2
+    DOCKER_TLS_CERTDIR: /certs
   environment:
     name: production-{{name}}
     url: $PRODUCTION_URL_{{NAME_UPPER}}
   before_script:
-    - apk add --no-cache openssh-client curl
-    - eval $(ssh-agent -s)
-    - echo "$PROD_SSH_KEY" | tr -d '\r' | ssh-add -
-    - mkdir -p ~/.ssh && chmod 700 ~/.ssh
-    - echo "$PROD_SSH_KNOWN_HOSTS" >> ~/.ssh/known_hosts
-    - chmod 600 ~/.ssh/known_hosts
+    - apk add --no-cache bash curl unzip
+    - curl -fsSL https://bun.sh/install | bash
+    - export PATH="$HOME/.bun/bin:$PATH"
+    - bun add -g @talosjs/cli
   script:
-    - IMAGE=$CI_REGISTRY_IMAGE/{{name}}:${{NAME_UPPER}}_IMAGE_TAG
-    - |
-      ssh $PROD_USER@$PROD_HOST \
-        CI_REGISTRY="$CI_REGISTRY" \
-        CI_REGISTRY_USER="$CI_REGISTRY_USER" \
-        CI_REGISTRY_PASSWORD="$CI_REGISTRY_PASSWORD" \
-        CI_REGISTRY_IMAGE="$CI_REGISTRY_IMAGE/{{name}}" \
-        IMAGE="$IMAGE" \
-        'bash -s' << 'ENDSSH'
-          set -e
-
-          echo "$CI_REGISTRY_PASSWORD" | docker login "$CI_REGISTRY" -u "$CI_REGISTRY_USER" --password-stdin
-
-          # Preserve current image as rollback target before pulling new one
-          docker tag "$CI_REGISTRY_IMAGE:latest" "$CI_REGISTRY_IMAGE:rollback" 2>/dev/null || true
-
-          docker pull "$IMAGE"
-
-          cd /opt/{{NAME}}
-
-          # Run migrations before switching traffic to catch failures early
-          docker run --rm --env-file .env "$IMAGE" bun run db:migrate
-
-          APP_IMAGE="$IMAGE" docker compose up -d --no-deps --wait app
-          docker image prune -f --filter "until=24h"
-      ENDSSH
-    - |
-      echo "Verifying {{name}} health at $PRODUCTION_URL_{{NAME_UPPER}}..."
-      for i in $(seq 1 24); do
-        STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "$PRODUCTION_URL_{{NAME_UPPER}}/health" 2>/dev/null || echo "000")
-        [ "$STATUS" = "200" ] && echo "{{name}} is healthy (attempt $i)" && exit 0
-        echo "Attempt $i/24 — HTTP $STATUS, retrying in 5s..."
-        sleep 5
-      done
-      echo "Health check failed — rolling back to previous image"
-      ssh $PROD_USER@$PROD_HOST \
-        CI_REGISTRY_IMAGE="$CI_REGISTRY_IMAGE/{{name}}" \
-        'bash -s' << 'ENDSSH'
-          cd /opt/{{NAME}}
-          APP_IMAGE="$CI_REGISTRY_IMAGE:rollback" docker compose up -d --no-deps app
-      ENDSSH
-      exit 1
+    # Apply migrations before publishing the release image, so the database is
+    # ready by the time the platform pulls the new tag.
+    - APP_ENV=production talos migration:up
+    - >-
+      talos docker:credentials:create
+      --registry "${DOCKER_REGISTRY:-docker.io}"
+      --username "$DOCKER_USERNAME"
+      --token "$DOCKER_TOKEN"
+      --silent
+    # Builds and pushes only the {{name}} microservice image from
+    # modules/{{name}}/Dockerfile, tagged with the release version (e.g. v1.2.3).
+    - talos docker:publish --modules {{name}} --tag "$CI_COMMIT_REF_NAME" --silent
   rules:
     # Auto-deploy on semver tags
     - if: $CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+$/

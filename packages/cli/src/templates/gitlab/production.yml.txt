@@ -6,14 +6,14 @@
 #     - local: .gitlab/ci/production.yml
 #
 # Required CI/CD variables (Settings → CI/CD → Variables):
-#   PROD_HOST             — Production server hostname or IP
-#   PROD_USER             — SSH username
-#   PROD_SSH_KEY          — SSH private key (mark as "File" type)
-#   PROD_SSH_KNOWN_HOSTS  — Output of: ssh-keyscan <PROD_HOST>
-#   PRODUCTION_URL        — App URL used for health checks (e.g. https://app.example.com)
+#   DOCKER_REGISTRY  — Container registry host (defaults to docker.io)
+#   DOCKER_USERNAME  — Registry username
+#   DOCKER_TOKEN     — Registry access token (mark as "Masked")
+#   PRODUCTION_URL   — App URL shown on the GitLab environment (e.g. https://app.example.com)
+#   (plus the production database connection consumed by `talos migration:up`)
 #
-# Protect the production environment in Settings → CI/CD → Environments
-# and add required approvers to enforce manual sign-off before deploy.
+# Protect the production environment in Settings → CI/CD → Environments and add
+# required approvers to enforce manual sign-off before deploy.
 
 stages:
   - quality
@@ -22,63 +22,39 @@ stages:
 
 deploy-production:
   stage: deploy
-  image: alpine:latest
+  image: docker:27
+  services:
+    - docker:27-dind
   needs:
-    - job: build-image
-      artifacts: true
+    - quality
+  variables:
+    DOCKER_DRIVER: overlay2
+    DOCKER_TLS_CERTDIR: /certs
   environment:
     name: production
     url: $PRODUCTION_URL
+  # Install Bun and the Talos CLI into the Docker image so migrations run and
+  # `talos docker:publish` can build and push. Bun's global bin lands in ~/.bun/bin.
   before_script:
-    - apk add --no-cache openssh-client curl
-    - eval $(ssh-agent -s)
-    - echo "$PROD_SSH_KEY" | tr -d '\r' | ssh-add -
-    - mkdir -p ~/.ssh && chmod 700 ~/.ssh
-    - echo "$PROD_SSH_KNOWN_HOSTS" >> ~/.ssh/known_hosts
-    - chmod 600 ~/.ssh/known_hosts
+    - apk add --no-cache bash curl unzip
+    - curl -fsSL https://bun.sh/install | bash
+    - export PATH="$HOME/.bun/bin:$PATH"
+    - bun add -g @talosjs/cli
   script:
-    - IMAGE=$CI_REGISTRY_IMAGE:$IMAGE_TAG
-    - |
-      ssh $PROD_USER@$PROD_HOST \
-        CI_REGISTRY="$CI_REGISTRY" \
-        CI_REGISTRY_USER="$CI_REGISTRY_USER" \
-        CI_REGISTRY_PASSWORD="$CI_REGISTRY_PASSWORD" \
-        CI_REGISTRY_IMAGE="$CI_REGISTRY_IMAGE" \
-        IMAGE="$IMAGE" \
-        'bash -s' << 'ENDSSH'
-          set -e
-
-          echo "$CI_REGISTRY_PASSWORD" | docker login "$CI_REGISTRY" -u "$CI_REGISTRY_USER" --password-stdin
-
-          # Preserve current image as rollback target before pulling new one
-          docker tag "$CI_REGISTRY_IMAGE:latest" "$CI_REGISTRY_IMAGE:rollback" 2>/dev/null || true
-
-          docker pull "$IMAGE"
-
-          cd /opt/{{NAME}}
-
-          # Run migrations before switching traffic to catch failures early
-          docker run --rm --env-file .env "$IMAGE" bun run db:migrate
-
-          APP_IMAGE="$IMAGE" docker compose up -d --no-deps --wait app
-          docker image prune -f --filter "until=24h"
-      ENDSSH
-    - |
-      echo "Verifying production health at $PRODUCTION_URL..."
-      for i in $(seq 1 24); do
-        STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "$PRODUCTION_URL/health" 2>/dev/null || echo "000")
-        [ "$STATUS" = "200" ] && echo "Production is healthy (attempt $i)" && exit 0
-        echo "Attempt $i/24 — HTTP $STATUS, retrying in 5s..."
-        sleep 5
-      done
-      echo "Health check failed — rolling back to previous image"
-      ssh $PROD_USER@$PROD_HOST \
-        CI_REGISTRY_IMAGE="$CI_REGISTRY_IMAGE" \
-        'bash -s' << 'ENDSSH'
-          cd /opt/{{NAME}}
-          APP_IMAGE="$CI_REGISTRY_IMAGE:rollback" docker compose up -d --no-deps app
-      ENDSSH
-      exit 1
+    # Apply migrations before publishing the release image, so the database is
+    # ready by the time the platform pulls the new tag. Expose the production
+    # database connection to this job via CI/CD variables.
+    - APP_ENV=production talos migration:up
+    - >-
+      talos docker:credentials:create
+      --registry "${DOCKER_REGISTRY:-docker.io}"
+      --username "$DOCKER_USERNAME"
+      --token "$DOCKER_TOKEN"
+      --silent
+    # Builds and pushes an image for every package/module that ships a
+    # Dockerfile, tagged with the release version (e.g. v1.2.3). Deployment is
+    # handled by the registry — the platform pulls the new tag.
+    - talos docker:publish --tag "$CI_COMMIT_REF_NAME" --silent
   rules:
     # Auto-deploy on semver tags
     - if: $CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+$/

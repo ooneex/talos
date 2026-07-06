@@ -3,19 +3,21 @@
 #
 #   include:
 #     - local: .gitlab/ci/ci.yml
+#
+# Required CI/CD variables (Settings → CI/CD → Variables):
+#   DOCKER_REGISTRY  — Container registry host (defaults to docker.io)
+#   DOCKER_USERNAME  — Registry username
+#   DOCKER_TOKEN     — Registry access token (mark as "Masked")
 
 stages:
   - quality
   - build
 
-variables:
-  DOCKER_DRIVER: overlay2
-  DOCKER_TLS_CERTDIR: /certs
-  BUN_INSTALL_CACHE_DIR: $CI_PROJECT_DIR/.bun-cache
-
 quality:
   image: oven/bun:latest
   stage: quality
+  variables:
+    BUN_INSTALL_CACHE_DIR: $CI_PROJECT_DIR/.bun-cache
   cache:
     key:
       files:
@@ -29,7 +31,7 @@ quality:
     - talos monorepo:check
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-    - if: $CI_COMMIT_BRANCH =~ /^(main|develop)$/
+    - if: $CI_COMMIT_BRANCH =~ /^(main|staging|develop)$/
     - if: $CI_COMMIT_TAG
 
 build-image:
@@ -39,33 +41,27 @@ build-image:
     - docker:27-dind
   needs:
     - quality
-  # Only build images on branch commits and tags (not MRs)
+  variables:
+    DOCKER_DRIVER: overlay2
+    DOCKER_TLS_CERTDIR: /certs
+  # Only build images on branch commits (not merge requests)
   rules:
-    - if: $CI_COMMIT_BRANCH =~ /^(main|develop)$/
-    - if: $CI_COMMIT_TAG
+    - if: $CI_COMMIT_BRANCH =~ /^(main|staging|develop)$/
+  # Install Bun and the Talos CLI into the Docker image so `talos docker:publish`
+  # can build and push. Bun's global bin (with `talos`) lands in ~/.bun/bin.
   before_script:
-    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    - apk add --no-cache bash curl unzip
+    - curl -fsSL https://bun.sh/install | bash
+    - export PATH="$HOME/.bun/bin:$PATH"
+    - bun add -g @talosjs/cli
   script:
-    - |
-      SHORT_SHA=$(echo $CI_COMMIT_SHA | cut -c1-7)
-      IMAGE_SHA=$CI_REGISTRY_IMAGE:sha-$SHORT_SHA
-      IMAGE_REF=$CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG
-
-      docker buildx create --use --bootstrap
-
-      docker buildx build \
-        --cache-from type=registry,ref=$CI_REGISTRY_IMAGE:cache \
-        --cache-to  type=registry,ref=$CI_REGISTRY_IMAGE:cache,mode=max \
-        --tag "$IMAGE_SHA" \
-        --tag "$IMAGE_REF" \
-        $([ -n "$CI_COMMIT_TAG" ] && echo "--tag $CI_REGISTRY_IMAGE:latest") \
-        --build-arg APP_ENV=${CI_ENVIRONMENT_NAME:-ci} \
-        --build-arg APP_VERSION=$CI_COMMIT_SHA \
-        --push \
-        .
-
-      echo "IMAGE_TAG=sha-$SHORT_SHA" > build.env
-  artifacts:
-    reports:
-      dotenv: build.env
-    expire_in: 1 day
+    - SHORT_SHA=$(echo "$CI_COMMIT_SHA" | cut -c1-7)
+    - >-
+      talos docker:credentials:create
+      --registry "${DOCKER_REGISTRY:-docker.io}"
+      --username "$DOCKER_USERNAME"
+      --token "$DOCKER_TOKEN"
+      --silent
+    # Builds and pushes an image for every package/module that ships a
+    # Dockerfile, tagging each with the short commit SHA.
+    - talos docker:publish --tag "sha-$SHORT_SHA" --silent

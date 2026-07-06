@@ -2,15 +2,10 @@
 # Place at bitbucket-pipelines.yml in the repository root.
 #
 # Required repository variables (Repository settings → Pipelines → Repository variables):
-#   DOCKER_REGISTRY    — Container registry host and namespace
-#                        Docker Hub: docker.io/myorg
-#                        AWS ECR:    123456789.dkr.ecr.us-east-1.amazonaws.com
-#   DOCKER_USER        — Registry username (or AWS_ACCESS_KEY_ID for ECR)
-#   DOCKER_PASSWORD    — Registry password / token (or AWS_SECRET_ACCESS_KEY for ECR)
-#   PROD_HOST          — Production server hostname or IP
-#   PROD_USER          — SSH username
-#   PROD_SSH_KEY       — SSH private key (base64-encoded: base64 -w0 ~/.ssh/id_rsa)
-#   PRODUCTION_URL     — App URL used for health checks (e.g. https://app.example.com)
+#   DOCKER_REGISTRY  — Container registry host (defaults to docker.io)
+#   DOCKER_USERNAME  — Registry username
+#   DOCKER_TOKEN     — Registry access token (mark as "Secured")
+#   (plus the production database connection consumed by `talos migration:up`)
 
 image: oven/bun:latest
 
@@ -29,104 +24,46 @@ definitions:
           - bun add -g @talosjs/cli
           - talos monorepo:check
 
+    # The `docker` service exposes the Docker CLI to the step, so `talos
+    # docker:publish` can build and push from the Bun image.
     - step: &build-image
         name: Build Image
-        image: docker:27
         services:
           - docker
-        caches:
-          - docker
         script:
-          - SHORT_SHA=$(echo $BITBUCKET_COMMIT | cut -c1-7)
-          - IMAGE_SHA=$DOCKER_REGISTRY/{{NAME}}:sha-$SHORT_SHA
-          - IMAGE_REF=$DOCKER_REGISTRY/{{NAME}}:$BITBUCKET_BRANCH
-          - echo "$DOCKER_PASSWORD" | docker login $DOCKER_REGISTRY -u $DOCKER_USER --password-stdin
-          - docker buildx create --use --bootstrap
-          - |
-            docker buildx build \
-              --cache-from type=registry,ref=$DOCKER_REGISTRY/{{NAME}}:cache \
-              --cache-to  type=registry,ref=$DOCKER_REGISTRY/{{NAME}}:cache,mode=max \
-              --tag "$IMAGE_SHA" \
-              --tag "$IMAGE_REF" \
-              --build-arg APP_VERSION=$BITBUCKET_COMMIT \
-              --push \
-              .
-
-    - step: &build-image-latest
-        name: Build Image (latest)
-        image: docker:27
-        services:
-          - docker
-        caches:
-          - docker
-        script:
-          - SHORT_SHA=$(echo $BITBUCKET_COMMIT | cut -c1-7)
-          - IMAGE_SHA=$DOCKER_REGISTRY/{{NAME}}:sha-$SHORT_SHA
-          - IMAGE_TAG=$DOCKER_REGISTRY/{{NAME}}:$BITBUCKET_TAG
-          - echo "$DOCKER_PASSWORD" | docker login $DOCKER_REGISTRY -u $DOCKER_USER --password-stdin
-          - docker buildx create --use --bootstrap
-          - |
-            docker buildx build \
-              --cache-from type=registry,ref=$DOCKER_REGISTRY/{{NAME}}:cache \
-              --cache-to  type=registry,ref=$DOCKER_REGISTRY/{{NAME}}:cache,mode=max \
-              --tag "$IMAGE_SHA" \
-              --tag "$IMAGE_TAG" \
-              --tag "$DOCKER_REGISTRY/{{NAME}}:latest" \
-              --build-arg APP_VERSION=$BITBUCKET_COMMIT \
-              --push \
-              .
+          - bun add -g @talosjs/cli
+          - SHORT_SHA=$(echo "$BITBUCKET_COMMIT" | cut -c1-7)
+          - >-
+            talos docker:credentials:create
+            --registry "${DOCKER_REGISTRY:-docker.io}"
+            --username "$DOCKER_USERNAME"
+            --token "$DOCKER_TOKEN"
+            --silent
+          # Builds and pushes an image for every package/module that ships a
+          # Dockerfile, tagging each with the short commit SHA.
+          - talos docker:publish --tag "sha-$SHORT_SHA" --silent
 
     - step: &deploy-production
         name: Deploy to Production
         deployment: production
-        image: alpine:latest
+        services:
+          - docker
         script:
-          - apk add --no-cache openssh-client curl
-          - mkdir -p ~/.ssh && chmod 700 ~/.ssh
-          - echo "$PROD_SSH_KEY" | base64 -d > ~/.ssh/id_rsa && chmod 600 ~/.ssh/id_rsa
-          - ssh-keyscan "$PROD_HOST" >> ~/.ssh/known_hosts
-          - SHORT_SHA=$(echo $BITBUCKET_COMMIT | cut -c1-7)
-          - IMAGE=$DOCKER_REGISTRY/{{NAME}}:sha-$SHORT_SHA
-          - |
-            ssh $PROD_USER@$PROD_HOST \
-              DOCKER_REGISTRY="$DOCKER_REGISTRY" \
-              DOCKER_USER="$DOCKER_USER" \
-              DOCKER_PASSWORD="$DOCKER_PASSWORD" \
-              IMAGE="$IMAGE" \
-              'bash -s' << 'ENDSSH'
-                set -e
-
-                echo "$DOCKER_PASSWORD" | docker login "$DOCKER_REGISTRY" -u "$DOCKER_USER" --password-stdin
-
-                # Preserve current image as rollback target before pulling new one
-                docker tag "$DOCKER_REGISTRY/{{NAME}}:latest" "$DOCKER_REGISTRY/{{NAME}}:rollback" 2>/dev/null || true
-
-                docker pull "$IMAGE"
-
-                cd /opt/{{NAME}}
-
-                # Run migrations before switching traffic to catch failures early
-                docker run --rm --env-file .env "$IMAGE" bun run db:migrate
-
-                APP_IMAGE="$IMAGE" docker compose up -d --no-deps --wait app
-                docker image prune -f --filter "until=24h"
-            ENDSSH
-          - |
-            echo "Verifying production health at $PRODUCTION_URL..."
-            for i in $(seq 1 24); do
-              STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "$PRODUCTION_URL/health" 2>/dev/null || echo "000")
-              [ "$STATUS" = "200" ] && echo "Production is healthy (attempt $i)" && exit 0
-              echo "Attempt $i/24 — HTTP $STATUS, retrying in 5s..."
-              sleep 5
-            done
-            echo "Health check failed — rolling back to previous image"
-            ssh $PROD_USER@$PROD_HOST \
-              DOCKER_REGISTRY="$DOCKER_REGISTRY" \
-              'bash -s' << 'ENDSSH'
-                cd /opt/{{NAME}}
-                APP_IMAGE="$DOCKER_REGISTRY/{{NAME}}:rollback" docker compose up -d --no-deps app
-            ENDSSH
-            exit 1
+          - bun add -g @talosjs/cli
+          # Apply migrations before publishing the release image, so the database
+          # is ready by the time the platform pulls the new tag. Expose the
+          # production database connection to this step via repository variables.
+          - APP_ENV=production talos migration:up
+          - >-
+            talos docker:credentials:create
+            --registry "${DOCKER_REGISTRY:-docker.io}"
+            --username "$DOCKER_USERNAME"
+            --token "$DOCKER_TOKEN"
+            --silent
+          # Builds and pushes an image for every package/module that ships a
+          # Dockerfile, tagged with the release version (e.g. v1.2.3). Deployment
+          # is handled by the registry — the platform pulls the new tag.
+          - talos docker:publish --tag "${BITBUCKET_TAG:-$BITBUCKET_BRANCH}" --silent
 
 pipelines:
   # Quality gate on every pull request
@@ -143,14 +80,16 @@ pipelines:
           <<: *deploy-production
           trigger: manual
 
-    # Develop branch: CI and build only
+    # Staging and develop branches: CI and build only
+    staging:
+      - step: *quality
+      - step: *build-image
     develop:
       - step: *quality
       - step: *build-image
 
-  # Semver tags: CI, build with latest tag, auto-deploy to production
+  # Semver tags: quality gate, then auto-deploy to production
   tags:
     "v*.*.*":
       - step: *quality
-      - step: *build-image-latest
       - step: *deploy-production
