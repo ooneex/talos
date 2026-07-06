@@ -51,8 +51,9 @@ export class <Name>Event<Data extends Record<string, ScalarType> = Record<string
   }
 
   public async handler(context: { data: Data; channel: string }): Promise<void> {
-    console.log(context);
-    // TODO: Implement handler logic here
+    // TODO: Implement handler logic here.
+    // Do NOT log the full context/data — event payloads may carry secrets or PII.
+    // If logging is needed, log only context.channel and non-sensitive identifiers.
   }
 }
 ```

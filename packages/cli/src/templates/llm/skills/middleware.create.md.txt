@@ -65,6 +65,8 @@ Read and replace `modules/<module>/tests/middlewares/<Name>Middleware.spec.ts`:
 
 **Coverage:** class identity (`name.endsWith("Middleware")`, is constructor), `handler` exists, returns a `Promise`, resolves to the same context reference (pass-through), does not replace context with a different object. Add tests for any transformations/auth checks after implementing `handler()`. Instance isolation.
 
+> **Auth/authorization middleware must be able to deny.** The pass-through assertions above only apply to non-gating middleware (logging, header injection). For an auth guard, replace them with tests that assert the handler **rejects/short-circuits** unauthenticated or unauthorized requests (throws or returns a denying context) — a middleware that always passes through is a broken access control.
+
 ```typescript
 import { describe, expect, test } from "bun:test";
 import { <Name>Middleware } from "@/middlewares/<Name>Middleware";

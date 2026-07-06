@@ -40,6 +40,7 @@ Read `modules/<module>/src/seeds/<Name>Seed.ts`, then implement:
 - Import the relevant entity classes and repository
 - Use `resolve()` from `@talosjs/container` to get the repository instance
 - Map the imported YAML data to entity instances
+- **Hash any credential/secret field** (passwords, API keys, tokens) with the framework's hashing utility before persisting — never store plaintext credentials, even in demo/dev seeds, since seed data can leak into other environments
 - Use the repository to persist the entities
 
 ### 4. Complete the test file

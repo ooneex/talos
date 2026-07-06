@@ -223,6 +223,8 @@ notifications: async (input: {
 
 For each method whose controller uses `@Route.socket(...)`, use `Socket` from `@talosjs/socket-client`. Wire every callback, send the payload, and resolve when the server marks the stream `done`. `Socket` reads its bearer token from a `bearerToken` query param on the URL, so for authenticated sockets merge `input.bearerToken` into the endpoint queries (omit both for public sockets).
 
+> **Security — tokens in URLs leak.** Query-string tokens get captured by proxy/access logs, browser history, and APM traces. Because `Socket` requires the token as a query param, mitigate it: issue **short-lived** bearer tokens for socket connections and ensure your reverse proxy / log pipeline scrubs query strings. If `@talosjs/socket-client` later supports a header or subprotocol handshake, prefer that over the query param.
+
 ```typescript
 import { Socket } from "@talosjs/socket-client";
 

@@ -29,6 +29,7 @@ Read `modules/<module>/src/loggers/<Name>Logger.ts`, then implement:
 
 - Implement `init()` to set up the logger (open file handles, configure transports)
 - Implement `log`, `debug`, `info`, `success`, `warn`, and `error` with actual logging logic
+- **Redact sensitive data before writing.** Never log credentials, tokens, auth headers, or full request/event payloads. Mask or allowlist fields in `data` (passwords, secrets, PII) inside each method, and never interpolate a raw error/exception body that may embed secrets.
 - Inject required dependencies via the constructor
 
 ```typescript

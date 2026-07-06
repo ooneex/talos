@@ -52,7 +52,10 @@ export class <Name>Middleware implements IMiddleware {
 
   public onError = (ctx: ChatMiddlewareContext, info: ErrorInfo): void => {
     // Runs once when the chat run fails with an unhandled error.
-    this.events.push(`error: ${ctx.requestId} after ${info.duration}ms (${String(info.error)})`);
+    // Log structured, non-sensitive error metadata — a raw error body can embed
+    // provider keys or user PII. Prefer name/code over the full message/stack.
+    const errorName = info.error instanceof Error ? info.error.name : "UnknownError";
+    this.events.push(`error: ${ctx.requestId} after ${info.duration}ms (${errorName})`);
   };
 }
 ```

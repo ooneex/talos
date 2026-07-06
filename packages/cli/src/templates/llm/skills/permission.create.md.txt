@@ -29,6 +29,7 @@ Read `modules/<module>/src/permissions/<Name>Permission.ts`, then implement:
 
 - Implement `allow()` with permission rules using `this.ability.can()`
 - Implement `setUserPermissions()` with role-based permission logic
+- Implement `check()` to **deny by default (fail closed)** and derive its result from the resolved ability — never leave it returning a hardcoded `true`
 
 ```typescript
 import type { ContextType } from "@talosjs/controller";
@@ -52,7 +53,10 @@ export class <Name>Permission extends Permission {
   }
 
   public check(context: ContextType): boolean {
-    return true;
+    // Deny by default (fail closed). Resolve the caller's abilities, then
+    // authorize only the specific action/subject this permission guards, e.g.:
+    //   return this.setUserPermissions(context).ability.can("update", "YourEntity");
+    return false;
   }
 }
 ```
@@ -61,7 +65,7 @@ export class <Name>Permission extends Permission {
 
 Read and replace `modules/<module>/tests/permissions/<Name>Permission.spec.ts`:
 
-**Coverage:** class identity (`name.endsWith("Permission")`, is constructor), extends `Permission`, `allow` exists and returns `this` (fluent), does not throw, `setUserPermissions` exists and returns `this`, does not throw when `user` is absent, `check` exists and returns a `boolean`. Add one test per role/action combination after implementing. Instance isolation.
+**Coverage:** class identity (`name.endsWith("Permission")`, is constructor), extends `Permission`, `allow` exists and returns `this` (fluent), does not throw, `setUserPermissions` exists and returns `this`, does not throw when `user` is absent, `check` exists and returns a `boolean`, `check` **denies by default** (returns `false`) for an unauthorized/empty context. Add one test per role/action combination after implementing. Instance isolation.
 
 ```typescript
 import { Permission } from "@talosjs/permission";
@@ -119,6 +123,11 @@ describe("<Name>Permission", () => {
     const permission = new <Name>Permission();
     const result = permission.check({} as any);
     expect(typeof result).toBe("boolean");
+  });
+
+  test("'check' should deny by default for an unauthorized context", () => {
+    const permission = new <Name>Permission();
+    expect(permission.check({ user: undefined } as any)).toBe(false);
   });
 
   // Add one test per role/action combination after implementing allow/setUserPermissions

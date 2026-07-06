@@ -362,12 +362,16 @@ export class UserCreateController {
   constructor(private readonly userCreatedEvent: UserCreatedEvent) {}
 
   public async index(context: ContextType<UserCreateRouteType>) {
-    const data = await context.request.payload();
-    await this.userCreatedEvent.publish(data);
-    return context.response.json({ id: "...", name: data.name, email: data.email });
+    const { password, ...safe } = await context.request.payload();
+    // Never publish or return raw credentials. Hash the password in the service
+    // before persistence, and publish only non-sensitive fields on the event.
+    await this.userCreatedEvent.publish(safe);
+    return context.response.json({ id: "...", name: safe.name, email: safe.email });
   }
 }
 ```
+
+> **Security — credentials never leave the boundary in the clear.** Hash passwords (argon2/bcrypt) inside the service before persisting, and never place a raw password (or any secret) in an event payload, a response body, or a log. PubSub payloads are serialized to the broker and delivered to every subscriber, so publish only non-sensitive identifiers.
 
 ### HTTP — PUT update (params + payload + response)
 
@@ -439,8 +443,9 @@ export class ChatMessageController {
       await context.channel.subscribe();
     }
 
+    // Bind the message to the authenticated sender — never trust a client-supplied id.
     const reply = context.response.create({
-      userId: "current-user-id",
+      userId: context.user?.id ?? "",
       message,
       sentAt: new Date().toISOString(),
     });

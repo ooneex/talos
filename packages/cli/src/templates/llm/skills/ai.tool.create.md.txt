@@ -30,6 +30,7 @@ Read `modules/<module>/src/ai/tools/<Name>Tool.ts`, then implement:
 - Refine the input type and `getInputSchema()` to match the arguments the model must supply (use `@talosjs/validation`'s `Assert`).
 - Write a clear `getDescription()` — the model relies on it to decide when to call the tool.
 - Implement `handler()` with the real work. Inject required dependencies (clients, env) via the constructor with `@inject`.
+- **Guard side-effecting tools.** The input schema validates argument *shape*, not *authority*. For any handler that mutates state or reaches sensitive data (send email, delete/update records, spend money), enforce the requesting user's authorization inside the handler, apply least privilege to injected clients, and gate destructive actions behind confirmation — a prompt-injected model can call the tool with attacker-chosen arguments (OWASP LLM excessive agency / confused deputy).
 
 ```typescript
 import { inject } from "@talosjs/container";

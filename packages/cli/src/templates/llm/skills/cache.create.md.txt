@@ -30,6 +30,7 @@ Read `modules/<module>/src/cache/<Name>Cache.ts`, then implement:
 - Implement `get`, `set`, `delete`, `has` with actual cache logic
 - Replace `CacheException` throws with real operations
 - Inject required dependencies (e.g., Redis client) via the constructor
+- **For session/token or otherwise sensitive caches, always set an explicit `ttl`** so entries expire, and avoid caching secrets in plaintext (encrypt or store an opaque reference instead)
 
 ```typescript
 import { CacheException, type ICache, decorator } from "@talosjs/cache";

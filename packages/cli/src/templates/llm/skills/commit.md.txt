@@ -19,8 +19,9 @@ Commit messages are linted by a git `commit-msg` hook (installed with `talos com
 
 1. **Analyze changes** — run `git status --porcelain`
 2. **Group by module** — files under `modules/<name>/` → scope is the module name; all other files → scope `common`
-3. **For each group** — stage the files, pick the commit type, commit with `type(scope): Subject`
-4. **Push** — after all commits are created, run `git push`
+3. **Screen for secrets** — before staging, skip anything that looks like a credential (`.env*`, `*.pem`, `*.key`, `*credentials*`, private keys, tokens). Do **not** commit these; surface them to the user instead.
+4. **For each group** — stage the files, pick the commit type, commit with `type(scope): Subject`
+5. **Do not push automatically** — leave the commits local. Push only when the user explicitly asks; never run `git push` as part of this skill's autonomous run.
 
 ## Commit Message Format
 

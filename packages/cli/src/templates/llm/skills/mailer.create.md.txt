@@ -62,6 +62,7 @@ Read `modules/<module>/src/mailers/<Name>MailerTemplate.tsx`, then:
 
 - Update `<Name>MailerPropsType` with actual props for the email
 - Build the email body using `MailerLayout` components
+- **Sanitize untrusted input.** When a `link`/URL prop can originate from user input, validate it is an absolute `https:` URL before rendering it into an `href` (reject `javascript:`/`data:` schemes). When `to`/`subject`/`from` are user-derived, reject control characters/CRLF to prevent header injection.
 
 ```tsx
 import { MailerLayout } from "@talosjs/mailer";

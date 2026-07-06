@@ -28,7 +28,7 @@ bunx @talosjs/cli@latest analytics:create --name=<name> --module=<module>
 Read `modules/<module>/src/analytics/<Name>Analytics.ts`, then implement:
 
 - Implement `capture` with actual analytics tracking logic
-- Define a proper `CaptureOptionsType` instead of `Record<string, unknown>`
+- Define a proper `CaptureOptionsType` instead of `Record<string, unknown>` — allowlist only the non-PII fields you intend to send; never forward raw payloads, credentials, or personal data to a third-party tracker, and do not log the full options object
 
 ```typescript
 import { type IAnalytics, decorator } from "@talosjs/analytics";
