@@ -144,6 +144,7 @@ export class SpaCreateCommand<T extends CommandOptionsType = CommandOptionsType>
     const port = findFreePort(await collectUsedPorts(modulesDir));
     const packagePath = join(moduleDir, "package.json");
     const packageJson = await Bun.file(packagePath).json();
+    packageJson.type = "module";
     packageJson.scripts = {
       ...packageJson.scripts,
       dev: `bun --bun run vite --port ${port}`,
@@ -174,6 +175,12 @@ export class SpaCreateCommand<T extends CommandOptionsType = CommandOptionsType>
 
     // Use the repository's src as the module src content
     await cp(join(tmpDir, "src"), srcDir, { recursive: true });
+
+    // Include the repository's vite config at the module root
+    const viteConfigSrc = join(tmpDir, "vite.config.ts");
+    if (existsSync(viteConfigSrc)) {
+      await cp(viteConfigSrc, join(moduleDir, "vite.config.ts"));
+    }
 
     // Ensure every shared sub-layer exists, keeping empty folders tracked via .gitkeep
     const sharedSubDirs = ["assets", "components", "hooks", "layouts", "services", "store", "styles", "types", "utils"];

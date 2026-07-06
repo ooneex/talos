@@ -16,6 +16,7 @@ const read = (path: string) => Bun.file(path).text();
 // Source files and dependencies the mocked clone of the spa repository exposes
 const SPA_SRC_FILE = "App.tsx";
 const SPA_SRC_CONTENT = "export const App = () => null;\n";
+const SPA_VITE_CONFIG_CONTENT = "export default {};\n";
 const SPA_DEPENDENCIES = { react: "^18.0.0" };
 const SPA_DEV_DEPENDENCIES = { typescript: "^5.0.0" };
 
@@ -49,6 +50,7 @@ describe("SpaCreateCommand", () => {
         const dest = cmd[cmd.length - 1] as string;
         mkdirSync(join(dest, "src"), { recursive: true });
         writeFileSync(join(dest, "src", SPA_SRC_FILE), SPA_SRC_CONTENT);
+        writeFileSync(join(dest, "vite.config.ts"), SPA_VITE_CONFIG_CONTENT);
         writeFileSync(
           join(dest, "package.json"),
           JSON.stringify({ dependencies: SPA_DEPENDENCIES, devDependencies: SPA_DEV_DEPENDENCIES }),
@@ -137,6 +139,13 @@ describe("SpaCreateCommand", () => {
       expect(pkg.scripts.preview).toBe("bun --bun run vite preview");
     });
 
+    test("should mark the package as an ES module", async () => {
+      await command.run({ name: "Spa", cwd: testDir, silent: true });
+
+      const pkg = JSON.parse(await read(join(testDir, "modules", "spa", "package.json")));
+      expect(pkg.type).toBe("module");
+    });
+
     test("should keep the scaffolded test and lint scripts", async () => {
       await command.run({ name: "Spa", cwd: testDir, silent: true });
 
@@ -182,6 +191,14 @@ describe("SpaCreateCommand", () => {
       const filePath = join(testDir, "modules", "spa", "src", SPA_SRC_FILE);
       expect(await exists(filePath)).toBe(true);
       expect(await read(filePath)).toBe(SPA_SRC_CONTENT);
+    });
+
+    test("should copy the repository vite config into the module root", async () => {
+      await command.run({ name: "Spa", cwd: testDir, silent: true });
+
+      const filePath = join(testDir, "modules", "spa", "vite.config.ts");
+      expect(await exists(filePath)).toBe(true);
+      expect(await read(filePath)).toBe(SPA_VITE_CONFIG_CONTENT);
     });
 
     test("should clone the spa repository", async () => {
