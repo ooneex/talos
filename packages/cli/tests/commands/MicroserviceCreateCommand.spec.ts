@@ -334,6 +334,14 @@ describe("MicroserviceCreateCommand", () => {
       expect(content).toContain("redis://localhost:6379");
     });
 
+    test("should populate the queue redis url without leaving a placeholder", async () => {
+      await command.run({ name: "Billing", cwd: testDir, silent: true });
+
+      const content = await read(join(testDir, "modules", "billing", ".env.yml"));
+      expect(content).not.toContain("{{QUEUE_REDIS_URL}}");
+      expect(content).toMatch(/queue:\n\s+redis:\n\s+url:\s*redis:\/\/localhost:6379/);
+    });
+
     test("should assign a distinct port instead of the default 3000", async () => {
       await command.run({ name: "Billing", cwd: testDir, silent: true });
 

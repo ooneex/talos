@@ -199,6 +199,7 @@ export class MicroserviceCreateCommand<T extends CommandOptionsType = CommandOpt
       cache: { redis: { url: string } };
       pubsub: { redis: { url: string } };
       rate_limit: { redis: { url: string } };
+      queue: { redis: { url: string } };
       database: { url: string; redis: { url: string } };
       [key: string]: unknown;
     };
@@ -207,6 +208,7 @@ export class MicroserviceCreateCommand<T extends CommandOptionsType = CommandOpt
     envData.cache.redis.url = "redis://localhost:6379";
     envData.pubsub.redis.url = "redis://localhost:6379";
     envData.rate_limit.redis.url = "redis://localhost:6379";
+    envData.queue.redis.url = "redis://localhost:6379";
     envData.database.url = "postgresql://talos:talos@localhost:5432/talos";
     envData.database.redis.url = "redis://localhost:6379";
 
