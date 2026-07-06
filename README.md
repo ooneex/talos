@@ -176,7 +176,7 @@ talos controller:create \
   --route-name=movie.list --route-path=/movies --route-method=get
 ```
 
-Prefer an AI agent? Initialize the skills once (`talos claude:init` or `talos codex:init`), then describe the whole `Movie` domain in a single prompt. The agent runs the same `module:create`, `entity:create`, `repository:create`, and `controller:create` generators and writes the tests. See [Create your app](https://docs.talosjs.com/getting-started/create-app) for the full walkthrough.
+Prefer an AI agent? Scaffold the skills once with `talos agent:skills:create` — it sets up the shared `AGENTS.md`, agent files, and skills for Claude, Codex, Cursor, Gemini, and more — then describe the whole `Movie` domain in a single prompt. The agent runs the same `module:create`, `entity:create`, `repository:create`, and `controller:create` generators and writes the tests. See [Create your app](https://docs.talosjs.com/getting-started/create-app) for the full walkthrough.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -197,26 +197,8 @@ To develop the framework packages themselves:
 ```sh
 git clone https://github.com/ooneex/talos.git
 cd Talos
-bun install                             # install dependencies
-bun run --filter='@talosjs/cli' build   # build the CLI first
-bun packages/cli/dist/index.js monorepo:run --commands=build,test --logs
+talos monorepo:check
 ```
-
-### Commands
-
-The repo root ships no scripts; tasks run through the CLI. Build it once with `bun run --filter='@talosjs/cli' build`, then invoke it as `bun packages/cli/dist/index.js <command>`.
-
-| Command | Description |
-|---------|-------------|
-| `bun run --filter='@talosjs/cli' build` | Build the CLI package |
-| `bun packages/cli/dist/index.js monorepo:run --commands=build --logs` | Build all packages |
-| `bun packages/cli/dist/index.js monorepo:run --commands=test --logs` | Run all tests |
-| `bun packages/cli/dist/index.js monorepo:run --commands=lint --logs` | Lint all packages (Biome + TypeScript) |
-| `bunx biome check --write` | Format and auto-fix code with Biome |
-| `bun packages/cli/dist/index.js monorepo:check --logs` | Install + build + lint + test (full validation) |
-| `bun packages/cli/dist/index.js npm:publish --logs` | Publish all packages to npm |
-
-Run the tests for a single package with `bun test packages/<package-name>/tests`.
 
 ### Commit Conventions
 
