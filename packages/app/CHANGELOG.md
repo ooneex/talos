@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.2.1](https://github.com/ooneex/talos/releases/tag/@talosjs/app@1.2.1) - 2026-07-06
+
+### Changed
+
+- Decouple onStart from banner and drop brand title line| — Franck ([c430a461](https://github.com/ooneex/talos/commit/c430a461))
+
 ## [1.2.0](https://github.com/ooneex/talos/releases/tag/@talosjs/app@1.2.0) - 2026-07-06
 
 ### Added
