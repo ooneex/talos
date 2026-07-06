@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.21.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.21.0) - 2026-07-06
+
+### Added
+
+- Remove microservice declaration from app.yml on module removal| — Franck ([5a173e05](https://github.com/ooneex/talos/commit/5a173e05))
+
 ## [1.20.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.20.0) - 2026-07-06
 
 ### Added
