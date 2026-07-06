@@ -128,6 +128,12 @@ export const run = async (): Promise<void> => {
       "no-cache": {
         type: "boolean",
       },
+      tag: {
+        type: "string",
+      },
+      silent: {
+        type: "boolean",
+      },
     },
     strict: false,
     allowPositionals: true,
@@ -181,6 +187,8 @@ export const run = async (): Promise<void> => {
     file: values.file,
     logs: values.logs,
     noCache: values["no-cache"],
+    tag: values.tag,
+    silent: values.silent,
     // `--api` / `--microservice` / `--spa` (bare → true, or `=name1,name2` → string)
     // restrict `app:start` to modules of that type.
     api: values.api,
