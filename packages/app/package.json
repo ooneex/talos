@@ -1,7 +1,7 @@
 {
   "name": "@talosjs/app",
   "description": "Full-featured application framework for Bun — orchestrates routing, middleware pipelines, dependency injection, caching, logging, and WebSocket support in a modular architecture",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "type": "module",
   "files": [
     "dist",

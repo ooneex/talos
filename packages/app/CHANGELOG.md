@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.2.2](https://github.com/ooneex/talos/releases/tag/@talosjs/app@1.2.2) - 2026-07-06
+
+### Changed
+
+- Always log server start regardless of onStart handler| — Franck ([35017f33](https://github.com/ooneex/talos/commit/35017f33))
+
 ## [1.2.1](https://github.com/ooneex/talos/releases/tag/@talosjs/app@1.2.1) - 2026-07-06
 
 ### Changed
