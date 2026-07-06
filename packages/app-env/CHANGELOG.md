@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.2.0](https://github.com/ooneex/talos/releases/tag/@talosjs/app-env@1.2.0) - 2026-07-06
+
+### Added
+
+- Layer env candidates so later files override earlier keys| — Franck ([d16bb1be](https://github.com/ooneex/talos/commit/d16bb1be))
+
 ## [1.1.2](https://github.com/ooneex/talos/releases/tag/@talosjs/app-env@1.1.2) - 2026-07-05
 
 ### Changed
