@@ -178,6 +178,7 @@ _talos() {
     'npm\:credentials\:create:Save an npm Granular Access Token under the user config'
     'npm\:publish:Publish a package or module to npm'
     'monorepo\:run:Run package.json scripts across packages and modules with granular caching'
+    'run:Alias for monorepo:run — run package.json scripts across packages and modules with granular caching'
     'monorepo\:check:Run install, build, lint and test across packages and modules with granular caching'
     'entity\:create:Generate a new entity class'
     'flag\:create:Generate a new feature flag class'
@@ -332,7 +333,7 @@ _talos() {
             '--modules=-[Module name(s), comma-separated (default: all)]::modules:_talos_publish_modules' \
             '--access=[Registry access level]:access:(public restricted)'
           ;;
-        monorepo:run)
+        monorepo:run|run)
           _arguments -s \
             '--commands=[Command name(s), comma-separated (required)]:commands:_talos_run_commands' \
             '--packages=-[Package name(s), comma-separated (default: all)]::packages:_talos_publish_packages' \

@@ -82,6 +82,7 @@ describe("@talosjs/cli - index", () => {
     "RateLimitCreateCommand",
     "ReleaseCreateCommand",
     "RepositoryCreateCommand",
+    "RunCommand",
     "SdkCreateCommand",
     "SeedCreateCommand",
     "SeedRunCommand",

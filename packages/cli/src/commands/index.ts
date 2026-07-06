@@ -50,6 +50,7 @@ export { QueueCreateCommand } from "./QueueCreateCommand";
 export { RateLimitCreateCommand } from "./RateLimitCreateCommand";
 export { ReleaseCreateCommand } from "./ReleaseCreateCommand";
 export { RepositoryCreateCommand } from "./RepositoryCreateCommand";
+export { RunCommand } from "./RunCommand";
 export { SdkCreateCommand } from "./SdkCreateCommand";
 export { SeedCreateCommand } from "./SeedCreateCommand";
 export { SeedRunCommand } from "./SeedRunCommand";
