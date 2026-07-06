@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.19.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.19.0) - 2026-07-06
+
+### Added
+
+- Populate queue redis url in microservice env config| — Franck ([07a9e276](https://github.com/ooneex/talos/commit/07a9e276))
+
 ## [1.18.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.18.0) - 2026-07-06
 
 ### Added
