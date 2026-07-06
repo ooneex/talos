@@ -44,6 +44,8 @@ describe("AppInitCommand", () => {
   let testDir: string;
   let originalCwd: string;
   let originalSpawn: typeof Bun.spawn;
+  let originalWhich: typeof Bun.which;
+  let spawnCalls: string[][];
 
   beforeEach(() => {
     installCommitHook = true;
@@ -53,10 +55,19 @@ describe("AppInitCommand", () => {
     testDir = join(originalCwd, ".temp", `app-init-${Date.now()}`);
     mkdirSync(testDir, { recursive: true });
     process.chdir(testDir);
+    spawnCalls = [];
+
+    // Pretend `git` is installed so tests never depend on the host PATH; the
+    // missing-binary case is exercised explicitly below.
+    originalWhich = Bun.which;
+    Bun.which = (() => "/usr/bin/git") as typeof Bun.which;
 
     originalSpawn = Bun.spawn;
     Bun.spawn = ((...args: unknown[]) => {
       const cmd = Array.isArray(args[0]) ? args[0] : (args[0] as { cmd?: string[] })?.cmd;
+      if (Array.isArray(cmd)) {
+        spawnCalls.push([...(cmd as string[])]);
+      }
       if (Array.isArray(cmd) && ((cmd[0] === "bun" && (cmd[1] === "update" || cmd[1] === "add")) || cmd[0] === "git")) {
         return { exited: Promise.resolve(0) } as unknown as ReturnType<typeof Bun.spawn>;
       }
@@ -66,6 +77,7 @@ describe("AppInitCommand", () => {
 
   afterEach(() => {
     Bun.spawn = originalSpawn;
+    Bun.which = originalWhich;
     process.chdir(originalCwd);
     if (existsSync(testDir)) {
       rmSync(testDir, { recursive: true, force: true });
@@ -79,6 +91,18 @@ describe("AppInitCommand", () => {
 
     test("should return correct description", () => {
       expect(command.getDescription()).toBe("Initialize an application");
+    });
+  });
+
+  describe("run() - git guard", () => {
+    test("should fail without running git init when git is not installed", async () => {
+      Bun.which = (() => null) as typeof Bun.which;
+
+      await command.run({ name: "MyApp", destination: testDir });
+
+      expect(spawnCalls.some((cmd) => cmd[0] === "git")).toBe(false);
+      expect(process.exitCode).toBe(1);
+      process.exitCode = 0;
     });
   });
 

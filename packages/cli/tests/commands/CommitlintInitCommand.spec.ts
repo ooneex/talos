@@ -43,6 +43,21 @@ describe("CommitlintInitCommand", () => {
     expect(statSync(hookPath).mode & 0o111).toBeGreaterThan(0);
   });
 
+  test("should fail without installing the hook when git is not installed", async () => {
+    const originalWhich = Bun.which;
+    Bun.which = (() => null) as typeof Bun.which;
+
+    try {
+      await new CommitlintInitCommand().run({ cwd: repo });
+
+      expect(existsSync(join(repo, ".git", "hooks", "commit-msg"))).toBe(false);
+      expect(process.exitCode).toBe(1);
+      process.exitCode = 0;
+    } finally {
+      Bun.which = originalWhich;
+    }
+  });
+
   test("should clear a husky-style core.hooksPath and use the standard hooks dir", async () => {
     // Simulate husky having redirected hooks elsewhere.
     mkdirSync(join(repo, ".husky", "_"), { recursive: true });

@@ -8,6 +8,7 @@ describe("AppStopCommand", () => {
   let testDir: string;
   let originalCwd: string;
   let originalSpawn: typeof Bun.spawn;
+  let originalWhich: typeof Bun.which;
   let spawnCalls: { cmd: string[]; cwd: string }[];
 
   beforeEach(() => {
@@ -15,6 +16,11 @@ describe("AppStopCommand", () => {
     originalCwd = process.cwd();
     testDir = join(originalCwd, ".temp", `app-stop-${Date.now()}`);
     spawnCalls = [];
+
+    // Pretend `docker` is installed so tests never depend on the host PATH; the
+    // missing-binary case is exercised explicitly below.
+    originalWhich = Bun.which;
+    Bun.which = (() => "/usr/bin/docker") as typeof Bun.which;
 
     originalSpawn = Bun.spawn;
     Bun.spawn = ((...args: unknown[]) => {
@@ -29,6 +35,7 @@ describe("AppStopCommand", () => {
 
   afterEach(() => {
     Bun.spawn = originalSpawn;
+    Bun.which = originalWhich;
     process.chdir(originalCwd);
     if (existsSync(testDir)) {
       rmSync(testDir, { recursive: true, force: true });
@@ -75,6 +82,20 @@ describe("AppStopCommand", () => {
       expect(spawnCalls).toHaveLength(1);
       expect(spawnCalls[0]?.cmd).toEqual(["docker", "compose", "down"]);
       expect(spawnCalls[0]?.cwd).toBe(appDir);
+    });
+
+    test("should fail without stopping anything when docker is not installed", async () => {
+      Bun.which = (() => null) as typeof Bun.which;
+      const appDir = join(testDir, "modules", "app");
+      await Bun.write(join(appDir, "package.json"), JSON.stringify({ name: "@acme/app" }));
+      await Bun.write(join(appDir, "docker-compose.yml"), "version: '3'");
+      process.chdir(testDir);
+
+      await command.run();
+
+      expect(spawnCalls).toHaveLength(0);
+      expect(process.exitCode).toBe(1);
+      process.exitCode = 0;
     });
 
     test("should handle docker compose failure", async () => {

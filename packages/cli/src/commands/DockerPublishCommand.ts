@@ -4,7 +4,7 @@ import { join } from "node:path";
 import type { ICommand } from "@talosjs/command";
 import { decorator } from "@talosjs/command";
 import { TerminalLogger } from "@talosjs/logger";
-import { createSpinner, LOG_OPTIONS } from "../utils";
+import { createSpinner, ensureBin, LOG_OPTIONS } from "../utils";
 
 type CommandOptionsType = {
   packages?: string;
@@ -45,6 +45,10 @@ export class DockerPublishCommand<T extends CommandOptionsType = CommandOptionsT
         logger[level](message, undefined, LOG_OPTIONS);
       }
     };
+
+    if (!ensureBin(logger, "docker", silent)) {
+      return;
+    }
 
     const targets = await this.resolveTargets(packages, modules);
     if (targets.length === 0) {

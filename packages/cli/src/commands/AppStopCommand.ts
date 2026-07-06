@@ -3,7 +3,7 @@ import type { ICommand } from "@talosjs/command";
 import { decorator } from "@talosjs/command";
 import { TerminalLogger } from "@talosjs/logger";
 import { collectRunnableModules, hasModuleFilter, type RunnableModule, selectModules } from "../runnableModules";
-import { LOG_OPTIONS, spawnStep } from "../utils";
+import { ensureBin, LOG_OPTIONS, spawnStep } from "../utils";
 
 @decorator.command()
 export class AppStopCommand implements ICommand {
@@ -28,6 +28,10 @@ export class AppStopCommand implements ICommand {
     if (!(await packageJsonFile.exists())) {
       logger.error("Module app not found", undefined, LOG_OPTIONS);
       process.exitCode = 1;
+      return;
+    }
+
+    if (!ensureBin(logger, "docker")) {
       return;
     }
 

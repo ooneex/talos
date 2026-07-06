@@ -7,8 +7,16 @@ mock.module("enquirer", () => ({
   prompt: mock(() => Promise.resolve({ name: "Test" })),
 }));
 
-const { createSpinner, ensureModule, extractYamlComments, getCliVersion, runModuleScripts, SPINNER_FRAMES, toYaml } =
-  await import("@/utils");
+const {
+  createSpinner,
+  ensureBin,
+  ensureModule,
+  extractYamlComments,
+  getCliVersion,
+  runModuleScripts,
+  SPINNER_FRAMES,
+  toYaml,
+} = await import("@/utils");
 const { ModuleCreateCommand } = await import("@/commands/ModuleCreateCommand");
 const { TerminalLogger } = await import("@talosjs/logger");
 
@@ -531,5 +539,50 @@ describe("createSpinner", () => {
     ).toBe(true);
     // stop() erases the spinner line so it never lingers above later output.
     expect(written.at(-1)).toContain("\r");
+  });
+});
+
+describe("ensureBin", () => {
+  const originalWhich = Bun.which;
+  let errors: string[];
+  // Minimal logger stub capturing only the error channel ensureBin uses.
+  const logger = {
+    error: (message: string) => {
+      errors.push(message);
+    },
+  } as unknown as InstanceType<typeof TerminalLogger>;
+
+  beforeEach(() => {
+    errors = [];
+    process.exitCode = 0;
+  });
+
+  afterEach(() => {
+    Bun.which = originalWhich;
+    process.exitCode = 0;
+  });
+
+  test("should return true and leave the exit code untouched when the binary is on the PATH", () => {
+    Bun.which = (() => "/usr/bin/docker") as typeof Bun.which;
+
+    expect(ensureBin(logger, "docker")).toBe(true);
+    expect(errors).toHaveLength(0);
+    expect(process.exitCode).toBe(0);
+  });
+
+  test("should return false, log an actionable error and set the exit code when the binary is missing", () => {
+    Bun.which = (() => null) as typeof Bun.which;
+
+    expect(ensureBin(logger, "docker")).toBe(false);
+    expect(errors.some((message) => message.includes("`docker` was not found"))).toBe(true);
+    expect(process.exitCode).toBe(1);
+  });
+
+  test("should suppress the error message in silent mode but still fail", () => {
+    Bun.which = (() => null) as typeof Bun.which;
+
+    expect(ensureBin(logger, "git", true)).toBe(false);
+    expect(errors).toHaveLength(0);
+    expect(process.exitCode).toBe(1);
   });
 });

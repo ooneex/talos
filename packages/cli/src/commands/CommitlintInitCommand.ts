@@ -3,7 +3,7 @@ import { join, resolve } from "node:path";
 import type { ICommand } from "@talosjs/command";
 import { decorator } from "@talosjs/command";
 import { TerminalLogger } from "@talosjs/logger";
-import { LOG_OPTIONS } from "../utils";
+import { ensureBin, LOG_OPTIONS } from "../utils";
 
 type CommandOptionsType = {
   cwd?: string;
@@ -56,6 +56,10 @@ export class CommitlintInitCommand<T extends CommandOptionsType = CommandOptions
   public async run(options?: T): Promise<void> {
     const logger = new TerminalLogger();
     const cwd = options?.cwd ?? process.cwd();
+
+    if (!ensureBin(logger, "git")) {
+      return;
+    }
 
     // Undo husky's redirection first so the hook is installed into — and later
     // read from — the standard hooks directory rather than husky's.

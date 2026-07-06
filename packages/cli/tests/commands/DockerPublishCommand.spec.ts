@@ -63,12 +63,18 @@ describe("DockerPublishCommand", () => {
   let loginMock: ReturnType<typeof mock>;
   let originalCwd: string;
   let testDir: string;
+  let originalWhich: typeof Bun.which;
 
   beforeEach(() => {
     command = new DockerPublishCommand();
     errorCalls = [];
     successCalls = [];
     infoCalls = [];
+
+    // Pretend `docker` is installed so tests never depend on the host PATH; the
+    // missing-binary case is exercised explicitly below.
+    originalWhich = Bun.which;
+    Bun.which = (() => "/usr/bin/docker") as typeof Bun.which;
 
     originalCwd = process.cwd();
     process.chdir(mkdtempSync(join(nodeOs.tmpdir(), "talos-docker-publish-cwd-")));
@@ -89,6 +95,7 @@ describe("DockerPublishCommand", () => {
   });
 
   afterEach(() => {
+    Bun.which = originalWhich;
     process.chdir(originalCwd);
     rmSync(testDir, { recursive: true, force: true });
     if (existsSync(credentialsPath)) {
@@ -247,6 +254,20 @@ describe("DockerPublishCommand", () => {
 
       expect(successCalls).toHaveLength(1);
       expect(successCalls[0]).toBe("Published acme/cli:2.3.4");
+    });
+
+    test("should fail with an actionable error when docker is not installed", async () => {
+      Bun.which = (() => null) as typeof Bun.which;
+      await writeCredentials();
+      await scaffoldTarget("packages", "cli");
+
+      await command.run({ packages: "cli" });
+
+      expect(loginMock).not.toHaveBeenCalled();
+      expect(publishMock).not.toHaveBeenCalled();
+      expect(errorCalls.some((message) => message.includes("`docker` was not found"))).toBe(true);
+      expect(process.exitCode).toBe(1);
+      process.exitCode = 0;
     });
 
     test("should fail when there are no packages or modules to publish", async () => {

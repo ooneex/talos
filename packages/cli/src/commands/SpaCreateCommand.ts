@@ -10,7 +10,7 @@ import { toPascalCase } from "@talosjs/utils/toPascalCase";
 import { removeFromAppModule, removeFromSharedModule, removePathAlias } from "../moduleRegistry";
 import { askDesign } from "../prompts/askDesign";
 import { askName } from "../prompts/askName";
-import { LOG_OPTIONS, spawnStep } from "../utils";
+import { ensureBin, LOG_OPTIONS, spawnStep } from "../utils";
 import { DesignCreateCommand } from "./DesignCreateCommand";
 import { ModuleCreateCommand } from "./ModuleCreateCommand";
 
@@ -155,6 +155,10 @@ export class SpaCreateCommand<T extends CommandOptionsType = CommandOptionsType>
     // Pull the spa source from the upstream repository
     const tmpDir = join(tmpdir(), `talos-spa-${kebabName}`);
     await rm(tmpDir, { recursive: true, force: true });
+
+    if (!ensureBin(logger, "git", silent)) {
+      return;
+    }
 
     const cloned = await spawnStep(
       logger,

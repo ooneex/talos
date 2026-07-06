@@ -56,12 +56,18 @@ describe("NpmPublishCommand", () => {
   let versionExistsMock: ReturnType<typeof mock>;
   let originalCwd: string;
   let testDir: string;
+  let originalWhich: typeof Bun.which;
 
   beforeEach(() => {
     command = new NpmPublishCommand();
     errorCalls = [];
     successCalls = [];
     infoCalls = [];
+
+    // Pretend `npm` is installed so tests never depend on the host PATH; the
+    // missing-binary case is exercised explicitly below.
+    originalWhich = Bun.which;
+    Bun.which = (() => "/usr/bin/npm") as typeof Bun.which;
 
     originalCwd = process.cwd();
     process.chdir(mkdtempSync(join(nodeOs.tmpdir(), "talos-npm-publish-cwd-")));
@@ -81,6 +87,7 @@ describe("NpmPublishCommand", () => {
   });
 
   afterEach(() => {
+    Bun.which = originalWhich;
     process.chdir(originalCwd);
     rmSync(testDir, { recursive: true, force: true });
     if (existsSync(credentialsPath)) {
@@ -129,6 +136,19 @@ describe("NpmPublishCommand", () => {
 
       expect(publishMock).toHaveBeenCalledTimes(1);
       expect(publishMock.mock.calls[0]?.[0]).toBe(dir);
+    });
+
+    test("should fail with an actionable error when npm is not installed", async () => {
+      Bun.which = (() => null) as typeof Bun.which;
+      await writeCredentials("npm_testtoken");
+      await scaffoldTarget("packages", "cli");
+
+      await command.run({ packages: "cli" });
+
+      expect(publishMock).not.toHaveBeenCalled();
+      expect(errorCalls.some((message) => message.includes("`npm` was not found"))).toBe(true);
+      expect(process.exitCode).toBe(1);
+      process.exitCode = 0;
     });
 
     test("should publish a module from the modules directory", async () => {

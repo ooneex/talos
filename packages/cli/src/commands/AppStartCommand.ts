@@ -4,7 +4,7 @@ import { decorator } from "@talosjs/command";
 import { TerminalLogger } from "@talosjs/logger";
 import concurrently from "concurrently";
 import { collectRunnableModules, type RunnableModuleType, selectModules } from "../runnableModules";
-import { LOG_OPTIONS, loadAppModuleName, spawnStep } from "../utils";
+import { ensureBin, LOG_OPTIONS, loadAppModuleName, spawnStep } from "../utils";
 
 // Distinct prefix color per module type so the interleaved output stays readable.
 const PREFIX_COLORS: Record<RunnableModuleType, string> = {
@@ -43,6 +43,9 @@ export class AppStartCommand implements ICommand {
     const composeExists = await Bun.file(join(appDir, "docker-compose.yml")).exists();
 
     if (composeExists) {
+      if (!ensureBin(logger, "docker")) {
+        return;
+      }
       const started = await spawnStep(logger, ["docker", "compose", "up", "-d"], appDir, {
         start: `Starting Docker services for ${name}...`,
         success: `Docker services started for ${name}`,

@@ -156,6 +156,23 @@ export const createSpinner = (message: string): { stop: () => void } => {
 };
 
 /**
+ * Verify an external binary is available on the PATH before a command tries to
+ * spawn it, failing fast with an actionable message instead of a cryptic spawn
+ * error deep inside the command. Logs the error (unless `silent`), sets
+ * `process.exitCode` to 1 when missing and returns whether the binary was found.
+ */
+export const ensureBin = (logger: TerminalLogger, bin: string, silent?: boolean): boolean => {
+  if (Bun.which(bin)) {
+    return true;
+  }
+  if (!silent) {
+    logger.error(`\`${bin}\` was not found. Install it and make sure it is on your PATH.`, undefined, LOG_OPTIONS);
+  }
+  process.exitCode = 1;
+  return false;
+};
+
+/**
  * Read a module's package.json name, returning null when the module has no
  * package.json (used by the app:* commands to detect a missing app module).
  */

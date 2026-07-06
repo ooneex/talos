@@ -24,6 +24,7 @@ describe("SpaCreateCommand", () => {
   let testDir: string;
   let originalCwd: string;
   let originalSpawn: typeof Bun.spawn;
+  let originalWhich: typeof Bun.which;
   let spawnCalls: { cmd: string[]; cwd: string; stderr?: unknown }[];
 
   beforeEach(() => {
@@ -31,6 +32,11 @@ describe("SpaCreateCommand", () => {
     originalCwd = process.cwd();
     testDir = join(originalCwd, ".temp", `spa-${Date.now()}-${Math.random().toString(36).slice(2)}`);
     spawnCalls = [];
+
+    // Pretend `git` is installed so tests never depend on the host PATH; the
+    // missing-binary case is exercised explicitly below.
+    originalWhich = Bun.which;
+    Bun.which = (() => "/usr/bin/git") as typeof Bun.which;
 
     // Stub Bun.spawn so "git clone" materializes a fake repository and "bun add" is a no-op
     originalSpawn = Bun.spawn;
@@ -55,6 +61,7 @@ describe("SpaCreateCommand", () => {
 
   afterEach(() => {
     Bun.spawn = originalSpawn;
+    Bun.which = originalWhich;
     process.chdir(originalCwd);
     rmSync(testDir, { recursive: true, force: true });
   });
@@ -66,6 +73,18 @@ describe("SpaCreateCommand", () => {
 
     test("should return correct description", () => {
       expect(command.getDescription()).toBe("Generate a new spa module");
+    });
+  });
+
+  describe("run() - git guard", () => {
+    test("should fail without cloning when git is not installed", async () => {
+      Bun.which = (() => null) as typeof Bun.which;
+
+      await command.run({ name: "Spa", cwd: testDir });
+
+      expect(spawnCalls.some((call) => call.cmd[0] === "git")).toBe(false);
+      expect(process.exitCode).toBe(1);
+      process.exitCode = 0;
     });
   });
 

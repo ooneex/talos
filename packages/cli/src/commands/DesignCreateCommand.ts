@@ -8,7 +8,7 @@ import { toKebabCase } from "@talosjs/utils/toKebabCase";
 import { toPascalCase } from "@talosjs/utils/toPascalCase";
 import { removeFromAppModule, removeFromSharedModule } from "../moduleRegistry";
 import { askName } from "../prompts/askName";
-import { LOG_OPTIONS, spawnStep } from "../utils";
+import { ensureBin, LOG_OPTIONS, spawnStep } from "../utils";
 import { ModuleCreateCommand } from "./ModuleCreateCommand";
 
 const DESIGN_REPOSITORY = "https://github.com/talos/skeleton-design.git";
@@ -66,6 +66,10 @@ export class DesignCreateCommand<T extends CommandOptionsType = CommandOptionsTy
     // Pull the design source from the upstream repository
     const tmpDir = join(tmpdir(), `talos-design-${kebabName}`);
     await rm(tmpDir, { recursive: true, force: true });
+
+    if (!ensureBin(logger, "git", silent)) {
+      return;
+    }
 
     const cloned = await spawnStep(
       logger,

@@ -24,6 +24,7 @@ describe("AppStartCommand", () => {
   let testDir: string;
   let originalCwd: string;
   let originalSpawn: typeof Bun.spawn;
+  let originalWhich: typeof Bun.which;
   let spawnCalls: { cmd: string[]; cwd: string }[];
 
   beforeEach(() => {
@@ -33,6 +34,11 @@ describe("AppStartCommand", () => {
     spawnCalls = [];
     concurrentlyCalls = [];
     concurrentlyResult = Promise.resolve([]);
+
+    // Pretend `docker` is installed so tests never depend on the host PATH; the
+    // missing-binary case is exercised explicitly below.
+    originalWhich = Bun.which;
+    Bun.which = (() => "/usr/bin/docker") as typeof Bun.which;
 
     originalSpawn = Bun.spawn;
     Bun.spawn = ((...args: unknown[]) => {
@@ -47,6 +53,7 @@ describe("AppStartCommand", () => {
 
   afterEach(() => {
     Bun.spawn = originalSpawn;
+    Bun.which = originalWhich;
     process.chdir(originalCwd);
     if (existsSync(testDir)) {
       rmSync(testDir, { recursive: true, force: true });
@@ -102,6 +109,20 @@ describe("AppStartCommand", () => {
         },
       ]);
       expect(concurrentlyCalls[0]?.options).toEqual({ prefix: "name", killOthersOn: ["failure"] });
+    });
+
+    test("should fail without starting anything when docker is not installed", async () => {
+      Bun.which = (() => null) as typeof Bun.which;
+      const appDir = await writeModule("app", "api");
+      await Bun.write(join(appDir, "docker-compose.yml"), "version: '3'");
+      process.chdir(testDir);
+
+      await command.run();
+
+      expect(spawnCalls).toHaveLength(0);
+      expect(concurrentlyCalls).toHaveLength(0);
+      expect(process.exitCode).toBe(1);
+      process.exitCode = 0;
     });
 
     test("should skip docker compose when no docker-compose.yml", async () => {

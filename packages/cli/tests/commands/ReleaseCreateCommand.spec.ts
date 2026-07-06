@@ -15,11 +15,16 @@ describe("ReleaseCreateCommand", () => {
   let command: InstanceType<typeof ReleaseCreateCommand>;
   let testDir: string;
   let originalCwd: string;
+  let originalWhich: typeof Bun.which;
 
   beforeEach(() => {
     command = new ReleaseCreateCommand();
     originalCwd = process.cwd();
     testDir = join(originalCwd, ".temp", `release-${Date.now()}`);
+    // Pretend `git` is installed so tests never depend on the host PATH; the
+    // missing-binary case is exercised explicitly below.
+    originalWhich = Bun.which;
+    Bun.which = (() => "/usr/bin/git") as typeof Bun.which;
     // Mock getRepoUrl to return null for predictable changelog output
     // @ts-expect-error accessing private method for testing
     command.getRepoUrl = mock(() => Promise.resolve(null));
@@ -29,6 +34,7 @@ describe("ReleaseCreateCommand", () => {
   });
 
   afterEach(() => {
+    Bun.which = originalWhich;
     process.chdir(originalCwd);
     if (existsSync(testDir)) {
       rmSync(testDir, { recursive: true, force: true });
@@ -377,6 +383,18 @@ describe("ReleaseCreateCommand", () => {
   });
 
   describe("run()", () => {
+    test("should fail immediately when git is not installed", async () => {
+      Bun.which = (() => null) as typeof Bun.which;
+
+      await command.run();
+
+      // The guard short-circuits before the working-tree check runs.
+      // @ts-expect-error accessing the mocked private method for testing
+      expect(command.hasPendingChanges.mock.calls).toHaveLength(0);
+      expect(process.exitCode).toBe(1);
+      process.exitCode = 0;
+    });
+
     test("should stop and flag failure when a git command fails during release", async () => {
       const tagged: string[] = [];
 

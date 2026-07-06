@@ -4,7 +4,7 @@ import type { ICommand } from "@talosjs/command";
 import { decorator } from "@talosjs/command";
 import { TerminalLogger } from "@talosjs/logger";
 import { askConfirm } from "../prompts/askConfirm";
-import { LOG_OPTIONS } from "../utils";
+import { ensureBin, LOG_OPTIONS } from "../utils";
 import { NpmPublishCommand } from "./NpmPublishCommand";
 
 type CommandOptionsType = {
@@ -76,6 +76,10 @@ export class ReleaseCreateCommand<T extends CommandOptionsType = CommandOptionsT
       .filter(Boolean);
     const logger = new TerminalLogger();
     const cwd = process.cwd();
+
+    if (!ensureBin(logger, "git")) {
+      return;
+    }
 
     if (await this.hasPendingChanges()) {
       logger.error("Working tree has pending changes. Commit or stash them before releasing", undefined, LOG_OPTIONS);

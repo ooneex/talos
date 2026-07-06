@@ -13,7 +13,7 @@ import packageTemplate from "../templates/app/package.json.txt";
 import readmeTemplate from "../templates/app/README.md.txt";
 import tsconfigTemplate from "../templates/app/tsconfig.json.txt";
 import zedSettingsTemplate from "../templates/app/zed-settings.json.txt";
-import { extractYamlComments, LOG_OPTIONS, spawnStep, toYaml } from "../utils";
+import { ensureBin, extractYamlComments, LOG_OPTIONS, spawnStep, toYaml } from "../utils";
 import { AgentSkillsCreateCommand } from "./AgentSkillsCreateCommand";
 import { CommitlintInitCommand } from "./CommitlintInitCommand";
 
@@ -112,6 +112,9 @@ export class AppInitCommand<T extends CommandOptionsType = CommandOptionsType> i
     if (!devDepsInstalled) return;
 
     // Initialize git repository
+    if (!ensureBin(logger, "git", silent)) {
+      return;
+    }
     const gitInitialized = await spawnStep(
       logger,
       ["git", "init"],
