@@ -1,7 +1,7 @@
 {
   "name": "@talosjs/migrations",
   "description": "Database migration runner with versioned schema changes, rollback support, execution logging, and container-aware lifecycle management",
-  "version": "1.1.2",
+  "version": "1.2.0",
   "type": "module",
   "files": [
     "dist",
