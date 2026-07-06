@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.13.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.13.0) - 2026-07-06
+
+### Added
+
+- Add check command| — Franck ([b428df21](https://github.com/ooneex/talos/commit/b428df21))
+- Add run command| — Franck ([599930c9](https://github.com/ooneex/talos/commit/599930c9))
+- Add ensureBin guard to fail fast when required binaries are missing| — Franck ([05c7bb9b](https://github.com/ooneex/talos/commit/05c7bb9b))
+
+### Changed
+
+- Update LLM agent and skill templates| — Franck ([9222050d](https://github.com/ooneex/talos/commit/9222050d))
+
 ## [1.12.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.12.0) - 2026-07-06
 
 ### Added
