@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.1.4](https://github.com/ooneex/talos/releases/tag/@talosjs/app@1.1.4) - 2026-07-06
+
+### Changed
+
+- Clarify env loading overlays module config over project root| — Franck ([d972a21e](https://github.com/ooneex/talos/commit/d972a21e))
+
 ## [1.1.3](https://github.com/ooneex/talos/releases/tag/@talosjs/app@1.1.3) - 2026-07-05
 
 ### Changed
