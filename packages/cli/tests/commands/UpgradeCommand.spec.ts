@@ -142,7 +142,7 @@ describe("UpgradeCommand", () => {
       expect(logs.success.some((line) => line.includes("Upgraded to v999.0.0"))).toBe(true);
     });
 
-    test("should print a manual command when the install fails", async () => {
+    test("should print a manual command and skip completions when the install fails", async () => {
       mockFetch(() => jsonResponse({ version: "999.0.0" }));
       spawnExitCode = 1;
 
@@ -150,6 +150,52 @@ describe("UpgradeCommand", () => {
 
       expect(spawnCalls).toHaveLength(1);
       expect(logs.info.some((line) => line.includes("bun add -g @talosjs/cli@latest"))).toBe(true);
+      expect(completionRuns).toHaveLength(0);
+    });
+
+    test("should refresh Zsh completions after a successful upgrade", async () => {
+      mockFetch(() => jsonResponse({ version: "999.0.0" }));
+      process.env.SHELL = "/bin/zsh";
+
+      await command.run();
+
+      expect(completionRuns).toEqual(["zsh"]);
+    });
+
+    test("should refresh Bash completions after a successful upgrade", async () => {
+      mockFetch(() => jsonResponse({ version: "999.0.0" }));
+      process.env.SHELL = "/usr/bin/bash";
+
+      await command.run();
+
+      expect(completionRuns).toEqual(["bash"]);
+    });
+
+    test("should refresh Fish completions after a successful upgrade", async () => {
+      mockFetch(() => jsonResponse({ version: "999.0.0" }));
+      process.env.SHELL = "/opt/homebrew/bin/fish";
+
+      await command.run();
+
+      expect(completionRuns).toEqual(["fish"]);
+    });
+
+    test("should not refresh completions when already up to date", async () => {
+      mockFetch(() => jsonResponse({ version: currentVersion }));
+
+      await command.run();
+
+      expect(completionRuns).toHaveLength(0);
+    });
+
+    test("should hint at the completion commands when the shell is unknown", async () => {
+      mockFetch(() => jsonResponse({ version: "999.0.0" }));
+      delete process.env.SHELL;
+
+      await command.run();
+
+      expect(completionRuns).toHaveLength(0);
+      expect(logs.info.some((line) => line.includes("Could not detect your shell"))).toBe(true);
     });
 
     test("should error and set a failing exit code when the registry is unreachable", async () => {

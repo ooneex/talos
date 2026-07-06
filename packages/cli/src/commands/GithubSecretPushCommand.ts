@@ -78,11 +78,8 @@ export class GithubSecretPushCommand<T extends CommandOptionsType = CommandOptio
 
     if (!result.ok) {
       if (!silent) {
-        logger.error(
-          `Failed to push secret "${name}" to ${slug}`,
-          result.output ? { message: result.output } : undefined,
-          LOG_OPTIONS,
-        );
+        const message = this.explainFailure(result.output);
+        logger.error(`Failed to push secret "${name}" to ${slug}`, message ? { message } : undefined, LOG_OPTIONS);
       }
       process.exitCode = 1;
       return;
@@ -158,5 +155,27 @@ export class GithubSecretPushCommand<T extends CommandOptionsType = CommandOptio
       .join("\n");
 
     return { ok: exitCode === 0, output };
+  }
+
+  // Turn `gh`'s raw failure output into an actionable message. The most common
+  // failure is a token that is authenticated but lacks permission to manage the
+  // repository's Actions secrets, which surfaces as an HTTP 403 while fetching
+  // the encryption public key; explain exactly which permission to grant.
+  private explainFailure(output: string): string {
+    const isPermissionError =
+      /HTTP 403/.test(output) || /resource not accessible/i.test(output) || /must have admin rights/i.test(output);
+
+    if (!isPermissionError) {
+      return output;
+    }
+
+    const guidance = [
+      "The token cannot manage this repository's Actions secrets.",
+      'Grant it the "Secrets" repository permission (Read and write) if it is a',
+      "fine-grained token, or the `repo` scope if it is a classic token, then run",
+      "`talos github:credentials:create` again to save the updated token.",
+    ].join(" ");
+
+    return output ? `${output}\n\n${guidance}` : guidance;
   }
 }
