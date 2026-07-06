@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.17.1](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.17.1) - 2026-07-06
+
+### Fixed
+
+- Correct design skeleton repository URL to ooneex org| — Franck ([7332761a](https://github.com/ooneex/talos/commit/7332761a))
+
 ## [1.17.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.17.0) - 2026-07-06
 
 ### Added
