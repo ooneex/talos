@@ -5,11 +5,6 @@ on:
     # Trigger on semver tags, e.g. v1.2.3
     tags: ["v[0-9]+.[0-9]+.[0-9]+"]
   workflow_dispatch:
-    inputs:
-      image-tag:
-        description: Image tag to deploy (default: latest sha tag)
-        type: string
-        required: false
 
 # Production deploys must never be cancelled mid-flight
 concurrency:
@@ -40,95 +35,48 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Resolve image tag
-        id: tag
-        run: |
-          if [ -n "${{ inputs.image-tag }}" ]; then
-            echo "value=${{ inputs.image-tag }}" >> $GITHUB_OUTPUT
-          else
-            echo "value=${{ needs.ci.outputs.image-tag }}" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Deploy with rollback safety
-        uses: appleboy/ssh-action@v1
+      - uses: oven-sh/setup-bun@v2
         with:
-          host: ${{ secrets.PROD_HOST }}
-          username: ${{ secrets.PROD_USER }}
-          key: ${{ secrets.PROD_SSH_KEY }}
-          envs: DOCKER_REGISTRY,DOCKER_USERNAME,DOCKER_TOKEN,IMAGE_NAME,IMAGE_TAG
-          script: |
-            set -e
+          bun-version: latest
 
-            # Mirror the reference `talos docker:publish` produces:
-            # `username/name` on Docker Hub, `registry/username/name` elsewhere.
-            if [ -z "${DOCKER_REGISTRY}" ] || [ "${DOCKER_REGISTRY}" = "docker.io" ]; then
-              LOGIN_REGISTRY="docker.io"
-              REGISTRY="${DOCKER_USERNAME}/${IMAGE_NAME}"
-            else
-              LOGIN_REGISTRY="${DOCKER_REGISTRY}"
-              REGISTRY="${DOCKER_REGISTRY}/${DOCKER_USERNAME}/${IMAGE_NAME}"
-            fi
-            IMAGE="${REGISTRY}:${IMAGE_TAG}"
+      - name: Install dependencies
+        run: bun install
 
-            echo "${DOCKER_TOKEN}" | docker login "${LOGIN_REGISTRY}" -u "${DOCKER_USERNAME}" --password-stdin
+      - name: Install Talos CLI
+        run: bun add -g @talosjs/cli
 
-            # Preserve current image as rollback target before pulling new one
-            docker tag "${REGISTRY}:latest" "${REGISTRY}:rollback" 2>/dev/null || true
-
-            docker pull "${IMAGE}"
-
-            cd /opt/{{NAME}}
-
-            # Run migrations before switching traffic to catch failures early
-            docker run --rm --env-file .env "${IMAGE}" bun run db:migrate
-
-            # Zero-downtime swap: --wait blocks until the container is healthy
-            APP_IMAGE="${IMAGE}" docker compose up -d --no-deps --wait app
-            docker image prune -f --filter "until=24h"
-        env:
-          DOCKER_REGISTRY: ${{ secrets.DOCKER_REGISTRY }}
-          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-          DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
-          IMAGE_NAME: {{name}}
-          IMAGE_TAG: ${{ steps.tag.outputs.value }}
-
-      - name: Production health check
-        id: health
-        run: |
-          echo "Verifying {{name}} health at ${{ vars.PRODUCTION_URL_{{NAME_UPPER}} }}..."
-          for i in $(seq 1 24); do
-            STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "${{ vars.PRODUCTION_URL_{{NAME_UPPER}} }}/health" 2>/dev/null || echo "000")
-            if [ "$STATUS" = "200" ]; then
-              echo "{{name}} is healthy (attempt $i)"
-              exit 0
-            fi
-            echo "Attempt $i/24 — HTTP $STATUS, retrying in 5s..."
-            sleep 5
-          done
-          echo "::error::{{name}} health check failed after 2 minutes"
-          exit 1
-
-      - name: Rollback on failure
-        if: failure() && steps.health.conclusion == 'failure'
-        uses: appleboy/ssh-action@v1
+      # Restore the accumulating per-version migration cache so already-applied
+      # migrations are skipped without opening a database connection. The DB
+      # migrations table stays the source of truth; this is only a fast path.
+      - name: Cache migrations
+        uses: actions/cache@v4
         with:
-          host: ${{ secrets.PROD_HOST }}
-          username: ${{ secrets.PROD_USER }}
-          key: ${{ secrets.PROD_SSH_KEY }}
-          envs: DOCKER_REGISTRY,DOCKER_USERNAME,IMAGE_NAME
-          script: |
-            set -e
-            if [ -z "${DOCKER_REGISTRY}" ] || [ "${DOCKER_REGISTRY}" = "docker.io" ]; then
-              REGISTRY="${DOCKER_USERNAME}/${IMAGE_NAME}"
-            else
-              REGISTRY="${DOCKER_REGISTRY}/${DOCKER_USERNAME}/${IMAGE_NAME}"
-            fi
+          path: var/cache/migrations
+          key: ${{ runner.os }}-talos-migrations-{{name}}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-talos-migrations-{{name}}-
 
-            echo "::warning::Rolling back {{name}} to previous version..."
-            cd /opt/{{NAME}}
-            APP_IMAGE="${REGISTRY}:rollback" docker compose up -d --no-deps app
-            echo "Rollback complete — verify manually before next deploy"
+      # Apply migrations before publishing the release image, so the database is
+      # ready by the time the platform pulls the new tag. Expose the production
+      # database connection to this step via secrets/vars.
+      - name: Run migrations
+        run: talos migration:up
         env:
-          DOCKER_REGISTRY: ${{ secrets.DOCKER_REGISTRY }}
-          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-          IMAGE_NAME: {{name}}
+          APP_ENV: production
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Save Docker credentials
+        run: >-
+          talos docker:credentials:create
+          --registry "${{ secrets.DOCKER_REGISTRY || 'docker.io' }}"
+          --username "${{ secrets.DOCKER_USERNAME }}"
+          --token "${{ secrets.DOCKER_TOKEN }}"
+          --silent
+
+      # Builds and pushes only the {{name}} microservice image from
+      # modules/{{name}}/Dockerfile, tagged with the release version (e.g.
+      # v1.2.3). Deployment is handled by the registry — the platform pulls it.
+      - name: Build and publish image
+        run: talos docker:publish --modules {{name}} --tag ${{ github.ref_name }} --silent
