@@ -5,7 +5,7 @@ import { decorator } from "@talosjs/command";
 import { TerminalLogger } from "@talosjs/logger";
 import { askInput } from "../prompts/askInput";
 import { askPassword } from "../prompts/askPassword";
-import { createSpinner, ensureBin, LOG_OPTIONS } from "../utils";
+import { createSpinner, ensureBin, LOG_OPTIONS, readGitOriginUrl } from "../utils";
 
 type CommandOptionsType = {
   name?: string;
@@ -108,40 +108,11 @@ export class GithubSecretPushCommand<T extends CommandOptionsType = CommandOptio
     return parsed?.profiles?.default?.token ?? null;
   }
 
-  // Resolve the target repository from `.git/config` in the current directory,
-  // reading the `origin` remote's URL and reducing it to an `owner/repo` slug.
+  // Resolve the target repository from the `origin` remote in `.git/config` in
+  // the current directory, reducing it to an `owner/repo` slug.
   private async detectRepository(): Promise<string | null> {
-    const configFile = Bun.file(join(process.cwd(), ".git", "config"));
-    if (!(await configFile.exists())) {
-      return null;
-    }
-
-    const url = this.readOriginUrl(await configFile.text());
+    const url = await readGitOriginUrl(process.cwd());
     return url ? this.normalizeRepository(url) : null;
-  }
-
-  // Extract the `url` of the `[remote "origin"]` section from a git config file.
-  private readOriginUrl(config: string): string | null {
-    let inOrigin = false;
-
-    for (const raw of config.split("\n")) {
-      const line = raw.trim();
-
-      const section = /^\[(.+)\]$/.exec(line);
-      if (section) {
-        inOrigin = (section[1] as string).trim().toLowerCase() === 'remote "origin"';
-        continue;
-      }
-
-      if (inOrigin) {
-        const match = /^url\s*=\s*(.+)$/.exec(line);
-        if (match) {
-          return (match[1] as string).trim();
-        }
-      }
-    }
-
-    return null;
   }
 
   // Reduce a GitHub URL or SSH remote to the canonical `owner/repo` slug,

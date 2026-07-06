@@ -24,6 +24,37 @@ mock.module("@talosjs/logger", () => ({
   },
 }));
 
+// Record which completion command runs after an upgrade without writing any
+// files to the real home directory.
+const completionRuns: string[] = [];
+
+mock.module("@/commands/CompletionZshCommand", () => ({
+  CompletionZshCommand: class {
+    run() {
+      completionRuns.push("zsh");
+      return Promise.resolve();
+    }
+  },
+}));
+
+mock.module("@/commands/CompletionBashCommand", () => ({
+  CompletionBashCommand: class {
+    run() {
+      completionRuns.push("bash");
+      return Promise.resolve();
+    }
+  },
+}));
+
+mock.module("@/commands/CompletionFishCommand", () => ({
+  CompletionFishCommand: class {
+    run() {
+      completionRuns.push("fish");
+      return Promise.resolve();
+    }
+  },
+}));
+
 const { UpgradeCommand } = await import("@/commands/UpgradeCommand");
 
 const currentVersion = (await Bun.file(join(import.meta.dir, "../../package.json")).json()).version as string;
@@ -39,6 +70,7 @@ describe("UpgradeCommand", () => {
   const originalFetch = globalThis.fetch;
   const originalSpawn = Bun.spawn;
   const originalExitCode = process.exitCode;
+  const originalShell = process.env.SHELL;
 
   // Real spawnStep runs, but the underlying process is faked so no `bun add -g`
   // is ever executed. Capturing here rather than stubbing @/utils keeps the mock
@@ -53,6 +85,8 @@ describe("UpgradeCommand", () => {
     logs.error.length = 0;
     spawnCalls = [];
     spawnExitCode = 0;
+    completionRuns.length = 0;
+    process.env.SHELL = "/bin/zsh";
 
     Bun.spawn = ((...args: unknown[]) => {
       spawnCalls.push(args[0] as string[]);
@@ -70,6 +104,11 @@ describe("UpgradeCommand", () => {
     // A run may set process.exitCode on failure; restore it so the test runner
     // does not inherit a non-zero exit code.
     process.exitCode = originalExitCode;
+    if (originalShell === undefined) {
+      delete process.env.SHELL;
+    } else {
+      process.env.SHELL = originalShell;
+    }
   });
 
   describe("Command Metadata", () => {

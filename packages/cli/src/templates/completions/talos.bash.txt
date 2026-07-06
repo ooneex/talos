@@ -132,7 +132,8 @@ command:run completion:zsh completion:bash completion:fish help version upgrade 
 issue:create issue:pull issue:push ai:chat:create ai:tool:create ai:middleware:create \
 analytics:create cache:create command:create controller:create cron:create database:create \
 design:create design:remove docker:create docker:credentials:create docker:publish \
-github:credentials:create github:secret:push jira:credentials:create linear:credentials:create \
+github:credentials:create github:secret:push gitlab:credentials:create gitlab:secret:push \
+bitbucket:credentials:create bitbucket:secret:push jira:credentials:create linear:credentials:create \
 npm:credentials:create npm:publish monorepo:run run monorepo:check check build fmt lint test \
 entity:create flag:create logger:create mailer:create middleware:create permission:create \
 queue:create rate-limit:create event:create release:create repository:create sdk:create \
@@ -239,6 +240,18 @@ seed:create seed:run"
       opts="--token"
       ;;
     github:secret:push)
+      opts="--name --value"
+      ;;
+    gitlab:credentials:create)
+      opts="--token"
+      ;;
+    gitlab:secret:push)
+      opts="--name --value"
+      ;;
+    bitbucket:credentials:create)
+      opts="--username --token"
+      ;;
+    bitbucket:secret:push)
       opts="--name --value"
       ;;
     jira:credentials:create)

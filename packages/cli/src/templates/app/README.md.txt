@@ -1175,7 +1175,7 @@ oo jira:credentials:create
 oo docker:credentials:create
 ```
 
-`npm:credentials:create` saves an npm **Granular Access Token** to `~/.talos/credentials/npm.yml`. `github:credentials:create` saves a GitHub **Personal Access Token** to `~/.talos/credentials/github.yml`. `linear:credentials:create` saves a Linear **Personal API key** to `~/.talos/credentials/linear.yml`. `jira:credentials:create` saves a Jira **API token** (with its base URL and account email) to `~/.talos/credentials/jira.yml`. `docker:credentials:create` saves a Docker registry access token (with its registry host and username) to `~/.talos/credentials/docker.yml`. All write the values under a `profiles.default` block:
+`npm:credentials:create` saves an npm **Granular Access Token** to `~/.talos/credentials/npm.yml`. `github:credentials:create` saves a GitHub **Personal Access Token** to `~/.talos/credentials/github.yml`. `gitlab:credentials:create` saves a GitLab **Personal Access Token** to `~/.talos/credentials/gitlab.yml`. `bitbucket:credentials:create` saves a Bitbucket **app password** (with its username) to `~/.talos/credentials/bitbucket.yml`. `linear:credentials:create` saves a Linear **Personal API key** to `~/.talos/credentials/linear.yml`. `jira:credentials:create` saves a Jira **API token** (with its base URL and account email) to `~/.talos/credentials/jira.yml`. `docker:credentials:create` saves a Docker registry access token (with its registry host and username) to `~/.talos/credentials/docker.yml`. All write the values under a `profiles.default` block:
 
 ```yaml
 profiles:
@@ -1188,6 +1188,8 @@ You can run either command non-interactively by passing the values as flags (`--
 ```bash
 oo npm:credentials:create --token "$NPM_TOKEN"
 oo github:credentials:create --token "$GITHUB_TOKEN"
+oo gitlab:credentials:create --token "$GITLAB_TOKEN"
+oo bitbucket:credentials:create --username "$BITBUCKET_USER" --token "$BITBUCKET_APP_PASSWORD"
 oo linear:credentials:create --token "$LINEAR_TOKEN"
 oo jira:credentials:create --base-url "$JIRA_BASE_URL" --email "$JIRA_EMAIL" --token "$JIRA_TOKEN"
 oo docker:credentials:create --registry docker.io --username "$DOCKER_USER" --token "$DOCKER_TOKEN"
@@ -1200,10 +1202,16 @@ oo docker:credentials:create --registry docker.io --username "$DOCKER_USER" --to
 - Prefer scoped tokens (npm Granular Access Tokens, Docker personal access tokens) over account passwords.
 - Rotate tokens periodically by re-running the command, which overwrites the `default` profile.
 
-Once the GitHub token is saved, `github:secret:push` creates or updates a **GitHub Actions secret** on a repository. It resolves the repository from the `origin` remote in `.git/config` in the current directory, reads the token from `~/.talos/credentials/github.yml`, and hands the value to `gh secret set`, which encrypts it locally before uploading, then prints the settings URL where the secret can be seen. The value prompt is masked; pass `--name` and `--value` to run it non-interactively in CI (the `gh` CLI must be installed):
+Once a provider token is saved, the `*:secret:push` commands create or update a CI secret on the repository resolved from the `origin` remote in `.git/config` in the current directory, then print the settings URL where the secret can be seen. The value prompt is masked; pass `--name` and `--value` to run them non-interactively in CI:
+
+- `github:secret:push` sets a **GitHub Actions secret** — it reads `github.yml` and hands the value to `gh secret set`, which encrypts it locally before uploading (the `gh` CLI must be installed).
+- `gitlab:secret:push` sets a masked **GitLab CI/CD variable** — it reads `gitlab.yml` and calls the GitLab API (works with self-managed hosts inferred from the remote).
+- `bitbucket:secret:push` sets a secured **Bitbucket Pipelines variable** — it reads `bitbucket.yml` and calls the Bitbucket API.
 
 ```bash
 oo github:secret:push --name MY_SECRET --value "$MY_SECRET"
+oo gitlab:secret:push --name MY_SECRET --value "$MY_SECRET"
+oo bitbucket:secret:push --name MY_SECRET --value "$MY_SECRET"
 ```
 
 ---

@@ -48,6 +48,38 @@ export const detectCiProvider = (cwd: string): CiProviderType | null => {
   return null;
 };
 
+/**
+ * Read the `origin` remote URL from `.git/config` in `cwd`, returning null when
+ * the repository or remote is not configured. Shared by the `*:secret:push`
+ * commands to resolve which repository/project a secret belongs to.
+ */
+export const readGitOriginUrl = async (cwd: string): Promise<string | null> => {
+  const configFile = Bun.file(join(cwd, ".git", "config"));
+  if (!(await configFile.exists())) {
+    return null;
+  }
+
+  let inOrigin = false;
+  for (const raw of (await configFile.text()).split("\n")) {
+    const line = raw.trim();
+
+    const section = /^\[(.+)\]$/.exec(line);
+    if (section) {
+      inOrigin = (section[1] as string).trim().toLowerCase() === 'remote "origin"';
+      continue;
+    }
+
+    if (inOrigin) {
+      const match = /^url\s*=\s*(.+)$/.exec(line);
+      if (match) {
+        return (match[1] as string).trim();
+      }
+    }
+  }
+
+  return null;
+};
+
 const YAML_SCALAR_LOOKALIKE_REGEX = /^(true|false|null|yes|no|on|off|~|[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?)$/i;
 
 const needsQuoting = (value: string): boolean =>

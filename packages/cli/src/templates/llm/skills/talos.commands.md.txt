@@ -121,6 +121,8 @@ talos docker:publish --tag=edge                    # Override the image tag (def
 ```bash
 talos npm:credentials:create [--token <token>]                                             # Save an npm Granular Access Token to ~/.talos/credentials/npm.yml
 talos github:credentials:create [--token <token>]                                          # Save a GitHub Personal Access Token to ~/.talos/credentials/github.yml
+talos gitlab:credentials:create [--token <token>]                                          # Save a GitLab Personal Access Token to ~/.talos/credentials/gitlab.yml
+talos bitbucket:credentials:create [--username <user>] [--token <token>]                   # Save a Bitbucket app password to ~/.talos/credentials/bitbucket.yml
 talos linear:credentials:create [--token <token>]                                          # Save a Linear Personal API key to ~/.talos/credentials/linear.yml
 talos jira:credentials:create [--base-url <url>] [--email <email>] [--token <token>]       # Save a Jira API token to ~/.talos/credentials/jira.yml
 talos docker:credentials:create [--registry <host>] [--username <user>] [--token <token>]  # Save a Docker registry access token to ~/.talos/credentials/docker.yml
@@ -128,10 +130,14 @@ talos docker:credentials:create [--registry <host>] [--username <user>] [--token
 
 Credentials are stored per-user under `~/.talos/credentials/*.yml` in a `profiles.default` block. Each command prompts (token input is masked) for anything not passed as a flag and prints the URL where the token can be created.
 
-`github:secret:push` creates or updates a GitHub Actions secret on a repository. It resolves the repository from the `origin` remote in `.git/config` in the current directory, reads the token from `~/.talos/credentials/github.yml`, passes it to `gh secret set` (which encrypts the value locally before uploading), and prints the settings URL where the secret can be seen. It prompts (the value input is masked) for anything not passed as a flag:
+The `*:secret:push` commands create or update a CI secret on the repository resolved from the `origin` remote in `.git/config` in the current directory. Each prompts (the value input is masked) for the name/value when not passed as a flag, then prints the settings URL where the secret can be seen:
 ```bash
-talos github:secret:push [--name <name>] [--value <value>]                                 # Create/update a GitHub Actions secret via gh
+talos github:secret:push [--name <name>] [--value <value>]                                 # GitHub Actions secret; reads github.yml, encrypts via `gh secret set`
+talos gitlab:secret:push [--name <name>] [--value <value>]                                 # GitLab masked CI/CD variable; reads gitlab.yml, uses the GitLab API
+talos bitbucket:secret:push [--name <name>] [--value <value>]                              # Bitbucket secured Pipelines variable; reads bitbucket.yml, uses the Bitbucket API
 ```
+
+`github:secret:push` requires the `gh` CLI (it performs the local encryption GitHub mandates); `gitlab:secret:push` and `bitbucket:secret:push` call the provider REST APIs directly. Run the matching `*:credentials:create` first.
 
 ## Assistant & Shell setup
 ```bash

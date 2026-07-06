@@ -176,6 +176,10 @@ _talos() {
     'docker\:publish:Build and push a package or module Docker image to Docker Hub'
     'github\:credentials\:create:Save a GitHub Personal Access Token under the user config'
     'github\:secret\:push:Create or update a GitHub Actions secret on a repository'
+    'gitlab\:credentials\:create:Save a GitLab Personal Access Token under the user config'
+    'gitlab\:secret\:push:Create or update a GitLab CI/CD variable on a project'
+    'bitbucket\:credentials\:create:Save a Bitbucket app password under the user config'
+    'bitbucket\:secret\:push:Create or update a Bitbucket Pipelines repository variable'
     'jira\:credentials\:create:Save a Jira API token under the user config'
     'linear\:credentials\:create:Save a Linear Personal API key under the user config'
     'npm\:credentials\:create:Save an npm Granular Access Token under the user config'
@@ -325,6 +329,25 @@ _talos() {
           _arguments -s \
             '--name=[Secret name]:name' \
             '--value=[Secret value]:value'
+          ;;
+        gitlab:credentials:create)
+          _arguments -s \
+            '--token=[GitLab Personal Access Token]:token'
+          ;;
+        gitlab:secret:push)
+          _arguments -s \
+            '--name=[Variable name]:name' \
+            '--value=[Variable value]:value'
+          ;;
+        bitbucket:credentials:create)
+          _arguments -s \
+            '--username=[Bitbucket username]:username' \
+            '--token=[Bitbucket app password]:token'
+          ;;
+        bitbucket:secret:push)
+          _arguments -s \
+            '--name=[Variable name]:name' \
+            '--value=[Variable value]:value'
           ;;
         jira:credentials:create)
           _arguments -s \
