@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.21.2](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.21.2) - 2026-07-06
+
+### Changed
+
+- Drop logger injection from OnAppStart template| — Franck ([890cc0fe](https://github.com/ooneex/talos/commit/890cc0fe))
+
 ## [1.21.1](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.21.1) - 2026-07-06
 
 ### Changed
