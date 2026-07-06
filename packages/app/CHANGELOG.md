@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.2.0](https://github.com/ooneex/talos/releases/tag/@talosjs/app@1.2.0) - 2026-07-06
+
+### Added
+
+- Add styled server start banner on startup| — Franck ([a17e264a](https://github.com/ooneex/talos/commit/a17e264a))
+
+### Changed
+
+- Style server banner exclusively via Bun.color| — Franck ([c7b9d5b6](https://github.com/ooneex/talos/commit/c7b9d5b6))
+
 ## [1.1.4](https://github.com/ooneex/talos/releases/tag/@talosjs/app@1.1.4) - 2026-07-06
 
 ### Changed
