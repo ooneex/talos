@@ -342,12 +342,12 @@ describe("MicroserviceCreateCommand", () => {
       expect(content).toMatch(/queue:\n\s+redis:\n\s+url:\s*redis:\/\/localhost:6379/);
     });
 
-    test("should assign a distinct port instead of the default 3000", async () => {
+    test("should assign a port starting at 8030", async () => {
       await command.run({ name: "Billing", cwd: testDir, silent: true });
 
       const content = await read(join(testDir, "modules", "billing", ".env.yml"));
       const port = Number(content.match(/^\s*port:\s*(\d+)/m)?.[1]);
-      expect(port).toBe(3001);
+      expect(port).toBe(8030);
     });
 
     test("should give each microservice its own port", async () => {
@@ -360,8 +360,8 @@ describe("MicroserviceCreateCommand", () => {
       const billingPort = Number(billing.match(/^\s*port:\s*(\d+)/m)?.[1]);
       const shippingPort = Number(shipping.match(/^\s*port:\s*(\d+)/m)?.[1]);
 
-      expect(billingPort).toBe(3001);
-      expect(shippingPort).toBe(3002);
+      expect(billingPort).toBe(8030);
+      expect(shippingPort).toBe(8031);
     });
   });
 

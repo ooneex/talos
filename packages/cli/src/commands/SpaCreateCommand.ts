@@ -16,7 +16,7 @@ import { ModuleCreateCommand } from "./ModuleCreateCommand";
 
 const SPA_REPOSITORY = "https://github.com/ooneex/skeleton-spa.git";
 
-const DEFAULT_PORT = 5000;
+const DEFAULT_PORT = 3030;
 
 // Collect every port already referenced by a module's package.json scripts so a new
 // spa module doesn't clash on a port that another module already serves.

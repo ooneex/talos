@@ -58,10 +58,10 @@ export class MicroserviceCreateCommand<T extends CommandOptionsType = CommandOpt
     await Bun.write(appYmlPath, content);
   }
 
-  // Pick the next free port so the microservice does not clash with the API (3000)
-  // or any other microservice already scaffolded in this project.
+  // Pick the next free port, starting at 8030, so the microservice does not clash
+  // with any other microservice already scaffolded in this project.
   private async nextAvailablePort(cwd: string): Promise<number> {
-    const used = new Set<number>([3000]);
+    const used = new Set<number>();
     const modulesDir = join(cwd, "modules");
     const glob = new Bun.Glob("*/.env.yml");
 
@@ -71,7 +71,7 @@ export class MicroserviceCreateCommand<T extends CommandOptionsType = CommandOpt
       if (portMatch) used.add(Number(portMatch[1]));
     }
 
-    let port = 3001;
+    let port = 8030;
     while (used.has(port)) port++;
 
     return port;

@@ -134,7 +134,7 @@ describe("SpaCreateCommand", () => {
       await command.run({ name: "Spa", cwd: testDir, silent: true });
 
       const pkg = JSON.parse(await read(join(testDir, "modules", "spa", "package.json")));
-      expect(pkg.scripts.dev).toBe("bun --bun run vite --port 5000");
+      expect(pkg.scripts.dev).toBe("bun --bun run vite --port 3030");
       expect(pkg.scripts.build).toBe("bun --bun run vite build");
       expect(pkg.scripts.preview).toBe("bun --bun run vite preview");
     });
@@ -154,21 +154,21 @@ describe("SpaCreateCommand", () => {
       expect(pkg.scripts.lint).toBeDefined();
     });
 
-    test("should pick a free port when 5000 is already used by another module", async () => {
-      const otherPkg = { name: "@module/other", scripts: { dev: "bun --bun run vite --port 5000" } };
+    test("should pick a free port when 3030 is already used by another module", async () => {
+      const otherPkg = { name: "@module/other", scripts: { dev: "bun --bun run vite --port 3030" } };
       mkdirSync(join(testDir, "modules", "other"), { recursive: true });
       writeFileSync(join(testDir, "modules", "other", "package.json"), JSON.stringify(otherPkg));
 
       await command.run({ name: "Spa", cwd: testDir, silent: true });
 
       const pkg = JSON.parse(await read(join(testDir, "modules", "spa", "package.json")));
-      expect(pkg.scripts.dev).toBe("bun --bun run vite --port 5001");
+      expect(pkg.scripts.dev).toBe("bun --bun run vite --port 3031");
     });
 
     test("should skip consecutive used ports", async () => {
       for (const [name, port] of [
-        ["alpha", 5000],
-        ["beta", 5001],
+        ["alpha", 3030],
+        ["beta", 3031],
       ] as const) {
         mkdirSync(join(testDir, "modules", name), { recursive: true });
         writeFileSync(
@@ -180,7 +180,7 @@ describe("SpaCreateCommand", () => {
       await command.run({ name: "Spa", cwd: testDir, silent: true });
 
       const pkg = JSON.parse(await read(join(testDir, "modules", "spa", "package.json")));
-      expect(pkg.scripts.dev).toBe("bun --bun run vite --port 5002");
+      expect(pkg.scripts.dev).toBe("bun --bun run vite --port 3032");
     });
   });
 
