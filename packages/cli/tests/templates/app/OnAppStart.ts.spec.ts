@@ -40,19 +40,6 @@ describe("OnAppStart.ts.txt", () => {
 
   test("should implement a handle method receiving the server", async () => {
     const content = await file.text();
-    expect(content).toContain("public handle(server: Server<unknown>): void | Promise<void>");
-  });
-
-  test("should normalize the hostname and build the base url", async () => {
-    const content = await file.text();
-    expect(content).toContain('let hostname = server.hostname || "0.0.0.0"');
-    expect(content).toContain('if (hostname === "0.0.0.0")');
-    expect(content).toContain('hostname = "localhost"');
-    expect(content).toContain("const baseUrl = `${server.protocol}://${hostname}:${server.port}`");
-  });
-
-  test("should log the running server url via the injected logger", async () => {
-    const content = await file.text();
-    expect(content).toContain("this.logger.info(`Server running at ${baseUrl}`)");
+    expect(content).toContain("public handle(_server: Server<unknown>): void | Promise<void>");
   });
 });
