@@ -13,9 +13,9 @@ variables:
   DOCKER_TLS_CERTDIR: /certs
   BUN_INSTALL_CACHE_DIR: $CI_PROJECT_DIR/.bun-cache
 
-# Shared Bun setup — extended by lint and test jobs
-.bun:
+quality:
   image: oven/bun:latest
+  stage: quality
   cache:
     key:
       files:
@@ -24,24 +24,9 @@ variables:
       - .bun-cache/
       - var/cache/monorepo/
     policy: pull-push
-  before_script:
-    - bun install --frozen-lockfile
-
-lint:
-  extends: .bun
-  stage: quality
   script:
-    - talos monorepo:run --commands=lint --logs
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-    - if: $CI_COMMIT_BRANCH =~ /^(main|develop)$/
-    - if: $CI_COMMIT_TAG
-
-test:
-  extends: .bun
-  stage: quality
-  script:
-    - talos monorepo:run --commands=test --logs
+    - bun add -g @talosjs/cli
+    - talos monorepo:check
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH =~ /^(main|develop)$/
@@ -53,8 +38,7 @@ build-image:
   services:
     - docker:27-dind
   needs:
-    - lint
-    - test
+    - quality
   # Only build images on branch commits and tags (not MRs)
   rules:
     - if: $CI_COMMIT_BRANCH =~ /^(main|develop)$/

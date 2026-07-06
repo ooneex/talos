@@ -29,7 +29,7 @@ jobs:
     name: Quality
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -41,18 +41,15 @@ jobs:
           path: |
             ~/.bun/install/cache
             var/cache/monorepo
-          key: ${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          key: ${{ runner.os }}-talos-${{ hashFiles('bun.lock') }}
           restore-keys: |
-            ${{ runner.os }}-
+            ${{ runner.os }}-talos-
 
-      - name: Install
-        run: bun install
+      - name: Install Talos CLI
+        run: bun add -g @talosjs/cli
 
-      - name: Lint
-        run: talos monorepo:run --commands=lint --logs
-
-      - name: Test
-        run: talos monorepo:run --commands=test --logs
+      - name: Check
+        run: talos monorepo:check
 
   build:
     name: Build Image
