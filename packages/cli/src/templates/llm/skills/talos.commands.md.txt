@@ -105,6 +105,18 @@ talos monorepo:check --modules=billing,user --logs           # Scope the gate to
 talos release:create   # Detect unreleased commits, bump versions, update changelogs, tag, push
 ```
 
+## Publish
+```bash
+talos npm:publish                                  # Publish every package and module to npm (skips versions already on the registry)
+talos npm:publish --packages=cli,command           # Only the named packages (also --modules=a,b)
+talos npm:publish --access=restricted              # Publish with restricted registry access (default: public)
+talos docker:publish                               # Build and push a Docker image for every package/module that has a Dockerfile
+talos docker:publish --modules=billing,user        # Only the named modules (also --packages=a,b)
+talos docker:publish --tag=edge                    # Override the image tag (default: package.json version, else latest)
+```
+
+`npm:publish` packs each target with `bun pm pack` so workspace dependencies resolve to real version ranges, then publishes the extracted copy with `npm`; it reads the token from `~/.talos/credentials/npm.yml`. `docker:publish` logs in once with the credentials in `~/.talos/credentials/docker.yml`, then for each target that ships a `Dockerfile` runs `docker build`/`docker push`, tagging the image `<username>/<name>:<tag>` (registries other than `docker.io` are prefixed). Both accept `--packages`/`--modules` (comma-separated; default all) and `--silent`. Run the matching `*:credentials:create` first.
+
 ## Credentials
 ```bash
 talos npm:credentials:create [--token <token>]                                             # Save an npm Granular Access Token to ~/.talos/credentials/npm.yml

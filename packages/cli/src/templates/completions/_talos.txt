@@ -153,6 +153,7 @@ _talos() {
     'design\:remove:Remove an existing design module'
     'docker\:create:Add a docker service to docker-compose.yml'
     'docker\:credentials\:create:Save a Docker registry access token under the user config'
+    'docker\:publish:Build and push a package or module Docker image to Docker Hub'
     'github\:credentials\:create:Save a GitHub Personal Access Token under the user config'
     'jira\:credentials\:create:Save a Jira API token under the user config'
     'linear\:credentials\:create:Save a Linear Personal API key under the user config'
@@ -282,6 +283,12 @@ _talos() {
             '--registry=[Docker registry]:registry' \
             '--username=[Docker username]:username' \
             '--token=[Docker access token]:token'
+          ;;
+        docker:publish)
+          _arguments -s \
+            '--packages=-[Package name(s), comma-separated (default: all)]::packages:_talos_publish_packages' \
+            '--modules=-[Module name(s), comma-separated (default: all)]::modules:_talos_publish_modules' \
+            '--tag=[Image tag (default: package.json version or latest)]:tag'
           ;;
         github:credentials:create)
           _arguments -s \
