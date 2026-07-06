@@ -23,3 +23,21 @@ export const saveCredentials = async (
 
   return credentialsPath;
 };
+
+/**
+ * Read the `default` profile stored in `~/.talos/credentials/<fileName>`,
+ * returning null when the file does not exist.
+ */
+export const readCredentials = async (fileName: string): Promise<Record<string, string> | null> => {
+  const credentialsPath = join(homedir(), ".talos", "credentials", fileName);
+  const file = Bun.file(credentialsPath);
+
+  if (!(await file.exists())) {
+    return null;
+  }
+
+  const parsed = Bun.YAML.parse(await file.text()) as {
+    profiles?: { default?: Record<string, string> };
+  };
+  return parsed?.profiles?.default ?? null;
+};

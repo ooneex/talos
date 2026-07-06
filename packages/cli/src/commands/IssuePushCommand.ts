@@ -7,6 +7,7 @@ import { Issue, LinearService } from "@talosjs/linear";
 import { TerminalLogger } from "@talosjs/logger";
 import { YAML } from "bun";
 import { prompt } from "enquirer";
+import { readCredentials } from "../credentials";
 import { createSpinner, LOG_OPTIONS } from "../utils";
 
 type CommandOptionsType = {
@@ -87,11 +88,12 @@ export class IssuePushCommand<T extends CommandOptionsType = CommandOptionsType>
     }
 
     const logger = new TerminalLogger();
-    const apiKey = process.env.LINEAR_API_KEY;
-    const teamId = process.env.LINEAR_TEAM_ID;
+    const credentials = await readCredentials("linear.yml");
+    const apiKey = credentials?.token;
+    const teamId = credentials?.teamId;
 
     if (!apiKey) {
-      logger.error("LINEAR_API_KEY environment variable is required", undefined, LOG_OPTIONS);
+      logger.error("No Linear credentials found. Run `talos linear:credentials:create`", undefined, LOG_OPTIONS);
       process.exitCode = 1;
       return;
     }
@@ -187,7 +189,7 @@ export class IssuePushCommand<T extends CommandOptionsType = CommandOptionsType>
     if (teamId) {
       team = teams.find((t) => t.id === teamId);
       if (!team) {
-        logger.error(`Team "${teamId}" (LINEAR_TEAM_ID) not found in Linear`, undefined, LOG_OPTIONS);
+        logger.error(`Team "${teamId}" (linear credentials) not found in Linear`, undefined, LOG_OPTIONS);
         process.exitCode = 1;
         return;
       }

@@ -48,6 +48,12 @@ mock.module("@talosjs/app-env", () => ({
   loadEnv: async () => {},
 }));
 
+let linearCredentials: Record<string, string> | null;
+
+mock.module("@/credentials", () => ({
+  readCredentials: mock(async (fileName: string) => (fileName === "linear.yml" ? linearCredentials : null)),
+}));
+
 const mockLoggerError = mock(() => {});
 const mockLoggerSuccess = mock(() => {});
 
@@ -64,8 +70,6 @@ describe("IssuePushCommand", () => {
   let command: InstanceType<typeof IssuePushCommand>;
   let testDir: string;
   let originalCwd: string;
-  let originalApiKey: string | undefined;
-  let originalTeamId: string | undefined;
   let mockStdoutWrite: ReturnType<typeof spyOn<typeof process.stdout, "write">>;
 
   const writeIssueFile = async (id: string, content: string, module = "shared") => {
@@ -77,10 +81,7 @@ describe("IssuePushCommand", () => {
     command = new IssuePushCommand();
     originalCwd = process.cwd();
     testDir = join(originalCwd, ".temp", `issue-push-${Date.now()}`);
-    originalApiKey = process.env.LINEAR_API_KEY;
-    process.env.LINEAR_API_KEY = "test-api-key";
-    originalTeamId = process.env.LINEAR_TEAM_ID;
-    delete process.env.LINEAR_TEAM_ID;
+    linearCredentials = { token: "test-api-key" };
 
     await Bun.write(join(testDir, "modules", "shared", "issues", ".gitkeep"), "");
     process.chdir(testDir);
@@ -119,16 +120,6 @@ describe("IssuePushCommand", () => {
   afterEach(() => {
     mockStdoutWrite.mockRestore();
     process.chdir(originalCwd);
-    if (originalApiKey === undefined) {
-      delete process.env.LINEAR_API_KEY;
-    } else {
-      process.env.LINEAR_API_KEY = originalApiKey;
-    }
-    if (originalTeamId === undefined) {
-      delete process.env.LINEAR_TEAM_ID;
-    } else {
-      process.env.LINEAR_TEAM_ID = originalTeamId;
-    }
     if (existsSync(testDir)) {
       rmSync(testDir, { recursive: true, force: true });
     }
@@ -145,8 +136,8 @@ describe("IssuePushCommand", () => {
   });
 
   describe("run()", () => {
-    test("should log error and return early when LINEAR_API_KEY is missing", async () => {
-      delete process.env.LINEAR_API_KEY;
+    test("should log error and return early when Linear credentials are missing", async () => {
+      linearCredentials = null;
       await writeIssueFile("ENG-123", 'id: "ENG-123"\ntitle: "Test"\n');
 
       await command.run({ id: "ENG-123" });
@@ -424,8 +415,8 @@ describe("IssuePushCommand", () => {
       expect(mockLoggerSuccess).toHaveBeenCalled();
     });
 
-    test("should use LINEAR_TEAM_ID to select team without prompting", async () => {
-      process.env.LINEAR_TEAM_ID = "team-1";
+    test("should use teamId from credentials to select team without prompting", async () => {
+      linearCredentials = { token: "test-api-key", teamId: "team-1" };
       await writeIssueFile("ENG-123", 'title: "New Issue"\n');
 
       await command.run({ id: "ENG-123" });
@@ -439,8 +430,8 @@ describe("IssuePushCommand", () => {
       expect(teamCall).toBeUndefined();
     });
 
-    test("should log error when LINEAR_TEAM_ID does not match any team", async () => {
-      process.env.LINEAR_TEAM_ID = "nonexistent-team";
+    test("should log error when teamId from credentials does not match any team", async () => {
+      linearCredentials = { token: "test-api-key", teamId: "nonexistent-team" };
       await writeIssueFile("ENG-123", 'title: "New Issue"\n');
 
       await command.run({ id: "ENG-123" });

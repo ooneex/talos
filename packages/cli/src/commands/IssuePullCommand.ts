@@ -6,6 +6,7 @@ import { decorator } from "@talosjs/command";
 import { type Issue, LinearService } from "@talosjs/linear";
 import { TerminalLogger } from "@talosjs/logger";
 import { prompt } from "enquirer";
+import { readCredentials } from "../credentials";
 import { ensureModule, generateIssueId, issueToYaml, LOG_OPTIONS } from "../utils";
 
 type ProviderType = "linear" | "jira";
@@ -78,9 +79,10 @@ export class IssuePullCommand<T extends CommandOptionsType = CommandOptionsType>
 }
 
 const pullLinearIssue = async (id: string, issuesDir: string, logger: TerminalLogger): Promise<PulledIssue | null> => {
-  const apiKey = process.env.LINEAR_API_KEY;
+  const credentials = await readCredentials("linear.yml");
+  const apiKey = credentials?.token;
   if (!apiKey) {
-    logger.error("LINEAR_API_KEY environment variable is required", undefined, LOG_OPTIONS);
+    logger.error("No Linear credentials found. Run `talos linear:credentials:create`", undefined, LOG_OPTIONS);
     return null;
   }
 
@@ -129,16 +131,13 @@ type JiraIssue = {
 };
 
 const pullJiraIssue = async (id: string, issuesDir: string, logger: TerminalLogger): Promise<PulledIssue | null> => {
-  const baseUrl = process.env.JIRA_BASE_URL;
-  const email = process.env.JIRA_EMAIL;
-  const apiToken = process.env.JIRA_API_TOKEN;
+  const credentials = await readCredentials("jira.yml");
+  const baseUrl = credentials?.baseUrl;
+  const email = credentials?.email;
+  const apiToken = credentials?.token;
 
   if (!baseUrl || !email || !apiToken) {
-    logger.error(
-      "JIRA_BASE_URL, JIRA_EMAIL and JIRA_API_TOKEN environment variables are required",
-      undefined,
-      LOG_OPTIONS,
-    );
+    logger.error("No Jira credentials found. Run `talos jira:credentials:create`", undefined, LOG_OPTIONS);
     return null;
   }
 

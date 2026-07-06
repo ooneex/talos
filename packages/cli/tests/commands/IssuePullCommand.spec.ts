@@ -32,29 +32,34 @@ mock.module("@talosjs/linear", () => ({
   Issue: class {},
 }));
 
+let linearCredentials: Record<string, string> | null;
+let jiraCredentials: Record<string, string> | null;
+
+mock.module("@/credentials", () => ({
+  readCredentials: mock(async (fileName: string) => {
+    if (fileName === "linear.yml") return linearCredentials;
+    if (fileName === "jira.yml") return jiraCredentials;
+    return null;
+  }),
+}));
+
 const { IssuePullCommand } = await import("@/commands/IssuePullCommand");
 
 describe("IssuePullCommand", () => {
   let command: InstanceType<typeof IssuePullCommand>;
   let testDir: string;
   let originalCwd: string;
-  let originalApiKey: string | undefined;
 
   beforeEach(() => {
     command = new IssuePullCommand();
     originalCwd = process.cwd();
     testDir = join(originalCwd, ".temp", `issue-pull-${Date.now()}`);
-    originalApiKey = process.env.LINEAR_API_KEY;
-    process.env.LINEAR_API_KEY = "test-api-key";
+    linearCredentials = { token: "test-api-key" };
+    jiraCredentials = null;
   });
 
   afterEach(() => {
     process.chdir(originalCwd);
-    if (originalApiKey === undefined) {
-      delete process.env.LINEAR_API_KEY;
-    } else {
-      process.env.LINEAR_API_KEY = originalApiKey;
-    }
     if (existsSync(testDir)) {
       rmSync(testDir, { recursive: true, force: true });
     }
@@ -151,8 +156,8 @@ describe("IssuePullCommand", () => {
       expect(existsSync(join(testDir, "modules", "my-module", "issues", "ENG-123.yml"))).toBe(true);
     });
 
-    test("should not create file when LINEAR_API_KEY is missing", async () => {
-      delete process.env.LINEAR_API_KEY;
+    test("should not create file when Linear credentials are missing", async () => {
+      linearCredentials = null;
 
       await command.run({ id: "ENG-123" });
 
@@ -233,7 +238,6 @@ describe("IssuePullCommand", () => {
     let jiraResponse: { ok: boolean; status: number; json: () => Promise<unknown> };
     let mockFetch: ReturnType<typeof mock>;
     let originalFetch: typeof globalThis.fetch;
-    let originalJiraEnv: Record<string, string | undefined>;
 
     beforeEach(async () => {
       await Bun.write(join(testDir, "modules", "shared", "issues", ".gitkeep"), "");
@@ -241,14 +245,11 @@ describe("IssuePullCommand", () => {
       mockPrompt.mockClear();
       mockGetIssue.mockClear();
 
-      originalJiraEnv = {
-        JIRA_BASE_URL: process.env.JIRA_BASE_URL,
-        JIRA_EMAIL: process.env.JIRA_EMAIL,
-        JIRA_API_TOKEN: process.env.JIRA_API_TOKEN,
+      jiraCredentials = {
+        baseUrl: "https://acme.atlassian.net",
+        email: "user@acme.com",
+        token: "jira-token",
       };
-      process.env.JIRA_BASE_URL = "https://acme.atlassian.net";
-      process.env.JIRA_EMAIL = "user@acme.com";
-      process.env.JIRA_API_TOKEN = "jira-token";
 
       jiraResponse = { ok: true, status: 200, json: async () => jiraIssue };
       mockFetch = mock(async () => jiraResponse);
@@ -258,13 +259,6 @@ describe("IssuePullCommand", () => {
 
     afterEach(() => {
       globalThis.fetch = originalFetch;
-      for (const [key, value] of Object.entries(originalJiraEnv)) {
-        if (value === undefined) {
-          delete process.env[key];
-        } else {
-          process.env[key] = value;
-        }
-      }
     });
 
     test("should create YAML file at issues/<key>.yml", async () => {
@@ -304,7 +298,7 @@ describe("IssuePullCommand", () => {
     });
 
     test("should not create file when Jira credentials are missing", async () => {
-      delete process.env.JIRA_API_TOKEN;
+      jiraCredentials = { baseUrl: "https://acme.atlassian.net", email: "user@acme.com" };
 
       await command.run({ id: "PROJ-1", provider: "jira" });
 
