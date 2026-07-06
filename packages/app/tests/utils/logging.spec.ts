@@ -3,7 +3,7 @@ import type { ContextType } from "@talosjs/controller";
 import { Exception } from "@talosjs/exception";
 import { HttpStatus } from "@talosjs/http-status";
 import type { LogDataType } from "@talosjs/logger";
-import { logException, logRequest } from "@/utils/logging";
+import { logException, logRequest, logServerStart } from "@/utils/logging";
 import { createMockContext, createMockLogger } from "./helpers";
 
 describe("logRequest", () => {
@@ -417,5 +417,66 @@ describe("logException", () => {
     expect(logData.params).toEqual({ id: "42" });
     expect(logData.userId).toBe("user-123");
     expect(logData.email).toBe("test@example.com");
+  });
+});
+
+describe("logServerStart", () => {
+  const stripAnsi = (text: string): string => text.replace(/\u001b\[[0-9;]*m/g, "");
+
+  const captureStdout = (fn: () => void): string => {
+    let output = "";
+    const original = process.stdout.write.bind(process.stdout);
+    const spy = mock((chunk: string | Uint8Array) => {
+      output += typeof chunk === "string" ? chunk : new TextDecoder().decode(chunk);
+      return true;
+    });
+    process.stdout.write = spy as unknown as typeof process.stdout.write;
+    try {
+      fn();
+    } finally {
+      process.stdout.write = original;
+    }
+    return output;
+  };
+
+  test("prints the base url, environment, and port", () => {
+    const output = stripAnsi(
+      captureStdout(() =>
+        logServerStart({ baseUrl: "http://localhost:3000", appEnv: "local", port: 3000, isLocal: true }),
+      ),
+    );
+
+    expect(output).toContain("Talos");
+    expect(output).toContain("http://localhost:3000");
+    expect(output).toContain("local");
+    expect(output).toContain("3000");
+  });
+
+  test("writes to stdout exactly once", () => {
+    let calls = 0;
+    const original = process.stdout.write.bind(process.stdout);
+    process.stdout.write = mock(() => {
+      calls++;
+      return true;
+    }) as unknown as typeof process.stdout.write;
+    try {
+      logServerStart({ baseUrl: "https://api.example.com", appEnv: "production", port: 443, isLocal: false });
+    } finally {
+      process.stdout.write = original;
+    }
+
+    expect(calls).toBe(1);
+  });
+
+  test("renders production values", () => {
+    const output = stripAnsi(
+      captureStdout(() =>
+        logServerStart({ baseUrl: "https://api.example.com", appEnv: "production", port: 443, isLocal: false }),
+      ),
+    );
+
+    expect(output).toContain("https://api.example.com");
+    expect(output).toContain("production");
+    expect(output).toContain("443");
   });
 });

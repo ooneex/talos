@@ -17,7 +17,14 @@ import type { BunRequest, Server, ServerWebSocket } from "bun";
 import { logger as loggerFunc } from "./logger";
 import { formatSocketRoutes, socketRouteHandler } from "./socketRouteUtils";
 import type { AppConfigType, IAppEventStart } from "./types";
-import { buildHttpContext, formatHttpRoutes, logRequest, type RouteInfoType, runMiddlewares } from "./utils";
+import {
+  buildHttpContext,
+  formatHttpRoutes,
+  logRequest,
+  logServerStart,
+  type RouteInfoType,
+  runMiddlewares,
+} from "./utils";
 
 export class App {
   constructor(private readonly config: AppConfigType) {
@@ -224,7 +231,7 @@ export class App {
       }
 
       const baseUrl = `${server.protocol}://${hostname}:${server.port}`;
-      logger.info(`Server running at ${baseUrl}`);
+      logServerStart({ baseUrl, appEnv: env.APP_ENV, port: server.port ?? port, isLocal: env.isLocal });
     }
 
     this.config.cronJobs?.forEach((cronJob) => {

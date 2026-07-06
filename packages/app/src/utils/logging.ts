@@ -129,6 +129,45 @@ export const logRequest = (context: ContextType, statusOverride?: StatusCodeType
   }
 };
 
+const colorize = (text: string, color: string): string => {
+  try {
+    const ansi = Bun.color(color, "ansi");
+    return ansi ? `${ansi}${text}\u001b[0m` : text;
+  } catch {
+    return text;
+  }
+};
+
+const bold = (text: string): string => `\u001b[1m${text}\u001b[0m`;
+const dim = (text: string): string => `\u001b[2m${text}\u001b[0m`;
+
+export type ServerStartInfoType = {
+  baseUrl: string;
+  appEnv: string;
+  port: number;
+  isLocal: boolean;
+};
+
+export const logServerStart = (info: ServerStartInfoType): void => {
+  const { baseUrl, appEnv, port, isLocal } = info;
+
+  const brand = colorize("◆", "#007AFF");
+  const ready = colorize("✔", "#00C851");
+  const label = (text: string): string => colorize(text.padEnd(9), "#79B");
+
+  const lines = [
+    "",
+    `  ${brand} ${bold(colorize("Talos", "#007AFF"))} ${dim("server")}`,
+    "",
+    `  ${ready} ${label("Ready")}${bold(colorize(baseUrl, "#00C851"))}`,
+    `    ${label("Env")}${colorize(appEnv, isLocal ? "#FFCC00" : "#FF3B30")}`,
+    `    ${label("Port")}${colorize(String(port), "#8E8E93")}`,
+    "",
+  ];
+
+  process.stdout.write(`${lines.join("\n")}\n`);
+};
+
 export const logException = (context: ContextType, error: unknown): void => {
   const exceptionLogger = context.exceptionLogger as LevelLoggerType | undefined;
 
