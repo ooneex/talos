@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.20.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.20.0) - 2026-07-06
+
+### Added
+
+- Create public folder for scaffolded SPA modules| — Franck ([70c990f2](https://github.com/ooneex/talos/commit/70c990f2))
+
+### Changed
+
+- Update default port ranges for scaffolded modules| — Franck ([97c24b8d](https://github.com/ooneex/talos/commit/97c24b8d))
+
 ## [1.19.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.19.0) - 2026-07-06
 
 ### Added
