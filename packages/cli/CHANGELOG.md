@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.17.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.17.0) - 2026-07-06
+
+### Added
+
+- Explain permission failures when pushing GitHub secrets and add secret command tests| — Franck ([8582ef35](https://github.com/ooneex/talos/commit/8582ef35))
+- Add gitlab and bitbucket credentials and secret:push commands| — Franck ([ced5143d](https://github.com/ooneex/talos/commit/ced5143d))
+
+### Changed
+
+- Stop generating redundant modules/app/var/.gitkeep| — Franck ([9f54708a](https://github.com/ooneex/talos/commit/9f54708a))
+
+### Fixed
+
+- Correct SPA skeleton repository URL to ooneex org| — Franck ([9c23c9f5](https://github.com/ooneex/talos/commit/9c23c9f5))
+
 ## [1.16.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.16.0) - 2026-07-06
 
 ### Added
