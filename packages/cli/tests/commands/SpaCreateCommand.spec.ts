@@ -247,6 +247,16 @@ describe("SpaCreateCommand", () => {
     });
   });
 
+  describe("public folder", () => {
+    test("should create a public folder with a .gitkeep file", async () => {
+      await command.run({ name: "Spa", cwd: testDir, silent: true });
+
+      const gitkeep = join(testDir, "modules", "spa", "public", ".gitkeep");
+      expect(await exists(gitkeep)).toBe(true);
+      expect(await read(gitkeep)).toBe("");
+    });
+  });
+
   describe("dependency installation", () => {
     test("should install dependencies from the spa package.json at the project root", async () => {
       await command.run({ name: "Spa", cwd: testDir, silent: true });

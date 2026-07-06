@@ -186,6 +186,9 @@ export class SpaCreateCommand<T extends CommandOptionsType = CommandOptionsType>
     const sharedSubDirs = ["assets", "components", "hooks", "layouts", "services", "store", "styles", "types", "utils"];
     await Promise.all(sharedSubDirs.map((subDir) => Bun.write(join(srcDir, "shared", subDir, ".gitkeep"), "")));
 
+    // Provide a public dir for static assets, tracked even while empty via .gitkeep
+    await Bun.write(join(moduleDir, "public", ".gitkeep"), "");
+
     // Install the spa dependencies from the root of the project
     const spaPackage = await Bun.file(join(tmpDir, "package.json")).json();
     const deps = Object.keys(spaPackage.dependencies ?? {});
