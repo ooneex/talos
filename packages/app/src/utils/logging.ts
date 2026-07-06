@@ -130,16 +130,11 @@ export const logRequest = (context: ContextType, statusOverride?: StatusCodeType
 };
 
 const colorize = (text: string, color: string): string => {
-  try {
-    const ansi = Bun.color(color, "ansi");
-    return ansi ? `${ansi}${text}\u001b[0m` : text;
-  } catch {
-    return text;
-  }
+  // Bun.color(..., "ansi") auto-detects the terminal color depth and returns an empty
+  // string when colors are unsupported, so the reset only applies when a color was emitted.
+  const ansi = Bun.color(color, "ansi");
+  return ansi ? `${ansi}${text}\u001b[0m` : text;
 };
-
-const bold = (text: string): string => `\u001b[1m${text}\u001b[0m`;
-const dim = (text: string): string => `\u001b[2m${text}\u001b[0m`;
 
 export type ServerStartInfoType = {
   baseUrl: string;
@@ -157,9 +152,9 @@ export const logServerStart = (info: ServerStartInfoType): void => {
 
   const lines = [
     "",
-    `  ${brand} ${bold(colorize("Talos", "#007AFF"))} ${dim("server")}`,
+    `  ${brand} ${colorize("Talos", "#007AFF")} ${colorize("server", "#8E8E93")}`,
     "",
-    `  ${ready} ${label("Ready")}${bold(colorize(baseUrl, "#00C851"))}`,
+    `  ${ready} ${label("Ready")}${colorize(baseUrl, "#00C851")}`,
     `    ${label("Env")}${colorize(appEnv, isLocal ? "#FFCC00" : "#FF3B30")}`,
     `    ${label("Port")}${colorize(String(port), "#8E8E93")}`,
     "",

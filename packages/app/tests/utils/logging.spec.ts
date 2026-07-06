@@ -1,4 +1,5 @@
 import { describe, expect, mock, test } from "bun:test";
+import { join } from "node:path";
 import type { ContextType } from "@talosjs/controller";
 import { Exception } from "@talosjs/exception";
 import { HttpStatus } from "@talosjs/http-status";
@@ -478,5 +479,38 @@ describe("logServerStart", () => {
     expect(output).toContain("https://api.example.com");
     expect(output).toContain("production");
     expect(output).toContain("443");
+  });
+
+  test("never emits bold or dim style codes — all styling comes from Bun.color", () => {
+    const output = captureStdout(() =>
+      logServerStart({ baseUrl: "http://localhost:3000", appEnv: "local", port: 3000, isLocal: true }),
+    );
+
+    // Bold ([1m) and dim ([2m) are text styles, not colors; the banner
+    // must not use them since colors go exclusively through Bun.color(..., "ansi").
+    expect(output).not.toContain("[1m");
+    expect(output).not.toContain("[2m");
+  });
+
+  test("colorizes output via Bun.color when the terminal supports color", () => {
+    // Bun.color reads the terminal's color support at process start, so the in-process
+    // (non-TTY) tests above never colorize. Force color in a child process to exercise
+    // the colored path and confirm the escapes come from Bun.color's SGR foreground codes.
+    const modulePath = join(import.meta.dir, "../../src/utils/logging.ts");
+    const script = `const { logServerStart } = await import(${JSON.stringify(modulePath)});
+logServerStart({ baseUrl: "http://localhost:3000", appEnv: "local", port: 3000, isLocal: true });`;
+
+    const result = Bun.spawnSync(["bun", "-e", script], {
+      env: { ...process.env, FORCE_COLOR: "1", NO_COLOR: "" },
+    });
+    const output = result.stdout.toString();
+
+    // SGR foreground color sequence ([38;2;... truecolor or [38;5;... 256-color).
+    expect(output).toContain("[38;");
+    // Still no bold/dim styles even when colors are active.
+    expect(output).not.toContain("[1m");
+    expect(output).not.toContain("[2m");
+    // Content survives colorization.
+    expect(stripAnsi(output)).toContain("http://localhost:3000");
   });
 });
