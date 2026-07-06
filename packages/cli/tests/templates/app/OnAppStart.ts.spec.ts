@@ -25,12 +25,11 @@ describe("OnAppStart.ts.txt", () => {
     expect(content).toContain('import { decorator, type IAppEventStart } from "@talosjs/app"');
   });
 
-  test("should inject TerminalLogger via the constructor", async () => {
+  test("should not declare a constructor", async () => {
     const content = await file.text();
-    expect(content).toContain("inject");
-    expect(content).toContain('import { inject } from "@talosjs/container"');
-    expect(content).toContain('import { TerminalLogger } from "@talosjs/logger"');
-    expect(content).toContain("@inject(TerminalLogger) private readonly logger: TerminalLogger");
+    expect(content).not.toContain("constructor");
+    expect(content).not.toContain("inject");
+    expect(content).not.toContain("TerminalLogger");
   });
 
   test("should import Server type from bun", async () => {

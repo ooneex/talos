@@ -1,11 +1,7 @@
 import { decorator, type IAppEventStart } from "@talosjs/app";
-import { inject } from "@talosjs/container";
-import { TerminalLogger } from "@talosjs/logger";
 import type { Server } from "bun";
 
 @decorator.app.event.start()
 export class OnAppStart implements IAppEventStart {
-  public constructor(@inject(TerminalLogger) private readonly logger: TerminalLogger) {}
-
   public handle(_server: Server<unknown>): void | Promise<void> {}
 }
