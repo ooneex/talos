@@ -138,7 +138,8 @@ export class App {
 
   public async run(): Promise<App> {
     // Bun.main is modules/<module-name>/src/index.ts, so the module root is two levels up.
-    // Prefer the project root .env.yml, falling back to the module's own .env.yml.
+    // Load the project root .env.yml as the shared base, then overlay the module's own
+    // .env.yml so its specific values (e.g. its distinct PORT) take precedence.
     const moduleRoot = dirname(dirname(Bun.main));
     const cwd = process.cwd();
     await loadEnv([join(cwd, ".env.yml"), join(moduleRoot, ".env.yml")]);
