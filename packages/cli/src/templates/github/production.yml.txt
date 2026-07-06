@@ -18,7 +18,6 @@ concurrency:
 
 permissions:
   contents: read
-  packages: write
   deployments: write
 
 jobs:
@@ -56,13 +55,22 @@ jobs:
           host: ${{ secrets.PROD_HOST }}
           username: ${{ secrets.PROD_USER }}
           key: ${{ secrets.PROD_SSH_KEY }}
-          envs: GITHUB_TOKEN,GITHUB_ACTOR,GITHUB_REPOSITORY,IMAGE_TAG
+          envs: DOCKER_REGISTRY,DOCKER_USERNAME,DOCKER_TOKEN,IMAGE_NAME,IMAGE_TAG
           script: |
             set -e
-            IMAGE=ghcr.io/${GITHUB_REPOSITORY}:${IMAGE_TAG}
-            REGISTRY=ghcr.io/${GITHUB_REPOSITORY}
 
-            echo "${GITHUB_TOKEN}" | docker login ghcr.io -u "${GITHUB_ACTOR}" --password-stdin
+            # Mirror the reference `talos docker:publish` produces:
+            # `username/name` on Docker Hub, `registry/username/name` elsewhere.
+            if [ -z "${DOCKER_REGISTRY}" ] || [ "${DOCKER_REGISTRY}" = "docker.io" ]; then
+              LOGIN_REGISTRY="docker.io"
+              REGISTRY="${DOCKER_USERNAME}/${IMAGE_NAME}"
+            else
+              LOGIN_REGISTRY="${DOCKER_REGISTRY}"
+              REGISTRY="${DOCKER_REGISTRY}/${DOCKER_USERNAME}/${IMAGE_NAME}"
+            fi
+            IMAGE="${REGISTRY}:${IMAGE_TAG}"
+
+            echo "${DOCKER_TOKEN}" | docker login "${LOGIN_REGISTRY}" -u "${DOCKER_USERNAME}" --password-stdin
 
             # Preserve current image as rollback target before pulling new one
             docker tag "${REGISTRY}:latest" "${REGISTRY}:rollback" 2>/dev/null || true
@@ -78,9 +86,10 @@ jobs:
             APP_IMAGE="${IMAGE}" docker compose up -d --no-deps --wait app
             docker image prune -f --filter "until=24h"
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_ACTOR: ${{ github.actor }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
+          DOCKER_REGISTRY: ${{ secrets.DOCKER_REGISTRY }}
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
+          IMAGE_NAME: app
           IMAGE_TAG: ${{ steps.tag.outputs.value }}
 
       - name: Production health check
@@ -106,17 +115,23 @@ jobs:
           host: ${{ secrets.PROD_HOST }}
           username: ${{ secrets.PROD_USER }}
           key: ${{ secrets.PROD_SSH_KEY }}
-          envs: GITHUB_REPOSITORY
+          envs: DOCKER_REGISTRY,DOCKER_USERNAME,IMAGE_NAME
           script: |
             set -e
-            REGISTRY=ghcr.io/${GITHUB_REPOSITORY}
+            if [ -z "${DOCKER_REGISTRY}" ] || [ "${DOCKER_REGISTRY}" = "docker.io" ]; then
+              REGISTRY="${DOCKER_USERNAME}/${IMAGE_NAME}"
+            else
+              REGISTRY="${DOCKER_REGISTRY}/${DOCKER_USERNAME}/${IMAGE_NAME}"
+            fi
 
             echo "::warning::Rolling back production to previous version..."
             cd /opt/{{NAME}}
             APP_IMAGE="${REGISTRY}:rollback" docker compose up -d --no-deps app
             echo "Rollback complete — verify manually before next deploy"
         env:
-          GITHUB_REPOSITORY: ${{ github.repository }}
+          DOCKER_REGISTRY: ${{ secrets.DOCKER_REGISTRY }}
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          IMAGE_NAME: app
 
   create-release:
     name: Create GitHub Release
