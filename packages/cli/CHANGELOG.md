@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.15.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.15.0) - 2026-07-06
+
+### Added
+
+- Add bash and fish shell completion commands| — Franck ([f25115de](https://github.com/ooneex/talos/commit/f25115de))
+
 ## [1.14.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.14.0) - 2026-07-06
 
 ### Added
