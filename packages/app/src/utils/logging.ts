@@ -146,13 +146,10 @@ export type ServerStartInfoType = {
 export const logServerStart = (info: ServerStartInfoType): void => {
   const { baseUrl, appEnv, port, isLocal } = info;
 
-  const brand = colorize("◆", "#007AFF");
   const ready = colorize("✔", "#00C851");
   const label = (text: string): string => colorize(text.padEnd(9), "#79B");
 
   const lines = [
-    "",
-    `  ${brand} ${colorize("Talos", "#007AFF")} ${colorize("server", "#8E8E93")}`,
     "",
     `  ${ready} ${label("Ready")}${colorize(baseUrl, "#00C851")}`,
     `    ${label("Env")}${colorize(appEnv, isLocal ? "#FFCC00" : "#FF3B30")}`,

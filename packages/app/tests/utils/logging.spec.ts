@@ -447,10 +447,20 @@ describe("logServerStart", () => {
       ),
     );
 
-    expect(output).toContain("Talos");
     expect(output).toContain("http://localhost:3000");
     expect(output).toContain("local");
     expect(output).toContain("3000");
+  });
+
+  test("does not render the brand title line", () => {
+    const output = stripAnsi(
+      captureStdout(() =>
+        logServerStart({ baseUrl: "http://localhost:3000", appEnv: "local", port: 3000, isLocal: true }),
+      ),
+    );
+
+    expect(output).not.toContain("Talos");
+    expect(output).not.toContain("◆");
   });
 
   test("writes to stdout exactly once", () => {

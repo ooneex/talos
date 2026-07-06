@@ -777,4 +777,79 @@ hierarchy:
       });
     });
   });
+
+  describe("run", () => {
+    const fakeServer = { hostname: "0.0.0.0", port: 3000, protocol: "http" };
+
+    test("calls the onStart handler with the server when onStart is provided", async () => {
+      const serveSpy = spyOn(Bun, "serve").mockReturnValue(fakeServer as unknown as ReturnType<typeof Bun.serve>);
+      const exitSpy = spyOn(process, "exit").mockImplementation((() => undefined) as never);
+
+      const config = createMockConfig({
+        onStart: MockOnStart as unknown as AppConfigType["onStart"],
+      });
+      const app = new App(config);
+
+      const onStart = container.getConstant("app.event.start") as MockOnStart;
+      onStart.handle.mockClear();
+
+      const result = await app.run();
+
+      expect(result).toBeInstanceOf(App);
+      expect(onStart.handle).toHaveBeenCalledTimes(1);
+      expect(onStart.handle).toHaveBeenCalledWith(fakeServer);
+
+      serveSpy.mockRestore();
+      exitSpy.mockRestore();
+    });
+
+    test("does not call the onStart handler when onStart is not provided", async () => {
+      const serveSpy = spyOn(Bun, "serve").mockReturnValue(fakeServer as unknown as ReturnType<typeof Bun.serve>);
+      const exitSpy = spyOn(process, "exit").mockImplementation((() => undefined) as never);
+
+      const sentinel = { handle: mock(() => {}) };
+      container.addConstant("app.event.start", sentinel);
+
+      const config = createMockConfig();
+      const app = new App(config);
+
+      const result = await app.run();
+
+      expect(result).toBeInstanceOf(App);
+      expect(sentinel.handle).not.toHaveBeenCalled();
+
+      serveSpy.mockRestore();
+      exitSpy.mockRestore();
+    });
+
+    test("starts every configured cron job", async () => {
+      const serveSpy = spyOn(Bun, "serve").mockReturnValue(fakeServer as unknown as ReturnType<typeof Bun.serve>);
+      const exitSpy = spyOn(process, "exit").mockImplementation((() => undefined) as never);
+
+      class CronA {
+        start = mock(() => {});
+      }
+      class CronB {
+        start = mock(() => {});
+      }
+      container.add(CronA);
+      container.add(CronB);
+
+      const config = createMockConfig({
+        cronJobs: [
+          CronA as unknown as AppConfigType["cronJobs"] extends (infer T)[] | undefined ? T : never,
+          CronB as unknown as AppConfigType["cronJobs"] extends (infer T)[] | undefined ? T : never,
+        ],
+      });
+      const app = new App(config);
+
+      await app.run();
+
+      expect((container.get(CronA) as CronA).start).toHaveBeenCalledTimes(1);
+      expect((container.get(CronB) as CronB).start).toHaveBeenCalledTimes(1);
+
+      serveSpy.mockRestore();
+      exitSpy.mockRestore();
+    });
+  });
 });

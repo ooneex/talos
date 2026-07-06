@@ -223,7 +223,9 @@ export class App {
     if (this.config.onStart) {
       const appEventStart = container.getConstant<IAppEventStart>("app.event.start");
       await appEventStart.handle(server);
-    } else {
+    }
+
+    if (!this.config.onStart) {
       hostname = server.hostname || "0.0.0.0";
 
       if (hostname === "0.0.0.0") {
