@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.2.1](https://github.com/ooneex/talos/releases/tag/@talosjs/app-env@1.2.1) - 2026-07-06
+
+### Changed
+
+- Change default app port to 8030| — Franck ([6cf7dd08](https://github.com/ooneex/talos/commit/6cf7dd08))
+
 ## [1.2.0](https://github.com/ooneex/talos/releases/tag/@talosjs/app-env@1.2.0) - 2026-07-06
 
 ### Added
