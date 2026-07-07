@@ -182,9 +182,8 @@ export class SpaCreateCommand<T extends CommandOptionsType = CommandOptionsType>
       await cp(viteConfigSrc, join(moduleDir, "vite.config.ts"));
     }
 
-    // Ensure every shared sub-layer exists, keeping empty folders tracked via .gitkeep
-    const sharedSubDirs = ["assets", "components", "hooks", "layouts", "services", "store", "styles", "types", "utils"];
-    await Promise.all(sharedSubDirs.map((subDir) => Bun.write(join(srcDir, "shared", subDir, ".gitkeep"), "")));
+    // Keep the shared folder tracked while empty; its sub-layers are created on demand
+    await Bun.write(join(srcDir, "shared", ".gitkeep"), "");
 
     // Provide a public dir for static assets, tracked even while empty via .gitkeep
     await Bun.write(join(moduleDir, "public", ".gitkeep"), "");

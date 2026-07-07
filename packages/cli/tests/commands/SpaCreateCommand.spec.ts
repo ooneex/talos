@@ -223,26 +223,31 @@ describe("SpaCreateCommand", () => {
     });
   });
 
-  describe("shared sub-folders", () => {
-    const SHARED_SUB_DIRS = [
-      "assets",
-      "components",
-      "hooks",
-      "layouts",
-      "services",
-      "store",
-      "styles",
-      "types",
-      "utils",
-    ];
-
-    test("should create every shared sub-folder with a .gitkeep file", async () => {
+  describe("shared folder", () => {
+    test("should create a shared folder with a .gitkeep file", async () => {
       await command.run({ name: "Spa", cwd: testDir, silent: true });
 
-      for (const subDir of SHARED_SUB_DIRS) {
+      const gitkeep = join(testDir, "modules", "spa", "src", "shared", ".gitkeep");
+      expect(await exists(gitkeep)).toBe(true);
+      expect(await read(gitkeep)).toBe("");
+    });
+
+    test("should not pre-create shared sub-folders", async () => {
+      await command.run({ name: "Spa", cwd: testDir, silent: true });
+
+      for (const subDir of [
+        "assets",
+        "components",
+        "hooks",
+        "layouts",
+        "services",
+        "store",
+        "styles",
+        "types",
+        "utils",
+      ]) {
         const gitkeep = join(testDir, "modules", "spa", "src", "shared", subDir, ".gitkeep");
-        expect(await exists(gitkeep)).toBe(true);
-        expect(await read(gitkeep)).toBe("");
+        expect(await exists(gitkeep)).toBe(false);
       }
     });
   });
