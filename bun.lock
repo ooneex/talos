@@ -130,7 +130,7 @@
     },
     "packages/cli": {
       "name": "@talosjs/cli",
-      "version": "1.21.2",
+      "version": "1.22.0",
       "bin": {
         "talos": "./dist/index.js",
         "oo": "./dist/index.js",
