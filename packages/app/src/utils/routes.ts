@@ -14,9 +14,7 @@ import { runMiddlewares } from "./middleware";
 export const getCacheKey = (prefix: string, method: string, url: string, userId?: string): string => {
   const { pathname, search } = new URL(url);
   const keySource = `${method}:${pathname}:${search}:${userId ?? "anon"}`;
-  const hasher = new Bun.CryptoHasher("sha256");
-  hasher.update(keySource);
-  return `${prefix}:${hasher.digest("hex")}`;
+  return `${prefix}:${Bun.CryptoHasher.hash("sha256", keySource, "hex")}`;
 };
 
 export type HttpRouteHandlerType = (req: BunRequest, server: Server<unknown>) => Promise<Response>;

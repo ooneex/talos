@@ -23,6 +23,9 @@ type CachedResponseType = {
   headers: Record<string, string>;
 };
 
+// Headers that must never be replayed from the cache to another user.
+const SENSITIVE_HEADERS = new Set(["set-cookie", "authorization"]);
+
 export const toControllerError = (error: unknown): ControllerErrorType => {
   if (error instanceof Exception) {
     return { message: error.message, status: error.status as StatusCodeType, key: error.key };
@@ -139,10 +142,9 @@ export const httpRouteHandler = async ({
 
   // Streaming responses are consumed once and cannot be buffered for caching
   if (!isStream && cacheKey && context.cache && httpResponse.ok) {
-    const sensitiveHeaders = new Set(["set-cookie", "authorization"]);
     const headers: Record<string, string> = {};
     httpResponse.headers.forEach((value, key) => {
-      if (!sensitiveHeaders.has(key)) {
+      if (!SENSITIVE_HEADERS.has(key)) {
         headers[key] = value;
       }
     });

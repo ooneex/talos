@@ -30,7 +30,13 @@ export const buildHttpContext = async (ctx: {
     try {
       payload = await req.json();
     } catch (_e) {}
-  } else {
+  } else if (
+    // formData() only ever succeeds for these two content types; skipping the
+    // attempt otherwise avoids paying for a thrown exception on every body-less
+    // request (GETs in particular)
+    contentType &&
+    (contentType.includes("multipart/form-data") || contentType.includes("application/x-www-form-urlencoded"))
+  ) {
     try {
       form = await req.formData();
     } catch (_e) {}

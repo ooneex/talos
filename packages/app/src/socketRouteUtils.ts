@@ -27,9 +27,7 @@ export const getSocketCacheKey = (
   payload?: Record<string, ScalarType>,
 ): string => {
   const keySource = `${routeName}:${userId ?? "anon"}:${JSON.stringify(params ?? {})}:${JSON.stringify(queries ?? {})}:${JSON.stringify(payload ?? {})}`;
-  const hasher = new Bun.CryptoHasher("sha256");
-  hasher.update(keySource);
-  return `${prefix}:${hasher.digest("hex")}`;
+  return `${prefix}:${Bun.CryptoHasher.hash("sha256", keySource, "hex")}`;
 };
 
 type SocketRouteHandlerType = (req: BunRequest, server: Server<unknown>) => Promise<Response | undefined>;
