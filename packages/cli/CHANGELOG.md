@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.22.1](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.22.1) - 2026-07-07
+
+### Changed
+
+- Document the translations layer in SPA and design skill templates| — Franck ([a642831d](https://github.com/ooneex/talos/commit/a642831d))
+- Stop pre-creating shared sub-folders in SPA scaffold| — Franck ([f534dc17](https://github.com/ooneex/talos/commit/f534dc17))
+
 ## [1.22.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.22.0) - 2026-07-07
 
 ### Added
