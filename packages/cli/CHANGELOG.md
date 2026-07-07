@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.22.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.22.0) - 2026-07-07
+
+### Added
+
+- Structure issue descriptions into module, context, goal, DoD and dependencies| — Franck ([2cc0b292](https://github.com/ooneex/talos/commit/2cc0b292))
+- Create missing Linear issues on the General team when pushing| — Franck ([46d0f41c](https://github.com/ooneex/talos/commit/46d0f41c))
+
+### Changed
+
+- Drop Jira provider and make issue pull Linear-only| — Franck ([d13d921b](https://github.com/ooneex/talos/commit/d13d921b))
+- Restrict issue push to updating existing Linear issues| — Franck ([bef11f8c](https://github.com/ooneex/talos/commit/bef11f8c))
+- Always prompt for target team and drop teamId credential| — Franck ([1ccbd4e6](https://github.com/ooneex/talos/commit/1ccbd4e6))
+- Read Linear and Jira credentials from credential files instead of env vars| — Franck ([d1a3e2d5](https://github.com/ooneex/talos/commit/d1a3e2d5))
+
 ## [1.21.2](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.21.2) - 2026-07-06
 
 ### Changed
