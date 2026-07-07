@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.2.2](https://github.com/ooneex/talos/releases/tag/@talosjs/app-env@1.2.2) - 2026-07-07
+
+### Changed
+
+- Fix PORT default comment to match configured value| — Franck ([1949a280](https://github.com/ooneex/talos/commit/1949a280))
+
 ## [1.2.1](https://github.com/ooneex/talos/releases/tag/@talosjs/app-env@1.2.1) - 2026-07-06
 
 ### Changed
