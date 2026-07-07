@@ -86,7 +86,8 @@ export class IssuePushCommand<T extends CommandOptionsType = CommandOptionsType>
   }
 
   public async run(options: T): Promise<void> {
-    let { id, module = "shared" } = options;
+    let { id } = options;
+    const module = options.module?.trim() || "shared";
 
     if (!id) {
       const response = await prompt<{ id: string }>({

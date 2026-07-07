@@ -33,14 +33,9 @@ mock.module("@talosjs/linear", () => ({
 }));
 
 let linearCredentials: Record<string, string> | null;
-let jiraCredentials: Record<string, string> | null;
 
 mock.module("@/credentials", () => ({
-  readCredentials: mock(async (fileName: string) => {
-    if (fileName === "linear.yml") return linearCredentials;
-    if (fileName === "jira.yml") return jiraCredentials;
-    return null;
-  }),
+  readCredentials: mock(async (fileName: string) => (fileName === "linear.yml" ? linearCredentials : null)),
 }));
 
 const { IssuePullCommand } = await import("@/commands/IssuePullCommand");
@@ -55,7 +50,6 @@ describe("IssuePullCommand", () => {
     originalCwd = process.cwd();
     testDir = join(originalCwd, ".temp", `issue-pull-${Date.now()}`);
     linearCredentials = { token: "test-api-key" };
-    jiraCredentials = null;
   });
 
   afterEach(() => {
@@ -71,7 +65,7 @@ describe("IssuePullCommand", () => {
     });
 
     test("should return correct description", () => {
-      expect(command.getDescription()).toBe("Pull an issue from Linear or Jira and save it as a YAML file");
+      expect(command.getDescription()).toBe("Pull an issue from Linear and save it as a YAML file");
     });
   });
 
@@ -215,6 +209,13 @@ describe("IssuePullCommand", () => {
       expect(existsSync(join(testDir, "modules", "my-module", "issues", "ENG-123.yml"))).toBe(true);
     });
 
+    test.each([["  "], [""]])("should fall back to the shared module when module is %p", async (module) => {
+      await command.run({ id: "ENG-123", module });
+
+      const content = await Bun.file(join(testDir, "modules", "shared", "issues", "ENG-123.yml")).text();
+      expect(content).toContain('module: "shared"');
+    });
+
     test("should not create file when Linear credentials are missing", async () => {
       linearCredentials = null;
 
@@ -265,112 +266,6 @@ describe("IssuePullCommand", () => {
       const content = await Bun.file(join(testDir, "modules", "shared", "issues", "ENG-123.yml")).text();
 
       expect(content.endsWith("\n")).toBe(true);
-    });
-
-    test("should not create file for an unknown provider", async () => {
-      mockGetIssue.mockClear();
-
-      await command.run({ id: "ENG-123", provider: "github" as "linear" });
-
-      expect(existsSync(join(testDir, "modules", "shared", "issues", "ENG-123.yml"))).toBe(false);
-      expect(mockGetIssue).not.toHaveBeenCalled();
-    });
-  });
-
-  describe("run() with Jira provider", () => {
-    const jiraIssue = {
-      key: "PROJ-1",
-      fields: {
-        summary: "Jira Issue",
-        status: { name: "To Do" },
-        priority: { name: "High" },
-        description: { content: [{ content: [{ text: "Jira description" }] }] },
-        labels: ["bug", "backend"],
-        comment: {
-          comments: [
-            { author: { displayName: "Bob" }, body: { content: [{ content: [{ text: "First jira comment" }] }] } },
-          ],
-        },
-      },
-    };
-
-    let jiraResponse: { ok: boolean; status: number; json: () => Promise<unknown> };
-    let mockFetch: ReturnType<typeof mock>;
-    let originalFetch: typeof globalThis.fetch;
-
-    beforeEach(async () => {
-      await Bun.write(join(testDir, "modules", "shared", "issues", ".gitkeep"), "");
-      process.chdir(testDir);
-      mockPrompt.mockClear();
-      mockGetIssue.mockClear();
-
-      jiraCredentials = {
-        baseUrl: "https://acme.atlassian.net",
-        email: "user@acme.com",
-        token: "jira-token",
-      };
-
-      jiraResponse = { ok: true, status: 200, json: async () => jiraIssue };
-      mockFetch = mock(async () => jiraResponse);
-      originalFetch = globalThis.fetch;
-      globalThis.fetch = mockFetch as unknown as typeof globalThis.fetch;
-    });
-
-    afterEach(() => {
-      globalThis.fetch = originalFetch;
-    });
-
-    test("should create YAML file at issues/<key>.yml", async () => {
-      await command.run({ id: "PROJ-1", provider: "jira" });
-
-      expect(existsSync(join(testDir, "modules", "shared", "issues", "PROJ-1.yml"))).toBe(true);
-      expect(mockGetIssue).not.toHaveBeenCalled();
-    });
-
-    test("should call the Jira REST endpoint with Basic auth", async () => {
-      await command.run({ id: "PROJ-1", provider: "jira" });
-
-      const calls = mockFetch.mock.calls as unknown as Array<[string, { headers: Record<string, string> }]>;
-      const [url, init] = calls[0]!;
-      expect(url).toBe(
-        "https://acme.atlassian.net/rest/api/3/issue/PROJ-1?fields=summary,status,priority,description,labels,comment",
-      );
-      const expectedAuth = Buffer.from("user@acme.com:jira-token").toString("base64");
-      expect(init.headers.Authorization).toBe(`Basic ${expectedAuth}`);
-    });
-
-    test("should map Jira fields to YAML", async () => {
-      await command.run({ id: "PROJ-1", provider: "jira" });
-
-      const content = await Bun.file(join(testDir, "modules", "shared", "issues", "PROJ-1.yml")).text();
-
-      expect(content).toContain('id: "PROJ-1"');
-      expect(content).toContain('title: "Jira Issue"');
-      expect(content).toContain('state: "To Do"');
-      expect(content).toContain('priority: "High"');
-      expect(content).toContain("context: |");
-      expect(content).toContain("  Jira description");
-      expect(content).toContain('  - "bug"');
-      expect(content).toContain('  - "backend"');
-      expect(content).toContain('  - author: "Bob"');
-      expect(content).toContain('    message: "First jira comment"');
-    });
-
-    test("should not create file when Jira credentials are missing", async () => {
-      jiraCredentials = { baseUrl: "https://acme.atlassian.net", email: "user@acme.com" };
-
-      await command.run({ id: "PROJ-1", provider: "jira" });
-
-      expect(existsSync(join(testDir, "modules", "shared", "issues", "PROJ-1.yml"))).toBe(false);
-      expect(mockFetch).not.toHaveBeenCalled();
-    });
-
-    test("should not create file when Jira responds with an error", async () => {
-      jiraResponse = { ok: false, status: 404, json: async () => ({}) };
-
-      await command.run({ id: "PROJ-1", provider: "jira" });
-
-      expect(existsSync(join(testDir, "modules", "shared", "issues", "PROJ-1.yml"))).toBe(false);
     });
   });
 });

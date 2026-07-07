@@ -281,7 +281,6 @@ _talos() {
         issue:pull)
           _arguments -s \
             '--id=[Issue ID or identifier]:id' \
-            '--provider=[Issue provider]:provider:(linear jira)' \
             '--module=[Module name]:module:_talos_modules'
           ;;
         issue:push)

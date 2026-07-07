@@ -203,8 +203,7 @@ seed:create seed:run"
       [[ $flag == --module ]] && candidates="$(_talos_modules)"
       ;;
     issue:pull)
-      opts="--id --provider --module"
-      [[ $flag == --provider ]] && candidates="linear jira"
+      opts="--id --module"
       [[ $flag == --module ]] && candidates="$(_talos_modules)"
       ;;
     issue:push)

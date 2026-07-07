@@ -139,7 +139,7 @@ for cmd in oo talos
     complete -c $cmd -f -n __fish_use_subcommand -a version -d 'Print the installed CLI version'
     complete -c $cmd -f -n __fish_use_subcommand -a upgrade -d 'Upgrade the CLI to its latest version'
     complete -c $cmd -f -n __fish_use_subcommand -a issue:create -d 'Create a YAML skeleton file for a new issue'
-    complete -c $cmd -f -n __fish_use_subcommand -a issue:pull -d 'Pull an issue from Linear or Jira and save it as a YAML file'
+    complete -c $cmd -f -n __fish_use_subcommand -a issue:pull -d 'Pull an issue from Linear and save it as a YAML file'
     complete -c $cmd -f -n __fish_use_subcommand -a issue:push -d 'Push a local issue YAML to Linear (create or update)'
     complete -c $cmd -f -n __fish_use_subcommand -a analytics:create -d 'Generate a new analytics class'
     complete -c $cmd -f -n __fish_use_subcommand -a cache:create -d 'Generate a new cache class'
@@ -236,7 +236,6 @@ for cmd in oo talos
     complete -c $cmd -n '__fish_seen_subcommand_from issue:create' -l interactive -d 'Prompt for all fields'
 
     complete -c $cmd -n '__fish_seen_subcommand_from issue:pull' -l id -x -d 'Issue ID or identifier'
-    complete -c $cmd -n '__fish_seen_subcommand_from issue:pull' -l provider -x -a 'linear jira' -d 'Issue provider'
     complete -c $cmd -n '__fish_seen_subcommand_from issue:pull' -l module -x -a '(__talos_modules)' -d 'Module name'
 
     complete -c $cmd -n '__fish_seen_subcommand_from issue:push' -l id -x -d 'Local issue ID to push'

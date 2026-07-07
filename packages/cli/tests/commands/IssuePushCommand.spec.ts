@@ -191,6 +191,24 @@ describe("IssuePushCommand", () => {
 
       expect(mockUpdateIssue).toHaveBeenCalledTimes(1);
     });
+
+    test("should default to the shared module when module is omitted", async () => {
+      await writeIssueFile("ENG-123", 'id: "ENG-123"\ntitle: "Issue"\n');
+
+      await command.run({ id: "ENG-123" });
+
+      const calls = mockUpdateIssue.mock.calls as unknown as Array<[string, { description?: string }]>;
+      expect(calls[0]?.[1]?.description).toContain("**Module:** `shared`");
+    });
+
+    test.each([["  "], [""]])("should fall back to the shared module when module is %p", async (module) => {
+      await writeIssueFile("ENG-123", 'id: "ENG-123"\ntitle: "Issue"\n');
+
+      await command.run({ id: "ENG-123", module });
+
+      const calls = mockUpdateIssue.mock.calls as unknown as Array<[string, { description?: string }]>;
+      expect(calls[0]?.[1]?.description).toContain("**Module:** `shared`");
+    });
   });
 
   describe("create path (pushCreate)", () => {
