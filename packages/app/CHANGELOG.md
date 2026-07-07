@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.2.3](https://github.com/ooneex/talos/releases/tag/@talosjs/app@1.2.3) - 2026-07-07
+
+### Changed
+
+- Skip formData parsing for body-less requests and use one-shot hashing| — Franck ([3099525c](https://github.com/ooneex/talos/commit/3099525c))
+
 ## [1.2.2](https://github.com/ooneex/talos/releases/tag/@talosjs/app@1.2.2) - 2026-07-06
 
 ### Changed
