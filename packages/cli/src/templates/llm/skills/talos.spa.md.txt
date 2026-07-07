@@ -44,6 +44,7 @@ modules/<name>/                   # type: "spa"
       services/                 #   Shared business logic only — cross-cutting domain rules, never talks to the backend (hooks do that).
       store/                    #   Global client state shared across features.
       styles/                   #   Global stylesheets, design tokens, theme variables.
+      translations/             #   App-wide i18n from `talos translation:create` — a `translations.json` dictionary + `use<Name>Translate` hook shared across features (same spa hook flavour as a feature's).
       types/                    #   Shared TypeScript types used across features.
       utils/                    #   Generic pure helpers (formatting, `cn`, guards).
 ```
