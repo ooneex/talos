@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.23.1](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.23.1) - 2026-07-07
+
+### Changed
+
+- Add design system guidance to the optimize:react skill template| — Franck ([a315d5b1](https://github.com/ooneex/talos/commit/a315d5b1))
+
 ## [1.23.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.23.0) - 2026-07-07
 
 ### Added
