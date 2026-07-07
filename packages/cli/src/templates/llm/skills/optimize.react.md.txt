@@ -1,6 +1,6 @@
 ---
 name: optimize:react
-description: Recommended React patterns for design and spa modules — custom hooks, compound components, Zustand state, and TanStack Query/Virtual/Pacer/Hotkeys. Use only when building or optimizing a React module (design or spa).
+description: Recommended React patterns for design and spa modules — always use the project's main design system, custom hooks, compound components, Zustand state, and TanStack Query/Virtual/Pacer/Hotkeys. Use only when building or optimizing a React module (design or spa).
 ---
 
 # React Patterns (design & spa modules)
@@ -14,6 +14,22 @@ Install missing deps at the project root:
 ```bash
 bun add zustand @tanstack/react-query @tanstack/react-virtual @tanstack/react-pacer @tanstack/react-hotkeys
 ```
+
+## Design system
+
+**Always build UI with the project's main design system — never restyle from scratch or hand-roll primitives that already exist there.**
+
+- In a `spa` module, read the `design:` field in `modules/<module>/<module>.yml` to find the linked design module, then list its exports (`ls modules/<design>/src/components` and `cat modules/<design>/src/index.ts`) to learn the available primitives.
+- Import design components through the module path alias:
+
+  ```typescript
+  import { Button } from "@module/<design>/components/Button";
+  // or, if the design module re-exports from a barrel:
+  import { Button, Card } from "@module/<design>";
+  ```
+
+- When optimizing existing UI, replace ad-hoc styled elements (raw `<button>`, `<input>`, one-off styled divs) with the design system's equivalents. Only fall back to plain elements when the design system has no matching component — and prefer adding the missing primitive to the design module over duplicating styles in the SPA.
+- In a `design` module, extend the system itself: new components belong in the design module and follow its existing tokens, variants, and conventions.
 
 ## Hooks
 
