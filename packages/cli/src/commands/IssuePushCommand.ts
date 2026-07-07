@@ -1,4 +1,3 @@
-import { unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { AppEnv } from "@talosjs/app-env";
 import type { ICommand } from "@talosjs/command";
@@ -71,7 +70,7 @@ export class IssuePushCommand<T extends CommandOptionsType = CommandOptionsType>
   }
 
   public getDescription(): string {
-    return "Push a local issue YAML to Linear (create or update)";
+    return "Update an existing Linear issue from a local YAML file";
   }
 
   public async run(options: T): Promise<void> {
@@ -118,14 +117,16 @@ export class IssuePushCommand<T extends CommandOptionsType = CommandOptionsType>
       existingIssue = await service.getIssue(parsed.id ?? id);
       fetchSpinner.stop();
     } catch {
-      // Issue not in Linear yet
+      // Issue not in Linear
     }
 
-    if (existingIssue) {
-      await this.pushUpdate(service, existingIssue, parsed, logger);
-    } else {
-      await this.pushCreate(service, parsed, logger, issuesDir, id, filePath, content);
+    if (!existingIssue) {
+      logger.error(`Issue "${parsed.id ?? id}" not found in Linear`, undefined, LOG_OPTIONS);
+      process.exitCode = 1;
+      return;
     }
+
+    await this.pushUpdate(service, existingIssue, parsed, logger);
   }
 
   private async pushUpdate(
@@ -137,10 +138,8 @@ export class IssuePushCommand<T extends CommandOptionsType = CommandOptionsType>
     const issueId = existing.id;
     if (!issueId) return;
 
-    const teamId = existing.team?.id;
-
-    const stateId = parsed.state ? await this.resolveState(service, parsed.state, teamId, logger) : undefined;
-    const labelIds = await this.resolveLabels(service, parsed.labels, teamId, logger);
+    const stateId = parsed.state ? await this.resolveState(service, parsed.state) : undefined;
+    const labelIds = await this.resolveLabels(service, parsed.labels, logger);
     const priority = parsed.priority ? (PRIORITY_MAP[parsed.priority.toLowerCase()] ?? undefined) : undefined;
 
     const updateInput = new Issue();
@@ -158,123 +157,15 @@ export class IssuePushCommand<T extends CommandOptionsType = CommandOptionsType>
     await this.syncComments(service, issueId, existing, parsed.comments, logger);
   }
 
-  private async pushCreate(
-    service: LinearService,
-    parsed: ParsedIssue,
-    logger: TerminalLogger,
-    issuesDir: string,
-    localId: string,
-    filePath: string,
-    content: string,
-  ): Promise<void> {
-    if (!parsed.title) {
-      logger.error("Issue title is required to create in Linear", undefined, LOG_OPTIONS);
-      process.exitCode = 1;
-      return;
-    }
-
-    const teamsSpinner = createSpinner("Fetching teams from Linear...");
-    const teams = await service.getTeams();
-    teamsSpinner.stop();
-    if (teams.length === 0) {
-      logger.error("No teams found in Linear", undefined, LOG_OPTIONS);
-      process.exitCode = 1;
-      return;
-    }
-
-    const { teamKey } = await prompt<{ teamKey: string }>({
-      type: "select",
-      name: "teamKey",
-      message: "Select target team",
-      choices: teams.map((t) => ({ name: t.key, message: `${t.name} (${t.key})` })),
-    } as Parameters<typeof prompt>[0]);
-    const team = teams.find((t) => t.key === teamKey);
-
-    if (!team) return;
-
-    const stateId = parsed.state ? await this.resolveState(service, parsed.state, team.id, logger) : undefined;
-    const labelIds = await this.resolveLabels(service, parsed.labels, team.id, logger);
-    const priority = parsed.priority ? (PRIORITY_MAP[parsed.priority.toLowerCase()] ?? undefined) : undefined;
-
-    const createInput = new Issue();
-    createInput.title = parsed.title;
-    createInput.team = team;
-    if (parsed.description) createInput.description = parsed.description;
-    if (priority !== undefined) createInput.priority = priority;
-    if (stateId) createInput.state = { id: stateId };
-    if (labelIds.length > 0) createInput.labels = labelIds.map((lid) => ({ id: lid }));
-    const createIssueSpinner = createSpinner("Creating issue in Linear...");
-    const created = await service.createIssue(createInput);
-    createIssueSpinner.stop();
-
-    logger.success(`Issue ${created.identifier} created in Linear`, undefined, LOG_OPTIONS);
-
-    for (const comment of parsed.comments) {
-      if (comment.message.trim() && created.id) {
-        const commentSpinner = createSpinner("Adding comment...");
-        await service.createComment(created.id, comment.message);
-        commentSpinner.stop();
-      }
-    }
-
-    if (created.identifier && created.identifier !== localId) {
-      const newFileName = `${created.identifier}.yml`;
-      const newFilePath = join(issuesDir, newFileName);
-      const newContent = content.replace(/^id:\s*.+$/m, `id: ${JSON.stringify(created.identifier)}`);
-      await Bun.write(newFilePath, newContent);
-      await unlink(filePath);
-      logger.success(`Local file renamed to ${newFileName}`, undefined, LOG_OPTIONS);
-    }
-  }
-
-  private async resolveState(
-    service: LinearService,
-    stateName: string,
-    teamId: string | undefined,
-    logger: TerminalLogger,
-  ): Promise<string | undefined> {
+  private async resolveState(service: LinearService, stateName: string): Promise<string | undefined> {
     const statesSpinner = createSpinner("Fetching states from Linear...");
-    const states = await service.getStates(teamId);
+    const states = await service.getStates();
     statesSpinner.stop();
     const found = states.find((s) => s.name?.toLowerCase() === stateName.toLowerCase());
-    if (found?.id) return found.id;
-
-    const { shouldCreate } = await prompt<{ shouldCreate: boolean }>({
-      type: "confirm",
-      name: "shouldCreate",
-      message: `State "${stateName}" not found in Linear. Create it?`,
-      initial: false,
-    });
-
-    if (!shouldCreate || !teamId) return undefined;
-
-    const { color } = await prompt<{ color: string }>({
-      type: "input",
-      name: "color",
-      message: "State color (hex)",
-      initial: "#6366f1",
-    });
-
-    const { type } = await prompt<{ type: string }>({
-      type: "select",
-      name: "type",
-      message: "State type",
-      choices: ["backlog", "unstarted", "started", "completed", "cancelled"],
-    } as Parameters<typeof prompt>[0]);
-
-    const stateCreateSpinner = createSpinner(`Creating state "${stateName}"...`);
-    const created = await service.createState({ name: stateName, color, type, teamId });
-    stateCreateSpinner.stop();
-    logger.success(`State "${stateName}" created in Linear`, undefined, LOG_OPTIONS);
-    return created.id;
+    return found?.id;
   }
 
-  private async resolveLabels(
-    service: LinearService,
-    labelNames: string[],
-    teamId: string | undefined,
-    logger: TerminalLogger,
-  ): Promise<string[]> {
+  private async resolveLabels(service: LinearService, labelNames: string[], logger: TerminalLogger): Promise<string[]> {
     if (labelNames.length === 0) return [];
 
     const labelsSpinner = createSpinner("Fetching labels from Linear...");
@@ -289,7 +180,7 @@ export class IssuePushCommand<T extends CommandOptionsType = CommandOptionsType>
         continue;
       }
       const labelCreateSpinner = createSpinner(`Creating label "${name}"...`);
-      const created = await service.createLabel({ name, ...(teamId ? { teamId } : {}) });
+      const created = await service.createLabel({ name });
       labelCreateSpinner.stop();
       if (created.id) {
         ids.push(created.id);
