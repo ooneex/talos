@@ -20,7 +20,10 @@ type ParsedIssue = {
   title?: string | undefined;
   state?: string | undefined;
   priority?: string | undefined;
-  description?: string | undefined;
+  context?: string | undefined;
+  goal?: string | undefined;
+  dod?: string | undefined;
+  dependencies: string[];
   labels: string[];
   comments: { author: string | null; message: string }[];
 };
@@ -51,14 +54,22 @@ const parseIssueYaml = (content: string): ParsedIssue => {
         .filter((comment) => comment.message)
     : [];
 
-  const description = typeof data.description === "string" ? data.description.replace(/\n+$/, "") : undefined;
+  const toBlock = (value: unknown): string | undefined =>
+    typeof value === "string" && value.trim() ? value.replace(/\n+$/, "") : undefined;
+
+  const dependencies = Array.isArray(data.dependencies)
+    ? data.dependencies.filter((dep) => dep != null).map(String)
+    : [];
 
   return {
     id: toScalar(data.id),
     title: toScalar(data.title),
     state: toScalar(data.state),
     priority: toScalar(data.priority),
-    description,
+    context: toBlock(data.context),
+    goal: toBlock(data.goal),
+    dod: toBlock(data.dod),
+    dependencies,
     labels,
     comments,
   };
@@ -122,10 +133,24 @@ export class IssuePushCommand<T extends CommandOptionsType = CommandOptionsType>
     }
 
     if (existingIssue) {
-      await this.pushUpdate(service, existingIssue, parsed, logger);
+      await this.pushUpdate(service, existingIssue, parsed, logger, module);
     } else {
-      await this.pushCreate(service, parsed, logger, issuesDir, id, filePath, content);
+      await this.pushCreate(service, parsed, logger, issuesDir, id, filePath, content, module);
     }
+  }
+
+  private buildDescription(parsed: ParsedIssue, module: string): string {
+    const sections: string[] = [`**Module:** \`${module}\``];
+
+    if (parsed.context) sections.push(`## Context\n\n${parsed.context}`);
+    if (parsed.goal) sections.push(`## Goal\n\n${parsed.goal}`);
+    if (parsed.dod) sections.push(`## Definition of Done\n\n${parsed.dod}`);
+    if (parsed.dependencies.length > 0) {
+      const deps = parsed.dependencies.map((dep) => `- ${dep}`).join("\n");
+      sections.push(`## Dependencies\n\n${deps}`);
+    }
+
+    return sections.join("\n\n");
   }
 
   private async pushUpdate(
@@ -133,6 +158,7 @@ export class IssuePushCommand<T extends CommandOptionsType = CommandOptionsType>
     existing: Issue,
     parsed: ParsedIssue,
     logger: TerminalLogger,
+    module: string,
   ): Promise<void> {
     const issueId = existing.id;
     if (!issueId) return;
@@ -143,7 +169,7 @@ export class IssuePushCommand<T extends CommandOptionsType = CommandOptionsType>
 
     const updateInput = new Issue();
     if (parsed.title != null) updateInput.title = parsed.title;
-    if (parsed.description) updateInput.description = parsed.description;
+    updateInput.description = this.buildDescription(parsed, module);
     if (priority !== undefined) updateInput.priority = priority;
     if (stateId) updateInput.state = { id: stateId };
     updateInput.labels = labelIds.map((lid) => ({ id: lid }));
@@ -164,6 +190,7 @@ export class IssuePushCommand<T extends CommandOptionsType = CommandOptionsType>
     localId: string,
     filePath: string,
     content: string,
+    module: string,
   ): Promise<void> {
     if (!parsed.title) {
       logger.error("Issue title is required to create in Linear", undefined, LOG_OPTIONS);
@@ -194,7 +221,7 @@ export class IssuePushCommand<T extends CommandOptionsType = CommandOptionsType>
     const createInput = new Issue();
     createInput.title = parsed.title;
     createInput.team = team;
-    if (parsed.description) createInput.description = parsed.description;
+    createInput.description = this.buildDescription(parsed, module);
     if (priority !== undefined) createInput.priority = priority;
     if (stateId) createInput.state = { id: stateId };
     if (labelIds.length > 0) createInput.labels = labelIds.map((lid) => ({ id: lid }));

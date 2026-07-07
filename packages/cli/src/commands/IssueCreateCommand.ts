@@ -24,8 +24,8 @@ export class IssueCreateCommand<T extends CommandOptionsType = CommandOptionsTyp
   }
 
   public async run(options: T): Promise<void> {
-    const { module = "shared" } = options;
-    const { title, state, priority, description, labels = [] } = options;
+    const { module = "shared", state = "Todo", priority = "Medium" } = options;
+    const { title = "", description = "", labels = [] } = options;
 
     await ensureModule(module);
 
@@ -36,10 +36,10 @@ export class IssueCreateCommand<T extends CommandOptionsType = CommandOptionsTyp
     const yaml = issueToYaml({
       id: resolvedId,
       module,
-      title: title?.trim() ?? null,
-      state: state?.trim() ?? null,
-      priority: priority?.trim() ?? null,
-      description: description?.trim() ?? null,
+      title: title.trim(),
+      state: state.trim(),
+      priority: priority.trim(),
+      description: description.trim(),
       labels,
     });
 

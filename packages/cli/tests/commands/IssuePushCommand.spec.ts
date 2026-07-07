@@ -319,6 +319,44 @@ describe("IssuePushCommand", () => {
 
       expect(mockLoggerSuccess).toHaveBeenCalled();
     });
+
+    test("should build description from context, goal, dod and dependencies", async () => {
+      await writeIssueFile(
+        "ENG-123",
+        [
+          'title: "New Issue"',
+          "context: |",
+          "  Some context.",
+          "goal: |",
+          "  Do the thing.",
+          "dod: |",
+          "  - [ ] First",
+          "dependencies:",
+          '  - "ENG-100"',
+          "",
+        ].join("\n"),
+      );
+
+      await command.run({ id: "ENG-123" });
+
+      const calls = mockCreateIssue.mock.calls as unknown as Array<[{ description?: string }]>;
+      expect(calls[0]?.[0]?.description).toBe(
+        "**Module:** `shared`\n\n" +
+          "## Context\n\nSome context.\n\n" +
+          "## Goal\n\nDo the thing.\n\n" +
+          "## Definition of Done\n\n- [ ] First\n\n" +
+          "## Dependencies\n\n- ENG-100",
+      );
+    });
+
+    test("should set description to just the module name when no structured fields are present", async () => {
+      await writeIssueFile("ENG-123", 'title: "New Issue"\n');
+
+      await command.run({ id: "ENG-123" });
+
+      const calls = mockCreateIssue.mock.calls as unknown as Array<[{ description?: string }]>;
+      expect(calls[0]?.[0]?.description).toBe("**Module:** `shared`");
+    });
   });
 
   describe("update path (pushUpdate)", () => {
@@ -425,22 +463,54 @@ describe("IssuePushCommand", () => {
   });
 
   describe("parseIssueYaml (via run)", () => {
-    test("should parse block scalar description", async () => {
-      await writeIssueFile("ENG-123", 'id: "ENG-123"\ntitle: "Issue"\ndescription: |\n  Line one\n  Line two\n');
+    test("should build description from context, goal, dod and dependencies", async () => {
+      await writeIssueFile(
+        "ENG-123",
+        [
+          'id: "ENG-123"',
+          'title: "Issue"',
+          "context: |",
+          "  Some context.",
+          "goal: |",
+          "  Do the thing.",
+          "dod: |",
+          "  - [ ] First",
+          "  - [ ] Second",
+          "dependencies:",
+          '  - "ENG-100"',
+          '  - "ENG-101"',
+          "",
+        ].join("\n"),
+      );
 
       await command.run({ id: "ENG-123" });
 
       const calls = mockUpdateIssue.mock.calls as unknown as Array<[string, { description?: string }]>;
-      expect(calls[0]?.[1]?.description).toBe("Line one\nLine two");
+      expect(calls[0]?.[1]?.description).toBe(
+        "**Module:** `shared`\n\n" +
+          "## Context\n\nSome context.\n\n" +
+          "## Goal\n\nDo the thing.\n\n" +
+          "## Definition of Done\n\n- [ ] First\n- [ ] Second\n\n" +
+          "## Dependencies\n\n- ENG-100\n- ENG-101",
+      );
     });
 
-    test("should not set description when description is null", async () => {
-      await writeIssueFile("ENG-123", 'id: "ENG-123"\ntitle: "Issue"\ndescription: null\n');
+    test("should set description to just the module name when no structured fields are present", async () => {
+      await writeIssueFile("ENG-123", 'id: "ENG-123"\ntitle: "Issue"\n');
 
       await command.run({ id: "ENG-123" });
 
       const calls = mockUpdateIssue.mock.calls as unknown as Array<[string, { description?: string }]>;
-      expect(calls[0]?.[1]?.description).toBeUndefined();
+      expect(calls[0]?.[1]?.description).toBe("**Module:** `shared`");
+    });
+
+    test("should omit sections that are absent", async () => {
+      await writeIssueFile("ENG-123", 'id: "ENG-123"\ntitle: "Issue"\ngoal: |\n  Only a goal.\n');
+
+      await command.run({ id: "ENG-123" });
+
+      const calls = mockUpdateIssue.mock.calls as unknown as Array<[string, { description?: string }]>;
+      expect(calls[0]?.[1]?.description).toBe("**Module:** `shared`\n\n## Goal\n\nOnly a goal.");
     });
 
     test("should parse empty labels list", async () => {

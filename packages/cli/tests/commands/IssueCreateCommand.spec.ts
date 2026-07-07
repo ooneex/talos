@@ -73,15 +73,37 @@ describe("IssueCreateCommand", () => {
       expect(content).toContain("  My desc");
     });
 
-    test("should use null for omitted title and description", async () => {
+    test("should use empty string for omitted title and null description", async () => {
       await command.run({});
 
       const files = await readdir(join(testDir, "modules", "shared", "issues"));
       const ymlFile = files.find((f) => f.endsWith(".yml")) ?? "";
       const content = await Bun.file(join(testDir, "modules", "shared", "issues", ymlFile)).text();
 
-      expect(content).toContain("title: null");
+      expect(content).toContain('title: ""');
       expect(content).toContain("description: null");
+    });
+
+    test("should default state to Todo and priority to Medium when omitted", async () => {
+      await command.run({});
+
+      const files = await readdir(join(testDir, "modules", "shared", "issues"));
+      const ymlFile = files.find((f) => f.endsWith(".yml")) ?? "";
+      const content = await Bun.file(join(testDir, "modules", "shared", "issues", ymlFile)).text();
+
+      expect(content).toContain('state: "Todo"');
+      expect(content).toContain('priority: "Medium"');
+    });
+
+    test("should write provided state and priority to YAML", async () => {
+      await command.run({ state: "In Progress", priority: "High" });
+
+      const files = await readdir(join(testDir, "modules", "shared", "issues"));
+      const ymlFile = files.find((f) => f.endsWith(".yml")) ?? "";
+      const content = await Bun.file(join(testDir, "modules", "shared", "issues", ymlFile)).text();
+
+      expect(content).toContain('state: "In Progress"');
+      expect(content).toContain('priority: "High"');
     });
 
     test("should auto-generate id when not provided", async () => {

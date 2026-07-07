@@ -391,6 +391,10 @@ export type IssueYamlType = {
   state?: string | null | undefined;
   priority?: string | null | undefined;
   description?: string | null | undefined;
+  context?: string | null | undefined;
+  goal?: string | null | undefined;
+  dod?: string | null | undefined;
+  dependencies?: string[] | undefined;
   labels?: string[] | undefined;
   comments?: { author: string | null; message: string }[] | undefined;
 };
@@ -400,7 +404,7 @@ const quoteScalar = (value: string | null | undefined): string => (value == null
 const yamlLiteral = (text: string): string => {
   const indented = text
     .split("\n")
-    .map((line) => `  ${line}`)
+    .map((line) => (line.length > 0 ? `  ${line}` : ""))
     .join("\n");
   return `|\n${indented}`;
 };
@@ -414,13 +418,12 @@ export const issueToYaml = (issue: IssueYamlType): string => {
   if (issue.state !== undefined) lines.push(`state: ${quoteScalar(issue.state)}`);
   if (issue.priority !== undefined) lines.push(`priority: ${quoteScalar(issue.priority)}`);
 
-  if (issue.description !== undefined) {
-    if (issue.description) {
-      lines.push(`description: ${yamlLiteral(issue.description)}`);
-    } else {
-      lines.push("description: null");
-    }
-  }
+  const pushBlock = (key: string, value: string | null | undefined): void => {
+    if (value === undefined) return;
+    lines.push(value ? `${key}: ${yamlLiteral(value)}` : `${key}: null`);
+  };
+
+  pushBlock("description", issue.description);
 
   if (issue.labels !== undefined) {
     if (issue.labels.length > 0) {
@@ -430,6 +433,21 @@ export const issueToYaml = (issue: IssueYamlType): string => {
       }
     } else {
       lines.push("labels: []");
+    }
+  }
+
+  pushBlock("context", issue.context);
+  pushBlock("goal", issue.goal);
+  pushBlock("dod", issue.dod);
+
+  if (issue.dependencies !== undefined) {
+    if (issue.dependencies.length > 0) {
+      lines.push("dependencies:");
+      for (const dependency of issue.dependencies) {
+        lines.push(`  - ${quoteScalar(dependency)}`);
+      }
+    } else {
+      lines.push("dependencies: []");
     }
   }
 

@@ -94,8 +94,9 @@ describe("IssuePullCommand", () => {
       const content = await Bun.file(join(testDir, "modules", "shared", "issues", "ENG-123.yml")).text();
 
       expect(content).toContain('id: "ENG-123"');
+      expect(content).toContain('module: "shared"');
       expect(content).toContain('title: "Test Issue"');
-      expect(content).toContain("description: |");
+      expect(content).toContain("context: |");
       expect(content).toContain("  Test description");
     });
 
@@ -109,6 +110,64 @@ describe("IssuePullCommand", () => {
       expect(content).toContain("labels:");
       expect(content).toContain('  - "bug"');
       expect(content).toContain('  - "backend"');
+    });
+
+    test("should parse a pushed description into module, context, goal, dod and dependencies", async () => {
+      mockGetIssue.mockImplementationOnce(async (_id: string) => ({
+        ...mockIssue,
+        description: [
+          "**Module:** `billing`",
+          "",
+          "## Context",
+          "",
+          "Some context.",
+          "",
+          "## Goal",
+          "",
+          "Do the thing.",
+          "",
+          "## Technical Notes",
+          "",
+          "A nested heading stays in goal.",
+          "",
+          "## Definition of Done",
+          "",
+          "- [ ] First",
+          "- [ ] Second",
+          "",
+          "## Dependencies",
+          "",
+          "- ENG-100",
+          "- ENG-101",
+        ].join("\n"),
+      }));
+
+      await command.run({ id: "ENG-123" });
+
+      const content = await Bun.file(join(testDir, "modules", "shared", "issues", "ENG-123.yml")).text();
+
+      expect(content).toContain('module: "billing"');
+      expect(content).toContain("context: |\n  Some context.");
+      expect(content).toContain(
+        "goal: |\n  Do the thing.\n\n  ## Technical Notes\n\n  A nested heading stays in goal.",
+      );
+      expect(content).toContain("dod: |\n  - [ ] First\n  - [ ] Second");
+      expect(content).toContain('dependencies:\n  - "ENG-100"\n  - "ENG-101"');
+      expect(content).not.toContain("description:");
+    });
+
+    test("should fall back to the module option when the description has no module line", async () => {
+      mockGetIssue.mockImplementationOnce(async (_id: string) => ({
+        ...mockIssue,
+        description: "## Goal\n\nJust a goal.",
+      }));
+
+      await command.run({ id: "ENG-123", module: "shared" });
+
+      const content = await Bun.file(join(testDir, "modules", "shared", "issues", "ENG-123.yml")).text();
+
+      expect(content).toContain('module: "shared"');
+      expect(content).toContain("goal: |\n  Just a goal.");
     });
 
     test("should not write removed fields to YAML", async () => {
@@ -289,7 +348,7 @@ describe("IssuePullCommand", () => {
       expect(content).toContain('title: "Jira Issue"');
       expect(content).toContain('state: "To Do"');
       expect(content).toContain('priority: "High"');
-      expect(content).toContain("description: |");
+      expect(content).toContain("context: |");
       expect(content).toContain("  Jira description");
       expect(content).toContain('  - "bug"');
       expect(content).toContain('  - "backend"');
