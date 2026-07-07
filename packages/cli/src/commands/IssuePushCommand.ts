@@ -1,3 +1,4 @@
+import { unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { AppEnv } from "@talosjs/app-env";
 import type { ICommand } from "@talosjs/command";
@@ -70,7 +71,7 @@ export class IssuePushCommand<T extends CommandOptionsType = CommandOptionsType>
   }
 
   public getDescription(): string {
-    return "Update an existing Linear issue from a local YAML file";
+    return "Push a local issue YAML to Linear (create or update)";
   }
 
   public async run(options: T): Promise<void> {
@@ -120,13 +121,11 @@ export class IssuePushCommand<T extends CommandOptionsType = CommandOptionsType>
       // Issue not in Linear
     }
 
-    if (!existingIssue) {
-      logger.error(`Issue "${parsed.id ?? id}" not found in Linear`, undefined, LOG_OPTIONS);
-      process.exitCode = 1;
-      return;
+    if (existingIssue) {
+      await this.pushUpdate(service, existingIssue, parsed, logger);
+    } else {
+      await this.pushCreate(service, parsed, logger, issuesDir, id, filePath, content);
     }
-
-    await this.pushUpdate(service, existingIssue, parsed, logger);
   }
 
   private async pushUpdate(
@@ -155,6 +154,72 @@ export class IssuePushCommand<T extends CommandOptionsType = CommandOptionsType>
     logger.success(`Issue ${existing.identifier} updated in Linear`, undefined, LOG_OPTIONS);
 
     await this.syncComments(service, issueId, existing, parsed.comments, logger);
+  }
+
+  private async pushCreate(
+    service: LinearService,
+    parsed: ParsedIssue,
+    logger: TerminalLogger,
+    issuesDir: string,
+    localId: string,
+    filePath: string,
+    content: string,
+  ): Promise<void> {
+    if (!parsed.title) {
+      logger.error("Issue title is required to create in Linear", undefined, LOG_OPTIONS);
+      process.exitCode = 1;
+      return;
+    }
+
+    const teamsSpinner = createSpinner("Fetching teams from Linear...");
+    const teams = await service.getTeams();
+    teamsSpinner.stop();
+    if (teams.length === 0) {
+      logger.error("No teams found in Linear", undefined, LOG_OPTIONS);
+      process.exitCode = 1;
+      return;
+    }
+
+    const team = teams.find((t) => t.name?.toLowerCase() === "general" || t.key?.toLowerCase() === "general");
+    if (!team) {
+      logger.error('No "General" team found in Linear', undefined, LOG_OPTIONS);
+      process.exitCode = 1;
+      return;
+    }
+
+    const stateId = parsed.state ? await this.resolveState(service, parsed.state) : undefined;
+    const labelIds = await this.resolveLabels(service, parsed.labels, logger);
+    const priority = parsed.priority ? (PRIORITY_MAP[parsed.priority.toLowerCase()] ?? undefined) : undefined;
+
+    const createInput = new Issue();
+    createInput.title = parsed.title;
+    createInput.team = team;
+    if (parsed.description) createInput.description = parsed.description;
+    if (priority !== undefined) createInput.priority = priority;
+    if (stateId) createInput.state = { id: stateId };
+    if (labelIds.length > 0) createInput.labels = labelIds.map((lid) => ({ id: lid }));
+    const createIssueSpinner = createSpinner("Creating issue in Linear...");
+    const created = await service.createIssue(createInput);
+    createIssueSpinner.stop();
+
+    logger.success(`Issue ${created.identifier} created in Linear`, undefined, LOG_OPTIONS);
+
+    for (const comment of parsed.comments) {
+      if (comment.message.trim() && created.id) {
+        const commentSpinner = createSpinner("Adding comment...");
+        await service.createComment(created.id, comment.message);
+        commentSpinner.stop();
+      }
+    }
+
+    if (created.identifier && created.identifier !== localId) {
+      const newFileName = `${created.identifier}.yml`;
+      const newFilePath = join(issuesDir, newFileName);
+      const newContent = content.replace(/^id:\s*.+$/m, `id: ${JSON.stringify(created.identifier)}`);
+      await Bun.write(newFilePath, newContent);
+      await unlink(filePath);
+      logger.success(`Local file renamed to ${newFileName}`, undefined, LOG_OPTIONS);
+    }
   }
 
   private async resolveState(service: LinearService, stateName: string): Promise<string | undefined> {

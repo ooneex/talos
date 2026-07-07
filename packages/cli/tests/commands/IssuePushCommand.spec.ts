@@ -12,8 +12,10 @@ mock.module("enquirer", () => ({ prompt: mockPrompt }));
 const existingIssue = () => ({ id: "issue-1", identifier: "ENG-123", comments: [] });
 
 const mockGetIssue = mock(async (_id: string): Promise<unknown> => existingIssue());
+const mockGetTeams = mock(async () => [{ id: "team-1", name: "General", key: "GEN" }]);
 const mockGetLabels = mock(async () => [] as Array<{ id: string; name: string }>);
 const mockGetStates = mock(async () => [] as Array<{ id: string; name: string }>);
+const mockCreateIssue = mock(async () => ({ id: "created-id", identifier: "ENG-1" }));
 const mockUpdateIssue = mock(async () => ({ id: "issue-1" }));
 const mockCreateComment = mock(async () => ({ id: "comment-1", body: "test", createdAt: new Date() }));
 const mockCreateLabel = mock(async (input: { name: string }) => ({ id: "new-label-id", name: input.name }));
@@ -21,8 +23,10 @@ const mockCreateLabel = mock(async (input: { name: string }) => ({ id: "new-labe
 mock.module("@talosjs/linear", () => ({
   LinearService: class {
     getIssue = mockGetIssue;
+    getTeams = mockGetTeams;
     getLabels = mockGetLabels;
     getStates = mockGetStates;
+    createIssue = mockCreateIssue;
     updateIssue = mockUpdateIssue;
     createComment = mockCreateComment;
     createLabel = mockCreateLabel;
@@ -79,8 +83,10 @@ describe("IssuePushCommand", () => {
     });
     mockPrompt.mockClear();
     mockGetIssue.mockClear();
+    mockGetTeams.mockClear();
     mockGetLabels.mockClear();
     mockGetStates.mockClear();
+    mockCreateIssue.mockClear();
     mockUpdateIssue.mockClear();
     mockCreateComment.mockClear();
     mockCreateLabel.mockClear();
@@ -89,8 +95,10 @@ describe("IssuePushCommand", () => {
 
     // Default: getIssue returns an existing Linear issue (update path)
     mockGetIssue.mockImplementation(async () => existingIssue());
+    mockGetTeams.mockImplementation(async () => [{ id: "team-1", name: "General", key: "GEN" }]);
     mockGetLabels.mockImplementation(async () => []);
     mockGetStates.mockImplementation(async () => []);
+    mockCreateIssue.mockImplementation(async () => ({ id: "created-id", identifier: "ENG-1" }));
   });
 
   afterEach(() => {
@@ -107,7 +115,7 @@ describe("IssuePushCommand", () => {
     });
 
     test("should return correct description", () => {
-      expect(command.getDescription()).toBe("Update an existing Linear issue from a local YAML file");
+      expect(command.getDescription()).toBe("Push a local issue YAML to Linear (create or update)");
     });
   });
 
@@ -163,7 +171,7 @@ describe("IssuePushCommand", () => {
       expect(mockUpdateIssue).toHaveBeenCalledTimes(1);
     });
 
-    test("should log error when the issue is not found in Linear", async () => {
+    test("should call createIssue when the issue is not found in Linear", async () => {
       mockGetIssue.mockImplementation(async () => {
         throw new Error("Not found");
       });
@@ -171,7 +179,7 @@ describe("IssuePushCommand", () => {
 
       await command.run({ id: "ENG-123" });
 
-      expect(mockLoggerError).toHaveBeenCalledTimes(1);
+      expect(mockCreateIssue).toHaveBeenCalledTimes(1);
       expect(mockUpdateIssue).not.toHaveBeenCalled();
     });
 
@@ -182,6 +190,134 @@ describe("IssuePushCommand", () => {
       await command.run({ id: "ENG-123", module: "my-module" });
 
       expect(mockUpdateIssue).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("create path (pushCreate)", () => {
+    beforeEach(() => {
+      mockGetIssue.mockImplementation(async () => {
+        throw new Error("Not found");
+      });
+    });
+
+    test("should log error and return early when title is missing", async () => {
+      await writeIssueFile("ENG-123", 'id: "ENG-123"\nstate: "todo"\n');
+
+      await command.run({ id: "ENG-123" });
+
+      expect(mockLoggerError).toHaveBeenCalledTimes(1);
+      expect(mockCreateIssue).not.toHaveBeenCalled();
+    });
+
+    test("should log error and return early when no teams found", async () => {
+      mockGetTeams.mockImplementation(async () => []);
+      await writeIssueFile("ENG-123", 'title: "New Issue"\n');
+
+      await command.run({ id: "ENG-123" });
+
+      expect(mockLoggerError).toHaveBeenCalledTimes(1);
+      expect(mockCreateIssue).not.toHaveBeenCalled();
+    });
+
+    test("should use the General team without prompting", async () => {
+      await writeIssueFile("ENG-123", 'title: "New Issue"\n');
+
+      await command.run({ id: "ENG-123" });
+
+      const calls = mockPrompt.mock.calls as unknown as Array<[{ name: string }]>;
+      const teamCall = calls.find((c) => c[0]?.name === "teamKey");
+      expect(teamCall).toBeUndefined();
+    });
+
+    test("should match the General team by name case-insensitively", async () => {
+      mockGetTeams.mockImplementation(async () => [
+        { id: "eng-1", name: "Engineering", key: "ENG" },
+        { id: "gen-1", name: "general", key: "GEN" },
+      ]);
+      await writeIssueFile("ENG-123", 'title: "New Issue"\n');
+
+      await command.run({ id: "ENG-123" });
+
+      const calls = mockCreateIssue.mock.calls as unknown as Array<[{ team?: { id: string } }]>;
+      expect(calls[0]?.[0]?.team?.id).toBe("gen-1");
+    });
+
+    test("should log error when no General team is found", async () => {
+      mockGetTeams.mockImplementation(async () => [{ id: "eng-1", name: "Engineering", key: "ENG" }]);
+      await writeIssueFile("ENG-123", 'title: "New Issue"\n');
+
+      await command.run({ id: "ENG-123" });
+
+      expect(mockLoggerError).toHaveBeenCalledTimes(1);
+      expect(mockCreateIssue).not.toHaveBeenCalled();
+    });
+
+    test("should call createIssue with title and the General team", async () => {
+      await writeIssueFile("ENG-123", 'title: "Brand New Issue"\n');
+
+      await command.run({ id: "ENG-123" });
+
+      expect(mockCreateIssue).toHaveBeenCalledTimes(1);
+      const calls = mockCreateIssue.mock.calls as unknown as Array<[{ title?: string; team?: { id: string } }]>;
+      expect(calls[0]?.[0]?.title).toBe("Brand New Issue");
+      expect(calls[0]?.[0]?.team?.id).toBe("team-1");
+    });
+
+    test("should call createIssue with mapped priority", async () => {
+      await writeIssueFile("ENG-123", 'title: "Issue"\npriority: "urgent"\n');
+
+      await command.run({ id: "ENG-123" });
+
+      const calls = mockCreateIssue.mock.calls as unknown as Array<[{ priority?: number }]>;
+      expect(calls[0]?.[0]?.priority).toBe(1);
+    });
+
+    test("should call createComment for each comment after issue creation", async () => {
+      await writeIssueFile(
+        "ENG-123",
+        'title: "Issue"\ncomments:\n  - author: "Alice"\n    message: "First comment"\n  - author: null\n    message: "Second comment"\n',
+      );
+
+      await command.run({ id: "ENG-123" });
+
+      expect(mockCreateComment).toHaveBeenCalledTimes(2);
+    });
+
+    test("should rename file when created identifier differs from local id", async () => {
+      mockCreateIssue.mockImplementation(async () => ({ id: "created-id", identifier: "ENG-999" }));
+      await writeIssueFile("local-draft", 'title: "New Issue"\n');
+
+      await command.run({ id: "local-draft" });
+
+      expect(existsSync(join(testDir, "modules", "shared", "issues", "ENG-999.yml"))).toBe(true);
+      expect(existsSync(join(testDir, "modules", "shared", "issues", "local-draft.yml"))).toBe(false);
+    });
+
+    test("should update id field in renamed file", async () => {
+      mockCreateIssue.mockImplementation(async () => ({ id: "created-id", identifier: "ENG-999" }));
+      await writeIssueFile("local-draft", 'id: "local-draft"\ntitle: "New Issue"\n');
+
+      await command.run({ id: "local-draft" });
+
+      const content = await Bun.file(join(testDir, "modules", "shared", "issues", "ENG-999.yml")).text();
+      expect(content).toContain('id: "ENG-999"');
+    });
+
+    test("should not rename file when identifier matches local id", async () => {
+      mockCreateIssue.mockImplementation(async () => ({ id: "created-id", identifier: "ENG-123" }));
+      await writeIssueFile("ENG-123", 'title: "New Issue"\n');
+
+      await command.run({ id: "ENG-123" });
+
+      expect(existsSync(join(testDir, "modules", "shared", "issues", "ENG-123.yml"))).toBe(true);
+    });
+
+    test("should log success after creating issue", async () => {
+      await writeIssueFile("ENG-123", 'title: "New Issue"\n');
+
+      await command.run({ id: "ENG-123" });
+
+      expect(mockLoggerSuccess).toHaveBeenCalled();
     });
   });
 
