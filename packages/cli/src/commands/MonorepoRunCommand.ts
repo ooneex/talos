@@ -69,6 +69,20 @@ type RunContextType = {
 // `install` is not a per-target script: it runs `bun install` once at the project root.
 const INSTALL_COMMAND = "install";
 
+// Latest non-blank output line of a task, scanned from the end of the buffer so
+// the footer render tick never re-splits a task's whole accumulated output.
+const lastOutputLine = (output: string): string | undefined => {
+  let end = output.length;
+  while (end > 0) {
+    const newlineIndex = output.lastIndexOf("\n", end - 1);
+    const line = output.slice(newlineIndex + 1, end).trim();
+    if (line.length > 0) return line;
+    if (newlineIndex === -1) return undefined;
+    end = newlineIndex;
+  }
+  return undefined;
+};
+
 @decorator.command()
 export class MonorepoRunCommand<T extends CommandOptionsType = CommandOptionsType> implements ICommand<T> {
   public getName(): string {
@@ -581,11 +595,7 @@ export class MonorepoRunCommand<T extends CommandOptionsType = CommandOptionsTyp
     ];
 
     for (const task of running) {
-      const last = task.output
-        .split("\n")
-        .map((line) => line.trim())
-        .filter(Boolean)
-        .at(-1);
+      const last = lastOutputLine(task.output);
       lines.push(`  ${colorize(spinner, COLORS.info)} ${task.label}${last ? colorize(`  ${last}`, COLORS.dim) : ""}`);
     }
 

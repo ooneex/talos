@@ -83,14 +83,24 @@ export const discoverTargets = async (rootDir: string): Promise<MonorepoTargetTy
       continue;
     }
 
-    for (const entry of entries) {
-      if (!entry.isDirectory()) continue;
+    // Read every candidate's package.json concurrently; the entries order is
+    // preserved so discovery order stays deterministic.
+    const candidates = await Promise.all(
+      entries.map(async (entry) => {
+        if (!entry.isDirectory()) return null;
 
-      const dir = join(rootDir, dirName, entry.name);
-      const packageJsonFile = Bun.file(join(dir, "package.json"));
-      if (!(await packageJsonFile.exists())) continue;
+        const dir = join(rootDir, dirName, entry.name);
+        const packageJsonFile = Bun.file(join(dir, "package.json"));
+        if (!(await packageJsonFile.exists())) return null;
 
-      const packageJson: PackageJsonType = await packageJsonFile.json();
+        const packageJson: PackageJsonType = await packageJsonFile.json();
+        return { entry, dir, packageJson };
+      }),
+    );
+
+    for (const candidate of candidates) {
+      if (!candidate) continue;
+      const { entry, dir, packageJson } = candidate;
       const key = `${dirName}/${entry.name}`;
 
       if (packageJson.name) keyByPackageName.set(packageJson.name, key);
@@ -149,25 +159,33 @@ export const sortTargetsByDependencies = (targets: MonorepoTargetType[]): Monore
   return sorted;
 };
 
-// List every hashable file of a directory, recursively, as sorted relative paths.
-const collectFiles = async (dir: string, base = ""): Promise<string[]> => {
+// Walk a directory tree, appending every hashable file to `files` as a relative
+// path. Subdirectories are walked concurrently; the caller sorts once at the end.
+const walkFiles = async (dir: string, base: string, files: string[]): Promise<void> => {
   let entries: Dirent[];
   try {
     entries = await readdir(dir, { withFileTypes: true });
   } catch {
-    return [];
+    return;
   }
 
-  const files: string[] = [];
+  const subdirs: { dir: string; base: string }[] = [];
   for (const entry of entries) {
     const relPath = base ? `${base}/${entry.name}` : entry.name;
     if (entry.isDirectory()) {
-      if (!EXCLUDED_DIRS.has(entry.name)) files.push(...(await collectFiles(join(dir, entry.name), relPath)));
+      if (!EXCLUDED_DIRS.has(entry.name)) subdirs.push({ dir: join(dir, entry.name), base: relPath });
     } else if (entry.isFile()) {
       files.push(relPath);
     }
   }
 
+  await Promise.all(subdirs.map((subdir) => walkFiles(subdir.dir, subdir.base, files)));
+};
+
+// List every hashable file of a directory, recursively, as sorted relative paths.
+const collectFiles = async (dir: string): Promise<string[]> => {
+  const files: string[] = [];
+  await walkFiles(dir, "", files);
   return files.sort();
 };
 
@@ -183,7 +201,7 @@ export const isGitWorkspaceRoot = async (rootDir: string): Promise<boolean> => {
       stdout: "pipe",
       stderr: "ignore",
     });
-    const [stdout, exitCode] = await Promise.all([new Response(proc.stdout).text(), proc.exited]);
+    const [stdout, exitCode] = await Promise.all([Bun.readableStreamToText(proc.stdout), proc.exited]);
     if (exitCode !== 0) return false;
     return resolve(stdout.trim()) === resolve(rootDir);
   } catch {
@@ -201,7 +219,7 @@ const collectFilesWithGit = async (dir: string): Promise<string[] | null> => {
       stdout: "pipe",
       stderr: "ignore",
     });
-    const [stdout, exitCode] = await Promise.all([new Response(proc.stdout).text(), proc.exited]);
+    const [stdout, exitCode] = await Promise.all([Bun.readableStreamToText(proc.stdout), proc.exited]);
     if (exitCode !== 0) return null;
 
     const files = stdout
@@ -219,13 +237,16 @@ const collectFilesWithGit = async (dir: string): Promise<string[] | null> => {
 // but deleted from the working tree — its manifest line is simply omitted).
 const hashFile = async (path: string): Promise<string | null> => {
   try {
-    const hasher = new Bun.CryptoHasher("sha256");
-    hasher.update(await Bun.file(path).arrayBuffer());
-    return hasher.digest("hex");
+    return Bun.CryptoHasher.hash("sha256", await Bun.file(path).arrayBuffer(), "hex");
   } catch {
     return null;
   }
 };
+
+// How many files are read and hashed at once while fingerprinting: enough
+// concurrency to hide I/O latency, bounded so at most this many file buffers
+// are held in memory at any moment.
+const HASH_CONCURRENCY = 32;
 
 /**
  * Content-hash every file of a directory into a single fingerprint. When the
@@ -235,10 +256,18 @@ const hashFile = async (path: string): Promise<string | null> => {
  */
 export const fingerprintDir = async (dir: string, useGit = false): Promise<string> => {
   const files = (useGit ? await collectFilesWithGit(dir) : null) ?? (await collectFiles(dir));
+
+  const hashes = new Array<string | null>(files.length);
+  for (let start = 0; start < files.length; start += HASH_CONCURRENCY) {
+    const batch = await Promise.all(
+      files.slice(start, start + HASH_CONCURRENCY).map((file) => hashFile(join(dir, file))),
+    );
+    for (let offset = 0; offset < batch.length; offset++) hashes[start + offset] = batch[offset] as string | null;
+  }
+
   const hasher = new Bun.CryptoHasher("sha256");
-  for (const file of files) {
-    const fileHash = await hashFile(join(dir, file));
-    if (fileHash !== null) hasher.update(`${file}=${fileHash}\n`);
+  for (let index = 0; index < files.length; index++) {
+    if (hashes[index] !== null) hasher.update(`${files[index]}=${hashes[index]}\n`);
   }
   return hasher.digest("hex");
 };
@@ -263,12 +292,25 @@ export const fingerprintTarget = (
 
 /** Fingerprint the root config files shared by every task of the workspace. */
 export const hashRootInputs = async (rootDir: string): Promise<string> => {
+  const hashes = await Promise.all(ROOT_INPUT_FILES.map((name) => hashFile(join(rootDir, name))));
   const hasher = new Bun.CryptoHasher("sha256");
-  for (const name of ROOT_INPUT_FILES) {
-    const fileHash = await hashFile(join(rootDir, name));
-    if (fileHash !== null) hasher.update(`${name}=${fileHash}\n`);
-  }
+  ROOT_INPUT_FILES.forEach((name, index) => {
+    if (hashes[index] !== null) hasher.update(`${name}=${hashes[index]}\n`);
+  });
   return hasher.digest("hex");
+};
+
+// Key→target index, memoized per targets array: computeTaskHash is called once
+// per task of a run with the same array, so the index is built only once.
+const targetIndexes = new WeakMap<MonorepoTargetType[], Map<string, MonorepoTargetType>>();
+
+const indexTargets = (targets: MonorepoTargetType[]): Map<string, MonorepoTargetType> => {
+  let byKey = targetIndexes.get(targets);
+  if (!byKey) {
+    byKey = new Map(targets.map((entry) => [entry.key, entry]));
+    targetIndexes.set(targets, byKey);
+  }
+  return byKey;
 };
 
 // Every workspace dependency reachable from the target, direct or transitive.
@@ -304,7 +346,7 @@ export const computeTaskHash = async (
   memo: Map<string, Promise<string>>,
   useGit = false,
 ): Promise<string> => {
-  const byKey = new Map(targets.map((entry) => [entry.key, entry]));
+  const byKey = indexTargets(targets);
   const deps = transitiveDeps(target, byKey);
   const depLines = await Promise.all(
     deps.map(async (dep) => `${dep.key}=${await fingerprintTarget(dep, memo, useGit)}`),

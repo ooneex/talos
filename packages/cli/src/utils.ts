@@ -313,18 +313,22 @@ export const runModuleScripts = async (
   }
 
   const glob = new Bun.Glob("*/package.json");
-  const modules: { name: string; dir: string }[] = [];
+  const matches = await Array.fromAsync(glob.scan({ cwd: modulesDir, onlyFiles: true }));
 
-  for await (const match of glob.scan({ cwd: modulesDir, onlyFiles: true })) {
-    const entry = match.replace("/package.json", "");
-    const moduleDir = join(modulesDir, entry);
-    const scriptFile = Bun.file(join(moduleDir, ...binPath));
+  // Probe every module concurrently; matches order is preserved so the scripts
+  // still run in discovery order.
+  const candidates = await Promise.all(
+    matches.map(async (match) => {
+      const entry = match.replace("/package.json", "");
+      const moduleDir = join(modulesDir, entry);
+      const scriptFile = Bun.file(join(moduleDir, ...binPath));
 
-    if (await scriptFile.exists()) {
+      if (!(await scriptFile.exists())) return null;
       const packageJson = await Bun.file(join(modulesDir, match)).json();
-      modules.push({ name: packageJson.name ?? entry, dir: moduleDir });
-    }
-  }
+      return { name: (packageJson.name ?? entry) as string, dir: moduleDir };
+    }),
+  );
+  const modules = candidates.filter((candidate): candidate is { name: string; dir: string } => candidate !== null);
 
   if (modules.length === 0) {
     logger.warn(`No modules with ${label} found`, undefined, LOG_OPTIONS);

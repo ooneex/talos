@@ -63,11 +63,17 @@ export const getValidScopes = async (rootDir: string): Promise<string[]> => {
       continue;
     }
 
-    for (const entry of entries) {
-      if (!entry.isDirectory() || entry.name.startsWith(".")) continue;
-      if (await Bun.file(join(rootDir, root, entry.name, "package.json")).exists()) {
-        scopes.add(entry.name);
-      }
+    // Probe every candidate's package.json concurrently; entries order is
+    // preserved before the final sort.
+    const names = await Promise.all(
+      entries.map(async (entry) => {
+        if (!entry.isDirectory() || entry.name.startsWith(".")) return null;
+        return (await Bun.file(join(rootDir, root, entry.name, "package.json")).exists()) ? entry.name : null;
+      }),
+    );
+
+    for (const name of names) {
+      if (name) scopes.add(name);
     }
   }
 

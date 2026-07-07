@@ -23,20 +23,23 @@ const readModuleType = async (moduleDir: string, name: string): Promise<string |
 // Discover every spa, microservice and api module under `modules/`.
 export const collectRunnableModules = async (modulesDir: string): Promise<RunnableModule[]> => {
   const entries = await readdir(modulesDir, { withFileTypes: true });
-  const modules: RunnableModule[] = [];
 
-  for (const entry of entries) {
-    if (!entry.isDirectory()) continue;
+  // Read every module's config concurrently; entries order is preserved so
+  // discovery order stays deterministic.
+  const modules = await Promise.all(
+    entries.map(async (entry) => {
+      if (!entry.isDirectory()) return null;
 
-    const dir = join(modulesDir, entry.name);
-    const type = await readModuleType(dir, entry.name);
+      const dir = join(modulesDir, entry.name);
+      const type = await readModuleType(dir, entry.name);
 
-    if (type && RUNNABLE_TYPES.has(type as RunnableModuleType)) {
-      modules.push({ name: entry.name, type: type as RunnableModuleType, dir });
-    }
-  }
+      return type && RUNNABLE_TYPES.has(type as RunnableModuleType)
+        ? { name: entry.name, type: type as RunnableModuleType, dir }
+        : null;
+    }),
+  );
 
-  return modules;
+  return modules.filter((module): module is RunnableModule => module !== null);
 };
 
 // Per-type filters from the `--api`, `--microservice` and `--spa` flags. A bare flag
