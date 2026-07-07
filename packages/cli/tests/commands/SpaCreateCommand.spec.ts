@@ -16,6 +16,10 @@ const read = (path: string) => Bun.file(path).text();
 // Source files and dependencies the mocked clone of the spa repository exposes
 const SPA_SRC_FILE = "App.tsx";
 const SPA_SRC_CONTENT = "export const App = () => null;\n";
+// A nested source file using the spa's `@/` path alias, which must be rewritten
+// to the module's `@module/{name}/` alias after cloning.
+const SPA_ALIAS_FILE = join("pages", "Home.tsx");
+const SPA_ALIAS_CONTENT = 'import { cn } from "@/utils/cn";\nexport const Home = () => cn("home");\n';
 const SPA_VITE_CONFIG_CONTENT = "export default {};\n";
 const SPA_DEPENDENCIES = { react: "^18.0.0" };
 const SPA_DEV_DEPENDENCIES = { typescript: "^5.0.0" };
@@ -48,8 +52,9 @@ describe("SpaCreateCommand", () => {
 
       if (cmd[0] === "git" && cmd[1] === "clone") {
         const dest = cmd[cmd.length - 1] as string;
-        mkdirSync(join(dest, "src"), { recursive: true });
+        mkdirSync(join(dest, "src", "pages"), { recursive: true });
         writeFileSync(join(dest, "src", SPA_SRC_FILE), SPA_SRC_CONTENT);
+        writeFileSync(join(dest, "src", SPA_ALIAS_FILE), SPA_ALIAS_CONTENT);
         writeFileSync(join(dest, "vite.config.ts"), SPA_VITE_CONFIG_CONTENT);
         writeFileSync(
           join(dest, "package.json"),
@@ -190,6 +195,22 @@ describe("SpaCreateCommand", () => {
 
       const filePath = join(testDir, "modules", "spa", "src", SPA_SRC_FILE);
       expect(await exists(filePath)).toBe(true);
+      expect(await read(filePath)).toBe(SPA_SRC_CONTENT);
+    });
+
+    test("should rewrite `@/` alias imports to the module's `@module/{name}/` alias", async () => {
+      await command.run({ name: "MyApp", cwd: testDir, silent: true });
+
+      const filePath = join(testDir, "modules", "my-app", "src", SPA_ALIAS_FILE);
+      const content = await read(filePath);
+      expect(content).toContain('from "@module/my-app/utils/cn"');
+      expect(content).not.toContain('from "@/');
+    });
+
+    test("should leave source files without `@/` imports unchanged", async () => {
+      await command.run({ name: "Spa", cwd: testDir, silent: true });
+
+      const filePath = join(testDir, "modules", "spa", "src", SPA_SRC_FILE);
       expect(await read(filePath)).toBe(SPA_SRC_CONTENT);
     });
 

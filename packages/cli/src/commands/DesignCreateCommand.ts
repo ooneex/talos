@@ -1,4 +1,4 @@
-import { cp, rm } from "node:fs/promises";
+import { cp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { ICommand } from "@talosjs/command";
@@ -85,6 +85,18 @@ export class DesignCreateCommand<T extends CommandOptionsType = CommandOptionsTy
 
     // Use the repository's src as the module src content
     await cp(join(tmpDir, "src"), srcDir, { recursive: true });
+
+    // Rewrite the design's `@/` alias imports to the module's `@module/{name}/` alias
+    const entries = await readdir(srcDir, { recursive: true, withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isFile()) continue;
+      const filePath = join(entry.parentPath, entry.name);
+      const content = await Bun.file(filePath).text();
+      const rewritten = content.replaceAll('from "@/', `from "@module/${kebabName}/`);
+      if (rewritten !== content) {
+        await Bun.write(filePath, rewritten);
+      }
+    }
 
     // Install the design dependencies from the root of the project
     const designPackage = await Bun.file(join(tmpDir, "package.json")).json();

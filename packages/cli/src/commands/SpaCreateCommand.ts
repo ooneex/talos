@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { cp, rm } from "node:fs/promises";
+import { cp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { ICommand } from "@talosjs/command";
@@ -175,6 +175,18 @@ export class SpaCreateCommand<T extends CommandOptionsType = CommandOptionsType>
 
     // Use the repository's src as the module src content
     await cp(join(tmpDir, "src"), srcDir, { recursive: true });
+
+    // Rewrite the spa's `@/` alias imports to the module's `@module/{name}/` alias
+    const entries = await readdir(srcDir, { recursive: true, withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isFile()) continue;
+      const filePath = join(entry.parentPath, entry.name);
+      const content = await Bun.file(filePath).text();
+      const rewritten = content.replaceAll('from "@/', `from "@module/${kebabName}/`);
+      if (rewritten !== content) {
+        await Bun.write(filePath, rewritten);
+      }
+    }
 
     // Include the repository's vite config at the module root
     const viteConfigSrc = join(tmpDir, "vite.config.ts");

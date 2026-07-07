@@ -16,6 +16,10 @@ const read = (path: string) => Bun.file(path).text();
 // Source files and dependencies the mocked clone of the design repository exposes
 const DESIGN_SRC_FILE = "Button.tsx";
 const DESIGN_SRC_CONTENT = "export const Button = () => null;\n";
+// A nested source file using the design's `@/` path alias, which must be rewritten
+// to the module's `@module/{name}/` alias after cloning.
+const DESIGN_ALIAS_FILE = join("components", "Card.tsx");
+const DESIGN_ALIAS_CONTENT = 'import { cn } from "@/utils/cn";\nexport const Card = () => cn("card");\n';
 const DESIGN_DEPENDENCIES = { react: "^18.0.0" };
 const DESIGN_DEV_DEPENDENCIES = { typescript: "^5.0.0" };
 
@@ -47,8 +51,9 @@ describe("DesignCreateCommand", () => {
 
       if (cmd[0] === "git" && cmd[1] === "clone") {
         const dest = cmd[cmd.length - 1] as string;
-        mkdirSync(join(dest, "src"), { recursive: true });
+        mkdirSync(join(dest, "src", "components"), { recursive: true });
         writeFileSync(join(dest, "src", DESIGN_SRC_FILE), DESIGN_SRC_CONTENT);
+        writeFileSync(join(dest, "src", DESIGN_ALIAS_FILE), DESIGN_ALIAS_CONTENT);
         writeFileSync(
           join(dest, "package.json"),
           JSON.stringify({ dependencies: DESIGN_DEPENDENCIES, devDependencies: DESIGN_DEV_DEPENDENCIES }),
@@ -133,6 +138,22 @@ describe("DesignCreateCommand", () => {
 
       const filePath = join(testDir, "modules", "design", "src", DESIGN_SRC_FILE);
       expect(await exists(filePath)).toBe(true);
+      expect(await read(filePath)).toBe(DESIGN_SRC_CONTENT);
+    });
+
+    test("should rewrite `@/` alias imports to the module's `@module/{name}/` alias", async () => {
+      await command.run({ name: "DesignSystem", cwd: testDir, silent: true });
+
+      const filePath = join(testDir, "modules", "design-system", "src", DESIGN_ALIAS_FILE);
+      const content = await read(filePath);
+      expect(content).toContain('from "@module/design-system/utils/cn"');
+      expect(content).not.toContain('from "@/');
+    });
+
+    test("should leave source files without `@/` imports unchanged", async () => {
+      await command.run({ name: "Design", cwd: testDir, silent: true });
+
+      const filePath = join(testDir, "modules", "design", "src", DESIGN_SRC_FILE);
       expect(await read(filePath)).toBe(DESIGN_SRC_CONTENT);
     });
 
