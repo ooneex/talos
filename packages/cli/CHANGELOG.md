@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.23.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.23.0) - 2026-07-07
+
+### Added
+
+- Rewrite @/ alias imports to @module scope when scaffolding design and SPA modules| — Franck ([90c4853b](https://github.com/ooneex/talos/commit/90c4853b))
+
+### Changed
+
+- Parallelize module discovery and file hashing in monorepo tasks| — Franck ([7dcab7c5](https://github.com/ooneex/talos/commit/7dcab7c5))
+
 ## [1.22.1](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.22.1) - 2026-07-07
 
 ### Changed
