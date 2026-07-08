@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.24.1](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.24.1) - 2026-07-08
+
+### Changed
+
+- Ignore routeTree.gen.ts and use rule preset in biome template| — Franck ([6290e2d9](https://github.com/ooneex/talos/commit/6290e2d9))
+
 ## [1.24.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.24.0) - 2026-07-08
 
 ### Added
