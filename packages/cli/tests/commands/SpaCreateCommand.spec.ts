@@ -20,7 +20,19 @@ const SPA_SRC_CONTENT = "export const App = () => null;\n";
 // to the module's `@module/{name}/` alias after cloning.
 const SPA_ALIAS_FILE = join("pages", "Home.tsx");
 const SPA_ALIAS_CONTENT = 'import { cn } from "@/utils/cn";\nexport const Home = () => cn("home");\n';
-const SPA_VITE_CONFIG_CONTENT = "export default {};\n";
+// A minimal but realistic vite config exposing the `resolve.alias` block the
+// command extends with a `@module/{design}` alias when a design is selected.
+const SPA_VITE_CONFIG_CONTENT = `import { fileURLToPath } from "node:url";
+import { defineConfig } from "vite";
+
+export default defineConfig({
+  resolve: {
+    alias: {
+      "@": fileURLToPath(new URL("./src", import.meta.url)),
+    },
+  },
+});
+`;
 const SPA_DEPENDENCIES = { react: "^18.0.0" };
 const SPA_DEV_DEPENDENCIES = { typescript: "^5.0.0" };
 
@@ -372,6 +384,35 @@ describe("SpaCreateCommand", () => {
 
       const content = await read(join(testDir, "modules", "spa", "spa.yml"));
       expect(content).not.toContain("design:");
+    });
+
+    test("should add a design alias to the module vite config", async () => {
+      await command.run({ name: "Spa", design: "Design", cwd: testDir, silent: true });
+
+      const content = await read(join(testDir, "modules", "spa", "vite.config.ts"));
+      expect(content).toContain('"@module/design": fileURLToPath(');
+      expect(content).toContain('new URL("../design/src", import.meta.url)');
+      // The original `@` alias must be preserved alongside the new one
+      expect(content).toContain('"@": fileURLToPath(new URL("./src", import.meta.url))');
+    });
+
+    test("should point the design alias at the chosen design module", async () => {
+      mkdirSync(join(testDir, "modules", "my-design"), { recursive: true });
+      writeFileSync(join(testDir, "modules", "my-design", "my-design.yml"), 'type: "design"\n');
+
+      await command.run({ name: "Spa", design: "MyDesign", cwd: testDir, silent: true });
+
+      const content = await read(join(testDir, "modules", "spa", "vite.config.ts"));
+      expect(content).toContain('"@module/my-design": fileURLToPath(');
+      expect(content).toContain('new URL("../my-design/src", import.meta.url)');
+    });
+
+    test("should not add a design alias when no design is provided", async () => {
+      await command.run({ name: "Spa", cwd: testDir, silent: true });
+
+      const content = await read(join(testDir, "modules", "spa", "vite.config.ts"));
+      expect(content).toBe(SPA_VITE_CONFIG_CONTENT);
+      expect(content).not.toContain("@module/");
     });
   });
 

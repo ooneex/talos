@@ -188,10 +188,26 @@ export class SpaCreateCommand<T extends CommandOptionsType = CommandOptionsType>
       }
     }
 
-    // Include the repository's vite config at the module root
+    // Include the repository's vite config at the module root, adding a design alias
+    // so the spa can resolve `@module/{design}/` imports against the design module src.
     const viteConfigSrc = join(tmpDir, "vite.config.ts");
     if (existsSync(viteConfigSrc)) {
-      await cp(viteConfigSrc, join(moduleDir, "vite.config.ts"));
+      const viteConfigDest = join(moduleDir, "vite.config.ts");
+      await cp(viteConfigSrc, viteConfigDest);
+
+      if (designKebab) {
+        const viteContent = await Bun.file(viteConfigDest).text();
+        const withAlias = viteContent.replace(
+          '      "@": fileURLToPath(new URL("./src", import.meta.url)),',
+          '      "@": fileURLToPath(new URL("./src", import.meta.url)),\n' +
+            `      "@module/${designKebab}": fileURLToPath(\n` +
+            `        new URL("../${designKebab}/src", import.meta.url),\n` +
+            "      ),",
+        );
+        if (withAlias !== viteContent) {
+          await Bun.write(viteConfigDest, withAlias);
+        }
+      }
     }
 
     // Keep the shared folder tracked while empty; its sub-layers are created on demand
