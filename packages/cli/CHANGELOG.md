@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.26.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.26.0) - 2026-07-08
+
+### Added
+
+- Persist selected language in a zustand store with a setter in useLang| — Franck ([206cb27f](https://github.com/ooneex/talos/commit/206cb27f))
+
+### Changed
+
+- Update missing-dictionary guidance in translation:translate skill template| — Franck ([f323d15f](https://github.com/ooneex/talos/commit/f323d15f))
+- Add spacing and layout gap guidance to the optimize:react skill template| — Franck ([7dcade39](https://github.com/ooneex/talos/commit/7dcade39))
+- Fix path alias key assertion in DesignRemoveCommand spec| — Franck ([8193eeef](https://github.com/ooneex/talos/commit/8193eeef))
+
 ## [1.25.1](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.25.1) - 2026-07-08
 
 ### Changed
