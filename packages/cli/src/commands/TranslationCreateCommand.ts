@@ -117,5 +117,7 @@ export class TranslationCreateCommand<T extends ScaffoldOptionsType = ScaffoldOp
     }
 
     await installDependency("@talosjs/utils");
+    // `useLang` persists the chosen language through a zustand store.
+    await installDependency("zustand");
   }
 }

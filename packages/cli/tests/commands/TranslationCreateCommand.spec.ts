@@ -14,17 +14,21 @@ describe("TranslationCreateCommand", () => {
   let testDir: string;
   let originalCwd: string;
   let originalSpawn: typeof Bun.spawn;
+  let addedDeps: string[];
 
   beforeEach(() => {
     command = new TranslationCreateCommand();
     originalCwd = process.cwd();
     testDir = join(originalCwd, ".temp", `translation-${Date.now()}`);
+    addedDeps = [];
 
-    // Mock Bun.spawn to avoid running bun add in tests
+    // Mock Bun.spawn to avoid running bun add in tests, recording the packages
+    // each `bun add` would have installed.
     originalSpawn = Bun.spawn;
     Bun.spawn = ((...args: unknown[]) => {
       const cmd = Array.isArray(args[0]) ? args[0] : (args[0] as { cmd?: string[] })?.cmd;
       if (Array.isArray(cmd) && cmd[0] === "bun" && cmd[1] === "add") {
+        addedDeps.push(...cmd.slice(2));
         return { exited: Promise.resolve(0) } as unknown as ReturnType<typeof Bun.spawn>;
       }
       return originalSpawn.apply(Bun, args as Parameters<typeof Bun.spawn>);
@@ -123,6 +127,20 @@ describe("TranslationCreateCommand", () => {
       expect(content).toContain("export const useLang");
       expect(content).toContain("useSearch({ strict: false })");
       expect(content).toContain('DEFAULT_LANG = "en"');
+      // The hook persists the chosen language through a zustand store and
+      // exposes a `setLang` setter alongside the resolved language.
+      expect(content).toContain('import { create } from "zustand"');
+      expect(content).toContain('from "zustand/middleware"');
+      expect(content).toContain("setLang");
+    });
+
+    test("should install zustand for a spa module", async () => {
+      await Bun.write(join(testDir, "modules", "web", "package.json"), JSON.stringify({ name: "web" }));
+      await Bun.write(join(testDir, "modules", "web", "web.yml"), 'type: "spa"\n');
+
+      await command.run({ name: "Dashboard", module: "web" });
+
+      expect(addedDeps).toContain("zustand");
     });
 
     test("should not create a useLang hook for a non-spa module", async () => {

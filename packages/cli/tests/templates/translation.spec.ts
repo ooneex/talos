@@ -88,6 +88,34 @@ describe("translation.json.txt", () => {
   });
 });
 
+describe("spa/spa.use-lang.txt", () => {
+  const templatePath = join(templatesDir, "spa", "spa.use-lang.txt");
+
+  test("should exist", () => {
+    expect(existsSync(templatePath)).toBe(true);
+  });
+
+  test("should export useLang and the default language", async () => {
+    const content = await Bun.file(templatePath).text();
+    expect(content).toContain("export const useLang");
+    expect(content).toContain('DEFAULT_LANG = "en"');
+    expect(content).toContain("useSearch({ strict: false })");
+  });
+
+  test("should persist the language through a zustand store", async () => {
+    const content = await Bun.file(templatePath).text();
+    expect(content).toContain('import { create } from "zustand"');
+    expect(content).toContain('from "zustand/middleware"');
+    expect(content).toContain("createJSONStorage(() => localStorage)");
+  });
+
+  test("should return the resolved language alongside a setter", async () => {
+    const content = await Bun.file(templatePath).text();
+    expect(content).toContain("setLang");
+    expect(content).toContain("return { lang: search.lang ?? lang, setLang }");
+  });
+});
+
 describe("spa/spa.use-translate.txt", () => {
   const templatePath = join(templatesDir, "spa", "spa.use-translate.txt");
 
@@ -106,6 +134,12 @@ describe("spa/spa.use-translate.txt", () => {
     // below `src/shared/hooks/useLang`.
     const content = await Bun.file(templatePath).text();
     expect(content).toContain('import { useLang } from "../../../shared/hooks/useLang"');
+  });
+
+  test("should destructure the language from useLang", async () => {
+    // `useLang` returns `{ lang, setLang }`, so the translate hook takes `lang`.
+    const content = await Bun.file(templatePath).text();
+    expect(content).toContain("const { lang } = useLang()");
   });
 
   test("should load the sibling translations.json dictionary", async () => {

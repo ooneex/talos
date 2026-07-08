@@ -6,7 +6,7 @@ import dict from "./translations.json";
 // language from the `lang` query param; keys are looked up in `translations.json`
 // and interpolated by `trans` from @talosjs/utils.
 export const use{{NAME}}Translate = () => {
-  const lang = useLang();
+  const { lang } = useLang();
 
   return {
     // Translates `key`, interpolating `params` and pluralizing on `count`.
