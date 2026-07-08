@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.24.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.24.0) - 2026-07-08
+
+### Added
+
+- Parse JSONC tsconfig files when adding and removing path aliases| — Franck ([49354a94](https://github.com/ooneex/talos/commit/49354a94))
+
 ## [1.23.1](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.23.1) - 2026-07-07
 
 ### Changed
