@@ -127,7 +127,7 @@ describe("DesignRemoveCommand", () => {
 
       const content = await Bun.file(join(testDir, "tsconfig.json")).text();
       const tsconfig = JSON.parse(content);
-      expect(tsconfig.compilerOptions.paths?.["@module/design/*"]).toBeUndefined();
+      expect(tsconfig.compilerOptions.paths?.["@/*"]).toBeUndefined();
     });
   });
 });
