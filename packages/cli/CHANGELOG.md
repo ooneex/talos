@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.25.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.25.0) - 2026-07-08
+
+### Added
+
+- Add design module alias to the SPA vite config on scaffold| — Franck ([a8f50457](https://github.com/ooneex/talos/commit/a8f50457))
+
+### Changed
+
+- Ignore .env in the app gitignore template| — Franck ([b5cb3fc5](https://github.com/ooneex/talos/commit/b5cb3fc5))
+
 ## [1.24.1](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.24.1) - 2026-07-08
 
 ### Changed
