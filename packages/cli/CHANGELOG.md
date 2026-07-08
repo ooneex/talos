@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.26.1](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.26.1) - 2026-07-08
+
+### Changed
+
+- Restore push step in the commit skill template| — Franck ([ffded0c5](https://github.com/ooneex/talos/commit/ffded0c5))
+
 ## [1.26.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.26.0) - 2026-07-08
 
 ### Added
