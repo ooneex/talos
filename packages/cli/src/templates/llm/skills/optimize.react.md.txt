@@ -31,6 +31,30 @@ bun add zustand @tanstack/react-query @tanstack/react-virtual @tanstack/react-pa
 - When optimizing existing UI, replace ad-hoc styled elements (raw `<button>`, `<input>`, one-off styled divs) with the design system's equivalents. Only fall back to plain elements when the design system has no matching component — and prefer adding the missing primitive to the design module over duplicating styles in the SPA.
 - In a `design` module, extend the system itself: new components belong in the design module and follow its existing tokens, variants, and conventions.
 
+## Spacing & layout
+
+**Space sibling elements with a single `gap` on their parent flex/grid container — never with per-element margins (`mt-*`/`mb-*`/`my-*`).** A `gap` is the one source of truth, so spacing stays uniform automatically and survives elements being added, removed, reordered, or conditionally swapped.
+
+- When a layout uses a flex/grid container, set the between-element spacing with `gap-*` on the parent and delete the children's own vertical margins.
+- Stacking a margin on a child _on top of_ the parent's `gap` is the usual cause of uneven gaps — audit for it when spacing looks inconsistent.
+- Keep margins only for spacing _within_ a block that the container's `gap` doesn't govern (e.g. a caption tucked under a heading inside the same child).
+
+```tsx
+// ❌ per-element margins stack on top of the parent gap → uneven spacing
+<Card className="flex flex-col gap-4">
+  <Header className="mb-8" />
+  <Body />
+  <Footer className="mt-5" />
+</Card>
+
+// ✅ one gap on the parent governs every sibling → uniform spacing
+<Card className="flex flex-col gap-6">
+  <Header />
+  <Body />
+  <Footer />
+</Card>
+```
+
 ## Hooks
 
 Extract reusable stateful logic into custom hooks (`useXxx`) instead of duplicating it or using HOCs/render props.
