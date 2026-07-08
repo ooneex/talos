@@ -55,28 +55,6 @@
         "source.fixAll.biome": true
       }
     },
-    "Astro": {
-      "formatter": {
-        "language_server": {
-          "name": "biome"
-        }
-      },
-      "code_actions_on_format": {
-        "source.fixAll.biome": true,
-        "source.organizeImports.biome": true
-      }
-    },
-    "Svelte": {
-      "formatter": {
-        "language_server": {
-          "name": "biome"
-        }
-      },
-      "code_actions_on_format": {
-        "source.fixAll.biome": true,
-        "source.organizeImports.biome": true
-      }
-    },
     "CSS": {
       "formatter": {
         "language_server": {
@@ -94,6 +72,25 @@
         "typescript": {
           "preferences": {
             "includePackageJsonAutoImports": "on"
+          }
+        }
+      }
+    },
+    "vscode-css-language-server": {
+      "settings": {
+        "css": {
+          "lint": {
+            "unknownAtRules": "ignore"
+          }
+        },
+        "scss": {
+          "lint": {
+            "unknownAtRules": "ignore"
+          }
+        },
+        "less": {
+          "lint": {
+            "unknownAtRules": "ignore"
           }
         }
       }
