@@ -34,9 +34,8 @@ flavor and locate its dictionaries:
 | backend (`module`/untyped) | `modules/<module>/src/translations/translations.yml` |
 
 Glob for the actual files — a spa module has one dictionary per feature slice. If
-a module has no dictionary yet, tell the user to scaffold one first with
-`/translation:create` (this skill translates existing dictionaries; it does not
-create them).
+a module has no dictionary yet, create it first with the `/translation:create`
+skill, then translate the resulting dictionary.
 
 ### 2. Determine the target locales
 
