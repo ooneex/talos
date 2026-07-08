@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.25.1](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.25.1) - 2026-07-08
+
+### Changed
+
+- Drop Astro and Svelte and ignore unknown CSS at-rules in Zed settings template| — Franck ([5c838176](https://github.com/ooneex/talos/commit/5c838176))
+
 ## [1.25.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.25.0) - 2026-07-08
 
 ### Added
