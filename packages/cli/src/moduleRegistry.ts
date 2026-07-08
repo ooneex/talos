@@ -1,3 +1,104 @@
+/**
+ * Parse JSON-with-comments (JSONC). TypeScript's `tsconfig.json` officially
+ * permits `//`/`/* *\/` comments and trailing commas, which Bun's strict
+ * `.json()` rejects with `Failed to parse JSON`. Comments and trailing commas
+ * are stripped — respecting string literals so delimiters inside strings are
+ * left untouched — before handing the result to `JSON.parse`.
+ */
+export const parseJsonc = <T = unknown>(text: string): T => {
+  let stripped = "";
+  let inString = false;
+  let inLineComment = false;
+  let inBlockComment = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    const next = text[i + 1];
+
+    if (inLineComment) {
+      if (char === "\n") {
+        inLineComment = false;
+        stripped += char;
+      }
+      continue;
+    }
+
+    if (inBlockComment) {
+      if (char === "*" && next === "/") {
+        inBlockComment = false;
+        i++;
+      }
+      continue;
+    }
+
+    if (inString) {
+      stripped += char;
+      if (char === "\\") {
+        // Preserve the escaped character verbatim so `\"` doesn't close the string.
+        stripped += next ?? "";
+        i++;
+      } else if (char === '"') {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (char === '"') {
+      inString = true;
+      stripped += char;
+      continue;
+    }
+
+    if (char === "/" && next === "/") {
+      inLineComment = true;
+      i++;
+      continue;
+    }
+
+    if (char === "/" && next === "*") {
+      inBlockComment = true;
+      i++;
+      continue;
+    }
+
+    stripped += char;
+  }
+
+  // Drop trailing commas (`,` before a closing `}`/`]`), skipping those inside strings.
+  let cleaned = "";
+  inString = false;
+  for (let i = 0; i < stripped.length; i++) {
+    const char = stripped[i];
+
+    if (inString) {
+      cleaned += char;
+      if (char === "\\") {
+        cleaned += stripped[i + 1] ?? "";
+        i++;
+      } else if (char === '"') {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (char === '"') {
+      inString = true;
+      cleaned += char;
+      continue;
+    }
+
+    if (char === ",") {
+      let j = i + 1;
+      while (j < stripped.length && /\s/.test(stripped[j] as string)) j++;
+      if (stripped[j] === "}" || stripped[j] === "]") continue;
+    }
+
+    cleaned += char;
+  }
+
+  return JSON.parse(cleaned) as T;
+};
+
 const APP_MODULE_FIELDS = ["controllers", "middlewares", "cronJobs", "events"] as const;
 // A microservice is standalone (no SharedModule), so it also owns its entities
 const MICROSERVICE_MODULE_FIELDS = ["controllers", "entities", "middlewares", "cronJobs", "events"] as const;
@@ -93,7 +194,9 @@ export const addToSharedModule = async (
 };
 
 export const addPathAlias = async (tsconfigPath: string, kebabName: string): Promise<void> => {
-  const tsconfig = await Bun.file(tsconfigPath).json();
+  const tsconfig = parseJsonc<{ compilerOptions?: { paths?: Record<string, string[]> } }>(
+    await Bun.file(tsconfigPath).text(),
+  );
 
   tsconfig.compilerOptions ??= {};
   tsconfig.compilerOptions.paths ??= {};
@@ -137,7 +240,9 @@ export const removeFromSharedModule = async (
 export const removePathAlias = async (tsconfigPath: string, kebabName: string): Promise<void> => {
   if (!(await Bun.file(tsconfigPath).exists())) return;
 
-  const tsconfig = await Bun.file(tsconfigPath).json();
+  const tsconfig = parseJsonc<{ compilerOptions?: { paths?: Record<string, string[]> } }>(
+    await Bun.file(tsconfigPath).text(),
+  );
 
   if (tsconfig.compilerOptions?.paths) {
     delete tsconfig.compilerOptions.paths[`@module/${kebabName}/*`];

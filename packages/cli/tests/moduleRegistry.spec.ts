@@ -123,6 +123,30 @@ describe("moduleRegistry", () => {
       expect(tsconfig.compilerOptions.paths["@module/shop/*"]).toEqual(["./modules/shop/src/*"]);
       expect(tsconfig.compilerOptions.paths["@module/blog/*"]).toEqual(["./modules/blog/src/*"]);
     });
+
+    test("should tolerate comments and trailing commas (tsconfig is JSONC)", async () => {
+      await Bun.write(
+        tsconfigPath,
+        [
+          "{",
+          "  // path aliases for workspace modules",
+          "  /* block comment { with braces } and , commas */",
+          '  "compilerOptions": {',
+          '    "paths": {',
+          '      "@module/shop/*": ["./modules/shop/src/*"], // existing alias',
+          "    },",
+          "  },",
+          "}",
+          "",
+        ].join("\n"),
+      );
+
+      await addPathAlias(tsconfigPath, "blog");
+
+      const tsconfig = await Bun.file(tsconfigPath).json();
+      expect(tsconfig.compilerOptions.paths["@module/shop/*"]).toEqual(["./modules/shop/src/*"]);
+      expect(tsconfig.compilerOptions.paths["@module/blog/*"]).toEqual(["./modules/blog/src/*"]);
+    });
   });
 
   describe("removePathAlias", () => {
@@ -156,6 +180,30 @@ describe("moduleRegistry", () => {
     test("should be a no-op when the tsconfig does not exist", async () => {
       await expect(removePathAlias(tsconfigPath, "blog")).resolves.toBeUndefined();
       expect(await Bun.file(tsconfigPath).exists()).toBe(false);
+    });
+
+    test("should tolerate comments and trailing commas (tsconfig is JSONC)", async () => {
+      await Bun.write(
+        tsconfigPath,
+        [
+          "{",
+          '  "compilerOptions": {',
+          "    // module path aliases",
+          '    "paths": {',
+          '      "@module/blog/*": ["./modules/blog/src/*"],',
+          '      "@module/shop/*": ["./modules/shop/src/*"],',
+          "    },",
+          "  },",
+          "}",
+          "",
+        ].join("\n"),
+      );
+
+      await removePathAlias(tsconfigPath, "blog");
+
+      const tsconfig = await Bun.file(tsconfigPath).json();
+      expect(tsconfig.compilerOptions.paths["@module/blog/*"]).toBeUndefined();
+      expect(tsconfig.compilerOptions.paths["@module/shop/*"]).toEqual(["./modules/shop/src/*"]);
     });
   });
 });
