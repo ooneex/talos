@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.27.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.27.0) - 2026-07-09
+
+### Added
+
+- Add humanize skill template for rewriting AI-sounding prose| — Franck ([e3139b64](https://github.com/ooneex/talos/commit/e3139b64))
+
 ## [1.26.2](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.26.2) - 2026-07-09
 
 ### Changed
