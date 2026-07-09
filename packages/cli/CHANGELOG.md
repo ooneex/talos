@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.26.2](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.26.2) - 2026-07-09
+
+### Changed
+
+- Run fmt and lint tasks concurrently without dependency ordering| — Franck ([34df8302](https://github.com/ooneex/talos/commit/34df8302))
+
 ## [1.26.1](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.26.1) - 2026-07-08
 
 ### Changed
