@@ -69,6 +69,14 @@ type RunContextType = {
 // `install` is not a per-target script: it runs `bun install` once at the project root.
 const INSTALL_COMMAND = "install";
 
+// Commands whose per-target work is independent of the workspace dependency
+// graph, so their tasks carry no ordering edges and every target runs at once
+// (bounded by concurrency) instead of waiting on its dependencies' tasks.
+// Formatting and linting only read a target's own files. `build` is deliberately
+// absent: a package consumes its dependencies' built `dist` (its `.d.ts` in
+// particular), so it must build after them.
+const ORDER_INDEPENDENT_COMMANDS = new Set(["fmt", "lint"]);
+
 // Latest non-blank output line of a task, scanned from the end of the buffer so
 // the footer render tick never re-splits a task's whole accumulated output.
 const lastOutputLine = (output: string): string | undefined => {
@@ -239,8 +247,10 @@ export class MonorepoRunCommand<T extends CommandOptionsType = CommandOptionsTyp
 
   // One task per target for a command. Targets whose package.json lacks the
   // script are marked skipped up front; dependency edges only point at tasks
-  // that are part of the run.
+  // that are part of the run. Order-independent commands (see the set above)
+  // carry no edges, so every target runs concurrently.
   private buildGroup(targets: MonorepoTargetType[], includedKeys: Set<string>, command: string): TaskType[] {
+    const ordered = !ORDER_INDEPENDENT_COMMANDS.has(command);
     return targets.map((target) => ({
       key: `${target.key}#${command}`,
       label: `${target.name}:${command}`,
@@ -249,7 +259,9 @@ export class MonorepoRunCommand<T extends CommandOptionsType = CommandOptionsTyp
       cwd: target.dir,
       argv: ["bun", "run", command],
       cacheable: true,
-      deps: target.workspaceDeps.filter((key) => includedKeys.has(key)).map((key) => `${key}#${command}`),
+      deps: ordered
+        ? target.workspaceDeps.filter((key) => includedKeys.has(key)).map((key) => `${key}#${command}`)
+        : [],
       status: target.scripts[command] === undefined ? "skipped" : "pending",
       output: "",
       exitCode: null,

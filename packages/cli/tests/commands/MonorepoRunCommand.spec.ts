@@ -170,6 +170,33 @@ describe("MonorepoRunCommand", () => {
       expect(existsSync(join(testDir, "saw-one")) || existsSync(join(testDir, "saw-two"))).toBe(true);
     });
 
+    // `fmt` and `lint` only read a target's own files, so their tasks carry no
+    // workspace-dependency edges: a dependent starts without waiting for its
+    // dependency's task. Reusing the overlap-marker technique above, `app`
+    // depends on `lib` yet the two run at the same time — which the kept edge
+    // (see the `build` ordering test) would forbid.
+    for (const cmd of ["fmt", "lint"] as const) {
+      test(`should not order a dependent after its dependency for ${cmd}`, async () => {
+        const solo = (name: string): string =>
+          `bun -e "const fs=require('fs');fs.writeFileSync('../../run-${name}','');Bun.sleepSync(150);` +
+          `const others=fs.readdirSync('../..').filter(f=>f.startsWith('run-')&&f!=='run-${name}');` +
+          `if(others.length)fs.writeFileSync('../../saw-${name}','');fs.unlinkSync('../../run-${name}');"`;
+        await writeTarget("packages/lib", { name: "@test/lib", scripts: { [cmd]: solo("lib") } });
+        await writeTarget("packages/app", {
+          name: "@test/app",
+          dependencies: { "@test/lib": "workspace:^" },
+          scripts: { [cmd]: solo("app") },
+        });
+
+        await command.run({ commands: cmd, packages: "lib,app", logs: true });
+
+        expect(process.exitCode ?? 0).toBe(0);
+        // If the edge were kept, `lib` would finish before `app` began and
+        // neither would ever observe the other's marker.
+        expect(existsSync(join(testDir, "saw-lib")) || existsSync(join(testDir, "saw-app"))).toBe(true);
+      });
+    }
+
     test("should skip targets without the script and not fail", async () => {
       await command.run({ commands: "lint", logs: true });
 
