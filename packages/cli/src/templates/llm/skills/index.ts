@@ -14,6 +14,7 @@ import debug from "./debug.md.txt";
 import entityCreate from "./entity.create.md.txt";
 import eventCreate from "./event.create.md.txt";
 import flagCreate from "./flag.create.md.txt";
+import humanize from "./humanize.md.txt";
 import issueFix from "./issue.fix.md.txt";
 import issueFound from "./issue.found.md.txt";
 import issuePlan from "./issue.plan.md.txt";
@@ -103,6 +104,7 @@ export const skills: Record<string, SkillTemplateType> = {
   pr: pr,
   review: review,
   debug: debug,
+  humanize: humanize,
   optimize: optimize,
   "optimize.conventions": optimizeConventions,
   "optimize.testing": optimizeTesting,
