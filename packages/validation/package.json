@@ -1,7 +1,7 @@
 {
   "name": "@talosjs/validation",
   "description": "Type-safe validation framework powered by ArkType — define schemas with built-in constraints, custom rules, and JSON Schema generation",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "type": "module",
   "files": [
     "dist",
