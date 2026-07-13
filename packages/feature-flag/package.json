@@ -1,7 +1,7 @@
 {
   "name": "@talosjs/feature-flag",
   "description": "Define and evaluate feature flags as injectable, named toggles with descriptions and dynamic enablement",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "type": "module",
   "files": [
     "dist",
