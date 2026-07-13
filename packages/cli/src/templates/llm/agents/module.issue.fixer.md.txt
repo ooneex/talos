@@ -1,6 +1,6 @@
 ---
 name: module-issue-fixer
-description: Implements a single planned issue in a backend business-domain module (`type: "module"` or untyped) — entities, repositories, services, controllers/commands, migrations, and optional resources — following Clean Architecture, then lints, satisfies the Definition of Done, and marks the issue Done. Use proactively whenever a backend `module` issue needs implementing, and especially when the /issue:fix skill dispatches a backend module.
+description: Implements a single planned issue in a backend business-domain module (`type: "module"` or untyped) — entities, repositories, services, controllers/commands, migrations, and optional resources — following Clean Architecture, then lints, satisfies the Definition of Done, and marks the issue Done. Use proactively whenever a backend `module` issue needs implementing, and especially when the /issue-fix skill dispatches a backend module.
 tools: Read, Edit, Write, Bash, Grep, Glob, Skill
 model: opus
 memory: project
@@ -25,7 +25,7 @@ path you checked and stop.
 Pre-flight checks before implementing:
 - If `state` is already `Done` — stop and report the issue is already done.
 - If `goal` is missing or empty — stop and report the issue has nothing to
-  implement (it was never planned; suggest `/issue:plan` first).
+  implement (it was never planned; suggest `/issue-plan` first).
 - If a `dependencies` entry is not yet `Done` and was not handed to you as part
   of the batch — stop and report which dependency must be implemented first.
 
@@ -64,31 +64,31 @@ If a `spec` block is present, read from it: `spec.name` (dot-notation, e.g.
 Derive the HTTP method from the action: `.create` → `post`; `.read` / `.list` /
 `.search` → `get`; `.update` → `put`/`patch`; `.delete` → `delete`.
 
-- **Entity** — `/entity:create --name=<EntityName> --module=<module>`. Implement
+- **Entity** — `/entity-create --name=<EntityName> --module=<module>`. Implement
   columns and relations from `### Data Model` (TypeORM decorators are spelled
   out there).
 - **Migration** — when the entity introduces new columns/tables/relations:
-  `/migration:create --module=<module>`. Implement `up()` with the DDL and
+  `/migration-create --module=<module>`. Implement `up()` with the DDL and
   `down()` to reverse it.
-- **Repository** — `/repository:create --name=<RepositoryName> --module=<module>`.
+- **Repository** — `/repository-create --name=<RepositoryName> --module=<module>`.
   Keep only the CRUD methods this issue needs (`.create` → `save`; `.read` →
   `findById`; `.list` → `find`; `.delete` → `delete`); remove uncalled methods.
-- **Service** — `/service:create --name=<ServiceName> --module=<module>`. Inject
+- **Service** — `/service-create --name=<ServiceName> --module=<module>`. Inject
   the repository via the constructor and implement `execute()` with the business
   logic from the `goal`.
 - **Controller** — when an HTTP endpoint is needed:
-  `/controller:create --name=<ControllerName> --module=<module> --route-name=<name> --route-path=<derived-path> --route-method=<derived-method>`.
+  `/controller-create --name=<ControllerName> --module=<module> --route-name=<name> --route-path=<derived-path> --route-method=<derived-method>`.
   Derive the path from entity + action (`"organization.create"` → `/organizations`,
   `"organization.read"` → `/organizations/:id`). Inject the service. Set `roles`
   in `@Route` as uppercase literals (e.g. `"ROLE_ADMIN"`); apply each permission
   `name` to the route decorator when `permissions` is supported.
 - **Command** — when a CLI command is needed:
-  `/command:create --name=<CommandName> --module=<module>`. Inject the service;
+  `/command-create --name=<CommandName> --module=<module>`. Inject the service;
   set `getName()` to `"<entity>:<action>"`.
 - **Optional resources** — create each additional artefact the goal calls for
   with its skill: `permission`, `middleware`, `cache`, `pubsub`, `mailer`,
   `logger`, `analytics`, `storage`, `cron`, `ai`, `database`, `vectorDatabase`
-  (`/<artefact>:create --name=<Name> --module=<module>`). Do not create
+  (`/<artefact>-create --name=<Name> --module=<module>`). Do not create
   artefacts the goal does not call for.
 
 ## Clean Architecture

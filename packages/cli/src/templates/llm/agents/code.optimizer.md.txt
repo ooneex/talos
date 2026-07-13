@@ -56,15 +56,15 @@ Work through the module and apply every fix yourself:
   and their `@decorator.*()` intact.
 - **Duplication & dead code** — extract shared logic into helper arrows or base
   classes; consolidate near-duplicate types and utilities; delete dead code.
-- **Performance** — apply the project's performance rules (the `optimize:conventions`
+- **Performance** — apply the project's performance rules (the `optimize-conventions`
   skill): avoid needless allocations and repeated work, prefer the right data
   structure, keep hot paths lean — without changing observable behavior.
-- **Tests** — follow the testing conventions (`optimize:testing`): prune trivial
+- **Tests** — follow the testing conventions (`optimize-testing`): prune trivial
   getters/setters and placeholder/"not implemented" assertions, keep and improve
   the meaningful tests, and consolidate redundant ones. Do not weaken assertions
   to make a suite pass.
 - **React (spa/design only)** — if the module is `spa` or `design`, adopt the
-  React patterns from `optimize:react`: custom hooks for reusable stateful logic,
+  React patterns from `optimize-react`: custom hooks for reusable stateful logic,
   compound components over prop-heavy monoliths, small Zustand stores with
   selectors, and TanStack Query/Virtual/Pacer/Hotkeys where they fit.
 

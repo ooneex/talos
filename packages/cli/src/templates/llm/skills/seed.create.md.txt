@@ -1,5 +1,5 @@
 ---
-name: seed:create
+name: seed-create
 description: Generate a new database seed file with its test file, then complete the generated code. Use when creating seed data for populating the database using @talosjs/seeds.
 ---
 
@@ -7,7 +7,7 @@ description: Generate a new database seed file with its test file, then complete
 
 > **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
 
-Generate a seed file and test file, then complete the implementation. Follow the shared workflow in the `talos:scaffold` skill (run-from-root, `--name`/`--module` inference, lint/format, and coding conventions); this skill covers only the seed-specific parts.
+Generate a seed file and test file, then complete the implementation. Follow the shared workflow in the `talos-scaffold` skill (run-from-root, `--name`/`--module` inference, lint/format, and coding conventions); this skill covers only the seed-specific parts.
 
 ## Steps
 

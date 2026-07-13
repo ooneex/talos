@@ -1,5 +1,5 @@
 ---
-name: ai:chat:create
+name: ai-chat-create
 description: Generate a new AI chat class with its test file, then complete the generated code. Use when creating a chat that extends the Chat base class from @talosjs/ai (model, system prompts, tools, middlewares).
 ---
 
@@ -7,7 +7,7 @@ description: Generate a new AI chat class with its test file, then complete the 
 
 > **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
 
-Generate an AI chat class and test file, then complete the implementation. Follow the shared workflow in the `talos:scaffold` skill (run-from-root, `--name`/`--module` inference, lint/format, and coding conventions); this skill covers only the AI-chat-specific parts.
+Generate an AI chat class and test file, then complete the implementation. Follow the shared workflow in the `talos-scaffold` skill (run-from-root, `--name`/`--module` inference, lint/format, and coding conventions); this skill covers only the AI-chat-specific parts.
 
 ## Steps
 
@@ -30,7 +30,7 @@ Read the user's request to decide whether the chat needs tools, middlewares, or 
 - Tools — needed when the chat must take actions or fetch data beyond plain text generation (e.g. "look up an order", "search the docs", "send an email", "query the database"). Each distinct capability is one tool. If none of these apply, the chat needs no tools and `getTools()` stays empty.
 - Middlewares — needed when the request implies cross-cutting behavior applied to every run (e.g. "log each request", "rate-limit", "redact PII", "check the user is authorized"). If nothing like this is mentioned, the chat needs no middlewares and `getMiddlewares()` stays empty.
 
-When the request is ambiguous about either, ask the user instead of guessing. For each tool or middleware you decide is needed, generate it first with the `ai:tool:create` / `ai:middleware:create` skill, then reference the generated class in `getTools()` / `getMiddlewares()`.
+When the request is ambiguous about either, ask the user instead of guessing. For each tool or middleware you decide is needed, generate it first with the `ai-tool-create` / `ai-middleware-create` skill, then reference the generated class in `getTools()` / `getMiddlewares()`.
 
 ### 2. Complete the chat class
 
@@ -38,8 +38,8 @@ Read `modules/<module>/src/ai/chats/<Name>Chat.ts`, then implement:
 
 - Set `getModel()` to the OpenRouter model id in `provider/model` form (e.g. `anthropic/claude-sonnet-4.5`).
 - Add the system prompts that define the chat's behavior in `getSystemPrompts()`.
-- List the tool classes the model may call in `getTools()` (generate them with `ai:tool:create`).
-- List the middleware classes applied to every run in `getMiddlewares()` (generate them with `ai:middleware:create`).
+- List the tool classes the model may call in `getTools()` (generate them with `ai-tool-create`).
+- List the middleware classes applied to every run in `getMiddlewares()` (generate them with `ai-middleware-create`).
 
 ```typescript
 import { Chat, decorator } from "@talosjs/ai";

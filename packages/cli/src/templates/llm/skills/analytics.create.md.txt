@@ -1,5 +1,5 @@
 ---
-name: analytics:create
+name: analytics-create
 description: Generate a new analytics class with its test file, then complete the generated code. Use when creating a new analytics tracking class that uses the @talosjs/analytics package.
 ---
 
@@ -7,7 +7,7 @@ description: Generate a new analytics class with its test file, then complete th
 
 > **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
 
-Generate an analytics class and test file, then complete the implementation. Follow the shared workflow in the `talos:scaffold` skill (run-from-root, `--name`/`--module` inference, module registration, lint/format, and coding conventions); this skill covers only the analytics-specific parts.
+Generate an analytics class and test file, then complete the implementation. Follow the shared workflow in the `talos-scaffold` skill (run-from-root, `--name`/`--module` inference, module registration, lint/format, and coding conventions); this skill covers only the analytics-specific parts.
 
 ## Steps
 

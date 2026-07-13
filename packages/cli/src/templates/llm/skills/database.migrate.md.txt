@@ -1,6 +1,6 @@
 ---
-name: database:migrate
-description: Run the database migration and seed lifecycle — apply pending migrations, roll back, reseed, and verify the schema matches the entities. Use when applying or reverting migrations, troubleshooting a failed migration, syncing an entity change into the database, or running seeds. To author a new migration file, use migration:create first.
+name: database-migrate
+description: Run the database migration and seed lifecycle — apply pending migrations, roll back, reseed, and verify the schema matches the entities. Use when applying or reverting migrations, troubleshooting a failed migration, syncing an entity change into the database, or running seeds. To author a new migration file, use migration-create first.
 ---
 
 # Database Migrate
@@ -8,8 +8,8 @@ description: Run the database migration and seed lifecycle — apply pending mig
 > **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
 
 Drive the database lifecycle with the `talos` commands. This is the *runtime*
-workflow — to scaffold a new migration or seed file use `migration:create` /
-`seed:create`, then come back here to apply it.
+workflow — to scaffold a new migration or seed file use `migration-create` /
+`seed-create`, then come back here to apply it.
 
 ## Run from the project root
 
@@ -52,7 +52,7 @@ talos seed:run --drop         # clear seeded data first, then reseed
 
 When you change an entity's columns/relations:
 
-1. `/migration:create --module=<module>` — scaffold a timestamped migration.
+1. `/migration-create --module=<module>` — scaffold a timestamped migration.
 2. Implement `up()` with the DDL for the change and `down()` to reverse it
    exactly (drop what `up` adds). Match the entity's column types, nullability,
    and lengths — an entity column without `nullable` must be `NOT NULL` in the

@@ -217,20 +217,20 @@ describe("README.md.txt", () => {
     const content = await Bun.file(templatePath).text();
     expect(content).toContain("/commit");
     expect(content).toContain("/optimize");
-    expect(content).toContain("/controller:create");
-    expect(content).toContain("/service:create");
-    expect(content).toContain("/migration:create");
-    expect(content).toContain("/seed:create");
-    expect(content).toContain("/issue:plan");
+    expect(content).toContain("/controller-create");
+    expect(content).toContain("/service-create");
+    expect(content).toContain("/migration-create");
+    expect(content).toContain("/seed-create");
+    expect(content).toContain("/issue-plan");
   });
 
   test("should list the new generator skills in the skills table", async () => {
     const content = await Bun.file(templatePath).text();
-    expect(content).toContain("/queue:create");
-    expect(content).toContain("/sdk:create");
-    expect(content).toContain("/spa:feature:create");
-    expect(content).toContain("/workflow:create");
-    expect(content).toContain("/workflow:transition:create");
+    expect(content).toContain("/queue-create");
+    expect(content).toContain("/sdk-create");
+    expect(content).toContain("/spa-feature-create");
+    expect(content).toContain("/workflow-create");
+    expect(content).toContain("/workflow-transition-create");
   });
 
   test("should document issue:create command", async () => {
@@ -247,7 +247,7 @@ describe("README.md.txt", () => {
   test("should document issue:plan skill after issue:pull and before issue:push", async () => {
     const content = await Bun.file(templatePath).text();
     expect(content).toContain("### Create and Plan an Issue");
-    expect(content).toContain("/issue:plan");
+    expect(content).toContain("/issue-plan");
     const pullIdx = content.indexOf("### Pull an Issue");
     const planIdx = content.indexOf("### Create and Plan an Issue");
     const pushIdx = content.indexOf("### Push an Issue");

@@ -1,5 +1,5 @@
 ---
-name: talos:module
+name: talos-module
 description: Backend module layout and foundational patterns for this codebase — the module directory structure plus the dependency-injection, exception, and TypeScript conventions with code examples. Use when creating or navigating a module, or when wiring DI or exceptions.
 ---
 
@@ -43,7 +43,7 @@ modules/<name>/
 
 A module only contains the folders for the artifacts it actually uses — each `talos <artifact>:create` generator creates its `src/` subfolder (and the matching `tests/` one) on demand.
 
-For front-end modules, see the `talos:design` (design system) and `talos:spa` (single-page app) layouts. For typed config access, see `talos:env`.
+For front-end modules, see the `talos-design` (design system) and `talos-spa` (single-page app) layouts. For typed config access, see `talos-env`.
 
 ## Dependency Injection
 

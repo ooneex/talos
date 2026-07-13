@@ -1,5 +1,5 @@
 ---
-name: ai:middleware:create
+name: ai-middleware-create
 description: Generate a new AI middleware class with its test file, then complete the generated code. Use when creating a chat middleware that implements IMiddleware from @talosjs/ai to observe or transform the chat lifecycle.
 ---
 
@@ -7,9 +7,9 @@ description: Generate a new AI middleware class with its test file, then complet
 
 > **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
 
-Generate an AI middleware class and test file, then complete the implementation. Follow the shared workflow in the `talos:scaffold` skill (run-from-root, `--name`/`--module` inference, lint/format, and coding conventions); this skill covers only the AI-middleware-specific parts.
+Generate an AI middleware class and test file, then complete the implementation. Follow the shared workflow in the `talos-scaffold` skill (run-from-root, `--name`/`--module` inference, lint/format, and coding conventions); this skill covers only the AI-middleware-specific parts.
 
-> This is chat middleware for `@talosjs/ai` (the chat lifecycle), not HTTP/socket middleware — for that use `middleware:create`.
+> This is chat middleware for `@talosjs/ai` (the chat lifecycle), not HTTP/socket middleware — for that use `middleware-create`.
 
 ## Steps
 

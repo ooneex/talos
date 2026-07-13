@@ -1,5 +1,5 @@
 ---
-name: talos:commands
+name: talos-commands
 description: Reference for the `talos` CLI commands — app lifecycle, module/design/spa/microservice/SDK/docker scaffolding, database migrations and seeds, monorepo task running, releases, and issues. Use when you need the exact command or flags to run a project task from the terminal.
 ---
 
@@ -54,7 +54,7 @@ talos issue:push [--id <id>]                                    # Push a local i
 Class generators share the form `talos <artifact>:create --name <Name> --module <name>`, where `<artifact>` is one of:
 `ai:chat` (chat class), `ai:middleware` (chat middleware), `ai:tool` (chat tool), `analytics` (handler), `cache` (handler), `command` (CLI/`ICommand`), `controller` (HTTP/WS), `cron` (job), `database` (adapter), `entity` (TypeORM), `event` (pub/sub), `flag` (feature flag), `logger`, `mailer` (class + JSX template), `middleware` (HTTP/WS), `permission`, `queue` (BullMQ job queue), `rate-limit` (throttling strategy / `IRateLimiter`), `repository`, `service`, `spa:feature` (SPA feature slice), `storage`, `translation` (localized dictionary), `vector-database`.
 
-The matching `/<artifact>:create` skills wrap these generators and complete the generated code + tests; they share the `talos:scaffold` workflow (run-from-root, option inference, module registration, lint/format, conventions).
+The matching `/<artifact>-create` skills wrap these generators and complete the generated code + tests; they share the `talos-scaffold` workflow (run-from-root, option inference, module registration, lint/format, conventions).
 
 ## Custom commands
 ```bash
@@ -70,7 +70,7 @@ talos workflow:create --name <Name> --module <name>             # Scaffold a wor
 talos workflow:transition:create --name <Name> --module <name>  # Scaffold a workflow transition (one step)
 ```
 
-A workflow orchestrates an ordered list of conditional, reversible transitions with automatic rollback on failure. Generate each step with `workflow:transition:create`, then list the transition classes in the workflow's `getTransitions()`. The `/workflow:create` and `/workflow:transition:create` skills wrap these generators.
+A workflow orchestrates an ordered list of conditional, reversible transitions with automatic rollback on failure. Generate each step with `workflow:transition:create`, then list the transition classes in the workflow's `getTransitions()`. The `/workflow-create` and `/workflow-transition-create` skills wrap these generators.
 
 ## Database
 ```bash

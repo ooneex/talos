@@ -1,5 +1,5 @@
 ---
-name: repository:create
+name: repository-create
 description: Generate a new repository class with its test file, then complete the generated code. Use when creating a new TypeORM repository for database operations on an entity.
 ---
 
@@ -7,7 +7,7 @@ description: Generate a new repository class with its test file, then complete t
 
 > **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
 
-Generate a repository class and test file, then complete the implementation. Follow the shared workflow in the `talos:scaffold` skill (run-from-root, `--name`/`--module` inference, module registration, lint/format, and coding conventions); this skill covers only the repository-specific parts.
+Generate a repository class and test file, then complete the implementation. Follow the shared workflow in the `talos-scaffold` skill (run-from-root, `--name`/`--module` inference, module registration, lint/format, and coding conventions); this skill covers only the repository-specific parts.
 
 ## Steps
 

@@ -25,7 +25,7 @@ path you checked and stop.
 Pre-flight checks before implementing:
 - If `state` is already `Done` — stop and report the issue is already done.
 - If `goal` is missing or empty — stop and report there is nothing to implement
-  (suggest `/issue:plan` first).
+  (suggest `/issue-plan` first).
 - If a `dependencies` entry is not yet `Done` and was not handed to you in the
   batch — stop and report which dependency must be implemented first.
 
@@ -56,7 +56,7 @@ implementing.
 
 Lead with the controller/route contract, then wire the supporting layers.
 
-- **Controller** — `/controller:create --name=<ControllerName> --module=<module> --route-name=<name> --route-path=<derived-path> --route-method=<derived-method>`.
+- **Controller** — `/controller-create --name=<ControllerName> --module=<module> --route-name=<name> --route-path=<derived-path> --route-method=<derived-method>`.
   Derive the path from entity + action (`"organization.create"` → `/organizations`,
   `"organization.read"` → `/organizations/:id`). Inject the service. Set `roles`
   in `@Route` as uppercase literals (e.g. `"ROLE_ADMIN"`); apply each permission
@@ -64,20 +64,20 @@ Lead with the controller/route contract, then wire the supporting layers.
   correct status codes for the action, request/response **DTOs** (controllers
   return response DTOs — never entities/persistence types), input **validation**,
   pagination on collection endpoints, and a consistent error-response shape.
-- **Service** — `/service:create --name=<ServiceName> --module=<module>`. Inject
+- **Service** — `/service-create --name=<ServiceName> --module=<module>`. Inject
   the repository via the constructor and implement `execute()` with the business
   logic from the `goal`.
-- **Entity** — when involved: `/entity:create --name=<EntityName> --module=<module>`.
+- **Entity** — when involved: `/entity-create --name=<EntityName> --module=<module>`.
   Implement columns/relations from `### Data Model`.
 - **Migration** — when the entity introduces new columns/tables/relations:
-  `/migration:create --module=<module>`. Implement `up()` and a reversing `down()`.
-- **Repository** — `/repository:create --name=<RepositoryName> --module=<module>`.
+  `/migration-create --module=<module>`. Implement `up()` and a reversing `down()`.
+- **Repository** — `/repository-create --name=<RepositoryName> --module=<module>`.
   Keep only the CRUD methods this issue needs (`.create` → `save`; `.read` →
   `findById`; `.list` → `find`; `.delete` → `delete`); remove uncalled methods.
 - **Optional resources** — create each additional artefact the goal calls for
   with its skill (`permission`, `middleware`, `cache`, `pubsub`, `mailer`,
   `logger`, `analytics`, `storage`, `cron`, `ai`, `database`, `vectorDatabase` —
-  `/<artefact>:create --name=<Name> --module=<module>`). Do not create artefacts
+  `/<artefact>-create --name=<Name> --module=<module>`). Do not create artefacts
   the goal does not call for.
 
 ## Clean Architecture

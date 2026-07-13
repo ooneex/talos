@@ -1,5 +1,5 @@
 ---
-name: ai:tool:create
+name: ai-tool-create
 description: Generate a new AI tool class with its test file, then complete the generated code. Use when creating a function-calling tool that implements ITool from @talosjs/ai for use by a chat.
 ---
 
@@ -7,7 +7,7 @@ description: Generate a new AI tool class with its test file, then complete the 
 
 > **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
 
-Generate an AI tool class and test file, then complete the implementation. Follow the shared workflow in the `talos:scaffold` skill (run-from-root, `--name`/`--module` inference, lint/format, and coding conventions); this skill covers only the AI-tool-specific parts.
+Generate an AI tool class and test file, then complete the implementation. Follow the shared workflow in the `talos-scaffold` skill (run-from-root, `--name`/`--module` inference, lint/format, and coding conventions); this skill covers only the AI-tool-specific parts.
 
 ## Steps
 

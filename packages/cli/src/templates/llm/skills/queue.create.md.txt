@@ -1,5 +1,5 @@
 ---
-name: queue:create
+name: queue-create
 description: Generate a new queue class with its test file, then complete the generated code. Use when creating a new BullMQ-backed job queue that extends Queue from @talosjs/queue.
 ---
 
@@ -7,7 +7,7 @@ description: Generate a new queue class with its test file, then complete the ge
 
 > **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
 
-Generate a queue class and test file, then complete the implementation. Follow the shared workflow in the `talos:scaffold` skill (run-from-root, `--name`/`--module` inference, module registration, lint/format, and coding conventions); this skill covers only the queue-specific parts.
+Generate a queue class and test file, then complete the implementation. Follow the shared workflow in the `talos-scaffold` skill (run-from-root, `--name`/`--module` inference, module registration, lint/format, and coding conventions); this skill covers only the queue-specific parts.
 
 ## Steps
 

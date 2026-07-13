@@ -1,5 +1,5 @@
 ---
-name: translation:create
+name: translation-create
 description: Generate a new translation class with its test file and a sibling translations.yml dictionary, then fill in the translations. Use when creating a translation that extends the Translation base class from @talosjs/translation (localized, interpolated, pluralized messages).
 ---
 
@@ -7,7 +7,7 @@ description: Generate a new translation class with its test file and a sibling t
 
 > **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
 
-Generate a translation class, its test file, and a sibling `translations.yml` dictionary, then complete the dictionary. Follow the shared workflow in the `talos:scaffold` skill (run-from-root, `--name`/`--module` inference, lint/format, and coding conventions); this skill covers only the translation-specific parts.
+Generate a translation class, its test file, and a sibling `translations.yml` dictionary, then complete the dictionary. Follow the shared workflow in the `talos-scaffold` skill (run-from-root, `--name`/`--module` inference, lint/format, and coding conventions); this skill covers only the translation-specific parts.
 
 ## Steps
 

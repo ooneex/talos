@@ -1,5 +1,5 @@
 ---
-name: optimize:testing
+name: optimize-testing
 description: Project testing conventions and test-pruning rules — tests mirror src/ under tests/ as .spec.ts, every public method needs happy-path + edge-case coverage, drop trivial existence checks, keep deterministic behavior tests, consolidate redundancy. Use when writing, pruning, or improving a module's tests.
 ---
 

@@ -1,5 +1,5 @@
 ---
-name: command:create
+name: command-create
 description: Generate a new command class with its test file, then complete the generated code. Use when creating a new CLI command that implements the ICommand interface from @talosjs/cli.
 ---
 
@@ -7,7 +7,7 @@ description: Generate a new command class with its test file, then complete the 
 
 > **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
 
-Generate a command class and test file, then complete the implementation. Follow the shared workflow in the `talos:scaffold` skill (run-from-root, `--name`/`--module` inference, module registration, lint/format, and coding conventions); this skill covers only the command-specific parts.
+Generate a command class and test file, then complete the implementation. Follow the shared workflow in the `talos-scaffold` skill (run-from-root, `--name`/`--module` inference, module registration, lint/format, and coding conventions); this skill covers only the command-specific parts.
 
 ## Steps
 

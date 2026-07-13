@@ -1,5 +1,5 @@
 ---
-name: cron:create
+name: cron-create
 description: Generate a new cron job class with its test file, then complete the generated code. Use when creating a new scheduled task that extends the Cron base class from @talosjs/cron.
 ---
 
@@ -7,7 +7,7 @@ description: Generate a new cron job class with its test file, then complete the
 
 > **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
 
-Generate a cron class and test file, then complete the implementation. Follow the shared workflow in the `talos:scaffold` skill (run-from-root, `--name`/`--module` inference, module registration, lint/format, and coding conventions); this skill covers only the cron-specific parts.
+Generate a cron class and test file, then complete the implementation. Follow the shared workflow in the `talos-scaffold` skill (run-from-root, `--name`/`--module` inference, module registration, lint/format, and coding conventions); this skill covers only the cron-specific parts.
 
 ## Steps
 
@@ -127,7 +127,7 @@ describe("<Name>Cron", () => {
 
 ### 4. Register the cron job
 
-Add `<Name>Cron` to the `cronJobs` array in `src/<PascalModuleName>Module.ts` (see `talos:scaffold` for the `ModuleType` shape).
+Add `<Name>Cron` to the `cronJobs` array in `src/<PascalModuleName>Module.ts` (see `talos-scaffold` for the `ModuleType` shape).
 
 ### 5. Lint, format, and test
 

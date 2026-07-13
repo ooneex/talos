@@ -1,5 +1,5 @@
 ---
-name: mailer:create
+name: mailer-create
 description: Generate a new mailer class with its template and test files, then complete the generated code. Use when creating a new email sender with JSX template using @talosjs/mailer.
 ---
 
@@ -7,7 +7,7 @@ description: Generate a new mailer class with its template and test files, then 
 
 > **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
 
-Generate a mailer class, JSX template, and test files, then complete the implementation. Follow the shared workflow in the `talos:scaffold` skill (run-from-root, `--name`/`--module` inference, module registration, lint/format, and coding conventions); this skill covers only the mailer-specific parts.
+Generate a mailer class, JSX template, and test files, then complete the implementation. Follow the shared workflow in the `talos-scaffold` skill (run-from-root, `--name`/`--module` inference, module registration, lint/format, and coding conventions); this skill covers only the mailer-specific parts.
 
 ## Steps
 

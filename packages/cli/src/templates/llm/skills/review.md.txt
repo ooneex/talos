@@ -10,7 +10,7 @@ description: Review the working diff against @talosjs conventions and Clean Arch
 Review code before it lands: catch @talosjs convention and Clean Architecture
 violations the linter can't, while they're still cheap to fix. This is a
 read-and-report-then-fix workflow — it does **not** create issue files (use
-`issue:found` for that) or scaffold artifacts.
+`issue-found` for that) or scaffold artifacts.
 
 ## Run from the project root
 
@@ -39,19 +39,19 @@ diff, review inline.
   and their `@decorator.*()`.
 - **Dependency injection** — collaborators injected via the constructor with
   `@inject(...)`, not instantiated with `new`; depend on abstractions, prefer
-  `@talosjs` packages over third-party ones (see `talos:packages`).
+  `@talosjs` packages over third-party ones (see `talos-packages`).
 - **Clean Architecture** — the dependency rule holds: controllers/commands →
   services → repositories → entities, never the reverse. Entities carry no
   framework/persistence/HTTP imports; repositories return/accept domain types,
   not DTOs; controllers are thin (no business rules, no direct repository
   calls); no circular dependencies.
 - **Exceptions** — domain errors throw typed `Exception` subclasses with status
-  + structured data, not `null`/error codes (see `talos:module`).
+  + structured data, not `null`/error codes (see `talos-module`).
 - **Environment** — config read via injected `AppEnv`, never `process.env`.
 - **Entities & migrations** — column nullability/length match between entity and
   migration; no non-null assertions (`!`) standing in for real types.
 - **Tests** — new public methods have meaningful tests; no trivial or
-  placeholder assertions left behind (see `optimize:testing`).
+  placeholder assertions left behind (see `optimize-testing`).
 - **Correctness** — obvious bugs, unhandled async/error paths, leaks, dead code.
 
 ## Report and fix

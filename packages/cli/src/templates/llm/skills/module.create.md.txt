@@ -1,5 +1,5 @@
 ---
-name: module:create
+name: module-create
 description: Scaffold a complete backend business-domain module and complete its initial artifacts. Use when creating a whole new module (a new domain like `billing`, `catalog`, `order`) — not a single artifact. Runs talos module:create, then drives the per-artifact create skills to fill in the entity, repository, service, controller, and any other artifacts the domain needs.
 ---
 
@@ -8,13 +8,13 @@ description: Scaffold a complete backend business-domain module and complete its
 > **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
 
 Scaffold a new business-domain module, then complete the artifacts that give it
-its first vertical slice. Follow the shared workflow in the `talos:scaffold`
+its first vertical slice. Follow the shared workflow in the `talos-scaffold`
 skill (run-from-root, `--name`/`--module` inference, module registration,
 lint/format, conventions); this skill covers only the module-level orchestration.
 
 For a **single** artifact inside an existing module, use the matching
-`<artifact>:create` skill instead. For a front-end design system or SPA, use
-`talos design:create` / `talos spa:create` (see `talos:commands`).
+`<artifact>-create` skill instead. For a front-end design system or SPA, use
+`talos design:create` / `talos spa:create` (see `talos-commands`).
 
 ## Steps
 
@@ -31,7 +31,7 @@ bunx @talosjs/cli@latest module:create --name=<name> --destination=<destination>
 ```
 
 This creates `modules/<name>/` with the `src/` subfolders (see
-`talos:module`), a mirrored `tests/`, a `<name>.yml` config (no `type:` ⇒
+`talos-module`), a mirrored `tests/`, a `<name>.yml` config (no `type:` ⇒
 backend module), and a `<PascalName>Module.ts`, and registers it into its
 destination (for `app`, into `AppModule`/`SharedModule`; otherwise into the
 chosen `api`/`microservice` module).
@@ -53,12 +53,12 @@ artifacts the request doesn't need.
 
 ### 3. Generate and complete each artifact
 
-For each planned artifact, invoke its `<artifact>:create` skill with
-`--module=<name>` (e.g. `/entity:create`, `/repository:create`,
-`/service:create`, `/controller:create`). Each skill runs its generator,
+For each planned artifact, invoke its `<artifact>-create` skill with
+`--module=<name>` (e.g. `/entity-create`, `/repository-create`,
+`/service-create`, `/controller-create`). Each skill runs its generator,
 completes the class + test, and registers it. Respect the **dependency rule** —
 controllers → services → repositories → entities, never the reverse (see
-`talos:module`).
+`talos-module`).
 
 ### 4. Lint, format, and test
 

@@ -424,11 +424,11 @@ After saving the file the command optionally improves the description with Claud
 
 ### Create and Plan an Issue
 
-`/issue:plan` both creates and plans issues. Give it an existing issue (ID or path) **or** a free-form description of the work — when given a description it first scaffolds the issue with `oo issue:create` (inferring the module from your wording), then plans it. Planning restructures the issue into `context`, `goal`, `dod`, and `dependencies` fields, suggests labels, and splits large issues into ordered sub-issues that share the same structure and act as step-by-step implementation guides.
+`/issue-plan` both creates and plans issues. Give it an existing issue (ID or path) **or** a free-form description of the work — when given a description it first scaffolds the issue with `oo issue:create` (inferring the module from your wording), then plans it. Planning restructures the issue into `context`, `goal`, `dod`, and `dependencies` fields, suggests labels, and splits large issues into ordered sub-issues that share the same structure and act as step-by-step implementation guides.
 
 ```
-/issue:plan --id OON-123 --module user          # plan an existing issue
-/issue:plan add password reset to the user area  # create from a description, then plan
+/issue-plan --id OON-123 --module user          # plan an existing issue
+/issue-plan add password reset to the user area  # create from a description, then plan
 ```
 
 ---
@@ -939,7 +939,7 @@ oo translation:create --name Dashboard --module user
 - Use sibling `<key>_plural` / `<key>_zero` keys for pluralization rather than branching in code.
 - Keep one shared `translations.yml` per `translations/` folder — re-running the generator never overwrites it.
 
-Once a dictionary exists, use the `/translation:translate` skill to fill in additional locales — and, when asked, to pull hardcoded UI strings out of the source into keys first. It translates **meaning-for-meaning** across every target language (preserving `{{ param }}` placeholders and pluralization siblings) rather than word by word. See **Available Skills → Localization** below.
+Once a dictionary exists, use the `/translation-translate` skill to fill in additional locales — and, when asked, to pull hardcoded UI strings out of the source into keys first. It translates **meaning-for-meaning** across every target language (preserving `{{ param }}` placeholders and pluralization siblings) rather than word by word. See **Available Skills → Localization** below.
 
 ---
 
@@ -1025,8 +1025,8 @@ oo agent:skills:create
 Open Claude Code in the project root and type `/skill-name`. Claude will execute the full workflow described in the skill. You can pass arguments inline:
 
 ```
-/service:create --name=UserCreate --module=user
-/controller:create --name=UserCreate --module=user --route.path=/users --route.method=POST
+/service-create --name=UserCreate --module=user
+/controller-create --name=UserCreate --module=user --route.path=/users --route.method=POST
 /commit
 ```
 
@@ -1047,46 +1047,46 @@ If you omit arguments, Claude will prompt you for the required values.
 
 | Skill | Description |
 |---|---|
-| `/ai:chat:create` | Generate an AI chat class extending `Chat`, wired to `@talosjs/ai` |
-| `/ai:tool:create` | Generate an AI function-calling tool implementing `ITool`, wired to `@talosjs/ai` |
-| `/ai:middleware:create` | Generate an AI chat-lifecycle middleware implementing `IMiddleware`, wired to `@talosjs/ai` |
-| `/analytics:create` | Generate an analytics handler class for tracking domain events via `@talosjs/analytics` |
-| `/cache:create` | Generate a cache handler class with key and TTL management via `@talosjs/cache` |
-| `/command:create` | Generate a CLI command class implementing `ICommand` via `@talosjs/cli` |
-| `/controller:create` | Generate an HTTP or WebSocket controller with route type, validation, roles, service, and pub/sub event |
-| `/cron:create` | Generate a cron job class registered in its module via `@talosjs/cron` |
-| `/database:create` | Generate a database adapter class for raw queries via `@talosjs/database` |
-| `/entity:create` | Generate a TypeORM entity class registered in `SharedModule` via `@talosjs/entity` |
-| `/feature-flag:create` | Generate a feature flag class implementing `IFeatureFlag` via `@talosjs/feature-flag` |
-| `/logger:create` | Generate a structured logger class with domain context via `@talosjs/logger` |
-| `/mailer:create` | Generate a mailer class and its JSX email template via `@talosjs/mailer` |
-| `/middleware:create` | Generate an HTTP or WebSocket middleware class registered in the module via `@talosjs/middleware` |
-| `/permission:create` | Generate a permission class centralising access rules for a domain via `@talosjs/permission` |
-| `/event:create` | Generate a pub/sub event class registered in the module via `@talosjs/event` |
-| `/queue:create` | Generate a queue class for background jobs via `@talosjs/queue` |
-| `/rate-limit:create` | Generate a rate limiter class implementing `IRateLimiter` via `@talosjs/rate-limit` |
-| `/repository:create` | Generate a repository class for typed data access via `@talosjs/repository` |
-| `/sdk:create` | Generate a typed, browser-ready SDK from a module's controllers |
-| `/service:create` | Generate a service class implementing `IService` with business logic and tests |
-| `/spa:feature:create` | Generate a SPA feature slice — route, layouts, and TanStack Query hooks |
-| `/storage:create` | Generate a file storage class for asset management via `@talosjs/storage` |
-| `/translation:create` | Generate a translation class with a `translations.yml` dictionary via `@talosjs/translation` |
-| `/vector-database:create` | Generate a vector database class for semantic search and RAG via `@talosjs/rag` |
-| `/workflow:create` | Generate a workflow state machine via `@talosjs/workflow` |
-| `/workflow:transition:create` | Generate a workflow transition class via `@talosjs/workflow` |
+| `/ai-chat-create` | Generate an AI chat class extending `Chat`, wired to `@talosjs/ai` |
+| `/ai-tool-create` | Generate an AI function-calling tool implementing `ITool`, wired to `@talosjs/ai` |
+| `/ai-middleware-create` | Generate an AI chat-lifecycle middleware implementing `IMiddleware`, wired to `@talosjs/ai` |
+| `/analytics-create` | Generate an analytics handler class for tracking domain events via `@talosjs/analytics` |
+| `/cache-create` | Generate a cache handler class with key and TTL management via `@talosjs/cache` |
+| `/command-create` | Generate a CLI command class implementing `ICommand` via `@talosjs/cli` |
+| `/controller-create` | Generate an HTTP or WebSocket controller with route type, validation, roles, service, and pub/sub event |
+| `/cron-create` | Generate a cron job class registered in its module via `@talosjs/cron` |
+| `/database-create` | Generate a database adapter class for raw queries via `@talosjs/database` |
+| `/entity-create` | Generate a TypeORM entity class registered in `SharedModule` via `@talosjs/entity` |
+| `/feature-flag-create` | Generate a feature flag class implementing `IFeatureFlag` via `@talosjs/feature-flag` |
+| `/logger-create` | Generate a structured logger class with domain context via `@talosjs/logger` |
+| `/mailer-create` | Generate a mailer class and its JSX email template via `@talosjs/mailer` |
+| `/middleware-create` | Generate an HTTP or WebSocket middleware class registered in the module via `@talosjs/middleware` |
+| `/permission-create` | Generate a permission class centralising access rules for a domain via `@talosjs/permission` |
+| `/event-create` | Generate a pub/sub event class registered in the module via `@talosjs/event` |
+| `/queue-create` | Generate a queue class for background jobs via `@talosjs/queue` |
+| `/rate-limit-create` | Generate a rate limiter class implementing `IRateLimiter` via `@talosjs/rate-limit` |
+| `/repository-create` | Generate a repository class for typed data access via `@talosjs/repository` |
+| `/sdk-create` | Generate a typed, browser-ready SDK from a module's controllers |
+| `/service-create` | Generate a service class implementing `IService` with business logic and tests |
+| `/spa-feature-create` | Generate a SPA feature slice — route, layouts, and TanStack Query hooks |
+| `/storage-create` | Generate a file storage class for asset management via `@talosjs/storage` |
+| `/translation-create` | Generate a translation class with a `translations.yml` dictionary via `@talosjs/translation` |
+| `/vector-database-create` | Generate a vector database class for semantic search and RAG via `@talosjs/rag` |
+| `/workflow-create` | Generate a workflow state machine via `@talosjs/workflow` |
+| `/workflow-transition-create` | Generate a workflow transition class via `@talosjs/workflow` |
 
 #### Database
 
 | Skill | Description |
 |---|---|
-| `/migration:create` | Generate a migration file with `up`/`down` methods, index guidance, and structural tests |
-| `/seed:create` | Generate a seed class and its YAML data file with idempotent insertion logic |
+| `/migration-create` | Generate a migration file with `up`/`down` methods, index guidance, and structural tests |
+| `/seed-create` | Generate a seed class and its YAML data file with idempotent insertion logic |
 
 #### Localization
 
 | Skill | Description |
 |---|---|
-| `/translation:translate` | Translate and complete one or more modules' `translations.json` / `translations.yml` dictionaries into the target locales — optionally extracting hardcoded UI text into keys first — translating meaning-for-meaning, never word by word |
+| `/translation-translate` | Translate and complete one or more modules' `translations.json` / `translations.yml` dictionaries into the target locales — optionally extracting hardcoded UI text into keys first — translating meaning-for-meaning, never word by word |
 
 The skill orchestrates two agents installed by `oo agent:skills:create`: **`translation-extractor`** pulls hardcoded user-facing text into dictionary keys and rewires it to `trans(...)`, and **`translation-translator`** fills every target locale from the `en` source while keeping `{{ placeholders }}` and pluralization siblings intact.
 

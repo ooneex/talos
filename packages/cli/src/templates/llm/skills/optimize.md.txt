@@ -21,9 +21,9 @@ Invoke each sub-skill only at the step that needs it; skip ones that don't apply
 
 | Invoke | Before | When |
 |---|---|---|
-| `optimize:conventions` | steps 3–5 | always |
-| `optimize:testing` | step 6 | the module has tests |
-| `optimize:react` | step 7 | module is `design` or `spa` only |
+| `optimize-conventions` | steps 3–5 | always |
+| `optimize-testing` | step 6 | the module has tests |
+| `optimize-react` | step 7 | module is `design` or `spa` only |
 
 ## Steps
 
@@ -41,15 +41,15 @@ Invoke each sub-skill only at the step that needs it; skip ones that don't apply
 
    Apply every fix yourself in the steps below.
 
-3. **Conventions** — invoke the `optimize:conventions` skill, then fix each reported violation; rename and update all references.
+3. **Conventions** — invoke the `optimize-conventions` skill, then fix each reported violation; rename and update all references.
 
 4. **Duplication & dead code** — extract shared logic into helper arrows or base classes; consolidate types; merge near-duplicate utilities; delete dead code.
 
-5. **Performance** — apply the performance rules from `optimize:conventions`.
+5. **Performance** — apply the performance rules from `optimize-conventions`.
 
-6. **Tests** — invoke `optimize:testing`, then prune trivial tests, keep/improve meaningful ones, consolidate redundancy.
+6. **Tests** — invoke `optimize-testing`, then prune trivial tests, keep/improve meaningful ones, consolidate redundancy.
 
-7. **React** — if `design`/`spa`, invoke `optimize:react` and adopt its patterns.
+7. **React** — if `design`/`spa`, invoke `optimize-react` and adopt its patterns.
 
 8. **Verify** — from the root:
 

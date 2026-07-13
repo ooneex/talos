@@ -1,5 +1,5 @@
 ---
-name: talos:architecture
+name: talos-architecture
 description: Decide which execution architecture to use for a feature — Event-Driven (@talosjs/event), Queue (@talosjs/queue), Workflow (@talosjs/workflow), Cron (@talosjs/cron), or real-time (@talosjs/socket) — and how to combine them. Use when a request involves background work, multi-step processes, decoupling, scheduling, fan-out/notifications, or "when X happens, do Y".
 ---
 
@@ -7,18 +7,18 @@ description: Decide which execution architecture to use for a feature — Event-
 
 > **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
 
-Most features are just a service called from a controller — reach for an architecture only when the work is **decoupled, deferred, ordered, scheduled, or pushed**. Pick the smallest one that fits, then combine them as described below. See `talos:packages` for the full catalog and `talos:module` for where each artifact lives.
+Most features are just a service called from a controller — reach for an architecture only when the work is **decoupled, deferred, ordered, scheduled, or pushed**. Pick the smallest one that fits, then combine them as described below. See `talos-packages` for the full catalog and `talos-module` for where each artifact lives.
 
 ## Decision guide
 
 | The request is about… | Use | Package | Create with |
 |---|---|---|---|
-| "When X happens, notify/react" — one producer, many independent reactions, fire-and-forget | **Event-Driven** | `@talosjs/event` | `event:create` |
-| Deferred or heavy work the caller shouldn't wait for — emails, exports, image/video processing, retries, backpressure | **Queue** | `@talosjs/queue` | `queue:create` |
-| A multi-step business process where steps are **ordered** and a failure must **undo** prior steps (saga) | **Workflow** | `@talosjs/workflow` | `workflow:create` + `workflow:transition:create` |
-| Recurring/scheduled work on a clock — cleanups, digests, syncs, polling | **Cron** | `@talosjs/cron` | `cron:create` |
-| Push to connected clients in real time — chat, live updates, presence, rooms | **Real-time** | `@talosjs/socket` (+ `@talosjs/event` to fan out) | socket controller (see `talos:packages`) |
-| A single synchronous request/response with no deferral | **No architecture** — a plain service | `@talosjs/service` | `service:create` |
+| "When X happens, notify/react" — one producer, many independent reactions, fire-and-forget | **Event-Driven** | `@talosjs/event` | `event-create` |
+| Deferred or heavy work the caller shouldn't wait for — emails, exports, image/video processing, retries, backpressure | **Queue** | `@talosjs/queue` | `queue-create` |
+| A multi-step business process where steps are **ordered** and a failure must **undo** prior steps (saga) | **Workflow** | `@talosjs/workflow` | `workflow-create` + `workflow-transition-create` |
+| Recurring/scheduled work on a clock — cleanups, digests, syncs, polling | **Cron** | `@talosjs/cron` | `cron-create` |
+| Push to connected clients in real time — chat, live updates, presence, rooms | **Real-time** | `@talosjs/socket` (+ `@talosjs/event` to fan out) | socket controller (see `talos-packages`) |
+| A single synchronous request/response with no deferral | **No architecture** — a plain service | `@talosjs/service` | `service-create` |
 
 When two rows apply, they usually **compose** rather than compete — see Combining below.
 
@@ -28,7 +28,7 @@ Redis pub/sub. A producer `publish()`es to a channel; any number of subscribers 
 
 - **Use when:** the trigger shouldn't know or care who reacts; reactions are independent; loss of an occasional message is tolerable (pub/sub is fire-and-forget, not persisted).
 - **Avoid when:** you need the job retried, durability, or a guaranteed-once delivery → use a **Queue**. You need ordered steps with rollback → use a **Workflow**.
-- Each event is one channel + one `handler()`. Register events in the module's `events` array (see `talos:scaffold`).
+- Each event is one channel + one `handler()`. Register events in the module's `events` array (see `talos-scaffold`).
 
 ## Queue (`@talosjs/queue`)
 
@@ -44,7 +44,7 @@ An ordered list of **transitions**, each conditional (`isActive`), reversible (`
 
 - **Use when:** a process has multiple steps that touch different systems (reserve stock → charge card → create shipment) and a partial failure must be unwound cleanly.
 - **Avoid when:** there's a single step, or steps are independent and need no rollback (use Events/Queue). Steps are long-running and span minutes/hours across processes — model those as Queue jobs that each invoke a workflow.
-- Generate the workflow, then one transition per step with `workflow:transition:create`, listed in order in `getTransitions()`.
+- Generate the workflow, then one transition per step with `workflow-transition-create`, listed in order in `getTransitions()`.
 
 ## Cron (`@talosjs/cron`)
 

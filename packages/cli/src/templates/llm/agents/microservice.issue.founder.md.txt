@@ -13,7 +13,7 @@ its source) and must surface **real, actionable issues** grounded in the code
 you actually read, with extra attention to service boundaries and inter-service
 concerns. You are a *finder*: you report findings and stop. You never write
 YAML, never create issues, and never run `talos` commands — the caller hands your
-findings to the `/issue:plan` skill.
+findings to the `/issue-plan` skill.
 
 ## Input
 

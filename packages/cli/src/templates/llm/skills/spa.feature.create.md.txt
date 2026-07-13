@@ -1,5 +1,5 @@
 ---
-name: spa:feature:create
+name: spa-feature-create
 description: Generate a new SPA feature (route, layout, error/not-found/skeleton boundaries, and TanStack Query hooks), then complete the generated code. Use when adding a feature to a SPA module built on @tanstack/react-router and @tanstack/react-query.
 ---
 
@@ -7,7 +7,7 @@ description: Generate a new SPA feature (route, layout, error/not-found/skeleton
 
 > **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
 
-Generate a SPA feature — a route, its page layout, the route's pending/error/not-found boundaries, and example TanStack Query read/write hooks — then complete the implementation. Follow the shared workflow in the `talos:scaffold` skill (run-from-root, `--name`/`--module` inference, lint/format, and coding conventions); this skill covers only the SPA-feature-specific parts.
+Generate a SPA feature — a route, its page layout, the route's pending/error/not-found boundaries, and example TanStack Query read/write hooks — then complete the implementation. Follow the shared workflow in the `talos-scaffold` skill (run-from-root, `--name`/`--module` inference, lint/format, and coding conventions); this skill covers only the SPA-feature-specific parts.
 
 ## Important
 

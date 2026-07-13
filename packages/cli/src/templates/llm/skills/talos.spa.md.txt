@@ -1,5 +1,5 @@
 ---
-name: talos:spa
+name: talos-spa
 description: Directory structure and conventions for a spa module — the front-end single-page application layout (public, bootstrap, routes, features, shared) with per-folder usage guidance. Use when creating or navigating a single-page app.
 ---
 
@@ -49,4 +49,4 @@ modules/<name>/                   # type: "spa"
       utils/                    #   Generic pure helpers (formatting, `cn`, guards).
 ```
 
-For the design system this app composes, see `talos:design`. For backend module layout, see `talos:module`.
+For the design system this app composes, see `talos-design`. For backend module layout, see `talos-module`.

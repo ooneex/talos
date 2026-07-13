@@ -1,5 +1,5 @@
 ---
-name: sdk:create
+name: sdk-create
 description: Generate a browser SDK module from a target app or microservice's controllers, then complete the generated api methods. Use when creating a typed client SDK that calls backend controllers over HTTP via @talosjs/fetcher, HTTP streaming / Server-Sent Events via native fetch, or WebSocket via @talosjs/socket-client.
 ---
 
@@ -7,7 +7,7 @@ description: Generate a browser SDK module from a target app or microservice's c
 
 > **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
 
-Generate an SDK module from the controllers of a target module, then complete each generated `api` method. Follow the shared workflow in the `talos:scaffold` skill for the run-from-root rule and lint/format; this skill covers only the SDK-specific parts.
+Generate an SDK module from the controllers of a target module, then complete each generated `api` method. Follow the shared workflow in the `talos-scaffold` skill for the run-from-root rule and lint/format; this skill covers only the SDK-specific parts.
 
 An SDK is **not** a regular artifact: it scaffolds a whole module (one file per source module) rather than a single class with a test. It registers nothing in `AppModule`/`SharedModule` (the generator already keeps it out), and it has no `.spec.ts` to complete. Your job after generating is to fill in the `api` method bodies and the endpoint prefix.
 

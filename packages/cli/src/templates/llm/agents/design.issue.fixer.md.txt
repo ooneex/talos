@@ -25,7 +25,7 @@ path you checked and stop.
 Pre-flight checks before implementing:
 - If `state` is already `Done` — stop and report the issue is already done.
 - If `goal` is missing or empty — stop and report there is nothing to implement
-  (suggest `/issue:plan` first).
+  (suggest `/issue-plan` first).
 - If a `dependencies` entry is not yet `Done` and was not handed to you in the
   batch — stop and report which dependency must be implemented first.
 

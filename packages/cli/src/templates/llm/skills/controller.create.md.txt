@@ -1,5 +1,5 @@
 ---
-name: controller:create
+name: controller-create
 description: Generate a new controller class with route type and test file, then complete the generated code. Use when creating a new HTTP or WebSocket controller with routing, validation, and role-based access.
 ---
 
@@ -7,7 +7,7 @@ description: Generate a new controller class with route type and test file, then
 
 > **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
 
-Generate a controller class, route type, and test file, then complete the implementation. Follow the shared workflow in the `talos:scaffold` skill (run-from-root, `--name`/`--module` inference, module registration, lint/format, and coding conventions); this skill covers only the controller-specific parts.
+Generate a controller class, route type, and test file, then complete the implementation. Follow the shared workflow in the `talos-scaffold` skill (run-from-root, `--name`/`--module` inference, module registration, lint/format, and coding conventions); this skill covers only the controller-specific parts.
 
 ## Steps
 
@@ -207,7 +207,7 @@ describe("<Name>Controller", () => {
 
 ### 6. Register the controller
 
-Add `<Name>Controller` to the `controllers` array in `src/<PascalModuleName>Module.ts` (see `talos:scaffold` for the `ModuleType` shape).
+Add `<Name>Controller` to the `controllers` array in `src/<PascalModuleName>Module.ts` (see `talos-scaffold` for the `ModuleType` shape).
 
 ### 7. Lint, format, and test
 
@@ -220,7 +220,7 @@ Fix every failure before completing.
 ### 8. Create the service
 
 ```
-/service:create --name=<Name>
+/service-create --name=<Name>
 ```
 
 ### 9. Create the pubsub event (mutation routes only)
@@ -228,7 +228,7 @@ Fix every failure before completing.
 **Only for `post`, `put`, `patch`, `delete` routes — skip for `get`.**
 
 ```
-/event:create --name=<Name> --channel=<resource>.<action>
+/event-create --name=<Name> --channel=<resource>.<action>
 ```
 
 Once created:
@@ -237,15 +237,15 @@ Once created:
 
 ### 10. Sync the SDK module
 
-A controller's route is part of the SDK surface, so whenever you **create or update** a controller, refresh any SDK that exposes it via the `sdk:create` skill. An SDK module is any module whose `<name>.yml` has `type: "sdk"`; its `target` field records the module it was generated from (`app`, or a specific microservice).
+A controller's route is part of the SDK surface, so whenever you **create or update** a controller, refresh any SDK that exposes it via the `sdk-create` skill. An SDK module is any module whose `<name>.yml` has `type: "sdk"`; its `target` field records the module it was generated from (`app`, or a specific microservice).
 
 For each SDK module whose `target` covers the controller's module — an `app` target covers every backend `module`/`api` module; a microservice target covers only itself — regenerate it with that SDK's own name and target:
 
 ```
-/sdk:create --name=<sdk module name> --module=<target>
+/sdk-create --name=<sdk module name> --module=<target>
 ```
 
-Then complete the new or updated `api` method for this controller as described in the `sdk:create` skill. Skip this step when no SDK module targets the controller's module.
+Then complete the new or updated `api` method for this controller as described in the `sdk-create` skill. Skip this step when no SDK module targets the controller's module.
 
 ## Usage Examples
 

@@ -1,5 +1,5 @@
 ---
-name: workflow:transition:create
+name: workflow-transition-create
 description: Generate a new workflow transition class with its test file, then complete the generated code. Use when adding a single conditional, reversible step that implements ITransition from @talosjs/workflow for use inside a workflow.
 ---
 
@@ -7,7 +7,7 @@ description: Generate a new workflow transition class with its test file, then c
 
 > **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
 
-Generate a workflow transition class and test file, then complete the implementation. Follow the shared workflow in the `talos:scaffold` skill (run-from-root, `--name`/`--module` inference, lint/format, and coding conventions); this skill covers only the transition-specific parts.
+Generate a workflow transition class and test file, then complete the implementation. Follow the shared workflow in the `talos-scaffold` skill (run-from-root, `--name`/`--module` inference, lint/format, and coding conventions); this skill covers only the transition-specific parts.
 
 > A transition is one step of a `workflow:create` workflow. Generate the workflow first (or alongside), then list this transition in its `getTransitions()`.
 

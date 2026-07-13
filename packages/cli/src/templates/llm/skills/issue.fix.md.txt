@@ -1,5 +1,5 @@
 ---
-name: issue:fix
+name: issue-fix
 description: Find one or more issues from the user's input and implement them by dispatching each to the fixer sub-agent that matches its module type. Infers the target modules and issue IDs from whatever the user says, reads each modules/<module>/issues/<ID>.yml to resolve and sequence the work, then hands each issue to its fixer (backend module/api/microservice, spa, or design), which implements it, lints, satisfies the Definition of Done, and marks it Done.
 ---
 
@@ -28,7 +28,7 @@ The user does **not** have to pass explicit flags — infer the target issues fr
 
 Build the full `(module, ID)` list first. Then run steps 2–3 for **each** issue in dependency order (an issue whose `dependencies` are also in the batch comes after them). Read each issue file at `modules/<module>/issues/<ID>.yml` to resolve, sequence, and pre-screen it.
 
-A planned issue YML (produced by `/issue:plan`) looks like:
+A planned issue YML (produced by `/issue-plan`) looks like:
 
 ```yaml
 id: "ENG-45"
@@ -59,7 +59,7 @@ Pre-screen each resolved issue before dispatching it (the fixer re-checks these,
 
 - If a requested issue's file does not exist, record the exact path checked, skip it, and continue with the rest — report all missing paths in the final summary.
 - If the issue's `state` is already `Done`, skip it and note it (already done) — do not re-implement it.
-- If the issue has only a free-form `description` (it was never planned — no `goal`/`dod`), either run `/issue:plan` first or let the fixer treat the `description` as the `goal`. If `goal` is missing or empty, skip it and note there is nothing to implement.
+- If the issue has only a free-form `description` (it was never planned — no `goal`/`dod`), either run `/issue-plan` first or let the fixer treat the `description` as the `goal`. If `goal` is missing or empty, skip it and note there is nothing to implement.
 
 If the input resolves to **no** issues at all, stop and tell the user nothing matched.
 
@@ -77,7 +77,7 @@ Implementation is owned entirely by the **fixer sub-agents** — this skill neve
 
 Each fixer analyses the issue (`context` / `goal` / `dod` / `dependencies`, plus any `resources`/`spec` block), implements the artefacts the `goal` calls for following that module's conventions and Clean Architecture, runs `talos monorepo:check` from the project root, checks off every satisfied `dod` box, sets `state: "Done"` when all boxes pass, and returns a report.
 
-When an issue's `goal` describes a multi-step business process — a sequence of conditional, reversible steps that should roll back together when a later step fails — the fixer should use the `@talosjs/workflow` package (`packages/workflow/`), scaffolding it with `/workflow:create` and `/workflow:transition:create` (or `talos workflow:create` / `talos workflow:transition:create`) instead of hand-rolling the orchestration. Only reach for it when the work actually calls for it; a simple single-step change does not need a workflow.
+When an issue's `goal` describes a multi-step business process — a sequence of conditional, reversible steps that should roll back together when a later step fails — the fixer should use the `@talosjs/workflow` package (`packages/workflow/`), scaffolding it with `/workflow-create` and `/workflow-transition-create` (or `talos workflow:create` / `talos workflow:transition:create`) instead of hand-rolling the orchestration. Only reach for it when the work actually calls for it; a simple single-step change does not need a workflow.
 
 Dispatch in **dependency order**: an issue whose `dependencies` are also in the batch is dispatched after them. Independent issues may be dispatched concurrently. If a dispatched issue has a dependency that is **not** in the batch and not yet `Done`, the fixer stops and reports it — carry that into the summary.
 

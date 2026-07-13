@@ -1,5 +1,5 @@
 ---
-name: migration:create
+name: migration-create
 description: Generate a new database migration file, then complete the generated code. Use when creating a new database migration for schema changes using @talosjs/migrations.
 ---
 
@@ -7,7 +7,7 @@ description: Generate a new database migration file, then complete the generated
 
 > **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
 
-Generate a migration file, then complete the implementation. Follow the shared workflow in the `talos:scaffold` skill (run-from-root, `--module` inference, lint/format, and coding conventions); this skill covers only the migration-specific parts.
+Generate a migration file, then complete the implementation. Follow the shared workflow in the `talos-scaffold` skill (run-from-root, `--module` inference, lint/format, and coding conventions); this skill covers only the migration-specific parts.
 
 ## Steps
 

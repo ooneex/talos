@@ -1,5 +1,5 @@
 ---
-name: vector-database:create
+name: vector-database-create
 description: Generate a new vector database class with its test file, then complete the generated code. Use when creating a new vector database that extends VectorDatabase from @talosjs/rag.
 ---
 
@@ -7,7 +7,7 @@ description: Generate a new vector database class with its test file, then compl
 
 > **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
 
-Generate a vector database class and test file, then complete the implementation. Follow the shared workflow in the `talos:scaffold` skill (run-from-root, `--name`/`--module` inference, module registration, lint/format, and coding conventions); this skill covers only the vector-database-specific parts.
+Generate a vector database class and test file, then complete the implementation. Follow the shared workflow in the `talos-scaffold` skill (run-from-root, `--name`/`--module` inference, module registration, lint/format, and coding conventions); this skill covers only the vector-database-specific parts.
 
 ## Steps
 

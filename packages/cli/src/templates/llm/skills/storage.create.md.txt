@@ -1,5 +1,5 @@
 ---
-name: storage:create
+name: storage-create
 description: Generate a new storage class with its test file, then complete the generated code. Use when creating a new S3-compatible storage adapter that extends Storage from @talosjs/storage.
 ---
 
@@ -7,7 +7,7 @@ description: Generate a new storage class with its test file, then complete the 
 
 > **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
 
-Generate a storage class and test file, then complete the implementation. Follow the shared workflow in the `talos:scaffold` skill (run-from-root, `--name`/`--module` inference, module registration, lint/format, and coding conventions); this skill covers only the storage-specific parts.
+Generate a storage class and test file, then complete the implementation. Follow the shared workflow in the `talos-scaffold` skill (run-from-root, `--name`/`--module` inference, module registration, lint/format, and coding conventions); this skill covers only the storage-specific parts.
 
 ## Steps
 

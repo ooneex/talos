@@ -1,5 +1,5 @@
 ---
-name: middleware:create
+name: middleware-create
 description: Generate a new middleware class with its test file, then complete the generated code. Use when creating a new HTTP or WebSocket middleware that implements IMiddleware from @talosjs/middleware.
 ---
 
@@ -7,7 +7,7 @@ description: Generate a new middleware class with its test file, then complete t
 
 > **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
 
-Generate a middleware class and test file, then complete the implementation. Follow the shared workflow in the `talos:scaffold` skill (run-from-root, `--name`/`--module` inference, module registration, lint/format, and coding conventions); this skill covers only the middleware-specific parts.
+Generate a middleware class and test file, then complete the implementation. Follow the shared workflow in the `talos-scaffold` skill (run-from-root, `--name`/`--module` inference, module registration, lint/format, and coding conventions); this skill covers only the middleware-specific parts.
 
 ## Steps
 
@@ -118,7 +118,7 @@ describe("<Name>Middleware", () => {
 
 ### 4. Register the middleware
 
-Add `<Name>Middleware` to the `middlewares` array in `src/<PascalModuleName>Module.ts` (see `talos:scaffold` for the `ModuleType` shape).
+Add `<Name>Middleware` to the `middlewares` array in `src/<PascalModuleName>Module.ts` (see `talos-scaffold` for the `ModuleType` shape).
 
 ### 5. Lint, format, and test
 

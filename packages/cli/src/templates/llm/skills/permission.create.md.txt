@@ -1,5 +1,5 @@
 ---
-name: permission:create
+name: permission-create
 description: Generate a new permission class with its test file, then complete the generated code. Use when creating a new permission that extends Permission from @talosjs/permission.
 ---
 
@@ -7,7 +7,7 @@ description: Generate a new permission class with its test file, then complete t
 
 > **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
 
-Generate a permission class and test file, then complete the implementation. Follow the shared workflow in the `talos:scaffold` skill (run-from-root, `--name`/`--module` inference, module registration, lint/format, and coding conventions); this skill covers only the permission-specific parts.
+Generate a permission class and test file, then complete the implementation. Follow the shared workflow in the `talos-scaffold` skill (run-from-root, `--name`/`--module` inference, module registration, lint/format, and coding conventions); this skill covers only the permission-specific parts.
 
 ## Steps
 

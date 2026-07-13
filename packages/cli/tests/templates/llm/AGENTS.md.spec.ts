@@ -19,28 +19,28 @@ describe("llm/AGENTS.md.txt", () => {
 
   test("should index the reference skills", async () => {
     const content = await Bun.file(templatePath).text();
-    expect(content).toContain("`talos:packages`");
-    expect(content).toContain("`talos:architecture`");
-    expect(content).toContain("`talos:commands`");
-    expect(content).toContain("`talos:module`");
-    expect(content).toContain("`talos:design`");
-    expect(content).toContain("`talos:spa`");
-    expect(content).toContain("`talos:env`");
-    expect(content).toContain("`talos:scaffold`");
+    expect(content).toContain("`talos-packages`");
+    expect(content).toContain("`talos-architecture`");
+    expect(content).toContain("`talos-commands`");
+    expect(content).toContain("`talos-module`");
+    expect(content).toContain("`talos-design`");
+    expect(content).toContain("`talos-spa`");
+    expect(content).toContain("`talos-env`");
+    expect(content).toContain("`talos-scaffold`");
   });
 
   test("should list the new generator artefacts", async () => {
     const content = await Bun.file(templatePath).text();
     expect(content).toContain("`queue`");
     expect(content).toContain("`rate-limit`");
-    expect(content).toContain("`spa:feature`");
+    expect(content).toContain("`spa-feature`");
   });
 
   test("should index the sdk and workflow generators", async () => {
     const content = await Bun.file(templatePath).text();
-    expect(content).toContain("/sdk:create");
-    expect(content).toContain("/workflow:create");
-    expect(content).toContain("/workflow:transition:create");
+    expect(content).toContain("/sdk-create");
+    expect(content).toContain("/workflow-create");
+    expect(content).toContain("/workflow-transition-create");
   });
 
   test("should index the workflow skills", async () => {
@@ -49,11 +49,11 @@ describe("llm/AGENTS.md.txt", () => {
     expect(content).toContain("/pr");
     expect(content).toContain("/review");
     expect(content).toContain("/debug");
-    expect(content).toContain("/database:migrate");
+    expect(content).toContain("/database-migrate");
     expect(content).toContain("/optimize");
-    expect(content).toContain("/translation:translate");
-    expect(content).toContain("/issue:found");
-    expect(content).toContain("/issue:plan");
-    expect(content).toContain("/issue:fix");
+    expect(content).toContain("/translation-translate");
+    expect(content).toContain("/issue-found");
+    expect(content).toContain("/issue-plan");
+    expect(content).toContain("/issue-fix");
   });
 });

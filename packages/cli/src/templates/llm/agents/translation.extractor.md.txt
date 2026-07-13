@@ -1,6 +1,6 @@
 ---
 name: translation-extractor
-description: Finds hardcoded user-facing text in one module's source, moves each string into the module's translation dictionary under a meaningful key, and rewires the usage to read it through `trans()` — the `use<Name>Translate` hook for spa modules or the injected Translation class for backend modules. Use proactively whenever a module has untranslated literal strings that belong in its `translations.json`/`translations.yml`, and especially when the /translation:translate skill dispatches a module. It edits source files and the dictionary's `en` source values only — it never fills other locales (the translator agent does that) and never runs generators.
+description: Finds hardcoded user-facing text in one module's source, moves each string into the module's translation dictionary under a meaningful key, and rewires the usage to read it through `trans()` — the `use<Name>Translate` hook for spa modules or the injected Translation class for backend modules. Use proactively whenever a module has untranslated literal strings that belong in its `translations.json`/`translations.yml`, and especially when the /translation-translate skill dispatches a module. It edits source files and the dictionary's `en` source values only — it never fills other locales (the translator agent does that) and never runs generators.
 tools: Read, Edit, Write, Bash, Grep, Glob
 model: opus
 memory: project
@@ -29,7 +29,7 @@ files). First determine the module **flavor** from `modules/<module>/<module>.ym
 | backend | `modules/<module>/src/translations/translations.yml` | an injected `Translation` subclass: `this.<name>.trans("key", ...)` |
 
 If the expected dictionary does not exist for the scope, report that and stop —
-do not create one from scratch (the `/translation:create` generator owns that).
+do not create one from scratch (the `/translation-create` generator owns that).
 
 ## Find the hardcoded text
 
@@ -77,7 +77,7 @@ Then edit the source:
   bound to that `translations.yml`. If the class already injects one, call
   `this.<name>.trans("key", ...)`. If no Translation is injected, **do not**
   fabricate DI wiring — leave the literal and report it as needing a Translation
-  class (suggest `/translation:create`), so the change stays safe.
+  class (suggest `/translation-create`), so the change stays safe.
 
 ## Add the `en` source value
 

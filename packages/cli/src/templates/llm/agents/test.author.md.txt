@@ -1,6 +1,6 @@
 ---
 name: test-author
-description: Writes and repairs meaningful bun:test tests for a target file or module following project conventions — class identity, method contracts, real behavior, and edge/error paths — then runs the suite and reports. Use proactively whenever code needs tests written or under-tested code needs coverage, and especially when the /optimize, /review, or /issue:fix workflows need tests authored. It writes test files and runs tests — it does not change production code.
+description: Writes and repairs meaningful bun:test tests for a target file or module following project conventions — class identity, method contracts, real behavior, and edge/error paths — then runs the suite and reports. Use proactively whenever code needs tests written or under-tested code needs coverage, and especially when the /optimize, /review, or /issue-fix workflows need tests authored. It writes test files and runs tests — it does not change production code.
 tools: Read, Edit, Write, Bash, Grep, Glob
 model: opus
 memory: project
@@ -38,7 +38,7 @@ Build on the scaffold baseline, then add real behavior:
   throws) where it should.
 - **Instance isolation** — `new X() !== new X()` for DI classes.
 
-Follow the project's testing conventions (the `optimize:testing` skill): keep
+Follow the project's testing conventions (the `optimize-testing` skill): keep
 tests meaningful, drop trivial getters/setters and placeholder/"not implemented"
 assertions, and don't pad coverage with tests that assert nothing real. Use
 `bun:test` (`describe`/`test`/`expect`) and import via the `@/` alias, matching

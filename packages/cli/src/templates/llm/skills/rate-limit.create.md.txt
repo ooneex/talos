@@ -1,5 +1,5 @@
 ---
-name: rate-limit:create
+name: rate-limit-create
 description: Generate a new rate limiter class with its test file, then complete the generated code. Use when creating a custom request throttling strategy that implements the IRateLimiter interface from @talosjs/rate-limit.
 ---
 
@@ -7,7 +7,7 @@ description: Generate a new rate limiter class with its test file, then complete
 
 > **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
 
-Generate a rate limiter class and test file, then complete the implementation. Follow the shared workflow in the `talos:scaffold` skill (run-from-root, `--name`/`--module` inference, lint/format, and coding conventions); this skill covers only the rate-limit-specific parts.
+Generate a rate limiter class and test file, then complete the implementation. Follow the shared workflow in the `talos-scaffold` skill (run-from-root, `--name`/`--module` inference, lint/format, and coding conventions); this skill covers only the rate-limit-specific parts.
 
 ## Steps
 

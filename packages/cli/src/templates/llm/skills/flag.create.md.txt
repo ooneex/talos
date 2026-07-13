@@ -1,5 +1,5 @@
 ---
-name: flag:create
+name: flag-create
 description: Generate a new feature flag class with its test file, then complete the generated code. Use when creating a new feature flag that implements the IFeatureFlag interface from @talosjs/feature-flag.
 ---
 
@@ -7,7 +7,7 @@ description: Generate a new feature flag class with its test file, then complete
 
 > **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
 
-Generate a feature flag class and test file, then complete the implementation. Follow the shared workflow in the `talos:scaffold` skill (run-from-root, `--name`/`--module` inference, module registration, lint/format, and coding conventions); this skill covers only the feature-flag-specific parts.
+Generate a feature flag class and test file, then complete the implementation. Follow the shared workflow in the `talos-scaffold` skill (run-from-root, `--name`/`--module` inference, module registration, lint/format, and coding conventions); this skill covers only the feature-flag-specific parts.
 
 ## Steps
 

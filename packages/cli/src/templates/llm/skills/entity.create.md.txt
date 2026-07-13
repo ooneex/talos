@@ -1,5 +1,5 @@
 ---
-name: entity:create
+name: entity-create
 description: Generate a new TypeORM entity class with its test file, then complete the generated code. Use when creating a new database entity with columns, relations, and table mapping.
 ---
 
@@ -7,7 +7,7 @@ description: Generate a new TypeORM entity class with its test file, then comple
 
 > **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
 
-Generate an entity class and test file, then complete the implementation. Follow the shared workflow in the `talos:scaffold` skill (run-from-root, `--name`/`--module` inference, module registration, lint/format, and coding conventions); this skill covers only the entity-specific parts.
+Generate an entity class and test file, then complete the implementation. Follow the shared workflow in the `talos-scaffold` skill (run-from-root, `--name`/`--module` inference, module registration, lint/format, and coding conventions); this skill covers only the entity-specific parts.
 
 ## Steps
 
@@ -335,7 +335,7 @@ describe("<Name>Entity", () => {
 
 ### 4. Register the entity
 
-Add `<Name>Entity` to the `entities` array in `src/<PascalModuleName>Module.ts` (see `talos:scaffold` for the `ModuleType` shape).
+Add `<Name>Entity` to the `entities` array in `src/<PascalModuleName>Module.ts` (see `talos-scaffold` for the `ModuleType` shape).
 
 ### 5. Lint, format, and test
 

@@ -26,7 +26,7 @@ path you checked and stop.
 Pre-flight checks before implementing:
 - If `state` is already `Done` — stop and report the issue is already done.
 - If `goal` is missing or empty — stop and report there is nothing to implement
-  (suggest `/issue:plan` first).
+  (suggest `/issue-plan` first).
 - If a `dependencies` entry is not yet `Done` and was not handed to you in the
   batch — stop and report which dependency must be implemented first.
 
@@ -58,33 +58,33 @@ implementing.
 Derive the artefacts from `### Data Model` and the `dod`, then run the matching
 generator skills:
 
-- **Service** — `/service:create --name=<ServiceName> --module=<module>`. Inject
+- **Service** — `/service-create --name=<ServiceName> --module=<module>`. Inject
   the repository via the constructor and implement `execute()` with the business
   logic. Make handlers that consume events/messages **idempotent** (dedupe on a
   key so redelivery/retry cannot corrupt state); give outbound calls timeouts
   and bounded retries with backoff; do not assume strong consistency where the
   system is eventually consistent.
 - **Event / message handlers** — when the issue involves pub/sub:
-  `/event:create --name=<Name> --module=<module>`. Version payloads carefully so
+  `/event-create --name=<Name> --module=<module>`. Version payloads carefully so
   producers and consumers stay in sync; validate inbound messages; handle
   failure/dead-letter paths.
-- **Entity** — when involved: `/entity:create --name=<EntityName> --module=<module>`.
+- **Entity** — when involved: `/entity-create --name=<EntityName> --module=<module>`.
   Implement columns/relations from `### Data Model`. Respect data ownership —
   this service owns its tables; do not reach into another service's data.
 - **Migration** — when the entity introduces new columns/tables/relations:
-  `/migration:create --module=<module>`. Implement `up()` and a reversing `down()`.
-- **Repository** — `/repository:create --name=<RepositoryName> --module=<module>`.
+  `/migration-create --module=<module>`. Implement `up()` and a reversing `down()`.
+- **Repository** — `/repository-create --name=<RepositoryName> --module=<module>`.
   Keep only the CRUD methods this issue needs; remove uncalled methods.
 - **Controller** — when an HTTP endpoint is needed:
-  `/controller:create --name=<ControllerName> --module=<module> --route-name=<name> --route-path=<derived-path> --route-method=<derived-method>`.
+  `/controller-create --name=<ControllerName> --module=<module> --route-name=<name> --route-path=<derived-path> --route-method=<derived-method>`.
   Inject the service; set `roles`/permissions on `@Route`.
 - **Command** — when a CLI command is needed:
-  `/command:create --name=<CommandName> --module=<module>`. Inject the service;
+  `/command-create --name=<CommandName> --module=<module>`. Inject the service;
   set `getName()` to `"<entity>:<action>"`.
 - **Optional resources** — create each additional artefact the goal calls for
   with its skill (`permission`, `middleware`, `cache`, `mailer`, `logger`,
   `analytics`, `storage`, `cron`, `ai`, `database`, `vectorDatabase` —
-  `/<artefact>:create --name=<Name> --module=<module>`). Wire structured logging
+  `/<artefact>-create --name=<Name> --module=<module>`). Wire structured logging
   / correlation IDs on failure paths where the goal calls for observability. Do
   not create artefacts the goal does not call for.
 
