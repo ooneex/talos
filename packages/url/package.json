@@ -1,7 +1,7 @@
 {
   "name": "@talosjs/url",
   "description": "URL parsing and manipulation library with query string handling, path normalization, and route parameter extraction for web applications",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "type": "module",
   "files": [
     "dist",
