@@ -1,7 +1,7 @@
 {
   "name": "@talosjs/storage",
   "description": "File storage abstraction supporting local filesystem and cloud providers — upload, download, list, and manage files with a unified bucket-based API",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "type": "module",
   "files": [
     "dist",
