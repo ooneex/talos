@@ -27,7 +27,7 @@ Invoke each sub-skill only at the step that needs it; skip ones that don't apply
 |---|---|---|
 | `optimize-conventions` | steps 3–5 | always |
 | `optimize-testing` | step 6 | the module has tests |
-| `optimize-react` | step 7 | module is `design` or `spa` only |
+| `optimize-ui` | step 7 | module is `design` or `spa` only |
 
 ## Steps
 
@@ -53,7 +53,7 @@ Invoke each sub-skill only at the step that needs it; skip ones that don't apply
 
 6. **Tests** — invoke `optimize-testing`, then prune trivial tests, keep/improve meaningful ones, consolidate redundancy.
 
-7. **React** — if `design`/`spa`, invoke `optimize-react` and adopt its patterns.
+7. **UI** — if `design`/`spa`, invoke `optimize-ui` and adopt its patterns.
 
 8. **Verify** — from the root:
 

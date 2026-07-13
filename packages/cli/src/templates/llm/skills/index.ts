@@ -25,8 +25,16 @@ import migrationCreate from "./migration.create.md.txt";
 import moduleCreate from "./module.create.md.txt";
 import optimizeConventions from "./optimize.conventions.md.txt";
 import optimize from "./optimize.md.txt";
-import optimizeReact from "./optimize.react.md.txt";
 import optimizeTesting from "./optimize.testing.md.txt";
+import optimizeUiColorContrast from "./optimize.ui/color-contrast.md.txt";
+import optimizeUiDataAndPerformance from "./optimize.ui/data-and-performance.md.txt";
+import optimizeUiInteractionStates from "./optimize.ui/interaction-states.md.txt";
+import optimizeUiLayoutSpacing from "./optimize.ui/layout-spacing.md.txt";
+import optimizeUiMotion from "./optimize.ui/motion.md.txt";
+import optimizeUiStateAndHooks from "./optimize.ui/state-and-hooks.md.txt";
+import optimizeUiSurfaces from "./optimize.ui/surfaces.md.txt";
+import optimizeUiTypography from "./optimize.ui/typography.md.txt";
+import optimizeUi from "./optimize.ui.md.txt";
 import permissionCreate from "./permission.create.md.txt";
 import pr from "./pr.md.txt";
 import queueCreate from "./queue.create.md.txt";
@@ -108,5 +116,17 @@ export const skills: Record<string, SkillTemplateType> = {
   optimize: optimize,
   "optimize.conventions": optimizeConventions,
   "optimize.testing": optimizeTesting,
-  "optimize.react": optimizeReact,
+  "optimize.ui": {
+    skill: optimizeUi,
+    references: {
+      "interaction-states.md": optimizeUiInteractionStates,
+      "motion.md": optimizeUiMotion,
+      "typography.md": optimizeUiTypography,
+      "color-contrast.md": optimizeUiColorContrast,
+      "surfaces.md": optimizeUiSurfaces,
+      "layout-spacing.md": optimizeUiLayoutSpacing,
+      "state-and-hooks.md": optimizeUiStateAndHooks,
+      "data-and-performance.md": optimizeUiDataAndPerformance,
+    },
+  },
 };

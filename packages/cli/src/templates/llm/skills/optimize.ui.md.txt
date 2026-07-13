@@ -1,11 +1,11 @@
 ---
-name: optimize-react
-description: Recommended React patterns and UI/UX craft rules for design and spa modules — always use the project's main design system, custom hooks, compound components, Zustand state, TanStack Query/Virtual/Pacer/Hotkeys, plus concrete rules for interaction states, motion, typography, color/contrast, surfaces, and perceived performance. Use only when building or optimizing a React module (design or spa).
+name: optimize-ui
+description: Recommended UI/UX craft rules and React implementation patterns for design and spa modules — design-system-first styling plus reference docs for interaction states, motion, typography, color/contrast, surfaces, layout, hooks, and TanStack/Zustand state. Use only when building or optimizing a React module (design or spa).
 user-invocable: false
 disallowed-tools: AskUserQuestion
 ---
 
-# React Patterns (design & spa modules)
+# UI & React Patterns (design & spa modules)
 
 > **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
 
@@ -33,245 +33,28 @@ bun add zustand @tanstack/react-query @tanstack/react-virtual @tanstack/react-pa
   ```
 
 - When optimizing existing UI, replace ad-hoc styled elements (raw `<button>`, `<input>`, one-off styled divs) with the design system's equivalents. Only fall back to plain elements when the design system has no matching component — and prefer adding the missing primitive to the design module over duplicating styles in the SPA.
-- In a `design` module, extend the system itself: new components belong in the design module and follow its existing tokens, variants, and conventions — colors, spacing, radii, shadows, and type sizes below must always resolve to the design system's tokens, never a hardcoded one-off value.
+- In a `design` module, extend the system itself: new components belong in the design module and follow its existing tokens, variants, and conventions — colors, spacing, radii, shadows, and type sizes must always resolve to the design system's tokens, never a hardcoded one-off value.
 - Before styling anything, do a quick design-system discovery pass: does a token/component already cover this? If a deviation is unavoidable, classify it (missing token vs. one-off implementation vs. conceptual mismatch with neighboring screens) so the fix addresses the real cause instead of patching the symptom.
 
-## Interaction & states
+## UI craft references
 
-Every interactive element needs a full, consistent state vocabulary — most UI bugs are a missing state, not a wrong one.
+Read the reference(s) below that are relevant to what you're touching **before** implementing — each is short and focused, so open only what applies rather than guessing:
 
-- Design/verify all states that apply: default, hover, focus, active, disabled, loading, error, success, selected. Hover-only affordances are the most common miss — keyboard and touch users never see `:hover`.
-- Never remove the focus outline without a `:focus-visible` replacement (visible ring, offset not inset, sufficient contrast against adjacent colors).
-- Use skeletons that mirror the loaded content's shape for in-context loading, not spinners — they read as faster and prevent layout jumps when content arrives. Reserve spinners for actions with no predictable shape (e.g. a button's own busy state).
-- Optimistic UI updates (apply immediately, roll back on failure) are only for low-stakes, reversible actions (likes, toggles, follows) — never for payments or destructive/irreversible operations.
-- For destructive actions, prefer remove-then-undo (apply immediately, show an undo toast, commit for real after it expires) over a confirm dialog; reserve confirmation dialogs for truly irreversible or high-cost/batch actions.
-- Empty states are an onboarding moment, not a dead end — say what will appear there, why it matters, and give one clear next action. Never ship a bare "No items."
-- Error messages follow: what happened + why + how to fix it, with an example where useful. Never blame the user ("Invalid input" → "Email addresses need an @ symbol, e.g. name@example.com.") and never use humor in error copy.
-- Button/action labels are verb + object, never "OK"/"Submit"/generic "Yes"/"No" — e.g. "Save changes", "Delete 5 items" (show the count for destructive bulk actions).
-- Dropdowns/menus/tooltips must not clip inside `overflow: hidden|auto` ancestors — use the design system's overlay/portal primitive (or the Popover API / anchor positioning) instead of nested `position: absolute`.
-- Minimum interactive hit area is 44×44px on touch surfaces (≥40×40px in dense desktop UI); grow small controls (checkboxes, icon buttons) with an invisible pseudo-element rather than enlarging the visible glyph. Two hit areas must never overlap.
-- Keep decision points scannable: cap visible options per screen (nav ≤5 top-level items, form sections ≤4 fields before a break) rather than dumping every choice into one view.
+| Reference | Read it when you're touching... |
+|---|---|
+| `references/interaction-states.md` | any interactive element — hover/focus/active/disabled/loading/error states, empty states, error copy, destructive actions, hit areas |
+| `references/motion.md` | any transition, animation, or entrance/exit effect |
+| `references/typography.md` | text sizes, line length, dynamic numbers, headings |
+| `references/color-contrast.md` | colors, contrast, state indicators, accent usage |
+| `references/surfaces.md` | shadows, borders, cards, elevation, radii |
+| `references/layout-spacing.md` | spacing, gaps, grids/flex, breakpoints, z-index |
 
-## Spacing & layout
+## React pattern references
 
-**Space sibling elements with a single `gap` on their parent flex/grid container — never with per-element margins (`mt-*`/`mb-*`/`my-*`).** A `gap` is the one source of truth, so spacing stays uniform automatically and survives elements being added, removed, reordered, or conditionally swapped.
-
-- When a layout uses a flex/grid container, set the between-element spacing with `gap-*` on the parent and delete the children's own vertical margins.
-- Stacking a margin on a child _on top of_ the parent's `gap` is the usual cause of uneven gaps — audit for it when spacing looks inconsistent.
-- Keep margins only for spacing _within_ a block that the container's `gap` doesn't govern (e.g. a caption tucked under a heading inside the same child).
-
-```tsx
-// ❌ per-element margins stack on top of the parent gap → uneven spacing
-<Card className="flex flex-col gap-4">
-  <Header className="mb-8" />
-  <Body />
-  <Footer className="mt-5" />
-</Card>
-
-// ✅ one gap on the parent governs every sibling → uniform spacing
-<Card className="flex flex-col gap-6">
-  <Header />
-  <Body />
-  <Footer />
-</Card>
-```
-
-Further layout rules:
-
-- Use the design system's spacing scale (typically 4pt-based: 4/8/12/16/24/32/48/64/96) for every gap/padding value — never an arbitrary pixel value.
-- Concentric radii: a nested element's corner radius should equal `outerRadius - padding` (not match the parent's radius) so nested rounds look intentional instead of visually competing.
-- Flexbox for one-dimensional layout (rows, nav, button groups, component internals); Grid for two-dimensional layout (page structure, dashboards, coordinated rows+columns). Don't reach for Grid where `flex-wrap` is enough.
-- Prefer container queries for a component that must adapt to the space it's placed in (e.g. a card compact in a sidebar, expanded in main content); reserve viewport/media queries for page-level layout.
-- Give flex/grid children `min-width: 0` (and `min-height: 0` in a grid) so they can shrink below their content size — without it they silently overflow the container.
-- Pick breakpoints where the content actually breaks, not at device-specific widths, and write mobile-first (`min-width`) media queries so small screens don't load unneeded desktop styles first.
-- Build hierarchy from at least two combined dimensions (size + weight, or size + spacing) rather than size alone — a heading that's bigger *and* bolder *and* has more space above reads as primary without extra effort.
-- Use a semantic z-index scale (dropdown → sticky → modal-backdrop → modal → toast → tooltip) from the design system's tokens; never arbitrary values like `999`/`9999`.
-
-## Typography
-
-- Use the design system's type scale — do not introduce new font sizes. A muddy scale with many close sizes (14/15/16px) is the most common typographic failure; a handful of clearly distinct sizes reads as more deliberate.
-- Cap body text measure at roughly 65–75 characters per line; when a container widens, scale font-size with it so the measure stays in range instead of drifting into very long or very short lines.
-- Apply `font-variant-numeric: tabular-nums` to dynamically-updating numbers (counters, timers, live prices, table columns) so digit width doesn't shift the layout on update; skip it on static/decorative numbers.
-- Use `text-wrap: pretty` (no line-count limit) as the default for headings/captions/short body copy to avoid orphans; `text-wrap: balance` only works up to a handful of lines and is silently ignored beyond that, so don't rely on it for longer text.
-- Never signal emphasis with `background-clip: text` gradient text — it's decorative, not meaningful; use weight or size instead.
-
-## Color & contrast
-
-- Resolve every color from the design system's tokens — never hardcode a hex/rgb value inline. If a needed shade doesn't exist, add it to the design module's token set rather than inlining it.
-- Body text must hit at least 4.5:1 contrast against its background, large text (≥18px, or bold ≥14px) at least 3:1. When contrast is borderline, push the text color toward the ink end of the scale, not away from it.
-- Never place gray/muted text directly on a colored or tinted background — it reads as washed out. Use a darker shade of that background's own hue, or vary the text's own opacity, instead.
-- Never use color as the only signal for state (error/success/warning/selected) — always pair it with an icon, label, or pattern so it still reads for color-blind users and in grayscale.
-- Avoid a decorative colored `border-left`/`border-right` "accent stripe" on cards/alerts/list items — use a full hairline border, a light background tint, or a leading icon instead.
-- Reserve accent/brand color for the ~10% of the UI that should draw the eye (primary actions, active/selected state, focus rings); if it shows up everywhere it stops meaning "look here."
-
-## Surfaces & depth
-
-- Prefer a layered, low-opacity `box-shadow` over a solid-color border to express elevation on cards/menus/popovers — shadows read correctly over any background, while a fixed border color doesn't. Keep real (non-shadow) borders for structural dividers: table cells, list separators, input outlines.
-- Build elevation from the design system's shadow scale (sm → md → lg → xl) and use it to reinforce hierarchy (a popover sits above a card, a modal above a popover) — never add a shadow purely for decoration.
-- Don't combine a full 1px border *and* a soft wide drop-shadow on the same element ("ghost card") — pick one depth treatment, not both.
-- Keep corner radii modest on structural surfaces (cards, panels, inputs) and reserve full-pill rounding for tags/buttons/chips, not whole sections.
-
-## Motion & animation
-
-- Use CSS transitions (interruptible, can retarget mid-animation) for interactive state changes (hover, open/close, toggle); reserve keyframe animations for one-shot sequences (page-load entrance, an indeterminate spinner). A keyframe animation on a rapidly toggled element snaps/restarts instead of reversing smoothly.
-- Timing guide: ~100–150ms for instant feedback (press, toggle), ~200–300ms for state changes (menu, tooltip), ~300–500ms for layout changes (accordion, modal), ~500–800ms only for larger entrances. Exit animations should run faster and lighter than the matching enter animation.
-- Use an ease-out curve (`cubic-bezier` ease-out-quart/quint/expo) for UI motion; avoid bounce/elastic easing, which reads as dated rather than delightful.
-- Never `transition: all` (or Tailwind's bare `transition`) — name the exact properties (e.g. `transition-property: transform, opacity`). `transition: all` animates properties you didn't intend and blocks the browser from optimizing.
-- Only set `will-change` on `transform`/`opacity`/`filter`/`clip-path`, and only after observing real first-frame stutter — never apply it blanket/preemptively, since each layer has a memory cost.
-- Always provide a `prefers-reduced-motion` fallback (crossfade or instant transition) for any non-trivial animation — this is never optional.
-- When animating a list/grid, stagger real siblings (roughly 50–100ms apart, capped around 500ms total) — do not apply a uniform fade-in to every page section on scroll; that reads as generic template motion rather than purposeful.
-
-## Hooks
-
-Extract reusable stateful logic into custom hooks (`useXxx`) instead of duplicating it or using HOCs/render props.
-
-```typescript
-import { useEffect, useState } from "react";
-
-const useWindowWidth = (): number => {
-  const [width, setWidth] = useState(window.innerWidth);
-
-  useEffect(() => {
-    const handleResize = (): void => setWidth(window.innerWidth);
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
-  return width;
-};
-
-// usage
-const isMobile = useWindowWidth() < 768;
-```
-
-## Compound components
-
-Build flexible components as related parts sharing state via context, instead of one prop-heavy monolith.
-
-```tsx
-import { createContext, useContext, useState } from "react";
-
-type TabsContextType = {
-  active: string;
-  setActive: (id: string) => void;
-};
-
-const TabsContext = createContext<TabsContextType | null>(null);
-
-const Tabs = ({ children, defaultValue }: ITabsProps) => {
-  const [active, setActive] = useState(defaultValue);
-  return (
-    <TabsContext.Provider value={{ active, setActive }}>
-      {children}
-    </TabsContext.Provider>
-  );
-};
-
-const Tab = ({ value, children }: ITabProps) => {
-  const ctx = useContext(TabsContext);
-  return <button onClick={() => ctx?.setActive(value)}>{children}</button>;
-};
-
-const TabPanel = ({ value, children }: ITabPanelProps) => {
-  const ctx = useContext(TabsContext);
-  return ctx?.active === value ? <div>{children}</div> : null;
-};
-
-Tabs.Tab = Tab;
-Tabs.Panel = TabPanel;
-
-// usage
-<Tabs defaultValue="overview">
-  <Tabs.Tab value="overview">Overview</Tabs.Tab>
-  <Tabs.Panel value="overview">Overview content</Tabs.Panel>
-</Tabs>;
-```
-
-## Global state — Zustand
-
-Keep stores small and colocated; use selectors to avoid re-renders. https://zustand.docs.pmnd.rs/learn/getting-started/introduction
-
-```typescript
-import { create } from "zustand";
-
-type CounterStoreType = {
-  count: number;
-  increment: () => void;
-};
-
-const useCounterStore = create<CounterStoreType>((set) => ({
-  count: 0,
-  increment: () => set((state) => ({ count: state.count + 1 })),
-}));
-
-// select only what you need
-const count = useCounterStore((state) => state.count);
-```
-
-## Server state — TanStack Query
-
-Wrap each query/mutation in a custom hook. https://tanstack.com/query/latest
-
-```typescript
-import { useQuery } from "@tanstack/react-query";
-
-const useUsers = () =>
-  useQuery({
-    queryKey: ["users"],
-    queryFn: async (): Promise<UserType[]> => {
-      const response = await fetch("/api/users");
-      return response.json();
-    },
-  });
-
-// usage
-const { data, isLoading, error } = useUsers();
-```
-
-## Long lists — TanStack Virtual
-
-Render only visible rows. https://tanstack.com/virtual/latest
-
-```typescript
-import { useVirtualizer } from "@tanstack/react-virtual";
-
-const parentRef = useRef<HTMLDivElement>(null);
-const virtualizer = useVirtualizer({
-  count: rows.length,
-  getScrollElement: () => parentRef.current,
-  estimateSize: () => 40,
-});
-
-virtualizer.getVirtualItems().map((item) => rows[item.index]);
-```
-
-Beyond virtualization, protect perceived speed with: reserved space for images/embeds (`aspect-ratio` or explicit dimensions) so nothing shifts on load; `IntersectionObserver` (unobserved after first fire) instead of scroll-event listeners for reveal/lazy-load triggers; and batching DOM reads before writes when measuring layout manually, so you don't force repeated synchronous reflow.
-
-## Debounce / throttle / queue / batch — TanStack Pacer
-
-Rate-limit expensive work (search input, scroll handlers, API calls). https://tanstack.com/pacer/latest
-
-```typescript
-import { useDebouncedValue } from "@tanstack/react-pacer";
-
-const [search, setSearch] = useState("");
-const [debouncedSearch] = useDebouncedValue(search, { wait: 300 });
-// updates 300ms after the user stops typing
-```
-
-## Keyboard shortcuts — TanStack Hotkeys
-
-https://tanstack.com/hotkeys/latest
-
-```typescript
-import { useHotkeys } from "@tanstack/react-hotkeys";
-
-useHotkeys("mod+k", () => openCommandPalette());
-useHotkeys("mod+s", (event) => {
-  event.preventDefault();
-  save();
-});
-```
+| Reference | Read it when you're touching... |
+|---|---|
+| `references/state-and-hooks.md` | custom hooks, compound components, Zustand global state |
+| `references/data-and-performance.md` | TanStack Query, long lists (Virtual), debounce/throttle (Pacer), keyboard shortcuts (Hotkeys), perceived-speed techniques |
 
 ## Self-review before calling UI work done
 

@@ -119,6 +119,6 @@ state, and any step skipped and why.
   source of truth — do not infer artefacts beyond what it describes.
 - If an artefact already exists, update it rather than overwrite it.
 - Derive all names and paths from the issue; never ask for inferable values.
-- Apply all coding conventions from the `optimize` skill (and its React
-  reference) to every generated file.
+- Apply all coding conventions from the `optimize` skill (and its
+  `optimize-ui` reference) to every generated file.
 - Only set the issue to `Done` once every `dod` checkbox is satisfied.

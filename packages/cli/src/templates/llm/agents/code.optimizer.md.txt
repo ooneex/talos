@@ -67,9 +67,11 @@ Work through the module and apply every fix yourself:
   the meaningful tests, and consolidate redundant ones. Do not weaken assertions
   to make a suite pass.
 - **React (spa/design only)** — if the module is `spa` or `design`, adopt the
-  React patterns from `optimize-react`: custom hooks for reusable stateful logic,
-  compound components over prop-heavy monoliths, small Zustand stores with
-  selectors, and TanStack Query/Virtual/Pacer/Hotkeys where they fit.
+  UI craft and React patterns from `optimize-ui`: custom hooks for reusable
+  stateful logic, compound components over prop-heavy monoliths, small
+  Zustand stores with selectors, TanStack Query/Virtual/Pacer/Hotkeys where
+  they fit, and the interaction/motion/typography/color/surface rules for
+  anything visual.
 
 Preserve every public contract. If a clean-up would change a public API or
 observable behavior, leave it and flag it in your report rather than breaking

@@ -19,7 +19,7 @@ the state to `Done`, and report.
 **Run autonomously — never ask the user a question.** Every visual or
 behavioral decision (color, spacing, radius, motion, copy, which existing
 component/token to reuse) must be resolved from the module's own existing
-design system and the rules in the `optimize-react` skill, not by pausing for
+design system and the rules in the `optimize-ui` skill, not by pausing for
 input. Always build with the project's own design system — reuse its existing
 tokens/components/variants rather than inventing new ones or hand-rolling
 styles from scratch; only add a new primitive when the system genuinely lacks
@@ -79,7 +79,7 @@ Implement the files named in `### Design System Structure`:
 
 Build accessible, responsive components: semantic markup, labels/ARIA where
 needed, visible focus and interaction states, and design-token-driven styling
-rather than hardcoded values. Apply the full rule set in the `optimize-react`
+rather than hardcoded values. Apply the full rule set in the `optimize-ui`
 skill — interaction states, motion, typography, color/contrast, and
 surfaces/depth — to every component this issue touches, not just the code
 path the `dod` happens to exercise.
@@ -91,7 +91,7 @@ and utils stay generic and free of domain or data-fetching logic.
 
 ## Self-review
 
-Before moving to Finish, check the change against `optimize-react`'s
+Before moving to Finish, check the change against `optimize-ui`'s
 self-review checklist: squint test for hierarchy, realistic edge-case content
 (long/short/empty text, large lists, missing images), full keyboard
 navigation, and a `prefers-reduced-motion` fallback for any added animation.
@@ -122,6 +122,6 @@ state, and any step skipped and why.
 - If an artefact already exists, update it rather than overwrite it — add new
   variants without removing existing ones unless they conflict.
 - Derive all names and paths from the issue; never ask for inferable values.
-- Apply all coding conventions from the `optimize` skill (and its React
-  reference) to every generated file.
+- Apply all coding conventions from the `optimize` skill (and its
+  `optimize-ui` reference) to every generated file.
 - Only set the issue to `Done` once every `dod` checkbox is satisfied.
