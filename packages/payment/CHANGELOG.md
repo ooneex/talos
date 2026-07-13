@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.1.3](https://github.com/ooneex/talos/releases/tag/@talosjs/payment@1.1.3) - 2026-07-13
+
+### Changed
+
+- Replace tsgo with tsc in lint scripts across packages| — Franck ([b490c580](https://github.com/ooneex/talos/commit/b490c580))
+
 ## [1.1.2](https://github.com/ooneex/talos/releases/tag/@talosjs/payment@1.1.2) - 2026-07-05
 
 ### Changed
