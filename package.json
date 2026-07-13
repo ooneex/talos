@@ -17,9 +17,8 @@
     "@types/pluralize": "^0.0.33",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
-    "@typescript/native-preview": "^7.0.0-dev.20260421.2",
     "bunup": "^0.16.31",
-    "typescript": "^5.9.3",
+    "typescript": "^7.0.2",
     "undici-types": "^7.16.0"
   },
   "workspaces": [
