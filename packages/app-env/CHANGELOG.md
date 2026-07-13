@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.2.3](https://github.com/ooneex/talos/releases/tag/@talosjs/app-env@1.2.3) - 2026-07-13
+
+### Changed
+
+- Replace tsgo with tsc in lint scripts across packages| — Franck ([b490c580](https://github.com/ooneex/talos/commit/b490c580))
+
 ## [1.2.2](https://github.com/ooneex/talos/releases/tag/@talosjs/app-env@1.2.2) - 2026-07-07
 
 ### Changed
