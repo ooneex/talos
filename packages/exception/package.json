@@ -1,7 +1,7 @@
 {
   "name": "@talosjs/exception",
   "description": "Structured exception handling with HTTP status code mapping, typed error data, and JSON-formatted stack traces for consistent error reporting",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "type": "module",
   "files": [
     "dist",
