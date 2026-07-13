@@ -12,3 +12,5 @@ export type ModuleType = {
   cronJobs: CronClassType[];
   events: EventClassType[];
 };
+
+export type ModuleTypeType = "api" | "microservice" | "design" | "spa" | "sdk" | "module" | "storybook" | "swagger";
