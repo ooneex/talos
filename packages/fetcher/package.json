@@ -1,7 +1,7 @@
 {
   "name": "@talosjs/fetcher",
   "description": "Lightweight HTTP client with typed headers, response parsing, and configurable request/response handling for external API integration",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "type": "module",
   "files": [
     "dist",
