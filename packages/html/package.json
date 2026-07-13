@@ -1,7 +1,7 @@
 {
   "name": "@talosjs/html",
   "description": "HTML parsing and DOM manipulation toolkit powered by Cheerio — extract, transform, and query HTML content with a jQuery-like API",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "type": "module",
   "files": [
     "dist",
