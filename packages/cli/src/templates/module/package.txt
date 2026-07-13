@@ -4,7 +4,7 @@
   "version": "0.0.1",
   "scripts": {
     "test": "bun test tests",
-    "lint": "tsgo --noEmit && bunx biome lint",
+    "lint": "tsc --noEmit && bunx biome lint",
     "fmt": "bunx biome check --write"
   }
 }

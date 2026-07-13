@@ -24,7 +24,7 @@
   "scripts": {
     "build": "bunup",
     "fmt": "bunx biome check --write",
-    "lint": "tsgo --noEmit && bunx biome lint"
+    "lint": "tsc --noEmit && bunx biome lint"
   },
   "devDependencies": {
     "@talosjs/middleware": "workspace:^",
