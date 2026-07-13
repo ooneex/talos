@@ -1,7 +1,7 @@
 {
   "name": "@talosjs/module",
   "description": "Module system for organizing application features into cohesive units — groups controllers, entities, services, and middleware by domain",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "type": "module",
   "files": [
     "dist",
