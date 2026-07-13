@@ -10,6 +10,8 @@ disallowed-tools: AskUserQuestion
 
 > **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
 
+> **Module location:** a `<module>` usually resolves to `modules/<module>/`, but it can also live under `packages/<module>/` — e.g. once it's been extracted into a shared, publishable package. Check both roots before assuming a path doesn't exist; every `modules/<module>/...` path in this file applies equally under `packages/<module>/...` when that's where the module actually lives.
+
 Generate an SDK module from the controllers of a target module, then complete each generated `api` method. Follow the shared workflow in the `talos-scaffold` skill for the run-from-root rule and lint/format; this skill covers only the SDK-specific parts.
 
 An SDK is **not** a regular artifact: it scaffolds a whole module (one file per source module) rather than a single class with a test. It registers nothing in `AppModule`/`SharedModule` (the generator already keeps it out), and it has no `.spec.ts` to complete. Your job after generating is to fill in the `api` method bodies and the endpoint prefix.

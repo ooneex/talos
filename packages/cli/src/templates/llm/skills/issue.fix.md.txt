@@ -9,6 +9,8 @@ disallowed-tools: AskUserQuestion
 
 > **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
 
+> **Module location:** a `<module>` usually resolves to `modules/<module>/`, but it can also live under `packages/<module>/` — e.g. once it's been extracted into a shared, publishable package. Check both roots before assuming a path doesn't exist; every `modules/<module>/...` path in this file applies equally under `packages/<module>/...` when that's where the module actually lives.
+
 Infer which issues the user wants fixed from their input — this may be one or more issues spread across one or more modules — then hand each to the **fixer sub-agent** that matches the module's type. Each fixer reads the issue, implements it following the module's conventions, lints, satisfies the Definition of Done, and marks it `Done`. This skill's job is **resolving** the issues, **dispatching** them in dependency order, and **summarising** the batch — never implement inline here.
 
 ## Important

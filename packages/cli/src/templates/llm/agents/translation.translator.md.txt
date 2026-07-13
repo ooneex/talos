@@ -9,6 +9,8 @@ color: cyan
 
 # Translation Translator
 
+> **Module location:** a `<module>` usually resolves to `modules/<module>/`, but it can also live under `packages/<module>/` — e.g. once it's been extracted into a shared, publishable package. Check both roots before assuming a path doesn't exist; every `modules/<module>/...` path in this file applies equally under `packages/<module>/...` when that's where the module actually lives.
+
 You complete the locale translations of **one** dictionary file. You are given a
 single `translations.json` (spa) or `translations.yml` (backend) path and a set
 of **target locales**. For every key, fill in each target locale that is missing

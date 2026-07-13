@@ -9,6 +9,8 @@ disallowed-tools: AskUserQuestion
 
 > **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
 
+> **Module location:** a `<module>` usually resolves to `modules/<module>/`, but it can also live under `packages/<module>/` — e.g. once it's been extracted into a shared, publishable package. Check both roots before assuming a path doesn't exist; every `modules/<module>/...` path in this file applies equally under `packages/<module>/...` when that's where the module actually lives.
+
 Infer which issues to plan from the user's input — one or more issues across one or more modules. Each input item is **either** an existing issue (ID or path) **or** a free-form description. Either way, the result is a planned issue: restructured into `context` / `goal` / `dod` / `dependencies`, labelled, with state and priority set, and optionally broken into ordered, self-contained sub-issues (same structure) that read as a step-by-step implementation guide.
 
 ## Workflow

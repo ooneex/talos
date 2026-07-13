@@ -8,6 +8,8 @@ disallowed-tools: AskUserQuestion
 
 > **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
 
+> **Module location:** a `<module>` usually resolves to `modules/<module>/`, but it can also live under `packages/<module>/` — e.g. once it's been extracted into a shared, publishable package. Check both roots before assuming a path doesn't exist; every `modules/<module>/...` path in this file applies equally under `packages/<module>/...` when that's where the module actually lives.
+
 Find the root cause of a failure and fix it — don't patch the symptom. This
 workflow is for things that are broken; for convention cleanups use `optimize`,
 for review use `review`.
