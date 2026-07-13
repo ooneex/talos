@@ -1,6 +1,9 @@
 ---
 name: service-create
 description: Generate a new service class with its test file, then complete the generated code. Use when creating a new business logic service that implements IService from @talosjs/service.
+allowed-tools: Bash(talos service:create *), Bash(talos monorepo:check *), Read, Edit, Write, Grep, Glob
+argument-hint: [--name=<Name>] [--module=<module>]
+disallowed-tools: AskUserQuestion
 ---
 
 # Make Service Class
@@ -16,7 +19,7 @@ Generate a service class and test file, then complete the implementation. Follow
 Map the user's request to the options below, then run:
 
 ```bash
-bunx @talosjs/cli@latest service:create --name=<name> --module=<module>
+talos service:create --name=<name> --module=<module>
 ```
 
 **Inferring options from the user's request:**

@@ -1,6 +1,8 @@
 ---
 name: talos-design
 description: Directory structure and conventions for a design module — the front-end design system layout (components, hooks, icons, fonts, styles, translations, utils) with per-folder usage guidance. Use when creating or navigating a design system.
+user-invocable: false
+disallowed-tools: AskUserQuestion
 ---
 
 # Design System Architecture

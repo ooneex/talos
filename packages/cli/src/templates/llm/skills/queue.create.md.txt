@@ -1,6 +1,9 @@
 ---
 name: queue-create
 description: Generate a new queue class with its test file, then complete the generated code. Use when creating a new BullMQ-backed job queue that extends Queue from @talosjs/queue.
+allowed-tools: Bash(talos queue:create *), Bash(talos monorepo:check *), Read, Edit, Write, Grep, Glob
+argument-hint: [--name=<Name>] [--module=<module>]
+disallowed-tools: AskUserQuestion
 ---
 
 # Make Queue Class
@@ -16,7 +19,7 @@ Generate a queue class and test file, then complete the implementation. Follow t
 Map the user's request to the options below, then run:
 
 ```bash
-bunx @talosjs/cli@latest queue:create --name=<name> --module=<module>
+talos queue:create --name=<name> --module=<module>
 ```
 
 **Inferring options from the user's request:**

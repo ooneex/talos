@@ -1,6 +1,9 @@
 ---
 name: seed-create
 description: Generate a new database seed file with its test file, then complete the generated code. Use when creating seed data for populating the database using @talosjs/seeds.
+allowed-tools: Bash(talos seed:create *), Bash(talos monorepo:check *), Read, Edit, Write, Grep, Glob
+argument-hint: [--name=<Name>] [--module=<module>]
+disallowed-tools: AskUserQuestion
 ---
 
 # Make Seed
@@ -16,7 +19,7 @@ Generate a seed file and test file, then complete the implementation. Follow the
 Map the user's request to the options below, then run:
 
 ```bash
-bunx @talosjs/cli@latest seed:create --name=<name> --module=<module>
+talos seed:create --name=<name> --module=<module>
 ```
 
 **Inferring options from the user's request:**

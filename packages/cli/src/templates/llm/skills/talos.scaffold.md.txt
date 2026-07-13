@@ -1,6 +1,8 @@
 ---
 name: talos-scaffold
 description: Shared workflow for the `*-create` generator skills — run-from-root rule, --name/--module option inference, module registration, lint/format, and the test-scaffold baseline. Read alongside any `<artifact>-create` skill (service, controller, entity, cron, …); each artifact skill adds only its specifics.
+user-invocable: false
+disallowed-tools: AskUserQuestion
 ---
 
 # Scaffold Workflow
@@ -16,7 +18,7 @@ Run every command from the **monorepo root**, never from inside an individual pa
 ## Generator options
 
 ```bash
-bunx @talosjs/cli@latest <artifact>:create --name=<name> --module=<module>
+talos <artifact>:create --name=<name> --module=<module>
 ```
 
 - `--name` — pass it in any casing; the CLI normalizes to PascalCase and appends the artifact suffix (`Service`, `Controller`, `Cron`, …) automatically, so omit the suffix. The artifact skill says what to base the name on.

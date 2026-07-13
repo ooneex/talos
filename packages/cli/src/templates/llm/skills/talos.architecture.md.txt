@@ -1,6 +1,8 @@
 ---
 name: talos-architecture
 description: Decide which execution architecture to use for a feature — Event-Driven (@talosjs/event), Queue (@talosjs/queue), Workflow (@talosjs/workflow), Cron (@talosjs/cron), or real-time (@talosjs/socket) — and how to combine them. Use when a request involves background work, multi-step processes, decoupling, scheduling, fan-out/notifications, or "when X happens, do Y".
+user-invocable: false
+disallowed-tools: AskUserQuestion
 ---
 
 # Choosing an Architecture

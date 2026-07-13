@@ -1,6 +1,8 @@
 ---
 name: optimize
 description: Optimize a module's codebase for quality, performance, and clean conventions. Enforces arrow functions (except class methods), Type/I naming, explicit visibility, nullable columns; removes duplication and dead code; prunes trivial tests. Use to optimize/clean up/refactor a module — not for new features, bug fixes, or issues.
+argument-hint: [module]
+disallowed-tools: AskUserQuestion
 ---
 
 # Optimize Codebase

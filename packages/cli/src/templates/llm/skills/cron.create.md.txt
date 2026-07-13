@@ -1,6 +1,9 @@
 ---
 name: cron-create
 description: Generate a new cron job class with its test file, then complete the generated code. Use when creating a new scheduled task that extends the Cron base class from @talosjs/cron.
+allowed-tools: Bash(talos cron:create *), Bash(talos monorepo:check *), Read, Edit, Write, Grep, Glob
+argument-hint: [--name=<Name>] [--module=<module>]
+disallowed-tools: AskUserQuestion
 ---
 
 # Make Cron Class
@@ -16,7 +19,7 @@ Generate a cron class and test file, then complete the implementation. Follow th
 Map the user's request to the options below, then run:
 
 ```bash
-bunx @talosjs/cli@latest cron:create --name=<name> --module=<module>
+talos cron:create --name=<name> --module=<module>
 ```
 
 **Inferring options from the user's request:**

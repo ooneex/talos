@@ -1,6 +1,9 @@
 ---
 name: logger-create
 description: Generate a new logger class with its test file, then complete the generated code. Use when creating a new logger that implements the ILogger interface from @talosjs/logger.
+allowed-tools: Bash(talos logger:create *), Bash(talos monorepo:check *), Read, Edit, Write, Grep, Glob
+argument-hint: [--name=<Name>] [--module=<module>]
+disallowed-tools: AskUserQuestion
 ---
 
 # Make Logger Class
@@ -16,7 +19,7 @@ Generate a logger class and test file, then complete the implementation. Follow 
 Map the user's request to the options below, then run:
 
 ```bash
-bunx @talosjs/cli@latest logger:create --name=<name> --module=<module>
+talos logger:create --name=<name> --module=<module>
 ```
 
 **Inferring options from the user's request:**

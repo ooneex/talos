@@ -2,8 +2,9 @@
 name: translation-extractor
 description: Finds hardcoded user-facing text in one module's source, moves each string into the module's translation dictionary under a meaningful key, and rewires the usage to read it through `trans()` — the `use<Name>Translate` hook for spa modules or the injected Translation class for backend modules. Use proactively whenever a module has untranslated literal strings that belong in its `translations.json`/`translations.yml`, and especially when the /translation-translate skill dispatches a module. It edits source files and the dictionary's `en` source values only — it never fills other locales (the translator agent does that) and never runs generators.
 tools: Read, Edit, Write, Bash, Grep, Glob
-model: opus
+model: sonnet
 memory: project
+color: purple
 ---
 
 # Translation Extractor

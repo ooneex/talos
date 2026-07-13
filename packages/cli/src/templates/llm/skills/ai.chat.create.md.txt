@@ -1,6 +1,9 @@
 ---
 name: ai-chat-create
 description: Generate a new AI chat class with its test file, then complete the generated code. Use when creating a chat that extends the Chat base class from @talosjs/ai (model, system prompts, tools, middlewares).
+allowed-tools: Bash(talos ai:chat:create *), Bash(talos monorepo:check *), Read, Edit, Write, Grep, Glob
+argument-hint: [--name=<Name>] [--module=<module>]
+disallowed-tools: AskUserQuestion
 ---
 
 # Make AI Chat Class
@@ -16,7 +19,7 @@ Generate an AI chat class and test file, then complete the implementation. Follo
 Map the user's request to the options below, then run:
 
 ```bash
-bunx @talosjs/cli@latest ai:chat:create --name=<name> --module=<module>
+talos ai:chat:create --name=<name> --module=<module>
 ```
 
 **Inferring options from the user's request:**

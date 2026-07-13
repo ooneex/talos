@@ -4,6 +4,7 @@ description: Audits a backend business-domain module's source for issues across 
 tools: Read, Grep, Glob
 model: opus
 memory: project
+color: blue
 ---
 
 # Module Issue Founder

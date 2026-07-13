@@ -4,6 +4,7 @@ description: Implements a single planned issue in a backend business-domain modu
 tools: Read, Edit, Write, Bash, Grep, Glob, Skill
 model: opus
 memory: project
+color: green
 ---
 
 # Module Issue Fixer

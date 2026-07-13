@@ -4,6 +4,7 @@ description: Audits a backend API module's source for issues — HTTP/REST contr
 tools: Read, Grep, Glob
 model: opus
 memory: project
+color: blue
 ---
 
 # API Issue Founder

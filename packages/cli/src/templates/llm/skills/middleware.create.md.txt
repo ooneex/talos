@@ -1,6 +1,9 @@
 ---
 name: middleware-create
 description: Generate a new middleware class with its test file, then complete the generated code. Use when creating a new HTTP or WebSocket middleware that implements IMiddleware from @talosjs/middleware.
+allowed-tools: Bash(talos middleware:create *), Bash(talos monorepo:check *), Read, Edit, Write, Grep, Glob
+argument-hint: [--name=<Name>] [--module=<module>] [--is-socket=<true|false>]
+disallowed-tools: AskUserQuestion
 ---
 
 # Make Middleware Class
@@ -16,7 +19,7 @@ Generate a middleware class and test file, then complete the implementation. Fol
 Map the user's request to the options below, then run:
 
 ```bash
-bunx @talosjs/cli@latest middleware:create --name=<name> --module=<module> --is-socket=<true|false>
+talos middleware:create --name=<name> --module=<module> --is-socket=<true|false>
 ```
 
 **Inferring options from the user's request:**

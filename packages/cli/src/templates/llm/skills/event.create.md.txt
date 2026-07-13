@@ -1,6 +1,9 @@
 ---
 name: event-create
 description: Generate a new PubSub event class with its test file, then complete the generated code. Use when creating a new publish/subscribe event that extends PubSub from @talosjs/event.
+allowed-tools: Bash(talos event:create *), Bash(talos monorepo:check *), Read, Edit, Write, Grep, Glob
+argument-hint: [--name=<Name>] [--module=<module>] [--channel=<channel>]
+disallowed-tools: AskUserQuestion
 ---
 
 # Make PubSub Event Class
@@ -16,7 +19,7 @@ Generate a PubSub event class and test file, then complete the implementation. F
 Map the user's request to the options below, then run:
 
 ```bash
-bunx @talosjs/cli@latest event:create --name=<name> --module=<module> --channel=<channel>
+talos event:create --name=<name> --module=<module> --channel=<channel>
 ```
 
 **Inferring options from the user's request:**

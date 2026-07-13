@@ -1,6 +1,9 @@
 ---
 name: spa-feature-create
 description: Generate a new SPA feature (route, layout, error/not-found/skeleton boundaries, and TanStack Query hooks), then complete the generated code. Use when adding a feature to a SPA module built on @tanstack/react-router and @tanstack/react-query.
+allowed-tools: Bash(talos spa:feature:create *), Bash(talos monorepo:check *), Read, Edit, Write, Grep, Glob
+argument-hint: [--name=<Name>] [--module=<module>]
+disallowed-tools: AskUserQuestion
 ---
 
 # Make SPA Feature
@@ -39,7 +42,7 @@ A SPA feature only makes sense inside a **SPA module** (a module whose `type` is
 Map the user's request to the options below, then run:
 
 ```bash
-bunx @talosjs/cli@latest spa:feature:create --name=<name> --module=<module>
+talos spa:feature:create --name=<name> --module=<module>
 ```
 
 **Inferring options from the user's request:**

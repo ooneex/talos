@@ -2,8 +2,9 @@
 name: design-issue-fixer
 description: Implements a single planned issue in a front-end design-system module (`type: "design"`) — components, hooks, icons, fonts, styles, and utils organized by asset kind — then lints, satisfies the Definition of Done, and marks the issue Done. Use proactively whenever a `type: "design"` issue needs implementing.
 tools: Read, Edit, Write, Bash, Grep, Glob, Skill
-model: opus
+model: sonnet
 memory: project
+color: green
 ---
 
 # Design Issue Fixer

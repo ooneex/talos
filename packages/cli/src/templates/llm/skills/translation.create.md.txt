@@ -1,6 +1,9 @@
 ---
 name: translation-create
 description: Generate a new translation class with its test file and a sibling translations.yml dictionary, then fill in the translations. Use when creating a translation that extends the Translation base class from @talosjs/translation (localized, interpolated, pluralized messages).
+allowed-tools: Bash(talos translation:create *), Bash(talos monorepo:check *), Read, Edit, Write, Grep, Glob
+argument-hint: [--name=<Name>] [--module=<module>]
+disallowed-tools: AskUserQuestion
 ---
 
 # Make Translation Class
@@ -16,7 +19,7 @@ Generate a translation class, its test file, and a sibling `translations.yml` di
 Map the user's request to the options below, then run:
 
 ```bash
-bunx @talosjs/cli@latest translation:create --name=<name> --module=<module>
+talos translation:create --name=<name> --module=<module>
 ```
 
 **Inferring options from the user's request:**

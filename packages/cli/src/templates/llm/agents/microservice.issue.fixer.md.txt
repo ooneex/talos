@@ -4,6 +4,7 @@ description: Implements a single planned issue in a microservice module (`type: 
 tools: Read, Edit, Write, Bash, Grep, Glob, Skill
 model: opus
 memory: project
+color: green
 ---
 
 # Microservice Issue Fixer

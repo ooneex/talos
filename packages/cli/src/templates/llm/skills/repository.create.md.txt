@@ -1,6 +1,9 @@
 ---
 name: repository-create
 description: Generate a new repository class with its test file, then complete the generated code. Use when creating a new TypeORM repository for database operations on an entity.
+allowed-tools: Bash(talos repository:create *), Bash(talos monorepo:check *), Read, Edit, Write, Grep, Glob
+argument-hint: [--name=<Name>] [--module=<module>]
+disallowed-tools: AskUserQuestion
 ---
 
 # Make Repository Class
@@ -16,7 +19,7 @@ Generate a repository class and test file, then complete the implementation. Fol
 Map the user's request to the options below, then run:
 
 ```bash
-bunx @talosjs/cli@latest repository:create --name=<name> --module=<module>
+talos repository:create --name=<name> --module=<module>
 ```
 
 **Inferring options from the user's request:**

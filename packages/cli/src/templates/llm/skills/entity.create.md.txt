@@ -1,6 +1,9 @@
 ---
 name: entity-create
 description: Generate a new TypeORM entity class with its test file, then complete the generated code. Use when creating a new database entity with columns, relations, and table mapping.
+allowed-tools: Bash(talos entity:create *), Bash(talos monorepo:check *), Read, Edit, Write, Grep, Glob
+argument-hint: [--name=<Name>] [--module=<module>] [--table-name=<table_name>]
+disallowed-tools: AskUserQuestion
 ---
 
 # Make Entity Class
@@ -16,7 +19,7 @@ Generate an entity class and test file, then complete the implementation. Follow
 Map the user's request to the options below, then run:
 
 ```bash
-bunx @talosjs/cli@latest entity:create --name=<name> --module=<module> --table-name=<table_name>
+talos entity:create --name=<name> --module=<module> --table-name=<table_name>
 ```
 
 **Inferring options from the user's request:**

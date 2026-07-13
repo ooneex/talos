@@ -1,6 +1,8 @@
 ---
 name: pr
 description: Create a pull request for the current branch. Pushes the branch, analyzes the commits and diff against the base branch, then opens a PR with the GitHub CLI using a conventional title and a structured Summary / Changes / Testing body.
+disable-model-invocation: true
+disallowed-tools: AskUserQuestion
 ---
 
 # Create Pull Request
@@ -19,7 +21,7 @@ This skill uses the GitHub CLI (`gh`). It must be installed and authenticated (`
 
 1. **Determine the base branch** — usually `main` (run `git remote show origin` to confirm the default branch).
 2. **Check the current branch** — run `git rev-parse --abbrev-ref HEAD`. If it is the base branch, do not open a PR; create a feature branch first and move the work to it.
-3. **Sync** — make sure all work is committed (`git status --porcelain` is clean). If there are uncommitted changes, run the `commit` skill first.
+3. **Sync** — make sure all work is committed (`git status --porcelain` is clean). If there are uncommitted changes, stage and commit them yourself using the same module-grouping, type, and subject rules as the `commit` skill (see Commit Message Format below) — `commit` is user-invoked only, so do not rely on invoking it as a tool.
 4. **Push** — run `git push -u origin <branch>`.
 5. **Analyze** — review `git log <base>..<branch>` and `git diff <base>...<branch>` to understand the scope.
 6. **Open the PR** — run `gh pr create` with a conventional title and a structured body.

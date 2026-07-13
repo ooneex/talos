@@ -1,6 +1,9 @@
 ---
 name: command-create
 description: Generate a new command class with its test file, then complete the generated code. Use when creating a new CLI command that implements the ICommand interface from @talosjs/cli.
+allowed-tools: Bash(talos command:create *), Bash(talos monorepo:check *), Read, Edit, Write, Grep, Glob
+argument-hint: [--name=<Name>] [--module=<module>]
+disallowed-tools: AskUserQuestion
 ---
 
 # Make Command Class
@@ -16,7 +19,7 @@ Generate a command class and test file, then complete the implementation. Follow
 Map the user's request to the options below, then run:
 
 ```bash
-bunx @talosjs/cli@latest command:create --name=<name> --module=<module>
+talos command:create --name=<name> --module=<module>
 ```
 
 **Inferring options from the user's request:**

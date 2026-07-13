@@ -1,6 +1,9 @@
 ---
 name: storage-create
 description: Generate a new storage class with its test file, then complete the generated code. Use when creating a new S3-compatible storage adapter that extends Storage from @talosjs/storage.
+allowed-tools: Bash(talos storage:create *), Bash(talos monorepo:check *), Read, Edit, Write, Grep, Glob
+argument-hint: [--name=<Name>] [--module=<module>]
+disallowed-tools: AskUserQuestion
 ---
 
 # Make Storage Class
@@ -16,7 +19,7 @@ Generate a storage class and test file, then complete the implementation. Follow
 Map the user's request to the options below, then run:
 
 ```bash
-bunx @talosjs/cli@latest storage:create --name=<name> --module=<module>
+talos storage:create --name=<name> --module=<module>
 ```
 
 **Inferring options from the user's request:**

@@ -1,6 +1,8 @@
 ---
 name: optimize-react
 description: Recommended React patterns for design and spa modules — always use the project's main design system, custom hooks, compound components, Zustand state, and TanStack Query/Virtual/Pacer/Hotkeys. Use only when building or optimizing a React module (design or spa).
+user-invocable: false
+disallowed-tools: AskUserQuestion
 ---
 
 # React Patterns (design & spa modules)

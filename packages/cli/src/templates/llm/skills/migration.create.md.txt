@@ -1,6 +1,9 @@
 ---
 name: migration-create
 description: Generate a new database migration file, then complete the generated code. Use when creating a new database migration for schema changes using @talosjs/migrations.
+allowed-tools: Bash(talos migration:create *), Bash(talos monorepo:check *), Read, Edit, Write, Grep, Glob
+argument-hint: [--module=<module>]
+disallowed-tools: AskUserQuestion
 ---
 
 # Make Migration
@@ -16,7 +19,7 @@ Generate a migration file, then complete the implementation. Follow the shared w
 Map the user's request to the option below, then run:
 
 ```bash
-bunx @talosjs/cli@latest migration:create --module=<module>
+talos migration:create --module=<module>
 ```
 
 **Inferring options from the user's request:**

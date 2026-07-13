@@ -1,6 +1,8 @@
 ---
 name: translation-translate
 description: Translate and complete the `translations.json` / `translations.yml` dictionaries of one or more modules — optionally first extracting hardcoded user-facing text into keys — filling every target locale meaning-for-meaning from the `en` source. Use when the user asks to translate a module's translations, complete missing locales, add a language to a dictionary, or localize hardcoded strings. Distinct from `translation-create`, which scaffolds a new translation class/hook.
+argument-hint: [module...] [locale...]
+disallowed-tools: AskUserQuestion
 ---
 
 # Translate Module Translations

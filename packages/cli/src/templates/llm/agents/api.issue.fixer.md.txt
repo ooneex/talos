@@ -4,6 +4,7 @@ description: Implements a single planned issue in a backend API module (`type: "
 tools: Read, Edit, Write, Bash, Grep, Glob, Skill
 model: opus
 memory: project
+color: green
 ---
 
 # API Issue Fixer

@@ -1,6 +1,8 @@
 ---
 name: talos-module
 description: Backend module layout and foundational patterns for this codebase — the module directory structure plus the dependency-injection, exception, and TypeScript conventions with code examples. Use when creating or navigating a module, or when wiring DI or exceptions.
+user-invocable: false
+disallowed-tools: AskUserQuestion
 ---
 
 # Module Architecture

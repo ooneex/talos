@@ -4,6 +4,7 @@ description: Audits a microservice module's source for issues — service bounda
 tools: Read, Grep, Glob
 model: opus
 memory: project
+color: blue
 ---
 
 # Microservice Issue Founder

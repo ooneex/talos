@@ -1,6 +1,9 @@
 ---
 name: workflow-create
 description: Generate a new workflow class with its test file, then complete the generated code. Use when orchestrating a multi-step business process from @talosjs/workflow — a sequence of conditional, reversible transitions with automatic rollback on failure.
+allowed-tools: Bash(talos workflow:create *), Bash(talos monorepo:check *), Read, Edit, Write, Grep, Glob
+argument-hint: [--name=<Name>] [--module=<module>]
+disallowed-tools: AskUserQuestion
 ---
 
 # Make Workflow Class
@@ -18,7 +21,7 @@ Generate a workflow class and test file, then complete the implementation. Follo
 Map the user's request to the options below, then run:
 
 ```bash
-bunx @talosjs/cli@latest workflow:create --name=<name> --module=<module>
+talos workflow:create --name=<name> --module=<module>
 ```
 
 **Inferring options from the user's request:**

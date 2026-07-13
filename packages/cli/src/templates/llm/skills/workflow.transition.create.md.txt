@@ -1,6 +1,9 @@
 ---
 name: workflow-transition-create
 description: Generate a new workflow transition class with its test file, then complete the generated code. Use when adding a single conditional, reversible step that implements ITransition from @talosjs/workflow for use inside a workflow.
+allowed-tools: Bash(talos workflow:transition:create *), Bash(talos monorepo:check *), Read, Edit, Write, Grep, Glob
+argument-hint: [--name=<Name>] [--module=<module>]
+disallowed-tools: AskUserQuestion
 ---
 
 # Make Workflow Transition Class
@@ -18,7 +21,7 @@ Generate a workflow transition class and test file, then complete the implementa
 Map the user's request to the options below, then run:
 
 ```bash
-bunx @talosjs/cli@latest workflow:transition:create --name=<name> --module=<module>
+talos workflow:transition:create --name=<name> --module=<module>
 ```
 
 **Inferring options from the user's request:**

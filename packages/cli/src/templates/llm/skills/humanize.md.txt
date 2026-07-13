@@ -1,6 +1,8 @@
 ---
 name: humanize
 description: Rewrite prose so it reads as if a person wrote it, stripping the tells of AI-generated text. Use when drafting or editing any human-facing copy — docs, READMEs, commit bodies, PR descriptions, comments, emails, changelogs, marketing, UI text — and you want it to sound natural, not machine-produced.
+argument-hint: [file|text]
+disallowed-tools: AskUserQuestion
 ---
 
 # Humanize Text

@@ -1,6 +1,9 @@
 ---
 name: ai-middleware-create
 description: Generate a new AI middleware class with its test file, then complete the generated code. Use when creating a chat middleware that implements IMiddleware from @talosjs/ai to observe or transform the chat lifecycle.
+allowed-tools: Bash(talos ai:middleware:create *), Bash(talos monorepo:check *), Read, Edit, Write, Grep, Glob
+argument-hint: [--name=<Name>] [--module=<module>]
+disallowed-tools: AskUserQuestion
 ---
 
 # Make AI Middleware Class
@@ -18,7 +21,7 @@ Generate an AI middleware class and test file, then complete the implementation.
 Map the user's request to the options below, then run:
 
 ```bash
-bunx @talosjs/cli@latest ai:middleware:create --name=<name> --module=<module>
+talos ai:middleware:create --name=<name> --module=<module>
 ```
 
 **Inferring options from the user's request:**
