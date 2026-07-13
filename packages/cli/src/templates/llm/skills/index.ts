@@ -26,6 +26,7 @@ import moduleCreate from "./module.create.md.txt";
 import optimizeConventions from "./optimize.conventions.md.txt";
 import optimize from "./optimize.md.txt";
 import optimizeTesting from "./optimize.testing.md.txt";
+import optimizeUiAiSlop from "./optimize.ui/ai-slop.md.txt";
 import optimizeUiColorContrast from "./optimize.ui/color-contrast.md.txt";
 import optimizeUiDataAndPerformance from "./optimize.ui/data-and-performance.md.txt";
 import optimizeUiInteractionStates from "./optimize.ui/interaction-states.md.txt";
@@ -119,6 +120,7 @@ export const skills: Record<string, SkillTemplateType> = {
   "optimize.ui": {
     skill: optimizeUi,
     references: {
+      "ai-slop.md": optimizeUiAiSlop,
       "interaction-states.md": optimizeUiInteractionStates,
       "motion.md": optimizeUiMotion,
       "typography.md": optimizeUiTypography,

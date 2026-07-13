@@ -120,5 +120,7 @@ state, and any step skipped and why.
 - If an artefact already exists, update it rather than overwrite it.
 - Derive all names and paths from the issue; never ask for inferable values.
 - Apply all coding conventions from the `optimize` skill (and its
-  `optimize-ui` reference) to every generated file.
+  `optimize-ui` reference) to every generated file — including `optimize-ui`'s
+  `references/ai-slop.md` for any visual work, so the UI reads as this
+  project's design system rather than a generic template.
 - Only set the issue to `Done` once every `dod` checkbox is satisfied.

@@ -97,6 +97,12 @@ self-review checklist: squint test for hierarchy, realistic edge-case content
 navigation, and a `prefers-reduced-motion` fallback for any added animation.
 Fix what fails rather than shipping it and noting it as a caveat.
 
+Also check it against `optimize-ui`'s `references/ai-slop.md` — no generic
+gradient-as-brand-color, glassmorphism-as-decoration, stock hero+3-card-grid
+skeleton, emoji standing in for the design system's icons, or marketing-cliché
+copy. A component that would look at home in any other product, unchanged,
+hasn't actually used this project's design system.
+
 ## Finish
 
 1. **Lint & format** — from the project root:

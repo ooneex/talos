@@ -71,7 +71,9 @@ Work through the module and apply every fix yourself:
   stateful logic, compound components over prop-heavy monoliths, small
   Zustand stores with selectors, TanStack Query/Virtual/Pacer/Hotkeys where
   they fit, and the interaction/motion/typography/color/surface rules for
-  anything visual.
+  anything visual. Also check existing UI against `optimize-ui`'s
+  `references/ai-slop.md` and strip any generic gradient-as-brand-color,
+  glassmorphism-as-decoration, or stock template layout you find.
 
 Preserve every public contract. If a clean-up would change a public API or
 observable behavior, leave it and flag it in your report rather than breaking

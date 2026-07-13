@@ -78,6 +78,17 @@ Inspect the UI for these Design (UI/UX) signals:
 - **Messaging** — confusing or missing error/empty-state messaging; error
   copy that doesn't state what happened, why, and how to fix it; an empty
   state that's a dead end with no explanation or next action.
+- **AI slop / generic template patterns** — a generic purple/indigo gradient
+  used as the default brand color instead of the design system's tokens;
+  glassmorphism/blur used as decoration rather than a functional scrim; a
+  stock centered-hero-plus-3-card-feature-grid layout that ignores the
+  content's actual hierarchy; emoji standing in for the design system's icon
+  set; decorative gradient blobs/mesh backgrounds; a uniform glow/shadow
+  applied to every surface instead of the shadow scale expressing real
+  elevation differences; gradient text used for emphasis instead of
+  weight/size; every surface rounded full-pill regardless of whether it's
+  structural or a tag/chip; marketing-cliché UI copy ("Unlock the power
+  of…", "Take your X to the next level").
 
 Only report findings you can tie to a concrete file (and line range when
 useful). Skip anything the module handles cleanly — do not invent or pad.

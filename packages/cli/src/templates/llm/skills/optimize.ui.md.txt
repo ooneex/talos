@@ -42,6 +42,7 @@ Read the reference(s) below that are relevant to what you're touching **before**
 
 | Reference | Read it when you're touching... |
 |---|---|
+| `references/ai-slop.md` | any new screen, layout, or component — read this one always, not just when it "seems relevant" |
 | `references/interaction-states.md` | any interactive element — hover/focus/active/disabled/loading/error states, empty states, error copy, destructive actions, hit areas |
 | `references/motion.md` | any transition, animation, or entrance/exit effect |
 | `references/typography.md` | text sizes, line length, dynamic numbers, headings |
@@ -64,3 +65,4 @@ Before finishing any component, layout, or feature, check it against realistic c
 - **Edge-case inputs** — very long/short text, empty lists, very large lists, missing images, offline/slow network, permission-denied. A layout that only works with perfect demo data isn't done.
 - **Keyboard & reduced motion** — tab through the whole flow with no mouse, and verify `prefers-reduced-motion` is respected.
 - **Removal test** — for any added motion, shadow, or decorative flourish: if you removed it, would anyone notice? If not, it isn't earning its place.
+- **AI-slop check** — run the result against `references/ai-slop.md`: no generic gradient-as-brand-color, no glassmorphism-as-decoration, no stock hero+3-card-grid skeleton, no emoji standing in for the icon set, no marketing-cliché copy.
