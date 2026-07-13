@@ -1,7 +1,7 @@
 {
   "name": "@talosjs/seeds",
   "description": "Database seeding framework for populating initial data, fixtures, and test datasets with execution logging and idempotent operations",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "type": "module",
   "files": [
     "dist",
