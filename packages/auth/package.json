@@ -1,7 +1,7 @@
 {
   "name": "@talosjs/auth",
   "description": "Authentication framework with pluggable strategies for securing APIs and web applications — supports token-based and session-based authentication flows",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "type": "module",
   "files": [
     "dist",
