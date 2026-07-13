@@ -1,6 +1,6 @@
 {
   "name": "@talosjs/analytics",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "module": "./dist/index.js",
   "dependencies": {
     "@talosjs/app-env": "workspace:^",
