@@ -1,7 +1,7 @@
 {
   "name": "@talosjs/cli",
   "description": "Interactive CLI toolkit for scaffolding Talos projects, modules, controllers, services, repositories, and more with customizable code generation templates",
-  "version": "1.27.0",
+  "version": "1.28.0",
   "type": "module",
   "files": [
     "dist",

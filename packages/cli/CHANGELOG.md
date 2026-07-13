@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.28.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.28.0) - 2026-07-13
+
+### Added
+
+- Add deslop skill for removing AI-generated code slop| — Franck ([2158ccc8](https://github.com/ooneex/talos/commit/2158ccc8))
+- Add AI-slop avoidance guidance to design agents and skills| — Franck ([6bb86faf](https://github.com/ooneex/talos/commit/6bb86faf))
+- Split optimize-ui skill into UI craft and React pattern references|Splits the renamed optimize-ui skill's content into focused reference docs — Franck ([1e033c3a](https://github.com/ooneex/talos/commit/1e033c3a))
+- Add UI craft rules to design skill and agent templates| — Franck ([3e941f6f](https://github.com/ooneex/talos/commit/3e941f6f))
+- Enhance agent/skill templates with best-practice frontmatter| — Franck ([606c5af3](https://github.com/ooneex/talos/commit/606c5af3))
+
+### Changed
+
+- Replace tsgo with tsc in lint scripts across packages| — Franck ([b490c580](https://github.com/ooneex/talos/commit/b490c580))
+- Remove typescript native-preview from init dependency list| — Franck ([16070771](https://github.com/ooneex/talos/commit/16070771))
+- Rename optimize-react skill to optimize-ui and split references| — Franck ([fea7e47c](https://github.com/ooneex/talos/commit/fea7e47c))
+- Note module/package dual location across LLM templates| — Franck ([2d62106a](https://github.com/ooneex/talos/commit/2d62106a))
+- Add gh CLI push strategy with SSH fallback to commit skill| — Franck ([174c43f4](https://github.com/ooneex/talos/commit/174c43f4))
+- Rename colon-separated skill names to hyphenated| — Franck ([0abf1f99](https://github.com/ooneex/talos/commit/0abf1f99))
+
 ## [1.27.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.27.0) - 2026-07-09
 
 ### Added
