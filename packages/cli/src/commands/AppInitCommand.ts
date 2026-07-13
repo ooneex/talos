@@ -97,7 +97,6 @@ export class AppInitCommand<T extends CommandOptionsType = CommandOptionsType> i
         "@types/node",
         "@types/react",
         "@types/react-dom",
-        "@typescript/native-preview@beta",
         "@talosjs/cli",
         "typescript",
         "undici-types",
