@@ -11,6 +11,7 @@ import cronCreate from "./cron.create.md.txt";
 import databaseCreate from "./database.create.md.txt";
 import databaseMigrate from "./database.migrate.md.txt";
 import debug from "./debug.md.txt";
+import deslop from "./deslop.md.txt";
 import entityCreate from "./entity.create.md.txt";
 import eventCreate from "./event.create.md.txt";
 import flagCreate from "./flag.create.md.txt";
@@ -113,6 +114,7 @@ export const skills: Record<string, SkillTemplateType> = {
   pr: pr,
   review: review,
   debug: debug,
+  deslop: deslop,
   humanize: humanize,
   optimize: optimize,
   "optimize.conventions": optimizeConventions,
