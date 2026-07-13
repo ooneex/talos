@@ -1,7 +1,7 @@
 {
   "name": "@talosjs/permission",
   "description": "Fine-grained access control using CASL — define, evaluate, and enforce ability-based permissions with role and resource scoping",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "type": "module",
   "files": [
     "dist",
