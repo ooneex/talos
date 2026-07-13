@@ -1,7 +1,7 @@
 {
   "name": "@talosjs/cron",
   "description": "Cron job scheduler with timezone-aware scheduling, task lifecycle management, and structured logging for recurring background tasks",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "type": "module",
   "files": [
     "dist",
