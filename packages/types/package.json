@@ -1,7 +1,7 @@
 {
   "name": "@talosjs/types",
   "description": "Shared TypeScript type definitions, interfaces, and utility types used as foundational building blocks across the Talos ecosystem",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "type": "module",
   "files": [
     "dist",
