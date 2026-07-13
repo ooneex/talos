@@ -1,5 +1,5 @@
 ---
-name: issue:found
+name: issue-found
 description: Use when the user asks to audit an Talos package, find actionable issues, or create issue YAML files for findings.
 metadata:
   short-description: Audit a package and create issues

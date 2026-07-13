@@ -1,5 +1,5 @@
 ---
-name: issue:improve
+name: issue-improve
 description: Use when the user asks to improve, refine, structure, rewrite, split, or clarify an existing package issue YAML file.
 metadata:
   short-description: Improve an issue YAML file

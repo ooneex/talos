@@ -1,5 +1,5 @@
 ---
-name: issue:create
+name: issue-create
 description: Create a new YAML issue file in packages/<package>/issues/ by gathering title, priority, labels, description, and package from the user, with the state always set to Todo.
 ---
 
@@ -38,7 +38,7 @@ Infer the best `priority` from the title and description rather than asking the 
 
 If the user explicitly states a priority, always honor it over the inferred value.
 
-If the user provides a free-form description, use it as-is — `/issue:improve` will structure it later.
+If the user provides a free-form description, use it as-is — `/issue-improve` will structure it later.
 
 ### 2. Generate the ID and Write the File
 
@@ -71,8 +71,8 @@ Report the path of the created file (e.g. `packages/routing/issues/EAB-204913.ym
 
 After creating the file, suggest:
 
-- `/issue:improve` — to rewrite the description into a structured format with Context, Goal, Acceptance Criteria, and optional Technical Notes
-- `/issue:fix` — to implement the issue once it is ready
+- `/issue-improve` — to rewrite the description into a structured format with Context, Goal, Acceptance Criteria, and optional Technical Notes
+- `/issue-fix` — to implement the issue once it is ready
 
 ## Notes
 

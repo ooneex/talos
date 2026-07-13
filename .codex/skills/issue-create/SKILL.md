@@ -1,5 +1,5 @@
 ---
-name: issue:create
+name: issue-create
 description: Use when the user asks to create, file, or draft a new package issue YAML file for this Talos monorepo.
 metadata:
   short-description: Create a package issue YAML file

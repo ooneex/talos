@@ -1,5 +1,5 @@
 ---
-name: package:create
+name: package-create
 description: Scaffold a new package under packages/<name>/ following the Talos monorepo conventions — package.json, tsconfig.json, bunup.config.ts, LICENSE, README.md, and empty src/index.ts and src/types.ts. Use when the user asks to create, add, or scaffold a new package.
 ---
 

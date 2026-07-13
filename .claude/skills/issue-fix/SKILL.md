@@ -1,5 +1,5 @@
 ---
-name: issue:fix
+name: issue-fix
 description: Find an issue by ID in a package and implement it. Reads packages/<package>/issues/<ID>.yml, implements the change in the package's src/ and tests/, then runs fmt, lint, and tests.
 ---
 

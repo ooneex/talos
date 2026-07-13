@@ -1,5 +1,5 @@
 ---
-name: issue:fix
+name: issue-fix
 description: Use when the user asks to implement, fix, complete, or resolve an existing package issue YAML file in this Talos monorepo.
 metadata:
   short-description: Implement a package issue

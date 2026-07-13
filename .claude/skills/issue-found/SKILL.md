@@ -1,5 +1,5 @@
 ---
-name: issue:found
+name: issue-found
 description: Audit a package's source code for issues (security, performance, architecture, missing tests, improvements) and create a YAML issue file in packages/<package>/issues/ for each finding with the state always set to Todo.
 ---
 
@@ -45,7 +45,7 @@ Only report **real, actionable** findings grounded in the code you read. Do not 
 
 ### 3. Create an Issue per Finding
 
-For each finding, write one YAML issue file to `packages/<package>/issues/<ID>.yml`, exactly as described in the `/issue:create` skill (generate a `XXX-NNNNNN` ID, check for collisions).
+For each finding, write one YAML issue file to `packages/<package>/issues/<ID>.yml`, exactly as described in the `/issue-create` skill (generate a `XXX-NNNNNN` ID, check for collisions).
 
 Derive each field from the finding:
 
@@ -82,8 +82,8 @@ Then list the path of each created file (e.g. `packages/routing/issues/EAB-20491
 
 After creating the files, suggest:
 
-- `/issue:improve` — to expand each finding into a structured description with Context, Goal, and Acceptance Criteria
-- `/issue:fix` — to implement a chosen issue once it is ready
+- `/issue-improve` — to expand each finding into a structured description with Context, Goal, and Acceptance Criteria
+- `/issue-fix` — to implement a chosen issue once it is ready
 
 ## Notes
 

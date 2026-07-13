@@ -1,5 +1,5 @@
 ---
-name: issue:improve
+name: issue-improve
 description: Improve a YAML issue file by rewriting the description into a structured format, extracting labels, and optionally splitting into smaller focused issues. Reads from packages/<package>/issues/<ID>.yml.
 ---
 
