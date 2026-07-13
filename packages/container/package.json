@@ -1,7 +1,7 @@
 {
   "name": "@talosjs/container",
   "description": "Dependency injection container built on Inversify — manages service lifecycle with singleton, transient, and request-scoped registrations and automatic dependency resolution",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "type": "module",
   "files": [
     "dist",
