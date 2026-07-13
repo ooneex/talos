@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.2.1](https://github.com/ooneex/talos/releases/tag/@talosjs/mailer@1.2.1) - 2026-07-13
+
+### Changed
+
+- Replace tsgo with tsc in lint scripts across packages| — Franck ([b490c580](https://github.com/ooneex/talos/commit/b490c580))
+
 ## [1.2.0](https://github.com/ooneex/talos/releases/tag/@talosjs/mailer@1.2.0) - 2026-07-06
 
 ### Added
