@@ -1,11 +1,15 @@
 ---
 name: commit
 description: Create commit messages grouped by module. Analyzes git changes, groups files under modules/ by module name, and creates separate commits following the project's conventional-commit rules. Uses common scope for non-module changes.
+disable-model-invocation: true
+disallowed-tools: AskUserQuestion
 ---
 
 # Commit by Module
 
 > **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
+
+> **Module location:** a `<module>` usually resolves to `modules/<module>/`, but it can also live under `packages/<module>/` — e.g. once it's been extracted into a shared, publishable package. Check both roots before assuming a path doesn't exist; every `modules/<module>/...` path in this file applies equally under `packages/<module>/...` when that's where the module actually lives.
 
 Create separate commits per modified module, following the project's conventional-commit rules.
 
@@ -13,14 +17,18 @@ Create separate commits per modified module, following the project's conventiona
 
 Always run all commands from the **root of the project** (the monorepo root), not from inside individual packages.
 
-Commit messages are linted by a git `commit-msg` hook (installed with `oo commitlint:init`, which runs `oo commitlint:check`). The available types, scopes, and other rules are described below.
+Commit messages are linted by a git `commit-msg` hook (installed with `talos commitlint:init`, which runs `talos commitlint:check`). The available types, scopes, and other rules are described below.
 
 ## Workflow
 
 1. **Analyze changes** — run `git status --porcelain`
 2. **Group by module** — files under `modules/<name>/` → scope is the module name; all other files → scope `common`
-3. **For each group** — stage the files, pick the commit type, commit with `type(scope): Subject`
-4. **Push** — after all commits are created, run `git push`
+3. **Screen for secrets** — before staging, skip anything that looks like a credential (`.env*`, `*.pem`, `*.key`, `*credentials*`, private keys, tokens). Do **not** commit these; surface them to the user instead.
+4. **For each group** — stage the files, pick the commit type, commit with `type(scope): Subject`
+5. **Push**
+   - Prefer the `gh` CLI: first run `gh auth switch --hostname github.com` (or the repo's host) to make sure the active account matches the current repo's remote, then push with `git push` (or `git push -u origin <branch>` if there's no upstream yet)
+   - If `gh auth switch` or the push through `gh` fails (not installed, no matching account, auth error), fall back to the normal SSH-based flow: plain `git commit` / `git push` using the repo's configured SSH remote
+   - Never force-push (`--force`/`--force-with-lease`) unless the user explicitly asks for it
 
 ## Commit Message Format
 
