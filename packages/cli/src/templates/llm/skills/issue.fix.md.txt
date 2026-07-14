@@ -45,6 +45,7 @@ title: "Add organization create feature"
 state: "Planned"
 priority: "High"
 branch: "feat/ENG-45-add-organization-create" # added by this skill on first run (step 2)
+pr: "https://github.com/<org>/<repo>/pull/123" # added by this skill after the PR is opened (step 4)
 labels:
   - "Feature"
   - "API"
@@ -134,6 +135,7 @@ Once a fixer returns with its issue at `In Review` (all `dod` boxes checked, inc
 - **Commit** — follow the `commit` skill's conventions: group the changes by module (files under `modules/<name>/` or `packages/<name>/` → that scope, everything else → `common`), screen out secrets, pick the conventional-commit type per group, and commit each with `type(scope): Subject`. The `commit` skill is user-invoked only, so do **not** invoke it as a tool — apply its rules directly here.
 - **Push** — push the issue's branch to the remote. Use only the `gh` cli for remote operations (never `git push`/`git pull` over ssh/http); `gh auth switch` to the active account if needed. Never force-push.
 - **Open the PR** — follow the `pr` skill: analyse `git log <main>..<branch>` and `git diff <main>...<branch>`, then run `gh pr create` with a conventional `type(scope): Subject` title and the structured **Summary / Changes / Testing** body. Keep the body factual to the diff and add no attribution trailer. If `gh pr view` shows a PR already exists for the branch, update it with `gh pr edit` instead of creating a duplicate. Record the returned PR URL for the summary.
+- **Write the PR link back to the issue** — once the PR exists, add a top-level `pr: "<url>"` field to `modules/<module>/issues/<ID>.yml` (via Edit/Write) with the returned PR URL, so the issue file records its pull request. If the field already exists (e.g. the PR was updated rather than created), overwrite it with the current URL. Commit this change to the issue's branch with a `chore(<scope>): Link PR to issue <ID>` message and push it, so the recorded link lands on the branch alongside the rest of the issue's work.
 
 Do this per issue, sequentially, immediately after its fixer returns. When a later batched issue was branched off an earlier one's branch, its PR still targets the main branch — note the dependency in the PR body.
 
