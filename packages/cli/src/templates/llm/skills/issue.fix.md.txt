@@ -1,6 +1,6 @@
 ---
 name: issue-fix
-description: Find one or more issues from the user's input and implement them by dispatching each to the fixer sub-agent that matches its module type. Infers the target modules and issue IDs from whatever the user says, reads each modules/<module>/issues/<ID>.yml to resolve and sequence the work, then hands each issue to its fixer (backend module/api/microservice, spa, or design), which implements it, lints, satisfies the Definition of Done, and marks it Done.
+description: Find one or more issues from the user's input and implement them by dispatching each to the fixer sub-agent that matches its module type. Infers the target modules and issue IDs from whatever the user says, reads each modules/<module>/issues/<ID>.yml to resolve and sequence the work, then hands each issue to its fixer (backend module/api/microservice, spa, or design), which implements it, lints, satisfies the Definition of Done, and marks it In Review, before this skill commits, pushes, and opens a pull request for the branch.
 when_to_use: Use when the user wants to implement one or more existing issues by dispatching each to the fixer that matches its module type. Triggers on requests like "fix issue <ID>", "implement the issues in <module>", or "work on this issue".
 model: sonnet
 effort: medium
@@ -15,7 +15,7 @@ argument-hint: [issue-id|module|description]
 
 > **Module location:** a `<module>` usually resolves to `modules/<module>/`, but it can also live under `packages/<module>/` — e.g. once it's been extracted into a shared, publishable package. Check both roots before assuming a path doesn't exist; every `modules/<module>/...` path in this file applies equally under `packages/<module>/...` when that's where the module actually lives.
 
-Infer which issues the user wants fixed from their input — this may be one or more issues spread across one or more modules — then hand each to the **fixer sub-agent** that matches the module's type. Each fixer reads the issue, implements it following the module's conventions, lints, satisfies the Definition of Done, and marks it `Done`. This skill's job is **resolving** the issues, **dispatching** them in dependency order, and **summarising** the batch — never implement inline here.
+Infer which issues the user wants fixed from their input — this may be one or more issues spread across one or more modules — then hand each to the **fixer sub-agent** that matches the module's type. Each fixer reads the issue, implements it following the module's conventions, lints, satisfies the Definition of Done, and marks it `In Review`. This skill's job is **resolving** the issues, **dispatching** them in dependency order, **finalising** each on its branch (commit, push, and open a pull request), and **summarising** the batch — never implement inline here.
 
 ## Important
 
@@ -31,7 +31,7 @@ The user does **not** have to pass explicit flags — infer the target issues fr
 
 - **Explicit flags** — `--module=<module>` and `--id=<ID>` (each may be repeated, or comma-separated) name the issues directly.
 - **Bare issue IDs** — text matching an issue id pattern (e.g. `ENG-45`, `OON-123456`) is an `<ID>`. If no module is given alongside it, glob `modules/*/issues/<ID>.yml` to find the owning module. If exactly one matches, use it; if several match, fix each; if none match, report the IDs that were not found.
-- **A module name with no ID** (e.g. "fix the user module issues") — resolve to **every** non-`Done` issue under `modules/<module>/issues/` (skip `state: "Done"`). Process them in `dependencies`-then-`priority` order.
+- **A module name with no ID** (e.g. "fix the user module issues") — resolve to **every** issue under `modules/<module>/issues/` that is not already fixed (skip `state: "In Review"` and `state: "Done"`). Process them in `dependencies`-then-`priority` order.
 - **Free-form description** (e.g. "implement the org create feature and the billing webhook") — match it against issue `title`/`goal` fields across `modules/*/issues/*.yml` and pick the issues that clearly correspond. If the match is ambiguous, list the candidates and ask the user to confirm before implementing.
 
 Build the full `(module, ID)` list first. Then run steps 2–4 for the batch in dependency order (an issue whose `dependencies` are also in the batch comes after them). Read each issue file at `modules/<module>/issues/<ID>.yml` to resolve, sequence, and pre-screen it.
@@ -67,7 +67,7 @@ dependencies: []
 Pre-screen each resolved issue before dispatching it (the fixer re-checks these, but skip obvious non-starters early):
 
 - If a requested issue's file does not exist, record the exact path checked, skip it, and continue with the rest — report all missing paths in the final summary.
-- If the issue's `state` is already `Done`, skip it and note it (already done) — do not re-implement it.
+- If the issue's `state` is already `In Review` or `Done`, skip it and note it (already fixed) — do not re-implement it or open a second PR.
 - If the issue has only a free-form `description` (it was never planned — no `goal`/`dod`), either run `/issue-plan` first or let the fixer treat the `description` as the `goal`. If `goal` is missing or empty, skip it and note there is nothing to implement.
 
 If the input resolves to **no** issues at all, stop and tell the user nothing matched.
@@ -121,13 +121,23 @@ Implementation is owned entirely by the **fixer sub-agents** — this skill neve
 | `spa` | `spa-issue-fixer` |
 | `design` | `design-issue-fixer` |
 
-Each fixer analyses the issue (`context` / `goal` / `dod` / `dependencies`, plus any `resources`/`spec` block), implements the artefacts the `goal` calls for following that module's conventions and Clean Architecture, runs `talos monorepo:check` from the project root, checks off every satisfied `dod` box, sets `state: "Done"` when all boxes pass, and returns a report.
+Each fixer analyses the issue (`context` / `goal` / `dod` / `dependencies`, plus any `resources`/`spec` block), implements the artefacts the `goal` calls for following that module's conventions and Clean Architecture, runs `talos monorepo:check` from the project root, checks off every satisfied `dod` box, sets `state: "In Review"` (transitioning it from `Planned`) when all boxes pass, and returns a report.
 
 When an issue's `goal` describes a multi-step business process — a sequence of conditional, reversible steps that should roll back together when a later step fails — the fixer should use the `@talosjs/workflow` package (`packages/workflow/`), scaffolding it with `/workflow-create` and `/workflow-transition-create` (or `talos workflow:create` / `talos workflow:transition:create`) instead of hand-rolling the orchestration. Only reach for it when the work actually calls for it; a simple single-step change does not need a workflow.
 
-Dispatch in **dependency order**: an issue whose `dependencies` are also in the batch is dispatched after them. Dispatch the fixers **sequentially, one issue at a time** — do not run them concurrently. Every fixer shares the one working tree and only one branch is checked out at a time (step 2), so concurrent fixers would clobber each other's edits and each other's `talos monorepo:check` runs. Let each fixer finish and return before switching to the next issue's branch and dispatching it. If a dispatched issue has a dependency that is **not** in the batch and not yet `Done`, the fixer stops and reports it — carry that into the summary.
+Dispatch in **dependency order**: an issue whose `dependencies` are also in the batch is dispatched after them. Dispatch the fixers **sequentially, one issue at a time** — do not run them concurrently. Every fixer shares the one working tree and only one branch is checked out at a time (step 2), so concurrent fixers would clobber each other's edits and each other's `talos monorepo:check` runs. Let each fixer finish and return before switching to the next issue's branch and dispatching it. If a dispatched issue has a dependency that is **not** in the batch and not yet `In Review` or `Done`, the fixer stops and reports it — carry that into the summary.
 
-### 4. Confirm
+### 4. Commit, push, and open a pull request
+
+Once a fixer returns with its issue at `In Review` (all `dod` boxes checked, including the `state` change from `Planned` written back to the YAML), finalise that issue's branch **before switching to the next issue's branch** — so each issue's changes, including its updated issue file, land on its own branch:
+
+- **Commit** — follow the `commit` skill's conventions: group the changes by module (files under `modules/<name>/` or `packages/<name>/` → that scope, everything else → `common`), screen out secrets, pick the conventional-commit type per group, and commit each with `type(scope): Subject`. The `commit` skill is user-invoked only, so do **not** invoke it as a tool — apply its rules directly here.
+- **Push** — push the issue's branch to the remote. Use only the `gh` cli for remote operations (never `git push`/`git pull` over ssh/http); `gh auth switch` to the active account if needed. Never force-push.
+- **Open the PR** — follow the `pr` skill: analyse `git log <main>..<branch>` and `git diff <main>...<branch>`, then run `gh pr create` with a conventional `type(scope): Subject` title and the structured **Summary / Changes / Testing** body. Keep the body factual to the diff and add no attribution trailer. If `gh pr view` shows a PR already exists for the branch, update it with `gh pr edit` instead of creating a duplicate. Record the returned PR URL for the summary.
+
+Do this per issue, sequentially, immediately after its fixer returns. When a later batched issue was branched off an earlier one's branch, its PR still targets the main branch — note the dependency in the PR body.
+
+### 5. Confirm
 
 Once every resolved issue has been processed, report a summary covering the whole batch, drawn from the fixers' reports. For **each** issue:
 
@@ -135,10 +145,11 @@ Once every resolved issue has been processed, report a summary covering the whol
 - Module type and the fixer that handled it (backend `module`/`api`/`microservice` / `spa` / `design`)
 - Files and artefacts created or updated
 - Definition of Done status (which boxes are now checked)
-- Issue state (`Done`, or why not)
+- Issue state (`In Review`, or why not)
+- The commit(s) pushed and the pull request URL (or why no PR was opened)
 - Any step that was skipped and why
 
-Then list any requested issues that could not be fixed (missing file with the exact path checked, unmet dependency, already `Done`, or ambiguous match awaiting confirmation).
+Then list any requested issues that could not be fixed (missing file with the exact path checked, unmet dependency, already `In Review` or `Done`, or ambiguous match awaiting confirmation).
 
 ## Notes
 
@@ -146,4 +157,4 @@ Then list any requested issues that could not be fixed (missing file with the ex
 - Each issue is fixed on its own git branch (`<type>/<ID>-<slug>`, type derived from its `labels`), recorded in the issue's `branch` field, not a worktree. If the branch exists, switch to it; else create it off main. All fixers share one working tree, so dispatch them sequentially — never concurrently.
 - Process issues in dependency order; an issue whose dependency is unmet and out of batch is skipped by its fixer with a report.
 - Derive all names, paths, and methods from the issue; the fixers never ask the user for values that can be inferred.
-- A fixer only sets its issue to `Done` once every `dod` checkbox is satisfied.
+- A fixer only sets its issue to `In Review` (from `Planned`) once every `dod` checkbox is satisfied; this skill then commits, pushes, and opens a pull request for the branch following the `commit` and `pr` skill conventions.
