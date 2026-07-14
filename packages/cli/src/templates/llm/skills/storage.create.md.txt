@@ -1,6 +1,7 @@
 ---
 name: storage-create
-description: Generate a new storage class with its test file, then complete the generated code. Use when creating a new S3-compatible storage adapter that extends Storage from @talosjs/storage.
+description: Generate a new storage class with its test file, then complete the generated code.
+when_to_use: Use when creating a new S3-compatible storage adapter that extends Storage from @talosjs/storage.
 model: sonnet
 effort: low
 allowed-tools: Bash(talos storage:create *), Bash(talos monorepo:check *), Read, Edit, Write, Grep, Glob

@@ -1,6 +1,7 @@
 ---
 name: code-optimizer
-description: Optimizes one module for quality, performance, and clean conventions — enforces arrow functions (except class methods), Type/I naming, explicit visibility and nullable columns, removes duplication and dead code, and prunes trivial tests — refactoring only, never changing behavior or public APIs, then runs fmt/lint/test and reports. Use proactively whenever a module needs a conventions + cleanup pass, and especially when the /optimize skill dispatches several modules at once. It edits source and test files for the one module it is given — it never alters behavior or public contracts without flagging callers, never creates issues, and never runs generators or `talos` commands.
+description: Optimizes one module for quality, performance, and clean conventions — enforces arrow functions (except class methods), Type/I naming, explicit visibility and nullable columns, removes duplication and dead code, and prunes trivial tests — refactoring only, never changing behavior or public APIs, then runs fmt/lint/test and reports. It edits source and test files for the one module it is given — it never alters behavior or public contracts without flagging callers, never creates issues, and never runs generators or `talos` commands.
+when_to_use: Use proactively whenever a module needs a conventions + cleanup pass, and especially when the /optimize skill dispatches several modules at once.
 tools: Read, Edit, Write, Bash, Grep, Glob
 model: sonnet
 effort: high

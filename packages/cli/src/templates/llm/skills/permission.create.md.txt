@@ -1,6 +1,7 @@
 ---
 name: permission-create
-description: Generate a new permission class with its test file, then complete the generated code. Use when creating a new permission that extends Permission from @talosjs/permission.
+description: Generate a new permission class with its test file, then complete the generated code.
+when_to_use: Use when creating a new permission that extends Permission from @talosjs/permission.
 model: sonnet
 effort: low
 allowed-tools: Bash(talos permission:create *), Bash(talos monorepo:check *), Read, Edit, Write, Grep, Glob

@@ -1,6 +1,7 @@
 ---
 name: entity-create
-description: Generate a new TypeORM entity class with its test file, then complete the generated code. Use when creating a new database entity with columns, relations, and table mapping.
+description: Generate a new TypeORM entity class with its test file, then complete the generated code.
+when_to_use: Use when creating a new database entity with columns, relations, and table mapping.
 model: sonnet
 effort: medium
 allowed-tools: Bash(talos entity:create *), Bash(talos monorepo:check *), Read, Edit, Write, Grep, Glob

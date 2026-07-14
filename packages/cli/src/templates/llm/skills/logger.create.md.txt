@@ -1,6 +1,7 @@
 ---
 name: logger-create
-description: Generate a new logger class with its test file, then complete the generated code. Use when creating a new logger that implements the ILogger interface from @talosjs/logger.
+description: Generate a new logger class with its test file, then complete the generated code.
+when_to_use: Use when creating a new logger that implements the ILogger interface from @talosjs/logger.
 model: sonnet
 effort: low
 allowed-tools: Bash(talos logger:create *), Bash(talos monorepo:check *), Read, Edit, Write, Grep, Glob

@@ -1,6 +1,7 @@
 ---
 name: translation-create
-description: Generate a new translation class with its test file and a sibling translations.yml dictionary, then fill in the translations. Use when creating a translation that extends the Translation base class from @talosjs/translation (localized, interpolated, pluralized messages).
+description: Generate a new translation class with its test file and a sibling translations.yml dictionary, then fill in the translations.
+when_to_use: Use when creating a translation that extends the Translation base class from @talosjs/translation (localized, interpolated, pluralized messages).
 model: sonnet
 effort: low
 allowed-tools: Bash(talos translation:create *), Bash(talos monorepo:check *), Read, Edit, Write, Grep, Glob

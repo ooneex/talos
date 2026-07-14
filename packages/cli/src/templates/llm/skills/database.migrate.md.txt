@@ -1,6 +1,7 @@
 ---
 name: database-migrate
-description: Run the database migration and seed lifecycle — apply pending migrations, roll back, reseed, and verify the schema matches the entities. Use when applying or reverting migrations, troubleshooting a failed migration, syncing an entity change into the database, or running seeds. To author a new migration file, use migration-create first.
+description: Run the database migration and seed lifecycle — apply pending migrations, roll back, reseed, and verify the schema matches the entities.
+when_to_use: Use when applying or reverting migrations, troubleshooting a failed migration, syncing an entity change into the database, or running seeds. To author a new migration file, use migration-create first.
 model: sonnet
 effort: high
 ---

@@ -1,6 +1,7 @@
 ---
 name: sdk-create
-description: Generate a browser SDK module from a target app or microservice's controllers, then complete the generated api methods. Use when creating a typed client SDK that calls backend controllers over HTTP via @talosjs/fetcher, HTTP streaming / Server-Sent Events via native fetch, or WebSocket via @talosjs/socket-client.
+description: Generate a browser SDK module from a target app or microservice's controllers, then complete the generated api methods.
+when_to_use: Use when creating a typed client SDK that calls backend controllers over HTTP via @talosjs/fetcher, HTTP streaming / Server-Sent Events via native fetch, or WebSocket via @talosjs/socket-client.
 model: sonnet
 effort: high
 allowed-tools: Bash(talos sdk:create *), Bash(talos monorepo:check *), Read, Edit, Write, Grep, Glob
