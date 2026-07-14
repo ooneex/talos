@@ -80,7 +80,7 @@ Replace the free-form `description` with the **same four fields used by sub-issu
 - `context` — relevant background and why the issue exists.
 - `goal` — concrete work to do, including any **Technical Notes** (constraints, hints) and the technical subsection matching the module type (`### Data Model` / `### Front-End Structure` / `### Design System Structure`), when applicable.
 - `dod` — acceptance criteria as checkboxes (`- [ ]`), all required.
-- `dependencies` — issue IDs to complete first (usually `[]` for a standalone parent).
+- `dependencies` — issue IDs to complete first (usually `[]` for a standalone parent). Beyond the current batch, scan existing issues in the module(s) for real prerequisites (step 3a).
 
 Rules:
 - Preserve all factual information from the original; keep fields concise and actionable.
@@ -110,6 +110,17 @@ Rules:
 - `Low` — nice-to-haves, polish, refactors, docs, chores.
 
 Honor an explicitly stated priority over the inferred value.
+
+### 3a. Scan Existing Issues for Dependencies
+
+Before finalizing `dependencies`, look beyond the current batch: an issue often depends on work already filed as a separate issue. For each module touched by this batch, glob the existing issue files (`modules/<module>/issues/*.yml`, and the `packages/<module>/...` equivalent) and read each one's `id`, `title`, and `goal`.
+
+- Wire a dependency only when this issue **genuinely can't be implemented until the other is complete** — a real prerequisite (e.g. an API endpoint this UI calls, an entity this migration extends, a shared util this feature imports). Add the prerequisite's `id` to `dependencies`.
+- **Skip `Done` issues** — already complete, so they're not blockers. Only `Todo`, `Planned`, and `In Progress` issues can be prerequisites.
+- Cross-module is fair game — a `spa` issue may depend on an `api` issue in another module; reference the ID regardless of where it lives.
+- Never invent a dependency to be safe. When in doubt, leave it out — a spurious edge stalls `/issue-fix`. Keep the graph acyclic (see Notes).
+
+Apply this to the parent's `dependencies` (step 2) and to each sub-issue's `dependencies` (step 5), on top of the intra-batch wiring.
 
 ### 4. Check Whether Splitting Is Needed
 
@@ -239,6 +250,6 @@ A front-end design system (reusable UI primitives), **not** registered into `App
 - If the original description is missing or empty, tell the user and stop.
 - Only delete the parent after every sub-issue file is written — never leave the plan with neither parent nor sub-issues.
 - Keep dependencies acyclic — a sub-issue must never (directly or transitively) depend on itself.
-- When the batch spans related issues, wire `dependencies` across them — if one must be implemented before another (even in a different module), reference the prerequisite's ID so `/issue-fix` picks them up in order.
+- When the batch spans related issues, wire `dependencies` across them — if one must be implemented before another (even in a different module), reference the prerequisite's ID so `/issue-fix` picks them up in order. Also scan **existing** issues already filed in the module(s) for prerequisites outside the batch (step 3a).
 - Every issue (and every sub-issue) must carry a change-type label first — `/issue-fix` derives its git branch type from it; leave the `branch` field itself unset, as `/issue-fix` computes and records it on first run.
 - Process targets independently — one failing (missing file, empty description) skips only that target; continue with the rest and report skips in step 7.
