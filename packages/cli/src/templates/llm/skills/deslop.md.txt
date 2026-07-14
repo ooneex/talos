@@ -4,6 +4,8 @@ description: Remove AI-generated code slop from the working diff — unnecessary
 when_to_use: Use after generating or editing code and before committing, to make the diff read like it was written by hand in this codebase's style.
 model: sonnet
 effort: medium
+agent: general-purpose
+context: fork
 argument-hint: [module|files]
 ---
 

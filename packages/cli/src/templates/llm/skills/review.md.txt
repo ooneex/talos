@@ -4,6 +4,8 @@ description: Review the working diff against @talosjs conventions and Clean Arch
 when_to_use: Use to review uncommitted changes (or a named module/files) for convention and architecture violations — not for scaffolding or for creating issues.
 model: sonnet
 effort: high
+agent: general-purpose
+context: fork
 argument-hint: [module|files]
 ---
 

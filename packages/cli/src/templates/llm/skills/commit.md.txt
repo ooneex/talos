@@ -5,7 +5,7 @@ when_to_use: Use when the user wants to commit changes — staging modified file
 model: haiku
 effort: low
 agent: general-purpose
-context: The monorepo root working directory and current git state (uncommitted changes from `git status --porcelain`). No prior conversation context is required — the skill runs autonomously end-to-end.
+context: fork
 allowed-tools: Bash(gh:*)
 ---
 

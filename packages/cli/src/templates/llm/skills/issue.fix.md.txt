@@ -4,6 +4,8 @@ description: Find one or more issues from the user's input and implement them by
 when_to_use: Use when the user wants to implement one or more existing issues by dispatching each to the fixer that matches its module type. Triggers on requests like "fix issue <ID>", "implement the issues in <module>", or "work on this issue".
 model: sonnet
 effort: medium
+agent: general-purpose
+context: fork
 argument-hint: [issue-id|module|description]
 ---
 
