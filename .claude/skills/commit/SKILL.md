@@ -29,8 +29,8 @@ Commit messages are linted by a git `commit-msg` hook (installed with `talos com
 2. **Group by module** — files under `modules/<name>/` → scope is the module name; all other files → scope `common`
 3. **Screen for secrets** — before staging, skip anything that looks like a credential (`.env*`, `*.pem`, `*.key`, `*credentials*`, private keys, tokens). Do **not** commit these; surface them to the user instead.
 4. **For each group** — stage the files, pick the commit type, commit with `type(scope): Subject`
-5. **Remote operations**
-   - For remote operations (push, pull, ...), use ONLY `gh` cli. Use `gh auth switch` until find the active account
+5. **Push** — after all commits are created, push them to the remote
+   - For remote operations (push, pull, ...), use ONLY the `gh` cli. Do **NOT** perform any remote operation over ssh, http, or https (e.g. `git push`, `git pull`). Use `gh auth switch` until find the active account
    - Never force-push (`--force`/`--force-with-lease`) unless the user explicitly asks for it
 
 ## Commit Message Format
