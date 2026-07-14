@@ -2,7 +2,7 @@
 name: spa-issue-founder
 description: Audits a front-end module's source for SPA (client-side) issues — unhandled async states, route guards, render performance, state mutation, effect lifecycles, shared state, API error handling, optimistic-update rollback, code-splitting, and navigation behavior — and returns the findings. Use proactively whenever a module's client-side behavior needs review, and especially when the /issue-found skill audits the SPA category. It only finds and reports — it never writes issue files or runs talos commands.
 tools: Read, Grep, Glob
-model: sonnet
+model: opus
 effort: high
 memory: project
 color: blue
