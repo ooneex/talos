@@ -197,8 +197,7 @@ seed:create seed:run"
       [[ $cur != -* ]] && candidates="$(_talos_custom_commands)"
       ;;
     issue:create)
-      opts="--title --state --priority --description --labels --module --interactive"
-      [[ $flag == --state ]] && candidates="Backlog Todo Planned Done Cancelled"
+      opts="--title --priority --description --labels --module --interactive"
       [[ $flag == --priority ]] && candidates="Low Medium High Urgent"
       [[ $flag == --module ]] && candidates="$(_talos_modules)"
       ;;

@@ -271,7 +271,6 @@ _talos() {
         issue:create)
           _arguments -s \
             '--title=[Issue title]:title' \
-            '--state=[Issue state]:state:(Backlog Todo Planned "In Progress" "In Review" Done Cancelled)' \
             '--priority=[Issue priority]:priority:(Low Medium High Urgent)' \
             '--description=[Issue description]:description' \
             '*--labels=[Label (repeatable)]:label' \

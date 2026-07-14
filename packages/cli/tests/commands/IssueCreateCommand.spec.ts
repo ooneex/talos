@@ -5,7 +5,6 @@ import { join } from "node:path";
 
 const mockPrompt = mock(({ name }: { name: string }) => {
   if (name === "title") return Promise.resolve({ title: "Test Issue" });
-  if (name === "state") return Promise.resolve({ state: "Todo" });
   if (name === "priority") return Promise.resolve({ priority: "Medium" });
   if (name === "labels") return Promise.resolve({ labels: [] as string[] });
   return Promise.resolve({ description: "Test description" });
@@ -55,7 +54,7 @@ describe("IssueCreateCommand", () => {
       expect(ymlFiles.length).toBe(1);
 
       const calls = mockPrompt.mock.calls as unknown as Array<[{ name: string }]>;
-      const inputCalls = calls.filter((c) => ["title", "state", "priority", "description"].includes(c[0]?.name ?? ""));
+      const inputCalls = calls.filter((c) => ["title", "priority", "description"].includes(c[0]?.name ?? ""));
       expect(inputCalls.length).toBe(0);
     });
 
@@ -84,7 +83,7 @@ describe("IssueCreateCommand", () => {
       expect(content).toContain("description: null");
     });
 
-    test("should default state to Todo and priority to Medium when omitted", async () => {
+    test("should default priority to Medium when omitted", async () => {
       await command.run({});
 
       const files = await readdir(join(testDir, "modules", "shared", "issues"));
@@ -95,14 +94,14 @@ describe("IssueCreateCommand", () => {
       expect(content).toContain('priority: "Medium"');
     });
 
-    test("should write provided state and priority to YAML", async () => {
-      await command.run({ state: "In Progress", priority: "High" });
+    test("should always write state as Todo and honor provided priority", async () => {
+      await command.run({ priority: "High" });
 
       const files = await readdir(join(testDir, "modules", "shared", "issues"));
       const ymlFile = files.find((f) => f.endsWith(".yml")) ?? "";
       const content = await Bun.file(join(testDir, "modules", "shared", "issues", ymlFile)).text();
 
-      expect(content).toContain('state: "In Progress"');
+      expect(content).toContain('state: "Todo"');
       expect(content).toContain('priority: "High"');
     });
 

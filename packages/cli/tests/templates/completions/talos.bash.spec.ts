@@ -144,10 +144,10 @@ describe("talos.bash.txt", () => {
       expect(body).toContain("public restricted");
     });
 
-    test("issue:create should suggest state and priority choices", async () => {
+    test("issue:create should suggest priority choices and omit state", async () => {
       const body = caseBody(await read(), "issue:create");
-      expect(body).toContain("Backlog Todo Planned Done Cancelled");
       expect(body).toContain("Low Medium High Urgent");
+      expect(body).not.toContain("--state");
     });
   });
 });

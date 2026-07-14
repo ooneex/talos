@@ -128,10 +128,10 @@ describe("talos.fish.txt", () => {
       expect(lines).toContain("public restricted");
     });
 
-    test("issue:create should suggest state and priority choices", async () => {
+    test("issue:create should suggest priority choices and omit state", async () => {
       const lines = optionLines(await read(), "issue:create");
-      expect(lines).toContain("Backlog Todo Planned");
       expect(lines).toContain("Low Medium High Urgent");
+      expect(lines).not.toContain("-l state");
     });
 
     test("agent:skills:create should complete agent directories", async () => {

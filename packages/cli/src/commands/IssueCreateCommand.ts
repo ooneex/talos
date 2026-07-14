@@ -6,7 +6,6 @@ import { ensureModule, generateIssueId, issueToYaml, LOG_OPTIONS } from "../util
 
 type CommandOptionsType = {
   title?: string;
-  state?: string;
   priority?: string;
   description?: string;
   labels?: string[];
@@ -24,7 +23,7 @@ export class IssueCreateCommand<T extends CommandOptionsType = CommandOptionsTyp
   }
 
   public async run(options: T): Promise<void> {
-    const { module = "shared", state = "Todo", priority = "Medium" } = options;
+    const { module = "shared", priority = "Medium" } = options;
     const { title = "", description = "", labels = [] } = options;
 
     await ensureModule(module);
@@ -37,7 +36,7 @@ export class IssueCreateCommand<T extends CommandOptionsType = CommandOptionsTyp
       id: resolvedId,
       module,
       title: title.trim(),
-      state: state.trim(),
+      state: "Todo",
       priority: priority.trim(),
       description: description.trim(),
       labels,

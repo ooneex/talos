@@ -313,12 +313,11 @@ describe("_talos.txt", () => {
       expect(match?.[1]).toContain("_talos_modules");
     });
 
-    test("issue:create should have title, state, priority, description, labels, module, and interactive options", async () => {
+    test("issue:create should have title, priority, description, labels, module, and interactive options", async () => {
       const content = await Bun.file(templatePath).text();
       const match = content.match(/issue:create\)([\s\S]*?);;/);
       expect(match).not.toBeNull();
       expect(match?.[1]).toContain("--title=");
-      expect(match?.[1]).toContain("--state=");
       expect(match?.[1]).toContain("--priority=");
       expect(match?.[1]).toContain("--description=");
       expect(match?.[1]).toContain("--labels=");
@@ -326,15 +325,7 @@ describe("_talos.txt", () => {
       expect(match?.[1]).toContain("_talos_modules");
       expect(match?.[1]).toContain("--interactive");
       expect(match?.[1]).not.toContain("--id=");
-    });
-
-    test("issue:create should suggest state choices", async () => {
-      const content = await Bun.file(templatePath).text();
-      const match = content.match(/issue:create\)([\s\S]*?);;/);
-      expect(match).not.toBeNull();
-      for (const state of ["Backlog", "Todo", "Done", "Cancelled"]) {
-        expect(match?.[1]).toContain(state);
-      }
+      expect(match?.[1]).not.toContain("--state=");
     });
 
     test("issue:create should suggest priority choices", async () => {

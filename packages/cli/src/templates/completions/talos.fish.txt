@@ -228,7 +228,6 @@ for cmd in oo talos
     complete -c $cmd -n '__fish_seen_subcommand_from command:run' -f -a '(__talos_custom_commands)' -d 'Custom command'
 
     complete -c $cmd -n '__fish_seen_subcommand_from issue:create' -l title -x -d 'Issue title'
-    complete -c $cmd -n '__fish_seen_subcommand_from issue:create' -l state -x -a 'Backlog Todo Planned "In Progress" "In Review" Done Cancelled' -d 'Issue state'
     complete -c $cmd -n '__fish_seen_subcommand_from issue:create' -l priority -x -a 'Low Medium High Urgent' -d 'Issue priority'
     complete -c $cmd -n '__fish_seen_subcommand_from issue:create' -l description -x -d 'Issue description'
     complete -c $cmd -n '__fish_seen_subcommand_from issue:create' -l labels -x -d 'Label (repeatable)'

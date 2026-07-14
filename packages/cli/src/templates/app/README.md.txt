@@ -400,7 +400,7 @@ By default all fields are empty; pass `--interactive` to be prompted for each on
 ```bash
 oo issue:create                                                  # Empty skeleton in shared module
 oo issue:create --title "Add password reset" --module user       # Pre-fill title, save to user module
-oo issue:create --interactive                                    # Prompt for title, state, priority, labels, description
+oo issue:create --interactive                                    # Prompt for title, priority, labels, description
 oo issue:create --interactive --module user                      # Interactive + save into modules/user/issues/
 ```
 

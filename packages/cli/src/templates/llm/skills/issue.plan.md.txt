@@ -66,7 +66,7 @@ This writes a YAML skeleton to `modules/<module>/issues/<ID>.yml` (`<ID>` auto-g
 
 For the current target — plan mode: use its resolved ID/path (if not found, record the exact path checked, skip it, continue with the rest). Create mode: use the file scaffolded in 0a. Read `modules/<module>/issues/<ID>.yml` (default module: `shared`).
 
-If a plan-mode issue's `state` is already `Planned`, it's done — skip it (don't re-plan), note the skip for step 7, continue. (Create-mode issues are always `Todo`, so this never skips them.)
+A plan-mode issue is only plannable when its `state` is exactly `Todo`. If it's any other state (`Planned`, `In Progress`, `Done`), do nothing — skip it (don't re-plan), note the skip for step 7 with its current state, and continue with the rest. (Create-mode issues are always `Todo`, so this never skips them.)
 
 Then read the module config `modules/<module>/<module>.yml` for its `type`, which decides the `goal`'s technical vocabulary (see **Technical Structure by Module Type**):
 - `type: "module"`, `"api"`, `"microservice"` (or none) — backend → `### Data Model` with TypeORM relations.
@@ -171,7 +171,7 @@ dependencies:
 
 ### 7. Confirm the Batch
 
-Once every target is planned, report a batch summary. Per issue: `id`, `title`, module, mode (created vs. planned-in-place), final `priority`/`labels`, and whether it was split (listing the sub-issue IDs/titles that replaced it). Then list any skipped or unplannable targets (already `Planned`, plan-mode file not found with the exact path checked, or an ambiguous grouping awaiting confirmation).
+Once every target is planned, report a batch summary. Per issue: `id`, `title`, module, mode (created vs. planned-in-place), final `priority`/`labels`, and whether it was split (listing the sub-issue IDs/titles that replaced it). Then list any skipped or unplannable targets (state not `Todo` — report the current state, plan-mode file not found with the exact path checked, or an ambiguous grouping awaiting confirmation).
 
 ## YAML Structure Reference
 
