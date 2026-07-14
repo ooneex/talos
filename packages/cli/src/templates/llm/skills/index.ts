@@ -13,6 +13,7 @@ import databaseMigrate from "./database.migrate.md.txt";
 import debug from "./debug.md.txt";
 import deslop from "./deslop.md.txt";
 import e2eCreate from "./e2e.create.md.txt";
+import e2eRun from "./e2e.run.md.txt";
 import entityCreate from "./entity.create.md.txt";
 import eventCreate from "./event.create.md.txt";
 import flagCreate from "./flag.create.md.txt";
@@ -88,6 +89,7 @@ export const skills: Record<string, SkillTemplateType> = {
   "database.create": databaseCreate,
   "database.migrate": databaseMigrate,
   "e2e.create": e2eCreate,
+  "e2e.run": e2eRun,
   "entity.create": entityCreate,
   "event.create": eventCreate,
   "flag.create": flagCreate,

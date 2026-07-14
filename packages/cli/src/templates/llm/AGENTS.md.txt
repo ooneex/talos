@@ -36,6 +36,7 @@ Skills load on demand — invoke or let them activate when relevant; don't dupli
 - `/review` — review the working diff against @talosjs conventions + Clean Architecture, then fix.
 - `/debug` — diagnose and fix a failing test, exception, or startup error.
 - `/database-migrate` — apply/roll back migrations, run seeds, and verify the schema.
+- `/e2e-run` — run the Playwright e2e suite across packages and modules, then triage failures.
 - `/optimize` — enforce coding conventions across a module.
 - `/translation-translate` — translate/complete a module's `translations.json`/`translations.yml` dictionaries (and optionally extract hardcoded text) into the target locales.
 - `/issue-found`, `/issue-plan`, `/issue-fix` — audit, plan, and implement issues.

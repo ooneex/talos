@@ -192,6 +192,7 @@ _talos() {
     'fmt:Alias for monorepo:run --commands=fmt — run the fmt script across packages and modules with granular caching'
     'lint:Alias for monorepo:run --commands=lint — run the lint script across packages and modules with granular caching'
     'test:Alias for monorepo:run --commands=test — run the test script across packages and modules with granular caching'
+    'e2e\:run:Alias for monorepo:run --commands=e2e — run the e2e script across packages and modules with granular caching'
     'e2e\:create:Generate a new Playwright e2e test'
     'entity\:create:Generate a new entity class'
     'flag\:create:Generate a new feature flag class'
@@ -376,7 +377,7 @@ _talos() {
             '--logs[Stream plain logs instead of the interactive view]' \
             '--no-cache[Skip reading and writing the task cache]'
           ;;
-        monorepo:check|check|build|fmt|lint|test)
+        monorepo:check|check|build|fmt|lint|test|e2e:run)
           _arguments -s \
             '--packages=-[Package name(s), comma-separated (default: all)]::packages:_talos_publish_packages' \
             '--modules=-[Module name(s), comma-separated (default: all)]::modules:_talos_publish_modules' \

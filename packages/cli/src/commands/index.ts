@@ -28,6 +28,7 @@ export { DockerCreateCommand } from "./DockerCreateCommand";
 export { DockerCredentialsCreateCommand } from "./DockerCredentialsCreateCommand";
 export { DockerPublishCommand } from "./DockerPublishCommand";
 export { E2eCreateCommand } from "./E2eCreateCommand";
+export { E2eRunCommand } from "./E2eRunCommand";
 export { EntityCreateCommand } from "./EntityCreateCommand";
 export { EventCreateCommand } from "./EventCreateCommand";
 export { FeatureFlagCreateCommand } from "./FeatureFlagCreateCommand";

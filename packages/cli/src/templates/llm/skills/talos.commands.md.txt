@@ -91,6 +91,7 @@ talos monorepo:run --commands=build,lint,test                # Run scripts acros
 talos monorepo:run --commands=build --modules=billing,user   # Only the named modules (also --packages=a,b)
 talos monorepo:run --commands=test --logs                    # Stream plain logs (use in CI/non-interactive runs)
 talos monorepo:run --commands=build --no-cache               # Ignore the task cache and re-run everything
+talos e2e:run [--modules=a,b] [--logs] [--no-cache]          # Alias for monorepo:run --commands=e2e — run the Playwright e2e suite
 talos monorepo:check                                         # Install, build, fmt, lint and test — the full gate
 talos monorepo:check --modules=billing,user --logs           # Scope the gate to the named modules (also --packages=a,b)
 ```
