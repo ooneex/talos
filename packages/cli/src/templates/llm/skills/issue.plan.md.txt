@@ -94,7 +94,12 @@ Rules:
 
 **Module** — Preserve the existing `module` field (set by `talos issue:create`), and give every sub-issue the same `module` value as the parent. It mirrors the `modules/<module>/` directory the issue lives in — never drop it when rewriting the YAML.
 
-**Labels** — Suggest relevant labels: short (1–3 words), Title Case for general terms, uppercase for acronyms. Deduplicate against existing YAML labels. Vocabulary (exact casing): `Feature`, `Bug`, `Improvement`, `Enhancement`, `Performance`, `Refactor`, `Security`, `Breaking Change`, `Documentation`, `Testing`, `Database`, `API`, `UI`, `Infrastructure`, `Cleanup`.
+**Labels** — Suggest relevant labels: short (1–3 words), Title Case for general terms, uppercase for acronyms. Deduplicate against existing YAML labels. Vocabulary (exact casing) splits into two kinds:
+
+- **Change-type** (what kind of change) — `Feature`, `Enhancement`, `Bug`, `Security`, `Hotfix`, `Performance`, `Refactor`, `Cleanup`, `Architecture`, `Testing`, `Documentation`, `Build`, `Dependencies`, `CI`, `Style`, `Improvement`, `Chore`, `Maintenance`, `Revert`. `Breaking Change` is a modifier layered on top of one of these.
+- **Area** (where the change lands) — `Database`, `API`, `UI`, `SPA`, `Design`, `Infrastructure`.
+
+**Always include at least one change-type label**, and list it first. `/issue-fix` maps that label to the git branch type (`Feature` → `feat/…`, `Bug` → `fix/…`, `Refactor` → `refactor/…`, etc.); an issue carrying only area labels falls back to a `chore/…` branch, which is rarely what's intended. Add area labels alongside the change-type one when they help (e.g. `["Feature", "API"]`).
 
 **State** — Valid: `Todo`, `Planned`, `In Progress`, `Done`. This skill produces a plan, so always set `state: "Planned"` (on every sub-issue when split, or the parent when not). `Planned` means ready to pick up — `/issue-fix` takes over. Never set any other state.
 
@@ -235,4 +240,5 @@ A front-end design system (reusable UI primitives), **not** registered into `App
 - Only delete the parent after every sub-issue file is written — never leave the plan with neither parent nor sub-issues.
 - Keep dependencies acyclic — a sub-issue must never (directly or transitively) depend on itself.
 - When the batch spans related issues, wire `dependencies` across them — if one must be implemented before another (even in a different module), reference the prerequisite's ID so `/issue-fix` picks them up in order.
+- Every issue (and every sub-issue) must carry a change-type label first — `/issue-fix` derives its git branch type from it; leave the `branch` field itself unset, as `/issue-fix` computes and records it on first run.
 - Process targets independently — one failing (missing file, empty description) skips only that target; continue with the rest and report skips in step 7.
