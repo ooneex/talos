@@ -246,8 +246,8 @@ describe("AppInitCommand", () => {
     };
 
     // The exhaustive per-assistant scaffolding is covered by
-    // AgentSkillsCreateCommand.spec; here we only assert that app:init delegates
-    // to it for the selected assistants.
+    // templates/llm/assistants.spec.ts and AgentSkillsCreateCommand.spec; here we
+    // only assert that app:init delegates to it for the selected assistants.
     test("should delegate skills scaffolding for the selected assistants", async () => {
       selectedAgents = [".claude"];
       await command.run({ name: "MyApp", destination: testDir, silent: true });

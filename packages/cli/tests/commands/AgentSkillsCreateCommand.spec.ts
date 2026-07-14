@@ -71,18 +71,36 @@ describe("AgentSkillsCreateCommand", () => {
   });
 
   describe("run()", () => {
-    test("should scaffold skills and AGENTS.md for the provided assistants", async () => {
+    test("should scaffold native skills and AGENTS.md for the provided assistants", async () => {
       await command.run({ cwd: testDir, agents: [".codex", ".cursor"] });
 
       expect(await skillFileCount(join(testDir, ".codex", "skills"))).toBeGreaterThan(0);
-      expect(await skillFileCount(join(testDir, ".cursor", "skills"))).toBeGreaterThan(0);
+      expect(existsSync(join(testDir, ".cursor", "commands", "commit.md"))).toBe(true);
       expect(existsSync(join(testDir, "AGENTS.md"))).toBe(true);
     });
 
-    test("should generate agent files for the provided assistants", async () => {
+    test("should generate Codex agent files as TOML for the .codex assistant", async () => {
       await command.run({ cwd: testDir, agents: [".codex"] });
 
       const agentsDir = join(testDir, ".codex", "agents");
+      const glob = new Glob("*.toml");
+      const files: string[] = [];
+
+      for await (const file of glob.scan(agentsDir)) {
+        files.push(file);
+      }
+
+      expect(files.length).toBeGreaterThan(0);
+
+      const agent = await Bun.file(join(agentsDir, "module-issue-fixer.toml")).text();
+      expect(agent).toContain('name = "module-issue-fixer"');
+      expect(agent).toContain("developer_instructions = '''");
+    });
+
+    test("should generate Markdown agent files for non-Codex assistants", async () => {
+      await command.run({ cwd: testDir, agents: [".claude"] });
+
+      const agentsDir = join(testDir, ".claude", "agents");
       const glob = new Glob("*.md");
       const files: string[] = [];
 
@@ -97,7 +115,7 @@ describe("AgentSkillsCreateCommand", () => {
       selectedAgents = [".windsurf"];
       await command.run({ cwd: testDir });
 
-      expect(await skillFileCount(join(testDir, ".windsurf", "skills"))).toBeGreaterThan(0);
+      expect(existsSync(join(testDir, ".windsurf", "workflows", "commit.md"))).toBe(true);
     });
 
     test("should scaffold nothing when the selection is empty", async () => {

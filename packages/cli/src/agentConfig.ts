@@ -1,49 +1,43 @@
 import { join } from "node:path";
 import { TerminalLogger } from "@talosjs/logger";
 import { agents } from "./templates/llm/agents";
+import { resolveAdapter, type ScaffoldInput } from "./templates/llm/assistants";
 import { agentsMd, skills } from "./templates/llm/skills";
 import { LOG_OPTIONS } from "./utils";
 
+// Normalise the skills template map (a value is either a bare `SKILL.md` string
+// or a `{ skill, references }` object) into the shape every adapter consumes.
+const toScaffoldInput = (): ScaffoldInput => ({
+  agentsMd,
+  agents,
+  skills: Object.fromEntries(
+    Object.entries(skills).map(([name, template]) => [
+      name,
+      typeof template === "string"
+        ? { source: template }
+        : template.references
+          ? { source: template.skill, references: template.references }
+          : { source: template.skill },
+    ]),
+  ),
+});
+
 /**
  * Scaffold the shared AGENTS.md, agent files and skills into an assistant config
- * directory (e.g. ".claude" or ".codex"). All files are written concurrently
- * since they target independent paths.
+ * directory (e.g. ".claude" or ".codex"). Each assistant gets its native layout
+ * and file format via its adapter; assistants without a dedicated adapter fall
+ * back to the Claude-style layout. All files are written concurrently since they
+ * target independent paths.
  */
 export const scaffoldAgentConfig = async (configDir: string, cwd = process.cwd()): Promise<void> => {
   const logger = new TerminalLogger();
-  const skillsLocalDir = join(configDir, "skills");
-  const skillsDir = join(cwd, skillsLocalDir);
-  const agentsLocalDir = join(configDir, "agents");
-  const agentsDir = join(cwd, agentsLocalDir);
+  const files = resolveAdapter(configDir)(toScaffoldInput(), configDir);
 
-  const writes: Promise<unknown>[] = [];
-  const write = (path: string, content: string, logPath: string): void => {
-    writes.push(
-      Bun.write(path, content).then(() => logger.success(`${logPath} created successfully`, undefined, LOG_OPTIONS)),
-    );
-  };
-
-  write(join(cwd, "AGENTS.md"), agentsMd, "AGENTS.md");
-
-  for (const [agentName, content] of Object.entries(agents)) {
-    write(join(agentsDir, `${agentName}.md`), content, join(agentsLocalDir, `${agentName}.md`));
-  }
-
-  for (const [skillName, template] of Object.entries(skills)) {
-    const dirName = skillName.replace(/\./g, "-");
-    const content = typeof template === "string" ? template : template.skill;
-    const references = typeof template === "string" ? undefined : template.references;
-
-    write(join(skillsDir, dirName, "SKILL.md"), content, join(skillsLocalDir, dirName, "SKILL.md"));
-
-    for (const [refName, refContent] of Object.entries(references ?? {})) {
-      write(
-        join(skillsDir, dirName, "references", refName),
-        refContent,
-        join(skillsLocalDir, dirName, "references", refName),
-      );
-    }
-  }
-
-  await Promise.all(writes);
+  await Promise.all(
+    files.map((file) =>
+      Bun.write(join(cwd, file.path), file.content).then(() =>
+        logger.success(`${file.path} created successfully`, undefined, LOG_OPTIONS),
+      ),
+    ),
+  );
 };
