@@ -218,11 +218,10 @@ describe("DesignCreateCommand", () => {
       expect(await exists(join(testDir, "modules", "design", "package.json"))).toBe(true);
     });
 
-    test("should prompt for name when not provided", async () => {
+    test("should default the name to `design` when not provided", async () => {
       await command.run({ cwd: testDir, silent: true });
 
-      // enquirer mock resolves { name: "Test" }
-      expect(await exists(join(testDir, "modules", "test", "test.yml"))).toBe(true);
+      expect(await exists(join(testDir, "modules", "design", "design.yml"))).toBe(true);
     });
   });
 

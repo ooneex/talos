@@ -7,7 +7,6 @@ import { TerminalLogger } from "@talosjs/logger";
 import { toKebabCase } from "@talosjs/utils/toKebabCase";
 import { toPascalCase } from "@talosjs/utils/toPascalCase";
 import { removeFromAppModule, removeFromSharedModule } from "../moduleRegistry";
-import { askName } from "../prompts/askName";
 import { ensureBin, LOG_OPTIONS, spawnStep } from "../utils";
 import { ModuleCreateCommand } from "./ModuleCreateCommand";
 
@@ -30,13 +29,8 @@ export class DesignCreateCommand<T extends CommandOptionsType = CommandOptionsTy
   }
 
   public async run(options: T): Promise<void> {
-    const { cwd = process.cwd(), silent = false } = options;
-    let { name } = options;
+    const { cwd = process.cwd(), silent = false, name = "design" } = options;
     const logger = new TerminalLogger();
-
-    if (!name) {
-      name = await askName({ message: "Enter design name" });
-    }
 
     const pascalName = toPascalCase(name).replace(/Module$/, "");
     const kebabName = toKebabCase(pascalName);
