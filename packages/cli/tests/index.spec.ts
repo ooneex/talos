@@ -60,6 +60,7 @@ describe("@talosjs/cli - index", () => {
     "DockerCreateCommand",
     "DockerCredentialsCreateCommand",
     "DockerPublishCommand",
+    "E2eCreateCommand",
     "EntityCreateCommand",
     "EventCreateCommand",
     "FeatureFlagCreateCommand",

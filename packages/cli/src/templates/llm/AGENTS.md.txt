@@ -27,7 +27,7 @@ Skills load on demand based on the task — invoke or let them activate when rel
 
 **Generators**
 - `/module-create` — scaffold a whole module and complete its first vertical slice.
-- `/<artifact>-create` scaffolds a single artefact and completes its code + tests: `ai-chat`, `ai-middleware`, `ai-tool`, `analytics`, `cache`, `command`, `controller`, `cron`, `database`, `entity`, `event`, `flag`, `logger`, `mailer`, `middleware`, `migration`, `permission`, `queue`, `rate-limit`, `repository`, `seed`, `service`, `spa-feature`, `storage`, `translation`, `vector-database`.
+- `/<artifact>-create` scaffolds a single artefact and completes its code + tests: `ai-chat`, `ai-middleware`, `ai-tool`, `analytics`, `cache`, `command`, `controller`, `cron`, `database`, `e2e`, `entity`, `event`, `flag`, `logger`, `mailer`, `middleware`, `migration`, `permission`, `queue`, `rate-limit`, `repository`, `seed`, `service`, `spa-feature`, `storage`, `translation`, `vector-database`.
 - `/sdk-create` — generate a typed browser SDK from an app or microservice's controllers.
 - `/workflow-create` + `/workflow-transition-create` — scaffold a transition-based workflow (from `@talosjs/workflow`) and its conditional, reversible steps.
 

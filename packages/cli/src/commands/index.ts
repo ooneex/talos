@@ -27,6 +27,7 @@ export { DesignRemoveCommand } from "./DesignRemoveCommand";
 export { DockerCreateCommand } from "./DockerCreateCommand";
 export { DockerCredentialsCreateCommand } from "./DockerCredentialsCreateCommand";
 export { DockerPublishCommand } from "./DockerPublishCommand";
+export { E2eCreateCommand } from "./E2eCreateCommand";
 export { EntityCreateCommand } from "./EntityCreateCommand";
 export { EventCreateCommand } from "./EventCreateCommand";
 export { FeatureFlagCreateCommand } from "./FeatureFlagCreateCommand";

@@ -192,6 +192,7 @@ _talos() {
     'fmt:Alias for monorepo:run --commands=fmt — run the fmt script across packages and modules with granular caching'
     'lint:Alias for monorepo:run --commands=lint — run the lint script across packages and modules with granular caching'
     'test:Alias for monorepo:run --commands=test — run the test script across packages and modules with granular caching'
+    'e2e\:create:Generate a new Playwright e2e test'
     'entity\:create:Generate a new entity class'
     'flag\:create:Generate a new feature flag class'
     'logger\:create:Generate a new logger class'
@@ -287,7 +288,7 @@ _talos() {
             '--id=[Local issue ID to push]:id' \
             '--module=[Module name]:module:_talos_modules'
           ;;
-        ai:chat:create|ai:tool:create|ai:middleware:create|analytics:create|cache:create|command:create|cron:create|database:create|flag:create|logger:create|mailer:create|permission:create|queue:create|rate-limit:create|repository:create|service:create|spa:feature:create|storage:create|translation:create|vector-database:create|workflow:create|workflow:transition:create)
+        ai:chat:create|ai:tool:create|ai:middleware:create|analytics:create|cache:create|command:create|cron:create|database:create|e2e:create|flag:create|logger:create|mailer:create|permission:create|queue:create|rate-limit:create|repository:create|service:create|spa:feature:create|storage:create|translation:create|vector-database:create|workflow:create|workflow:transition:create)
           _arguments -s \
             '--name=[Name of the resource]:name' \
             '--module=[Module name]:module:_talos_modules' \

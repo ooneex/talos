@@ -62,7 +62,7 @@ export const addClassToModule = async (
   await Bun.write(modulePath, content);
 };
 
-export const installDependency = async (dependency: string): Promise<void> => {
+export const installDependency = async (dependency: string, dev = false): Promise<void> => {
   const packageJsonPath = join(process.cwd(), "package.json");
   const packageJson = await Bun.file(packageJsonPath).json();
   const deps = packageJson.dependencies ?? {};
@@ -70,7 +70,8 @@ export const installDependency = async (dependency: string): Promise<void> => {
 
   if (!deps[dependency] && !devDeps[dependency]) {
     const logger = new TerminalLogger();
-    await spawnStep(logger, ["bun", "add", dependency], process.cwd(), {
+    const args = dev ? ["bun", "add", "-d", dependency] : ["bun", "add", dependency];
+    await spawnStep(logger, args, process.cwd(), {
       start: `Installing ${dependency}...`,
       failure: (exitCode) => `Failed to install ${dependency} (exit code: ${exitCode})`,
     });

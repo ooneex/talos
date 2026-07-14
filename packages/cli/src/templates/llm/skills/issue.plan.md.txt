@@ -13,7 +13,7 @@ argument-hint: [issue-id|description]
 
 > **Module location:** a `<module>` usually resolves to `modules/<module>/`, but it can also live under `packages/<module>/` — e.g. once it's been extracted into a shared, publishable package. Check both roots before assuming a path doesn't exist; every `modules/<module>/...` path in this file applies equally under `packages/<module>/...` when that's where the module actually lives.
 
-Infer which issues to plan from the user's input — one or more issues across one or more modules. Each input item is **either** an existing issue (ID or path) **or** a free-form description. Either way, the result is a planned issue: restructured into `context` / `goal` / `dod` / `dependencies`, labelled, with state and priority set, and optionally broken into ordered, self-contained sub-issues (same structure) that read as a step-by-step implementation guide.
+Infer which issues to plan from the user's input — one or more issues across one or more modules. Each input item is **either** an existing issue (ID or path) **or** a free-form description. Either way, the result is a planned issue: restructured into `context` / `goal` / `dod` / `testing` / `dependencies`, labelled, with state and priority set, and optionally broken into ordered, self-contained sub-issues (same structure) that read as a step-by-step implementation guide.
 
 ## Workflow
 
@@ -75,11 +75,12 @@ Then read the module config `modules/<module>/<module>.yml` for its `type`, whic
 
 ### 2. Restructure the Parent Issue
 
-Replace the free-form `description` with the **same four fields used by sub-issues**, so the parent is structurally identical to one:
+Replace the free-form `description` with the **same five fields used by sub-issues**, so the parent is structurally identical to one:
 
 - `context` — relevant background and why the issue exists.
 - `goal` — concrete work to do, including any **Technical Notes** (constraints, hints) and the technical subsection matching the module type (`### Data Model` / `### Front-End Structure` / `### Design System Structure`), when applicable.
 - `dod` — acceptance criteria as checkboxes (`- [ ]`), all required.
+- `testing` — an ordered checkbox list (`1. [ ]`, `2. [ ]`, …) of concrete steps a reviewer follows to verify the change end-to-end, so every `dod` item is exercised (see **How to Test**).
 - `dependencies` — issue IDs to complete first (usually `[]` for a standalone parent). Beyond the current batch, scan existing issues in the module(s) for real prerequisites (step 3a).
 
 Rules:
@@ -134,7 +135,7 @@ Break into 3–7 small, self-contained, independently implementable sub-issues t
 - Inherit `priority` and `labels` from the parent; set `state: "Planned"`.
 - Order by implementation sequence, expressed through `dependencies`.
 
-Each sub-issue uses the same four fields (`context` scoped to it plus how it fits the larger plan; `goal`; `dod`; `dependencies` = sub-issue IDs to complete first, `[]` when none).
+Each sub-issue uses the same five fields (`context` scoped to it plus how it fits the larger plan; `goal`; `dod`; `testing` scoped to what this sub-issue delivers; `dependencies` = sub-issue IDs to complete first, `[]` when none).
 
 When a sub-issue needs implementation detail, `goal` includes the technical subsection matching the module type (see **Technical Structure by Module Type**). For backend, `### Data Model` lists every relation with the exact field name on the owning entity, the TypeORM decorator, and the inverse field / FK-or-join-table owner:
 
@@ -171,6 +172,9 @@ goal: |
 dod: |
   - [ ] <Condition 1>
   - [ ] <…>
+testing: |
+  1. [ ] <First verification step — e.g. a command to run or a route/flow to exercise>
+  2. [ ] <Next step and the expected result>
 dependencies:
   - "<id of a sub-issue to complete first>"
 ```
@@ -178,7 +182,7 @@ dependencies:
 ### 6. Save Changes
 
 - **If split:** write all sub-issue files, then `rm modules/<module>/issues/<ID>.yml` (Bash). Confirm each sub-issue written and the parent removed, with relative paths.
-- **If not split:** rewrite the parent YAML with `context`/`goal`/`dod`/`dependencies` (replacing `description`) plus new labels, via Edit or Write. Confirm with the relative path.
+- **If not split:** rewrite the parent YAML with `context`/`goal`/`dod`/`testing`/`dependencies` (replacing `description`) plus new labels, via Edit or Write. Confirm with the relative path.
 
 ### 7. Confirm the Batch
 
@@ -209,10 +213,29 @@ goal: |
 dod: |
   - [ ] <Condition 1>
   - [ ] <…>
+testing: |
+  1. [ ] <First verification step — e.g. a command to run or a route/flow to exercise>
+  2. [ ] <Next step and the expected result>
 dependencies: []
 comments:
   - author: "Alice"
     message: "Some comment"
+```
+
+## How to Test
+
+`testing` is an **ordered checkbox list** (`1. [ ]`, `2. [ ]`, …) of the concrete steps a reviewer runs to confirm the change works end-to-end. The number gives the sequence; the checkbox lets the reviewer tick each step off as they go. Where `dod` states *what must be true*, `testing` states *how to prove it* — together they cover the same ground from the two angles.
+
+- Write real, runnable steps in implementation order — the command to run, the route/flow to exercise, the input to provide — each paired with its **expected result**. Prefer project tooling (`talos monorepo:check`, `bun run e2e`, `talos app:start`, a specific `curl`/route) over vague prose.
+- Cover every `dod` item: each acceptance criterion should be exercised by at least one step, including the meaningful edge/error cases.
+- Match the module type: backend issues test endpoints/services/migrations (requests, DB state, `talos monorepo:check`); SPA/design issues test rendered routes and interactions (`talos app:start`, then the browser flow, plus `bun run e2e` when a Playwright spec exists).
+- Keep it self-contained and scoped: a sub-issue's steps verify only what that sub-issue delivers. Omit the field only when the issue has nothing observable to verify (e.g. a pure chore); otherwise it is required.
+
+```yaml
+testing: |
+  1. [ ] Run `talos monorepo:check` from the project root — lint, types, and tests pass.
+  2. [ ] Start the app with `talos app:start` and open `/users/new`.
+  3. [ ] Submit the form with a duplicate email — the request is rejected with a 409 and the inline error shows.
 ```
 
 ## Technical Structure by Module Type

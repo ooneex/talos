@@ -1,6 +1,6 @@
 ---
 name: issue-fix
-description: Find one or more issues from the user's input and implement them by dispatching each to the fixer sub-agent that matches its module type. Infers the target modules and issue IDs from whatever the user says, reads each modules/<module>/issues/<ID>.yml to resolve and sequence the work, then hands each issue to its fixer (backend module/api/microservice, spa, or design), which implements it, lints, satisfies the Definition of Done, and marks it In Review, before this skill commits, pushes, and opens a pull request for the branch.
+description: Find one or more issues from the user's input and implement them by dispatching each to the fixer sub-agent that matches its module type. Infers the target modules and issue IDs from whatever the user says, reads each modules/<module>/issues/<ID>.yml to resolve and sequence the work, then hands each issue to its fixer (backend module/api/microservice, spa, or design), which implements it, creates the end-to-end tests that satisfy its testing steps, lints, satisfies the Definition of Done, and marks it In Review, before this skill commits, pushes, and opens a pull request for the branch.
 when_to_use: Use when the user wants to implement one or more existing issues by dispatching each to the fixer that matches its module type. Triggers on requests like "fix issue <ID>", "implement the issues in <module>", or "work on this issue".
 model: sonnet
 effort: medium
@@ -15,7 +15,7 @@ argument-hint: [issue-id|module|description]
 
 > **Module location:** a `<module>` usually resolves to `modules/<module>/`, but it can also live under `packages/<module>/` — e.g. once it's been extracted into a shared, publishable package. Check both roots before assuming a path doesn't exist; every `modules/<module>/...` path in this file applies equally under `packages/<module>/...` when that's where the module actually lives.
 
-Infer which issues the user wants fixed from their input — this may be one or more issues spread across one or more modules — then hand each to the **fixer sub-agent** that matches the module's type. Each fixer reads the issue, implements it following the module's conventions, lints, satisfies the Definition of Done, and marks it `In Review`. This skill's job is **resolving** the issues, **dispatching** them in dependency order, **finalising** each on its branch (commit, push, and open a pull request), and **summarising** the batch — never implement inline here.
+Infer which issues the user wants fixed from their input — this may be one or more issues spread across one or more modules — then hand each to the **fixer sub-agent** that matches the module's type. Each fixer reads the issue, implements it following the module's conventions, creates the end-to-end tests that satisfy its `testing` steps (via the `/e2e-create` skill), lints, satisfies the Definition of Done, and marks it `In Review`. This skill's job is **resolving** the issues, **dispatching** them in dependency order, **finalising** each on its branch (commit, push, and open a pull request), and **summarising** the batch — never implement inline here.
 
 ## Important
 
@@ -62,6 +62,9 @@ goal: |
 dod: |
   - [ ] <Acceptance criterion 1>
   - [ ] <…>
+testing: |
+  1. [ ] <Ordered verification step — the flow to exercise and its expected result>
+  2. [ ] <…>
 dependencies: []
 ```
 
@@ -122,7 +125,9 @@ Implementation is owned entirely by the **fixer sub-agents** — this skill neve
 | `spa` | `spa-issue-fixer` |
 | `design` | `design-issue-fixer` |
 
-Each fixer analyses the issue (`context` / `goal` / `dod` / `dependencies`, plus any `resources`/`spec` block), implements the artefacts the `goal` calls for following that module's conventions and Clean Architecture, runs `talos monorepo:check` from the project root, checks off every satisfied `dod` box, sets `state: "In Review"` (transitioning it from `Planned`) when all boxes pass, and returns a report.
+Each fixer analyses the issue (`context` / `goal` / `dod` / `testing` / `dependencies`, plus any `resources`/`spec` block), implements the artefacts the `goal` calls for following that module's conventions and Clean Architecture, **creates the end-to-end tests that satisfy the issue's `testing` section** (see **End-to-end tests** below), runs `talos monorepo:check` from the project root, checks off every satisfied `dod` and `testing` box, sets `state: "In Review"` (transitioning it from `Planned`) only when **all** `dod` and `testing` boxes pass, and returns a report.
+
+**End-to-end tests from the `testing` section.** The planned issue's `testing` field is an ordered checkbox list of the steps that prove the change works (produced by `/issue-plan`). For every step that exercises a browser flow, the fixer creates the matching Playwright test with the **`/e2e-create`** skill — run `talos e2e:create --name=<Name> --module=<module>` (naming the spec after the flow), then fill in the generated `modules/<module>/e2e/<Name>.spec.ts` so it drives that flow and asserts the expected result, and set `baseURL` / `webServer` in `playwright.config.ts` as that skill describes. Run the suite from the root (`talos monorepo:run --commands=e2e --modules=<module>`, or `bun run e2e` in the module) and check off each `testing` box once its e2e test passes. A step that is a pure CLI check (e.g. running `talos monorepo:check`) is satisfied by running it rather than by a new spec. The issue only reaches `In Review` once every `testing` box — and every `dod` box — is checked.
 
 When an issue's `goal` describes a multi-step business process — a sequence of conditional, reversible steps that should roll back together when a later step fails — the fixer should use the `@talosjs/workflow` package (`packages/workflow/`), scaffolding it with `/workflow-create` and `/workflow-transition-create` (or `talos workflow:create` / `talos workflow:transition:create`) instead of hand-rolling the orchestration. Only reach for it when the work actually calls for it; a simple single-step change does not need a workflow.
 
@@ -159,4 +164,5 @@ Then list any requested issues that could not be fixed (missing file with the ex
 - Each issue is fixed on its own git branch (`<type>/<ID>-<slug>`, type derived from its `labels`), recorded in the issue's `branch` field, not a worktree. If the branch exists, switch to it; else create it off main. All fixers share one working tree, so dispatch them sequentially — never concurrently.
 - Process issues in dependency order; an issue whose dependency is unmet and out of batch is skipped by its fixer with a report.
 - Derive all names, paths, and methods from the issue; the fixers never ask the user for values that can be inferred.
-- A fixer only sets its issue to `In Review` (from `Planned`) once every `dod` checkbox is satisfied; this skill then commits, pushes, and opens a pull request for the branch following the `commit` and `pr` skill conventions.
+- Each issue's `testing` steps become real end-to-end coverage: the fixer creates the Playwright e2e tests via the `/e2e-create` skill (`talos e2e:create`) and checks off each `testing` box once its test passes, before the issue moves to `In Review`.
+- A fixer only sets its issue to `In Review` (from `Planned`) once every `dod` **and** `testing` checkbox is satisfied; this skill then commits, pushes, and opens a pull request for the branch following the `commit` and `pr` skill conventions.
