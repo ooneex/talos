@@ -2,7 +2,6 @@
 name: talos-commands
 description: Reference for the `talos` CLI commands — app lifecycle, module/design/spa/microservice/SDK/docker scaffolding, database migrations and seeds, monorepo task running, releases, and issues. Use when you need the exact command or flags to run a project task from the terminal.
 user-invocable: false
-disallowed-tools: AskUserQuestion
 ---
 
 # talos CLI Commands

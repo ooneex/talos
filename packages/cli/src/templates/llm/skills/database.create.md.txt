@@ -3,7 +3,6 @@ name: database-create
 description: Generate a new database class with its test file, then complete the generated code. Use when creating a new database adapter that extends TypeormDatabase from @talosjs/database.
 allowed-tools: Bash(talos database:create *), Bash(talos monorepo:check *), Read, Edit, Write, Grep, Glob
 argument-hint: [--name=<Name>] [--module=<module>]
-disallowed-tools: AskUserQuestion
 ---
 
 # Make Database Class

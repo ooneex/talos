@@ -2,7 +2,6 @@
 name: issue-found
 description: Infer one or more modules from the user's input and audit each module's source code for issues (security, performance, architecture, missing tests, improvements), handing each finding to the /issue-plan skill, which creates and plans the issue. This skill only finds issues — it never writes YAML or runs talos issue:create itself.
 argument-hint: [module|"all modules"]
-disallowed-tools: AskUserQuestion
 ---
 
 # Issue Found

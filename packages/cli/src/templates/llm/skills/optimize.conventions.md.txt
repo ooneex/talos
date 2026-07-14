@@ -2,7 +2,6 @@
 name: optimize-conventions
 description: Project coding conventions — explicit visibility, arrow functions vs class methods, Type/I naming (DI-enforced), no non-null assertions, nullable entity columns, DI wiring, code hygiene, duplication/dead-code removal, and performance rules. Use when enforcing conventions, refactoring, or reviewing a module's code style.
 user-invocable: false
-disallowed-tools: AskUserQuestion
 ---
 
 # Coding Conventions

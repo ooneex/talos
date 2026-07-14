@@ -3,7 +3,6 @@ name: permission-create
 description: Generate a new permission class with its test file, then complete the generated code. Use when creating a new permission that extends Permission from @talosjs/permission.
 allowed-tools: Bash(talos permission:create *), Bash(talos monorepo:check *), Read, Edit, Write, Grep, Glob
 argument-hint: [--name=<Name>] [--module=<module>]
-disallowed-tools: AskUserQuestion
 ---
 
 # Make Permission Class

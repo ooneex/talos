@@ -3,7 +3,6 @@ name: analytics-create
 description: Generate a new analytics class with its test file, then complete the generated code. Use when creating a new analytics tracking class that uses the @talosjs/analytics package.
 allowed-tools: Bash(talos analytics:create *), Bash(talos monorepo:check *), Read, Edit, Write, Grep, Glob
 argument-hint: [--name=<Name>] [--module=<module>]
-disallowed-tools: AskUserQuestion
 ---
 
 # Make Analytics Class

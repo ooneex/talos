@@ -3,7 +3,6 @@ name: mailer-create
 description: Generate a new mailer class with its template and test files, then complete the generated code. Use when creating a new email sender with JSX template using @talosjs/mailer.
 allowed-tools: Bash(talos mailer:create *), Bash(talos monorepo:check *), Read, Edit, Write, Grep, Glob
 argument-hint: [--name=<Name>] [--module=<module>]
-disallowed-tools: AskUserQuestion
 ---
 
 # Make Mailer Class

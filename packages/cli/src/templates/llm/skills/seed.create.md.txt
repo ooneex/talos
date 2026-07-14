@@ -3,7 +3,6 @@ name: seed-create
 description: Generate a new database seed file with its test file, then complete the generated code. Use when creating seed data for populating the database using @talosjs/seeds.
 allowed-tools: Bash(talos seed:create *), Bash(talos monorepo:check *), Read, Edit, Write, Grep, Glob
 argument-hint: [--name=<Name>] [--module=<module>]
-disallowed-tools: AskUserQuestion
 ---
 
 # Make Seed

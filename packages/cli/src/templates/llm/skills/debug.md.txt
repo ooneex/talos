@@ -1,7 +1,6 @@
 ---
 name: debug
 description: Diagnose and fix a failing test, runtime exception, or startup error in an @talosjs app. Reads the stack trace, traces it to the root cause through the DI / exception / migration patterns, fixes it, and re-verifies. Use when something is broken — a test fails, the app won't boot, a request throws — not for new features or convention cleanups.
-disallowed-tools: AskUserQuestion
 ---
 
 # Debug
