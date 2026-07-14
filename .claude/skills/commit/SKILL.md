@@ -7,7 +7,6 @@ effort: low
 agent: general-purpose
 context: The monorepo root working directory and current git state (uncommitted changes from `git status --porcelain`). No prior conversation context is required — the skill runs autonomously end-to-end.
 tools: "*"
-permission_mode: bypassPermissions
 ---
 
 # Commit by Module

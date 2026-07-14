@@ -1,13 +1,12 @@
 ---
 name: commit
 description: Create commit messages grouped by module. Analyzes git changes, groups files under modules/ by module name, and creates separate commits following the project's conventional-commit rules. Uses common scope for non-module changes.
-when_to_use: Use when the user wants to commit changes — staging modified files, grouping them by module, writing conventional-commit messages, and pushing. Triggers on requests like "commit", "commit my changes", "create a commit", or "commit and push".
+when_to_use: Use when the user wants to commit changes — staging modified files, grouping them by module, writing conventional-commit messages, and pushing. Triggers on requests like "commit", "commit my changes", "create a commit", "push", or "commit and push".
 model: haiku
 effort: low
 agent: general-purpose
 context: The monorepo root working directory and current git state (uncommitted changes from `git status --porcelain`). No prior conversation context is required — the skill runs autonomously end-to-end.
 tools: "*"
-permission_mode: bypassPermissions
 ---
 
 # Commit by Module
@@ -31,7 +30,7 @@ Commit messages are linted by a git `commit-msg` hook (installed with `talos com
 3. **Screen for secrets** — before staging, skip anything that looks like a credential (`.env*`, `*.pem`, `*.key`, `*credentials*`, private keys, tokens). Do **not** commit these; surface them to the user instead.
 4. **For each group** — stage the files, pick the commit type, commit with `type(scope): Subject`
 5. **Push**
-   - Use the `gh` CLI for all remote operations: first run `gh auth switch --hostname github.com` (or the repo's host) to make sure the active account matches the current repo's remote, then push with `gh` (its configured credential helper carries the auth)
+   - For remote operations (push, pull, ...), use ONLY `gh` cli. Use `gh auth switch` until find the active account
    - Never force-push (`--force`/`--force-with-lease`) unless the user explicitly asks for it
 
 ## Commit Message Format
