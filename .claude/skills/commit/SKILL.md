@@ -1,8 +1,6 @@
 ---
 name: commit
 description: Create commit messages grouped by module. Analyzes git changes, groups files under modules/ by module name, and creates separate commits following the project's conventional-commit rules. Uses common scope for non-module changes.
-disable-model-invocation: true
-disallowed-tools: AskUserQuestion
 ---
 
 # Commit by Module
@@ -26,8 +24,7 @@ Commit messages are linted by a git `commit-msg` hook (installed with `talos com
 3. **Screen for secrets** — before staging, skip anything that looks like a credential (`.env*`, `*.pem`, `*.key`, `*credentials*`, private keys, tokens). Do **not** commit these; surface them to the user instead.
 4. **For each group** — stage the files, pick the commit type, commit with `type(scope): Subject`
 5. **Push**
-   - Prefer the `gh` CLI: first run `gh auth switch --hostname github.com` (or the repo's host) to make sure the active account matches the current repo's remote, then push with `git push` (or `git push -u origin <branch>` if there's no upstream yet)
-   - If `gh auth switch` or the push through `gh` fails (not installed, no matching account, auth error), fall back to the normal SSH-based flow: plain `git commit` / `git push` using the repo's configured SSH remote
+   - Use the `gh` CLI for all remote operations: first run `gh auth switch --hostname github.com` (or the repo's host) to make sure the active account matches the current repo's remote, then push with `gh` (its configured credential helper carries the auth)
    - Never force-push (`--force`/`--force-with-lease`) unless the user explicitly asks for it
 
 ## Commit Message Format

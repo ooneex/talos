@@ -1,8 +1,6 @@
 ---
 name: commit
 description: Create commit messages grouped by module. Analyzes git changes, groups files under modules/ by module name, and creates separate commits following the project's conventional-commit rules. Uses common scope for non-module changes.
-disable-model-invocation: true
-disallowed-tools: AskUserQuestion
 ---
 
 # Commit by Module
