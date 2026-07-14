@@ -12,24 +12,22 @@ argument-hint: [--name=<Name>] [--module=<module>] [--channel=<channel>]
 
 > **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
 
-> **Module location:** a `<module>` usually resolves to `modules/<module>/`, but it can also live under `packages/<module>/` — e.g. once it's been extracted into a shared, publishable package. Check both roots before assuming a path doesn't exist; every `modules/<module>/...` path in this file applies equally under `packages/<module>/...` when that's where the module actually lives.
+Generate a PubSub event class and test file, then complete the implementation. This skill covers only the pubsub-specific parts.
 
-Generate a PubSub event class and test file, then complete the implementation. Follow the shared workflow in the `talos-scaffold` skill (run-from-root, `--name`/`--module` inference, module registration, lint/format, and coding conventions); this skill covers only the pubsub-specific parts.
+**Rules that apply throughout:**
+- **Module location:** `<module>` resolves to `modules/<module>/` or `packages/<module>/` (e.g. once extracted into a shared package). Check both roots; every `modules/<module>/...` path applies equally under `packages/<module>/...`.
+- **Shared workflow:** follow the `talos-scaffold` skill for run-from-root, `--name`/`--module` inference, module registration, lint/format, and coding conventions.
 
 ## Steps
 
-### 1. Infer the options from the request, then run the generator
-
-Map the user's request to the options below, then run:
+### 1. Infer options, then run the generator
 
 ```bash
 talos event:create --name=<name> --module=<module> --channel=<channel>
 ```
 
-**Inferring options from the user's request:**
-
-- `--name` — the event class name, taken from the event it represents (e.g., "an event when a user is created" → `UserCreated`). Pass it in any casing; the CLI normalizes to PascalCase and appends the `Event` suffix automatically, so omit the suffix.
-- `--channel` — optional; pass only if the user names a specific channel. Otherwise omit and it defaults to the kebab-case form of the name (e.g., `UserCreated` → `user-created`).
+- `--name` — event class name, from the event it represents ("an event when a user is created" → `UserCreated`). Any casing; the CLI normalizes to PascalCase and appends the `Event` suffix, so omit it.
+- `--channel` — optional; pass only if the user names a specific channel. Otherwise defaults to the kebab-case name (`UserCreated` → `user-created`).
 
 ### 2. Complete the PubSub event class
 

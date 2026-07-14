@@ -11,9 +11,12 @@ argument-hint: [issue-id|description]
 
 > **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
 
-> **Module location:** a `<module>` usually resolves to `modules/<module>/`, but it can also live under `packages/<module>/` — e.g. once it's been extracted into a shared, publishable package. Check both roots before assuming a path doesn't exist; every `modules/<module>/...` path in this file applies equally under `packages/<module>/...` when that's where the module actually lives.
+This skill infers which issues to plan from the user's input — one or more issues across one or more modules. Each input item is **either** an existing issue (ID or path) **or** a free-form description; either way the result is a planned issue: restructured into `context` / `goal` / `dod` / `testing` / `dependencies`, labelled, with state and priority set, and optionally broken into ordered, self-contained sub-issues (same structure) reading as a step-by-step implementation guide.
 
-Infer which issues to plan from the user's input — one or more issues across one or more modules. Each input item is **either** an existing issue (ID or path) **or** a free-form description. Either way, the result is a planned issue: restructured into `context` / `goal` / `dod` / `testing` / `dependencies`, labelled, with state and priority set, and optionally broken into ordered, self-contained sub-issues (same structure) that read as a step-by-step implementation guide.
+**Rules that apply throughout:**
+- **Module location:** `<module>` resolves to `modules/<module>/` or `packages/<module>/` (e.g. once extracted into a shared package). Check both roots before assuming a path is missing; every `modules/<module>/...` path applies equally under `packages/<module>/...`.
+- **Run every command from the monorepo root.**
+- **Never invent facts** — only restructure and clarify what's already in the issue. If the original description is missing or empty, tell the user and stop.
 
 ## Workflow
 
@@ -25,20 +28,20 @@ Before anything else, switch to **plan mode** (Claude Code's read-only mode — 
 
 The input may name several issues across several modules, mixing existing issues with new descriptions. Resolve it into a list of targets, each tagged with its mode:
 
-- **Plan mode** — an existing issue ID (e.g. `OON-123456`) or path to a `.yml` under `modules/<module>/issues/`. If an ID is given without a module, glob `modules/*/issues/<ID>.yml`; plan each match. Goes straight to step 1.
+- **Plan mode** — an existing issue ID (e.g. `OON-123456`) or path to a `.yml` under `modules/<module>/issues/`. If an ID is given without a module, glob `modules/*/issues/<ID>.yml` and plan each match. Goes straight to step 1.
 - **Create mode** — a free-form description with no existing issue. Run step 0a to scaffold, then step 1 to plan.
 
 Splitting input into targets:
 - Multiple IDs/paths (repeated, comma-separated, or listed) each become a plan-mode target.
 - A description covering **distinct, unrelated work — especially work spanning different modules** — becomes **one create-mode target per piece** (e.g. "add an org create API and a billing settings page" → a backend issue + a spa issue in another module). Keep tightly related work as one target; step 4 decides whether to split it.
-- When it's unclear whether a fragment is one issue or several, prefer fewer targets and let steps 4–5 break them down; only ask when the grouping genuinely can't be inferred.
+- When unclear whether a fragment is one issue or several, prefer fewer targets and let steps 4–5 break them down; only ask when the grouping genuinely can't be inferred.
 - Treat anything that isn't a recognizable issue ID or existing file path as a description (create mode).
 
-Build the full target list first, then run steps 0a–6 for **each** target. If no targets resolve, tell the user nothing matched and stop.
+Build the full target list first, then run steps 0a–6 for **each** target. Process targets independently — one failing (missing file, empty description) skips only that target; continue and report skips in step 7. If no targets resolve, tell the user and stop.
 
 ### 0a. Create Mode — Scaffold the Issue First
 
-**Always run commands from the monorepo root.** Run this per create-mode target. Derive fields from that target's slice of the description — infer reasonable values, ask only when a required value genuinely can't be inferred:
+Run this per create-mode target. Derive fields from that target's slice of the description — infer reasonable values, ask only when a required value genuinely can't be inferred:
 
 | Field | Default | How to derive |
 |-------|---------|---------------|
@@ -52,36 +55,32 @@ Build the full target list first, then run steps 0a–6 for **each** target. If 
 
 ```bash
 talos issue:create \
-  --title="<title>" \
-  --module=<module> \
-  --state="Todo" \
-  --priority="<priority>" \
-  [--labels="<label1>,<label2>"] \
-  [--description="<description>"]
+  --title="<title>" --module=<module> --state="Todo" --priority="<priority>" \
+  [--labels="<label1>,<label2>"] [--description="<description>"]
 ```
 
 This writes a YAML skeleton to `modules/<module>/issues/<ID>.yml` (`<ID>` auto-generated, e.g. `ABC-012345`). Note the `<ID>` and `<module>`, then continue to step 1.
 
 ### 1. Locate the Issue File and Module Type
 
-For the current target — plan mode: use its resolved ID/path (if not found, record the exact path checked, skip it, continue with the rest). Create mode: use the file scaffolded in 0a. Read `modules/<module>/issues/<ID>.yml` (default module: `shared`).
+For the current target — plan mode: use its resolved ID/path (if not found, record the exact path checked, skip, continue). Create mode: use the file scaffolded in 0a. Read `modules/<module>/issues/<ID>.yml` (default module: `shared`).
 
-A plan-mode issue is only plannable when its `state` is exactly `Todo`. If it's any other state (`Planned`, `In Progress`, `Done`), do nothing — skip it (don't re-plan), note the skip for step 7 with its current state, and continue with the rest. (Create-mode issues are always `Todo`, so this never skips them.)
+A plan-mode issue is only plannable when its `state` is exactly `Todo`. Any other state (`Planned`, `In Progress`, `Done`) → skip it (don't re-plan), note the skip and its current state for step 7, and continue. (Create-mode issues are always `Todo`.)
 
 Then read the module config `modules/<module>/<module>.yml` for its `type`, which decides the `goal`'s technical vocabulary (see **Technical Structure by Module Type**):
 - `type: "module"`, `"api"`, `"microservice"` (or none) — backend → `### Data Model` with TypeORM relations.
-- `type: "spa"` — front-end SPA → `### Front-End Structure` (features/routes/layouts/hooks/services).
-- `type: "design"` — design system → `### Design System Structure` (components/hooks/icons/styles).
+- `type: "spa"` — front-end SPA → `### Front-End Structure`.
+- `type: "design"` — design system → `### Design System Structure`.
 
 ### 2. Restructure the Parent Issue
 
 Replace the free-form `description` with the **same five fields used by sub-issues**, so the parent is structurally identical to one:
 
 - `context` — relevant background and why the issue exists.
-- `goal` — concrete work to do, including any **Technical Notes** (constraints, hints) and the technical subsection matching the module type (`### Data Model` / `### Front-End Structure` / `### Design System Structure`), when applicable.
+- `goal` — concrete work to do, including any **Technical Notes** (constraints, hints) and the technical subsection matching the module type, when applicable.
 - `dod` — acceptance criteria as checkboxes (`- [ ]`), all required.
-- `testing` — an ordered checkbox list (`1. [ ]`, `2. [ ]`, …) of concrete steps a reviewer follows to verify the change end-to-end, so every `dod` item is exercised (see **How to Test**).
-- `dependencies` — issue IDs to complete first (usually `[]` for a standalone parent). Beyond the current batch, scan existing issues in the module(s) for real prerequisites (step 3a).
+- `testing` — an ordered checkbox list (`1. [ ]`, …) of concrete steps a reviewer follows to verify the change end-to-end, exercising every `dod` item (see **How to Test**).
+- `dependencies` — issue IDs to complete first (usually `[]` for a standalone parent); also scan existing issues for real prerequisites (step 3a).
 
 Rules:
 - Preserve all factual information from the original; keep fields concise and actionable.
@@ -95,33 +94,31 @@ Rules:
 
 **Module** — Preserve the existing `module` field (set by `talos issue:create`), and give every sub-issue the same `module` value as the parent. It mirrors the `modules/<module>/` directory the issue lives in — never drop it when rewriting the YAML.
 
-**Labels** — Suggest relevant labels: short (1–3 words), Title Case for general terms, uppercase for acronyms. Deduplicate against existing YAML labels. Vocabulary (exact casing) splits into two kinds:
+**Labels** — Suggest relevant labels: short (1–3 words), Title Case for general terms, uppercase for acronyms. Deduplicate against existing YAML labels. Vocabulary (exact casing), two kinds:
 
 - **Change-type** (what kind of change) — `Feature`, `Enhancement`, `Bug`, `Security`, `Hotfix`, `Performance`, `Refactor`, `Cleanup`, `Architecture`, `Testing`, `Documentation`, `Build`, `Dependencies`, `CI`, `Style`, `Improvement`, `Chore`, `Maintenance`, `Revert`. `Breaking Change` is a modifier layered on top of one of these.
 - **Area** (where the change lands) — `Database`, `API`, `UI`, `SPA`, `Design`, `Infrastructure`.
 
-**Always include at least one change-type label**, and list it first. `/issue-fix` maps that label to the git branch type (`Feature` → `feat/…`, `Bug` → `fix/…`, `Refactor` → `refactor/…`, etc.); an issue carrying only area labels falls back to a `chore/…` branch, which is rarely what's intended. Add area labels alongside the change-type one when they help (e.g. `["Feature", "API"]`).
+**Always include at least one change-type label, listed first.** `/issue-fix` maps it to the git branch type (`Feature` → `feat/…`, `Bug` → `fix/…`, `Refactor` → `refactor/…`, etc.); an area-only issue falls back to a `chore/…` branch, rarely what's intended. Add area labels alongside when they help (e.g. `["Feature", "API"]`). Leave the `branch` field itself unset — `/issue-fix` computes it on first run.
 
-**State** — Valid: `Todo`, `Planned`, `In Progress`, `Done`. This skill produces a plan, so always set `state: "Planned"` (on every sub-issue when split, or the parent when not). `Planned` means ready to pick up — `/issue-fix` takes over. Never set any other state.
+**State** — Valid: `Todo`, `Planned`, `In Progress`, `Done`. This skill produces a plan, so always set `state: "Planned"` (on every sub-issue when split, else the parent). Never set any other state.
 
-**Priority** — Always set/confirm. Valid: `Urgent`, `High`, `Medium`, `Low`. Infer rather than ask:
+**Priority** — Always set/confirm. Valid: `Urgent`, `High`, `Medium`, `Low`. Infer rather than ask; honor an explicitly stated priority over the inferred value:
 - `Urgent` — outages, security vulnerabilities, data loss, broken builds, blockers ("critical", "asap", "broken", "down", "vulnerability").
 - `High` — important bugs/features users await, regressions, time-sensitive work.
 - `Medium` — standard features, improvements, non-blocking bugs (fallback when no signal).
 - `Low` — nice-to-haves, polish, refactors, docs, chores.
 
-Honor an explicitly stated priority over the inferred value.
-
 ### 3a. Scan Existing Issues for Dependencies
 
-Before finalizing `dependencies`, look beyond the current batch: an issue often depends on work already filed as a separate issue. For each module touched by this batch, glob the existing issue files (`modules/<module>/issues/*.yml`, and the `packages/<module>/...` equivalent) and read each one's `id`, `title`, and `goal`.
+Before finalizing `dependencies`, look beyond the current batch — an issue often depends on work already filed as a separate issue. For each module touched by this batch, glob the existing issue files (`modules/<module>/issues/*.yml`, and the `packages/` equivalent) and read each one's `id`, `title`, `goal`.
 
-- Wire a dependency only when this issue **genuinely can't be implemented until the other is complete** — a real prerequisite (e.g. an API endpoint this UI calls, an entity this migration extends, a shared util this feature imports). Add the prerequisite's `id` to `dependencies`.
-- **Skip `Done` issues** — already complete, so they're not blockers. Only `Todo`, `Planned`, and `In Progress` issues can be prerequisites.
+- Wire a dependency only when this issue **genuinely can't be implemented until the other is complete** — a real prerequisite (an API endpoint this UI calls, an entity this migration extends, a shared util this feature imports). Add the prerequisite's `id`.
+- **Skip `Done` issues** — already complete, not blockers. Only `Todo`, `Planned`, `In Progress` can be prerequisites.
 - Cross-module is fair game — a `spa` issue may depend on an `api` issue in another module; reference the ID regardless of where it lives.
-- Never invent a dependency to be safe. When in doubt, leave it out — a spurious edge stalls `/issue-fix`. Keep the graph acyclic (see Notes).
+- Never invent a dependency to be safe — a spurious edge stalls `/issue-fix`. When in doubt, leave it out. Keep the graph acyclic: a sub-issue must never (directly or transitively) depend on itself.
 
-Apply this to the parent's `dependencies` (step 2) and to each sub-issue's `dependencies` (step 5), on top of the intra-batch wiring.
+Apply to the parent's `dependencies` (step 2) and each sub-issue's (step 5), on top of the intra-batch wiring.
 
 ### 4. Check Whether Splitting Is Needed
 
@@ -133,9 +130,8 @@ Break into 3–7 small, self-contained, independently implementable sub-issues t
 - Generate an ID `XXX-000000` (3 uppercase letters + 6 digits).
 - Write a new YAML file to the same `modules/<module>/issues/` directory.
 - Inherit `priority` and `labels` from the parent; set `state: "Planned"`.
-- Order by implementation sequence, expressed through `dependencies`.
-
-Each sub-issue uses the same five fields (`context` scoped to it plus how it fits the larger plan; `goal`; `dod`; `testing` scoped to what this sub-issue delivers; `dependencies` = sub-issue IDs to complete first, `[]` when none).
+- Order by implementation sequence, expressed through `dependencies` (sub-issue IDs to complete first, `[]` when none).
+- Use the same five fields, scoped to the sub-issue: `context` (scoped, plus how it fits the larger plan), `goal`, `dod`, `testing` (only what this sub-issue delivers), `dependencies`.
 
 When a sub-issue needs implementation detail, `goal` includes the technical subsection matching the module type (see **Technical Structure by Module Type**). For backend, `### Data Model` lists every relation with the exact field name on the owning entity, the TypeORM decorator, and the inverse field / FK-or-join-table owner:
 
@@ -146,9 +142,9 @@ When a sub-issue needs implementation detail, `goal` includes the technical subs
 - `EntityA.fieldName` → `@OneToOne(() => EntityB)` + `@JoinColumn()` — one-to-one, FK on A
 ```
 
-For spa use `### Front-End Structure`, for design `### Design System Structure`, naming the concrete files/folders to add or change under that module's conventions.
+For spa use `### Front-End Structure`, for design `### Design System Structure`, naming the concrete files/folders to add or change.
 
-After writing all sub-issues, **delete the parent issue file** — the sub-issues fully replace it. First confirm every piece of the parent's intent is carried into at least one sub-issue's `context`, `goal`, or `dod`. List each created sub-issue (ID and title) so the user sees what replaced the parent.
+After writing all sub-issues, **delete the parent issue file** — but first confirm every piece of the parent's intent is carried into at least one sub-issue's `context`, `goal`, or `dod`. Never leave the plan with neither parent nor sub-issues. List each created sub-issue (ID and title) so the user sees what replaced the parent.
 
 Sub-issue YAML:
 ```yaml
@@ -173,7 +169,7 @@ dod: |
   - [ ] <Condition 1>
   - [ ] <…>
 testing: |
-  1. [ ] <First verification step — e.g. a command to run or a route/flow to exercise>
+  1. [ ] <First verification step — command to run or route/flow to exercise>
   2. [ ] <Next step and the expected result>
 dependencies:
   - "<id of a sub-issue to complete first>"
@@ -186,37 +182,10 @@ dependencies:
 
 ### 7. Confirm the Batch
 
-Once every target is planned, report a batch summary. Per issue: `id`, `title`, module, mode (created vs. planned-in-place), final `priority`/`labels`, and whether it was split (listing the sub-issue IDs/titles that replaced it). Then list any skipped or unplannable targets (state not `Todo` — report the current state, plan-mode file not found with the exact path checked, or an ambiguous grouping awaiting confirmation).
+Once every target is planned, report a batch summary. Per issue: `id`, `title`, module, mode (created vs. planned-in-place), final `priority`/`labels`, and whether split (listing the sub-issue IDs/titles that replaced it). Then list any skipped or unplannable targets (state not `Todo` with its current state, plan-mode file not found with the exact path checked, or an ambiguous grouping awaiting confirmation).
 
-## YAML Structure Reference
-
-Parent issue when not split — same structure as a sub-issue, plus any existing `comments`:
+A not-split parent uses the identical structure (`id`/`module`/`title`/`state`/`priority`/`labels` + the five fields above), preserving any existing `comments`:
 ```yaml
-id: "OON-123456"
-module: "user"
-title: "Add user validation"
-state: "Planned"
-priority: "High"
-labels:
-  - "Enhancement"
-  - "API"
-context: |
-  <Details needed to understand it>
-goal: |
-  <What to do>
-
-  ## Technical Notes
-  <Optional — omit if not applicable>
-
-  ### Data Model | Front-End Structure | Design System Structure
-  <Subsection matching the module type — omit if not applicable>
-dod: |
-  - [ ] <Condition 1>
-  - [ ] <…>
-testing: |
-  1. [ ] <First verification step — e.g. a command to run or a route/flow to exercise>
-  2. [ ] <Next step and the expected result>
-dependencies: []
 comments:
   - author: "Alice"
     message: "Some comment"
@@ -224,18 +193,18 @@ comments:
 
 ## How to Test
 
-`testing` is an **ordered checkbox list** (`1. [ ]`, `2. [ ]`, …) of the concrete steps a reviewer runs to confirm the change works end-to-end. The number gives the sequence; the checkbox lets the reviewer tick each step off as they go. Where `dod` states *what must be true*, `testing` states *how to prove it* — together they cover the same ground from the two angles.
+`testing` is an **ordered checkbox list** (`1. [ ]`, `2. [ ]`, …) of the concrete steps a reviewer runs to confirm the change works end-to-end. Where `dod` states *what must be true*, `testing` states *how to prove it*.
 
 - Write real, runnable steps in implementation order — the command to run, the route/flow to exercise, the input to provide — each paired with its **expected result**. Prefer project tooling (`talos monorepo:check`, `bun run e2e`, `talos app:start`, a specific `curl`/route) over vague prose.
-- Cover every `dod` item: each acceptance criterion should be exercised by at least one step, including the meaningful edge/error cases.
+- Cover every `dod` item: each acceptance criterion should be exercised by at least one step, including meaningful edge/error cases.
 - Match the module type: backend issues test endpoints/services/migrations (requests, DB state, `talos monorepo:check`); SPA/design issues test rendered routes and interactions (`talos app:start`, then the browser flow, plus `bun run e2e` when a Playwright spec exists).
-- Keep it self-contained and scoped: a sub-issue's steps verify only what that sub-issue delivers. Omit the field only when the issue has nothing observable to verify (e.g. a pure chore); otherwise it is required.
+- Keep it self-contained: a sub-issue's steps verify only what it delivers. Omit the field only when the issue has nothing observable to verify (e.g. a pure chore); otherwise it is required.
 
 ```yaml
 testing: |
   1. [ ] Run `talos monorepo:check` from the project root — lint, types, and tests pass.
   2. [ ] Start the app with `talos app:start` and open `/users/new`.
-  3. [ ] Submit the form with a duplicate email — the request is rejected with a 409 and the inline error shows.
+  3. [ ] Submit the form with a duplicate email — rejected with a 409 and the inline error shows.
 ```
 
 ## Technical Structure by Module Type
@@ -254,7 +223,7 @@ A front-end SPA (TanStack Router + TanStack Query), **not** registered into `App
 - `src/features/<feature>/` — self-contained slice owning its `assets/`, `components/`, `hooks/` (data fetching / API calls / local UI state), `layouts/`, `services/` (the only layer talking to the backend), `store/` (client state), `styles/`, `types/`, `utils/`. A feature must not import another feature's internals — promote shared code to `src/shared/`.
 - `src/shared/<sub-layer>/` — the only place ≥2 features may import from in common (same sub-layout as a feature).
 
-For a new feature, note that `talos spa:feature:create --name <Name> --module <module>` (skill `/spa-feature-create`) scaffolds the route, the page/skeleton/error/not-found layouts under `features/<feature>/layouts/`, and example query (`useGet<Name>`) + mutation (`useUpdate<Name>`) hooks under `features/<feature>/hooks/`. Describe the feature, its route path, the layouts, and the hooks needed. Spell hooks as `useGet<Name>` / `useUpdate<Name>` and components/layouts in PascalCase.
+For a new feature, `talos spa:feature:create --name <Name> --module <module>` (skill `/spa-feature-create`) scaffolds the route, the page/skeleton/error/not-found layouts under `features/<feature>/layouts/`, and example query (`useGet<Name>`) + mutation (`useUpdate<Name>`) hooks under `features/<feature>/hooks/`. Describe the feature, its route path, the layouts, and the hooks needed — spell hooks as `useGet<Name>` / `useUpdate<Name>`, components/layouts in PascalCase.
 
 ### Design module (`type: "design"`) — `### Design System Structure`
 
@@ -266,13 +235,3 @@ A front-end design system (reusable UI primitives), **not** registered into `App
 - `src/fonts/` — bundled web fonts with their `@font-face` CSS; no external CDNs.
 - `src/styles/` — global stylesheets (`app.css`, `brand.css`, `typography.css`, …) for app-wide tokens/themes; prefer shared styles + component-scoped classes over one-off CSS.
 - `src/utils/` — small pure presentation helpers (`cn`, `staleChunk`); no backend/business logic.
-
-## Notes
-
-- Never invent facts — only restructure and clarify what's already in the issue.
-- If the original description is missing or empty, tell the user and stop.
-- Only delete the parent after every sub-issue file is written — never leave the plan with neither parent nor sub-issues.
-- Keep dependencies acyclic — a sub-issue must never (directly or transitively) depend on itself.
-- When the batch spans related issues, wire `dependencies` across them — if one must be implemented before another (even in a different module), reference the prerequisite's ID so `/issue-fix` picks them up in order. Also scan **existing** issues already filed in the module(s) for prerequisites outside the batch (step 3a).
-- Every issue (and every sub-issue) must carry a change-type label first — `/issue-fix` derives its git branch type from it; leave the `branch` field itself unset, as `/issue-fix` computes and records it on first run.
-- Process targets independently — one failing (missing file, empty description) skips only that target; continue with the rest and report skips in step 7.

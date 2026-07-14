@@ -2,10 +2,9 @@
 
 Guidance for AI coding agents working in this repository.
 
-This file is a lean index. Coding conventions, reference, and task workflows
-all live in conditionally-activated **skills** (see the index below) so this
-file stays small and avoids loading unused context. Reach for a skill when you
-need the detail behind a task.
+A lean index. Coding conventions, reference, and task workflows live in
+conditionally-activated **skills** (below) so this file stays small and avoids
+loading unused context. Reach for a skill when you need the detail behind a task.
 
 ## Project Overview
 
@@ -13,7 +12,7 @@ need the detail behind a task.
 
 ## Skills
 
-Skills load on demand based on the task — invoke or let them activate when relevant; do not duplicate their content here.
+Skills load on demand — invoke or let them activate when relevant; don't duplicate their content here.
 
 **Reference**
 - `talos-packages` — the full @talosjs package catalog (choosing the right package for a feature).

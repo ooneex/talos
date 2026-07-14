@@ -12,23 +12,21 @@ argument-hint: [--name=<Name>] [--module=<module>]
 
 > **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
 
-> **Module location:** a `<module>` usually resolves to `modules/<module>/`, but it can also live under `packages/<module>/` — e.g. once it's been extracted into a shared, publishable package. Check both roots before assuming a path doesn't exist; every `modules/<module>/...` path in this file applies equally under `packages/<module>/...` when that's where the module actually lives.
+Generate a permission class and test file, then complete the implementation. This skill covers only the permission-specific parts.
 
-Generate a permission class and test file, then complete the implementation. Follow the shared workflow in the `talos-scaffold` skill (run-from-root, `--name`/`--module` inference, module registration, lint/format, and coding conventions); this skill covers only the permission-specific parts.
+**Rules that apply throughout:**
+- **Module location:** `<module>` resolves to `modules/<module>/` or `packages/<module>/` (e.g. once extracted into a shared package). Check both roots; every `modules/<module>/...` path applies equally under `packages/<module>/...`.
+- **Shared workflow:** follow the `talos-scaffold` skill for run-from-root, `--name`/`--module` inference, module registration, lint/format, and coding conventions.
 
 ## Steps
 
-### 1. Infer the options from the request, then run the generator
-
-Map the user's request to the options below, then run:
+### 1. Infer options, then run the generator
 
 ```bash
 talos permission:create --name=<name> --module=<module>
 ```
 
-**Inferring options from the user's request:**
-
-- `--name` — the permission class name, taken from the action it guards (e.g., "a permission to edit posts" → `EditPost`). Pass it in any casing; the CLI normalizes to PascalCase and appends the `Permission` suffix automatically, so omit the suffix.
+- `--name` — permission class name, from the action it guards ("a permission to edit posts" → `EditPost`). Any casing; the CLI normalizes to PascalCase and appends the `Permission` suffix, so omit it.
 
 ### 2. Complete the permission class
 

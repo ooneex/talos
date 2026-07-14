@@ -12,9 +12,9 @@ argument-hint: [--name=<Name>] [--module=<module>]
 
 > **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
 
-> **Module location:** a `<module>` usually resolves to `modules/<module>/`, but it can also live under `packages/<module>/` — e.g. once it's been extracted into a shared, publishable package. Check both roots before assuming a path doesn't exist; every `modules/<module>/...` path in this file applies equally under `packages/<module>/...` when that's where the module actually lives.
+Generate a feature flag class and test file, then complete the implementation. Follow the shared `talos-scaffold` skill workflow (run-from-root, `--name`/`--module` inference, module registration, lint/format, coding conventions); this covers only the feature-flag-specific parts.
 
-Generate a feature flag class and test file, then complete the implementation. Follow the shared workflow in the `talos-scaffold` skill (run-from-root, `--name`/`--module` inference, module registration, lint/format, and coding conventions); this skill covers only the feature-flag-specific parts.
+- **Module location:** `<module>` resolves to `modules/<module>/` or `packages/<module>/` (e.g. once extracted into a shared package). Check both roots before assuming a path is missing.
 
 ## Steps
 
@@ -77,33 +77,21 @@ describe("<Name>FeatureFlag", () => {
     expect(typeof <Name>FeatureFlag).toBe("function");
   });
 
-  test("should have 'getKey' method", () => {
+  test("'getKey' should exist and return a non-empty string", () => {
     expect(typeof <Name>FeatureFlag.prototype.getKey).toBe("function");
-  });
-
-  test("'getKey' should return a non-empty string", () => {
-    const flag = new <Name>FeatureFlag();
-    const key = flag.getKey();
+    const key = new <Name>FeatureFlag().getKey();
     expect(typeof key).toBe("string");
     expect(key.length).toBeGreaterThan(0);
   });
 
-  test("should have 'getDescription' method", () => {
+  test("'getDescription' should exist and return a string", () => {
     expect(typeof <Name>FeatureFlag.prototype.getDescription).toBe("function");
+    expect(typeof new <Name>FeatureFlag().getDescription()).toBe("string");
   });
 
-  test("'getDescription' should return a string", () => {
-    const flag = new <Name>FeatureFlag();
-    expect(typeof flag.getDescription()).toBe("string");
-  });
-
-  test("should have 'isEnabled' method", () => {
+  test("'isEnabled' should exist and resolve to a boolean", async () => {
     expect(typeof <Name>FeatureFlag.prototype.isEnabled).toBe("function");
-  });
-
-  test("'isEnabled' should resolve to a boolean", async () => {
-    const flag = new <Name>FeatureFlag();
-    expect(typeof (await flag.isEnabled())).toBe("boolean");
+    expect(typeof (await new <Name>FeatureFlag().isEnabled())).toBe("boolean");
   });
 
   test("should produce independent instances", () => {

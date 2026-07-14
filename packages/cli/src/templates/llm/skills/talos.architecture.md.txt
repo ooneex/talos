@@ -76,11 +76,3 @@ Compose these along the natural flow **trigger → decouple → defer → orches
 3. The queue worker runs the `Checkout` **workflow**: `ReserveStock → ChargeCard → CreateShipment`, each a transition with a `rollback`.
 4. The final transition publishes `CheckoutCompleted` (**event**); a subscriber pushes a live update to the user's **socket** room and another enqueues a confirmation email job.
 5. A nightly **cron** enqueues reconciliation jobs for any checkouts left pending.
-
-## Anti-patterns
-
-- Doing heavy or slow work synchronously in a controller → enqueue it (**Queue**).
-- Using an **Event** where you actually need the work retried/guaranteed → use a **Queue**.
-- Chaining ordered steps inside one queue job with manual `try/catch` rollback → use a **Workflow**.
-- Cron jobs that do the heavy lifting inline → have them enqueue.
-- Tight coupling a producer to every consumer → publish an **Event** instead.

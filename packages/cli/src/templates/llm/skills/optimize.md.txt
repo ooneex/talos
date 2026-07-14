@@ -1,6 +1,6 @@
 ---
 name: optimize
-description: Optimize a module's codebase for quality, performance, and clean conventions. Enforces arrow functions (except class methods), Type/I naming, explicit visibility, nullable columns; removes duplication and dead code; prunes trivial tests.
+description: Optimize a module's codebase for quality, performance, and clean conventions. Enforces arrow functions (except class methods), Type/I naming (DI-enforced), explicit visibility, nullable columns; removes duplication and dead code; prunes trivial tests.
 when_to_use: Use to optimize/clean up/refactor a module — not for new features, bug fixes, or issues.
 model: sonnet
 effort: high
@@ -13,14 +13,12 @@ argument-hint: [module]
 
 > **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
 
-> **Module location:** a `<module>` usually resolves to `modules/<module>/`, but it can also live under `packages/<module>/` — e.g. once it's been extracted into a shared, publishable package. Check both roots before assuming a path doesn't exist; every `modules/<module>/...` path in this file applies equally under `packages/<module>/...` when that's where the module actually lives.
-
 Bring a module in line with project conventions: clean code, no duplication, only meaningful tests. Not for new features, bug fixes, or issues — use the matching workflow instead.
 
-## Rules
-
+**Rules that apply throughout:**
+- **Module location:** `<module>` resolves to `modules/<module>/` or `packages/<module>/` (e.g. once extracted into a shared package). Check both roots before assuming a path is missing.
 - Run every command from the **monorepo root**, never from inside a package.
-- Start clean: no uncommitted changes before you begin (`git status`). Refactor only — never alter behavior or public APIs without checking callers first.
+- Start clean: no uncommitted changes (`git status`). Refactor only — never alter behavior or public APIs without checking callers first.
 - Tests must pass before and after. If they were failing before, say so; don't claim a fix you didn't make.
 
 ## Routing — load on demand
@@ -35,13 +33,9 @@ Invoke each sub-skill only at the step that needs it; skip ones that don't apply
 
 ## Steps
 
-1. **Target** — work in `modules/<module>/`; ask if unspecified. When the user
-   names **several modules**, dispatch the `code-optimizer` sub-agent once per
-   module via the Agent tool (independent modules concurrently) — each agent runs
-   the steps below for its module and reports back; then collate the reports. For
-   a **single** module, run the steps inline yourself.
+1. **Target** — work in `modules/<module>/`; ask if unspecified. For **several modules**, dispatch the `code-optimizer` sub-agent once per module via the Agent tool (independent modules concurrently); each runs these steps for its module and reports back, then collate. For a **single** module, run inline.
 
-2. **Map (sub-agent)** — reading every file inline floods context. Spawn one read-only `Explore` sub-agent scoped to `modules/<module>/` and have it return *only* a digest, not file contents:
+2. **Map (sub-agent)** — reading every file inline floods context. Spawn one read-only `Explore` sub-agent scoped to `modules/<module>/` that returns *only* a digest, not file contents:
    - **Inventory** — each type, interface, class, standalone function + path.
    - **Naming violations** — type not ending `Type`; interface not starting `I`; non-arrow standalone function; method/property missing visibility; non-null assertion (`!`); optional entity property missing `null`/`nullable`.
    - **Duplication** — repeated logic, types, or utilities + paths.
@@ -49,7 +43,7 @@ Invoke each sub-skill only at the step that needs it; skip ones that don't apply
 
    Apply every fix yourself in the steps below.
 
-3. **Conventions** — invoke the `optimize-conventions` skill, then fix each reported violation; rename and update all references.
+3. **Conventions** — invoke `optimize-conventions`, then fix each reported violation; rename and update all references.
 
 4. **Duplication & dead code** — extract shared logic into helper arrows or base classes; consolidate types; merge near-duplicate utilities; delete dead code.
 

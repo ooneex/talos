@@ -13,78 +13,45 @@ allowed-tools: Bash(gh:*)
 
 > **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
 
-> **Module location:** a `<module>` usually resolves to `modules/<module>/`, but it can also live under `packages/<module>/` — e.g. once it's been extracted into a shared, publishable package. Check both roots before assuming a path doesn't exist; every `modules/<module>/...` path in this file applies equally under `packages/<module>/...` when that's where the module actually lives.
+> **Module location:** `<module>` resolves to `modules/<module>/` or `packages/<module>/` (e.g. once extracted into a shared package). Check both roots before assuming a path is missing.
 
-Create separate commits per modified module, following the project's conventional-commit rules.
-
-## Important
-
-Always run all commands from the **root of the project** (the monorepo root), not from inside individual packages.
-
-Commit messages are linted by a git `commit-msg` hook (installed with `talos commitlint:init`, which runs `talos commitlint:check`). The available types, scopes, and other rules are described below.
+Create separate commits per modified module, following the project's conventional-commit rules. **Run every command from the monorepo root.** Messages are linted by a git `commit-msg` hook (`talos commitlint:init` / `talos commitlint:check`).
 
 ## Workflow
 
-1. **Analyze changes** — run `git status --porcelain`
-2. **Group by module** — files under `modules/<name>/` → scope is the module name; all other files → scope `common`
-3. **Screen for secrets** — before staging, skip anything that looks like a credential (`.env*`, `*.pem`, `*.key`, `*credentials*`, private keys, tokens). Do **not** commit these; surface them to the user instead.
-4. **For each group** — stage the files, pick the commit type, commit with `type(scope): Subject`
-5. **Push** — after all commits are created, push them to the remote
-   - For remote operations (push, pull, ...), use ONLY the `gh` cli. Do **NOT** perform any remote operation over ssh, http, or https (e.g. `git push`, `git pull`). Use `gh auth switch` until find the active account
-   - Never force-push (`--force`/`--force-with-lease`) unless the user explicitly asks for it
+1. **Analyze** — `git status --porcelain`.
+2. **Group by module** — files under `modules/<name>/` → scope = module name; all others → scope `common`.
+3. **Screen for secrets** — before staging, skip anything that looks like a credential (`.env*`, `*.pem`, `*.key`, `*credentials*`, private keys, tokens). Do **not** commit these; surface them to the user.
+4. **Commit each group** — stage the files, pick the type, commit as `type(scope): Subject`.
+5. **Push** — after all commits, push to the remote using **only** the `gh` cli (never `git push`/`git pull` or ssh/http). Use `gh auth switch` to find the active account. Never force-push unless the user explicitly asks.
 
-## Commit Message Format
+## Message Format
 
-```
-type(scope): Subject line
-```
+`type(scope): Subject`
 
-### Valid Types
+**Type** — pick by the change:
 
-| Type | Use for |
-|------|---------|
-| `feat` | New feature |
+| Type | Use when |
+|------|----------|
+| `feat` | New feature / new files with functionality |
 | `fix` | Bug fix |
-| `refactor` | Code restructuring, renaming |
-| `test` | Tests only |
-| `chore` | Deps, configs, maintenance |
-| `docs` | Documentation |
+| `refactor` | Restructuring, renaming, deleted-only or moved files |
+| `test` | Tests only (`*.spec.ts` only) |
+| `chore` | Deps, lock files, configs, maintenance |
+| `docs` | Docs only (`*.md` only) |
 | `style` | Formatting only |
 | `perf` | Performance |
-| `build` | Build system |
-| `ci` | CI/CD |
+| `build` | Build system, build configs, scripts |
+| `ci` | CI/CD files |
 | `revert` | Revert previous commit |
 
-### Scope Rules
+**Scope** — module name (lower-case) for files under `modules/<name>/`; else `common`. Any `modules/<name>` or `packages/<name>` directory is automatically a valid scope (discovered at commit time, no config). Never empty; fall back to `common`.
 
-- Files under `modules/<name>/` → module name in lower-case (e.g., `user`, `product`)
-- All other files → `common`
-- Scope must never be empty
-- Any `modules/<name>` or `packages/<name>` directory name is automatically a valid scope — scopes are discovered at commit time, so there is no config to edit for a new module or package. If a meaningful scope cannot be determined, fall back to `common`
-
-### Subject Rules
-
-- Sentence-case, no trailing period, max 100 chars total
-- Imperative mood ("Add" not "Added")
-
-## Determining Commit Type
-
-| Change | Type |
-|--------|------|
-| New files with functionality | `feat` |
-| Bug fixes | `fix` |
-| Restructuring, renaming | `refactor` |
-| Only `*.spec.ts` files | `test` |
-| Only `*.md` files | `docs` |
-| Lock files, deps | `chore` |
-| Build configs, scripts | `build` |
-| CI/CD files | `ci` |
-| Formatting only | `style` |
+**Subject** — sentence-case, imperative mood ("Add" not "Added"), no trailing period, max 100 chars total.
 
 ## Examples
 
 ```bash
-# Multiple module changes + non-module files
 git add modules/user/
 git commit -m "feat(user): Add AuthService and update UserService"
 
@@ -95,16 +62,11 @@ git add bun.lock packages/cache/
 git commit -m "chore(common): Update dependencies and cache package"
 ```
 
-## Handling Special Cases
+## Special Cases
 
-- **Mixed feat + fix in one module**: use `feat` if primary change is new functionality; `fix` if primary is a bug fix; split into multiple commits if truly independent
-- **Deleted files only**: use `refactor` (e.g., `refactor(user): Remove deprecated UserAdapter`)
-- **Renamed/moved files**: use `refactor` (e.g., `refactor(product): Reorganize service file structure`)
+- **Mixed feat + fix in one module** — use the primary change's type; split into multiple commits if the changes are truly independent.
 
-## Commit Trailers
+## Trailers & Conventions
 
-Do not add any `Co-Authored-By` trailer to commits.
-
-## Coding Conventions
-
-Apply all coding conventions from the `optimize` skill.
+- Do not add any `Co-Authored-By` trailer.
+- Apply all coding conventions from the `optimize` skill.

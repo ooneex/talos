@@ -12,7 +12,7 @@ argument-hint: [--name=<Name>] [--module=<module>] [--is-socket=<true|false>] [-
 
 > **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
 
-> **Module location:** a `<module>` usually resolves to `modules/<module>/`, but it can also live under `packages/<module>/` — e.g. once it's been extracted into a shared, publishable package. Check both roots before assuming a path doesn't exist; every `modules/<module>/...` path in this file applies equally under `packages/<module>/...` when that's where the module actually lives.
+> **Module location:** a `<module>` usually resolves to `modules/<module>/`, but may live under `packages/<module>/` (e.g. once extracted into a shared package). Check both roots before assuming a path is missing; every `modules/<module>/...` path applies equally under `packages/<module>/...`.
 
 Generate a controller class, route type, and test file, then complete the implementation. Follow the shared workflow in the `talos-scaffold` skill (run-from-root, `--name`/`--module` inference, module registration, lint/format, and coding conventions); this skill covers only the controller-specific parts.
 
@@ -26,15 +26,13 @@ Map the user's request to the options below, then run:
 talos controller:create --name=<name> --module=<module> --is-socket=<true|false> --route-name=<route.name> --route-path=<route.path> --route-method=<route.method>
 ```
 
-**Inferring options from the user's request:**
+- `--name` — controller class name from the resource/action ("list books" → `BookList`). Any casing; the CLI normalizes to PascalCase and appends the `Controller` suffix — omit the suffix.
+- `--is-socket` — `true` for WebSocket/socket/realtime, else `false` (default). If unspecified, the generator asks interactively.
+- `--route-name` — dot notation `<resource>.<action>` ("list books" → `book.list`, "create a user" → `user.create`).
+- `--route-path` — URL path, inferred as a kebab-case plural of the resource (books → `/books`); use an explicit path if the user gives one.
+- `--route-method` — HTTP method from the verb (HTTP only): list/get/show → `get`, create → `post`, update/replace → `put` (partial → `patch`), delete/remove → `delete`.
 
-- `--name` — the controller class name, taken from the resource/action (e.g., "a controller to list books" → `BookList`). Pass it in any casing; the CLI normalizes to PascalCase and appends the `Controller` suffix automatically, so omit the suffix.
-- `--is-socket` — `true` when the user mentions WebSocket/socket/realtime, otherwise `false` (the default). If unspecified, the generator asks interactively.
-- `--route-name` — dot notation `<resource>.<action>` derived from the request (e.g., "list books" → `book.list`, "create a user" → `user.create`).
-- `--route-path` — the URL path, inferred from the resource as a kebab-case plural (e.g., books → `/books`); use what the user states if they give an explicit path.
-- `--route-method` — HTTP method mapped from the verb (HTTP only): list/get/show → `get`, create → `post`, update/replace → `put` (partial → `patch`), delete/remove → `delete`.
-
-Also generates `src/types/routes/<route.name>.ts` — delete that file after step 3 (keep the type inside the controller file).
+Also generates `src/types/routes/<route.name>.ts` — delete it after step 3 (keep the type inside the controller file).
 
 ### 2. Read the generated files
 
@@ -42,39 +40,23 @@ Read all three generated files to understand the scaffolded code.
 
 ### 3. Complete the route type
 
-**Keep the route type inside the controller file**, not in a separate type file. Delete the generated `src/types/routes/<route.name>.ts`.
+**Keep the route type inside the controller file**, not a separate file. Delete the generated `src/types/routes/<route.name>.ts`.
 
-**Include only what the route actually needs:**
+Include only the fields the route needs — `response` is always present:
 
-- `params` — only for routes with URL path segments (e.g., `/users/:id`)
-- `payload` — only for `post`, `put`, `patch` methods
-- `queries` — only for list/search endpoints with query string filtering
-- `response` — always include
+| Field | Include when |
+|-------|--------------|
+| `params` | route has URL path segments (`/users/:id`) |
+| `payload` | method is `post`, `put`, or `patch` |
+| `queries` | list/search endpoint with query-string filtering |
+| `response` | always |
 
 ```typescript
-// GET /users (list) — queries, response
 type <TypeName>RouteType = {
-  queries: { },
-  response: { },
-};
-
-// POST /users (create) — payload, response
-type <TypeName>RouteType = {
-  payload: { },
-  response: { },
-};
-
-// GET /users/:id (detail) — params, response
-type <TypeName>RouteType = {
-  params: { },
-  response: { },
-};
-
-// PUT /users/:id (update) — params, payload, response
-type <TypeName>RouteType = {
-  params: { },
-  payload: { },
-  response: { },
+  params: { },    // detail/update — one key per URL segment
+  queries: { },   // list — query-string filters
+  payload: { },   // post/put/patch — request body
+  response: { },  // always
 };
 ```
 
@@ -82,16 +64,41 @@ type <TypeName>RouteType = {
 
 Edit `modules/<module>/src/controllers/<Name>Controller.ts`:
 
-- Set `roles` for access control (see **Roles** below)
-- Add a meaningful `description` (e.g., `"Create a new user account"`)
-- **Keep the controller thin** — delegate all logic to the service via constructor injection
-- Apply the same `params`/`payload`/`queries`/`response` rules to the `@Route` decorator
+- Set `roles` for access control (see **Roles** below).
+- Add a meaningful `description` (e.g. `"Create a new user account"`).
+- **Keep the controller thin** — delegate all logic to the service via constructor injection.
+- Apply the same `params`/`payload`/`queries`/`response` rules to the `@Route` decorator.
+
+```typescript
+import type { ContextType } from "@talosjs/controller"; // socket: "@talosjs/socket"
+import { Route } from "@talosjs/routing";
+import { Assert } from "@talosjs/validation";
+
+type <TypeName>RouteType = {
+  response: { },
+};
+
+@Route.<method>("<route.path>", {   // socket: @Route.socket(...)
+  name: "<route.name>",
+  version: 1,
+  description: "",
+  response: Assert({ }),
+  roles: ["ROLE_USER"],
+})
+export class <Name>Controller {
+  public async index(context: ContextType<<TypeName>RouteType>) {
+    return context.response.json({ });
+  }
+}
+```
+
+The HTTP and socket controllers are identical except the `ContextType` import (`@talosjs/controller` vs `@talosjs/socket`) and the decorator (`@Route.<method>` vs `@Route.socket`).
 
 #### Roles
 
-`roles` is an array of plain role strings (e.g. `["ROLE_USER"]`). There is **no `ERole` enum** — do not import anything from `@talosjs/role` in a controller. Access is hierarchical and graph-based: granting a role also grants every role it inherits (its ancestors, directly or transitively). Sibling roles on different branches do **not** satisfy each other.
+`roles` is an array of plain role strings (e.g. `["ROLE_USER"]`). There is **no `ERole` enum** — do not import from `@talosjs/role` in a controller. Access is hierarchical and graph-based: granting a role also grants every role it inherits (ancestors, directly or transitively). Sibling roles on different branches do **not** satisfy each other.
 
-The available roles are defined in `modules/shared/src/roles.yml`. **Always read that file** to use the project's actual roles, since each project can customize them. The default hierarchy (ancestor → descendant) is:
+The available roles live in `modules/shared/src/roles.yml` — **always read that file** to use the project's actual roles, since each project can customize them. Default hierarchy (ancestor → descendant):
 
 | Role | Inherits | Description |
 | --- | --- | --- |
@@ -109,61 +116,9 @@ The available roles are defined in `modules/shared/src/roles.yml`. **Always read
 
 Pick the **least-privileged** role that still satisfies the endpoint's access requirement.
 
-**HTTP controller:**
-
-```typescript
-import type { ContextType } from "@talosjs/controller";
-import { Route } from "@talosjs/routing";
-import { Assert } from "@talosjs/validation";
-
-type <TypeName>RouteType = {
-  response: { },
-};
-
-@Route.<method>("<route.path>", {
-  name: "<route.name>",
-  version: 1,
-  description: "",
-  response: Assert({ }),
-  roles: ["ROLE_USER"],
-})
-export class <Name>Controller {
-  public async index(context: ContextType<<TypeName>RouteType>) {
-    return context.response.json({ });
-  }
-}
-```
-
-**Socket controller:**
-
-```typescript
-import type { ContextType } from "@talosjs/socket";
-import { Route } from "@talosjs/routing";
-import { Assert } from "@talosjs/validation";
-
-type <TypeName>RouteType = {
-  response: { },
-};
-
-@Route.socket("<route.path>", {
-  name: "<route.name>",
-  version: 1,
-  description: "",
-  response: Assert({ }),
-  roles: ["ROLE_USER"],
-})
-export class <Name>Controller {
-  public async index(context: ContextType<<TypeName>RouteType>) {
-    return context.response.json({ });
-  }
-}
-```
-
 ### 5. Complete the test file
 
-Read and replace `modules/<module>/tests/controllers/<Name>Controller.spec.ts`:
-
-**Coverage:** class identity (`name.endsWith("Controller")`, is constructor), `index` exists and returns `Promise`, calls `context.response.json` (mock). Add response shape tests after injecting a mock service. Instance isolation.
+Read and replace `modules/<module>/tests/controllers/<Name>Controller.spec.ts`. Cover: class identity (`name.endsWith("Controller")`, is constructor), `index` exists and returns `Promise`, calls `context.response.json` (mock), instance isolation. Add response-shape tests after injecting a mock service.
 
 ```typescript
 import { describe, expect, mock, test } from "bun:test";
@@ -232,15 +187,15 @@ Fix every failure before completing.
 
 ### 9. Create the pubsub event (mutation routes only)
 
-**Only for `post`, `put`, `patch`, `delete` routes — skip for `get`.**
+**Only for `post`, `put`, `patch`, `delete` — skip for `get`.**
 
 ```
 /event-create --name=<Name> --channel=<resource>.<action>
 ```
 
 Once created:
-- Inject the **service** into the **event** and call `service.execute()` from `handler()`
-- Inject the **event** into the **controller** and publish from `index()`
+- Inject the **service** into the **event** and call `service.execute()` from `handler()`.
+- Inject the **event** into the **controller** and publish from `index()`.
 
 ### 10. Sync the SDK module
 
@@ -252,30 +207,23 @@ For each SDK module whose `target` covers the controller's module — an `app` t
 /sdk-create --name=<sdk module name> --module=<target>
 ```
 
-Then complete the new or updated `api` method for this controller as described in the `sdk-create` skill. Skip this step when no SDK module targets the controller's module.
+Then complete the new or updated `api` method as described in the `sdk-create` skill. Skip when no SDK module targets the controller's module.
 
 ## Usage Examples
 
-`Assert` is an alias for ArkType's `type` function. Use ArkType string syntax inside it — there is no fluent API like `Assert.string()` or `Assert.string().optional()`.
+`Assert` is an alias for ArkType's `type` function. Use ArkType string syntax inside it — there is no fluent API (`Assert.string()` etc.).
 
-- Primitive: `"string"`, `"number"`, `"boolean"`
-- Optional field: `"string?"`, `"number?"`
-- Array: `"string[]"`, `"string[]?"`
-- Union: `"string | number"`, `"File | Blob"`
-- Format: `"string.email"`, `"number.integer"`
-- Range: `"1 <= string <= 100"`, `"1 <= number.integer <= 65535"`
-- Regex: `/^[a-z]+$/`
-- Enum: `'"admin" | "user" | "guest"'`
+- Primitive: `"string"`, `"number"`, `"boolean"` · Optional: `"string?"` · Array: `"string[]"`, `"string[]?"`
+- Union: `"string | number"`, `"File | Blob"` · Format: `"string.email"`, `"number.integer"`
+- Range: `"1 <= string <= 100"`, `"1 <= number.integer <= 65535"` · Regex: `/^[a-z]+$/` · Enum: `'"admin" | "user" | "guest"'`
 
-For `params`, each URL segment gets its own `Assert("...")` call. For `queries`, `payload`, and `response`, pass an object to `Assert({...})`.
+For `params`, each URL segment gets its own `Assert("...")` call (or a constraint class like `new AssertId()`). For `queries`, `payload`, and `response`, pass an object to `Assert({...})`.
+
+All examples assume the standard imports: `ContextType` from `@talosjs/controller` (or `@talosjs/socket`), `Route` from `@talosjs/routing`, and `Assert` / `AssertId` from `@talosjs/validation`.
 
 ### HTTP — GET list (queries + response)
 
 ```typescript
-import type { ContextType } from "@talosjs/controller";
-import { Route } from "@talosjs/routing";
-import { Assert } from "@talosjs/validation";
-
 type UserListRouteType = {
   queries: { page?: string; limit?: string; search?: string };
   response: { data: { id: string; name: string }[]; total: number };
@@ -305,10 +253,6 @@ export class UserListController {
 `params` in `RouteConfigType` is `Record<string, AssertType | IAssert>` — one entry per URL segment, each with its own `Assert("...")` or a constraint class instance.
 
 ```typescript
-import type { ContextType } from "@talosjs/controller";
-import { Route } from "@talosjs/routing";
-import { Assert, AssertId } from "@talosjs/validation";
-
 type UserDetailRouteType = {
   params: { id: string };
   response: { id: string; name: string; email: string };
@@ -333,14 +277,10 @@ export class UserDetailController {
 }
 ```
 
-For nested params like `/users/:userId/bills/:billId` — one key per segment:
+Nested params like `/users/:userId/bills/:billId` — one key per segment:
 
 ```typescript
-type UserBillDetailRouteType = {
-  params: { userId: string; billId: string };
-  response: { id: string; amount: number };
-};
-
+type UserBillDetailRouteType = { params: { userId: string; billId: string }; response: { id: string; amount: number } };
 // In decorator:
 params: { userId: new AssertId(), billId: new AssertId() },
 ```
@@ -348,10 +288,6 @@ params: { userId: new AssertId(), billId: new AssertId() },
 ### HTTP — POST create (payload + response)
 
 ```typescript
-import type { ContextType } from "@talosjs/controller";
-import { Route } from "@talosjs/routing";
-import { Assert } from "@talosjs/validation";
-
 type UserCreateRouteType = {
   payload: { name: string; email: string; password: string };
   response: { id: string; name: string; email: string };
@@ -370,8 +306,7 @@ export class UserCreateController {
 
   public async index(context: ContextType<UserCreateRouteType>) {
     const { password, ...safe } = await context.request.payload();
-    // Never publish or return raw credentials. Hash the password in the service
-    // before persistence, and publish only non-sensitive fields on the event.
+    // Hash the password in the service before persistence; publish only non-sensitive fields.
     await this.userCreatedEvent.publish(safe);
     return context.response.json({ id: "...", name: safe.name, email: safe.email });
   }
@@ -380,55 +315,17 @@ export class UserCreateController {
 
 > **Security — credentials never leave the boundary in the clear.** Hash passwords (argon2/bcrypt) inside the service before persisting, and never place a raw password (or any secret) in an event payload, a response body, or a log. PubSub payloads are serialized to the broker and delivered to every subscriber, so publish only non-sensitive identifiers.
 
-### HTTP — PUT update (params + payload + response)
-
-```typescript
-import type { ContextType } from "@talosjs/controller";
-import { Route } from "@talosjs/routing";
-import { Assert, AssertId } from "@talosjs/validation";
-
-type UserUpdateRouteType = {
-  params: { id: string };
-  payload: { name?: string; email?: string };
-  response: { id: string; name: string; email: string };
-};
-
-@Route.put("/users/:id", {
-  name: "user.update",
-  version: 1,
-  description: "Update an existing user account",
-  params: { id: new AssertId() },
-  payload: Assert({ name: "string?", email: "string.email?" }),
-  response: Assert({ id: "string", name: "string", email: "string" }),
-  roles: ["ROLE_ADMIN"],
-})
-export class UserUpdateController {
-  constructor(private readonly userUpdatedEvent: UserUpdatedEvent) {}
-
-  public async index(context: ContextType<UserUpdateRouteType>) {
-    const { id } = context.request.params();
-    const data = await context.request.payload();
-    await this.userUpdatedEvent.publish({ id, ...data });
-    return context.response.json({ id, name: data.name ?? "", email: data.email ?? "" });
-  }
-}
-```
+A **PUT/PATCH update** combines the two patterns above: `params` (with `new AssertId()`) plus an optional-field `payload` (`Assert({ name: "string?", email: "string.email?" })`), publishing an update event as in POST — `await this.userUpdatedEvent.publish({ id, ...data })`.
 
 ### Socket controller (response + channel API)
 
 `ContextType<T>` from `@talosjs/socket` extends the HTTP context and adds a `channel` object:
 
-- `channel.send(response)` — send to this client only
-- `channel.publish(response)` — broadcast to all channel subscribers
+- `channel.send(response)` — send to this client only · `channel.publish(response)` — broadcast to all channel subscribers
 - `channel.subscribe()` / `channel.unsubscribe()` / `channel.isSubscribed()` — manage pub/sub
-- `channel.close(code?, reason?)` — close the WebSocket connection
-- `channel.ws` — raw `ServerWebSocket` instance
+- `channel.close(code?, reason?)` — close the connection · `channel.ws` — raw `ServerWebSocket` instance
 
 ```typescript
-import type { ContextType } from "@talosjs/socket";
-import { Route } from "@talosjs/routing";
-import { Assert } from "@talosjs/validation";
-
 type ChatMessageRouteType = {
   payload: { message: string; roomId: string };
   response: { userId: string; message: string; sentAt: string };
@@ -457,8 +354,7 @@ export class ChatMessageController {
       sentAt: new Date().toISOString(),
     });
 
-    // Broadcast to all room subscribers (includes sender)
-    await context.channel.publish(reply);
+    await context.channel.publish(reply); // broadcast to all room subscribers (includes sender)
   }
 }
 ```

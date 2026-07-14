@@ -12,13 +12,13 @@ argument-hint: [--name=<Name>] [--module=<module>]
 
 > **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
 
-> **Module location:** a `<module>` usually resolves to `modules/<module>/`, but it can also live under `packages/<module>/` — e.g. once it's been extracted into a shared, publishable package. Check both roots before assuming a path doesn't exist; every `modules/<module>/...` path in this file applies equally under `packages/<module>/...` when that's where the module actually lives.
+Generate a SPA feature — a route, its page layout, the route's pending/error/not-found boundaries, and example TanStack Query read/write hooks — then complete the implementation. Follow the shared `talos-scaffold` skill workflow (run-from-root, `--name`/`--module` inference, lint/format, coding conventions); this covers only the SPA-feature-specific parts.
 
-Generate a SPA feature — a route, its page layout, the route's pending/error/not-found boundaries, and example TanStack Query read/write hooks — then complete the implementation. Follow the shared workflow in the `talos-scaffold` skill (run-from-root, `--name`/`--module` inference, lint/format, and coding conventions); this skill covers only the SPA-feature-specific parts.
+- **Module location:** `<module>` resolves to `modules/<module>/` or `packages/<module>/` (e.g. once extracted into a shared package). Check both roots before assuming a path is missing.
 
 ## Important
 
-A SPA feature only makes sense inside a **SPA module** (a module whose `type` is `spa` in its `<name>.yml`). Create the SPA first with `spa:create` if it does not exist. The SPA is a standalone Vite front-end: keep features focused on presentation and client state, and reach the backend through HTTP APIs rather than importing server modules. Reuse UI primitives from the linked `design` module instead of duplicating them.
+A SPA feature only makes sense inside a **SPA module** (a module whose `type` is `spa` in its `<name>.yml`). Create the SPA first with `spa:create` if it does not exist. The SPA is a standalone Vite front-end: keep features focused on presentation and client state, reach the backend through HTTP APIs rather than importing server modules, and reuse UI primitives from the linked `design` module instead of duplicating them.
 
 **Place code in the canonical SPA folders — do not invent new ones.** The `### SPA Structure` section of `AGENTS.md` is the source of truth. A feature folder (`features/<feature>/`) and `shared/` share the same fixed sub-layout, and every artefact has exactly one home:
 
@@ -35,9 +35,9 @@ A SPA feature only makes sense inside a **SPA module** (a module whose `type` is
 | `types/` | TypeScript types/interfaces for the feature's domain |
 | `utils/` | Pure helper functions used within the feature |
 
-**Split, don't cram.** As you complete a file, break it into the smallest sensible pieces and move each into its logical folder above rather than leaving everything inside one layout or hook. Reuse the existing folders the generator created and add sibling folders **only** from this fixed list when a piece needs one — never a new name. Anything reused by ≥2 features moves up to `shared/` (same sub-layout); never import another feature's internals.
+**Split, don't cram.** As you complete a file, break it into the smallest sensible pieces and move each into its logical folder above rather than leaving everything in one layout or hook. Reuse the folders the generator created; add sibling folders **only** from this fixed list — never a new name. Anything reused by ≥2 features moves up to `shared/` (same sub-layout); never import another feature's internals.
 
-**One file per element.** Give every component, hook, service, store slice, and util its own `.ts`/`.tsx` file named after it. The **only** exceptions are `types/` and `styles/`: group those **by logic**, not one file per item — e.g. all of the feature's domain types in `types/<kebab>.ts` and its related style rules in `styles/<kebab>.css`, splitting into a second file only when a distinct concern warrants it.
+**One file per element.** Every component, hook, service, store slice, and util gets its own `.ts`/`.tsx` file named after it. **Only** exceptions: `types/` and `styles/` group **by logic** — e.g. domain types in `types/<kebab>.ts`, style rules in `styles/<kebab>.css` — splitting into a second file only when a distinct concern warrants it.
 
 ## Steps
 
@@ -69,26 +69,22 @@ Also installs `@tanstack/react-query` if it is not already a dependency.
 
 ### 2. Resolve the linked design module and discover its components
 
-Before writing any UI, find which design module this SPA builds on and what it offers — the layouts must be composed from its components, not styled from scratch.
+Before writing any UI, find which design module this SPA builds on and what it offers — layouts must be composed from its components, not styled from scratch.
 
-1. Read the SPA module's yml config at `modules/<module>/<module>.yml` and read the `design:` field. Its value is the kebab-case name of the design module (e.g. `design: "ui"`).
-   - If there is **no** `design:` field, the SPA was created without a linked design module. Skip the design-specific guidance below and build the UI with plain elements (suggest the user run `talos spa:create --design <name>` or `talos design:create` if they want a shared design system).
-2. List the design module's source to learn the available primitives:
+1. Read `modules/<module>/<module>.yml` and its `design:` field — a kebab-case design-module name (e.g. `design: "ui"`).
+   - **No `design:` field** — the SPA has no linked design module. Skip the design-specific guidance below, build the UI with plain elements, and suggest `talos spa:create --design <name>` or `talos design:create` if they want a shared design system.
+2. List the design module's source to learn the available primitives (buttons, cards, inputs, layout primitives, etc.) and their props:
 
    ```bash
    ls modules/<design>/src/components 2>/dev/null && cat modules/<design>/src/index.ts 2>/dev/null
    ```
-
-   Inspect the component files / barrel exports to see what exists (buttons, cards, inputs, layout primitives, etc.) and their props.
-3. Import design components through the module path alias — `@module/<design>/...`:
+3. Import design components through the `@module/<design>/...` alias, matching the export style you found (named exports per file vs. a barrel `index.ts`):
 
    ```typescript
    import { Button } from "@module/<design>/components/Button";
    // or, if the design module re-exports from a barrel:
    import { Button, Card } from "@module/<design>";
    ```
-
-   Match the actual export style you found in step 2 (named exports per file vs. a barrel `index.ts`).
 
 ### 3. Complete the route
 

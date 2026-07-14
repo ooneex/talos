@@ -1,8 +1,7 @@
 # Layout & spacing
 
-**Space sibling elements with a single `gap` on their parent flex/grid container — never with per-element margins (`mt-*`/`mb-*`/`my-*`).** A `gap` is the one source of truth, so spacing stays uniform automatically and survives elements being added, removed, reordered, or conditionally swapped.
+**Space sibling elements with a single `gap` on their parent flex/grid container — never with per-element margins (`mt-*`/`mb-*`/`my-*`).** A `gap` is the one source of truth: spacing stays uniform automatically and survives elements being added, removed, reordered, or swapped. Set `gap-*` on the parent and delete the children's own vertical margins.
 
-- When a layout uses a flex/grid container, set the between-element spacing with `gap-*` on the parent and delete the children's own vertical margins.
 - Stacking a margin on a child _on top of_ the parent's `gap` is the usual cause of uneven gaps — audit for it when spacing looks inconsistent.
 - Keep margins only for spacing _within_ a block that the container's `gap` doesn't govern (e.g. a caption tucked under a heading inside the same child).
 

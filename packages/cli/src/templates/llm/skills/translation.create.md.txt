@@ -12,31 +12,25 @@ argument-hint: [--name=<Name>] [--module=<module>]
 
 > **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
 
-> **Module location:** a `<module>` usually resolves to `modules/<module>/`, but it can also live under `packages/<module>/` — e.g. once it's been extracted into a shared, publishable package. Check both roots before assuming a path doesn't exist; every `modules/<module>/...` path in this file applies equally under `packages/<module>/...` when that's where the module actually lives.
+> **Module location:** `<module>` resolves to `modules/<module>/` or `packages/<module>/` (e.g. once extracted into a shared package). Check both roots before assuming a path is missing.
 
-Generate a translation class, its test file, and a sibling `translations.yml` dictionary, then complete the dictionary. Follow the shared workflow in the `talos-scaffold` skill (run-from-root, `--name`/`--module` inference, lint/format, and coding conventions); this skill covers only the translation-specific parts.
+Generate a translation class, its test file, and a sibling `translations.yml` dictionary, then complete the dictionary. Follow the shared workflow in the `talos-scaffold` skill (run-from-root, `--name`/`--module` inference, lint/format, coding conventions); this covers only the translation-specific parts.
 
-## Steps
+## 1. Infer options, then run the generator
 
-### 1. Infer the options from the request, then run the generator
-
-Map the user's request to the options below, then run:
+- `--name` — the class name from its domain (e.g. "translations for the dashboard" → `Dashboard`). Pass any casing; the CLI normalizes to PascalCase and appends the `Translation` suffix, so omit the suffix.
 
 ```bash
 talos translation:create --name=<name> --module=<module>
 ```
 
-**Inferring options from the user's request:**
+Creates `modules/<module>/src/translations/<Name>Translation.ts`, a sibling `translations.yml` (only if absent), and the test file. The class loads `translations.yml` as its dictionary, so translation classes in the same folder share that file.
 
-- `--name` — the translation class name, taken from its domain (e.g., "translations for the dashboard" → `Dashboard`). Pass it in any casing; the CLI normalizes to PascalCase and appends the `Translation` suffix automatically, so omit the suffix.
-
-The generator creates `modules/<module>/src/translations/<Name>Translation.ts`, a sibling `modules/<module>/src/translations/translations.yml` (only if it does not already exist), and the test file. The class loads `translations.yml` as its dictionary, so other translation classes in the same folder share that file.
-
-### 2. Complete the dictionary
+## 2. Complete the dictionary
 
 Edit `modules/<module>/src/translations/translations.yml` and add the keys the domain needs:
 
-- Nested keys are accessed with dot notation: `trans("user.profile.name", ...)`.
+- Nested keys use dot notation: `trans("user.profile.name", ...)`.
 - Each leaf is an object keyed by `LocaleType` (`en`, `fr`, ...); `en` is the fallback.
 - Interpolation uses `{{ param }}` placeholders, filled via `params`.
 - Pluralization uses sibling keys selected by `count`: `<key>` (singular), `<key>_plural` (count > 1 or < 0), `<key>_zero` (optional).
@@ -56,9 +50,9 @@ notifications:
     fr: "Vous avez {{ count }} notifications non lues"
 ```
 
-### 3. Complete the translation class
+## 3. Complete the translation class
 
-Read `modules/<module>/src/translations/<Name>Translation.ts`. Set `getName()` to a stable identifier for the domain (snake_case). Keep `getDict()` loading the sibling `translations.yml`.
+Read `modules/<module>/src/translations/<Name>Translation.ts`. Set `getName()` to a stable snake_case identifier for the domain; keep `getDict()` loading the sibling `translations.yml`.
 
 ```typescript
 import type { TranslationDictType } from "@talosjs/translation";
@@ -73,13 +67,11 @@ export class <Name>Translation extends Translation {
 }
 ```
 
-### 4. Complete the test file
+## 4. Complete the test file
 
-Read and replace `modules/<module>/tests/translations/<Name>Translation.spec.ts`:
+Read and replace `modules/<module>/tests/translations/<Name>Translation.spec.ts`. Cover: class identity (`name.endsWith("Translation")`), `getName` returns a non-empty string, `getDict` returns an object, `has`/`trans` exist. After filling the dictionary, add assertions for real keys — `en` fallback, interpolation with `params`, pluralization with `count`.
 
-**Coverage:** class identity (`name.endsWith("Translation")`), `getName` returns a non-empty string, `getDict` returns an object, `has`/`trans` exist. After filling the dictionary, add assertions for real keys — fallback to `en`, interpolation with `params`, and pluralization with `count`.
-
-### 5. Lint, format, and test
+## 5. Lint, format, and test
 
 ```bash
 talos monorepo:check

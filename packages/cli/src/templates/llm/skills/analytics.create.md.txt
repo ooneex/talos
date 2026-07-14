@@ -12,30 +12,26 @@ argument-hint: [--name=<Name>] [--module=<module>]
 
 > **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
 
-> **Module location:** a `<module>` usually resolves to `modules/<module>/`, but it can also live under `packages/<module>/` — e.g. once it's been extracted into a shared, publishable package. Check both roots before assuming a path doesn't exist; every `modules/<module>/...` path in this file applies equally under `packages/<module>/...` when that's where the module actually lives.
+> **Module location:** `<module>` resolves to `modules/<module>/` or `packages/<module>/` (e.g. once extracted into a shared package). Check both roots before assuming a path is missing.
 
-Generate an analytics class and test file, then complete the implementation. Follow the shared workflow in the `talos-scaffold` skill (run-from-root, `--name`/`--module` inference, module registration, lint/format, and coding conventions); this skill covers only the analytics-specific parts.
+Generate an analytics class and test file, then complete the implementation. Follow the shared workflow in the `talos-scaffold` skill (run-from-root, `--name`/`--module` inference, module registration, lint/format, coding conventions); this skill covers only the analytics-specific parts.
 
 ## Steps
 
-### 1. Infer the options from the request, then run the generator
-
-Map the user's request to the options below, then run:
+### 1. Infer options, then run the generator
 
 ```bash
 talos analytics:create --name=<name> --module=<module>
 ```
 
-**Inferring options from the user's request:**
-
-- `--name` — the analytics class name, taken from what is tracked (e.g., "analytics for page views" → `PageView`). Pass it in any casing; the CLI normalizes to PascalCase and appends the `Analytics` suffix automatically, so omit the suffix.
+- `--name` — analytics class name from what is tracked ("analytics for page views" → `PageView`). Any casing; the CLI normalizes to PascalCase and appends the `Analytics` suffix, so omit the suffix.
 
 ### 2. Complete the analytics class
 
 Read `modules/<module>/src/analytics/<Name>Analytics.ts`, then implement:
 
-- Implement `capture` with actual analytics tracking logic
-- Define a proper `CaptureOptionsType` instead of `Record<string, unknown>` — allowlist only the non-PII fields you intend to send; never forward raw payloads, credentials, or personal data to a third-party tracker, and do not log the full options object
+- Implement `capture` with the actual tracking logic.
+- Define a proper `CaptureOptionsType` instead of `Record<string, unknown>` — allowlist only the non-PII fields you intend to send; never forward raw payloads, credentials, or personal data to a third-party tracker, and do not log the full options object.
 
 ```typescript
 import { type IAnalytics, decorator } from "@talosjs/analytics";
@@ -52,9 +48,9 @@ export class <Name>Analytics<T extends CaptureOptionsType = CaptureOptionsType> 
 
 ### 3. Complete the test file
 
-Read and replace `modules/<module>/tests/analytics/<Name>Analytics.spec.ts`:
+Read and replace `modules/<module>/tests/analytics/<Name>Analytics.spec.ts`.
 
-**Coverage:** class identity (`name.endsWith("Analytics")`, is constructor), `capture` exists, is synchronous (returns `void`), does not throw with empty or valid options, instance isolation. Add spy tests on the underlying tracker after implementing `capture`.
+**Coverage:** class identity (`name.endsWith("Analytics")`, is constructor); `capture` exists, is synchronous (returns `void`), does not throw with empty or valid options; instance isolation. Add spy tests on the underlying tracker after implementing `capture`.
 
 ```typescript
 import { describe, expect, test } from "bun:test";
@@ -73,28 +69,25 @@ describe("<Name>Analytics", () => {
     expect(typeof <Name>Analytics.prototype.capture).toBe("function");
   });
 
-  test("'capture' should not throw when called with an empty object", () => {
+  test("'capture' should not throw with an empty object", () => {
     const analytics = new <Name>Analytics();
     expect(() => analytics.capture({} as any)).not.toThrow();
   });
 
-  test("'capture' should not throw when called with valid options", () => {
+  test("'capture' should not throw with valid options", () => {
     const analytics = new <Name>Analytics();
     expect(() => analytics.capture({ event: "page_view", userId: "u1" } as any)).not.toThrow();
   });
 
   test("'capture' should return void", () => {
     const analytics = new <Name>Analytics();
-    const result = analytics.capture({ event: "click" } as any);
-    expect(result).toBeUndefined();
+    expect(analytics.capture({ event: "click" } as any)).toBeUndefined();
   });
 
   // Add spy tests on the underlying tracker after implementing capture()
 
   test("should produce independent instances", () => {
-    const a = new <Name>Analytics();
-    const b = new <Name>Analytics();
-    expect(a).not.toBe(b);
+    expect(new <Name>Analytics()).not.toBe(new <Name>Analytics());
   });
 });
 ```

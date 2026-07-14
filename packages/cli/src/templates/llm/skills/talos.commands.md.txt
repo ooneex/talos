@@ -9,7 +9,7 @@ user-invocable: false
 
 > **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
 
-> **Module location:** a `<module>` usually resolves to `modules/<module>/`, but it can also live under `packages/<module>/` — e.g. once it's been extracted into a shared, publishable package. Check both roots before assuming a path doesn't exist; every `modules/<module>/...` path in this file applies equally under `packages/<module>/...` when that's where the module actually lives.
+> **Module location:** `<module>` resolves to `modules/<module>/` or `packages/<module>/` (e.g. once extracted into a shared package). Check both roots before assuming a path is missing; every `modules/<module>/...` path applies equally under `packages/<module>/...`.
 
 Always run from the project root.
 
@@ -21,7 +21,7 @@ talos commitlint:init                                     # Install a git commit
 talos commitlint:check --file <path>                      # Lint a commit message file against the type(scope): Subject rules
 ```
 
-`app:create` bootstraps a whole new Talos application: it generates the `app` (API) and `shared` modules, Docker files, installs runtime + dev dependencies, runs `app:init`, and optionally adds CI/CD files. `app:init` only lays down the project-level config and is run automatically by `app:create`.
+`app:create` also generates Docker files and runs `app:init` (project config only) automatically.
 
 ## Application
 ```bash
@@ -58,7 +58,7 @@ talos issue:push [--id <id>]                                    # Push a local i
 Class generators share the form `talos <artifact>:create --name <Name> --module <name>`, where `<artifact>` is one of:
 `ai:chat` (chat class), `ai:middleware` (chat middleware), `ai:tool` (chat tool), `analytics` (handler), `cache` (handler), `command` (CLI/`ICommand`), `controller` (HTTP/WS), `cron` (job), `database` (adapter), `entity` (TypeORM), `event` (pub/sub), `flag` (feature flag), `logger`, `mailer` (class + JSX template), `middleware` (HTTP/WS), `permission`, `queue` (BullMQ job queue), `rate-limit` (throttling strategy / `IRateLimiter`), `repository`, `service`, `spa:feature` (SPA feature slice), `storage`, `translation` (localized dictionary), `vector-database`.
 
-The matching `/<artifact>-create` skills wrap these generators and complete the generated code + tests; they share the `talos-scaffold` workflow (run-from-root, option inference, module registration, lint/format, conventions).
+The matching `/<artifact>-create` skills wrap these generators, complete the code + tests, and share the `talos-scaffold` workflow (run-from-root, option inference, module registration, lint/format, conventions).
 
 ## Custom commands
 ```bash
@@ -85,24 +85,19 @@ talos seed:create --module <name>        # Generate a seed YAML file
 talos seed:run [--drop]                  # Run all seeds (--drop: drop data first)
 ```
 
-## Code Quality
-```bash
-talos monorepo:check   # Install, build, fmt, lint and test — the full gate
-```
-
 ## Monorepo tasks
 ```bash
 talos monorepo:run --commands=build,lint,test                # Run scripts across every package and module, with caching
 talos monorepo:run --commands=build --modules=billing,user   # Only the named modules (also --packages=a,b)
 talos monorepo:run --commands=test --logs                    # Stream plain logs (use in CI/non-interactive runs)
 talos monorepo:run --commands=build --no-cache               # Ignore the task cache and re-run everything
-talos monorepo:check                                         # Run install, build, fmt, lint and test — the full gate
+talos monorepo:check                                         # Install, build, fmt, lint and test — the full gate
 talos monorepo:check --modules=billing,user --logs           # Scope the gate to the named modules (also --packages=a,b)
 ```
 
-`monorepo:run` executes each command as a group (all `build`, then all `lint`, ...) in workspace dependency order. Targets whose package.json lacks the script are skipped without error; the first failure stops the run and prints the failing task's output. Results are cached in `var/cache/monorepo/` keyed by the content of the target's files, its transitive workspace dependencies, the script text, and root configs — a cache hit replays logs and restores output artifacts (`dist/` by default). Always pass `--logs` when running as an agent.
+`monorepo:run` executes each command as a group (all `build`, then all `lint`, ...) in workspace dependency order. Targets whose package.json lacks the script are skipped without error; the first failure stops the run and prints the failing task's output. Results are cached in `var/cache/monorepo/` keyed by the target's file content, its transitive workspace dependencies, the script text, and root configs — a cache hit replays logs and restores output artifacts (`dist/` by default). Always pass `--logs` when running as an agent.
 
-`monorepo:check` is a shorthand for `monorepo:run --commands=install,build,fmt,lint,test`: the full verification gate, run in that order with the same caching, filtering (`--packages`/`--modules`), `--logs`, and `--no-cache` flags.
+`monorepo:check` is shorthand for `monorepo:run --commands=install,build,fmt,lint,test`: the full verification gate, run in that order with the same caching, filtering (`--packages`/`--modules`), `--logs`, and `--no-cache` flags.
 
 ## Release
 ```bash

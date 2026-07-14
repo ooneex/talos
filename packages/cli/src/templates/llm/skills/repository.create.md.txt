@@ -12,35 +12,28 @@ argument-hint: [--name=<Name>] [--module=<module>]
 
 > **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
 
-> **Module location:** a `<module>` usually resolves to `modules/<module>/`, but it can also live under `packages/<module>/` — e.g. once it's been extracted into a shared, publishable package. Check both roots before assuming a path doesn't exist; every `modules/<module>/...` path in this file applies equally under `packages/<module>/...` when that's where the module actually lives.
+Generate a TypeORM repository class and test file, then complete both. Follow the shared workflow in the `talos-scaffold` skill (run-from-root, `--name`/`--module` inference, module registration, lint/format, coding conventions); this skill covers only the repository-specific parts.
 
-Generate a repository class and test file, then complete the implementation. Follow the shared workflow in the `talos-scaffold` skill (run-from-root, `--name`/`--module` inference, module registration, lint/format, and coding conventions); this skill covers only the repository-specific parts.
+- **Module location:** `<module>` resolves to `modules/<module>/` or `packages/<module>/` (e.g. once extracted into a shared package). Check both roots; every `modules/<module>/...` path applies equally under `packages/<module>/...`.
 
 ## Steps
 
 ### 1. Infer the options from the request, then run the generator
 
-Map the user's request to the options below, then run:
-
 ```bash
 talos repository:create --name=<name> --module=<module>
 ```
 
-**Inferring options from the user's request:**
-
-- `--name` — the repository class name, taken from the entity it serves (e.g., "a repository for products" → `Product`). Pass it in any casing; the CLI normalizes to PascalCase and appends the `Repository` suffix automatically, so omit the suffix.
+- `--name` — repository class name from the entity it serves (e.g. "a repository for products" → `Product`). Any casing; the CLI normalizes to PascalCase and appends the `Repository` suffix, so omit it.
 
 ### 2. Complete the repository class
 
-Read `modules/<module>/src/repositories/<Name>Repository.ts`, then implement:
+Read `modules/<module>/src/repositories/<Name>Repository.ts`, then:
 
-- Verify the entity import path matches the actual entity location
-- Adjust the `find` method's search fields (default searches `name` with `ILike`)
-- Customize relations loading in `findOne`/`findOneBy` if needed
-
-**Adding methods:** Look at the entity's fields and business context to determine if custom domain-specific methods are needed (e.g., `revokeSession`, `markAsRead`, `archive`).
-
-**Removing methods:** Remove scaffolded methods that don't fit the entity context (e.g., remove `createMany`/`updateMany` for singleton entities, remove `find` if entity is always accessed by ID).
+- Verify the entity import path matches the actual entity location.
+- Adjust the `find` method's search fields (default searches `name` with `ILike`); customize relation loading in `findOne`/`findOneBy` if needed.
+- **Add** custom domain methods the entity's fields/business context call for (e.g. `revokeSession`, `markAsRead`, `archive`).
+- **Remove** scaffolded methods that don't fit (e.g. `createMany`/`updateMany` for singleton entities; `find` if the entity is always accessed by ID).
 
 ```typescript
 import { inject } from "@talosjs/container";
@@ -136,51 +129,13 @@ describe("<Name>Repository", () => {
     expect(entity).toBeInstanceOf(<Name>Entity);
   });
 
-  // --- Standard CRUD methods (remove blocks for methods removed in step 2) ---
+  // --- Standard CRUD methods (drop names removed in step 2) ---
 
-  test("should have 'open' method", () => {
-    expect(typeof <Name>Repository.prototype.open).toBe("function");
-  });
-
-  test("should have 'close' method", () => {
-    expect(typeof <Name>Repository.prototype.close).toBe("function");
-  });
-
-  test("should have 'find' method", () => {
-    expect(typeof <Name>Repository.prototype.find).toBe("function");
-  });
-
-  test("should have 'findOne' method", () => {
-    expect(typeof <Name>Repository.prototype.findOne).toBe("function");
-  });
-
-  test("should have 'findOneBy' method", () => {
-    expect(typeof <Name>Repository.prototype.findOneBy).toBe("function");
-  });
-
-  test("should have 'create' method", () => {
-    expect(typeof <Name>Repository.prototype.create).toBe("function");
-  });
-
-  test("should have 'createMany' method", () => {
-    expect(typeof <Name>Repository.prototype.createMany).toBe("function");
-  });
-
-  test("should have 'update' method", () => {
-    expect(typeof <Name>Repository.prototype.update).toBe("function");
-  });
-
-  test("should have 'updateMany' method", () => {
-    expect(typeof <Name>Repository.prototype.updateMany).toBe("function");
-  });
-
-  test("should have 'delete' method", () => {
-    expect(typeof <Name>Repository.prototype.delete).toBe("function");
-  });
-
-  test("should have 'count' method", () => {
-    expect(typeof <Name>Repository.prototype.count).toBe("function");
-  });
+  for (const name of ["open", "close", "find", "findOne", "findOneBy", "create", "createMany", "update", "updateMany", "delete", "count"]) {
+    test(`should have '${name}' method`, () => {
+      expect(typeof (<Name>Repository.prototype as never)[name]).toBe("function");
+    });
+  }
 
   // --- Database interaction (mocked) ---
 
@@ -196,35 +151,22 @@ describe("<Name>Repository", () => {
     expect(mockDatabase.close).toHaveBeenCalled();
   });
 
-  test("create() should persist the entity via save()", async () => {
+  test("create() should persist via save() and forward SaveOptions", async () => {
     const entity = new <Name>Entity();
     const repo = createRepo();
     const result = await repo.create(entity);
     expect(mockTypeormRepo.save).toHaveBeenCalledWith(entity, undefined);
     expect(result).toBe(entity);
+    await repo.create(entity, { reload: false });
+    expect(mockTypeormRepo.save).toHaveBeenCalledWith(entity, { reload: false });
   });
 
-  test("create() should forward SaveOptions to save()", async () => {
+  test("findOne() should return the entity when found, null otherwise", async () => {
     const entity = new <Name>Entity();
-    const options = { reload: false };
+    mockTypeormRepo.findOne.mockImplementationOnce(async () => entity);
     const repo = createRepo();
-    await repo.create(entity, options);
-    expect(mockTypeormRepo.save).toHaveBeenCalledWith(entity, options);
-  });
-
-  test("findOne() should return entity when found", async () => {
-    const entity = new <Name>Entity();
-    entity.id = "test-id";
-    mockTypeormRepo.findOne.mockImplementation(async () => entity);
-    const repo = createRepo();
-    const result = await repo.findOne("test-id");
-    expect(result).toBe(entity);
-  });
-
-  test("findOne() should return null when entity is not found", async () => {
-    const repo = createRepo();
-    const result = await repo.findOne("missing-id");
-    expect(result).toBeNull();
+    expect(await repo.findOne("test-id")).toBe(entity);
+    expect(await repo.findOne("missing-id")).toBeNull();
   });
 
   test("update() should persist the updated entity via save()", async () => {

@@ -12,29 +12,25 @@ argument-hint: [--name=<Name>] [--module=<module>]
 
 > **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
 
-> **Module location:** a `<module>` usually resolves to `modules/<module>/`, but it can also live under `packages/<module>/` — e.g. once it's been extracted into a shared, publishable package. Check both roots before assuming a path doesn't exist; every `modules/<module>/...` path in this file applies equally under `packages/<module>/...` when that's where the module actually lives.
+Generate a mailer class, JSX template, and test files, then complete the implementation. Follow the shared `talos-scaffold` skill (run-from-root, `--name`/`--module` inference, module registration, lint/format, coding conventions); this skill covers only the mailer-specific parts.
 
-Generate a mailer class, JSX template, and test files, then complete the implementation. Follow the shared workflow in the `talos-scaffold` skill (run-from-root, `--name`/`--module` inference, module registration, lint/format, and coding conventions); this skill covers only the mailer-specific parts.
+**Module location:** `<module>` resolves to `modules/<module>/` or `packages/<module>/` (once extracted into a shared package). Check both roots before assuming a path is missing; every `modules/<module>/...` path applies equally under `packages/<module>/...`.
 
 ## Steps
 
 ### 1. Infer the options from the request, then run the generator
 
-Map the user's request to the options below, then run:
-
 ```bash
 talos mailer:create --name=<name> --module=<module>
 ```
 
-**Inferring options from the user's request:**
-
-- `--name` — the mailer class name, taken from the email it sends (e.g., "a mailer for welcome emails" → `Welcome`). Pass it in any casing; the CLI normalizes to PascalCase and appends the `Mailer` suffix automatically, so omit the suffix.
+- `--name` — the mailer class name, taken from the email it sends (e.g. "a mailer for welcome emails" → `Welcome`). Pass any casing; the CLI normalizes to PascalCase and appends the `Mailer` suffix, so omit the suffix.
 
 Generates: `src/mailers/<Name>Mailer.ts`, `src/mailers/<Name>MailerTemplate.tsx`, `tests/mailers/<Name>Mailer.spec.ts`, `tests/mailers/<Name>MailerTemplate.spec.ts`.
 
 ### 2. Complete the mailer class
 
-Read `modules/<module>/src/mailers/<Name>Mailer.ts`, then adjust the `send` method config type if additional parameters are needed:
+Read `modules/<module>/src/mailers/<Name>Mailer.ts`, then adjust the `send` config type if extra parameters are needed:
 
 ```typescript
 import { inject } from "@talosjs/container";
@@ -67,9 +63,9 @@ export class <Name>Mailer implements IMailer {
 
 Read `modules/<module>/src/mailers/<Name>MailerTemplate.tsx`, then:
 
-- Update `<Name>MailerPropsType` with actual props for the email
-- Build the email body using `MailerLayout` components
-- **Sanitize untrusted input.** When a `link`/URL prop can originate from user input, validate it is an absolute `https:` URL before rendering it into an `href` (reject `javascript:`/`data:` schemes). When `to`/`subject`/`from` are user-derived, reject control characters/CRLF to prevent header injection.
+- Update `<Name>MailerPropsType` with the email's actual props
+- Build the body using `MailerLayout` components
+- **Sanitize untrusted input.** For any `link`/URL prop from user input, validate it is an absolute `https:` URL before rendering into `href` (reject `javascript:`/`data:`). For user-derived `to`/`subject`/`from`, reject control characters/CRLF to prevent header injection.
 
 ```tsx
 import { MailerLayout } from "@talosjs/mailer";
@@ -91,74 +87,51 @@ export const <Name>MailerTemplate = (props?: <Name>MailerPropsType) => (
 
 ### 4. Complete the test files
 
-Read and replace `modules/<module>/tests/mailers/<Name>Mailer.spec.ts`:
+Read and replace `modules/<module>/tests/mailers/<Name>Mailer.spec.ts`.
 
-**Coverage:** class identity (`name.endsWith("Mailer")`, is constructor), `send` exists and returns `Promise`, delegates to underlying `IMailer` (mock), forwards `to` and `subject`, passes rendered `content`.
+**Coverage:** class identity (`name.endsWith("Mailer")`, is constructor), `send` exists and returns `Promise`, delegates to the underlying `IMailer` (mock) forwarding `to`/`subject` and rendered `content`, instance isolation.
 
 ```typescript
 import { describe, expect, mock, test } from "bun:test";
 import { <Name>Mailer } from "@/mailers/<Name>Mailer";
 
-describe("<Name>Mailer", () => {
-  test("should have class name ending with 'Mailer'", () => {
-    expect(<Name>Mailer.name.endsWith("Mailer")).toBe(true);
-  });
+const makeMock = () => mock(() => Promise.resolve());
 
-  test("should be a constructor function", () => {
+describe("<Name>Mailer", () => {
+  test("class name ends with 'Mailer' and is a constructor", () => {
+    expect(<Name>Mailer.name.endsWith("Mailer")).toBe(true);
     expect(typeof <Name>Mailer).toBe("function");
   });
 
-  test("should have 'send' method", () => {
+  test("'send' exists and returns a Promise", () => {
+    const mailer = new <Name>Mailer({ send: makeMock() } as any);
     expect(typeof <Name>Mailer.prototype.send).toBe("function");
-  });
-
-  test("'send' should return a Promise", () => {
-    const mockMailer = { send: mock(() => Promise.resolve()) };
-    const mailer = new <Name>Mailer(mockMailer as any);
     const result = mailer.send({ to: ["user@example.com"], subject: "Test" });
     expect(result).toBeInstanceOf(Promise);
     return result.catch(() => {});
   });
 
-  test("'send' should delegate to the underlying mailer", async () => {
-    const sendMock = mock(() => Promise.resolve());
-    const mockMailer = { send: sendMock };
-    const mailer = new <Name>Mailer(mockMailer as any);
-    await mailer.send({ to: ["user@example.com"], subject: "Hello" });
-    expect(sendMock).toHaveBeenCalledTimes(1);
-  });
-
-  test("'send' should forward 'to' and 'subject' to the underlying mailer", async () => {
+  test("'send' delegates to the underlying mailer, forwarding 'to', 'subject', and rendered 'content'", async () => {
     const sendMock = mock((_config: unknown) => Promise.resolve());
-    const mockMailer = { send: sendMock };
-    const mailer = new <Name>Mailer(mockMailer as any);
-    await mailer.send({ to: ["a@b.com"], subject: "Subj" });
+    const mailer = new <Name>Mailer({ send: sendMock } as any);
+    await mailer.send({ to: ["a@b.com"], subject: "Subj", data: { link: "https://example.com" } });
+    expect(sendMock).toHaveBeenCalledTimes(1);
     const calledWith = sendMock.mock.calls[0]?.[0] as any;
     expect(calledWith.to).toEqual(["a@b.com"]);
     expect(calledWith.subject).toBe("Subj");
-  });
-
-  test("'send' should include rendered 'content' in the delegated call", async () => {
-    const sendMock = mock((_config: unknown) => Promise.resolve());
-    const mockMailer = { send: sendMock };
-    const mailer = new <Name>Mailer(mockMailer as any);
-    await mailer.send({ to: ["a@b.com"], subject: "Subj", data: { link: "https://example.com" } });
-    const calledWith = sendMock.mock.calls[0]?.[0] as any;
     expect(calledWith.content).toBeDefined();
   });
 
   test("should produce independent instances", () => {
-    const mockMailer = { send: mock(() => Promise.resolve()) };
-    const a = new <Name>Mailer(mockMailer as any);
-    const b = new <Name>Mailer(mockMailer as any);
-    expect(a).not.toBe(b);
+    const m = { send: makeMock() } as any;
+    expect(new <Name>Mailer(m)).not.toBe(new <Name>Mailer(m));
   });
 });
 ```
 
-Read and replace `modules/<module>/tests/mailers/<Name>MailerTemplate.spec.ts`:
+Read and replace `modules/<module>/tests/mailers/<Name>MailerTemplate.spec.ts`.
 
-**Coverage:** `<Name>MailerTemplate` is a function, renders without props without throwing, renders with props without throwing, returns a non-null value.
+**Coverage:** is a function, renders without props and with props without throwing, returns a non-null value.
 
 ```typescript
 import { describe, expect, test } from "bun:test";
@@ -169,11 +142,8 @@ describe("<Name>MailerTemplate", () => {
     expect(typeof <Name>MailerTemplate).toBe("function");
   });
 
-  test("should render without props without throwing", () => {
+  test("should render without props and with props without throwing", () => {
     expect(() => <Name>MailerTemplate()).not.toThrow();
-  });
-
-  test("should render with props without throwing", () => {
     expect(() => <Name>MailerTemplate({ link: "https://example.com" })).not.toThrow();
   });
 

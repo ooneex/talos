@@ -12,9 +12,9 @@ argument-hint: [--name=<Name>] [--module=<module>]
 
 > **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
 
-> **Module location:** a `<module>` usually resolves to `modules/<module>/`, but it can also live under `packages/<module>/` — e.g. once it's been extracted into a shared, publishable package. Check both roots before assuming a path doesn't exist; every `modules/<module>/...` path in this file applies equally under `packages/<module>/...` when that's where the module actually lives.
+Generate a seed file and test file, then complete the implementation. Follow the shared `talos-scaffold` skill workflow (run-from-root, `--name`/`--module` inference, lint/format, coding conventions); this covers only the seed-specific parts.
 
-Generate a seed file and test file, then complete the implementation. Follow the shared workflow in the `talos-scaffold` skill (run-from-root, `--name`/`--module` inference, lint/format, and coding conventions); this skill covers only the seed-specific parts.
+- **Module location:** `<module>` resolves to `modules/<module>/` or `packages/<module>/` (e.g. once extracted into a shared package). Check both roots before assuming a path is missing.
 
 ## Steps
 
@@ -62,6 +62,9 @@ import { join } from "node:path";
 import { describe, expect, test } from "bun:test";
 import { <Name>Seed } from "@/seeds/<Name>Seed";
 
+const proto = () => Object.create(<Name>Seed.prototype) as <Name>Seed;
+const dataFile = join(__dirname, "..", "src", "seeds", "<name-seed>.yml");
+
 describe("<Name>Seed", () => {
   test("should have class name ending with 'Seed'", () => {
     expect(<Name>Seed.name.endsWith("Seed")).toBe(true);
@@ -75,50 +78,25 @@ describe("<Name>Seed", () => {
     expect(typeof <Name>Seed.prototype.run).toBe("function");
   });
 
-  test("should have 'isActive' method", () => {
+  test("'isActive' should exist and return true by default", () => {
     expect(typeof <Name>Seed.prototype.isActive).toBe("function");
+    expect(proto().isActive()).toBe(true);
   });
 
-  test("'isActive' should return a boolean", () => {
-    const seed = Object.create(<Name>Seed.prototype) as <Name>Seed;
-    expect(typeof seed.isActive()).toBe("boolean");
-  });
-
-  test("'isActive' should return true by default", () => {
-    const seed = Object.create(<Name>Seed.prototype) as <Name>Seed;
-    expect(seed.isActive()).toBe(true);
-  });
-
-  test("should have 'getDependencies' method", () => {
+  test("'getDependencies' should exist and return an array", () => {
     expect(typeof <Name>Seed.prototype.getDependencies).toBe("function");
+    expect(Array.isArray(proto().getDependencies())).toBe(true);
   });
 
-  test("'getDependencies' should return an array", () => {
-    const seed = Object.create(<Name>Seed.prototype) as <Name>Seed;
-    expect(Array.isArray(seed.getDependencies())).toBe(true);
-  });
-
-  test("should have a data yml file", () => {
-    const dataFile = join(__dirname, "..", "src", "seeds", "<name-seed>.yml");
+  test("data yml file should exist, be non-empty, and contain an entry", () => {
     expect(existsSync(dataFile)).toBe(true);
-  });
-
-  test("data yml file should not be empty", () => {
-    const dataFile = join(__dirname, "..", "src", "seeds", "<name-seed>.yml");
     const content = readFileSync(dataFile, "utf-8");
     expect(content.trim().length).toBeGreaterThan(0);
-  });
-
-  test("data yml file should contain at least one entry", () => {
-    const dataFile = join(__dirname, "..", "src", "seeds", "<name-seed>.yml");
-    const content = readFileSync(dataFile, "utf-8");
     expect(content).toMatch(/^-\s/m);
   });
 
   test("should produce independent instances", () => {
-    const a = Object.create(<Name>Seed.prototype) as <Name>Seed;
-    const b = Object.create(<Name>Seed.prototype) as <Name>Seed;
-    expect(a).not.toBe(b);
+    expect(proto()).not.toBe(proto());
   });
 });
 ```

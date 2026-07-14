@@ -11,37 +11,26 @@ color: orange
 
 # Code Optimizer
 
-> **Module location:** a `<module>` usually resolves to `modules/<module>/`, but it can also live under `packages/<module>/` — e.g. once it's been extracted into a shared, publishable package. Check both roots before assuming a path doesn't exist; every `modules/<module>/...` path in this file applies equally under `packages/<module>/...` when that's where the module actually lives.
+You bring **one** module in line with project conventions — clean code, no duplication, only meaningful tests — without changing behavior. Refactor and tidy the module you are given, then report.
 
-You bring **one** module in line with project conventions — clean code, no
-duplication, only meaningful tests — without changing behavior. You are an
-*optimizer*: you refactor and tidy the module you are given and report. You do
-**not** add features, fix bugs, resolve issues, create issue YAML, or run
-generator/`talos` commands — those belong to other skills and agents.
-
-Run every command from the **monorepo root**, never from inside a package.
+- **Do not** add features, fix bugs, resolve issues, create issue YAML, or run generator/`talos` commands — those belong to other skills.
+- **Run every command from the monorepo root**, never from inside a package.
+- **Module location:** `<module>` resolves to `modules/<module>/` or `packages/<module>/` (e.g. once extracted into a shared package). Check both roots before assuming a path is missing.
 
 ## Input
 
-You are given one module (e.g. `modules/billing/`), and possibly a sub-scope. If
-the scope resolves to no such module, say so and stop.
-
-Before you touch anything, confirm the module starts clean and its tests pass:
+You are given one module (e.g. `modules/billing/`), and possibly a sub-scope. If the scope resolves to no such module, say so and stop. Before touching anything, confirm the module starts clean and its tests pass:
 
 ```bash
 git status --porcelain
 bun test modules/<module>/tests/...
 ```
 
-If there are pre-existing uncommitted changes or already-failing tests, report
-that and proceed only on the files in your scope — never claim a fix you did not
-make. Refactor only: never alter behavior or a public API without first checking
-its callers across the repo.
+If there are pre-existing uncommitted changes or already-failing tests, report that and proceed only on the files in your scope — never claim a fix you did not make. Refactor only: never alter behavior or a public API without first checking its callers across the repo.
 
 ## 1. Map the module
 
-Read the module's source and build a picture before editing — inventory each
-type, interface, class, and standalone function with its path, and note:
+Read the module's source and build a picture before editing — inventory each type, interface, class, and standalone function with its path, and note:
 
 - **Naming violations** — type not ending `Type`; interface not starting `I`; a
   non-arrow standalone function (class methods stay methods); a method/property
@@ -61,8 +50,8 @@ Work through the module and apply every fix yourself:
   and their `@decorator.*()` intact.
 - **Duplication & dead code** — extract shared logic into helper arrows or base
   classes; consolidate near-duplicate types and utilities; delete dead code.
-- **Performance** — apply the project's performance rules (the `optimize-conventions`
-  skill): avoid needless allocations and repeated work, prefer the right data
+- **Performance** — apply the project's performance rules (`optimize-conventions`):
+  avoid needless allocations and repeated work, prefer the right data
   structure, keep hot paths lean — without changing observable behavior.
 - **Tests** — follow the testing conventions (`optimize-testing`): prune trivial
   getters/setters and placeholder/"not implemented" assertions, keep and improve
@@ -77,9 +66,7 @@ Work through the module and apply every fix yourself:
   `references/ai-slop.md` and strip any generic gradient-as-brand-color,
   glassmorphism-as-decoration, or stock template layout you find.
 
-Preserve every public contract. If a clean-up would change a public API or
-observable behavior, leave it and flag it in your report rather than breaking
-callers.
+Preserve every public contract. If a clean-up would change a public API or observable behavior, leave it and flag it in your report rather than breaking callers.
 
 ## 3. Verify
 
@@ -87,13 +74,8 @@ callers.
 talos monorepo:check
 ```
 
-Tests must pass after just as they did before. Fix every failure you introduced
-before finishing; if a failure is a pre-existing one you did not cause, say so.
+Tests must pass after just as they did before. Fix every failure you introduced before finishing; if a failure is a pre-existing one you did not cause, say so.
 
 ## Report
 
-Return a concise summary scoped to the one module: the conventions fixed,
-duplication/dead code removed, performance changes made, tests pruned or improved,
-any React patterns adopted, and the fmt/lint/test result. List anything you
-deliberately left alone because it would change behavior or a public API, so the
-caller can decide. Do not touch files outside the module's scope.
+Return a concise summary scoped to the one module: conventions fixed, duplication/dead code removed, performance changes, tests pruned or improved, any React patterns adopted, and the fmt/lint/test result. List anything you deliberately left alone because it would change behavior or a public API, so the caller can decide. Do not touch files outside the module's scope.

@@ -12,9 +12,9 @@ argument-hint: [--name=<Name>] [--module=<module>] [--is-socket=<true|false>]
 
 > **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
 
-> **Module location:** a `<module>` usually resolves to `modules/<module>/`, but it can also live under `packages/<module>/` — e.g. once it's been extracted into a shared, publishable package. Check both roots before assuming a path doesn't exist; every `modules/<module>/...` path in this file applies equally under `packages/<module>/...` when that's where the module actually lives.
+Generate a middleware class and test file, then complete the implementation. Follow the shared `talos-scaffold` skill workflow (run-from-root, `--name`/`--module` inference, module registration, lint/format, coding conventions); this covers only the middleware-specific parts.
 
-Generate a middleware class and test file, then complete the implementation. Follow the shared workflow in the `talos-scaffold` skill (run-from-root, `--name`/`--module` inference, module registration, lint/format, and coding conventions); this skill covers only the middleware-specific parts.
+- **Module location:** `<module>` resolves to `modules/<module>/` or `packages/<module>/` (e.g. once extracted into a shared package). Check both roots before assuming a path is missing.
 
 ## Steps
 
@@ -38,24 +38,10 @@ Read `modules/<module>/src/middlewares/<Name>Middleware.ts`, then implement:
 - Implement `handler()` with actual middleware logic (auth checks, logging, header injection, etc.)
 - Inject required dependencies via the constructor
 
-**HTTP middleware:**
+Import `ContextType` from `@talosjs/controller` (HTTP) or `@talosjs/socket` (socket) — everything else is identical:
 
 ```typescript
-import type { ContextType } from "@talosjs/controller";
-import { decorator, type IMiddleware } from "@talosjs/middleware";
-
-@decorator.middleware()
-export class <Name>Middleware implements IMiddleware {
-  public async handler(context: ContextType): Promise<ContextType> {
-    return context;
-  }
-}
-```
-
-**Socket middleware:**
-
-```typescript
-import type { ContextType } from "@talosjs/socket";
+import type { ContextType } from "@talosjs/controller"; // or "@talosjs/socket"
 import { decorator, type IMiddleware } from "@talosjs/middleware";
 
 @decorator.middleware()
@@ -70,9 +56,9 @@ export class <Name>Middleware implements IMiddleware {
 
 Read and replace `modules/<module>/tests/middlewares/<Name>Middleware.spec.ts`:
 
-**Coverage:** class identity (`name.endsWith("Middleware")`, is constructor), `handler` exists, returns a `Promise`, resolves to the same context reference (pass-through), does not replace context with a different object. Add tests for any transformations/auth checks after implementing `handler()`. Instance isolation.
+**Coverage:** class identity (`name.endsWith("Middleware")`, is constructor), `handler` exists, returns a `Promise`, resolves to the same context reference (pass-through), instance isolation. Add tests for any transformations/auth checks after implementing `handler()`.
 
-> **Auth/authorization middleware must be able to deny.** The pass-through assertions above only apply to non-gating middleware (logging, header injection). For an auth guard, replace them with tests that assert the handler **rejects/short-circuits** unauthenticated or unauthorized requests (throws or returns a denying context) — a middleware that always passes through is a broken access control.
+> **Auth/authorization middleware must be able to deny.** The pass-through assertions only apply to non-gating middleware (logging, header injection). For an auth guard, replace them with tests asserting the handler **rejects/short-circuits** unauthenticated or unauthorized requests (throws or returns a denying context) — a middleware that always passes through is broken access control.
 
 ```typescript
 import { describe, expect, test } from "bun:test";
@@ -99,18 +85,10 @@ describe("<Name>Middleware", () => {
     return result.catch(() => {});
   });
 
-  test("'handler' should resolve to the context object", async () => {
+  test("'handler' should resolve to the same context object (pass-through)", async () => {
     const middleware = new <Name>Middleware();
     const context = { request: {}, response: { header: () => {} } } as any;
-    const result = await middleware.handler(context);
-    expect(result).toBe(context);
-  });
-
-  test("'handler' should not replace the context with a different object", async () => {
-    const middleware = new <Name>Middleware();
-    const context = { request: {}, response: { header: () => {} } } as any;
-    const returned = await middleware.handler(context);
-    expect(returned).toBe(context);
+    expect(await middleware.handler(context)).toBe(context);
   });
 
   // Add behavior tests after implementing handler()
