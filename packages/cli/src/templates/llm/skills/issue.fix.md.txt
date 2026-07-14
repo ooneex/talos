@@ -82,7 +82,7 @@ Each issue is fixed on a dedicated **git branch** off the main branch — not on
 
 For each issue, derive the branch **from its own YAML** so the name reflects the kind of change:
 
-1. **If the issue already has a `branch:` field, reuse it verbatim** — do not recompute or rename. Otherwise compute the name and write it back into the YAML (add a top-level `branch: "<name>"` field via Edit/Write) so the branch is recorded once and stays stable across re-runs.
+1. **If the issue already has a `branch:` field, reuse it verbatim** — do not recompute or rename. Otherwise compute the name and write it back into the YAML (add a top-level `branch: "<name>"` field via Edit/Write) so the branch is recorded once and stays stable across re-runs. **Do not create a dedicated commit for this write** — leave the change unstaged; it lands with the issue's other changes when its branch is finalised (step 4).
 2. **Type** — map the issue's `labels` to a conventional-commit type (the same vocabulary as `/commit`). Prefer a **change-type** label from the table below; when several match, pick the highest-priority one by this order: `feat` → `fix` → `perf` → `refactor` → `test` → `docs` → `build` → `ci` → `style` → `chore` (a `Feature` + `Bug` issue is a `feat`). If the issue carries **only** area labels or none of its labels match, default to `chore`.
 
    **Change-type labels** (these decide the type):
