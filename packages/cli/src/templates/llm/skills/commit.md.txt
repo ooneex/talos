@@ -1,6 +1,13 @@
 ---
 name: commit
 description: Create commit messages grouped by module. Analyzes git changes, groups files under modules/ by module name, and creates separate commits following the project's conventional-commit rules. Uses common scope for non-module changes.
+when_to_use: Use when the user wants to commit changes — staging modified files, grouping them by module, writing conventional-commit messages, and pushing. Triggers on requests like "commit", "commit my changes", "create a commit", or "commit and push".
+model: haiku
+effort: low
+agent: general-purpose
+context: The monorepo root working directory and current git state (uncommitted changes from `git status --porcelain`). No prior conversation context is required — the skill runs autonomously end-to-end.
+tools: "*"
+permission_mode: bypassPermissions
 ---
 
 # Commit by Module
