@@ -3,6 +3,7 @@ name: design-issue-founder
 description: Audits a front-end module's source for Design (UI/UX) issues — accessibility, contrast, responsiveness, design-system consistency, interaction states, motion, surfaces/depth, localization, layout stability, and messaging — and returns the findings. Use proactively whenever a module's UI needs a design review, and especially when the /issue-found skill audits the Design category. It only finds and reports — it never writes issue files or runs talos commands.
 tools: Read, Grep, Glob
 model: sonnet
+effort: high
 memory: project
 color: blue
 ---

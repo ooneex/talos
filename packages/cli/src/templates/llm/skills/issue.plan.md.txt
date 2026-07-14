@@ -1,6 +1,8 @@
 ---
 name: issue-plan
 description: Create and plan one or more YAML issues from the user's input. Infers target issues and modules from whatever the user says — existing issue files/IDs and/or free-form descriptions, across one or more modules. For each description it scaffolds the issue with talos issue:create (inferring the module), then plans it — restructuring into context, goal, definition of done, and dependencies, extracting labels, and optionally splitting into ordered sub-issues with the same structure. Reads/writes modules/<module>/issues/<ID>.yml.
+model: opus
+effort: high
 argument-hint: [issue-id|description]
 ---
 

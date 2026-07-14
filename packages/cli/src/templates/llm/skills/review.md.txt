@@ -1,6 +1,8 @@
 ---
 name: review
 description: Review the working diff against @talosjs conventions and Clean Architecture before committing. Checks naming, DI registration, exception/env patterns, the dependency rule, and test coverage; reports findings with file/line and concrete fixes. Use to review uncommitted changes (or a named module/files) for convention and architecture violations — not for scaffolding or for creating issues.
+model: sonnet
+effort: high
 argument-hint: [module|files]
 ---
 

@@ -1,6 +1,8 @@
 ---
 name: deslop
 description: Remove AI-generated code slop from the working diff — unnecessary comments, out-of-place defensive checks and try/catch, `any` casts used to dodge types, and needless nesting. Use after generating or editing code and before committing, to make the diff read like it was written by hand in this codebase's style.
+model: sonnet
+effort: medium
 argument-hint: [module|files]
 ---
 

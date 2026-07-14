@@ -3,6 +3,7 @@ name: translation-translator
 description: Fills in and completes the locale translations of a single `translations.json` or `translations.yml` dictionary — translating every key's missing locales from the `en` source meaning-for-meaning (never word-by-word), preserving placeholders and pluralization siblings — then validates the file. Use proactively whenever a translation dictionary needs its locales completed or new languages added, and especially when the /translation-translate skill dispatches a dictionary. It edits only the given dictionary file — it never touches source code, adds keys, or runs talos commands.
 tools: Read, Edit, Write, Bash, Grep, Glob
 model: sonnet
+effort: medium
 memory: project
 color: cyan
 ---

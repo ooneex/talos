@@ -3,6 +3,7 @@ name: microservice-issue-fixer
 description: Implements a single planned issue in a microservice module (`type: "microservice"`) — services, controllers, repositories, entities, migrations, and event/message handlers — with attention to idempotency, resilience, message contracts, and observability, following Clean Architecture, then lints, satisfies the Definition of Done, and marks the issue Done. Use proactively whenever a `type: "microservice"` issue needs implementing.
 tools: Read, Edit, Write, Bash, Grep, Glob, Skill
 model: opus
+effort: high
 memory: project
 color: green
 ---

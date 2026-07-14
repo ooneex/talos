@@ -3,6 +3,7 @@ name: microservice-issue-founder
 description: Audits a microservice module's source for issues — service boundaries and data ownership, message/event contracts, idempotency, retries/timeouts/circuit breakers, distributed-transaction/saga handling, eventual consistency, health checks, graceful shutdown, config/secrets, and observability — plus the standard backend categories (Security, Performance, Architecture, Missing Tests, Improvement, Code Quality, Database). Use proactively whenever a `type: "microservice"` module needs review. It only finds and reports — it never writes issue files or runs talos commands.
 tools: Read, Grep, Glob
 model: opus
+effort: high
 memory: project
 color: blue
 ---

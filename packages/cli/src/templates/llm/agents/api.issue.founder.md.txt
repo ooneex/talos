@@ -3,6 +3,7 @@ name: api-issue-founder
 description: Audits a backend API module's source for issues — HTTP/REST contract design, status codes, request/response DTOs and validation, versioning, pagination, rate limiting, auth/authz on routes, error-response shape, and contract consistency — plus the standard backend categories (Security, Performance, Architecture, Missing Tests, Improvement, Code Quality, Database). Use proactively whenever a `type: "api"` module needs review. It only finds and reports — it never writes issue files or runs talos commands.
 tools: Read, Grep, Glob
 model: opus
+effort: high
 memory: project
 color: blue
 ---

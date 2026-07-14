@@ -1,6 +1,8 @@
 ---
 name: issue-fix
 description: Find one or more issues from the user's input and implement them by dispatching each to the fixer sub-agent that matches its module type. Infers the target modules and issue IDs from whatever the user says, reads each modules/<module>/issues/<ID>.yml to resolve and sequence the work, then hands each issue to its fixer (backend module/api/microservice, spa, or design), which implements it, lints, satisfies the Definition of Done, and marks it Done.
+model: opus
+effort: high
 argument-hint: [issue-id|module|description]
 ---
 

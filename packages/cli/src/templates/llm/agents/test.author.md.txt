@@ -3,6 +3,7 @@ name: test-author
 description: Writes and repairs meaningful bun:test tests for a target file or module following project conventions — class identity, method contracts, real behavior, and edge/error paths — then runs the suite and reports. Use proactively whenever code needs tests written or under-tested code needs coverage, and especially when the /optimize, /review, or /issue-fix workflows need tests authored. It writes test files and runs tests — it does not change production code.
 tools: Read, Edit, Write, Bash, Grep, Glob
 model: sonnet
+effort: medium
 memory: project
 color: yellow
 ---

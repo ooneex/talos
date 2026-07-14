@@ -1,6 +1,8 @@
 ---
 name: pr
 description: Create a pull request for the current branch. Pushes the branch, analyzes the commits and diff against the base branch, then opens a PR with the GitHub CLI using a conventional title and a structured Summary / Changes / Testing body.
+model: sonnet
+effort: medium
 ---
 
 # Create Pull Request
