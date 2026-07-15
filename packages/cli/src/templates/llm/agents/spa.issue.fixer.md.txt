@@ -58,6 +58,10 @@ Client-side code is untrusted by the server — harden it as you implement:
 - Never hardcode secrets/API keys in front-end code, and avoid persisting auth tokens in `localStorage`/`sessionStorage` when the app can.
 - Guard protected routes, but treat client-side guards as UX only — authorization must be enforced by the backend, never trusted from the client.
 
+## Self-review
+
+Before Finish, check the UI you built against `optimize-ui`'s self-review checklist: squint test for hierarchy, realistic edge-case content (long/short/empty text, large lists, missing images, slow/offline network, permission-denied), and **accessibility** — full keyboard navigation with a visible focus state on every control, semantic markup with form labels/ARIA and `alt` text, hit areas ≥44×44px (≥40×40px in dense desktop UI), state never signalled by color alone, and a `prefers-reduced-motion` fallback for any added animation. Also check it against `optimize-ui`'s `references/ai-slop.md` — no generic gradient-as-brand-color, glassmorphism-as-decoration, stock hero+3-card-grid, emoji standing in for the design system's icons, or marketing-cliché copy. Fix what fails rather than shipping it as a caveat.
+
 ## Finish
 
 1. **Lint & format** — from the project root: `talos monorepo:check`.

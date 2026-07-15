@@ -78,6 +78,14 @@ Once on the issue's branch:
 - **Check the Definition of Done.** Walk each `dod` item and confirm the branch's code actually satisfies it — read the changed files (`git diff main...<branch>`), not just the checkbox state. Note any `dod` item that is checked off but not genuinely met, or unmet entirely.
 - **Run the e2e tests for the testing section.** For each `testing` step that exercises a browser flow, locate the spec that covers it — `modules/<module>/e2e/<Name>.spec.ts` — and run it with the **`e2e-run`** skill (`talos e2e:run --modules=<module> --logs`; add `--no-cache` when the result depends on live app state). Triage any failure per `e2e-run` (test vs. app regression) and report it — do not weaken assertions. If a `testing` step has no covering spec, flag the gap.
 
-## 5. Report
+## 5. Promote the issue state
 
-Per issue reviewed, report: `id`/`title`/module, the branch and PR URL, DoD status (each item met / not met / mis-checked), e2e results (specs run, pass/fail, and any missing coverage), and an overall verdict — **approve** (DoD met, tests green) or **changes requested** (with the concrete blockers). Then list every issue skipped in step 2 with its reason (not `In Review`, missing `branch`, or missing `pr`).
+If **every** `dod` item is genuinely met **and** every `testing` step's e2e spec ran green (no missing coverage, no failures), the issue is approved — update its state from `In Review` to `To Merge`:
+
+- Edit `modules/<module>/issues/<ID>.yml` and set `state: "To Merge"`. Leave `branch:` and `pr:` untouched.
+
+If any `dod` item is unmet or mis-checked, any e2e spec failed, or a `testing` step has no covering spec, leave the state as `In Review` — do not promote a issue with blockers.
+
+## 6. Report
+
+Per issue reviewed, report: `id`/`title`/module, the branch and PR URL, DoD status (each item met / not met / mis-checked), e2e results (specs run, pass/fail, and any missing coverage), and an overall verdict — **approve** (DoD met, tests green — state promoted to `To Merge`) or **changes requested** (with the concrete blockers — state left `In Review`). Then list every issue skipped in step 2 with its reason (not `In Review`, missing `branch`, or missing `pr`).

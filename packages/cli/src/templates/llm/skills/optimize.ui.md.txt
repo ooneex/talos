@@ -61,6 +61,6 @@ Check every component/layout/feature against realistic conditions, not just the 
 
 - **Squint test** — defocus and confirm the primary element, secondary elements, and groupings stay identifiable; a monotone uniform grid can pass every rule and still read as flat.
 - **Edge-case inputs** — very long/short text, empty lists, huge lists, missing images, offline/slow network, permission-denied. A layout that only works with perfect demo data isn't done.
-- **Keyboard & reduced motion** — tab through the whole flow with no mouse; verify `prefers-reduced-motion` is respected.
+- **Accessibility** — tab through the whole flow with no mouse and confirm every interactive control is reachable and shows a visible focus state; semantic elements/roles, form labels, and `alt` text are present; hit areas are ≥44×44px (≥40×40px in dense desktop UI); state is never signalled by color alone; and `prefers-reduced-motion` is respected.
 - **Removal test** — for any added motion, shadow, or flourish: if removed, would anyone notice? If not, it isn't earning its place.
 - **AI-slop check** — run the result against `references/ai-slop.md`: no generic gradient-as-brand, no glassmorphism-as-decoration, no stock hero+3-card-grid, no emoji standing in for the icon set, no marketing-cliché copy.
