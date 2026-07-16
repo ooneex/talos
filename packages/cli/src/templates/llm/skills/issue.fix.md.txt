@@ -104,10 +104,6 @@ Each fixer implements the `goal` following the module's conventions and Clean Ar
 
 **Dispatch sequentially, one issue at a time, in dependency order** — all fixers share one working tree and one checked-out branch, so concurrent runs would clobber each other. Let each finish before switching to the next issue's branch. If a dispatched issue has a dependency **not** in the batch and not yet `In Review`/`Done`, the fixer stops and reports it — carry that into the summary.
 
-**E2e tests.** For each `testing` step that exercises a browser flow, the fixer runs `talos e2e:create --name=<Name> --module=<module>` (via `/e2e-create`), fills in `modules/<module>/e2e/<Name>.spec.ts` to drive the flow and assert the result, sets `baseURL`/`webServer` in `playwright.config.ts`, and checks off the box once the test passes (`talos monorepo:run --commands=e2e --modules=<module>`). A pure CLI check (e.g. `talos monorepo:check`) is satisfied by running it, not a new spec.
-
-**Workflows.** When a `goal` describes a multi-step business process (conditional, reversible steps that roll back together on failure), the fixer uses `@talosjs/workflow` (`packages/workflow/`) scaffolded via `/workflow-create` and `/workflow-transition-create` — not hand-rolled orchestration. Only when the work genuinely calls for it.
-
 Once a fixer returns with its issue at `In Review`, finalise that branch **before switching to the next issue**:
 - **Commit** — apply the `commit` skill's rules directly (do not invoke it): group changes by module (`modules/<name>/` or `packages/<name>/` → that scope, else `common`), screen out secrets, pick the type per group, commit as `type(scope): Subject`.
 - **Push** — push the branch with the `gh` cli only (never `git push`/`git pull`; `gh auth switch` if needed). Never force-push.

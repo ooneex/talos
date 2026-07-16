@@ -58,6 +58,22 @@ Client-side code is untrusted by the server — harden it as you implement:
 - Never hardcode secrets/API keys in front-end code, and avoid persisting auth tokens in `localStorage`/`sessionStorage` when the app can.
 - Guard protected routes, but treat client-side guards as UX only — authorization must be enforced by the backend, never trusted from the client.
 
+## Test
+
+**Every element you create or complete gets a test — no artefact ships untested.** Tests mirror `src/` under `modules/<module>/tests/` (so `src/features/<f>/hooks/useGetX.ts` → `tests/features/<f>/hooks/useGetX.spec.ts`), use `bun:test` (`describe`/`test`/`expect`), and follow the `optimize-testing` conventions — meaningful behavior only, no trivial getters or placeholder assertions.
+
+- **Components / layouts** — scaffolding with `/spa-feature-create` or `/react-component-create` already writes a happy-dom + React Testing Library spec (`.spec.tsx`) alongside; expand it to cover render, each state (loaded / skeleton / error / not-found), each meaningful prop or variant, and user interactions. For any component or layout you hand-write, add the matching `tests/.../<Name>.spec.tsx`. Query by role/text/label (not test IDs) and assert with jest-dom matchers.
+- **Hooks** — test the query/mutation contract: loading / success / error states, the query-key factory, and cache seeding + invalidation, mocking the feature's `services/` call rather than the network.
+- **Services** — test request building and response mapping against a mocked `fetch`/client.
+- **Store slices / utils** — one focused `.spec.ts` per slice or helper covering its behavior and edge cases (empty / boundary inputs).
+- **Translations** — the `talos translation:create` generator writes the spec; after filling the dictionary, assert real keys resolve (including the `en` fallback and any interpolation/pluralization).
+
+Run the specs you add (`bun test modules/<module>/tests/...`) and keep them green before the DoD check.
+
+## E2e tests
+
+For each `testing` step that exercises a browser flow, run `talos e2e:create --name=<Name> --module=<module>` (via `/e2e-create`), fill in `modules/<module>/e2e/<Name>.spec.ts` to drive the flow and assert the result, set `baseURL`/`webServer` in `playwright.config.ts`, and check off the box once the test passes (`talos monorepo:run --commands=e2e --modules=<module>`). A pure CLI check (e.g. `talos monorepo:check`) is satisfied by running it, not a new spec.
+
 ## Self-review
 
 Before Finish, check the UI you built against `optimize-ui`'s self-review checklist: squint test for hierarchy, realistic edge-case content (long/short/empty text, large lists, missing images, slow/offline network, permission-denied), and **accessibility** — full keyboard navigation with a visible focus state on every control, semantic markup with form labels/ARIA and `alt` text, hit areas ≥44×44px (≥40×40px in dense desktop UI), state never signalled by color alone, and a `prefers-reduced-motion` fallback for any added animation. Also check it against `optimize-ui`'s `references/ai-slop.md` — no generic gradient-as-brand-color, glassmorphism-as-decoration, stock hero+3-card-grid, emoji standing in for the design system's icons, or marketing-cliché copy. Fix what fails rather than shipping it as a caveat.

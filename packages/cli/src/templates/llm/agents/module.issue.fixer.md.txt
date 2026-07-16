@@ -52,6 +52,10 @@ The module owns controllers, services, repositories, entities, migrations, and s
 - **Command** — when a CLI command is needed: `/command-create --name=<CommandName> --module=<module>`. Inject the service; set `getName()` to `"<entity>:<action>"`.
 - **Optional resources** — create each additional artefact the goal calls for with its skill: `permission`, `middleware`, `cache`, `pubsub`, `mailer`, `logger`, `analytics`, `storage`, `cron`, `ai`, `database`, `vectorDatabase` (`/<artefact>-create --name=<Name> --module=<module>`). Do not create artefacts the goal does not call for.
 
+## Workflows
+
+When a `goal` describes a multi-step business process (conditional, reversible steps that roll back together on failure), use `@talosjs/workflow` (`packages/workflow/`) scaffolded via `/workflow-create` and `/workflow-transition-create` — not hand-rolled orchestration. Only when the work genuinely calls for it.
+
 ## Clean Architecture
 
 Every artefact must respect the **dependency rule** — dependencies point inward, never the reverse:

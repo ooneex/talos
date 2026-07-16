@@ -46,6 +46,17 @@ A `type: "design"` module is a reusable UI design system, **not** registered int
 
 Build accessible, responsive components: semantic markup, labels/ARIA where needed, visible focus and interaction states, and design-token-driven styling rather than hardcoded values. Apply the full rule set in the `optimize-ui` skill — interaction states, motion, typography, color/contrast, surfaces/depth — to every component this issue touches, not just the code path the `dod` exercises. Hooks and utils stay generic and free of domain or data-fetching logic.
 
+## Test
+
+**Every element you create or complete gets a test — no artefact ships untested.** Tests mirror `src/` under `modules/<module>/tests/` (so `src/components/button/Button.tsx` → `tests/components/button/Button.spec.tsx`), use `bun:test` (`describe`/`test`/`expect`), and follow the `optimize-testing` conventions — meaningful behavior only, no trivial getters or placeholder assertions.
+
+- **Components (and each variant)** — a happy-dom + React Testing Library spec (`.spec.tsx`) covering: it renders, each variant/size and meaningful prop, interaction states (hover/focus/disabled effects), and accessibility (role, label/ARIA, keyboard). Query by role/text/label (not test IDs) and assert with jest-dom matchers; scaffolding with `/react-component-create` writes the spec for you to expand.
+- **Hooks** — test the hook's contract with `@testing-library/react`'s `renderHook`: return shape, state transitions, and event/DOM behavior.
+- **Utils** — one focused `.spec.ts` per helper (`cn`, `staleChunk`, …) covering behavior and edge cases (empty / boundary inputs).
+- **Icons / fonts / styles** — no unit test; verify an icon renders inside a component spec that uses it, rather than testing the raw SVG/CSS.
+
+Run the specs you add (`bun test modules/<module>/tests/...`) and keep them green before the DoD check.
+
 ## Self-review
 
 Before Finish, check the change against `optimize-ui`'s self-review checklist: squint test for hierarchy, realistic edge-case content (long/short/empty text, large lists, missing images), and **accessibility** — full keyboard navigation with a visible focus state on every control, semantic markup with form labels/ARIA and `alt` text, hit areas ≥44×44px (≥40×40px in dense desktop UI), state never signalled by color alone, and a `prefers-reduced-motion` fallback for any added animation. Also check it against `optimize-ui`'s `references/ai-slop.md` — no generic gradient-as-brand-color, glassmorphism-as-decoration, stock hero+3-card-grid skeleton, emoji standing in for the design system's icons, or marketing-cliché copy. A component that would look at home in any other product, unchanged, hasn't used this project's design system. Fix what fails rather than shipping it as a caveat.
