@@ -157,7 +157,11 @@ export const run = async (): Promise<void> => {
   const command = getCommand(commandName);
 
   if (!command) {
-    logger.info("No commands found\n");
+    logger.error(`No commands found for "${commandName}"\n`, undefined, {
+      showArrow: false,
+      showTimestamp: false,
+      showLevel: false,
+    });
     process.exit(1);
   }
 
