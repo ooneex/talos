@@ -1,4 +1,4 @@
-import { prompt } from "enquirer";
+import { prompt } from "./prompt";
 
 export const askInput = async (config: { message: string; initial?: string }) => {
   const response = await prompt<{ value: string }>({

@@ -1,6 +1,6 @@
 import { readdirSync } from "node:fs";
 import { join } from "node:path";
-import { prompt } from "enquirer";
+import { prompt } from "./prompt";
 
 // Only modules that can host other modules are valid destinations
 const DESTINATION_TYPES = ["api", "microservice"] as const;

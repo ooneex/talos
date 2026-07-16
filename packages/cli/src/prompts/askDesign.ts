@@ -1,5 +1,5 @@
-import { prompt } from "enquirer";
 import { askName } from "./askName";
+import { prompt } from "./prompt";
 
 const CREATE_NEW = "Create a new design";
 

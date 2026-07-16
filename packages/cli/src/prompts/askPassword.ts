@@ -1,4 +1,4 @@
-import { prompt } from "enquirer";
+import { prompt } from "./prompt";
 
 export const askPassword = async (config: { message: string }) => {
   const response = await prompt<{ value: string }>({

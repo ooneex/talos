@@ -4,8 +4,8 @@ import type { ICommand } from "@talosjs/command";
 import { decorator } from "@talosjs/command";
 import { type Issue, LinearService } from "@talosjs/linear";
 import { TerminalLogger } from "@talosjs/logger";
-import { prompt } from "enquirer";
 import { readCredentials } from "../credentials";
+import { prompt } from "../prompts/prompt";
 import { ensureModule, generateIssueId, issueToYaml, LOG_OPTIONS } from "../utils";
 
 type CommandOptionsType = {

@@ -1,4 +1,4 @@
-import { prompt } from "enquirer";
+import { prompt } from "./prompt";
 
 // Coding assistants Talos can scaffold shared skills/config for, mapped to the
 // directory each one reads its configuration from. Claude and Codex are enabled

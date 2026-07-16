@@ -6,8 +6,8 @@ import { decorator } from "@talosjs/command";
 import { Issue, LinearService } from "@talosjs/linear";
 import { TerminalLogger } from "@talosjs/logger";
 import { YAML } from "bun";
-import { prompt } from "enquirer";
 import { readCredentials } from "../credentials";
+import { prompt } from "../prompts/prompt";
 import { createSpinner, LOG_OPTIONS } from "../utils";
 
 type CommandOptionsType = {

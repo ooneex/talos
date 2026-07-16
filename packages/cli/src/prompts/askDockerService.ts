@@ -1,4 +1,4 @@
-import { prompt } from "enquirer";
+import { prompt } from "./prompt";
 
 const DOCKER_SERVICES = [
   "clickhouse",

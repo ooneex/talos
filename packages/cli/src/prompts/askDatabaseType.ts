@@ -1,4 +1,4 @@
-import { prompt } from "enquirer";
+import { prompt } from "./prompt";
 
 export type DatabaseTypeType = "postgres" | "sqlite" | "redis";
 

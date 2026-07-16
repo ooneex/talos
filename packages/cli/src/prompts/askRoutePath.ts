@@ -1,5 +1,5 @@
-import { prompt } from "enquirer";
 import { AssertRoutePath } from "../constraints/AssertRoutePath";
+import { prompt } from "./prompt";
 
 export const askRoutePath = async (config: { message: string; initial?: string }) => {
   const response = await prompt<{ path: string }>({

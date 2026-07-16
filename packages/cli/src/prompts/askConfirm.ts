@@ -1,4 +1,4 @@
-import { prompt } from "enquirer";
+import { prompt } from "./prompt";
 
 export const askConfirm = async (config: { message: string; initial?: boolean }) => {
   const response = await prompt<{ confirm: boolean }>({

@@ -1,6 +1,6 @@
 import { HTTP_METHODS } from "@talosjs/types";
-import { prompt } from "enquirer";
 import { AssertRouteMethod } from "../constraints/AssertRouteMethod";
+import { prompt } from "./prompt";
 
 export const askRouteMethod = async (config: { message: string; initial?: number }) => {
   const response = await prompt<{ method: string }>({

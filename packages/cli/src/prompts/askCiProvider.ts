@@ -1,4 +1,4 @@
-import { prompt } from "enquirer";
+import { prompt } from "./prompt";
 
 type CiProviderType = "github" | "gitlab" | "bitbucket";
 

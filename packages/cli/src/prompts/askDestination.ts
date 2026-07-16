@@ -1,5 +1,5 @@
-import { prompt } from "enquirer";
 import { AssertDestination } from "../constraints/AssertDestination";
+import { prompt } from "./prompt";
 
 export const askDestination = async (config: { message: string; initial?: string }) => {
   const assertDestination = new AssertDestination();
