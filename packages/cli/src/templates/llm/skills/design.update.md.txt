@@ -1,0 +1,76 @@
+---
+name: design-update
+description: Sync a local design module with the upstream skeleton-design repository — clone the latest source, mirror its src/ over the local files, creating what's missing and merging what already exists while preserving local customizations.
+when_to_use: Use when pulling upstream changes into an existing design module (new/updated components, hooks, icons, styles, translations, utils). To scaffold a design module from scratch, use `talos design:create` instead.
+model: sonnet
+effort: high
+allowed-tools: Bash(git clone *), Bash(rm *), Bash(bun add *), Bash(talos monorepo:check *), Read, Edit, Write, Grep, Glob
+argument-hint: [--name=<name>]
+---
+
+# Update Design Module
+
+> **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
+
+> **Module location:** `<module>` resolves to `modules/<module>/` or `packages/<module>/` (e.g. once extracted into a shared package). Check both roots before assuming a path is missing; every `modules/<module>/...` path applies equally under `packages/<module>/...`.
+
+Refresh an existing design module against the upstream `skeleton-design` repository. The upstream `src/` is the source of truth for *new* files; local files that already exist are **merged**, not overwritten, so any customization you made survives the update. This mirrors `talos design:create` (which clones the same repo and rewrites its imports) but is idempotent and non-destructive — run it as often as upstream moves.
+
+**Rules that apply throughout:**
+- **Run every command from the monorepo root**, never from inside the module.
+- **Never blindly overwrite a local file that already exists.** A file that exists locally is reconciled through the merge in Step 4; only genuinely new upstream files are created outright.
+- **Rewrite upstream imports before comparing.** Upstream ships `@/` alias imports; the module uses `@module/<name>/`. Every upstream file must have `from "@/` replaced with `from "@module/<name>/` (matching `design:create`) *before* it is compared or merged, so import-path differences never masquerade as real conflicts.
+- **Only touch design modules.** Refuse to run against a module whose `<name>.yml` does not declare `type: "design"`.
+
+## Steps
+
+### 1. Locate the local design module
+
+If `--name` is given, use it; otherwise find the module whose `<name>.yml` contains `type: "design"` (`grep -rl 'type: "design"' modules/*/ packages/*/`). If there are several and no `--name`, that's ambiguous — pick the one the request names and note the choice. Record its kebab `<name>`; its source lives in `<module>/src/`. Confirm the yml really declares `type: "design"` before continuing.
+
+### 2. Clone the upstream source into a temp folder
+
+```bash
+rm -rf "$TMPDIR/talos-design-<name>"
+git clone --depth 1 https://github.com/ooneex/skeleton-design.git "$TMPDIR/talos-design-<name>"
+```
+
+The clone's `src/` is the upstream tree to mirror. (`$TMPDIR/talos-design-<name>` matches the path `design:create` uses; adjust if `$TMPDIR` is unset.)
+
+### 3. Rewrite upstream imports
+
+Across every file under the cloned `src/`, replace `from "@/` with `from "@module/<name>/`. Do this first so the temp tree already speaks the module's alias — the merge in Step 4 then sees only real content differences.
+
+### 4. Mirror `src/` with smart synchronization
+
+Walk the cloned `src/` recursively. For each upstream file, compare it against its counterpart at the same relative path under `<module>/src/`:
+
+- **Missing locally → create it.** Write the (import-rewritten) upstream file to the local path verbatim, creating parent folders as needed. New components/icons/hooks/styles arrive intact.
+- **Identical → skip.** No write.
+- **Both exist and differ → merge.** Reconcile the two into one file that **takes upstream's improvements while preserving local customizations**:
+  - Adopt upstream's new/changed lines (new props, fixed logic, added exports, new tokens/keys).
+  - Keep local-only additions and edits (extra components, added style tokens, extra translation keys, local tweaks).
+  - Where the *same* region diverges on both sides, that's a genuine conflict: resolve it in favor of local *intent* but folded onto upstream's *structure*, and leave no `<<<<<<<`/`=======`/`>>>>>>>` markers behind. If you must stage markers with a tool (e.g. `git merge-file`), you must resolve every one before finishing — a committed conflict marker is a bug.
+  - Never drop a local export or a local file that upstream simply doesn't have.
+
+Do not delete local files that are absent upstream — this is an additive sync, not a two-way mirror.
+
+### 5. Sync new dependencies
+
+Read the clone's `package.json`. For any `dependencies` / `devDependencies` **not already** in the project (check the root and the module `package.json`), install them from the root — new upstream files may import new packages:
+
+```bash
+bun add <new-deps>
+bun add -D <new-dev-deps>
+```
+
+Skip anything already present; don't downgrade or pin versions the project already resolves.
+
+### 6. Clean up and verify
+
+```bash
+rm -rf "$TMPDIR/talos-design-<name>"
+talos monorepo:check --modules=<name> --logs
+```
+
+Fix every lint/format/type/test failure the merge introduced before finishing — a botched merge usually surfaces as a type error or an unresolved import. Report which files were **created**, which were **merged** (and any conflicts you resolved), and which dependencies were added. If a failure stems from application code rather than the merge, hand off to the `debug` skill.
