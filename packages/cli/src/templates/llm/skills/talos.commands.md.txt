@@ -26,13 +26,10 @@ talos commitlint:check --file <path>                      # Lint a commit messag
 ## Application
 ```bash
 talos app:start                   # Start Docker services + all runnable modules with hot reload
-talos app:start --api             # Start only the api modules
-talos app:start --api=a,b         # Start only the api modules named "a" and "b"
-talos app:start --microservice    # Start only the microservice modules (also --microservice=a,b)
-talos app:start --spa             # Start only the spa modules (also --spa=a,b)
-talos app:start --api --spa       # Combine flags to start several types at once
-talos app:stop                    # Stop the app module's shared Docker stack
-talos app:stop --api=a,b          # Stop only the Docker stack of named modules that have a docker-compose.yml
+talos app:start --modules=a,b     # Start only the modules named "a" and "b"
+talos app:start --packages=a,b    # Alias for --modules
+talos app:stop                    # Stop the app module's Docker stack (started for api/microservice modules)
+talos app:stop --modules=a,b      # Stop the Docker stack when the named modules include an api/microservice
 ```
 
 ## Generators

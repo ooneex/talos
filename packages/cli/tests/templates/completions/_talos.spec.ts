@@ -111,26 +111,12 @@ describe("_talos.txt", () => {
     });
   });
 
-  describe("runnable type module helpers", () => {
-    test("should define _talos_api_modules listing api modules as a comma-separated value", async () => {
+  describe("runnable module helpers", () => {
+    test("should define _talos_runnable_modules listing runnable modules as a comma-separated value", async () => {
       const content = await Bun.file(templatePath).text();
-      expect(content).toContain("_talos_api_modules()");
-      expect(content).toContain("grep -rl 'type: \"api\"' modules/*/*.yml");
-      expect(content).toContain("_values -s , 'api modules'");
-    });
-
-    test("should define _talos_microservice_modules listing microservice modules as a comma-separated value", async () => {
-      const content = await Bun.file(templatePath).text();
-      expect(content).toContain("_talos_microservice_modules()");
-      expect(content).toContain("grep -rl 'type: \"microservice\"' modules/*/*.yml");
-      expect(content).toContain("_values -s , 'microservice modules'");
-    });
-
-    test("should define _talos_spa_modules listing spa modules as a comma-separated value", async () => {
-      const content = await Bun.file(templatePath).text();
-      expect(content).toContain("_talos_spa_modules()");
-      expect(content).toContain("grep -rl 'type: \"spa\"' modules/*/*.yml");
-      expect(content).toContain("_values -s , 'spa modules'");
+      expect(content).toContain("_talos_runnable_modules()");
+      expect(content).toContain("grep -rlE 'type: \"(api|microservice|spa|storybook|swagger)\"' modules/*/*.yml");
+      expect(content).toContain("_values -s , 'modules'");
     });
   });
 
@@ -532,16 +518,13 @@ describe("_talos.txt", () => {
       expect(match?.[1]).toContain("--cwd=");
     });
 
-    test("app:start and app:stop should have --api, --microservice, and --spa options with module suggestions", async () => {
+    test("app:start and app:stop should have --modules and --packages options with runnable module suggestions", async () => {
       const content = await Bun.file(templatePath).text();
       const match = content.match(/app:start\|app:stop\)([\s\S]*?);;/);
       expect(match).not.toBeNull();
-      expect(match?.[1]).toContain("--api=");
-      expect(match?.[1]).toContain("_talos_api_modules");
-      expect(match?.[1]).toContain("--microservice=");
-      expect(match?.[1]).toContain("_talos_microservice_modules");
-      expect(match?.[1]).toContain("--spa=");
-      expect(match?.[1]).toContain("_talos_spa_modules");
+      expect(match?.[1]).toContain("--modules=");
+      expect(match?.[1]).toContain("--packages=");
+      expect(match?.[1]).toContain("_talos_runnable_modules");
     });
 
     test("npm:publish should have packages, modules, and access options with publish target suggestions", async () => {

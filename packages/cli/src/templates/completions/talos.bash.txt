@@ -56,6 +56,12 @@ _talos_destination_modules() {
     | command sed -n 's|modules/\([^/]*\)/.*|\1|p' | command sort -u
 }
 
+_talos_runnable_modules() {
+  [[ -d modules ]] || return
+  command grep -rlE 'type: "(api|microservice|spa|storybook|swagger)"' modules/*/*.yml 2>/dev/null \
+    | command sed -n 's|modules/\([^/]*\)/.*|\1|p' | command sort -u
+}
+
 _talos_sdk_modules() {
   printf '%s\n' app
   _talos_yaml_modules microservice
@@ -174,10 +180,9 @@ seed:create seed:run"
       [[ $flag == --cwd ]] && dirs=1
       ;;
     app:start | app:stop)
-      opts="--api --microservice --spa"
-      [[ $flag == --api ]] && candidates="$(_talos_yaml_modules api)"
-      [[ $flag == --microservice ]] && candidates="$(_talos_yaml_modules microservice)"
-      [[ $flag == --spa ]] && candidates="$(_talos_yaml_modules spa)"
+      opts="--modules --packages"
+      [[ $flag == --modules ]] && candidates="$(_talos_runnable_modules)"
+      [[ $flag == --packages ]] && candidates="$(_talos_runnable_modules)"
       ;;
     sdk:create)
       opts="--name --module"

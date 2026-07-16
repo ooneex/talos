@@ -73,8 +73,7 @@ describe("AppStopCommand", () => {
     });
 
     test("should run docker compose down", async () => {
-      const appDir = join(testDir, "modules", "app");
-      await Bun.write(join(appDir, "package.json"), JSON.stringify({ name: "@acme/app" }));
+      const appDir = await writeModule("app", "api", true);
       process.chdir(testDir);
 
       await command.run();
@@ -108,8 +107,7 @@ describe("AppStopCommand", () => {
         return { exited: Promise.resolve(1) } as unknown as ReturnType<typeof Bun.spawn>;
       }) as typeof Bun.spawn;
 
-      const appDir = join(testDir, "modules", "app");
-      await Bun.write(join(appDir, "package.json"), JSON.stringify({ name: "@acme/app" }));
+      await writeModule("app", "api", true);
       process.chdir(testDir);
 
       await command.run();
@@ -120,6 +118,8 @@ describe("AppStopCommand", () => {
     test("should use directory name when package.json has no name", async () => {
       const appDir = join(testDir, "modules", "app");
       await Bun.write(join(appDir, "package.json"), JSON.stringify({}));
+      await Bun.write(join(appDir, "app.yml"), 'type: "api"\n');
+      await Bun.write(join(appDir, "docker-compose.yml"), "version: '3'");
       process.chdir(testDir);
 
       await command.run();
@@ -127,46 +127,47 @@ describe("AppStopCommand", () => {
       expect(spawnCalls).toHaveLength(1);
     });
 
-    test("should stop only the selected api modules' Docker stacks when --api is set", async () => {
+    test("should stop the app Docker stack when a named api/microservice module is selected", async () => {
       const appDir = await writeModule("app", "api", true);
-      const orderDir = await writeModule("order", "api", true);
-      await writeModule("billing", "microservice", true);
+      await writeModule("order", "api", false);
       process.chdir(testDir);
 
-      await command.run({ api: true });
-
-      expect(spawnCalls).toHaveLength(2);
-      expect(spawnCalls.every((call) => call.cmd.join(" ") === "docker compose down")).toBe(true);
-      expect(spawnCalls.map((call) => call.cwd).sort()).toEqual([appDir, orderDir].sort());
-    });
-
-    test("should stop only the named module when --api=name is set", async () => {
-      await writeModule("app", "api", true);
-      const orderDir = await writeModule("order", "api", true);
-      process.chdir(testDir);
-
-      await command.run({ api: "order" });
+      await command.run({ modules: "order" });
 
       expect(spawnCalls).toHaveLength(1);
-      expect(spawnCalls[0]?.cwd).toBe(orderDir);
+      expect(spawnCalls[0]?.cmd).toEqual(["docker", "compose", "down"]);
+      expect(spawnCalls[0]?.cwd).toBe(appDir);
     });
 
-    test("should skip selected modules without a docker-compose.yml", async () => {
+    test("should accept --packages as an alias for --modules", async () => {
+      const appDir = await writeModule("app", "api", true);
+      await writeModule("billing", "microservice", false);
+      process.chdir(testDir);
+
+      await command.run({ packages: "billing" });
+
+      expect(spawnCalls).toHaveLength(1);
+      expect(spawnCalls[0]?.cwd).toBe(appDir);
+    });
+
+    test("should skip Docker when only dev-server modules are selected", async () => {
       await writeModule("app", "api", true);
       await writeModule("dashboard", "spa", false);
       process.chdir(testDir);
 
-      await command.run({ spa: true });
+      await command.run({ modules: "dashboard" });
 
       expect(spawnCalls).toHaveLength(0);
+      expect(process.exitCode).toBe(1);
+      process.exitCode = 0;
     });
 
-    test("should error when no selected module has a Docker stack", async () => {
-      await writeModule("app", "api", true);
-      await writeModule("billing", "microservice", true);
+    test("should error when the app has no docker-compose.yml", async () => {
+      await writeModule("app", "api", false);
+      await writeModule("order", "api", false);
       process.chdir(testDir);
 
-      await command.run({ spa: true });
+      await command.run({ modules: "order" });
 
       expect(spawnCalls).toHaveLength(0);
       expect(process.exitCode).toBe(1);

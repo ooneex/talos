@@ -135,6 +135,19 @@ describe("AppStartCommand", () => {
       expect(concurrentlyCalls).toHaveLength(1);
     });
 
+    test("should skip docker compose when only dev-server modules run", async () => {
+      const appDir = await writeModule("app", "api");
+      await Bun.write(join(appDir, "docker-compose.yml"), "version: '3'");
+      await writeModule("dashboard", "spa");
+      process.chdir(testDir);
+
+      await command.run({ modules: "dashboard" });
+
+      expect(spawnCalls).toHaveLength(0);
+      expect(concurrentlyCalls).toHaveLength(1);
+      expect(concurrentlyCalls[0]?.commands.map((c) => c.name)).toEqual(["dashboard"]);
+    });
+
     test("should not start modules when docker compose fails", async () => {
       Bun.spawn = ((...args: unknown[]) => {
         const cmd = Array.isArray(args[0]) ? args[0] : (args[0] as { cmd?: string[] })?.cmd;
@@ -156,10 +169,12 @@ describe("AppStartCommand", () => {
       expect(concurrentlyCalls).toHaveLength(0);
     });
 
-    test("should run api, microservice and spa modules with matching commands", async () => {
+    test("should run every runnable module type with matching commands", async () => {
       await writeModule("app", "api");
       const billingDir = await writeModule("billing", "microservice");
       const dashboardDir = await writeModule("dashboard", "spa");
+      const bookDir = await writeModule("book", "storybook");
+      const docsDir = await writeModule("docs", "swagger");
       process.chdir(testDir);
 
       await command.run();
@@ -177,12 +192,23 @@ describe("AppStartCommand", () => {
         cwd: dashboardDir,
         command: "bun run dev",
       });
+      expect(byName.book).toMatchObject({
+        prefixColor: "yellow",
+        cwd: bookDir,
+        command: "bun run dev",
+      });
+      expect(byName.docs).toMatchObject({
+        prefixColor: "blue",
+        cwd: docsDir,
+        command: "bun run dev",
+      });
     });
 
     test("should ignore modules that are not runnable", async () => {
       await writeModule("app", "api");
       await writeModule("shared", "module");
       await writeModule("ui", "design");
+      await writeModule("client", "sdk");
       process.chdir(testDir);
 
       await command.run();
@@ -201,42 +227,40 @@ describe("AppStartCommand", () => {
       expect(concurrentlyCalls).toHaveLength(0);
     });
 
-    test("should run only api modules when --api flag is set", async () => {
+    test("should run only the named modules when --modules=name1,name2 is set", async () => {
       const appDir = await writeModule("app", "api");
-      const orderDir = await writeModule("order", "api");
+      await writeModule("order", "api");
+      const dashboardDir = await writeModule("dashboard", "spa");
       await writeModule("billing", "microservice");
-      await writeModule("dashboard", "spa");
       process.chdir(testDir);
 
-      await command.run({ api: true });
+      await command.run({ modules: "app,dashboard" });
 
       expect(concurrentlyCalls).toHaveLength(1);
       const byName = Object.fromEntries(concurrentlyCalls[0]?.commands.map((c) => [c.name, c]) ?? []);
-      expect(Object.keys(byName).sort()).toEqual(["app", "order"]);
+      expect(Object.keys(byName).sort()).toEqual(["app", "dashboard"]);
       expect(byName.app).toEqual({
         name: "app",
         prefixColor: "cyan",
         cwd: testDir,
         command: `bun --hot run ${join(appDir, "src", "index.ts")}`,
       });
-      expect(byName.order).toEqual({
-        name: "order",
-        prefixColor: "cyan",
-        cwd: testDir,
-        command: `bun --hot run ${join(orderDir, "src", "index.ts")}`,
+      expect(byName.dashboard).toEqual({
+        name: "dashboard",
+        prefixColor: "green",
+        cwd: dashboardDir,
+        command: "bun run dev",
       });
     });
 
-    test("should run only the named api modules when --api=name1,name2 is set", async () => {
+    test("should accept --packages as an alias for --modules", async () => {
       await writeModule("app", "api");
       const orderDir = await writeModule("order", "api");
-      await writeModule("invoice", "api");
       await writeModule("billing", "microservice");
       process.chdir(testDir);
 
-      await command.run({ api: "order" });
+      await command.run({ packages: "order" });
 
-      expect(concurrentlyCalls).toHaveLength(1);
       expect(concurrentlyCalls[0]?.commands).toEqual([
         {
           name: "order",
@@ -247,13 +271,13 @@ describe("AppStartCommand", () => {
       ]);
     });
 
-    test("should run multiple named api modules and ignore whitespace", async () => {
+    test("should run multiple named modules and ignore whitespace", async () => {
       await writeModule("app", "api");
       const orderDir = await writeModule("order", "api");
       const invoiceDir = await writeModule("invoice", "api");
       process.chdir(testDir);
 
-      await command.run({ api: " order , invoice " });
+      await command.run({ modules: " order , invoice " });
 
       const byName = Object.fromEntries(concurrentlyCalls[0]?.commands.map((c) => [c.name, c]) ?? []);
       expect(Object.keys(byName).sort()).toEqual(["invoice", "order"]);
@@ -271,109 +295,13 @@ describe("AppStartCommand", () => {
       });
     });
 
-    test("should error when no api module matches --api=name", async () => {
-      await writeModule("app", "api");
-      await writeModule("billing", "microservice");
-      process.chdir(testDir);
-
-      await command.run({ api: "unknown" });
-
-      expect(concurrentlyCalls).toHaveLength(0);
-    });
-
-    test("should run only microservice modules when --microservice flag is set", async () => {
-      await writeModule("app", "api");
-      const billingDir = await writeModule("billing", "microservice");
-      const notifyDir = await writeModule("notify", "microservice");
-      await writeModule("dashboard", "spa");
-      process.chdir(testDir);
-
-      await command.run({ microservice: true });
-
-      const byName = Object.fromEntries(concurrentlyCalls[0]?.commands.map((c) => [c.name, c]) ?? []);
-      expect(Object.keys(byName).sort()).toEqual(["billing", "notify"]);
-      expect(byName.billing).toEqual({
-        name: "billing",
-        prefixColor: "magenta",
-        cwd: testDir,
-        command: `bun --hot run ${join(billingDir, "src", "index.ts")}`,
-      });
-      expect(byName.notify).toEqual({
-        name: "notify",
-        prefixColor: "magenta",
-        cwd: testDir,
-        command: `bun --hot run ${join(notifyDir, "src", "index.ts")}`,
-      });
-    });
-
-    test("should run only the named microservice modules when --microservice=name is set", async () => {
-      await writeModule("app", "api");
-      const billingDir = await writeModule("billing", "microservice");
-      await writeModule("notify", "microservice");
-      process.chdir(testDir);
-
-      await command.run({ microservice: "billing" });
-
-      expect(concurrentlyCalls[0]?.commands).toEqual([
-        {
-          name: "billing",
-          prefixColor: "magenta",
-          cwd: testDir,
-          command: `bun --hot run ${join(billingDir, "src", "index.ts")}`,
-        },
-      ]);
-    });
-
-    test("should run only spa modules when --spa flag is set", async () => {
-      await writeModule("app", "api");
-      await writeModule("billing", "microservice");
-      const dashboardDir = await writeModule("dashboard", "spa");
-      const adminDir = await writeModule("admin", "spa");
-      process.chdir(testDir);
-
-      await command.run({ spa: true });
-
-      const byName = Object.fromEntries(concurrentlyCalls[0]?.commands.map((c) => [c.name, c]) ?? []);
-      expect(Object.keys(byName).sort()).toEqual(["admin", "dashboard"]);
-      expect(byName.dashboard).toEqual({
-        name: "dashboard",
-        prefixColor: "green",
-        cwd: dashboardDir,
-        command: "bun run dev",
-      });
-      expect(byName.admin).toEqual({
-        name: "admin",
-        prefixColor: "green",
-        cwd: adminDir,
-        command: "bun run dev",
-      });
-    });
-
-    test("should run only the named spa modules when --spa=name is set", async () => {
-      await writeModule("app", "api");
-      const dashboardDir = await writeModule("dashboard", "spa");
-      await writeModule("admin", "spa");
-      process.chdir(testDir);
-
-      await command.run({ spa: "dashboard" });
-
-      expect(concurrentlyCalls[0]?.commands).toEqual([
-        {
-          name: "dashboard",
-          prefixColor: "green",
-          cwd: dashboardDir,
-          command: "bun run dev",
-        },
-      ]);
-    });
-
-    test("should union the selections when several type flags are combined", async () => {
+    test("should union the selections when --modules and --packages are combined", async () => {
       const appDir = await writeModule("app", "api");
       await writeModule("billing", "microservice");
       const dashboardDir = await writeModule("dashboard", "spa");
       process.chdir(testDir);
 
-      await command.run({ api: true, spa: true });
+      await command.run({ modules: "app", packages: "dashboard" });
 
       const byName = Object.fromEntries(concurrentlyCalls[0]?.commands.map((c) => [c.name, c]) ?? []);
       expect(Object.keys(byName).sort()).toEqual(["app", "dashboard"]);
@@ -389,6 +317,16 @@ describe("AppStartCommand", () => {
         cwd: dashboardDir,
         command: "bun run dev",
       });
+    });
+
+    test("should error when no module matches --modules=name", async () => {
+      await writeModule("app", "api");
+      await writeModule("billing", "microservice");
+      process.chdir(testDir);
+
+      await command.run({ modules: "unknown" });
+
+      expect(concurrentlyCalls).toHaveLength(0);
     });
 
     test("should set exit code when a module fails", async () => {

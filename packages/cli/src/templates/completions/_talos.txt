@@ -101,19 +101,11 @@ _talos_sdk_names() {
   fi
 }
 
-_talos_api_modules() {
+_talos_runnable_modules() {
   local -a modules
   if [[ -d modules ]]; then
-    modules=(${(@f)"$(command grep -rl 'type: "api"' modules/*/*.yml 2>/dev/null | sed -n 's|modules/\([^/]*\)/.*|\1|p' | sort -u)"})
-    _values -s , 'api modules' $modules
-  fi
-}
-
-_talos_microservice_modules() {
-  local -a modules
-  if [[ -d modules ]]; then
-    modules=(${(@f)"$(command grep -rl 'type: "microservice"' modules/*/*.yml 2>/dev/null | sed -n 's|modules/\([^/]*\)/.*|\1|p' | sort -u)"})
-    _values -s , 'microservice modules' $modules
+    modules=(${(@f)"$(command grep -rlE 'type: "(api|microservice|spa|storybook|swagger)"' modules/*/*.yml 2>/dev/null | sed -n 's|modules/\([^/]*\)/.*|\1|p' | sort -u)"})
+    _values -s , 'modules' $modules
   fi
 }
 
@@ -132,14 +124,6 @@ _talos_agent_dirs() {
     '.zed:Zed'
   )
   _values -s , 'agents' $dirs
-}
-
-_talos_spa_modules() {
-  local -a modules
-  if [[ -d modules ]]; then
-    modules=(${(@f)"$(command grep -rl 'type: "spa"' modules/*/*.yml 2>/dev/null | sed -n 's|modules/\([^/]*\)/.*|\1|p' | sort -u)"})
-    _values -s , 'spa modules' $modules
-  fi
 }
 
 _talos() {
@@ -247,9 +231,8 @@ _talos() {
           ;;
         app:start|app:stop)
           _arguments -s \
-            '--api=-[Only the api modules (optionally =name1,name2)]::api modules:_talos_api_modules' \
-            '--microservice=-[Only the microservice modules (optionally =name1,name2)]::microservice modules:_talos_microservice_modules' \
-            '--spa=-[Only the spa modules (optionally =name1,name2)]::spa modules:_talos_spa_modules'
+            '--modules=-[Module name(s), comma-separated (default: all)]::modules:_talos_runnable_modules' \
+            '--packages=-[Alias for --modules, comma-separated (default: all)]::modules:_talos_runnable_modules'
           ;;
         sdk:create)
           _arguments -s \

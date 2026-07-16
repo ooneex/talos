@@ -2,8 +2,11 @@ import { join } from "node:path";
 import type { ICommand } from "@talosjs/command";
 import { decorator } from "@talosjs/command";
 import { TerminalLogger } from "@talosjs/logger";
-import { collectRunnableModules, hasModuleFilter, type RunnableModule, selectModules } from "../runnableModules";
+import { collectRunnableModules, type RunnableModuleType } from "../runnableModules";
 import { ensureBin, LOG_OPTIONS, spawnStep } from "../utils";
+
+// Module types that rely on the app's Docker services (databases, brokers, ...).
+const DOCKER_TYPES = new Set<RunnableModuleType>(["api", "microservice"]);
 
 @decorator.command()
 export class AppStopCommand implements ICommand {
@@ -15,11 +18,7 @@ export class AppStopCommand implements ICommand {
     return "Stop the application";
   }
 
-  public async run(options?: {
-    api?: boolean | string;
-    microservice?: boolean | string;
-    spa?: boolean | string;
-  }): Promise<void> {
+  public async run(options?: { modules?: boolean | string; packages?: boolean | string }): Promise<void> {
     const logger = new TerminalLogger();
     const cwd = process.cwd();
     const appDir = join(cwd, "modules", "app");
@@ -35,35 +34,32 @@ export class AppStopCommand implements ICommand {
       return;
     }
 
-    const filters = { api: options?.api, microservice: options?.microservice, spa: options?.spa };
-
-    // Without a type flag, stop the shared Docker stack defined by the app module.
-    if (!hasModuleFilter(filters)) {
-      await this.stopModule(logger, appDir);
-      return;
-    }
-
-    // With `--api`, `--microservice` or `--spa`, narrow to the requested modules and
-    // stop the Docker stack of each one that declares its own docker-compose.yml.
+    // Discover the runnable modules and narrow to those named with `--modules` or
+    // `--packages` (aliases, e.g. `--modules=a,b`). Without a name flag every module counts.
     const modules = await collectRunnableModules(join(cwd, "modules"));
-    const selected = selectModules(modules, filters);
+    const requested = [options?.modules, options?.packages]
+      .filter((value): value is string => typeof value === "string")
+      .flatMap((value) =>
+        value
+          .split(",")
+          .map((name) => name.trim())
+          .filter(Boolean),
+      );
 
-    const stoppable: RunnableModule[] = [];
-    for (const module of selected) {
-      if (await Bun.file(join(module.dir, "docker-compose.yml")).exists()) {
-        stoppable.push(module);
-      }
-    }
+    const selected = requested.length === 0 ? modules : modules.filter((module) => requested.includes(module.name));
 
-    if (stoppable.length === 0) {
+    // The Docker services (defined in the app module) are only relevant to api and
+    // microservice modules; stop them only when one of those is in scope.
+    const needsDocker = selected.some((module) => DOCKER_TYPES.has(module.type));
+    const composeExists = needsDocker && (await Bun.file(join(appDir, "docker-compose.yml")).exists());
+
+    if (!composeExists) {
       logger.error("No matching Docker services to stop", undefined, LOG_OPTIONS);
       process.exitCode = 1;
       return;
     }
 
-    for (const module of stoppable) {
-      await this.stopModule(logger, module.dir);
-    }
+    await this.stopModule(logger, appDir);
   }
 
   // Run `docker compose down` in a module directory, reporting success or failure.
