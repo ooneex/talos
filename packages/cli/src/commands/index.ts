@@ -61,6 +61,7 @@ export { NpmPublishCommand } from "./NpmPublishCommand";
 export { PermissionCreateCommand } from "./PermissionCreateCommand";
 export { QueueCreateCommand } from "./QueueCreateCommand";
 export { RateLimitCreateCommand } from "./RateLimitCreateCommand";
+export { ReactComponentCreateCommand } from "./ReactComponentCreateCommand";
 export { ReleaseCreateCommand } from "./ReleaseCreateCommand";
 export { RepositoryCreateCommand } from "./RepositoryCreateCommand";
 export { RunCommand } from "./RunCommand";
