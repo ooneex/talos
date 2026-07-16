@@ -11,12 +11,12 @@ argument-hint: [module]
 
 # Optimize Codebase
 
-> **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
+> **Run autonomously — do not ask the user questions.** On any choice, pick the recommended option and proceed.
 
 Bring a module in line with project conventions: clean code, no duplication, only meaningful tests. Not for new features, bug fixes, or issues — use the matching workflow instead.
 
-**Rules that apply throughout:**
-- **Module location:** `<module>` resolves to `modules/<module>/` or `packages/<module>/` (e.g. once extracted into a shared package). Check both roots before assuming a path is missing.
+**Rules throughout:**
+- **Module location:** `<module>` = `modules/<module>/` or `packages/<module>/` (e.g. once extracted into a shared package). Check both roots before assuming a path is missing.
 - Run every command from the **monorepo root**, never from inside a package.
 - Start clean: no uncommitted changes (`git status`). Refactor only — never alter behavior or public APIs without checking callers first.
 - Tests must pass before and after. If they were failing before, say so; don't claim a fix you didn't make.
@@ -35,7 +35,7 @@ Invoke each sub-skill only at the step that needs it; skip ones that don't apply
 
 1. **Target** — work in `modules/<module>/`; ask if unspecified. For **several modules**, dispatch the `code-optimizer` sub-agent once per module via the Agent tool (independent modules concurrently); each runs these steps for its module and reports back, then collate. For a **single** module, run inline.
 
-2. **Map (sub-agent)** — reading every file inline floods context. Spawn one read-only `Explore` sub-agent scoped to `modules/<module>/` that returns *only* a digest, not file contents:
+2. **Map (sub-agent)** — reading every file inline floods context. Spawn one read-only `Explore` sub-agent scoped to `modules/<module>/` returning *only* a digest, not file contents:
    - **Inventory** — each type, interface, class, standalone function + path.
    - **Naming violations** — type not ending `Type`; interface not starting `I`; non-arrow standalone function; method/property missing visibility; non-null assertion (`!`); optional entity property missing `null`/`nullable`.
    - **Duplication** — repeated logic, types, or utilities + paths.

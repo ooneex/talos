@@ -7,9 +7,9 @@ user-invocable: false
 
 # Coding Conventions
 
-> **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
+> **Run autonomously — do not ask the user questions.** On any choice, pick the recommended option and proceed.
 
-Used by the `optimize` skill (steps 3–5) for enforcing conventions and removing duplication/dead code.
+Used by the `optimize` skill (steps 3–5) to enforce conventions and remove duplication/dead code.
 
 ## Visibility
 

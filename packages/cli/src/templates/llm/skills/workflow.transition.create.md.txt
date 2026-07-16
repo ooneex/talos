@@ -14,7 +14,7 @@ argument-hint: [--name=<Name>] [--module=<module>]
 
 > **Module location:** `<module>` resolves to `modules/<module>/` or `packages/<module>/` (e.g. once extracted into a shared package). Check both roots before assuming a path is missing.
 
-Generate a workflow transition class and test file, then complete the implementation. Follow the shared workflow in the `talos-scaffold` skill (run-from-root, `--name`/`--module` inference, lint/format, coding conventions); this skill covers only the transition-specific parts.
+Generate a workflow transition class and test file, then complete the implementation. Follow the `talos-scaffold` skill (run-from-root, `--name`/`--module` inference, lint/format, conventions); this covers only the transition-specific parts.
 
 > A transition is one step of a `workflow:create` workflow. Generate the workflow first (or alongside), then list this transition in its `getTransitions()`.
 

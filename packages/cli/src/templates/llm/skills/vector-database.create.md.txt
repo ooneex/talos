@@ -12,11 +12,11 @@ argument-hint: [--name=<Name>] [--module=<module>]
 
 > **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
 
-Generate a vector database class and test file, then complete the implementation. This skill covers only the vector-database-specific parts.
+Generate a vector database class and test file, then complete the implementation. This covers only the vector-database-specific parts.
 
 **Rules that apply throughout:**
 - **Module location:** `<module>` resolves to `modules/<module>/` or `packages/<module>/` (e.g. once extracted into a shared package). Check both roots; every `modules/<module>/...` path applies equally under `packages/<module>/...`.
-- **Shared workflow:** follow the `talos-scaffold` skill for run-from-root, `--name`/`--module` inference, module registration, lint/format, and coding conventions.
+- **Shared workflow:** follow the `talos-scaffold` skill for run-from-root, `--name`/`--module` inference, module registration, lint/format, and conventions.
 
 ## Steps
 
@@ -30,7 +30,7 @@ talos vector-database:create --name=<name> --module=<module>
 
 ### 2. Complete the vector database class
 
-Read `modules/<module>/src/databases/<Name>VectorDatabase.ts`, then implement:
+Read `modules/<module>/src/databases/<Name>VectorDatabase.ts`, then:
 
 - Set `getDatabaseUri()` to the actual LanceDB database path
 - Configure the embedding provider and model in `getEmbeddingModel()`

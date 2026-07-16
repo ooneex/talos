@@ -14,7 +14,7 @@ argument-hint: [--name=<Name>] [--module=<module>]
 
 > **Module location:** `<module>` resolves to `modules/<module>/` or `packages/<module>/` (e.g. once extracted into a shared package). Check both roots before assuming a path is missing.
 
-Generate an AI middleware class and test file, then complete the implementation. Follow the shared workflow in the `talos-scaffold` skill (run-from-root, `--name`/`--module` inference, lint/format, coding conventions); this skill covers only the AI-middleware-specific parts.
+Generate an AI middleware class and test file, then complete the implementation. Follow the `talos-scaffold` skill for the shared workflow (run-from-root, `--name`/`--module` inference, lint/format, conventions); this covers only AI-middleware specifics.
 
 > This is chat middleware for `@talosjs/ai` (the chat lifecycle), not HTTP/socket middleware — for that use `middleware-create`.
 
@@ -30,7 +30,7 @@ talos ai:middleware:create --name=<name> --module=<module>
 
 ### 2. Complete the middleware class
 
-Read `modules/<module>/src/ai/middlewares/<Name>Middleware.ts`. It is scaffolded with the basic lifecycle hooks (`onStart`, `onFinish`, `onError`) — fill in the ones you need, drop the rest, add others as required. All hooks are optional; only `getName()` is required. Other common hooks: `onConfig`/`onBeforeModel`, `onChunk`, `onUsage`, and the terminal `onAbort`. Type hook arguments with the symbols re-exported from `@talosjs/ai` (`ChatMiddlewareContext`, `FinishInfo`, `ErrorInfo`, `AbortInfo`). Inject dependencies via the constructor with `@inject`.
+Read `modules/<module>/src/ai/middlewares/<Name>Middleware.ts`. It's scaffolded with basic lifecycle hooks (`onStart`, `onFinish`, `onError`) — fill in what you need, drop the rest, add others as required. All hooks are optional; only `getName()` is required. Other common hooks: `onConfig`/`onBeforeModel`, `onChunk`, `onUsage`, and the terminal `onAbort`. Type hook arguments with the symbols re-exported from `@talosjs/ai` (`ChatMiddlewareContext`, `FinishInfo`, `ErrorInfo`, `AbortInfo`). Inject dependencies via the constructor with `@inject`.
 
 ```typescript
 import type { ChatMiddlewareContext, ErrorInfo, FinishInfo, IMiddleware } from "@talosjs/ai";
@@ -67,11 +67,11 @@ export class <Name>Middleware implements IMiddleware {
 
 Read and replace `modules/<module>/tests/ai/middlewares/<Name>Middleware.spec.ts`.
 
-**Coverage:** class identity (`name.endsWith("Middleware")`); `getName` returns the expected `kebab-case` identifier; the lifecycle hooks (`onStart`, `onFinish`, `onError`) are present; the behavior of each implemented hook (assert on a stubbed `ChatMiddlewareContext`).
+**Coverage:** class identity (`name.endsWith("Middleware")`); `getName` returns the expected `kebab-case` identifier; lifecycle hooks (`onStart`, `onFinish`, `onError`) present; behavior of each implemented hook (assert on a stubbed `ChatMiddlewareContext`).
 
 ### 4. Register the middleware on a chat
 
-Add `<Name>Middleware` to the `getMiddlewares()` array of the chat it should apply to.
+Add `<Name>Middleware` to the `getMiddlewares()` array of the chat it applies to.
 
 ### 5. Lint, format, and test
 

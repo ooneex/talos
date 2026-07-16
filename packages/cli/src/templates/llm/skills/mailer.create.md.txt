@@ -10,11 +10,11 @@ argument-hint: [--name=<Name>] [--module=<module>]
 
 # Make Mailer Class
 
-> **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
+> **Run autonomously — do not ask the user questions.** Pick the recommended option and proceed.
 
-Generate a mailer class, JSX template, and test files, then complete the implementation. Follow the shared `talos-scaffold` skill (run-from-root, `--name`/`--module` inference, module registration, lint/format, coding conventions); this skill covers only the mailer-specific parts.
+Generate a mailer class, JSX template, and test files, then complete the implementation (mailer-specific parts only). Follow the shared `talos-scaffold` skill for run-from-root, `--name`/`--module` inference, module registration, lint/format, and coding conventions.
 
-**Module location:** `<module>` resolves to `modules/<module>/` or `packages/<module>/` (once extracted into a shared package). Check both roots before assuming a path is missing; every `modules/<module>/...` path applies equally under `packages/<module>/...`.
+**Module location:** `<module>` resolves to `modules/<module>/` or `packages/<module>/` (once extracted into a shared package). Check both roots; every `modules/<module>/...` path applies equally under `packages/<module>/...`.
 
 ## Steps
 
@@ -24,7 +24,7 @@ Generate a mailer class, JSX template, and test files, then complete the impleme
 talos mailer:create --name=<name> --module=<module>
 ```
 
-- `--name` — the mailer class name, taken from the email it sends (e.g. "a mailer for welcome emails" → `Welcome`). Pass any casing; the CLI normalizes to PascalCase and appends the `Mailer` suffix, so omit the suffix.
+- `--name` — mailer class name, from the email it sends (e.g. "a mailer for welcome emails" → `Welcome`). Any casing; the CLI normalizes to PascalCase and appends the `Mailer` suffix, so omit it.
 
 Generates: `src/mailers/<Name>Mailer.ts`, `src/mailers/<Name>MailerTemplate.tsx`, `tests/mailers/<Name>Mailer.spec.ts`, `tests/mailers/<Name>MailerTemplate.spec.ts`.
 
@@ -89,7 +89,7 @@ export const <Name>MailerTemplate = (props?: <Name>MailerPropsType) => (
 
 Read and replace `modules/<module>/tests/mailers/<Name>Mailer.spec.ts`.
 
-**Coverage:** class identity (`name.endsWith("Mailer")`, is constructor), `send` exists and returns `Promise`, delegates to the underlying `IMailer` (mock) forwarding `to`/`subject` and rendered `content`, instance isolation.
+**Coverage:** class identity (`name.endsWith("Mailer")`, is constructor); `send` exists, returns `Promise`, delegates to the underlying `IMailer` (mock) forwarding `to`/`subject` and rendered `content`; instance isolation.
 
 ```typescript
 import { describe, expect, mock, test } from "bun:test";

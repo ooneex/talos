@@ -12,11 +12,11 @@ argument-hint: [--name=<Name>] [--module=<module>]
 
 > **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
 
-Generate a command class and test file, then complete the implementation. This skill covers only the command-specific parts.
+Generate a command class and test file, then complete the implementation. This covers only command specifics.
 
 **Rules that apply throughout:**
 - **Module location:** `<module>` resolves to `modules/<module>/` or `packages/<module>/` (e.g. once extracted into a shared package). Check both roots; every `modules/<module>/...` path applies equally under `packages/<module>/...`.
-- **Shared workflow:** follow the `talos-scaffold` skill for run-from-root, `--name`/`--module` inference, module registration, lint/format, and coding conventions.
+- **Shared workflow:** follow the `talos-scaffold` skill for run-from-root, `--name`/`--module` inference, module registration, lint/format, and conventions.
 
 ## Steps
 
@@ -65,7 +65,7 @@ export class <Name>Command<T extends CommandOptionsType = CommandOptionsType> im
 
 Read and replace `modules/<module>/tests/commands/<Name>Command.spec.ts`:
 
-**Coverage:** class identity (`name.endsWith("Command")`, is constructor), `getName` exists and returns non-empty string in `namespace:action` format, `getDescription` exists and differs from name, `run` exists and returns `Promise` (with empty and populated options), instance isolation. Add behavior tests after implementing `run()`.
+**Coverage:** class identity (`name.endsWith("Command")`, is constructor); `getName` exists and returns a non-empty string in `namespace:action` format; `getDescription` exists and differs from name; `run` exists and returns `Promise` (with empty and populated options); instance isolation. After implementing `run()`, add behavior tests.
 
 ```typescript
 import { describe, expect, test } from "bun:test";

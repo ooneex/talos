@@ -25,7 +25,7 @@ const isMobile = useWindowWidth() < 768;
 
 ## Compound components
 
-Build flexible components as related parts sharing state via context, instead of one prop-heavy monolith.
+Build flexible components as related parts sharing state via context, not one prop-heavy monolith.
 
 ```tsx
 import { createContext, useContext, useState } from "react";

@@ -14,11 +14,11 @@ argument-hint: [--name=<Name>] [--module=<module>]
 
 > **Module location:** `<module>` resolves to `modules/<module>/` or `packages/<module>/` (e.g. once extracted into a shared package). Check both roots before assuming a path is missing.
 
-Generate a translation class, its test file, and a sibling `translations.yml` dictionary, then complete the dictionary. Follow the shared workflow in the `talos-scaffold` skill (run-from-root, `--name`/`--module` inference, lint/format, coding conventions); this covers only the translation-specific parts.
+Generate a translation class, its test file, and a sibling `translations.yml` dictionary, then complete the dictionary. Follow the `talos-scaffold` skill (run-from-root, `--name`/`--module` inference, lint/format, conventions); this covers only the translation-specific parts.
 
 ## 1. Infer options, then run the generator
 
-- `--name` — the class name from its domain (e.g. "translations for the dashboard" → `Dashboard`). Pass any casing; the CLI normalizes to PascalCase and appends the `Translation` suffix, so omit the suffix.
+- `--name` — class name from its domain ("translations for the dashboard" → `Dashboard`). Any casing; the CLI normalizes to PascalCase and appends the `Translation` suffix, so omit the suffix.
 
 ```bash
 talos translation:create --name=<name> --module=<module>
@@ -52,7 +52,7 @@ notifications:
 
 ## 3. Complete the translation class
 
-Read `modules/<module>/src/translations/<Name>Translation.ts`. Set `getName()` to a stable snake_case identifier for the domain; keep `getDict()` loading the sibling `translations.yml`.
+Read `modules/<module>/src/translations/<Name>Translation.ts`. Set `getName()` to a stable snake_case domain identifier; keep `getDict()` loading the sibling `translations.yml`.
 
 ```typescript
 import type { TranslationDictType } from "@talosjs/translation";

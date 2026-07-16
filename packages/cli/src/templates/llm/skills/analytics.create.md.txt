@@ -14,7 +14,7 @@ argument-hint: [--name=<Name>] [--module=<module>]
 
 > **Module location:** `<module>` resolves to `modules/<module>/` or `packages/<module>/` (e.g. once extracted into a shared package). Check both roots before assuming a path is missing.
 
-Generate an analytics class and test file, then complete the implementation. Follow the shared workflow in the `talos-scaffold` skill (run-from-root, `--name`/`--module` inference, module registration, lint/format, coding conventions); this skill covers only the analytics-specific parts.
+Generate an analytics class and test file, then complete the implementation. Follow the `talos-scaffold` skill for the shared workflow (run-from-root, `--name`/`--module` inference, module registration, lint/format, conventions); this covers only analytics specifics.
 
 ## Steps
 
@@ -31,7 +31,7 @@ talos analytics:create --name=<name> --module=<module>
 Read `modules/<module>/src/analytics/<Name>Analytics.ts`, then implement:
 
 - Implement `capture` with the actual tracking logic.
-- Define a proper `CaptureOptionsType` instead of `Record<string, unknown>` — allowlist only the non-PII fields you intend to send; never forward raw payloads, credentials, or personal data to a third-party tracker, and do not log the full options object.
+- Define a proper `CaptureOptionsType` instead of `Record<string, unknown>` — allowlist only the non-PII fields you send; never forward raw payloads, credentials, or personal data to a third-party tracker, and don't log the full options object.
 
 ```typescript
 import { type IAnalytics, decorator } from "@talosjs/analytics";
@@ -50,7 +50,7 @@ export class <Name>Analytics<T extends CaptureOptionsType = CaptureOptionsType> 
 
 Read and replace `modules/<module>/tests/analytics/<Name>Analytics.spec.ts`.
 
-**Coverage:** class identity (`name.endsWith("Analytics")`, is constructor); `capture` exists, is synchronous (returns `void`), does not throw with empty or valid options; instance isolation. Add spy tests on the underlying tracker after implementing `capture`.
+**Coverage:** class identity (`name.endsWith("Analytics")`, is constructor); `capture` exists, is synchronous (returns `void`), doesn't throw with empty or valid options; instance isolation. After implementing `capture`, add spy tests on the underlying tracker.
 
 ```typescript
 import { describe, expect, test } from "bun:test";

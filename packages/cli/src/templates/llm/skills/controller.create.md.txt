@@ -12,9 +12,9 @@ argument-hint: [--name=<Name>] [--module=<module>] [--is-socket=<true|false>] [-
 
 > **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
 
-> **Module location:** a `<module>` usually resolves to `modules/<module>/`, but may live under `packages/<module>/` (e.g. once extracted into a shared package). Check both roots before assuming a path is missing; every `modules/<module>/...` path applies equally under `packages/<module>/...`.
+> **Module location:** `<module>` resolves to `modules/<module>/` or `packages/<module>/` (e.g. once extracted into a shared package). Check both roots before assuming a path is missing; every `modules/<module>/...` path applies equally under `packages/<module>/...`.
 
-Generate a controller class, route type, and test file, then complete the implementation. Follow the shared workflow in the `talos-scaffold` skill (run-from-root, `--name`/`--module` inference, module registration, lint/format, and coding conventions); this skill covers only the controller-specific parts.
+Generate a controller class, route type, and test file, then complete the implementation. Follow the `talos-scaffold` skill for the shared workflow (run-from-root, `--name`/`--module` inference, module registration, lint/format, conventions); this covers only controller specifics.
 
 ## Steps
 
@@ -26,10 +26,10 @@ Map the user's request to the options below, then run:
 talos controller:create --name=<name> --module=<module> --is-socket=<true|false> --route-name=<route.name> --route-path=<route.path> --route-method=<route.method>
 ```
 
-- `--name` — controller class name from the resource/action ("list books" → `BookList`). Any casing; the CLI normalizes to PascalCase and appends the `Controller` suffix — omit the suffix.
+- `--name` — controller class name from the resource/action ("list books" → `BookList`). Any casing; the CLI normalizes to PascalCase and appends the `Controller` suffix — omit it.
 - `--is-socket` — `true` for WebSocket/socket/realtime, else `false` (default). If unspecified, the generator asks interactively.
 - `--route-name` — dot notation `<resource>.<action>` ("list books" → `book.list`, "create a user" → `user.create`).
-- `--route-path` — URL path, inferred as a kebab-case plural of the resource (books → `/books`); use an explicit path if the user gives one.
+- `--route-path` — URL path, inferred as a kebab-case plural of the resource (books → `/books`); use an explicit path if given.
 - `--route-method` — HTTP method from the verb (HTTP only): list/get/show → `get`, create → `post`, update/replace → `put` (partial → `patch`), delete/remove → `delete`.
 
 Also generates `src/types/routes/<route.name>.ts` — delete it after step 3 (keep the type inside the controller file).
@@ -42,7 +42,7 @@ Read all three generated files to understand the scaffolded code.
 
 **Keep the route type inside the controller file**, not a separate file. Delete the generated `src/types/routes/<route.name>.ts`.
 
-Include only the fields the route needs — `response` is always present:
+Include only the fields the route needs — `response` always present:
 
 | Field | Include when |
 |-------|--------------|
@@ -68,6 +68,7 @@ Edit `modules/<module>/src/controllers/<Name>Controller.ts`:
 - Add a meaningful `description` (e.g. `"Create a new user account"`).
 - **Keep the controller thin** — delegate all logic to the service via constructor injection.
 - Apply the same `params`/`payload`/`queries`/`response` rules to the `@Route` decorator.
+
 
 ```typescript
 import type { ContextType } from "@talosjs/controller"; // socket: "@talosjs/socket"
@@ -96,9 +97,9 @@ The HTTP and socket controllers are identical except the `ContextType` import (`
 
 #### Roles
 
-`roles` is an array of plain role strings (e.g. `["ROLE_USER"]`). There is **no `ERole` enum** — do not import from `@talosjs/role` in a controller. Access is hierarchical and graph-based: granting a role also grants every role it inherits (ancestors, directly or transitively). Sibling roles on different branches do **not** satisfy each other.
+`roles` is an array of plain role strings (e.g. `["ROLE_USER"]`). There is **no `ERole` enum** — don't import from `@talosjs/role` in a controller. Access is hierarchical/graph-based: granting a role also grants every role it inherits (ancestors, directly or transitively). Sibling roles on different branches do **not** satisfy each other.
 
-The available roles live in `modules/shared/src/roles.yml` — **always read that file** to use the project's actual roles, since each project can customize them. Default hierarchy (ancestor → descendant):
+Available roles live in `modules/shared/src/roles.yml` — **always read that file** to use the project's actual roles, since each project can customize them. Default hierarchy (ancestor → descendant):
 
 | Role | Inherits | Description |
 | --- | --- | --- |
@@ -118,7 +119,7 @@ Pick the **least-privileged** role that still satisfies the endpoint's access re
 
 ### 5. Complete the test file
 
-Read and replace `modules/<module>/tests/controllers/<Name>Controller.spec.ts`. Cover: class identity (`name.endsWith("Controller")`, is constructor), `index` exists and returns `Promise`, calls `context.response.json` (mock), instance isolation. Add response-shape tests after injecting a mock service.
+Read and replace `modules/<module>/tests/controllers/<Name>Controller.spec.ts`. Cover: class identity (`name.endsWith("Controller")`, is constructor); `index` exists and returns `Promise`, calls `context.response.json` (mock); instance isolation. After injecting a mock service, add response-shape tests.
 
 ```typescript
 import { describe, expect, mock, test } from "bun:test";
@@ -199,7 +200,7 @@ Once created:
 
 ### 10. Sync the SDK module
 
-A controller's route is part of the SDK surface, so whenever you **create or update** a controller, refresh any SDK that exposes it via the `sdk-create` skill. An SDK module is any module whose `<name>.yml` has `type: "sdk"`; its `target` field records the module it was generated from (`app`, or a specific microservice).
+A controller's route is part of the SDK surface, so whenever you **create or update** a controller, refresh any SDK exposing it via the `sdk-create` skill. An SDK module is any module whose `<name>.yml` has `type: "sdk"`; its `target` field records the module it was generated from (`app`, or a specific microservice).
 
 For each SDK module whose `target` covers the controller's module — an `app` target covers every backend `module`/`api` module; a microservice target covers only itself — regenerate it with that SDK's own name and target:
 
@@ -207,11 +208,11 @@ For each SDK module whose `target` covers the controller's module — an `app` t
 /sdk-create --name=<sdk module name> --module=<target>
 ```
 
-Then complete the new or updated `api` method as described in the `sdk-create` skill. Skip when no SDK module targets the controller's module.
+Then complete the new or updated `api` method per the `sdk-create` skill. Skip when no SDK module targets the controller's module.
 
 ## Usage Examples
 
-`Assert` is an alias for ArkType's `type` function. Use ArkType string syntax inside it — there is no fluent API (`Assert.string()` etc.).
+`Assert` is an alias for ArkType's `type` function. Use ArkType string syntax inside it — no fluent API (`Assert.string()` etc.).
 
 - Primitive: `"string"`, `"number"`, `"boolean"` · Optional: `"string?"` · Array: `"string[]"`, `"string[]?"`
 - Union: `"string | number"`, `"File | Blob"` · Format: `"string.email"`, `"number.integer"`

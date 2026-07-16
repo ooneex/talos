@@ -14,7 +14,7 @@ argument-hint: [--name=<Name>] [--module=<module>]
 
 > **Module location:** `<module>` resolves to `modules/<module>/` or `packages/<module>/` (e.g. once extracted into a shared package). Check both roots before assuming a path is missing.
 
-Generate an AI tool class and test file, then complete the implementation. Follow the shared workflow in the `talos-scaffold` skill (run-from-root, `--name`/`--module` inference, lint/format, coding conventions); this skill covers only the AI-tool-specific parts.
+Generate an AI tool class and test file, then complete the implementation. Follow the `talos-scaffold` skill for the shared workflow (run-from-root, `--name`/`--module` inference, lint/format, conventions); this covers only AI-tool specifics.
 
 ## Steps
 
@@ -33,7 +33,7 @@ Read `modules/<module>/src/ai/tools/<Name>Tool.ts`, then implement:
 - Refine the input type and `getInputSchema()` to match the arguments the model must supply (use `@talosjs/validation`'s `Assert`).
 - Write a clear `getDescription()` — the model relies on it to decide when to call the tool.
 - Implement `handler()` with the real work. Inject dependencies (clients, env) via the constructor with `@inject`.
-- **Guard side-effecting tools.** The input schema validates argument *shape*, not *authority*. For any handler that mutates state or reaches sensitive data (send email, delete/update records, spend money), enforce the requesting user's authorization inside the handler, apply least privilege to injected clients, and gate destructive actions behind confirmation — a prompt-injected model can call the tool with attacker-chosen arguments (OWASP LLM excessive agency / confused deputy).
+- **Guard side-effecting tools.** The input schema validates argument *shape*, not *authority*. For any handler that mutates state or reaches sensitive data (send email, delete/update records, spend money): enforce the requesting user's authorization inside the handler, apply least privilege to injected clients, and gate destructive actions behind confirmation — a prompt-injected model can call the tool with attacker-chosen arguments (OWASP LLM excessive agency / confused deputy).
 
 ```typescript
 import { inject } from "@talosjs/container";
@@ -68,7 +68,7 @@ export class <Name>Tool implements ITool<<Name>ToolInputType, Promise<unknown>> 
 
 Read and replace `modules/<module>/tests/ai/tools/<Name>Tool.spec.ts`.
 
-**Coverage:** class identity (`name.endsWith("Tool")`); `getName` returns the expected `snake_case` identifier; `getDescription` is non-empty; `getInputSchema` validates good input and rejects bad; `handler` returns the expected result for representative arguments (mock external dependencies).
+**Coverage:** class identity (`name.endsWith("Tool")`); `getName` returns the expected `snake_case` identifier; `getDescription` non-empty; `getInputSchema` accepts good input, rejects bad; `handler` returns the expected result for representative arguments (mock external dependencies).
 
 ### 4. Register the tool on a chat
 

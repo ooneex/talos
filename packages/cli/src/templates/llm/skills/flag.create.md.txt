@@ -10,33 +10,29 @@ argument-hint: [--name=<Name>] [--module=<module>]
 
 # Make Feature Flag Class
 
-> **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
+> **Run autonomously — do not ask the user questions.** Pick the recommended option and proceed.
 
-Generate a feature flag class and test file, then complete the implementation. Follow the shared `talos-scaffold` skill workflow (run-from-root, `--name`/`--module` inference, module registration, lint/format, coding conventions); this covers only the feature-flag-specific parts.
+Generate a feature flag class and test file, then complete the implementation (feature-flag-specific parts only). Follow the shared `talos-scaffold` skill for run-from-root, `--name`/`--module` inference, module registration, lint/format, and coding conventions.
 
-- **Module location:** `<module>` resolves to `modules/<module>/` or `packages/<module>/` (e.g. once extracted into a shared package). Check both roots before assuming a path is missing.
+- **Module location:** `<module>` resolves to `modules/<module>/` or `packages/<module>/` (once extracted into a shared package). Check both roots before assuming a path is missing.
 
 ## Steps
 
 ### 1. Infer the options from the request, then run the generator
 
-Map the user's request to the options below, then run:
-
 ```bash
 talos flag:create --name=<name> --module=<module>
 ```
 
-**Inferring options from the user's request:**
-
-- `--name` — the feature flag class name, taken from the feature it gates (e.g., "a flag for the new checkout" → `NewCheckout`). Pass it in any casing; the CLI normalizes to PascalCase and appends the `FeatureFlag` suffix automatically, so omit the suffix.
+- `--name` — feature flag class name, from the feature it gates (e.g. "a flag for the new checkout" → `NewCheckout`). Any casing; the CLI normalizes to PascalCase and appends the `FeatureFlag` suffix, so omit it.
 
 ### 2. Complete the feature flag class
 
-Read `modules/<module>/src/feature-flag/<Name>FeatureFlag.ts`, then implement:
+Read `modules/<module>/src/feature-flag/<Name>FeatureFlag.ts`, then:
 
 - Set a unique, stable key in `getKey()` (kebab-case, pre-filled from the name)
 - Describe the flag's purpose in `getDescription()`
-- Implement `isEnabled()` with the actual gating logic (env vars, config, rollout rules, injected dependencies)
+- Implement `isEnabled()` with real gating logic (env vars, config, rollout rules, injected dependencies)
 
 ```typescript
 import { inject } from "@talosjs/container";
@@ -60,9 +56,9 @@ export class <Name>FeatureFlag implements IFeatureFlag {
 
 ### 3. Complete the test file
 
-Read and replace `modules/<module>/tests/feature-flag/<Name>FeatureFlag.spec.ts`:
+Read and replace `modules/<module>/tests/feature-flag/<Name>FeatureFlag.spec.ts`.
 
-**Coverage:** class identity (`name.endsWith("FeatureFlag")`, is constructor), `getKey` exists and returns a non-empty string, `getDescription` exists and returns a string, `isEnabled` exists and resolves to a boolean, instance isolation.
+**Coverage:** class identity (`name.endsWith("FeatureFlag")`, is constructor); `getKey` exists, returns non-empty string; `getDescription` exists, returns a string; `isEnabled` exists, resolves to a boolean; instance isolation.
 
 ```typescript
 import { describe, expect, test } from "bun:test";

@@ -1,10 +1,8 @@
 # AGENTS.md
 
-Guidance for AI coding agents working in this repository.
+Guidance for AI coding agents in this repository.
 
-A lean index. Coding conventions, reference, and task workflows live in
-conditionally-activated **skills** (below) so this file stays small and avoids
-loading unused context. Reach for a skill when you need the detail behind a task.
+A lean index. Coding conventions, reference, and task workflows live in conditionally-activated **skills** (below) so this file stays small and avoids loading unused context. Reach for a skill when you need the detail behind a task.
 
 ## Project Overview
 
@@ -15,12 +13,12 @@ loading unused context. Reach for a skill when you need the detail behind a task
 Skills load on demand — invoke or let them activate when relevant; don't duplicate their content here.
 
 **Reference**
-- `talos-packages` — the full @talosjs package catalog (choosing the right package for a feature).
-- `talos-architecture` — choosing and combining execution architectures (event-driven, queue, workflow, cron, real-time).
+- `talos-packages` — full @talosjs package catalog (pick the right package for a feature).
+- `talos-architecture` — choosing/combining execution architectures (event-driven, queue, workflow, cron, real-time).
 - `talos-commands` — the `talos` CLI commands (app lifecycle, generators, database, monorepo tasks, release, issues).
-- `talos-module` — backend module directory structure and the DI, exception, and TypeScript patterns with examples.
-- `talos-design` — design-system (front-end design module) directory structure with per-folder guidance.
-- `talos-spa` — single-page-app module directory structure with per-folder guidance.
+- `talos-module` — backend module directory structure plus DI, exception, and TypeScript patterns with examples.
+- `talos-design` — design-system (front-end design module) directory structure, per-folder guidance.
+- `talos-spa` — single-page-app module directory structure, per-folder guidance.
 - `talos-env` — reading environment variables via the injected `AppEnv`.
 - `talos-scaffold` — shared workflow behind every `<artifact>-create` generator (run-from-root, `--name`/`--module` inference, registration, lint/format, test baseline).
 
@@ -35,8 +33,8 @@ Skills load on demand — invoke or let them activate when relevant; don't dupli
 - `/pr` — push the current branch and open a pull request with a conventional title and structured body.
 - `/review` — review the working diff against @talosjs conventions + Clean Architecture, then fix.
 - `/debug` — diagnose and fix a failing test, exception, or startup error.
-- `/database-migrate` — apply/roll back migrations, run seeds, and verify the schema.
+- `/database-migrate` — apply/roll back migrations, run seeds, verify the schema.
 - `/e2e-run` — run the Playwright e2e suite across packages and modules, then triage failures.
 - `/optimize` — enforce coding conventions across a module.
-- `/translation-translate` — translate/complete a module's `translations.json`/`translations.yml` dictionaries (and optionally extract hardcoded text) into the target locales.
+- `/translation-translate` — translate/complete a module's `translations.json`/`translations.yml` dictionaries (optionally extracting hardcoded text) into the target locales.
 - `/issue-found`, `/issue-plan`, `/issue-fix` — audit, plan, and implement issues.

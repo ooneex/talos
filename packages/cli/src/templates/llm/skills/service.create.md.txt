@@ -12,7 +12,7 @@ argument-hint: [--name=<Name>] [--module=<module>]
 
 > **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
 
-Generate a service class and test file, then complete the implementation. Follow the shared `talos-scaffold` skill workflow (run-from-root, `--name`/`--module` inference, module registration, lint/format, coding conventions); this covers only the service-specific parts.
+Generate a service class and test file, then complete the implementation. Follow the `talos-scaffold` skill workflow (run-from-root, `--name`/`--module` inference, module registration, lint/format, conventions); this covers only the service-specific parts.
 
 - **Module location:** `<module>` resolves to `modules/<module>/` or `packages/<module>/` (e.g. once extracted into a shared package). Check both roots before assuming a path is missing.
 
@@ -20,19 +20,15 @@ Generate a service class and test file, then complete the implementation. Follow
 
 ### 1. Infer the options from the request, then run the generator
 
-Map the user's request to the options below, then run:
-
 ```bash
 talos service:create --name=<name> --module=<module>
 ```
 
-**Inferring options from the user's request:**
-
-- `--name` — the service class name, taken from what it does (e.g., "a service that computes invoices" → `Invoice`). Pass it in any casing; the CLI normalizes to PascalCase and appends the `Service` suffix automatically, so omit the suffix.
+- `--name` — service class name, from what it does ("a service that computes invoices" → `Invoice`). Any casing; the CLI normalizes to PascalCase and appends the `Service` suffix, so omit the suffix.
 
 ### 2. Complete the service class
 
-Read `modules/<module>/src/services/<Name>Service.ts`, then implement:
+Read `modules/<module>/src/services/<Name>Service.ts`, then:
 
 - Define a proper `ServiceDataType` instead of `Record<string, unknown>`
 - Implement `execute()` with actual business logic

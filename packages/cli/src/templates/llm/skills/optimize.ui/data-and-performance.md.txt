@@ -37,7 +37,7 @@ const virtualizer = useVirtualizer({
 virtualizer.getVirtualItems().map((item) => rows[item.index]);
 ```
 
-Beyond virtualization, protect perceived speed with: reserved space for images/embeds (`aspect-ratio` or explicit dimensions) so nothing shifts on load; `IntersectionObserver` (unobserved after first fire) instead of scroll-event listeners for reveal/lazy-load triggers; and batching DOM reads before writes when measuring layout manually, so you don't force repeated synchronous reflow.
+Beyond virtualization, protect perceived speed with: reserved space for images/embeds (`aspect-ratio` or explicit dimensions) so nothing shifts on load; `IntersectionObserver` (unobserve after first fire) instead of scroll-event listeners for reveal/lazy-load triggers; batching DOM reads before writes when measuring layout manually, to avoid repeated synchronous reflow.
 
 ## Debounce / throttle / queue / batch — TanStack Pacer
 

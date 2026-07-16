@@ -10,11 +10,11 @@ argument-hint: [--name=<Name>] [--module=<module>]
 
 # Make Database Class
 
-> **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
+> **Run autonomously — do not ask the user questions.** Pick the recommended option and proceed.
 
-Generate a database class and test file, then complete the implementation. Follow the shared `talos-scaffold` skill (run-from-root, `--name`/`--module` inference, module registration, lint/format, coding conventions); this skill covers only the database-specific parts.
+Generate a database class and test file, then complete the implementation (database-specific parts only). Follow the shared `talos-scaffold` skill for run-from-root, `--name`/`--module` inference, module registration, lint/format, and coding conventions.
 
-**Module location:** `<module>` resolves to `modules/<module>/` or `packages/<module>/` (once extracted into a shared package). Check both roots before assuming a path is missing; every `modules/<module>/...` path applies equally under `packages/<module>/...`.
+**Module location:** `<module>` resolves to `modules/<module>/` or `packages/<module>/` (once extracted into a shared package). Check both roots; every `modules/<module>/...` path applies equally under `packages/<module>/...`.
 
 ## Steps
 
@@ -24,15 +24,15 @@ Generate a database class and test file, then complete the implementation. Follo
 talos database:create --name=<name> --module=<module>
 ```
 
-- `--name` — the database class name, taken from its purpose (e.g. "a database for analytics" → `Analytics`). Pass any casing; the CLI normalizes to PascalCase and appends the `Database` suffix, so omit the suffix.
-- The database type (Postgres, MySQL, …) has no flag — the generator asks for it via an interactive prompt.
+- `--name` — database class name, from its purpose (e.g. "a database for analytics" → `Analytics`). Any casing; the CLI normalizes to PascalCase and appends the `Database` suffix, so omit it.
+- Database type (Postgres, MySQL, …) has no flag — the generator asks via an interactive prompt.
 
 ### 2. Complete the database class
 
 Read `modules/<module>/src/databases/<Name>Database.ts`, then:
 
 - Add entity imports and register them in the `entities` array
-- Adjust the database path if needed (default is `"var/db"`)
+- Adjust the database path if needed (default `"var/db"`)
 - Configure DataSource options as appropriate
 
 ```typescript
@@ -65,7 +65,7 @@ export class <Name>Database extends TypeormDatabase {
 
 Read and replace `modules/<module>/tests/databases/<Name>Database.spec.ts`.
 
-**Coverage:** class identity (`name.endsWith("Database")`, is constructor), `getSource` exists and returns a `DataSource`-like object (has `initialize`/`destroy`), `synchronize` is `false`, `entities` is an array, default path is `"var/db"` and custom path is used when provided, instance isolation.
+**Coverage:** class identity (`name.endsWith("Database")`, is constructor); `getSource` exists, returns a `DataSource`-like object (has `initialize`/`destroy`); `synchronize` is `false`; `entities` is an array; default path `"var/db"`, custom path used when provided; instance isolation.
 
 ```typescript
 import { describe, expect, test } from "bun:test";

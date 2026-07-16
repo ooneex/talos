@@ -12,11 +12,11 @@ argument-hint: [--name=<Name>] [--module=<module>]
 
 > **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
 
-Generate a cache class and test file, then complete the implementation. This skill covers only the cache-specific parts.
+Generate a cache class and test file, then complete the implementation. This covers only cache specifics.
 
 **Rules that apply throughout:**
 - **Module location:** `<module>` resolves to `modules/<module>/` or `packages/<module>/` (e.g. once extracted into a shared package). Check both roots; every `modules/<module>/...` path applies equally under `packages/<module>/...`.
-- **Shared workflow:** follow the `talos-scaffold` skill for run-from-root, `--name`/`--module` inference, module registration, lint/format, and coding conventions.
+- **Shared workflow:** follow the `talos-scaffold` skill for run-from-root, `--name`/`--module` inference, module registration, lint/format, and conventions.
 
 ## Steps
 
@@ -34,8 +34,8 @@ Read `modules/<module>/src/cache/<Name>Cache.ts`, then implement:
 
 - Implement `get`, `set`, `delete`, `has` with actual cache logic
 - Replace `CacheException` throws with real operations
-- Inject required dependencies (e.g., Redis client) via the constructor
-- **For session/token or otherwise sensitive caches, always set an explicit `ttl`** so entries expire, and avoid caching secrets in plaintext (encrypt or store an opaque reference instead)
+- Inject required dependencies (e.g. Redis client) via the constructor
+- **For session/token or otherwise sensitive caches, always set an explicit `ttl`** so entries expire; don't cache secrets in plaintext (encrypt or store an opaque reference instead)
 
 ```typescript
 import { CacheException, type ICache, decorator } from "@talosjs/cache";
@@ -64,7 +64,7 @@ export class <Name>Cache implements ICache {
 
 Read and replace `modules/<module>/tests/cache/<Name>Cache.spec.ts`:
 
-**Coverage:** class identity (`name.endsWith("Cache")`, is constructor), each method (`get`, `set`, `delete`, `has`) exists and returns a `Promise`, each rejects with `CacheException` before implementation. After implementing: add set→get round-trip, set→has, set→delete→has, and TTL tests. Instance isolation.
+**Coverage:** class identity (`name.endsWith("Cache")`, is constructor); each method (`get`, `set`, `delete`, `has`) exists and returns a `Promise`, each rejects with `CacheException` before implementation; instance isolation. After implementing: add set→get round-trip, set→has, set→delete→has, and TTL tests.
 
 ```typescript
 import { CacheException } from "@talosjs/cache";

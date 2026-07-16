@@ -10,12 +10,11 @@ argument-hint: [--name=<Name>] [--module=<module>] [--channel=<channel>]
 
 # Make PubSub Event Class
 
-> **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
+> **Run autonomously — do not ask the user questions.** Pick the recommended option and proceed.
 
-Generate a PubSub event class and test file, then complete the implementation. This skill covers only the pubsub-specific parts.
+Generate a PubSub event class and test file, then complete the implementation (pubsub-specific parts only).
 
-**Rules that apply throughout:**
-- **Module location:** `<module>` resolves to `modules/<module>/` or `packages/<module>/` (e.g. once extracted into a shared package). Check both roots; every `modules/<module>/...` path applies equally under `packages/<module>/...`.
+- **Module location:** `<module>` resolves to `modules/<module>/` or `packages/<module>/` (once extracted into a shared package). Check both roots; every `modules/<module>/...` path applies equally under `packages/<module>/...`.
 - **Shared workflow:** follow the `talos-scaffold` skill for run-from-root, `--name`/`--module` inference, module registration, lint/format, and coding conventions.
 
 ## Steps
@@ -27,14 +26,14 @@ talos event:create --name=<name> --module=<module> --channel=<channel>
 ```
 
 - `--name` — event class name, from the event it represents ("an event when a user is created" → `UserCreated`). Any casing; the CLI normalizes to PascalCase and appends the `Event` suffix, so omit it.
-- `--channel` — optional; pass only if the user names a specific channel. Otherwise defaults to the kebab-case name (`UserCreated` → `user-created`).
+- `--channel` — optional; pass only if the user names a specific channel. Defaults to the kebab-case name (`UserCreated` → `user-created`).
 
 ### 2. Complete the PubSub event class
 
-Read `modules/<module>/src/events/<Name>Event.ts`, then implement:
+Read `modules/<module>/src/events/<Name>Event.ts`, then:
 
 - Define a proper data type instead of `Record<string, ScalarType>`
-- Implement `handler()` with actual event handling logic
+- Implement `handler()` with real event-handling logic
 - Set the channel name in `getChannel()`
 
 ```typescript
@@ -65,9 +64,9 @@ export class <Name>Event<Data extends Record<string, ScalarType> = Record<string
 
 ### 3. Complete the test file
 
-Read and replace `modules/<module>/tests/events/<Name>Event.spec.ts`:
+Read and replace `modules/<module>/tests/events/<Name>Event.spec.ts`.
 
-**Coverage:** class identity (`name.endsWith("Event")`, is constructor), `getChannel` exists and returns non-empty string consistently, `handler` exists and returns `Promise`, inherited methods (`publish`, `subscribe`, `unsubscribe`, `unsubscribeAll`) all exist. After implementing: add a test verifying `handler` calls the injected service's `execute` with event data.
+**Coverage:** class identity (`name.endsWith("Event")`, is constructor); `getChannel` exists, returns non-empty string consistently; `handler` exists, returns `Promise`; inherited methods (`publish`, `subscribe`, `unsubscribe`, `unsubscribeAll`) all exist. After implementing: add a test verifying `handler` calls the injected service's `execute` with event data.
 
 ```typescript
 import { describe, expect, mock, test } from "bun:test";

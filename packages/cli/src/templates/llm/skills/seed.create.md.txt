@@ -12,7 +12,7 @@ argument-hint: [--name=<Name>] [--module=<module>]
 
 > **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
 
-Generate a seed file and test file, then complete the implementation. Follow the shared `talos-scaffold` skill workflow (run-from-root, `--name`/`--module` inference, lint/format, coding conventions); this covers only the seed-specific parts.
+Generate a seed file and test file, then complete the implementation. Follow the `talos-scaffold` skill workflow (run-from-root, `--name`/`--module` inference, lint/format, conventions); this covers only the seed-specific parts.
 
 - **Module location:** `<module>` resolves to `modules/<module>/` or `packages/<module>/` (e.g. once extracted into a shared package). Check both roots before assuming a path is missing.
 
@@ -20,15 +20,11 @@ Generate a seed file and test file, then complete the implementation. Follow the
 
 ### 1. Infer the options from the request, then run the generator
 
-Map the user's request to the options below, then run:
-
 ```bash
 talos seed:create --name=<name> --module=<module>
 ```
 
-**Inferring options from the user's request:**
-
-- `--name` — the seed class name, taken from the data it seeds (e.g., "a seed for demo users" → `DemoUser`). Pass it in any casing; the CLI normalizes to PascalCase and appends the `Seed` suffix automatically, so omit the suffix.
+- `--name` — seed class name, from the data it seeds ("a seed for demo users" → `DemoUser`). Any casing; the CLI normalizes to PascalCase and appends the `Seed` suffix, so omit the suffix.
 
 Also generates a `seeds.ts` root export file in the seeds directory.
 
@@ -36,25 +32,25 @@ Also generates a `seeds.ts` root export file in the seeds directory.
 
 Edit `modules/<module>/src/seeds/<name-seed>.yml`:
 
-- Add seed data entries with hardcoded nanoid values for `id` fields — generate via `bun -e "import { random } from '@talosjs/utils'; console.log(random.nanoid())"`
+- Add entries with hardcoded nanoid values for `id` fields — generate via `bun -e "import { random } from '@talosjs/utils'; console.log(random.nanoid())"`
 - Do NOT use sequential IDs like `"item-1"`, `"item-2"`
-- Ensure the same entity uses the same ID everywhere it appears
+- The same entity must use the same ID everywhere it appears
 
 ### 3. Complete the seed class
 
-Read `modules/<module>/src/seeds/<Name>Seed.ts`, then implement:
+Read `modules/<module>/src/seeds/<Name>Seed.ts`, then:
 
 - Import the relevant entity classes and repository
 - Use `resolve()` from `@talosjs/container` to get the repository instance
 - Map the imported YAML data to entity instances
 - **Hash any credential/secret field** (passwords, API keys, tokens) with the framework's hashing utility before persisting — never store plaintext credentials, even in demo/dev seeds, since seed data can leak into other environments
-- Use the repository to persist the entities
+- Persist the entities via the repository
 
 ### 4. Complete the test file
 
-Read and replace `modules/<module>/tests/seeds/<Name>Seed.spec.ts`:
+Read and replace `modules/<module>/tests/seeds/<Name>Seed.spec.ts`.
 
-**Coverage:** class identity (`name.endsWith("Seed")`, is constructor), `run` exists on prototype, `isActive` exists and returns `true` by default, `getDependencies` exists and returns an array, data YAML file exists, is non-empty, contains at least one entry, instance isolation.
+**Coverage:** class identity (`name.endsWith("Seed")`, is constructor), `run` exists on prototype, `isActive` exists and returns `true` by default, `getDependencies` exists and returns an array, data YAML file exists/is non-empty/contains at least one entry, instance isolation.
 
 ```typescript
 import { existsSync, readFileSync } from "node:fs";

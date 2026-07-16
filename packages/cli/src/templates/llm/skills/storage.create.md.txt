@@ -12,7 +12,7 @@ argument-hint: [--name=<Name>] [--module=<module>]
 
 > **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
 
-Generate a storage class and test file, then complete the implementation. Follow the shared `talos-scaffold` skill (run-from-root, `--name`/`--module` inference, module registration, lint/format, coding conventions); this skill covers only the storage-specific parts.
+Generate a storage class and test file, then complete the implementation. Follow the `talos-scaffold` skill (run-from-root, `--name`/`--module` inference, module registration, lint/format, conventions); this covers only the storage-specific parts.
 
 **Module location:** `<module>` resolves to `modules/<module>/` or `packages/<module>/` (once extracted into a shared package). Check both roots before assuming a path is missing; every `modules/<module>/...` path applies equally under `packages/<module>/...`.
 
@@ -24,7 +24,7 @@ Generate a storage class and test file, then complete the implementation. Follow
 talos storage:create --name=<name> --module=<module>
 ```
 
-- `--name` — the storage class name, taken from what is stored (e.g. "storage for user avatars" → `UserAvatar`). Pass any casing; the CLI normalizes to PascalCase and appends the `Storage` suffix, so omit the suffix.
+- `--name` — storage class name, from what is stored ("storage for user avatars" → `UserAvatar`). Any casing; the CLI normalizes to PascalCase and appends the `Storage` suffix, so omit the suffix.
 
 ### 2. Complete the storage class
 

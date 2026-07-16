@@ -18,7 +18,7 @@ Find the root cause of a failure and fix it — don't patch the symptom. For con
 
 ## 1. Reproduce
 
-Get the failure in front of you with the exact command, then capture the full error and stack trace. Don't theorize before you've seen it.
+Reproduce the failure with the exact command and capture the full error and stack trace. Don't theorize before you've seen it.
 
 ```bash
 talos monorepo:run --commands=test   # or one file: bun test modules/<module>/tests/...

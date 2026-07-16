@@ -34,7 +34,7 @@ talos react:component:create --name=<name> --module=<module> [--feature=<feature
 - `--feature` — feature owner (e.g. "for the user-profile feature"). Omit for a shared component. Any casing; normalized to kebab-case, strips trailing `Feature`/`Layout`.
 - `--override` — pass to regenerate an existing component; otherwise the generator prompts and aborts if declined.
 
-The generator also installs test dev deps (`@happy-dom/global-registrator`, `@testing-library/react`, `@testing-library/jest-dom`) at the project root and writes shared `happydom.ts` + `bunfig.toml` at the module root on first use (existing files never overwritten).
+The generator also installs test dev deps (`@happy-dom/global-registrator`, `@testing-library/react`, `@testing-library/jest-dom`) at the project root and writes shared `happydom.ts` + `bunfig.toml` at the module root on first use (never overwriting existing files).
 
 **Files generated** (`<Name>` PascalCase, `<feature>` kebab-case):
 
@@ -48,7 +48,7 @@ The generator also installs test dev deps (`@happy-dom/global-registrator`, `@te
 Read `modules/<module>/<module>.yml`'s `design:` field (kebab-case name, e.g. `design: "ui"`).
 
 - **No `design:` field** — no design module: build with plain elements and suggest `talos design:create`.
-- Otherwise, list its primitives and their props, then import via the `@module/<design>/...` alias, matching the export style you find (per-file vs. barrel):
+- Otherwise list its primitives and props, then import via the `@module/<design>/...` alias, matching the export style you find (per-file vs. barrel):
 
 ```bash
 ls modules/<design>/src/components 2>/dev/null && cat modules/<design>/src/index.ts 2>/dev/null
@@ -63,7 +63,7 @@ import { Button } from "@module/<design>";                   // barrel
 Replace the placeholder body with the real UI — a thin arranger over the design primitives. Follow the `optimize-ui` skill (interaction, motion, typography, color, surface): resolve every visual value from design-module tokens, never a hardcoded one-off; avoid AI-slop (`optimize-ui`'s `references/ai-slop.md`).
 
 - Props type `<Name>PropsType`; prefer extending the underlying props (`React.ComponentProps<typeof Button>`) over redeclaring.
-- Pure and presentational — no data fetching inside; receive via props or a feature hook (`features/<feature>/hooks/`) for containers.
+- Pure and presentational — no data fetching; receive via props or, for containers, a feature hook (`features/<feature>/hooks/`).
 - **One component per file**, named after it; extract sub-pieces into their own file in the same folder.
 
 ```tsx
@@ -88,8 +88,8 @@ Expand the generated spec to cover real behavior:
 
 - Keep the `/// <reference lib="dom" />` directive and the `bun:test` + testing-library imports (`happydom.ts` registers DOM globals).
 - Query by role/text/label, not test IDs; assert with jest-dom matchers.
-- Cover: it renders, each meaningful prop/variant, and user interactions (`@testing-library/user-event` or `fireEvent`) with their effect.
-- Keep the relative import path (the generator wires the correct depth) pointing at the component under test.
+- Cover: renders, each meaningful prop/variant, and user interactions (`@testing-library/user-event` or `fireEvent`) with their effect.
+- Keep the relative import path (generator wires the correct depth) pointing at the component under test.
 
 ```tsx
 /// <reference lib="dom" />

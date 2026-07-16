@@ -28,14 +28,14 @@ Root `AGENTS.md` is always in scope.
 
 ## 2. Scaffold into tmp
 
-Regenerate into a throwaway folder — never straight into the working tree:
+Regenerate into a throwaway folder, never straight into the working tree. Pass every assistant from step 1 to `--agents`:
 
 ```bash
 rm -rf tmp/agent-skills-sync
 talos agent:skills:create --cwd=tmp/agent-skills-sync --agents=.claude,.codex
 ```
 
-Pass every assistant from step 1 to `--agents`. `--cwd` retargets writes under the tmp folder; `--agents` skips the interactive prompt — both are required non-interactively.
+`--cwd` retargets writes under the tmp folder; `--agents` skips the interactive prompt — both required non-interactively.
 
 ## 3. Map generated files to local paths
 
@@ -47,7 +47,7 @@ Pass every assistant from step 1 to `--agents`. `--cwd` retargets writes under t
 
 - **Missing locally** → create it verbatim (make parent dirs).
 - **Identical** → skip.
-- **Diverged** → merge into one clean file: take canonical structural/new content, keep deliberate local edits (project instructions, tuned frontmatter, extra sections), reconcile clashing sections yourself — **no conflict markers**. Prefer canonical for plain template refreshes, local for clear customizations.
+- **Diverged** → merge into one clean file with **no conflict markers**: take canonical structural/new content, keep deliberate local edits (project instructions, tuned frontmatter, extra sections), reconcile clashing sections yourself. Prefer canonical for plain template refreshes, local for clear customizations.
 
 Only touch files the generator produced; never delete local-only files.
 

@@ -14,7 +14,7 @@ argument-hint: [--name=<Name>] [--module=<module>]
 
 > **Module location:** `<module>` resolves to `modules/<module>/` or `packages/<module>/` (e.g. once extracted into a shared package). Check both roots before assuming a path is missing.
 
-Generate an AI chat class and test file, then complete the implementation. Follow the shared workflow in the `talos-scaffold` skill (run-from-root, `--name`/`--module` inference, lint/format, coding conventions); this skill covers only the AI-chat-specific parts.
+Generate an AI chat class and test file, then complete the implementation. Follow the `talos-scaffold` skill for the shared workflow (run-from-root, `--name`/`--module` inference, lint/format, conventions); this covers only AI-chat specifics.
 
 ## Steps
 
@@ -24,14 +24,14 @@ Generate an AI chat class and test file, then complete the implementation. Follo
 talos ai:chat:create --name=<name> --module=<module>
 ```
 
-- `--name` — chat class name from its purpose ("a chat that answers support questions" → `Support`). Any casing; the CLI normalizes to PascalCase and appends the `Chat` suffix, so omit the suffix.
+- `--name` — chat class name from its purpose ("a chat that answers support questions" → `Support`). Any casing; the CLI normalizes to PascalCase and appends the `Chat` suffix, so omit it.
 
-**Decide whether tools or middlewares are needed** — read the request; do not generate them by default.
+**Decide whether tools or middlewares are needed** — read the request; don't generate them by default.
 
-- Tools — needed when the chat must take actions or fetch data beyond plain text generation ("look up an order", "search the docs", "send an email", "query the database"). Each distinct capability is one tool. Otherwise `getTools()` stays empty.
-- Middlewares — needed for cross-cutting behavior applied to every run ("log each request", "rate-limit", "redact PII", "check authorization"). Otherwise `getMiddlewares()` stays empty.
+- Tools — when the chat must act or fetch data beyond text generation ("look up an order", "search the docs", "send an email", "query the database"). One tool per distinct capability; else `getTools()` stays empty.
+- Middlewares — for cross-cutting behavior on every run ("log each request", "rate-limit", "redact PII", "check authorization"); else `getMiddlewares()` stays empty.
 
-When ambiguous about either, ask the user instead of guessing. For each tool/middleware needed, generate it first with the `ai-tool-create` / `ai-middleware-create` skill, then reference the class in `getTools()` / `getMiddlewares()`.
+If ambiguous, ask the user rather than guess. For each needed tool/middleware, generate it first with `ai-tool-create` / `ai-middleware-create`, then reference the class in `getTools()` / `getMiddlewares()`.
 
 ### 2. Complete the chat class
 
@@ -62,7 +62,7 @@ export class <Name>Chat extends Chat {
 
 Read and replace `modules/<module>/tests/ai/chats/<Name>Chat.spec.ts`.
 
-**Coverage:** class identity (`name.endsWith("Chat")`); `getModel` returns a non-empty `provider/model` string; `getSystemPrompts`/`getTools`/`getMiddlewares` return arrays; `run` and `stream` exist. Add assertions for the specific model, prompts, and tools after implementing the class.
+**Coverage:** class identity (`name.endsWith("Chat")`); `getModel` returns a non-empty `provider/model` string; `getSystemPrompts`/`getTools`/`getMiddlewares` return arrays; `run` and `stream` exist. After implementing, add assertions for the specific model, prompts, and tools.
 
 ### 4. Lint, format, and test
 

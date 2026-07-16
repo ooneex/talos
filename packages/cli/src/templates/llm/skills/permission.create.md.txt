@@ -10,13 +10,9 @@ argument-hint: [--name=<Name>] [--module=<module>]
 
 # Make Permission Class
 
-> **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
+> **Run autonomously — do not ask the user questions;** pick the recommended option and proceed. **Module location:** `<module>` resolves to `modules/<module>/` or `packages/<module>/` — check both roots; every `modules/<module>/...` path applies equally under `packages/<module>/...`.
 
-Generate a permission class and test file, then complete the implementation. This skill covers only the permission-specific parts.
-
-**Rules that apply throughout:**
-- **Module location:** `<module>` resolves to `modules/<module>/` or `packages/<module>/` (e.g. once extracted into a shared package). Check both roots; every `modules/<module>/...` path applies equally under `packages/<module>/...`.
-- **Shared workflow:** follow the `talos-scaffold` skill for run-from-root, `--name`/`--module` inference, module registration, lint/format, and coding conventions.
+Generate a permission class and test file, then complete the implementation. Follow the shared `talos-scaffold` skill workflow (run-from-root, `--name`/`--module` inference, module registration, lint/format, coding conventions); this covers only the permission-specific parts.
 
 ## Steps
 
@@ -26,7 +22,7 @@ Generate a permission class and test file, then complete the implementation. Thi
 talos permission:create --name=<name> --module=<module>
 ```
 
-- `--name` — permission class name, from the action it guards ("a permission to edit posts" → `EditPost`). Any casing; the CLI normalizes to PascalCase and appends the `Permission` suffix, so omit it.
+- `--name` — class name from the action it guards ("a permission to edit posts" → `EditPost`). Any casing; the CLI normalizes to PascalCase and appends the `Permission` suffix, so omit it.
 
 ### 2. Complete the permission class
 

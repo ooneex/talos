@@ -10,11 +10,11 @@ argument-hint: [--name=<Name>] [--module=<module>] [--table-name=<table_name>]
 
 # Make Entity Class
 
-> **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
+> **Run autonomously — do not ask the user questions.** Pick the recommended option and proceed.
 
-Generate a TypeORM entity class and test file, then complete both. Follow the shared workflow in the `talos-scaffold` skill (run-from-root, `--name`/`--module` inference, module registration, lint/format, coding conventions); this skill covers only the entity-specific parts.
+Generate a TypeORM entity class and test file, then complete both (entity-specific parts only). Follow the shared `talos-scaffold` skill for run-from-root, `--name`/`--module` inference, module registration, lint/format, and coding conventions.
 
-- **Module location:** `<module>` resolves to `modules/<module>/` or `packages/<module>/` (e.g. once extracted into a shared package). Check both roots; every `modules/<module>/...` path applies equally under `packages/<module>/...`.
+- **Module location:** `<module>` resolves to `modules/<module>/` or `packages/<module>/` (once extracted into a shared package). Check both roots; every `modules/<module>/...` path applies equally under `packages/<module>/...`.
 
 ## Steps
 
@@ -25,15 +25,15 @@ talos entity:create --name=<name> --module=<module> --table-name=<table_name>
 ```
 
 - `--name` — entity class name from the domain object (e.g. "an entity for user profiles" → `UserProfile`). Any casing; the CLI normalizes to PascalCase and appends the `Entity` suffix, so omit it.
-- `--table-name` — optional; pass only if the user names a specific table. Otherwise defaults to the snake_case plural (e.g. `UserProfile` → `user_profiles`).
+- `--table-name` — optional; pass only if the user names a specific table. Defaults to the snake_case plural (e.g. `UserProfile` → `user_profiles`).
 
 ### 2. Complete the entity class
 
 Read `modules/<module>/src/entities/<Name>Entity.ts`, then:
 
-- Add entity-specific columns (`@Column`) and relations (`@ManyToOne`, `@OneToMany`, `@ManyToMany`, etc.) as needed.
+- Add entity-specific columns (`@Column`) and relations (`@ManyToOne`, `@OneToMany`, `@ManyToMany`, etc.).
 - Remove irrelevant scaffolded columns; adjust column types, lengths, and constraints.
-- Declare the primary key with explicit `nullable: false`, auto-generated via `random.id()` (see class below).
+- Declare the primary key with explicit `nullable: false`, auto-generated via `random.id()` (see below).
 
 ```typescript
 import type { LocaleType } from "@talosjs/translation";
@@ -81,14 +81,14 @@ export class <Name>Entity extends BaseEntity {
 
 ### 3. Complete the test file
 
-Read and replace `modules/<module>/tests/entities/<Name>Entity.spec.ts`. Cover, per the pattern below:
+Read and replace `modules/<module>/tests/entities/<Name>Entity.spec.ts`, per the pattern below:
 
 - **Class identity** — `name.endsWith("Entity")`, is constructor.
 - **ID** — auto-generates a unique 20-char string per instance.
 - **Each column** — exists via `"prop" in entity`, correct default, accepts valid values, accepts `null` (nullable) / `undefined` (optional). Booleans: verify `false`/`true` and toggling. Dates/timestamps: start `undefined`, accept `Date`, accept `null`.
 - **Instance isolation** — no shared property state.
 
-Remove blocks for removed columns; add one block per custom column. For a relation property, test that it exists and defaults to `undefined`.
+Remove blocks for removed columns; add one block per custom column. For a relation property, test it exists and defaults to `undefined`.
 
 ```typescript
 import { describe, expect, test } from "bun:test";

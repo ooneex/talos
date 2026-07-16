@@ -9,7 +9,7 @@ user-invocable: false
 
 > **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
 
-Most features are just a service called from a controller — reach for an architecture only when the work is **decoupled, deferred, ordered, scheduled, or pushed**. Pick the smallest one that fits, then combine them as described below. See `talos-packages` for the full catalog and `talos-module` for where each artifact lives.
+Most features are just a service called from a controller — reach for an architecture only when work is **decoupled, deferred, ordered, scheduled, or pushed**. Pick the smallest fit, then combine (see Combining). See `talos-packages` for the full catalog and `talos-module` for where each artifact lives.
 
 ## Decision guide
 
@@ -22,51 +22,51 @@ Most features are just a service called from a controller — reach for an archi
 | Push to connected clients in real time — chat, live updates, presence, rooms | **Real-time** | `@talosjs/socket` (+ `@talosjs/event` to fan out) | socket controller (see `talos-packages`) |
 | A single synchronous request/response with no deferral | **No architecture** — a plain service | `@talosjs/service` | `service-create` |
 
-When two rows apply, they usually **compose** rather than compete — see Combining below.
+When two rows apply, they usually **compose** rather than compete (see Combining).
 
 ## Event-Driven (`@talosjs/event`)
 
-Redis pub/sub. A producer `publish()`es to a channel; any number of subscribers `handler()` it independently. Use it to **decouple** a side effect from the action that triggers it.
+Redis pub/sub — a producer `publish()`es to a channel; any number of subscribers `handler()` it independently, decoupling a side effect from its trigger.
 
-- **Use when:** the trigger shouldn't know or care who reacts; reactions are independent; loss of an occasional message is tolerable (pub/sub is fire-and-forget, not persisted).
-- **Avoid when:** you need the job retried, durability, or a guaranteed-once delivery → use a **Queue**. You need ordered steps with rollback → use a **Workflow**.
+- **Use when:** the trigger needn't know who reacts; reactions are independent; occasional message loss is tolerable (fire-and-forget, not persisted).
+- **Avoid when:** you need retry/durability/guaranteed-once delivery → **Queue**; ordered steps with rollback → **Workflow**.
 - Each event is one channel + one `handler()`. Register events in the module's `events` array (see `talos-scaffold`).
 
 ## Queue (`@talosjs/queue`)
 
-BullMQ over Redis. The caller `add()`s a job and returns immediately; a worker processes it later with retries and concurrency control. Reads `QUEUE_REDIS_URL` from `AppEnv`.
+BullMQ over Redis — the caller `add()`s a job and returns immediately; a worker processes it later with retries and concurrency control. Reads `QUEUE_REDIS_URL` from `AppEnv`.
 
-- **Use when:** work is slow, rate-limited, externally dependent, or must survive a crash and retry; the user response must not block on it.
-- **Avoid when:** the reaction is instantaneous and durability doesn't matter → an **Event** is lighter. Steps must roll back as a unit → a **Workflow** (a single queue job can *host* a workflow).
+- **Use when:** work is slow, rate-limited, externally dependent, or must survive a crash and retry; the response must not block on it.
+- **Avoid when:** the reaction is instant and durability doesn't matter → **Event** is lighter; steps must roll back as a unit → **Workflow** (a single queue job can *host* a workflow).
 - Add typed `add`/`addBulk` wrappers per job type; use `addBulk` for fan-out.
 
 ## Workflow (`@talosjs/workflow`)
 
-An ordered list of **transitions**, each conditional (`isActive`), reversible (`rollback`), and DI-resolved. `run()` executes active transitions in order; if any throws, the executed ones roll back in **reverse order** and a `WorkflowException` is thrown. This is the **saga** pattern.
+An ordered list of **transitions**, each conditional (`isActive`), reversible (`rollback`), and DI-resolved. `run()` executes active transitions in order; if any throws, executed ones roll back in **reverse order** and a `WorkflowException` is thrown — the **saga** pattern.
 
-- **Use when:** a process has multiple steps that touch different systems (reserve stock → charge card → create shipment) and a partial failure must be unwound cleanly.
-- **Avoid when:** there's a single step, or steps are independent and need no rollback (use Events/Queue). Steps are long-running and span minutes/hours across processes — model those as Queue jobs that each invoke a workflow.
+- **Use when:** a process has multiple steps touching different systems (reserve stock → charge card → create shipment) and partial failure must be unwound cleanly.
+- **Avoid when:** a single step, or independent steps needing no rollback (use Events/Queue). Long-running steps spanning minutes/hours across processes — model those as Queue jobs that each invoke a workflow.
 - Generate the workflow, then one transition per step with `workflow-transition-create`, listed in order in `getTransitions()`.
 
 ## Cron (`@talosjs/cron`)
 
-Timezone-aware scheduled jobs with human-readable syntax (`'every 1 hours'`). Use for anything driven by **the clock** rather than a user action: cleanups, nightly digests, cache warming, polling an external API.
+Timezone-aware scheduled jobs with human-readable syntax (`'every 1 hours'`). Use for clock-driven work rather than a user action: cleanups, nightly digests, cache warming, polling an external API.
 
-- **Avoid when:** the work is triggered by an event in the system (use Events/Queue) — cron is for time, not reactions. Keep the `job()` thin: have it **enqueue** rather than do heavy work inline.
+- **Avoid when:** the work is triggered by a system event (use Events/Queue) — cron is for time, not reactions. Keep `job()` thin: **enqueue** rather than do heavy work inline.
 
 ## Real-time (`@talosjs/socket`)
 
-WebSocket server with rooms and pub/sub channels for pushing updates to connected clients. Use for chat, live dashboards, collaborative editing, presence.
+WebSocket server with rooms and pub/sub channels for pushing updates to connected clients: chat, live dashboards, collaborative editing, presence.
 
-- **Avoid when:** clients can poll or a request/response suffices. Pair with `@talosjs/event` so backend changes fan out to the right rooms.
+- **Avoid when:** clients can poll or request/response suffices. Pair with `@talosjs/event` so backend changes fan out to the right rooms.
 
 ## Combining them
 
-Compose these along the natural flow **trigger → decouple → defer → orchestrate → push**:
+Compose along the flow **trigger → decouple → defer → orchestrate → push**:
 
-- **Event → Queue:** an event handler enqueues durable work. The publish decouples; the queue gives retries and backpressure. *e.g. `OrderPlaced` event → handler adds an `Invoice` job.*
-- **Queue → Workflow:** a queue job's processor calls `workflow.run()`. The queue provides durability/retry/concurrency; the workflow provides ordered steps with rollback. This is the standard shape for a reliable multi-step background process.
-- **Cron → Queue:** the cron job only enqueues (one job, or `addBulk` for fan-out); workers do the work. Keeps scheduling decoupled from execution and parallelizes safely.
+- **Event → Queue:** an event handler enqueues durable work — publish decouples, queue gives retries/backpressure. *e.g. `OrderPlaced` event → handler adds an `Invoice` job.*
+- **Queue → Workflow:** a queue job's processor calls `workflow.run()` — queue provides durability/retry/concurrency, workflow provides ordered steps with rollback. Standard shape for a reliable multi-step background process.
+- **Cron → Queue:** the cron job only enqueues (one job, or `addBulk` for fan-out); workers do the work. Decouples scheduling from execution and parallelizes safely.
 - **Workflow → Event:** a transition publishes an event on success (e.g. `PaymentCaptured`) so other domains react without the workflow depending on them.
 - **Event → Socket:** a domain event handler publishes to a socket room so connected clients update live.
 

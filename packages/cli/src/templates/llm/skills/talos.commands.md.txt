@@ -66,7 +66,7 @@ talos command:create --name <Name> --module <name>  # Scaffold a custom ICommand
 talos command:run <command-name> [args...]           # Run a custom command (matched by its getName()) across modules
 ```
 
-`command:run` looks up the `getName()` of every command in `modules/*/src/commands` and executes the matching one via the module's `bin/command/run.ts`, forwarding any extra args.
+`command:run` matches the `getName()` of every command in `modules/*/src/commands` and executes it via the module's `bin/command/run.ts`, forwarding extra args.
 
 ## Workflows
 ```bash
@@ -74,7 +74,7 @@ talos workflow:create --name <Name> --module <name>             # Scaffold a wor
 talos workflow:transition:create --name <Name> --module <name>  # Scaffold a workflow transition (one step)
 ```
 
-A workflow orchestrates an ordered list of conditional, reversible transitions with automatic rollback on failure. Generate each step with `workflow:transition:create`, then list the transition classes in the workflow's `getTransitions()`. The `/workflow-create` and `/workflow-transition-create` skills wrap these generators.
+A workflow orchestrates an ordered list of conditional, reversible transitions with automatic rollback on failure. Generate each step with `workflow:transition:create`, then list the transition classes in the workflow's `getTransitions()`. The `/workflow-create` and `/workflow-transition-create` skills wrap these.
 
 ## Database
 ```bash
@@ -96,9 +96,9 @@ talos monorepo:check                                         # Install, build, f
 talos monorepo:check --modules=billing,user --logs           # Scope the gate to the named modules (also --packages=a,b)
 ```
 
-`monorepo:run` executes each command as a group (all `build`, then all `lint`, ...) in workspace dependency order. Targets whose package.json lacks the script are skipped without error; the first failure stops the run and prints the failing task's output. Results are cached in `var/cache/monorepo/` keyed by the target's file content, its transitive workspace dependencies, the script text, and root configs — a cache hit replays logs and restores output artifacts (`dist/` by default). Always pass `--logs` when running as an agent.
+`monorepo:run` runs each command as a group (all `build`, then all `lint`, …) in workspace dependency order. Targets whose package.json lacks the script are skipped silently; the first failure stops the run and prints its output. Results are cached in `var/cache/monorepo/`, keyed by target file content, transitive workspace deps, script text, and root configs — a cache hit replays logs and restores output artifacts (`dist/` by default). Always pass `--logs` as an agent.
 
-`monorepo:check` is shorthand for `monorepo:run --commands=install,build,fmt,lint,test`: the full verification gate, run in that order with the same caching, filtering (`--packages`/`--modules`), `--logs`, and `--no-cache` flags.
+`monorepo:check` is shorthand for `monorepo:run --commands=install,build,fmt,lint,test` — the full verification gate in that order, with the same caching, filtering (`--packages`/`--modules`), `--logs`, and `--no-cache` flags.
 
 ## Release
 ```bash
@@ -115,7 +115,7 @@ talos docker:publish --modules=billing,user        # Only the named modules (als
 talos docker:publish --tag=edge                    # Override the image tag (default: package.json version, else latest)
 ```
 
-`npm:publish` packs each target with `bun pm pack` so workspace dependencies resolve to real version ranges, then publishes the extracted copy with `npm`; it reads the token from `~/.talos/credentials/npm.yml`. `docker:publish` logs in once with the credentials in `~/.talos/credentials/docker.yml`, then for each target that ships a `Dockerfile` runs `docker build`/`docker push`, tagging the image `<username>/<name>:<tag>` (registries other than `docker.io` are prefixed). Both accept `--packages`/`--modules` (comma-separated; default all) and `--silent`. Run the matching `*:credentials:create` first.
+`npm:publish` packs each target with `bun pm pack` (so workspace deps resolve to real version ranges), then publishes the extracted copy with `npm`, reading the token from `~/.talos/credentials/npm.yml`. `docker:publish` logs in once with `~/.talos/credentials/docker.yml`, then for each target shipping a `Dockerfile` runs `docker build`/`docker push`, tagging `<username>/<name>:<tag>` (non-`docker.io` registries are prefixed). Both accept `--packages`/`--modules` (comma-separated; default all) and `--silent`. Run the matching `*:credentials:create` first.
 
 ## Credentials
 ```bash
@@ -128,9 +128,9 @@ talos jira:credentials:create [--base-url <url>] [--email <email>] [--token <tok
 talos docker:credentials:create [--registry <host>] [--username <user>] [--token <token>]  # Save a Docker registry access token to ~/.talos/credentials/docker.yml
 ```
 
-Credentials are stored per-user under `~/.talos/credentials/*.yml` in a `profiles.default` block. Each command prompts (token input is masked) for anything not passed as a flag and prints the URL where the token can be created.
+Credentials are stored per-user under `~/.talos/credentials/*.yml` in a `profiles.default` block. Each command prompts (masked) for anything not passed as a flag and prints the URL where the token can be created.
 
-The `*:secret:push` commands create or update a CI secret on the repository resolved from the `origin` remote in `.git/config` in the current directory. Each prompts (the value input is masked) for the name/value when not passed as a flag, then prints the settings URL where the secret can be seen:
+The `*:secret:push` commands create/update a CI secret on the repository resolved from the `origin` remote in the current directory's `.git/config`. Each prompts (masked) for name/value when not passed as a flag, then prints the settings URL:
 ```bash
 talos github:secret:push [--name <name>] [--value <value>]                                 # GitHub Actions secret; reads github.yml, encrypts via `gh secret set`
 talos gitlab:secret:push [--name <name>] [--value <value>]                                 # GitLab masked CI/CD variable; reads gitlab.yml, uses the GitLab API

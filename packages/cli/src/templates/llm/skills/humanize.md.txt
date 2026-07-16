@@ -17,8 +17,6 @@ Make writing sound like a real person wrote it on purpose. Applies to **prose on
 
 ## The tells to remove
 
-AI writing has a fingerprint. Hunt these down and cut them.
-
 **Vocabulary**
 - **Inflated connectors** — delete or downgrade: *moreover, furthermore, additionally, notably, importantly, it's worth noting, that said, in essence, ultimately, fundamentally.* Most sentences need no connector.
 - **Empty intensifiers** — *seamless, robust, powerful, cutting-edge, comprehensive, leverage, utilize, facilitate, effortlessly, elegant, delve, tapestry, realm, landscape, myriad, plethora.* Replace with plain words or delete. Use *use*, not *utilize*/*leverage*.
@@ -26,7 +24,7 @@ AI writing has a fingerprint. Hunt these down and cut them.
 - **Praise padding** — *This is a great question, Certainly, I'd be happy to, Great choice.* Cut entirely.
 
 **Structure**
-- **Rule-of-three sweep** — "fast, reliable, and scalable." Break the reflexive triad; sometimes one adjective is stronger than three.
+- **Rule-of-three sweep** — "fast, reliable, and scalable." Break the reflexive triad; one adjective often beats three.
 - **Symmetrical everything** — same paragraph length, same bullet shape, same section cadence. Introduce variation.
 - **The "It's not just X, it's Y" frame** and **"Whether you're A or B"** openers. Rephrase directly.
 - **Bullet-listitis** — convert lists back to sentences when items relate to each other; prose carries nuance bullets flatten.

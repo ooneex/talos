@@ -10,11 +10,11 @@ argument-hint: [--name=<Name>] [--module=<module>]
 
 # Make Logger Class
 
-> **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
+> **Run autonomously — do not ask the user questions.** Pick the recommended option and proceed.
 
-Generate a logger class and test file, then complete the implementation. Follow the shared `talos-scaffold` skill (run-from-root, `--name`/`--module` inference, module registration, lint/format, coding conventions); this skill covers only the logger-specific parts.
+Generate a logger class and test file, then complete the implementation (logger-specific parts only). Follow the shared `talos-scaffold` skill for run-from-root, `--name`/`--module` inference, module registration, lint/format, and coding conventions.
 
-**Module location:** `<module>` resolves to `modules/<module>/` or `packages/<module>/` (once extracted into a shared package). Check both roots before assuming a path is missing; every `modules/<module>/...` path applies equally under `packages/<module>/...`.
+**Module location:** `<module>` resolves to `modules/<module>/` or `packages/<module>/` (once extracted into a shared package). Check both roots; every `modules/<module>/...` path applies equally under `packages/<module>/...`.
 
 ## Steps
 
@@ -24,7 +24,7 @@ Generate a logger class and test file, then complete the implementation. Follow 
 talos logger:create --name=<name> --module=<module>
 ```
 
-- `--name` — the logger class name, taken from what it logs (e.g. "a logger for audit events" → `Audit`). Pass any casing; the CLI normalizes to PascalCase and appends the `Logger` suffix, so omit the suffix.
+- `--name` — logger class name, from what it logs (e.g. "a logger for audit events" → `Audit`). Any casing; the CLI normalizes to PascalCase and appends the `Logger` suffix, so omit it.
 
 ### 2. Complete the logger class
 
@@ -56,7 +56,7 @@ export class <Name>Logger implements ILogger {
 
 Read and replace `modules/<module>/tests/loggers/<Name>Logger.spec.ts`.
 
-**Coverage:** class identity (`name.endsWith("Logger")`, is constructor), `init` exists and returns `Promise`, each log method (`log`, `debug`, `info`, `success`, `warn`, `error`) exists and does not throw with a message string or message + data object, `error` also does not throw with an `IException`-like object, instance isolation.
+**Coverage:** class identity (`name.endsWith("Logger")`, is constructor); `init` exists, returns `Promise`; each log method (`log`, `debug`, `info`, `success`, `warn`, `error`) exists and does not throw with a message string or message + data object; `error` also does not throw with an `IException`-like object; instance isolation.
 
 ```typescript
 import { describe, expect, test } from "bun:test";

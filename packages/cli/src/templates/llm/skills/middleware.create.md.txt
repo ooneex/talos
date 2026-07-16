@@ -10,32 +10,26 @@ argument-hint: [--name=<Name>] [--module=<module>] [--is-socket=<true|false>]
 
 # Make Middleware Class
 
-> **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
+> **Run autonomously — do not ask the user questions;** pick the recommended option and proceed. **Module location:** `<module>` resolves to `modules/<module>/` or `packages/<module>/` — check both roots before assuming a path is missing.
 
 Generate a middleware class and test file, then complete the implementation. Follow the shared `talos-scaffold` skill workflow (run-from-root, `--name`/`--module` inference, module registration, lint/format, coding conventions); this covers only the middleware-specific parts.
 
-- **Module location:** `<module>` resolves to `modules/<module>/` or `packages/<module>/` (e.g. once extracted into a shared package). Check both roots before assuming a path is missing.
-
 ## Steps
 
-### 1. Infer the options from the request, then run the generator
-
-Map the user's request to the options below, then run:
+### 1. Infer the options, then run the generator
 
 ```bash
 talos middleware:create --name=<name> --module=<module> --is-socket=<true|false>
 ```
 
-**Inferring options from the user's request:**
-
-- `--name` — the middleware class name, taken from what it does (e.g., "a middleware that checks auth" → `Auth`). Pass it in any casing; the CLI normalizes to PascalCase and appends the `Middleware` suffix automatically, so omit the suffix.
-- `--is-socket` — `true` when the user mentions WebSocket/socket/realtime, otherwise `false` (the default). If unspecified, the generator asks interactively.
+- `--name` — class name from what it does ("a middleware that checks auth" → `Auth`). Any casing; the CLI normalizes to PascalCase and appends the `Middleware` suffix, so omit it.
+- `--is-socket` — `true` when the user mentions WebSocket/socket/realtime, else `false` (default). If unspecified, the generator asks interactively.
 
 ### 2. Complete the middleware class
 
-Read `modules/<module>/src/middlewares/<Name>Middleware.ts`, then implement:
+Read `modules/<module>/src/middlewares/<Name>Middleware.ts`, then:
 
-- Implement `handler()` with actual middleware logic (auth checks, logging, header injection, etc.)
+- Implement `handler()` with the middleware logic (auth checks, logging, header injection, etc.)
 - Inject required dependencies via the constructor
 
 Import `ContextType` from `@talosjs/controller` (HTTP) or `@talosjs/socket` (socket) — everything else is identical:
@@ -58,7 +52,7 @@ Read and replace `modules/<module>/tests/middlewares/<Name>Middleware.spec.ts`:
 
 **Coverage:** class identity (`name.endsWith("Middleware")`, is constructor), `handler` exists, returns a `Promise`, resolves to the same context reference (pass-through), instance isolation. Add tests for any transformations/auth checks after implementing `handler()`.
 
-> **Auth/authorization middleware must be able to deny.** The pass-through assertions only apply to non-gating middleware (logging, header injection). For an auth guard, replace them with tests asserting the handler **rejects/short-circuits** unauthenticated or unauthorized requests (throws or returns a denying context) — a middleware that always passes through is broken access control.
+> **Auth/authorization middleware must be able to deny.** Pass-through assertions apply only to non-gating middleware (logging, header injection). For an auth guard, replace them with tests asserting the handler **rejects/short-circuits** unauthenticated or unauthorized requests (throws or returns a denying context) — a middleware that always passes through is broken access control.
 
 ```typescript
 import { describe, expect, test } from "bun:test";
@@ -112,3 +106,4 @@ talos monorepo:check
 ```
 
 Fix every failure before completing.
+

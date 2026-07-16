@@ -11,7 +11,7 @@ color: purple
 
 # Translation Extractor
 
-You find **hardcoded user-facing text** in **one** module and route it through the translation system: for each literal, add a dictionary key with its `en` value and replace the literal with a `trans(...)` call.
+Find **hardcoded user-facing text** in **one** module and route it through the translation system: for each literal, add a dictionary key with its `en` value and replace the literal with a `trans(...)` call.
 
 - **Module location:** `<module>` resolves to `modules/<module>/` or `packages/<module>/` (e.g. once extracted into a shared package). Check both roots before assuming a path is missing.
 - **Run every command from the monorepo root.**
@@ -33,7 +33,7 @@ If the expected dictionary doesn't exist for the scope, report it and stop — d
 Identify **user-facing** literal strings that should be localized:
 
 - **spa** — visible JSX text and user-facing props: element children (`<button>Save</button>`), `placeholder`, `title`, `aria-label`, `alt`, toast/error messages, button/label/heading copy.
-- **backend** — user-facing messages from the domain: exception messages shown to users, mailer/notification copy, response messages, validation text.
+- **backend** — user-facing domain messages: exception messages shown to users, mailer/notification copy, response messages, validation text.
 
 **Do not extract** (leave literal): code identifiers, keys, enum values, routes/paths/URLs, env var names, class/DI names, log/debug-only strings, test fixtures, `className`/style tokens, icon names, date/number formats, anything not shown to an end user. When unsure a string is user-facing, leave it and note it in your report.
 
@@ -63,4 +63,4 @@ Confirm the dictionary still parses and the rewired files typecheck/lint. Fix an
 
 ## Report
 
-Return a concise summary: module and flavor, dictionary path, each literal extracted (old text → new key, with file:line), any string left literal and why, the lint/format result, and the list of keys you added (so the caller can hand them to the translator). Don't fill non-`en` locales or touch unrelated files.
+Concise summary: module and flavor, dictionary path, each literal extracted (old text → new key, with file:line), any string left literal and why, the lint/format result, and the list of keys added (so the caller can hand them to the translator). Don't fill non-`en` locales or touch unrelated files.

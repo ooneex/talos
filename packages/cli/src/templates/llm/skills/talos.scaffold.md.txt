@@ -11,7 +11,7 @@ user-invocable: false
 
 > **Module location:** `<module>` resolves to `modules/<module>/` or `packages/<module>/` (e.g. once extracted into a shared package). Check both roots before assuming a path is missing; every `modules/<module>/...` path applies equally under `packages/<module>/...`.
 
-Every `<artifact>-create` skill runs a generator, then completes the generated class and its test. They share the steps below; the artifact skill supplies the generator command, the class template, and the test coverage.
+Every `<artifact>-create` skill runs a generator, then completes the generated class and its test. They share the steps below; the artifact skill supplies the generator command, class template, and test coverage.
 
 ## Run from the project root
 
@@ -23,10 +23,10 @@ Run every command from the **monorepo root**, never from inside an individual pa
 talos <artifact>:create --name=<name> --module=<module>
 ```
 
-- `--name` — pass it in any casing; the CLI normalizes to PascalCase and appends the artifact suffix (`Service`, `Controller`, `Cron`, …) automatically, so omit the suffix. The artifact skill says what to base the name on.
-- `--module` — the target module, inferred from phrasing like "in the `blog` module" or "for the catalog feature". Omit to default to `shared`. (SPA features have no default — the generator prompts.)
+- `--name` — any casing; the CLI normalizes to PascalCase and appends the artifact suffix (`Service`, `Controller`, `Cron`, …), so omit the suffix. The artifact skill says what to base the name on.
+- `--module` — the target module, inferred from phrasing like "in the `blog` module" or "for the catalog feature". Omit to default to `shared` (SPA features have no default — the generator prompts).
 
-The artifact skill lists any extra flags (`--is-socket`, `--channel`, `--table-name`, `--route-*`, …) and notes when the generator prompts interactively instead.
+The artifact skill lists extra flags (`--is-socket`, `--channel`, `--table-name`, `--route-*`, …) and notes when the generator prompts interactively instead.
 
 ## Module registration
 
@@ -49,7 +49,7 @@ Controllers → `controllers`, entities → `entities`, middlewares → `middlew
 
 ## Test scaffold baseline
 
-Generated `.spec.ts` files share a baseline that the artifact skill builds on: class identity (`Name.endsWith("<Suffix>")`, is a constructor), each method exists with the right return shape, and instance isolation (`new X() !== new X()`). Keep the artifact-specific coverage the skill lists, and replace any placeholder / "not implemented" assertions with real behavior once the class is implemented.
+Generated `.spec.ts` files share a baseline the artifact skill builds on: class identity (`Name.endsWith("<Suffix>")`, is a constructor), each method exists with the right return shape, and instance isolation (`new X() !== new X()`). Keep the artifact-specific coverage the skill lists, and replace any placeholder / "not implemented" assertions with real behavior once the class is implemented.
 
 ## Lint and format
 

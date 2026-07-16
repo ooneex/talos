@@ -31,4 +31,4 @@ modules/<name>/        # type: "design"
     utils/        # Front-end helpers — cn (class-name merge), staleChunk. Add small pure presentation helpers; no backend/business logic.
 ```
 
-For the concrete interaction, motion, typography, color, and surface rules every component in this module must follow — including how to avoid generic, AI-slop visual patterns (stock gradients, glassmorphism-as-decoration, template layouts) — see the `optimize-ui` skill. For the single-page app that consumes this design system, see `talos-spa`. For backend module layout, see `talos-module`.
+For the interaction, motion, typography, color, and surface rules every component here must follow — including how to avoid AI-slop visual patterns (stock gradients, glassmorphism-as-decoration, template layouts) — see `optimize-ui`. For the SPA consuming this design system, see `talos-spa`; for backend module layout, see `talos-module`.

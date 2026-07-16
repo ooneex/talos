@@ -10,21 +10,19 @@ argument-hint: [--name=<Name>] [--module=<module>]
 
 # Make Repository Class
 
-> **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
+> **Run autonomously — do not ask the user questions;** pick the recommended option and proceed. **Module location:** `<module>` resolves to `modules/<module>/` or `packages/<module>/` — check both roots; every `modules/<module>/...` path applies equally under `packages/<module>/...`.
 
-Generate a TypeORM repository class and test file, then complete both. Follow the shared workflow in the `talos-scaffold` skill (run-from-root, `--name`/`--module` inference, module registration, lint/format, coding conventions); this skill covers only the repository-specific parts.
-
-- **Module location:** `<module>` resolves to `modules/<module>/` or `packages/<module>/` (e.g. once extracted into a shared package). Check both roots; every `modules/<module>/...` path applies equally under `packages/<module>/...`.
+Generate a TypeORM repository class and test file, then complete both. Follow the shared `talos-scaffold` skill workflow (run-from-root, `--name`/`--module` inference, module registration, lint/format, coding conventions); this covers only the repository-specific parts.
 
 ## Steps
 
-### 1. Infer the options from the request, then run the generator
+### 1. Infer the options, then run the generator
 
 ```bash
 talos repository:create --name=<name> --module=<module>
 ```
 
-- `--name` — repository class name from the entity it serves (e.g. "a repository for products" → `Product`). Any casing; the CLI normalizes to PascalCase and appends the `Repository` suffix, so omit it.
+- `--name` — class name from the entity it serves ("a repository for products" → `Product`). Any casing; the CLI normalizes to PascalCase and appends the `Repository` suffix, so omit it.
 
 ### 2. Complete the repository class
 

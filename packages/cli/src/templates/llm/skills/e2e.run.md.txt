@@ -14,7 +14,7 @@ argument-hint: [--modules=<a,b>] [--packages=<a,b>] [--logs] [--no-cache]
 
 > **Module location:** `<module>` resolves to `modules/<module>/` or `packages/<module>/` (e.g. once extracted into a shared package). Check both roots before assuming a path is missing.
 
-Drive the Playwright end-to-end suite with `talos e2e:run` — the alias for `talos monorepo:run --commands=e2e`. This is the *runtime* workflow: scaffold new specs with `e2e-create`, then come back here to run them. To author a spec first, use `e2e-create`.
+Drive the Playwright end-to-end suite with `talos e2e:run` — the alias for `talos monorepo:run --commands=e2e`. This is the *runtime* workflow: scaffold new specs with `e2e-create`, then come back here to run them.
 
 **Rules that apply throughout:**
 - **Run every command from the monorepo root**, never from inside a package.

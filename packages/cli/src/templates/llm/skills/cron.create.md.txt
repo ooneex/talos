@@ -10,12 +10,11 @@ argument-hint: [--name=<Name>] [--module=<module>]
 
 # Make Cron Class
 
-> **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
+> **Run autonomously — do not ask the user questions.** Pick the recommended option and proceed.
 
-Generate a cron class and test file, then complete the implementation. This skill covers only the cron-specific parts.
+Generate a cron class and test file, then complete the implementation (cron-specific parts only).
 
-**Rules that apply throughout:**
-- **Module location:** `<module>` resolves to `modules/<module>/` or `packages/<module>/` (e.g. once extracted into a shared package). Check both roots; every `modules/<module>/...` path applies equally under `packages/<module>/...`.
+- **Module location:** `<module>` resolves to `modules/<module>/` or `packages/<module>/` (once extracted into a shared package). Check both roots; every `modules/<module>/...` path applies equally under `packages/<module>/...`.
 - **Shared workflow:** follow the `talos-scaffold` skill for run-from-root, `--name`/`--module` inference, module registration, lint/format, and coding conventions.
 
 ## Steps
@@ -30,11 +29,11 @@ talos cron:create --name=<name> --module=<module>
 
 ### 2. Complete the cron class
 
-Read `modules/<module>/src/cron/<Name>Cron.ts`, then implement:
+Read `modules/<module>/src/cron/<Name>Cron.ts`, then:
 
-- Set the cron schedule in `getTime()` (e.g., `"every 5 minutes"`, `"every 1 hours"`)
-- Set the timezone in `getTimeZone()` or return `null` for server timezone
-- Implement `handler()` with actual cron logic
+- Set the schedule in `getTime()` (e.g. `"every 5 minutes"`, `"every 1 hours"`)
+- Set the timezone in `getTimeZone()`, or return `null` for server timezone
+- Implement `handler()` with real cron logic
 - Inject required dependencies via the constructor
 
 ```typescript
@@ -59,9 +58,9 @@ export class <Name>Cron extends Cron {
 
 ### 3. Complete the test file
 
-Read and replace `modules/<module>/tests/cron/<Name>Cron.spec.ts`:
+Read and replace `modules/<module>/tests/cron/<Name>Cron.spec.ts`.
 
-**Coverage:** class identity (`name.endsWith("Cron")`, is constructor), `getTime` exists and returns non-empty string in `every N unit` format, `getTimeZone` exists and returns `null` or a non-empty IANA string, `handler` exists and returns a `Promise`, instance isolation.
+**Coverage:** class identity (`name.endsWith("Cron")`, is constructor); `getTime` exists, returns non-empty string in `every N unit` format; `getTimeZone` exists, returns `null` or non-empty IANA string; `handler` exists, returns a `Promise`; instance isolation.
 
 ```typescript
 import { describe, expect, test } from "bun:test";
