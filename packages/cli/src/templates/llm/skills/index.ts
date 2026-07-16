@@ -43,6 +43,7 @@ import optimizeUiTypography from "./optimize.ui/typography.md.txt";
 import optimizeUi from "./optimize.ui.md.txt";
 import permissionCreate from "./permission.create.md.txt";
 import pr from "./pr.md.txt";
+import projectUpdate from "./project.update.md.txt";
 import queueCreate from "./queue.create.md.txt";
 import rateLimitCreate from "./rate-limit.create.md.txt";
 import reactComponentCreate from "./react.component.create.md.txt";
@@ -81,6 +82,7 @@ export const skills: Record<string, SkillTemplateType> = {
   "talos.env": talosEnv,
   "talos.scaffold": talosScaffold,
   "agent.skills.update": agentSkillsUpdate,
+  "project.update": projectUpdate,
   "module.create": moduleCreate,
   "ai.chat.create": aiChatCreate,
   "ai.tool.create": aiToolCreate,
