@@ -134,6 +134,13 @@ export const run = async (): Promise<void> => {
       silent: {
         type: "boolean",
       },
+      cwd: {
+        type: "string",
+      },
+      agents: {
+        type: "string",
+        multiple: true,
+      },
     },
     strict: false,
     allowPositionals: true,
@@ -189,6 +196,14 @@ export const run = async (): Promise<void> => {
     noCache: values["no-cache"],
     tag: values.tag,
     silent: values.silent,
+    cwd: values.cwd,
+    // Selects which assistant config dirs to scaffold, bypassing the interactive
+    // `agent:skills:create` prompt. Accepts repeated flags and/or comma-separated
+    // lists (`--agents=.claude,.codex` == `--agents=.claude --agents=.codex`);
+    // the dirs are kept literal (dot-prefixed), so no kebab-casing here.
+    agents: Array.isArray(values.agents)
+      ? values.agents.flatMap((agent) => (typeof agent === "string" ? agent.split(",") : [])).filter(Boolean)
+      : undefined,
     // `--api` / `--microservice` / `--spa` (bare → true, or `=name1,name2` → string)
     // restrict `app:start` to modules of that type.
     api: values.api,
