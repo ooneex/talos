@@ -2,7 +2,7 @@ import { join } from "node:path";
 import type { ICommand } from "@talosjs/command";
 import { decorator } from "@talosjs/command";
 import { TerminalLogger } from "@talosjs/logger";
-import { collectRunnableModules, type RunnableModuleType } from "../runnableModules";
+import { collectRunnableModules, type RunnableModuleType, selectRunnableModules } from "../runnableModules";
 import { ensureBin, LOG_OPTIONS, spawnStep } from "../utils";
 
 // Module types that rely on the app's Docker services (databases, brokers, ...).
@@ -37,16 +37,7 @@ export class AppStopCommand implements ICommand {
     // Discover the runnable modules and narrow to those named with `--modules` or
     // `--packages` (aliases, e.g. `--modules=a,b`). Without a name flag every module counts.
     const modules = await collectRunnableModules(join(cwd, "modules"));
-    const requested = [options?.modules, options?.packages]
-      .filter((value): value is string => typeof value === "string")
-      .flatMap((value) =>
-        value
-          .split(",")
-          .map((name) => name.trim())
-          .filter(Boolean),
-      );
-
-    const selected = requested.length === 0 ? modules : modules.filter((module) => requested.includes(module.name));
+    const selected = selectRunnableModules(modules, options);
 
     // The Docker services (defined in the app module) are only relevant to api and
     // microservice modules; stop them only when one of those is in scope.

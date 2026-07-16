@@ -78,6 +78,17 @@ describe("README.md.txt", () => {
     expect(content).toContain("`.env.yml` in the project root");
   });
 
+  test("should document starting and stopping the app with module filters", async () => {
+    const content = await Bun.file(templatePath).text();
+    expect(content).toContain("### Start the App");
+    expect(content).toContain("oo app:start");
+    expect(content).toContain("oo app:start --modules=api,dashboard");
+    expect(content).toContain("oo app:start --packages=api,dashboard");
+    expect(content).toContain("### Stop the App");
+    expect(content).toContain("oo app:stop");
+    expect(content).toContain("oo app:stop --modules=api,dashboard");
+  });
+
   test("should contain Modules why/benefits/good practices explanation", async () => {
     const content = await Bun.file(templatePath).text();
     expect(content).toContain("### Why Modules?");

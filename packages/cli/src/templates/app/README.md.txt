@@ -23,18 +23,31 @@ The environment file is created automatically at `.env.yml` in the project root.
 
 ### Start the App
 
-Starts Docker services (if a `docker-compose.yml` is present) and launches the application with hot reload:
+Launches every runnable module (`api`, `microservice`, `spa`, `storybook`, `swagger`) — `api` and `microservice` modules run with hot reload, the rest run their dev server. When an `api` or `microservice` module is running, the app's Docker services are started first (if a `docker-compose.yml` is present):
 
 ```bash
 oo app:start
 ```
 
+Narrow the run to specific modules with `--modules` (or its alias `--packages`), comma-separated. Without them, every module runs:
+
+```bash
+oo app:start --modules=api,dashboard
+oo app:start --packages=api,dashboard
+```
+
 ### Stop the App
 
-Stops all Docker services:
+Stops the app's Docker services (the ones `app:start` brings up for `api` and `microservice` modules):
 
 ```bash
 oo app:stop
+```
+
+Narrow to specific modules with `--modules` (or its alias `--packages`), comma-separated. Without them, every module is considered:
+
+```bash
+oo app:stop --modules=api,dashboard
 ```
 
 ---

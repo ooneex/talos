@@ -3,7 +3,7 @@ import type { ICommand } from "@talosjs/command";
 import { decorator } from "@talosjs/command";
 import { TerminalLogger } from "@talosjs/logger";
 import concurrently from "concurrently";
-import { collectRunnableModules, type RunnableModuleType } from "../runnableModules";
+import { collectRunnableModules, type RunnableModuleType, selectRunnableModules } from "../runnableModules";
 import { ensureBin, LOG_OPTIONS, loadAppModuleName, spawnStep } from "../utils";
 
 // Distinct prefix color per module type so the interleaved output stays readable.
@@ -53,17 +53,8 @@ export class AppStartCommand implements ICommand {
     }
 
     // Optionally narrow down to the modules named with `--modules` or `--packages`
-    // (aliases, e.g. `--modules=a,b`). Without a name filter every module runs.
-    const requested = [options?.modules, options?.packages]
-      .filter((value): value is string => typeof value === "string")
-      .flatMap((value) =>
-        value
-          .split(",")
-          .map((name) => name.trim())
-          .filter(Boolean),
-      );
-
-    const selected = requested.length === 0 ? modules : modules.filter((module) => requested.includes(module.name));
+    // (aliases, e.g. `--modules=a,b`). Without a name flag every module runs.
+    const selected = selectRunnableModules(modules, options);
 
     if (selected.length === 0) {
       logger.error("No matching modules found", undefined, LOG_OPTIONS);

@@ -41,3 +41,22 @@ export const collectRunnableModules = async (modulesDir: string): Promise<Runnab
 
   return modules.filter((module): module is RunnableModule => module !== null);
 };
+
+// Narrow the discovered modules to those named with `--modules` or `--packages`
+// (aliases; comma-separated and whitespace-tolerant, e.g. `--modules=a, b`). When
+// neither flag names a module, every discovered module is returned.
+export const selectRunnableModules = (
+  modules: RunnableModule[],
+  options?: { modules?: boolean | string; packages?: boolean | string },
+): RunnableModule[] => {
+  const requested = [options?.modules, options?.packages]
+    .filter((value): value is string => typeof value === "string")
+    .flatMap((value) =>
+      value
+        .split(",")
+        .map((name) => name.trim())
+        .filter(Boolean),
+    );
+
+  return requested.length === 0 ? modules : modules.filter((module) => requested.includes(module.name));
+};
