@@ -1,0 +1,17 @@
+import { GlobalRegistrator } from "@happy-dom/global-registrator";
+
+// Register happy-dom globals (document, window, ...) BEFORE importing any testing
+// library. @testing-library/dom binds `screen` to `document.body` the instant it
+// is imported, so a static `import` would evaluate it while `document` is still
+// undefined and permanently poison `screen`. Registering first, then dynamically
+// importing the libraries, keeps `screen` bound to a live document.
+GlobalRegistrator.register();
+
+const { afterEach } = await import("bun:test");
+const { cleanup } = await import("@testing-library/react");
+await import("@testing-library/jest-dom");
+
+// Unmount rendered trees between tests so DOM state doesn't leak.
+afterEach(() => {
+  cleanup();
+});

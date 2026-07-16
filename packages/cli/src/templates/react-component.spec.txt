@@ -1,0 +1,14 @@
+/// <reference lib="dom" />
+
+import { describe, expect, test } from "bun:test";
+import { render, screen } from "@testing-library/react";
+import "@testing-library/jest-dom";
+import { {{NAME}} } from "{{IMPORT}}";
+
+describe("{{NAME}}", () => {
+  test("renders its children", () => {
+    render(<{{NAME}}>Hello</{{NAME}}>);
+
+    expect(screen.getByText("Hello")).toBeInTheDocument();
+  });
+});

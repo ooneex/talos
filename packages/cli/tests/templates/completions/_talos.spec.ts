@@ -213,6 +213,7 @@ describe("_talos.txt", () => {
       "repository\\:create",
       "sdk\\:create",
       "spa\\:feature\\:create",
+      "react\\:component\\:create",
       "spa\\:remove",
       "issue\\:create",
       "issue\\:pull",
@@ -366,6 +367,17 @@ describe("_talos.txt", () => {
       expect(match?.[1]).toContain("postgres");
       expect(match?.[1]).toContain("redis");
       expect(match?.[1]).not.toContain("talos-jade");
+    });
+
+    test("react:component:create should have name, module, feature, and override options", async () => {
+      const content = await Bun.file(templatePath).text();
+      const match = content.match(/react:component:create\)([\s\S]*?);;/);
+      expect(match).not.toBeNull();
+      expect(match?.[1]).toContain("--name=");
+      expect(match?.[1]).toContain("--module=");
+      expect(match?.[1]).toContain("_talos_modules");
+      expect(match?.[1]).toContain("--feature=");
+      expect(match?.[1]).toContain("--override");
     });
 
     test("controller:create should include all HTTP methods", async () => {

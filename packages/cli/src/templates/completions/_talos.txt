@@ -209,6 +209,7 @@ _talos() {
     'service\:create:Generate a new service class'
     'spa\:create:Generate a new spa module'
     'spa\:feature\:create:Generate a new spa feature (route, layout, hooks and folders)'
+    'react\:component\:create:Generate a new react component (with test) in a module or feature'
     'spa\:remove:Remove an existing spa module'
     'storage\:create:Generate a new storage class'
     'translation\:create:Generate a new translation class'
@@ -288,6 +289,13 @@ _talos() {
           _arguments -s \
             '--id=[Local issue ID to push]:id' \
             '--module=[Module name]:module:_talos_modules'
+          ;;
+        react:component:create)
+          _arguments -s \
+            '--name=[Name of the resource]:name' \
+            '--module=[Module name]:module:_talos_modules' \
+            '--feature=[Feature name (scopes the component to a feature)]:feature' \
+            '--override[Override existing file]'
           ;;
         ai:chat:create|ai:tool:create|ai:middleware:create|analytics:create|cache:create|command:create|cron:create|database:create|e2e:create|flag:create|logger:create|mailer:create|permission:create|queue:create|rate-limit:create|repository:create|service:create|spa:feature:create|storage:create|translation:create|vector-database:create|workflow:create|workflow:transition:create)
           _arguments -s \

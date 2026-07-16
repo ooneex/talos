@@ -45,6 +45,7 @@ import permissionCreate from "./permission.create.md.txt";
 import pr from "./pr.md.txt";
 import queueCreate from "./queue.create.md.txt";
 import rateLimitCreate from "./rate-limit.create.md.txt";
+import reactComponentCreate from "./react.component.create.md.txt";
 import repositoryCreate from "./repository.create.md.txt";
 import review from "./review.md.txt";
 import sdkCreate from "./sdk.create.md.txt";
@@ -109,6 +110,7 @@ export const skills: Record<string, SkillTemplateType> = {
   "seed.create": seedCreate,
   "service.create": serviceCreate,
   "spa.feature.create": spaFeatureCreate,
+  "react.component.create": reactComponentCreate,
   "storage.create": storageCreate,
   "translation.create": translationCreate,
   "translation.translate": translationTranslate,

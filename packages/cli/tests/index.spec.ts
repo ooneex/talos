@@ -90,6 +90,7 @@ describe("@talosjs/cli - index", () => {
     "PermissionCreateCommand",
     "QueueCreateCommand",
     "RateLimitCreateCommand",
+    "ReactComponentCreateCommand",
     "ReleaseCreateCommand",
     "RepositoryCreateCommand",
     "RunCommand",

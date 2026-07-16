@@ -1,0 +1,146 @@
+---
+name: react-component-create
+description: Generate a new React component with a happy-dom + React Testing Library test, then complete the generated code.
+when_to_use: Use when adding a presentational or container React component to a SPA module — either at the module level or scoped to a specific feature.
+model: sonnet
+effort: medium
+allowed-tools: Bash(talos react:component:create *), Bash(talos monorepo:check *), Read, Edit, Write, Grep, Glob
+argument-hint: [--name=<Name>] [--module=<module>] [--feature=<feature>]
+---
+
+# Make React Component
+
+> **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
+
+Generate a React component and its test, then complete the implementation. Follow the shared `talos-scaffold` skill workflow (run-from-root, `--name`/`--module` inference, lint/format, coding conventions); this covers only the component-specific parts.
+
+- **Module location:** `<module>` resolves to `modules/<module>/` or `packages/<module>/` (e.g. once extracted into a shared package). Check both roots before assuming a path is missing.
+
+## Important
+
+A React component belongs to a **SPA module** (a module whose `type` is `spa` in its `<name>.yml`). Create the SPA first with `spa:create` if it does not exist. Keep components presentational: arrange design-module primitives and feature state, reach the backend through services/hooks rather than importing server modules, and reuse UI primitives from the linked `design` module instead of styling from scratch.
+
+**Module-level vs feature-scoped.** A component reused across the SPA lives at the module level (`src/components/`). A component that only serves one feature lives inside that feature (`src/features/<feature>/components/`) — pass `--feature` for that case. Never import another feature's internals; if two features need the same component, keep it at the module level (or promote it to the linked design module when it is a reusable primitive).
+
+## Steps
+
+### 1. Infer the options from the request, then run the generator
+
+Map the user's request to the options below, then run:
+
+```bash
+talos react:component:create --name=<name> --module=<module>
+```
+
+Or, to scope the component to a feature:
+
+```bash
+talos react:component:create --name=<name> --module=<module> --feature=<feature>
+```
+
+**Inferring options from the user's request:**
+
+- `--name` — the component name, taken from what it renders (e.g., "a back button" → `ButtonBack`, "the user avatar card" → `AvatarCard`). Pass it in any casing; the CLI normalizes to PascalCase.
+- `--module` — the target SPA module, inferred from phrasing like "in the `dashboard` SPA". There is **no default** — the generator prompts for it when omitted.
+- `--feature` — the feature that owns the component, inferred from phrasing like "for the user-profile feature". Omit it for a module-level (shared) component. Pass it in any casing; the CLI normalizes to kebab-case and strips a trailing `Feature`/`Layout` suffix.
+- `--override` — pass when the request is to regenerate an existing component. Without it, the generator prompts before overwriting and aborts if declined.
+
+Also installs the test dev dependencies (`@happy-dom/global-registrator`, `@testing-library/react`, `@testing-library/jest-dom`) at the project root if any are missing, and writes the shared `happydom.ts` preload and `bunfig.toml` at the module root the first time (existing ones are never overwritten).
+
+**Files generated** (with `<Name>` the PascalCase name and `<feature>` the kebab-case feature name):
+
+Module-level (no `--feature`):
+
+- `modules/<module>/src/components/<Name>.tsx` — the component
+- `modules/<module>/tests/components/<Name>.spec.tsx` — its test
+
+Feature-scoped (with `--feature`):
+
+- `modules/<module>/src/features/<feature>/components/<Name>.tsx` — the component
+- `modules/<module>/tests/features/<feature>/components/<Name>.spec.tsx` — its test
+
+Module root (written once, shared by every component test):
+
+- `modules/<module>/happydom.ts` — the happy-dom preload (registers globals, then dynamically imports the testing libraries and wires `cleanup`)
+- `modules/<module>/bunfig.toml` — sets `[test] preload = ["./happydom.ts"]`
+
+### 2. Resolve the linked design module and discover its components
+
+Before writing any UI, find which design module this SPA builds on and what it offers — components must be composed from its primitives, not styled from scratch.
+
+1. Read `modules/<module>/<module>.yml` and its `design:` field — a kebab-case design-module name (e.g. `design: "ui"`).
+   - **No `design:` field** — the SPA has no linked design module. Build the UI with plain elements, and suggest `talos design:create` if they want a shared design system.
+2. List the design module's source to learn the available primitives and their props:
+
+   ```bash
+   ls modules/<design>/src/components 2>/dev/null && cat modules/<design>/src/index.ts 2>/dev/null
+   ```
+3. Import design components through the `@module/<design>/...` alias, matching the export style you found (named exports per file vs. a barrel `index.ts`):
+
+   ```typescript
+   import { Button } from "@module/<design>/components/Button";
+   // or, if the design module re-exports from a barrel:
+   import { Button } from "@module/<design>";
+   ```
+
+### 3. Complete the component
+
+Read the generated component and replace the placeholder body with the real UI. Keep it a thin arranger — compose the design module's primitives (resolved in step 2) instead of re-implementing them, and follow the `optimize-ui` skill's interaction, motion, typography, color, and surface rules (resolve every visual value from the design module's tokens, never a hardcoded one-off). Avoid AI-slop patterns (`optimize-ui`'s `references/ai-slop.md`).
+
+- Define a proper props type named `<Name>PropsType`; prefer extending the underlying element/primitive props (e.g. `React.ComponentProps<typeof Button>`) over redeclaring them.
+- Keep the component pure and presentational: no data fetching inside it — receive data via props, or pull it from a feature hook (`features/<feature>/hooks/`) when the component is a container.
+- **One component per file**, named after the component. Extract any sub-piece into its own file in the same `components/` folder.
+
+```tsx
+import { ArrowLeftIcon } from "@module/<design>/icons/ArrowLeftIcon";
+import { Button } from "@module/<design>/components/Button";
+
+type ButtonBackPropsType = Omit<React.ComponentProps<typeof Button>, "variant">;
+
+export const ButtonBack = ({ children, ...props }: ButtonBackPropsType) => {
+  return (
+    <Button variant="outline" {...props}>
+      <ArrowLeftIcon />
+      {children ?? "Back"}
+    </Button>
+  );
+};
+```
+
+### 4. Complete the test
+
+Read the generated `<Name>.spec.tsx` and expand it to cover the component's real behavior with React Testing Library:
+
+- Keep the `/// <reference lib="dom" />` directive and the `bun:test` + `@testing-library/react` + `@testing-library/jest-dom` imports — the module's `happydom.ts` preload registers the DOM globals.
+- Query by role/text/label (`screen.getByRole`, `getByText`) rather than test IDs; assert with jest-dom matchers (`toBeInTheDocument`, `toHaveTextContent`, `toBeDisabled`, …).
+- Cover: it renders, each meaningful prop/variant, and user interactions (via `@testing-library/user-event` or `fireEvent`) with their expected effect.
+- The import path back to the component is relative (the generator wires the correct depth for module-level vs feature-scoped) — keep it pointing at the component under test.
+
+```tsx
+/// <reference lib="dom" />
+
+import { describe, expect, test } from "bun:test";
+import { render, screen } from "@testing-library/react";
+import "@testing-library/jest-dom";
+import { ButtonBack } from "../../src/components/ButtonBack";
+
+describe("ButtonBack", () => {
+  test("renders the default label", () => {
+    render(<ButtonBack />);
+    expect(screen.getByRole("button")).toHaveTextContent("Back");
+  });
+
+  test("renders custom children", () => {
+    render(<ButtonBack>Go back</ButtonBack>);
+    expect(screen.getByRole("button")).toHaveTextContent("Go back");
+  });
+});
+```
+
+### 5. Lint, format, and test
+
+```bash
+talos monorepo:check
+```
+
+Fix every failure before completing.
