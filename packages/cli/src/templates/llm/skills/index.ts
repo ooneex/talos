@@ -1,4 +1,5 @@
 import agentsMd from "../AGENTS.md.txt";
+import agentSkillsUpdate from "./agent.skills.update.md.txt";
 import aiChatCreate from "./ai.chat.create.md.txt";
 import aiMiddlewareCreate from "./ai.middleware.create.md.txt";
 import aiToolCreate from "./ai.tool.create.md.txt";
@@ -78,6 +79,7 @@ export const skills: Record<string, SkillTemplateType> = {
   "talos.spa": talosSpa,
   "talos.env": talosEnv,
   "talos.scaffold": talosScaffold,
+  "agent.skills.update": agentSkillsUpdate,
   "module.create": moduleCreate,
   "ai.chat.create": aiChatCreate,
   "ai.tool.create": aiToolCreate,

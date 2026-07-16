@@ -1,0 +1,67 @@
+---
+name: agent-skills-update
+description: Sync the project's on-disk assistant config (AGENTS.md, skills, agents) with the canonical templates bundled in the installed Talos CLI. Scaffolds a fresh copy into a tmp folder via talos agent:skills:create, then smart-merges each file into its local counterpart — creating missing files, reconciling diverged ones, and refactoring the result to be token efficient.
+when_to_use: Use to refresh the local config for any Talos-supported assistant (.claude, .codex, .cursor, .gemini, .windsurf, .cline, .junie, .roo, .continue, .zed) — its skills, agents, and AGENTS.md — after upgrading Talos, or to pull upstream template changes without losing local edits. Triggers on "update agent skills", "sync skills", "refresh AGENTS.md".
+model: sonnet
+effort: high
+agent: general-purpose
+context: fork
+argument-hint: [--agents=.claude,.codex]
+allowed-tools: Bash(talos agent:skills:create *), Bash(mkdir *), Bash(rm *), Bash(find *), Bash(diff *), Read, Write, Edit, Glob, Grep
+---
+
+# Update Agent Skills
+
+> **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed. **Run every command from the monorepo root.**
+
+Refresh the project's assistant config with the **canonical** templates that `talos agent:skills:create` emits for the installed Talos version, without discarding local customizations. The generated copy is the source of truth for *structure and new content*; the local files are the source of truth for *project-specific edits*. This skill scaffolds the canonical copy into a throwaway folder, then merges it file-by-file into the working tree.
+
+## 1. Resolve the target assistants
+
+Determine which assistant config dirs to sync. Multiple can be specified, either comma-separated (`--agents=.claude,.codex`) or as repeated flags (`--agents=.claude --agents=.codex`):
+
+- If the user passed `--agents` args, use exactly those.
+- Otherwise, detect the config dirs that already exist at the project root among: `.claude`, `.codex`, `.cursor`, `.gemini`, `.windsurf`, `.cline`, `.junie`, `.roo`, `.continue`, `.zed`. Sync every one present.
+- If none exist, default to `.claude` and `.codex`.
+
+`AGENTS.md` at the root is always in scope (every adapter emits it).
+
+## 2. Scaffold the canonical copy into tmp
+
+Use a throwaway folder at the project root and regenerate into it — never let the generator touch the working tree directly:
+
+```bash
+rm -rf tmp/agent-skills-sync
+talos agent:skills:create --cwd=tmp/agent-skills-sync --agents=.claude,.codex
+```
+
+Pass every assistant from step 1 to `--agents` (comma-separated, or one flag each). `--cwd` retargets every write under `tmp/agent-skills-sync/`; `--agents` bypasses the interactive prompt (both are required for a non-interactive run).
+
+## 3. Enumerate generated files and map to local paths
+
+List everything produced (`find tmp/agent-skills-sync -type f`). For each generated file, the local counterpart is the same path with the `tmp/agent-skills-sync/` prefix stripped — e.g. `tmp/agent-skills-sync/.claude/skills/review/SKILL.md` → `.claude/skills/review/SKILL.md`, `tmp/agent-skills-sync/AGENTS.md` → `AGENTS.md`.
+
+## 4. Smart-sync each file
+
+For every generated file, compare it to its local counterpart (`diff`) and act:
+
+- **Local missing** → create it: copy the generated content verbatim (make parent dirs as needed).
+- **Identical** → skip; nothing to do.
+- **Diverged** → **merge** the two into one coherent file:
+  - Adopt the generated file's structural updates and any newly added sections/content.
+  - Preserve intentional local edits (project-specific instructions, tuned frontmatter like `model`/`effort`/`allowed-tools`, extra sections). When the same section changed on both sides, reconcile them into a single clear version — **leave no conflict markers** (`<<<<<<<`, `=======`, `>>>>>>>`).
+  - Prefer the generated version when a change is purely a template refresh with no matching local intent; prefer the local version for edits that are clearly deliberate customizations.
+
+Only touch files the generator produced. Never delete local files that the generator did not emit — they may be project-specific additions.
+
+## 5. Refactor for token efficiency
+
+After merging, tighten every file you wrote or changed: remove duplication and redundant restatement, collapse verbose prose, drop dead/contradictory lines left by the merge. **Preserve all instructions, commands, frontmatter keys, and semantics** — shorten wording, never scope. A refactored file must instruct the assistant exactly as well as before, with fewer tokens.
+
+## 6. Clean up and report
+
+```bash
+rm -rf tmp/agent-skills-sync
+```
+
+Then report: assistants synced, files **created** (new), files **merged** (with a one-line note per non-trivial reconciliation), and files **unchanged**. Flag anything that needs a human eye (a merge you were unsure about).
