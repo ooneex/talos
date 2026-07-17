@@ -1,5 +1,52 @@
 # Changelog
 
+## [1.29.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.29.0) - 2026-07-17
+
+### Added
+
+- Add selectRunnableModules for module filtering| — Franck ([b3c92ea4](https://github.com/ooneex/talos/commit/b3c92ea4))
+- Support storybook and swagger runnable modules| — Franck ([122132b3](https://github.com/ooneex/talos/commit/122132b3))
+- Add project.update skill template and update templates| — Franck ([5c579a63](https://github.com/ooneex/talos/commit/5c579a63))
+- Add React component test scaffolding and completions| — Franck ([e6ef5f25](https://github.com/ooneex/talos/commit/e6ef5f25))
+- Add ReactComponentCreate command| — Franck ([7b18cea7](https://github.com/ooneex/talos/commit/7b18cea7))
+- Add prompt wrapper with clean cancel handling| — Franck ([3105a3f8](https://github.com/ooneex/talos/commit/3105a3f8))
+- Add agent.skills.update skill template| — Franck ([864429a7](https://github.com/ooneex/talos/commit/864429a7))
+- Add design.update skill template| — Franck ([01ef2b7b](https://github.com/ooneex/talos/commit/01ef2b7b))
+- Add e2e:run command aliasing monorepo:run --commands=e2e| — Franck ([e7352a94](https://github.com/ooneex/talos/commit/e7352a94))
+- Add e2e:create command with Playwright scaffolding| — Franck ([c454d9ee](https://github.com/ooneex/talos/commit/c454d9ee))
+- Add per-assistant adapters for scaffolding agent config (Claude, Codex)| — Franck ([f032a069](https://github.com/ooneex/talos/commit/f032a069))
+- Scan existing issues for cross-batch dependencies in issue-plan| — Franck ([30ae6de8](https://github.com/ooneex/talos/commit/30ae6de8))
+- Record PR link back into the issue YAML after opening it| — Franck ([e674eee7](https://github.com/ooneex/talos/commit/e674eee7))
+- Add auto commit, push, and PR creation to issue-fix workflow| — Franck ([7a0bc43e](https://github.com/ooneex/talos/commit/7a0bc43e))
+- Add branch derivation workflow and change-type label taxonomy to issue skills| — Franck ([143812ac](https://github.com/ooneex/talos/commit/143812ac))
+- Add agent and context fork settings to LLM skill templates| — Franck ([5c2a289c](https://github.com/ooneex/talos/commit/5c2a289c))
+- Add model and effort frontmatter to LLM agent and skill templates| — Franck ([76a394b1](https://github.com/ooneex/talos/commit/76a394b1))
+
+### Changed
+
+- Simplify and trim sdk-create skill template for better token efficiency| — Franck ([e5a303f6](https://github.com/ooneex/talos/commit/e5a303f6))
+- Update LLM agent and skill templates| — Franck ([9f4d46d1](https://github.com/ooneex/talos/commit/9f4d46d1))
+- Update agent and skill templates| — Franck ([ffbf9b68](https://github.com/ooneex/talos/commit/ffbf9b68))
+- Update react.component.create skill template| — Franck ([0e36f51b](https://github.com/ooneex/talos/commit/0e36f51b))
+- Update agent.skills.update skill template| — Franck ([62ce94c4](https://github.com/ooneex/talos/commit/62ce94c4))
+- Update agent and skill templates| — Franck ([dec25c03](https://github.com/ooneex/talos/commit/dec25c03))
+- Update issue.plan skill template| — Franck ([dbbbda06](https://github.com/ooneex/talos/commit/dbbbda06))
+- Update review skill template| — Franck ([afe28a5d](https://github.com/ooneex/talos/commit/afe28a5d))
+- Update LLM agent and skill templates| — Franck ([47ecbce9](https://github.com/ooneex/talos/commit/47ecbce9))
+- Update issue.fix skill template| — Franck ([5bc8cba1](https://github.com/ooneex/talos/commit/5bc8cba1))
+- Split when_to_use guidance out of description in LLM templates| — Franck ([c82bfeed](https://github.com/ooneex/talos/commit/c82bfeed))
+- Adjust model and effort settings for LLM agent and skill templates| — Franck ([7bc9b913](https://github.com/ooneex/talos/commit/7bc9b913))
+- Clarify push step and restrict commit skill tool access| — Franck ([4eba0d14](https://github.com/ooneex/talos/commit/4eba0d14))
+- Clarify remote operations step in commit skill template| — Franck ([7838577a](https://github.com/ooneex/talos/commit/7838577a))
+- Simplify commit skill push instructions| — Franck ([3184256d](https://github.com/ooneex/talos/commit/3184256d))
+- Add metadata frontmatter to commit skill| — Franck ([adbffac1](https://github.com/ooneex/talos/commit/adbffac1))
+- Simplify commit skill push instructions in templates| — Franck ([2594d940](https://github.com/ooneex/talos/commit/2594d940))
+- Default design name instead of prompting when not provided| — Franck ([fb687d18](https://github.com/ooneex/talos/commit/fb687d18))
+
+### Fixed
+
+- Remove state option from issue:create, always default to Todo| — Franck ([321cd0c2](https://github.com/ooneex/talos/commit/321cd0c2))
+
 ## [1.28.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.28.0) - 2026-07-13
 
 ### Added
