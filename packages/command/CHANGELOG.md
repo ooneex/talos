@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.6.0](https://github.com/ooneex/talos/releases/tag/@talosjs/command@1.6.0) - 2026-07-17
+
+### Added
+
+- Add cwd and agents run flags| — Franck ([27b28d3f](https://github.com/ooneex/talos/commit/27b28d3f))
+
+### Fixed
+
+- Show command name in not-found error| — Franck ([1f26fbb4](https://github.com/ooneex/talos/commit/1f26fbb4))
+
 ## [1.5.1](https://github.com/ooneex/talos/releases/tag/@talosjs/command@1.5.1) - 2026-07-13
 
 ### Changed
