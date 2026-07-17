@@ -17,9 +17,21 @@ describe("tsconfig.txt", () => {
     expect(json.extends).toBe("../../tsconfig.json");
   });
 
-  test("should only have extends property", async () => {
+  test("should include ts and tsx files", async () => {
     const content = await Bun.file(templatePath).text();
     const json = JSON.parse(content);
-    expect(Object.keys(json)).toEqual(["extends"]);
+    expect(json.include).toEqual(["**/*.ts", "**/*.tsx"]);
+  });
+
+  test("should exclude node_modules and dist", async () => {
+    const content = await Bun.file(templatePath).text();
+    const json = JSON.parse(content);
+    expect(json.exclude).toEqual(["node_modules", "dist"]);
+  });
+
+  test("should have extends, include and exclude properties", async () => {
+    const content = await Bun.file(templatePath).text();
+    const json = JSON.parse(content);
+    expect(Object.keys(json)).toEqual(["extends", "include", "exclude"]);
   });
 });
