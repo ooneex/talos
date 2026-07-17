@@ -24,6 +24,11 @@ describe("CheckCommand", () => {
   const writeTarget = async (base: string, packageJson: PackageJsonShapeType): Promise<void> => {
     await Bun.write(join(testDir, base, "package.json"), JSON.stringify(packageJson, null, 2));
     await Bun.write(join(testDir, base, "src", "index.ts"), `export const name = "${packageJson.name}";\n`);
+    // A target with a `test` script needs at least one file under `tests/`, or
+    // the run skips it as having nothing to test.
+    if (packageJson.scripts?.test !== undefined) {
+      await Bun.write(join(testDir, base, "tests", "index.spec.ts"), "export {};\n");
+    }
   };
 
   const readLines = async (name: string): Promise<string[]> => {

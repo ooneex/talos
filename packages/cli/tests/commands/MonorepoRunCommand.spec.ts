@@ -31,6 +31,11 @@ describe("MonorepoRunCommand", () => {
   const writeTarget = async (base: string, packageJson: PackageJsonShapeType): Promise<void> => {
     await Bun.write(join(testDir, base, "package.json"), JSON.stringify(packageJson, null, 2));
     await Bun.write(join(testDir, base, "src", "index.ts"), `export const name = "${packageJson.name}";\n`);
+    // A target with a `test` script needs at least one file under `tests/`, or
+    // the run skips it as having nothing to test.
+    if (packageJson.scripts?.test !== undefined) {
+      await Bun.write(join(testDir, base, "tests", "index.spec.ts"), "export {};\n");
+    }
   };
 
   const readLines = async (name: string): Promise<string[]> => {
@@ -202,6 +207,34 @@ describe("MonorepoRunCommand", () => {
 
       expect(process.exitCode ?? 0).toBe(0);
       expect(await readLines("lint.log")).toEqual(["alpha"]);
+    });
+
+    test("should skip the test task when the target has an empty tests folder", async () => {
+      // A `test` script but no test files: the folder is empty, so nothing runs.
+      await writeTarget("packages/empty", {
+        name: "@test/empty",
+        scripts: { test: "echo empty >> ../../test.log" },
+      });
+      rmSync(join(testDir, "packages", "empty", "tests"), { recursive: true, force: true });
+
+      await command.run({ commands: "test", packages: "empty", logs: true });
+
+      expect(process.exitCode ?? 0).toBe(0);
+      expect(await readLines("test.log")).toEqual([]);
+      expect(output()).toContain("1 skipped");
+    });
+
+    test("should run the test task when the tests folder has files", async () => {
+      // `writeTarget` creates a `tests/` file for any target with a test script.
+      await writeTarget("packages/tested", {
+        name: "@test/tested",
+        scripts: { test: "echo tested >> ../../test.log" },
+      });
+
+      await command.run({ commands: "test", packages: "tested", logs: true });
+
+      expect(process.exitCode ?? 0).toBe(0);
+      expect(await readLines("test.log")).toEqual(["tested"]);
     });
 
     test("should only run selected packages and modules", async () => {

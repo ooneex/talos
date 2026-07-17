@@ -1,3 +1,5 @@
+import type { Dirent } from "node:fs";
+import { readdir } from "node:fs/promises";
 import { availableParallelism } from "node:os";
 import { join } from "node:path";
 import type { ICommand } from "@talosjs/command";
@@ -68,6 +70,11 @@ type RunContextType = {
 
 // `install` is not a per-target script: it runs `bun install` once at the project root.
 const INSTALL_COMMAND = "install";
+
+// `test` runs `bun test`, which exits non-zero when a target has no test files.
+// Targets whose `tests/` folder is empty (or absent) are skipped up front so
+// they never fail the run for having nothing to test.
+const TEST_COMMAND = "test";
 
 // Commands whose per-target work is independent of the workspace dependency
 // graph, so their tasks carry no ordering edges and every target runs at once
@@ -147,8 +154,10 @@ export class MonorepoRunCommand<T extends CommandOptionsType = CommandOptionsTyp
 
     const sorted = sortTargetsByDependencies(targets);
     const includedKeys = new Set(sorted.map((target) => target.key));
-    const groups = commandList.map((command) =>
-      command === INSTALL_COMMAND ? this.buildInstallGroup(rootDir) : this.buildGroup(sorted, includedKeys, command),
+    const groups = await Promise.all(
+      commandList.map((command) =>
+        command === INSTALL_COMMAND ? this.buildInstallGroup(rootDir) : this.buildGroup(sorted, includedKeys, command),
+      ),
     );
 
     const context: RunContextType = {
@@ -246,28 +255,59 @@ export class MonorepoRunCommand<T extends CommandOptionsType = CommandOptionsTyp
   }
 
   // One task per target for a command. Targets whose package.json lacks the
-  // script are marked skipped up front; dependency edges only point at tasks
-  // that are part of the run. Order-independent commands (see the set above)
-  // carry no edges, so every target runs concurrently.
-  private buildGroup(targets: MonorepoTargetType[], includedKeys: Set<string>, command: string): TaskType[] {
+  // script are marked skipped up front; for `test`, targets with an empty (or
+  // absent) `tests/` folder are skipped too. Dependency edges only point at
+  // tasks that are part of the run. Order-independent commands (see the set
+  // above) carry no edges, so every target runs concurrently.
+  private async buildGroup(
+    targets: MonorepoTargetType[],
+    includedKeys: Set<string>,
+    command: string,
+  ): Promise<TaskType[]> {
     const ordered = !ORDER_INDEPENDENT_COMMANDS.has(command);
-    return targets.map((target) => ({
-      key: `${target.key}#${command}`,
-      label: `${target.name}:${command}`,
-      target,
-      command,
-      cwd: target.dir,
-      argv: ["bun", "run", command],
-      cacheable: true,
-      deps: ordered
-        ? target.workspaceDeps.filter((key) => includedKeys.has(key)).map((key) => `${key}#${command}`)
-        : [],
-      status: target.scripts[command] === undefined ? "skipped" : "pending",
-      output: "",
-      exitCode: null,
-      durationMs: 0,
-      hash: null,
-    }));
+    return Promise.all(
+      targets.map(async (target) => {
+        const skipped =
+          target.scripts[command] === undefined || (command === TEST_COMMAND && !(await this.hasTests(target)));
+        return {
+          key: `${target.key}#${command}`,
+          label: `${target.name}:${command}`,
+          target,
+          command,
+          cwd: target.dir,
+          argv: ["bun", "run", command],
+          cacheable: true,
+          deps: ordered
+            ? target.workspaceDeps.filter((key) => includedKeys.has(key)).map((key) => `${key}#${command}`)
+            : [],
+          status: skipped ? ("skipped" as const) : ("pending" as const),
+          output: "",
+          exitCode: null,
+          durationMs: 0,
+          hash: null,
+        };
+      }),
+    );
+  }
+
+  // True when a target has at least one file under `tests/`, scanned
+  // recursively. An empty or missing folder means there is nothing to test.
+  private async hasTests(target: MonorepoTargetType): Promise<boolean> {
+    const stack = [join(target.dir, "tests")];
+    while (stack.length > 0) {
+      const dir = stack.pop() as string;
+      let entries: Dirent[];
+      try {
+        entries = await readdir(dir, { withFileTypes: true });
+      } catch {
+        continue;
+      }
+      for (const entry of entries) {
+        if (entry.isFile()) return true;
+        if (entry.isDirectory()) stack.push(join(dir, entry.name));
+      }
+    }
+    return false;
   }
 
   // A single root-level `bun install`. It is not tied to a target and is never
