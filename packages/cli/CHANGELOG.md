@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.30.1](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.30.1) - 2026-07-17
+
+### Fixed
+
+- Only count bun test files when detecting testable targets| — Franck ([08036f86](https://github.com/ooneex/talos/commit/08036f86))
+
 ## [1.30.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.30.0) - 2026-07-17
 
 ### Added
