@@ -209,13 +209,16 @@ describe("MonorepoRunCommand", () => {
       expect(await readLines("lint.log")).toEqual(["alpha"]);
     });
 
-    test("should skip the test task when the target has an empty tests folder", async () => {
-      // A `test` script but no test files: the folder is empty, so nothing runs.
+    test("should skip the test task when the tests folder has no test files", async () => {
+      // A `test` script but no `bun test` files: the folder holds only a helper
+      // (`preload.ts`) and a `.DS_Store`, so `bun test` would find no tests.
       await writeTarget("packages/empty", {
         name: "@test/empty",
         scripts: { test: "echo empty >> ../../test.log" },
       });
       rmSync(join(testDir, "packages", "empty", "tests"), { recursive: true, force: true });
+      await Bun.write(join(testDir, "packages", "empty", "tests", "preload.ts"), "export {};\n");
+      await Bun.write(join(testDir, "packages", "empty", "tests", ".DS_Store"), "");
 
       await command.run({ commands: "test", packages: "empty", logs: true });
 
@@ -224,12 +227,28 @@ describe("MonorepoRunCommand", () => {
       expect(output()).toContain("1 skipped");
     });
 
-    test("should run the test task when the tests folder has files", async () => {
-      // `writeTarget` creates a `tests/` file for any target with a test script.
+    test("should skip the test task when the tests folder is missing", async () => {
+      await writeTarget("packages/none", {
+        name: "@test/none",
+        scripts: { test: "echo none >> ../../test.log" },
+      });
+      rmSync(join(testDir, "packages", "none", "tests"), { recursive: true, force: true });
+
+      await command.run({ commands: "test", packages: "none", logs: true });
+
+      expect(process.exitCode ?? 0).toBe(0);
+      expect(await readLines("test.log")).toEqual([]);
+      expect(output()).toContain("1 skipped");
+    });
+
+    test("should run the test task when the tests folder has a test file", async () => {
+      // `writeTarget` creates a `tests/index.spec.ts` for a target with a test
+      // script, and a nested spec should count too.
       await writeTarget("packages/tested", {
         name: "@test/tested",
         scripts: { test: "echo tested >> ../../test.log" },
       });
+      await Bun.write(join(testDir, "packages", "tested", "tests", "nested", "deep.test.ts"), "export {};\n");
 
       await command.run({ commands: "test", packages: "tested", logs: true });
 

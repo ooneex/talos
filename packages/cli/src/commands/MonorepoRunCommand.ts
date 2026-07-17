@@ -303,9 +303,14 @@ export class MonorepoRunCommand<T extends CommandOptionsType = CommandOptionsTyp
     );
   }
 
-  // True when a target has at least one file under `tests/`, scanned
-  // recursively. An empty or missing folder means there is nothing to test.
+  // True when a target has at least one file `bun test` would run under
+  // `tests/`, scanned recursively. It only counts files matching bun's test
+  // naming (`*.test.*` / `*.spec.*`, and the `_test` / `_spec` variants): a
+  // folder holding only helpers like `preload.ts`, fixtures, a `.gitkeep` or a
+  // macOS `.DS_Store` has no tests to run, so `bun test` would fail with
+  // "No tests found" — those targets are skipped instead.
   private async hasTests(target: MonorepoTargetType): Promise<boolean> {
+    const isTestFile = /[._](?:test|spec)\.[cm]?[jt]sx?$/;
     const stack = [join(target.dir, "tests")];
     while (stack.length > 0) {
       const dir = stack.pop() as string;
@@ -316,8 +321,8 @@ export class MonorepoRunCommand<T extends CommandOptionsType = CommandOptionsTyp
         continue;
       }
       for (const entry of entries) {
-        if (entry.isFile()) return true;
-        if (entry.isDirectory()) stack.push(join(dir, entry.name));
+        if (entry.isFile() && isTestFile.test(entry.name)) return true;
+        if (entry.isDirectory() && entry.name !== "node_modules") stack.push(join(dir, entry.name));
       }
     }
     return false;
