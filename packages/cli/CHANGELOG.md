@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.30.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.30.0) - 2026-07-17
+
+### Added
+
+- Add persisted file-hash cache to monorepo fingerprinting| — Franck ([f17b9fa4](https://github.com/ooneex/talos/commit/f17b9fa4))
+
+### Changed
+
+- Add include and exclude to module tsconfig template| — Franck ([ee0941cd](https://github.com/ooneex/talos/commit/ee0941cd))
+
+### Fixed
+
+- Skip test targets with no test files in monorepo run| — Franck ([3a6b0c7b](https://github.com/ooneex/talos/commit/3a6b0c7b))
+
 ## [1.29.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.29.0) - 2026-07-17
 
 ### Added
