@@ -12,52 +12,52 @@ argument-hint: [--name=<name>] [--module=<target>]
 
 > **Run autonomously — do not ask the user questions.** When a choice arises, pick the recommended option and proceed.
 
-Generate an SDK module from a target module's controllers, then complete each generated `api` method. Follow the `talos-scaffold` skill for run-from-root and lint/format; this covers only the SDK-specific parts.
+Generate an SDK module from a target module's controllers, then complete each generated `api` method. Follow `talos-scaffold` for run-from-root and lint/format; this covers only SDK-specific parts.
 
-- **Module location:** `<module>` resolves to `modules/<module>/` or `packages/<module>/` (e.g. once extracted into a shared package). Check both roots; every `modules/<module>/...` path applies equally under `packages/<module>/...`.
-- An SDK is **not** a regular artifact: it scaffolds a whole module (one file per source module), registers nothing in `AppModule`/`SharedModule` (the generator keeps it out), and has no `.spec.ts`. After generating, fill in the `api` method bodies and the endpoint prefix.
+- **Module location:** `<module>` resolves to `modules/<module>/` or `packages/<module>/`. Check both roots; every `modules/<module>/...` path applies equally under `packages/<module>/...`.
+- An SDK is **not** a regular artifact: it scaffolds a whole module (one file per source module), registers nothing in `AppModule`/`SharedModule`, and has no `.spec.ts`. After generating, fill in the `api` bodies and the endpoint prefix.
 
 ## Steps
 
-### 1. Infer the options from the request, then run the generator
+### 1. Run the generator
 
-Run from the **monorepo root**:
+From the **monorepo root**:
 
 ```bash
 talos sdk:create --name=<name> --module=<module>
 ```
 
-- `--name` — SDK module name ("a browser SDK for the storefront" → `storefront`). Any casing; the CLI normalizes to kebab-case and strips a trailing `Module`. Defaults to `sdk`. Generated package: `@<root-package-scope>/<name>`.
-- `--module` — the **target** the SDK is generated from. Defaults to `app` (an `api`-typed module).
-  - Target `type: api` (e.g. `app`) → SDK aggregates the controllers of every backend `module` and `api` module.
-  - Target `type: microservice` → SDK exposes only that microservice's own controllers.
+- `--name` — SDK module name ("browser SDK for the storefront" → `storefront`). Normalized to kebab-case, trailing `Module` stripped. Defaults to `sdk`. Package: `@<root-package-scope>/<name>`.
+- `--module` — the **target** to generate from. Defaults to `app` (an `api`-typed module).
+  - Target `type: api` → aggregates controllers of every backend `module` and `api` module.
+  - Target `type: microservice` → exposes only that microservice's own controllers.
 
 The generator creates `modules/<name>/`, marks it `type: "sdk"` in `<name>.yml`, writes `bunup.config.ts`, installs `bunup`, and emits one `src/<module>.ts` per source module plus an aggregating `src/index.ts`.
 
-If the module already exists, re-run the generator to pick up new/changed controllers, then reconcile: fill in newly generated `api` stubs, update signatures/endpoints where controllers changed, and preserve method bodies you already implemented.
+**If the SDK module already exists:** do **not** re-generate existing files. Update them in place and add only what's missing — new `src/<module>.ts` files, new `api` methods for new controllers, and updated signatures/endpoints/`definition` metadata for changed controllers. Preserve method bodies you already implemented for unchanged controllers.
 
 ### 2. Understand the generated shape
 
 Each `src/<module>.ts` exports a const with two halves:
 
-- `definition` — static metadata per method: `key`, `version`, `description`, `roles`, and `endpoint` (placeholder `"/<prefix>/v<version><path>"`).
-- `api` — one method per controller, each a stub throwing `Error("Not implemented")`.
+- `definition` — static metadata per method: `key`, `version`, `description`, `roles`, `endpoint` (placeholder `"/<prefix>/v<version><path>"`).
+- `api` — one method per controller, each stubbed with `throw Error("Not implemented")`.
 
-Each `api` method takes a single `input` object (`params`, `payload`, `queries`, plus `onSuccess`/`onMessage`/`onOpen`/`onClose`/`onError` callbacks) and returns `Promise<...RouteType["response"]>`. The route `type` is copied verbatim from the controller, so `params`/`payload`/`queries`/`response` are already typed.
+Each `api` method takes one `input` object (`params`, `payload`, `queries`, plus `onSuccess`/`onMessage`/`onOpen`/`onClose`/`onError` callbacks) and returns `Promise<...RouteType["response"]>`. The route `type` is copied from the controller, so `params`/`payload`/`queries`/`response` are already typed.
 
 Rules for every method (forwarded per-transport in steps 5–7):
 
-- **Base URL** — every method takes a required `baseURL: string` (backend origin, e.g. `https://api.example.com`): pass to the `Fetcher` constructor for HTTP, prepend to the endpoint for streaming/SSE/sockets.
-- **Authenticated routes** — a route needs auth when `definition.<method>.roles` is non-empty (or the controller is otherwise auth-guarded). Add a required `bearerToken: string` to `input` and forward it: `setBearerToken(...)` for HTTP, `Authorization: Bearer` header for streaming/SSE, `bearerToken` query param for sockets. Omit both the field and forwarding on public routes (`roles: []`).
-- **Streaming/SSE detection** — a controller streams instead of returning JSON when its `index` returns `context.response.stream(...)` (streaming) or `context.response.sse(...)` (SSE). This runtime choice is **not** in the route metadata, so open the controller to tell (same as confirming the HTTP verb, step 5). Two consequences: `@talosjs/fetcher` buffers/JSON-parses the whole body so it can't consume them — use native `fetch` + `response.body.getReader()` (step 6); and these responses bypass the `ResponseDataType` envelope (which wraps HTTP and socket responses), so the per-message callback receives the **raw** `...RouteType["response"]`, not `ResponseDataType<...>`.
+- **Base URL** — every method takes a required `baseURL: string` (backend origin): pass to the `Fetcher` constructor for HTTP, prepend to the endpoint for streaming/SSE/sockets.
+- **Auth** — a route needs auth when `definition.<method>.roles` is non-empty. Add a required `bearerToken: string` and forward it: `setBearerToken(...)` for HTTP, `Authorization: Bearer` header for streaming/SSE, `bearerToken` query param for sockets. Omit field and forwarding on public routes (`roles: []`).
+- **Streaming/SSE detection** — a controller streams instead of returning JSON when its `index` returns `context.response.stream(...)` (streaming) or `context.response.sse(...)` (SSE). This is **not** in route metadata — open the controller to tell (as with the HTTP verb, step 5). Consequences: `@talosjs/fetcher` buffers/JSON-parses the whole body so it can't consume them — use native `fetch` + `response.body.getReader()` (step 6); and these responses bypass the `ResponseDataType` envelope, so the per-message callback receives the **raw** `...RouteType["response"]`, not `ResponseDataType<...>`.
 
 ### 3. Replace the endpoint prefix
 
-In every generated file, replace the literal `<prefix>` in each `endpoint` with the backend's API route prefix (e.g. `api`), so `"/<prefix>/v1/entitlement/grants"` becomes `"/api/v1/entitlement/grants"`. Use the same prefix the backend mounts its routes under.
+In every file, replace the literal `<prefix>` in each `endpoint` with the backend's route prefix (e.g. `api`): `"/<prefix>/v1/entitlement/grants"` → `"/api/v1/entitlement/grants"`. Use the same prefix the backend mounts routes under.
 
 ### 4. Add a shared endpoint builder
 
-Path templates may contain `:param` segments, and list routes carry queries. Add this helper near the top of each generated file (or factor it into a small shared file imported by each):
+Path templates may contain `:param` segments and list routes carry queries. Add this helper to each file (or factor into a small shared file):
 
 ```typescript
 const buildEndpoint = (
@@ -77,7 +77,7 @@ const buildEndpoint = (
 
 ### 5. Implement the HTTP api methods
 
-For each non-socket method, pick the `Fetcher` method matching the controller's `@Route.<verb>` (the verb is not stored in the SDK — open the controller to confirm; routes with a `payload` are `post`/`put`/`patch`). Callbacks receive the full `ResponseDataType`; the method returns just `response.data`.
+Pick the `Fetcher` method matching the controller's `@Route.<verb>` (not stored in the SDK — open the controller; routes with a `payload` are `post`/`put`/`patch`). Callbacks receive the full `ResponseDataType`; the method returns `response.data`.
 
 ```typescript
 import { Fetcher } from "@talosjs/fetcher";
@@ -95,7 +95,7 @@ export const entitlement = {
       bearerToken: string; // required: `grant`'s roles are non-empty
       onSuccess?: (response: ResponseDataType<GrantEntitlementRouteType["response"]>) => void;
       onError?: (response?: ResponseDataType<GrantEntitlementRouteType["response"]>) => void;
-      // ...the remaining socket-only callbacks stay in the signature, unused for HTTP...
+      // ...remaining socket-only callbacks stay in the signature, unused for HTTP...
     }): Promise<GrantEntitlementRouteType["response"]> => {
       const endpoint = buildEndpoint(entitlement.definition.grant.endpoint, input.params, input.queries);
       const response = await new Fetcher(input.baseURL)
@@ -119,12 +119,12 @@ For `get`/`delete`/`head`/`options` there is no `payload` — call `new Fetcher(
 
 ### 6. Implement the streaming and SSE api methods
 
-For each streaming/SSE method (identify by reading the controller — step 2), use native `fetch`, read `response.body` with a reader, and deliver each chunk/event through `onMessage` (raw `...RouteType["response"]`, not wrapped). Pass an `AbortSignal` so the caller can stop a long-lived stream.
+Identify by reading the controller (step 2). Use native `fetch`, read `response.body` with a reader, and deliver each chunk/event through `onMessage` (raw `...RouteType["response"]`). Pass an `AbortSignal` so the caller can stop a long-lived stream.
 
-**Server-side streaming** — the body is chunks framed by the controller. Match parsing to how it writes them: newline-delimited JSON (split on `\n`, `JSON.parse` each line, as below), plain text (deliver the decoded string), or binary (deliver the raw `Uint8Array`). Pick the verb the controller uses (`get` for a download-style stream, `post` when it has a `payload`).
+**Server-side streaming** — match parsing to how the controller writes chunks: newline-delimited JSON (split on `\n`, `JSON.parse` each line, below), plain text (deliver the decoded string), or binary (deliver the raw `Uint8Array`). Verb: `get` for a download-style stream, `post` when it has a `payload`.
 
 ```typescript
-// ...generated route types and `buildEndpoint`; no @talosjs client import — these use native fetch...
+// ...generated route types and `buildEndpoint`; native fetch, no @talosjs client import...
 
 export: async (input: {
   baseURL: string;
@@ -167,7 +167,7 @@ export: async (input: {
 },
 ```
 
-**Server-Sent Events** — the controller sets `Content-Type: text/event-stream` and frames each event with `data:` lines (plus optional `event:`/`id:`/`retry:`), separated by a blank line. Parse the frames, `JSON.parse` the joined `data` payload, and skip comment/keep-alive frames (no `data:` line). Reader `done` is the clean completion signal — prefer this fetch + reader over `EventSource`, which can't send an `Authorization` header and auto-reconnects when a finite stream closes. Resolve with the last event so the return type matches `Promise<...RouteType["response"]>`.
+**Server-Sent Events** — the controller sets `Content-Type: text/event-stream` and frames each event with `data:` lines (plus optional `event:`/`id:`/`retry:`), separated by a blank line. Parse frames, `JSON.parse` the joined `data`, skip comment/keep-alive frames (no `data:` line). Reader `done` is clean completion — prefer this over `EventSource`, which can't send `Authorization` and auto-reconnects when a finite stream closes. Resolve with the last event to match `Promise<...RouteType["response"]>`.
 
 ```typescript
 notifications: async (input: {
@@ -222,9 +222,9 @@ notifications: async (input: {
 
 ### 7. Implement the socket api methods
 
-For each method whose controller uses `@Route.socket(...)`, use `Socket` from `@talosjs/socket-client`. Wire every callback, send the payload, and resolve when the server marks the stream `done`. `Socket` reads its bearer token from a `bearerToken` query param, so for authenticated sockets merge `input.bearerToken` into the endpoint queries (omit for public).
+For each `@Route.socket(...)` controller, use `Socket` from `@talosjs/socket-client`. Wire every callback, send the payload, resolve when the server marks the stream `done`. `Socket` reads its token from a `bearerToken` query param, so for authenticated sockets merge `input.bearerToken` into the endpoint queries (omit for public).
 
-> **Security — tokens in URLs leak** (proxy/access logs, browser history, APM traces). Because `Socket` requires the token as a query param, mitigate: issue **short-lived** bearer tokens for socket connections and scrub query strings in your reverse proxy / log pipeline. If `@talosjs/socket-client` later supports a header or subprotocol handshake, prefer that.
+> **Security — tokens in URLs leak** (proxy/access logs, browser history, APM traces). Since `Socket` requires the token as a query param, mitigate: issue **short-lived** bearer tokens and scrub query strings in your reverse proxy / log pipeline. Prefer a header or subprotocol handshake if `@talosjs/socket-client` later supports one.
 
 ```typescript
 import { Socket } from "@talosjs/socket-client";
