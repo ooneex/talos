@@ -7,13 +7,16 @@ import { decorator } from "@talosjs/command";
 import {
   computeTaskHash,
   discoverTargets,
+  type FileHashCacheType,
   hashRootInputs,
   isGitWorkspaceRoot,
+  loadFileHashCache,
   MONOREPO_CACHE_DIR,
   MONOREPO_CACHE_VERSION,
   type MonorepoTargetType,
   readCacheEntry,
   restoreCacheOutputs,
+  saveFileHashCache,
   sortTargetsByDependencies,
   writeCacheEntry,
 } from "../monorepo";
@@ -59,6 +62,8 @@ type RunContextType = {
   cacheDir: string;
   rootHash: string;
   fingerprints: Map<string, Promise<string>>;
+  /** Cross-run per-file content-hash cache: unchanged files reuse their stored hash. */
+  fileHashCache: FileHashCacheType;
   useGit: boolean;
   noCache: boolean;
   interactive: boolean;
@@ -135,12 +140,14 @@ export class MonorepoRunCommand<T extends CommandOptionsType = CommandOptionsTyp
     // streaming, so cover it with a spinner from utils. Stop it before any
     // other output so its in-place `\r` line never collides with a log line.
     const spinner = createSpinner("Analyzing workspace");
-    // These three probes only depend on `rootDir` and never on each other, so
-    // overlap them instead of paying for each round-trip in series.
-    const [allTargets, rootHash, useGit] = await Promise.all([
+    // These probes only depend on `rootDir` and never on each other, so overlap
+    // them instead of paying for each round-trip in series.
+    const cacheDir = join(rootDir, MONOREPO_CACHE_DIR);
+    const [allTargets, rootHash, useGit, fileHashCache] = await Promise.all([
       discoverTargets(rootDir),
       hashRootInputs(rootDir),
       isGitWorkspaceRoot(rootDir),
+      loadFileHashCache(cacheDir),
     ]);
     spinner.stop();
 
@@ -163,9 +170,10 @@ export class MonorepoRunCommand<T extends CommandOptionsType = CommandOptionsTyp
     const context: RunContextType = {
       logger,
       targets: allTargets,
-      cacheDir: join(rootDir, MONOREPO_CACHE_DIR),
+      cacheDir,
       rootHash,
       fingerprints: new Map(),
+      fileHashCache,
       useGit,
       noCache,
       interactive: !logs && process.stdout.isTTY === true && process.stdin.isTTY === true,
@@ -195,6 +203,11 @@ export class MonorepoRunCommand<T extends CommandOptionsType = CommandOptionsTyp
     } finally {
       renderer?.stop();
     }
+
+    // Persist the per-file hash cache so the next run reuses the content hash of
+    // every unchanged file instead of re-reading it. Skipped under `--no-cache`,
+    // which never consults or populates it.
+    if (!noCache) await saveFileHashCache(cacheDir, context.fileHashCache);
 
     if (context.failedTask) {
       process.exitCode = 1;
@@ -401,6 +414,7 @@ export class MonorepoRunCommand<T extends CommandOptionsType = CommandOptionsTyp
           context.rootHash,
           context.fingerprints,
           context.useGit,
+          context.fileHashCache,
         );
         const entry = await readCacheEntry(context.cacheDir, task.hash);
         if (entry) {

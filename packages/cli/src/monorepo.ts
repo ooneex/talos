@@ -1,4 +1,4 @@
-import type { Dirent } from "node:fs";
+import type { Dirent, Stats } from "node:fs";
 import { cp, mkdir, readdir, rename, rm, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
 
@@ -243,6 +243,71 @@ const hashFile = async (path: string): Promise<string | null> => {
   }
 };
 
+// Persisted per-file content-hash record: the file's size and modification time
+// at the moment its content hash was last computed.
+export type FileHashRecordType = { size: number; mtimeMs: number; hash: string };
+
+// Granular, cross-run file-hash cache: an absolute path → its content hash keyed
+// by (size, mtime). Reading and SHA-256-hashing every file on every run dominates
+// the cost of an otherwise all-cached run, so a file whose size and mtime are
+// unchanged since last run reuses its stored hash and is never re-read — the same
+// trick git's index uses. A same-size edit made within the filesystem's mtime
+// resolution can in principle be missed; a build cache tolerates that, and
+// `--no-cache` bypasses the whole path.
+export type FileHashCacheType = Map<string, FileHashRecordType>;
+
+// Filename of the persisted file-hash cache, living beside the task cache entries.
+const FILEHASH_CACHE_FILE = "filehashes.json";
+
+/** Load the persisted file-hash cache from the cache dir, or an empty one when absent or corrupt. */
+export const loadFileHashCache = async (cacheDir: string): Promise<FileHashCacheType> => {
+  const cache: FileHashCacheType = new Map();
+  try {
+    const file = Bun.file(join(cacheDir, FILEHASH_CACHE_FILE));
+    if (await file.exists()) {
+      const raw = (await file.json()) as Record<string, FileHashRecordType>;
+      for (const path of Object.keys(raw)) cache.set(path, raw[path] as FileHashRecordType);
+    }
+  } catch {
+    // A corrupt or unreadable cache just starts cold.
+  }
+  return cache;
+};
+
+/** Persist the file-hash cache. Best-effort: a failed write only costs a cold fingerprint next run. */
+export const saveFileHashCache = async (cacheDir: string, cache: FileHashCacheType): Promise<void> => {
+  try {
+    const object: Record<string, FileHashRecordType> = {};
+    for (const [path, record] of cache) object[path] = record;
+    await mkdir(cacheDir, { recursive: true });
+    await Bun.write(join(cacheDir, FILEHASH_CACHE_FILE), JSON.stringify(object));
+  } catch {
+    // Ignore: the cache is an optimization, never a correctness requirement.
+  }
+};
+
+// Content-hash a file, reusing the persisted hash when the file's size and mtime
+// are unchanged so an unmodified file is never re-read. Falls back to a plain
+// read-and-hash when no cache is supplied. Returns null when the file cannot be
+// stat'd or read.
+const hashFileCached = async (path: string, cache?: FileHashCacheType): Promise<string | null> => {
+  if (!cache) return hashFile(path);
+
+  let info: Stats;
+  try {
+    info = await stat(path);
+  } catch {
+    return null;
+  }
+
+  const cached = cache.get(path);
+  if (cached !== undefined && cached.size === info.size && cached.mtimeMs === info.mtimeMs) return cached.hash;
+
+  const hash = await hashFile(path);
+  if (hash !== null) cache.set(path, { size: info.size, mtimeMs: info.mtimeMs, hash });
+  return hash;
+};
+
 // How many files are read and hashed at once while fingerprinting: enough
 // concurrency to hide I/O latency, bounded so at most this many file buffers
 // are held in memory at any moment.
@@ -254,13 +319,17 @@ const HASH_CONCURRENCY = 32;
  * artifacts never invalidate the fingerprint; otherwise the directory is walked
  * (build and dependency folders are always excluded).
  */
-export const fingerprintDir = async (dir: string, useGit = false): Promise<string> => {
+export const fingerprintDir = async (
+  dir: string,
+  useGit = false,
+  fileHashCache?: FileHashCacheType,
+): Promise<string> => {
   const files = (useGit ? await collectFilesWithGit(dir) : null) ?? (await collectFiles(dir));
 
   const hashes = new Array<string | null>(files.length);
   for (let start = 0; start < files.length; start += HASH_CONCURRENCY) {
     const batch = await Promise.all(
-      files.slice(start, start + HASH_CONCURRENCY).map((file) => hashFile(join(dir, file))),
+      files.slice(start, start + HASH_CONCURRENCY).map((file) => hashFileCached(join(dir, file), fileHashCache)),
     );
     for (let offset = 0; offset < batch.length; offset++) hashes[start + offset] = batch[offset] as string | null;
   }
@@ -281,11 +350,12 @@ export const fingerprintTarget = (
   target: MonorepoTargetType,
   memo: Map<string, Promise<string>>,
   useGit = false,
+  fileHashCache?: FileHashCacheType,
 ): Promise<string> => {
   const memoized = memo.get(target.key);
   if (memoized) return memoized;
 
-  const promise = fingerprintDir(target.dir, useGit);
+  const promise = fingerprintDir(target.dir, useGit, fileHashCache);
   memo.set(target.key, promise);
   return promise;
 };
@@ -345,11 +415,12 @@ export const computeTaskHash = async (
   rootHash: string,
   memo: Map<string, Promise<string>>,
   useGit = false,
+  fileHashCache?: FileHashCacheType,
 ): Promise<string> => {
   const byKey = indexTargets(targets);
   const deps = transitiveDeps(target, byKey);
   const depLines = await Promise.all(
-    deps.map(async (dep) => `${dep.key}=${await fingerprintTarget(dep, memo, useGit)}`),
+    deps.map(async (dep) => `${dep.key}=${await fingerprintTarget(dep, memo, useGit, fileHashCache)}`),
   );
 
   const hasher = new Bun.CryptoHasher("sha256");
@@ -360,7 +431,7 @@ export const computeTaskHash = async (
       `command=${command}`,
       `script=${target.scripts[command] ?? ""}`,
       `root=${rootHash}`,
-      `self=${await fingerprintTarget(target, memo, useGit)}`,
+      `self=${await fingerprintTarget(target, memo, useGit, fileHashCache)}`,
       ...depLines.sort(),
     ].join("\n"),
   );
