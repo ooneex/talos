@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.31.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.31.0) - 2026-07-20
+
+### Added
+
+- Add storybook skill templates for story creation and architecture reference| — Franck ([8ad82f86](https://github.com/ooneex/talos/commit/8ad82f86))
+
+### Changed
+
+- Simplify and clarify storybook story creation skill template| — Franck ([7973c97c](https://github.com/ooneex/talos/commit/7973c97c))
+- Update commit skill template| — Franck ([e664466f](https://github.com/ooneex/talos/commit/e664466f))
+
 ## [1.30.1](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.30.1) - 2026-07-17
 
 ### Fixed
