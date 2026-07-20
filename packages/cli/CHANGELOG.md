@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.31.1](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.31.1) - 2026-07-20
+
+### Fixed
+
+- Add missing talosStorybook skill template export|Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com> — Franck ([a74f1182](https://github.com/ooneex/talos/commit/a74f1182))
+
 ## [1.31.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.31.0) - 2026-07-20
 
 ### Added
