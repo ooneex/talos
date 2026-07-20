@@ -54,6 +54,7 @@ import seedCreate from "./seed.create.md.txt";
 import serviceCreate from "./service.create.md.txt";
 import spaFeatureCreate from "./spa.feature.create.md.txt";
 import storageCreate from "./storage.create.md.txt";
+import storybookStoryCreate from "./storybook.story.create.md.txt";
 import talosArchitecture from "./talos.architecture.md.txt";
 import ooCommands from "./talos.commands.md.txt";
 import talosDesign from "./talos.design.md.txt";
@@ -114,6 +115,7 @@ export const skills: Record<string, SkillTemplateType> = {
   "spa.feature.create": spaFeatureCreate,
   "react.component.create": reactComponentCreate,
   "storage.create": storageCreate,
+  "storybook.story.create": storybookStoryCreate,
   "translation.create": translationCreate,
   "translation.translate": translationTranslate,
   "vector-database.create": vectorDatabaseCreate,

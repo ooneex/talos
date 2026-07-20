@@ -1,0 +1,83 @@
+---
+name: storybook-story-create
+description: Author storybook stories for design-system components or icons — infer the targets from the request, then write a single story for a plain component or a main story plus one per sub-component (nested in the sidebar) for a compound component, wiring everything so the storybook builds and renders.
+when_to_use: Use when (re-)creating storybook stories for one or more design-system components or icons (e.g. "create stories for the avatar component", "add stories for the weather icons", "story the badge and card from design into storybook"). Handles plain and compound components, icons, multiple source design modules, and multiple target storybook modules.
+model: sonnet
+effort: medium
+allowed-tools: Read, Edit, Write, Bash, Grep, Glob
+argument-hint: <component / icon names or design paths> [→ target storybook module]
+---
+
+# Create Storybook Stories
+
+> **Run autonomously — never ask questions.** Infer the targets and the target storybook module from the request; on any remaining choice, pick the recommended option and proceed.
+
+Author `*.stories.tsx` files under a storybook module's `src/features/` for components and icons that live in a design module's `src/`. There is **no `talos` generator** for stories — you write the files by hand against the story `meta` model.
+
+## Infer the request first
+
+The user names what to story in plain language ("avatar", "the weather icons", "badge + card"). Before writing anything, resolve:
+
+1. **Source design module(s).** Which `modules/<design>/` holds the targets. Usually `modules/design`, but the request can span more than one design module. Confirm each has the target under `src/components/<name>/` (a component) or `src/icons/<variant>/<category>/<size>/<Name>Icon.tsx` (an icon).
+2. **Target storybook module(s).** Which `modules/<storybook>/` receives the stories. Default to `modules/storybook`; the request can name a different one or several. A design module and its target storybook module can differ — respect the mapping the user implies.
+3. **Targets.** The concrete components and/or icons. Expand loose phrasing ("the weather icons") by listing the matching design files. **A request can mix components and icons, and can fan several sources into one storybook or one source into several.**
+4. **New vs. update.** For each target, check whether a `*.stories.tsx` already exists under the target's `src/features/`. **If it exists, update it in place; otherwise create it.** Never create stories anywhere but `src/features`.
+
+For each target storybook module, read its `vite.config.ts` to get the alias that points at the design module's `src` (e.g. `@module/design` → `../design/src`). Import targets through that alias — do **not** use relative paths across modules.
+
+## How the storybook works (read before writing)
+
+- Each `*.stories.tsx` exports a `meta satisfies Meta<typeof Component>`. The registry (`src/shared/story/registry.ts`) discovers every story via `import.meta.glob("../../features/**/*.stories.{ts,tsx}")`, keys it by `meta.title` (slugified), and produces **one** sidebar entry with a single previewable variant driven by `meta.props`.
+- **`meta` shape** (`src/shared/story/types.ts`): `title`, `group` (sidebar section label — defaults to `"Components"`), `tags`, `component`, `usage` (markdown), `props[]`. Each prop: `name` (must be a key of the component's props), optional `control` (`text | boolean | number | color | select | radio`), `options[]` (for `select`/`radio`), `default`, `callback`.
+- **`usage` (markdown)** renders in the Usage tab (`Controls.tsx`). **Per-option `usage`** renders under a `select`/`radio` control when that option is selected. There is **no per-prop usage field** — only `options[]` entries carry `usage`. Fold guidance for non-option props into `meta.usage`.
+- **`group`** partitions the sidebar (`Sidebar.tsx`) and the ⌘K palette (`CommandPalette.tsx`) into labeled sections, in first-seen order. Use `"Components"` for components and `"Icons"` for icons (or an existing section label — match siblings). The palette's per-item hint is the first sentence of `usage`, so lead `usage` with a real sentence.
+- **`Canvas.tsx` rendering — this is the key rule for compound/nested stories.** Canvas normally does `createElement(meta.component, args)`. But when `args.children` is a React element whose `type === meta.component`, it instead **clones that element and applies the remaining args (`size`, …) to it**. So to make a control resize a composed preview, set `meta.component` to the element type that *roots* the composition you pass as `children`. The code snippet in the Code view is serialized from that same tree.
+
+## Rules
+
+### Every story
+
+- File: `src/features/<component>/<Name>.stories.tsx` (one folder per component; icons can share a folder — see below). Import the target via the design alias (`@module/design/components/<name>` or `@module/design/icons/<variant>/<category>/<size>/<Name>Icon`).
+- **`usage`** — a detailed markdown string covering, in order: **what** the component/icon is, **how** to use it, **when** to use it, and **when not to**. Be genuinely useful and specific — enumerate the real possibilities of the component (sub-components, common compositions, states). Compose multi-paragraph markdown with `[...].join("\n")`, using `""` for blank lines and `**bold**` lead-ins (`**What**`, `**How to use it**`, `**When to use it**`, `**When not to use it**`).
+- **Options `usage`** — for **every** `select`/`radio` option write a short description **and** when to reach for it (concrete contexts, not a restatement of the name). Reuse the design component's actual `cva` variant/size names as the option `name`s.
+- Provide a `default` for every prop so the preview is populated. Use `children` (no control) to pass composed JSX; use `control: "text"` only for genuinely string children.
+
+### Plain components
+
+`meta.component` is the component; pass composed JSX (or a text child) as `children`'s `default`, and add a `select`/`radio` control for each `cva` variant group (size, tone, …) with per-option `usage`.
+
+### Compound components
+
+A component is compound when its root attaches sub-components as properties, e.g. `Avatar = Object.assign(AvatarRoot, { Image, Fallback, Badge, Group, GroupCount })`. For these:
+
+1. **Main story** — `title: "<Name>"`, `component: <Name>`, `children` default composing the primary sub-components together the way real code would (the canonical composition). Because `children`'s root is `<Name>`, the `size`/variant controls flow onto it via Canvas's clone logic.
+2. **One story per meaningful sub-component** — `title: "<Name>.<Sub>"` (dot notation drives sidebar nesting), one file each named `<Name><Sub>.stories.tsx`.
+   - **Set `component` to the element type that roots the composition**, not to the bare sub-component and not to a wrapper. A sub-component that only renders correctly inside its parent (needs the parent's frame/size/positioning — `Image`, `Fallback`, `Badge`, overflow counts) gets `component: <Name>` with `children` = the full `<Name>…<Name.Sub/>…</Name>` composition; the shared `size` control then resizes the whole avatar through the clone path. A sub-component that is itself a root (e.g. `Avatar.Group`) gets `component: <Name>.<Sub>` with `children` = `<Name.Sub>…</Name.Sub>`.
+   - **No demo-wrapper components are needed** — the clone-on-matching-`children` behavior replaced them. Only introduce a tiny wrapper if a preview genuinely cannot be expressed as "root element with args applied," and if you do, type its props explicitly so `prop.name` still type-checks against `Meta<typeof Wrapper>`.
+3. **Sidebar nesting is automatic.** `Sidebar.tsx#buildTree` folds a title `<Name>.<Sub>` into a collapsible sub-item under `<Name>` within the same `group` section. Give the parent and its children the **same `group`** so they file together. Only touch `Sidebar.tsx`/`CommandPalette.tsx` if the nesting or sectioning logic itself must change — normal compound components nest just by using dot-notation titles.
+
+### Icons
+
+- One story per icon (or a compact set): `title: "<Name>Icon"`, `group: "Icons"`, `component: <Name>Icon`, and a `size`/`color` story only if the icon takes props worth previewing (they are `SVGProps<SVGSVGElement>` — usually style via `className`). Keep `usage` short but still cover what it depicts, how to size/color it (`className`, `currentColor`), and when to use vs. a different icon.
+- Icons can share a feature folder (e.g. `src/features/icons/`) since there is no compound nesting; keep filenames `<Name>Icon.stories.tsx`.
+
+## Steps
+
+1. **Resolve the request** (source module(s), target storybook module(s), targets, new-vs-update) per *Infer the request first*.
+2. **Read each target's source.** For a component, list `modules/<design>/src/components/<name>/` and read every file plus `index.ts`; determine plain vs. compound (look for `Object.assign(Root, { … })`), the sub-components, each one's props, and its `cva` size/variant options. For an icon, read the icon file for its props.
+3. **Study a sibling story** in the target storybook for current conventions — the compound example `features/avatar/` (`Avatar.stories.tsx`, `AvatarBadge.stories.tsx`, `AvatarGroup.stories.tsx`) and, if present, a plain one. Mirror their structure, `group` usage, and prose depth.
+4. **Write or update the stories** per the rules above, in `src/features/`. Reuse the design component's real variant/size names for controls, each option with `usage`.
+5. **Lint, format, and test.** Run the monorepo check to lint, format, and test:
+
+```bash
+talos monorepo:check
+```
+
+Fix every failure before finishing. Load the storybook in your head against the model: each new `meta.title` yields a sidebar entry under its `group`; dotted titles nest; the `size` control resizes the composed preview (clone path); every option shows its `usage`. If you changed `Sidebar.tsx`/`CommandPalette.tsx`, sanity-check that plain (non-dotted) components still render top-level and sections stay grouped.
+
+## Reference
+
+- Story model & registry: `modules/<storybook>/src/shared/story/{types.ts,registry.ts}`
+- Preview / controls / usage / sidebar / palette: `modules/<storybook>/src/shared/components/{Canvas.tsx,Controls.tsx,Sidebar.tsx,CommandPalette.tsx}`
+- Example compound set: `modules/storybook/src/features/avatar/`
+- Design source of truth: `modules/<design>/src/components/<name>/` and `modules/<design>/src/icons/<variant>/<category>/<size>/`
