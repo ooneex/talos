@@ -63,6 +63,7 @@ import talosModule from "./talos.module.md.txt";
 import talosPackages from "./talos.packages.md.txt";
 import talosScaffold from "./talos.scaffold.md.txt";
 import talosSpa from "./talos.spa.md.txt";
+import talosStorybook from "./talos.storybook.md.txt";
 import translationCreate from "./translation.create.md.txt";
 import translationTranslate from "./translation.translate.md.txt";
 import vectorDatabaseCreate from "./vector-database.create.md.txt";
@@ -80,6 +81,7 @@ export const skills: Record<string, SkillTemplateType> = {
   "talos.architecture": talosArchitecture,
   "talos.design": talosDesign,
   "talos.spa": talosSpa,
+  "talos.storybook": talosStorybook,
   "talos.env": talosEnv,
   "talos.scaffold": talosScaffold,
   "agent.skills.update": agentSkillsUpdate,
