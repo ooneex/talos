@@ -10,6 +10,7 @@ mock.module("enquirer", () => ({
 // Mock ensureModule to avoid creating full module structure in tests
 mock.module("@/utils", () => ({
   ensureModule: mock(() => Promise.resolve()),
+  LOG_OPTIONS: { showTimestamp: false, showArrow: false, useSymbol: true },
 }));
 
 const { CommandCreateCommand } = await import("@/commands/CommandCreateCommand");
