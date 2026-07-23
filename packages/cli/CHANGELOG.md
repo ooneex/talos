@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.32.1](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.32.1) - 2026-07-23
+
+### Removed
+
+- Restore commit-msg hook prompt regardless of silent mode| — Franck ([8d40a4f8](https://github.com/ooneex/talos/commit/8d40a4f8))
+
+### Fixed
+
+- Skip commit-msg hook prompt in silent app init| — Franck ([96f24ea8](https://github.com/ooneex/talos/commit/96f24ea8))
+
 ## [1.32.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.32.0) - 2026-07-23
 
 ### Added
