@@ -13,6 +13,7 @@ mod migration_version;
 mod module_registry;
 mod monorepo;
 mod monorepo_fmt_group;
+mod monorepo_footer;
 mod monorepo_group;
 mod monorepo_lint_group;
 mod monorepo_scheduler;
@@ -51,6 +52,7 @@ pub use monorepo::{
     resolve_biome_command, resolve_tsc_command, restore_cache_outputs, save_file_hash_cache,
     sort_targets_by_dependencies, write_cache_entry,
 };
+pub(crate) use monorepo_footer::Footer;
 pub(crate) use monorepo_group::{INSTALL_COMMAND, build_group, build_install_group};
 pub(crate) use monorepo_scheduler::run_group;
 pub(crate) use monorepo_task::{Task, TaskStatus, format_duration};

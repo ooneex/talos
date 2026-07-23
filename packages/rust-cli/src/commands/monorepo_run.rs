@@ -4,11 +4,13 @@
 //!
 //! This port keeps the caching engine and scheduling semantics (dependency
 //! ordering, order-independent `fmt`/`lint`, skip-if-no-tests, install
-//! group, abort-on-first-failure) faithful to the TypeScript original but
-//! always renders in the TypeScript version's non-interactive "logs" mode —
-//! plain scrollback lines as tasks finish — rather than reproducing its
-//! live, redrawing TTY footer with a spinner and progress bar, since that's
-//! a cosmetic layer with no behavioral effect on what gets run or cached.
+//! group, abort-on-first-failure) faithful to the TypeScript original, and
+//! on an interactive terminal renders the same live footer: finished tasks
+//! stream into scrollback while a spinner-animated progress bar pinned to the
+//! bottom shows the running/failed/elapsed summary and every in-flight task
+//! (see `crate::utils::Footer`). When stdout isn't a TTY it falls back to the
+//! plain "logs" mode — scrollback lines as tasks finish, with no escape
+//! codes — so piped/CI output stays clean.
 //!
 //! The task model, per-command group builders (`test`/`fmt`/`lint`/generic),
 //! and the cache-aware scheduler that actually runs them all live under
@@ -25,7 +27,7 @@ use clap::Args;
 use console::style;
 
 use crate::utils::{
-    FingerprintMemo, INSTALL_COMMAND, MONOREPO_CACHE_DIR, MonorepoTarget, TargetType, Task,
+    FingerprintMemo, Footer, INSTALL_COMMAND, MONOREPO_CACHE_DIR, MonorepoTarget, TargetType, Task,
     TaskStatus, build_group, build_install_group, current_dir, discover_targets, format_duration,
     hash_root_inputs, is_git_workspace_root, load_file_hash_cache, run_group, save_file_hash_cache,
     sort_targets_by_dependencies,
@@ -164,6 +166,12 @@ pub fn execute(args: &MonorepoRunArgs) -> bool {
     let mut stopped = false;
     let mut any_failed = false;
 
+    // Live footer for the whole run: finished tasks stream into scrollback
+    // above it while a spinner-animated progress bar summarizes overall
+    // progress (mirrors `startRenderer` wrapping every group in the
+    // TypeScript version). A no-op when stdout isn't a TTY.
+    let footer = Footer::start(total_tasks);
+
     for group in &mut groups {
         if stopped {
             break;
@@ -177,12 +185,17 @@ pub fn execute(args: &MonorepoRunArgs) -> bool {
             use_git,
             args.no_cache,
             &file_hash_cache,
+            &footer,
         );
         if group_failed {
             stopped = true;
             any_failed = true;
         }
     }
+
+    // Tear down the footer before any further output so the closing summary
+    // (or an aborted run's error) prints on a clean line.
+    footer.stop();
 
     if !args.no_cache && file_hash_cache.len() != file_hash_entries_before {
         save_file_hash_cache(&cache_dir, &file_hash_cache);

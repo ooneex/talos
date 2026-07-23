@@ -13,7 +13,7 @@ use regex::Regex;
 
 use super::monorepo_task::{Task, TaskStatus, format_duration};
 use crate::utils::{
-    CacheEntryMeta, FileHashCache, FingerprintMemo, MONOREPO_CACHE_VERSION, MonorepoTarget,
+    CacheEntryMeta, FileHashCache, FingerprintMemo, Footer, MONOREPO_CACHE_VERSION, MonorepoTarget,
     compute_task_hash, read_cache_entry, restore_cache_outputs, write_cache_entry,
 };
 
@@ -59,10 +59,11 @@ pub(crate) fn run_group(
     use_git: bool,
     no_cache: bool,
     file_hash_cache: &FileHashCache,
+    footer: &Footer,
 ) -> bool {
     for task in tasks.iter() {
         if task.status == TaskStatus::Skipped {
-            report_finish(task);
+            report_finish(task, footer);
         }
     }
 
@@ -97,6 +98,7 @@ pub(crate) fn run_group(
 
                 launched[index] = true;
                 inflight += 1;
+                footer.task_started(&tasks[index].label);
 
                 let argv = tasks[index].argv.clone();
                 let cwd = tasks[index].cwd.clone();
@@ -224,7 +226,7 @@ pub(crate) fn run_group(
             }
 
             done.insert(tasks[index].key.clone());
-            report_finish(&tasks[index]);
+            report_finish(&tasks[index], footer);
         }
     });
 
@@ -283,25 +285,51 @@ fn try_cache_hit(
     Some(TaskHashResult { hash, hit })
 }
 
-/// Prints a task's final state to stdout. A successful task gets a one-line
-/// `✔ label duration`; a failed task gets its status line plus a trimmed
-/// excerpt of the output that explains the failure. Cached and skipped tasks
-/// stay silent, matching the TypeScript version (the closing summary still
-/// reports their counts). Colors mirror `reportFinish` in
-/// `MonorepoRunCommand.ts`: a colored status symbol, the plain-colored task
-/// label, and the duration/exit-code detail dimmed.
-fn report_finish(task: &Task) {
+/// Reports a task's final state. With a live footer, the finish line (and any
+/// failure excerpt) is persisted to scrollback above the footer and the
+/// progress counters advance; without one (non-interactive output) it falls
+/// back to plain stdout/stderr, matching the original port's behavior. A
+/// successful task gets a one-line `✔ label duration`; a failed task gets its
+/// status line plus a trimmed excerpt of the output that explains the failure.
+/// Cached and skipped tasks print nothing but still advance the progress bar,
+/// matching the TypeScript version (the closing summary still reports their
+/// counts). Colors mirror `reportFinish` in `MonorepoRunCommand.ts`: a colored
+/// status symbol, the plain-colored task label, and the duration/exit-code
+/// detail dimmed.
+fn report_finish(task: &Task, footer: &Footer) {
+    let (lines, is_error) = finish_lines(task);
+
+    if footer.enabled() {
+        footer.task_finished(&task.label, is_error, &lines);
+        return;
+    }
+
+    if is_error {
+        for line in &lines {
+            eprintln!("{line}");
+        }
+    } else {
+        for line in &lines {
+            println!("{line}");
+        }
+    }
+}
+
+/// Builds a finished task's scrollback lines and whether it failed. Cached and
+/// skipped tasks yield no lines; only success and failure produce output.
+fn finish_lines(task: &Task) -> (Vec<String>, bool) {
     match task.status {
-        TaskStatus::Success => {
-            println!(
+        TaskStatus::Success => (
+            vec![format!(
                 "{} {}{}",
                 style("✔").green(),
                 task.label,
                 style(format!("  {}", format_duration(task.duration_ms))).dim()
-            );
-        }
+            )],
+            false,
+        ),
         TaskStatus::Failed => {
-            eprintln!(
+            let mut lines = vec![format!(
                 "{} {}{}{}",
                 style("✖").red(),
                 task.label,
@@ -312,13 +340,13 @@ fn report_finish(task: &Task) {
                     format_duration(task.duration_ms)
                 ))
                 .dim()
-            );
+            )];
             for line in failure_excerpt(&task.output) {
-                eprintln!("{} {line}", style("┃").red());
+                lines.push(format!("{} {line}", style("┃").red()));
             }
+            (lines, true)
         }
-        TaskStatus::Cached | TaskStatus::Skipped => {}
-        TaskStatus::Pending => {}
+        TaskStatus::Cached | TaskStatus::Skipped | TaskStatus::Pending => (Vec::new(), false),
     }
 }
 
