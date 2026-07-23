@@ -62,4 +62,4 @@ pub use scaffold::{
 };
 pub use skeleton::{SKELETON_REPO_URL, clone_skeleton, clone_skeleton_in_workspace};
 
-pub use style::{error, info, step, success, warn};
+pub use style::{Spinner, error, info, step, success, warn};

@@ -109,10 +109,26 @@ pub fn execute(args: &MonorepoRunArgs) -> bool {
         .unwrap_or_else(current_dir);
     let cache_dir = root_dir.join(MONOREPO_CACHE_DIR);
 
-    let all_targets = discover_targets(&root_dir);
-    let root_hash = hash_root_inputs(&root_dir);
-    let use_git = is_git_workspace_root(&root_dir);
-    let file_hash_cache = load_file_hash_cache(&cache_dir);
+    // Discovering targets is the one visibly slow step before tasks start
+    // streaming, so cover it with a spinner (mirrors `createSpinner` around
+    // this same step in `MonorepoRunCommand.ts`). These four probes only
+    // depend on `root_dir`/`cache_dir` and never on each other, so run them
+    // on their own threads instead of paying for each round-trip in series
+    // (mirrors the TypeScript version's `Promise.all`).
+    let spinner = crate::utils::Spinner::start("Analyzing workspace");
+    let (all_targets, root_hash, use_git, file_hash_cache) = std::thread::scope(|scope| {
+        let targets_handle = scope.spawn(|| discover_targets(&root_dir));
+        let root_hash_handle = scope.spawn(|| hash_root_inputs(&root_dir));
+        let use_git_handle = scope.spawn(|| is_git_workspace_root(&root_dir));
+        let cache_handle = scope.spawn(|| load_file_hash_cache(&cache_dir));
+        (
+            targets_handle.join().unwrap(),
+            root_hash_handle.join().unwrap(),
+            use_git_handle.join().unwrap(),
+            cache_handle.join().unwrap(),
+        )
+    });
+    spinner.stop();
 
     let Some(targets) = filter_targets(
         &all_targets,
