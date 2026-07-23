@@ -572,14 +572,16 @@ pub struct CacheEntryMeta {
     pub outputs: Vec<String>,
 }
 
-/// Read a cache entry, returning its metadata and replayable output, or
-/// `None` on miss.
-pub fn read_cache_entry(cache_dir: &Path, hash: &str) -> Option<(CacheEntryMeta, String)> {
+/// Read a cache entry's metadata, or `None` on miss. The stored `output.log`
+/// is intentionally not read: a cache *hit* replays nothing to the terminal
+/// (cached tasks report silently), and a task's captured output is only ever
+/// consulted to explain a *failure* — which always comes from a fresh run,
+/// never a cache hit. Skipping that read saves one file open per cached task,
+/// the common case on a warm workspace where nearly every task hits.
+pub fn read_cache_entry(cache_dir: &Path, hash: &str) -> Option<CacheEntryMeta> {
     let meta_path = cache_dir.join(hash).join("meta.json");
     let raw_meta = fs::read_to_string(&meta_path).ok()?;
-    let meta: CacheEntryMeta = serde_json::from_str(&raw_meta).ok()?;
-    let output = fs::read_to_string(cache_dir.join(hash).join("output.log")).unwrap_or_default();
-    Some((meta, output))
+    serde_json::from_str(&raw_meta).ok()
 }
 
 /// Copy the cached output artifacts of an entry back into the target directory.

@@ -18,12 +18,12 @@ use crate::utils::{
 };
 
 /// The result a worker thread hands back for one launched task: either a
-/// cache hit (restored output, no subprocess) or a finished subprocess run.
-/// Owned end-to-end so it can cross the channel without borrowing `tasks`.
+/// cache hit (no subprocess, no replayed output) or a finished subprocess
+/// run. Owned end-to-end so it can cross the channel without borrowing
+/// `tasks`.
 enum TaskOutcome {
     Cached {
         hash: String,
-        output: String,
         duration_ms: u64,
     },
     Ran {
@@ -127,7 +127,6 @@ pub(crate) fn run_group(
                             hit: Some(hit),
                         }) => TaskOutcome::Cached {
                             hash,
-                            output: hit.output,
                             duration_ms: hit.duration_ms,
                         },
                         other => {
@@ -177,13 +176,8 @@ pub(crate) fn run_group(
             {
                 let task = &mut tasks[index];
                 match outcome {
-                    TaskOutcome::Cached {
-                        hash,
-                        output,
-                        duration_ms,
-                    } => {
+                    TaskOutcome::Cached { hash, duration_ms } => {
                         task.hash = Some(hash);
-                        task.output = output;
                         task.duration_ms = duration_ms;
                         task.status = TaskStatus::Cached;
                     }
@@ -239,16 +233,14 @@ pub(crate) fn run_group(
 
 /// Result of a cache-hash check for one task: the content hash is always
 /// computed (needed later to write a fresh cache entry on a miss), and
-/// `hit` carries the restored output when the cache already had it. Kept
-/// free of `Task` so this can run inside a shared (`&[Task]`) parallel
-/// closure.
+/// `hit` is set when the cache already had an entry for that hash. Kept free
+/// of `Task` so this can run on a worker thread without borrowing `tasks`.
 struct TaskHashResult {
     hash: String,
     hit: Option<CacheHit>,
 }
 
 struct CacheHit {
-    output: String,
     duration_ms: u64,
 }
 
@@ -281,10 +273,9 @@ fn try_cache_hit(
         file_hash_cache,
     );
 
-    let hit = read_cache_entry(cache_dir, &hash).map(|(meta, output)| {
+    let hit = read_cache_entry(cache_dir, &hash).map(|meta| {
         restore_cache_outputs(cache_dir, &meta, &target.dir);
         CacheHit {
-            output,
             duration_ms: meta.duration_ms,
         }
     });

@@ -105,6 +105,15 @@ pub fn execute(args: &MonorepoRunArgs) -> bool {
     });
     spinner.stop();
 
+    // Number of file-hash entries loaded from disk. `hash_file_cached` only
+    // ever inserts (a new path, or a changed file under an existing path), so
+    // the count strictly grows when the run learns something new. If it hasn't
+    // grown, re-serializing the whole (potentially multi-hundred-KB) cache back
+    // to disk would just rewrite an identical file, so we skip it. Skipping is
+    // always safe: a missing/stale entry only costs a re-hash on a later run,
+    // never a wrong result.
+    let file_hash_entries_before = file_hash_cache.len();
+
     let Some(targets) = filter_targets(
         &all_targets,
         args.packages.as_deref(),
@@ -175,7 +184,7 @@ pub fn execute(args: &MonorepoRunArgs) -> bool {
         }
     }
 
-    if !args.no_cache {
+    if !args.no_cache && file_hash_cache.len() != file_hash_entries_before {
         save_file_hash_cache(&cache_dir, &file_hash_cache);
     }
 
