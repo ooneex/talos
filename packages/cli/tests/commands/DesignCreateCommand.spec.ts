@@ -16,10 +16,11 @@ const read = (path: string) => Bun.file(path).text();
 // Source files and dependencies the mocked clone of the design repository exposes
 const DESIGN_SRC_FILE = "Button.tsx";
 const DESIGN_SRC_CONTENT = "export const Button = () => null;\n";
-// A nested source file using the design's `@/` path alias, which must be rewritten
-// to the module's `@module/{name}/` alias after cloning.
-const DESIGN_ALIAS_FILE = join("components", "Card.tsx");
-const DESIGN_ALIAS_CONTENT = 'import { cn } from "@/utils/cn";\nexport const Card = () => cn("card");\n';
+// A source file using a hardcoded `@module/design` import (the template's own module
+// name), which must be rewritten to the target module's `@module/{name}` alias.
+const DESIGN_SELF_IMPORT_FILE = join("components", "Avatar.tsx");
+const DESIGN_SELF_IMPORT_CONTENT =
+  'import { Button } from "@module/design/Button";\nexport const Avatar = () => Button;\n';
 const DESIGN_DEPENDENCIES = { react: "^18.0.0" };
 const DESIGN_DEV_DEPENDENCIES = { typescript: "^5.0.0" };
 
@@ -51,11 +52,12 @@ describe("DesignCreateCommand", () => {
 
       if (cmd[0] === "git" && cmd[1] === "clone") {
         const dest = cmd[cmd.length - 1] as string;
-        mkdirSync(join(dest, "src", "components"), { recursive: true });
-        writeFileSync(join(dest, "src", DESIGN_SRC_FILE), DESIGN_SRC_CONTENT);
-        writeFileSync(join(dest, "src", DESIGN_ALIAS_FILE), DESIGN_ALIAS_CONTENT);
+        const templateDir = join(dest, "modules", "design");
+        mkdirSync(join(templateDir, "src", "components"), { recursive: true });
+        writeFileSync(join(templateDir, "src", DESIGN_SRC_FILE), DESIGN_SRC_CONTENT);
+        writeFileSync(join(templateDir, "src", DESIGN_SELF_IMPORT_FILE), DESIGN_SELF_IMPORT_CONTENT);
         writeFileSync(
-          join(dest, "package.json"),
+          join(templateDir, "package.json"),
           JSON.stringify({ dependencies: DESIGN_DEPENDENCIES, devDependencies: DESIGN_DEV_DEPENDENCIES }),
         );
       }
@@ -102,6 +104,13 @@ describe("DesignCreateCommand", () => {
       expect(await read(filePath)).toContain("@module/design");
     });
 
+    test("should set the package name to @module/{name}", async () => {
+      await command.run({ name: "DesignSystem", cwd: testDir, silent: true });
+
+      const pkg = JSON.parse(await read(join(testDir, "modules", "design-system", "package.json")));
+      expect(pkg.name).toBe("@module/design-system");
+    });
+
     test("should generate tsconfig.json", async () => {
       await command.run({ name: "Design", cwd: testDir, silent: true });
 
@@ -141,16 +150,16 @@ describe("DesignCreateCommand", () => {
       expect(await read(filePath)).toBe(DESIGN_SRC_CONTENT);
     });
 
-    test("should rewrite `@/` alias imports to the module's `@module/{name}/` alias", async () => {
+    test("should rewrite hardcoded `@module/design` imports to the target module's `@module/{name}` alias", async () => {
       await command.run({ name: "DesignSystem", cwd: testDir, silent: true });
 
-      const filePath = join(testDir, "modules", "design-system", "src", DESIGN_ALIAS_FILE);
+      const filePath = join(testDir, "modules", "design-system", "src", DESIGN_SELF_IMPORT_FILE);
       const content = await read(filePath);
-      expect(content).toContain('from "@module/design-system/utils/cn"');
-      expect(content).not.toContain('from "@/');
+      expect(content).toContain('from "@module/design-system/Button"');
+      expect(content).not.toContain('from "@module/design/');
     });
 
-    test("should leave source files without `@/` imports unchanged", async () => {
+    test("should leave source files without `@module/design` imports unchanged", async () => {
       await command.run({ name: "Design", cwd: testDir, silent: true });
 
       const filePath = join(testDir, "modules", "design", "src", DESIGN_SRC_FILE);
@@ -162,7 +171,7 @@ describe("DesignCreateCommand", () => {
 
       const cloneCall = spawnCalls.find((call) => call.cmd[0] === "git" && call.cmd[1] === "clone");
       expect(cloneCall).toBeDefined();
-      expect(cloneCall?.cmd).toContain("https://github.com/ooneex/skeleton-design.git");
+      expect(cloneCall?.cmd).toContain("https://github.com/ooneex/skeleton.git");
     });
 
     test("should run clone and installs silently without inheriting output", async () => {

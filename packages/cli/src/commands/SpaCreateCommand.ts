@@ -14,7 +14,8 @@ import { ensureBin, LOG_OPTIONS, spawnStep } from "../utils";
 import { DesignCreateCommand } from "./DesignCreateCommand";
 import { ModuleCreateCommand } from "./ModuleCreateCommand";
 
-const SPA_REPOSITORY = "https://github.com/ooneex/skeleton-spa.git";
+const SPA_REPOSITORY = "https://github.com/ooneex/skeleton.git";
+const SPA_TEMPLATE_PATH = "modules/spa";
 
 const DEFAULT_PORT = 3030;
 
@@ -144,6 +145,7 @@ export class SpaCreateCommand<T extends CommandOptionsType = CommandOptionsType>
     const port = findFreePort(await collectUsedPorts(modulesDir));
     const packagePath = join(moduleDir, "package.json");
     const packageJson = await Bun.file(packagePath).json();
+    packageJson.name = `@module/${kebabName}`;
     packageJson.type = "module";
     packageJson.scripts = {
       ...packageJson.scripts,
@@ -173,16 +175,20 @@ export class SpaCreateCommand<T extends CommandOptionsType = CommandOptionsType>
     );
     if (!cloned) return;
 
-    // Use the repository's src as the module src content
-    await cp(join(tmpDir, "src"), srcDir, { recursive: true });
+    // Use the spa template's src as the module src content
+    const spaTemplateDir = join(tmpDir, SPA_TEMPLATE_PATH);
+    await cp(join(spaTemplateDir, "src"), srcDir, { recursive: true });
 
-    // Rewrite the spa's `@/` alias imports to the module's `@module/{name}/` alias
+    // Rewrite hardcoded `@module/spa` imports (from the template's own module name)
+    // to the target module's `@module/{name}` alias. The `spa` segment must be
+    // matched exactly (followed by `/` or a closing quote) so it doesn't clobber
+    // imports for modules whose name merely starts with "spa".
     const entries = await readdir(srcDir, { recursive: true, withFileTypes: true });
     for (const entry of entries) {
       if (!entry.isFile()) continue;
       const filePath = join(entry.parentPath, entry.name);
       const content = await Bun.file(filePath).text();
-      const rewritten = content.replaceAll('from "@/', `from "@module/${kebabName}/`);
+      const rewritten = content.replace(/from "@module\/spa(?=["/])/g, `from "@module/${kebabName}`);
       if (rewritten !== content) {
         await Bun.write(filePath, rewritten);
       }
@@ -190,7 +196,7 @@ export class SpaCreateCommand<T extends CommandOptionsType = CommandOptionsType>
 
     // Include the repository's vite config at the module root, adding a design alias
     // so the spa can resolve `@module/{design}/` imports against the design module src.
-    const viteConfigSrc = join(tmpDir, "vite.config.ts");
+    const viteConfigSrc = join(spaTemplateDir, "vite.config.ts");
     if (existsSync(viteConfigSrc)) {
       const viteConfigDest = join(moduleDir, "vite.config.ts");
       await cp(viteConfigSrc, viteConfigDest);
@@ -213,11 +219,14 @@ export class SpaCreateCommand<T extends CommandOptionsType = CommandOptionsType>
     // Keep the shared folder tracked while empty; its sub-layers are created on demand
     await Bun.write(join(srcDir, "shared", ".gitkeep"), "");
 
-    // Provide a public dir for static assets, tracked even while empty via .gitkeep
-    await Bun.write(join(moduleDir, "public", ".gitkeep"), "");
+    // Copy the repository's public dir for static assets into the module root
+    const publicTemplateDir = join(spaTemplateDir, "public");
+    if (existsSync(publicTemplateDir)) {
+      await cp(publicTemplateDir, join(moduleDir, "public"), { recursive: true });
+    }
 
     // Install the spa dependencies from the root of the project
-    const spaPackage = await Bun.file(join(tmpDir, "package.json")).json();
+    const spaPackage = await Bun.file(join(spaTemplateDir, "package.json")).json();
     const deps = Object.keys(spaPackage.dependencies ?? {});
     const devDeps = Object.keys(spaPackage.devDependencies ?? {});
 

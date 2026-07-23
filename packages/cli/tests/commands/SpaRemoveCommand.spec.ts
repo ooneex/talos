@@ -36,9 +36,10 @@ describe("SpaRemoveCommand", () => {
 
       if (cmd[0] === "git" && cmd[1] === "clone") {
         const dest = cmd[cmd.length - 1] as string;
-        mkdirSync(join(dest, "src"), { recursive: true });
-        writeFileSync(join(dest, "src", "App.tsx"), "export const App = () => null;\n");
-        writeFileSync(join(dest, "package.json"), JSON.stringify({ dependencies: {}, devDependencies: {} }));
+        const templateDir = join(dest, "modules", "spa");
+        mkdirSync(join(templateDir, "src"), { recursive: true });
+        writeFileSync(join(templateDir, "src", "App.tsx"), "export const App = () => null;\n");
+        writeFileSync(join(templateDir, "package.json"), JSON.stringify({ dependencies: {}, devDependencies: {} }));
       }
 
       return { exited: Promise.resolve(0) } as unknown as ReturnType<typeof Bun.spawn>;

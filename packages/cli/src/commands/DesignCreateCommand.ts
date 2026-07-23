@@ -10,7 +10,8 @@ import { removeFromAppModule, removeFromSharedModule } from "../moduleRegistry";
 import { ensureBin, LOG_OPTIONS, spawnStep } from "../utils";
 import { ModuleCreateCommand } from "./ModuleCreateCommand";
 
-const DESIGN_REPOSITORY = "https://github.com/ooneex/skeleton-design.git";
+const DESIGN_REPOSITORY = "https://github.com/ooneex/skeleton.git";
+const DESIGN_TEMPLATE_PATH = "modules/design";
 
 type CommandOptionsType = {
   name?: string;
@@ -57,6 +58,12 @@ export class DesignCreateCommand<T extends CommandOptionsType = CommandOptionsTy
       await Bun.write(ymlPath, ymlContent.replace('type: "module"', 'type: "design"'));
     }
 
+    // Ensure the package name matches the module's kebab-case name
+    const packagePath = join(moduleDir, "package.json");
+    const packageJson = await Bun.file(packagePath).json();
+    packageJson.name = `@module/${kebabName}`;
+    await Bun.write(packagePath, `${JSON.stringify(packageJson, null, 2)}\n`);
+
     // Pull the design source from the upstream repository
     const tmpDir = join(tmpdir(), `talos-design-${kebabName}`);
     await rm(tmpDir, { recursive: true, force: true });
@@ -77,23 +84,27 @@ export class DesignCreateCommand<T extends CommandOptionsType = CommandOptionsTy
     );
     if (!cloned) return;
 
-    // Use the repository's src as the module src content
-    await cp(join(tmpDir, "src"), srcDir, { recursive: true });
+    // Use the design template's src as the module src content
+    const designTemplateDir = join(tmpDir, DESIGN_TEMPLATE_PATH);
+    await cp(join(designTemplateDir, "src"), srcDir, { recursive: true });
 
-    // Rewrite the design's `@/` alias imports to the module's `@module/{name}/` alias
+    // Rewrite hardcoded `@module/design` imports (from the template's own module name)
+    // to the target module's `@module/{name}` alias. The `design` segment must be
+    // matched exactly (followed by `/` or a closing quote) so it doesn't clobber
+    // imports for modules whose name merely starts with "design".
     const entries = await readdir(srcDir, { recursive: true, withFileTypes: true });
     for (const entry of entries) {
       if (!entry.isFile()) continue;
       const filePath = join(entry.parentPath, entry.name);
       const content = await Bun.file(filePath).text();
-      const rewritten = content.replaceAll('from "@/', `from "@module/${kebabName}/`);
+      const rewritten = content.replace(/from "@module\/design(?=["/])/g, `from "@module/${kebabName}`);
       if (rewritten !== content) {
         await Bun.write(filePath, rewritten);
       }
     }
 
     // Install the design dependencies from the root of the project
-    const designPackage = await Bun.file(join(tmpDir, "package.json")).json();
+    const designPackage = await Bun.file(join(designTemplateDir, "package.json")).json();
     const deps = Object.keys(designPackage.dependencies ?? {});
     const devDeps = Object.keys(designPackage.devDependencies ?? {});
 

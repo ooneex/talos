@@ -16,10 +16,10 @@ const read = (path: string) => Bun.file(path).text();
 // Source files and dependencies the mocked clone of the spa repository exposes
 const SPA_SRC_FILE = "App.tsx";
 const SPA_SRC_CONTENT = "export const App = () => null;\n";
-// A nested source file using the spa's `@/` path alias, which must be rewritten
-// to the module's `@module/{name}/` alias after cloning.
-const SPA_ALIAS_FILE = join("pages", "Home.tsx");
-const SPA_ALIAS_CONTENT = 'import { cn } from "@/utils/cn";\nexport const Home = () => cn("home");\n';
+// A source file using a hardcoded `@module/spa` import (the template's own module
+// name), which must be rewritten to the target module's `@module/{name}` alias.
+const SPA_SELF_IMPORT_FILE = join("pages", "Home.tsx");
+const SPA_SELF_IMPORT_CONTENT = 'import { cn } from "@module/spa/utils/cn";\nexport const Home = () => cn("home");\n';
 // A minimal but realistic vite config exposing the `resolve.alias` block the
 // command extends with a `@module/{design}` alias when a design is selected.
 const SPA_VITE_CONFIG_CONTENT = `import { fileURLToPath } from "node:url";
@@ -35,6 +35,12 @@ export default defineConfig({
 `;
 const SPA_DEPENDENCIES = { react: "^18.0.0" };
 const SPA_DEV_DEPENDENCIES = { typescript: "^5.0.0" };
+// A static asset file the mocked clone's public dir exposes, which must be copied
+// into the module's public dir as-is.
+const SPA_PUBLIC_FILE = "favicon.ico";
+const SPA_PUBLIC_CONTENT = "fake-favicon-bytes";
+// Fake source file content the mocked clone of the design repository exposes.
+const DESIGN_SRC_CONTENT = "export const design = true;\n";
 
 describe("SpaCreateCommand", () => {
   let command: InstanceType<typeof SpaCreateCommand>;
@@ -64,14 +70,30 @@ describe("SpaCreateCommand", () => {
 
       if (cmd[0] === "git" && cmd[1] === "clone") {
         const dest = cmd[cmd.length - 1] as string;
-        mkdirSync(join(dest, "src", "pages"), { recursive: true });
-        writeFileSync(join(dest, "src", SPA_SRC_FILE), SPA_SRC_CONTENT);
-        writeFileSync(join(dest, "src", SPA_ALIAS_FILE), SPA_ALIAS_CONTENT);
-        writeFileSync(join(dest, "vite.config.ts"), SPA_VITE_CONFIG_CONTENT);
-        writeFileSync(
-          join(dest, "package.json"),
-          JSON.stringify({ dependencies: SPA_DEPENDENCIES, devDependencies: SPA_DEV_DEPENDENCIES }),
-        );
+
+        if (dest.includes("talos-spa-")) {
+          const spaTemplateDir = join(dest, "modules", "spa");
+          mkdirSync(join(spaTemplateDir, "src", "pages"), { recursive: true });
+          writeFileSync(join(spaTemplateDir, "src", SPA_SRC_FILE), SPA_SRC_CONTENT);
+          writeFileSync(join(spaTemplateDir, "src", SPA_SELF_IMPORT_FILE), SPA_SELF_IMPORT_CONTENT);
+          writeFileSync(join(spaTemplateDir, "vite.config.ts"), SPA_VITE_CONFIG_CONTENT);
+          mkdirSync(join(spaTemplateDir, "public"), { recursive: true });
+          writeFileSync(join(spaTemplateDir, "public", SPA_PUBLIC_FILE), SPA_PUBLIC_CONTENT);
+          writeFileSync(
+            join(spaTemplateDir, "package.json"),
+            JSON.stringify({ dependencies: SPA_DEPENDENCIES, devDependencies: SPA_DEV_DEPENDENCIES }),
+          );
+        } else {
+          // DesignCreateCommand clones the shared skeleton repo and reads its
+          // design template from modules/design/{src,package.json}.
+          const designSrcDir = join(dest, "modules", "design", "src");
+          mkdirSync(designSrcDir, { recursive: true });
+          writeFileSync(join(designSrcDir, "index.ts"), DESIGN_SRC_CONTENT);
+          writeFileSync(
+            join(dest, "modules", "design", "package.json"),
+            JSON.stringify({ dependencies: {}, devDependencies: {} }),
+          );
+        }
       }
 
       return { exited: Promise.resolve(0) } as unknown as ReturnType<typeof Bun.spawn>;
@@ -163,6 +185,13 @@ describe("SpaCreateCommand", () => {
       expect(pkg.type).toBe("module");
     });
 
+    test("should set the package name to @module/{name}", async () => {
+      await command.run({ name: "MyApp", cwd: testDir, silent: true });
+
+      const pkg = JSON.parse(await read(join(testDir, "modules", "my-app", "package.json")));
+      expect(pkg.name).toBe("@module/my-app");
+    });
+
     test("should keep the scaffolded test and lint scripts", async () => {
       await command.run({ name: "Spa", cwd: testDir, silent: true });
 
@@ -210,16 +239,16 @@ describe("SpaCreateCommand", () => {
       expect(await read(filePath)).toBe(SPA_SRC_CONTENT);
     });
 
-    test("should rewrite `@/` alias imports to the module's `@module/{name}/` alias", async () => {
+    test("should rewrite hardcoded `@module/spa` imports to the target module's `@module/{name}` alias", async () => {
       await command.run({ name: "MyApp", cwd: testDir, silent: true });
 
-      const filePath = join(testDir, "modules", "my-app", "src", SPA_ALIAS_FILE);
+      const filePath = join(testDir, "modules", "my-app", "src", SPA_SELF_IMPORT_FILE);
       const content = await read(filePath);
       expect(content).toContain('from "@module/my-app/utils/cn"');
-      expect(content).not.toContain('from "@/');
+      expect(content).not.toContain('from "@module/spa/');
     });
 
-    test("should leave source files without `@/` imports unchanged", async () => {
+    test("should leave source files without `@module/spa` imports unchanged", async () => {
       await command.run({ name: "Spa", cwd: testDir, silent: true });
 
       const filePath = join(testDir, "modules", "spa", "src", SPA_SRC_FILE);
@@ -239,7 +268,7 @@ describe("SpaCreateCommand", () => {
 
       const cloneCall = spawnCalls.find((call) => call.cmd[0] === "git" && call.cmd[1] === "clone");
       expect(cloneCall).toBeDefined();
-      expect(cloneCall?.cmd).toContain("https://github.com/ooneex/skeleton-spa.git");
+      expect(cloneCall?.cmd).toContain("https://github.com/ooneex/skeleton.git");
     });
 
     test("should run clone and installs silently without inheriting output", async () => {
@@ -286,12 +315,12 @@ describe("SpaCreateCommand", () => {
   });
 
   describe("public folder", () => {
-    test("should create a public folder with a .gitkeep file", async () => {
+    test("should copy the repository's public dir into the module root", async () => {
       await command.run({ name: "Spa", cwd: testDir, silent: true });
 
-      const gitkeep = join(testDir, "modules", "spa", "public", ".gitkeep");
-      expect(await exists(gitkeep)).toBe(true);
-      expect(await read(gitkeep)).toBe("");
+      const filePath = join(testDir, "modules", "spa", "public", SPA_PUBLIC_FILE);
+      expect(await exists(filePath)).toBe(true);
+      expect(await read(filePath)).toBe(SPA_PUBLIC_CONTENT);
     });
   });
 
@@ -358,10 +387,11 @@ describe("SpaCreateCommand", () => {
       expect(await exists(designYml)).toBe(true);
       expect(await read(designYml)).toContain('type: "design"');
 
-      const cloneCall = spawnCalls.find(
-        (call) => call.cmd[0] === "git" && call.cmd.includes("https://github.com/ooneex/skeleton-design.git"),
+      const designCloneCall = spawnCalls.find(
+        (call) =>
+          call.cmd[0] === "git" && call.cmd[1] === "clone" && call.cmd.some((arg) => arg.includes("talos-design-")),
       );
-      expect(cloneCall).toBeDefined();
+      expect(designCloneCall).toBeDefined();
     });
 
     test("should reuse an existing design module without re-scaffolding it", async () => {
@@ -373,10 +403,11 @@ describe("SpaCreateCommand", () => {
       const content = await read(join(testDir, "modules", "spa", "spa.yml"));
       expect(content).toContain('design: "my-design"');
 
-      const cloneCall = spawnCalls.find(
-        (call) => call.cmd[0] === "git" && call.cmd.includes("https://github.com/ooneex/skeleton-design.git"),
+      const designCloneCall = spawnCalls.find(
+        (call) =>
+          call.cmd[0] === "git" && call.cmd[1] === "clone" && call.cmd.some((arg) => arg.includes("talos-design-")),
       );
-      expect(cloneCall).toBeUndefined();
+      expect(designCloneCall).toBeUndefined();
     });
 
     test("should not add a design entry when no design is provided", async () => {
