@@ -354,12 +354,19 @@ fn resolve_agent_dirs(silent: bool) -> Vec<String> {
     }
 
     let labels: Vec<&str> = AGENT_SKILLS.iter().map(|(name, _, _)| *name).collect();
-    let defaults: Vec<bool> = AGENT_SKILLS.iter().map(|(_, _, enabled)| *enabled).collect();
+    let defaults: Vec<bool> = AGENT_SKILLS
+        .iter()
+        .map(|(_, _, enabled)| *enabled)
+        .collect();
 
     match ask_multiselect("Add skills for which assistants?", &labels, &defaults) {
         Some(indices) => indices
             .into_iter()
-            .filter_map(|index| AGENT_SKILLS.get(index).map(|(_, dir, _)| (*dir).to_string()))
+            .filter_map(|index| {
+                AGENT_SKILLS
+                    .get(index)
+                    .map(|(_, dir, _)| (*dir).to_string())
+            })
             .collect(),
         // A cancelled prompt (e.g. Ctrl-C) falls back to the defaults rather
         // than silently scaffolding nothing.
