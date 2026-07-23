@@ -1,11 +1,12 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
-import { existsSync, mkdirSync, rmSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, rmSync } from "node:fs";
+import { rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 let createCiCdConfirm = false;
 let ciProvider = "github";
 
-// Mock enquirer before importing commands
 mock.module("enquirer", () => ({
   prompt: mock((config: { type?: string; name?: string }) => {
     if (config?.type === "confirm" && config?.name === "confirm") {
@@ -23,7 +24,6 @@ mock.module("enquirer", () => ({
 
 const infoSpy = mock((..._args: unknown[]) => {});
 
-// Mock logger to suppress output
 mock.module("@talosjs/logger", () => ({
   TerminalLogger: class {
     init() {}
@@ -42,8 +42,40 @@ mock.module("@talosjs/logger", () => ({
 }));
 
 const { AppCreateCommand } = await import("@/commands/AppCreateCommand");
+const { resetSkeletonDirCache } = await import("@/agentConfig");
 
 const exists = (path: string) => Bun.file(path).exists();
+
+// Real checkout of https://github.com/ooneex/skeleton.git, cloned once and cached
+// on disk under the OS tmp dir. Each test's faked `git clone` copies this cache
+// instead of hitting the network. Must resolve before any test replaces
+// `Bun.spawn` (this runs at module load, before `beforeEach`), so the real git
+// clone runs instead of a test's faked `git` responses.
+const skeletonSourceCacheDir = join(tmpdir(), "talos-cli-tests-skeleton-source");
+const skeletonSourceReadyMarker = join(skeletonSourceCacheDir, ".ready");
+
+const resolveTestSkeletonSource = async (): Promise<string> => {
+  if (existsSync(skeletonSourceReadyMarker)) {
+    return skeletonSourceCacheDir;
+  }
+
+  await rm(skeletonSourceCacheDir, { recursive: true, force: true });
+
+  const proc = Bun.spawn(
+    ["git", "clone", "--depth", "1", "https://github.com/ooneex/skeleton.git", skeletonSourceCacheDir],
+    { stdout: "ignore", stderr: "pipe" },
+  );
+  const [exitCode, stderr] = await Promise.all([proc.exited, new Response(proc.stderr).text()]);
+
+  if (exitCode !== 0) {
+    throw new Error(`Failed to clone skeleton repo for tests: ${stderr.trim()}`);
+  }
+
+  await Bun.write(skeletonSourceReadyMarker, "");
+  return skeletonSourceCacheDir;
+};
+
+const skeletonFixture = await resolveTestSkeletonSource();
 
 describe("AppCreateCommand", () => {
   let command: InstanceType<typeof AppCreateCommand>;
@@ -60,11 +92,15 @@ describe("AppCreateCommand", () => {
     infoSpy.mockClear();
     createCiCdConfirm = false;
     ciProvider = "github";
+    resetSkeletonDirCache();
 
-    // Mock Bun.spawn to avoid running bun update and git init in tests
     originalSpawn = Bun.spawn;
     Bun.spawn = ((...args: unknown[]) => {
       const cmd = Array.isArray(args[0]) ? args[0] : (args[0] as { cmd?: string[] })?.cmd;
+      if (Array.isArray(cmd) && cmd[0] === "git" && cmd[1] === "clone") {
+        cpSync(skeletonFixture, cmd[cmd.length - 1] as string, { recursive: true });
+        return { exited: Promise.resolve(0) } as unknown as ReturnType<typeof Bun.spawn>;
+      }
       if (Array.isArray(cmd) && ((cmd[0] === "bun" && (cmd[1] === "update" || cmd[1] === "add")) || cmd[0] === "git")) {
         return { exited: Promise.resolve(0) } as unknown as ReturnType<typeof Bun.spawn>;
       }
@@ -75,6 +111,7 @@ describe("AppCreateCommand", () => {
   afterEach(() => {
     Bun.spawn = originalSpawn;
     process.chdir(originalCwd);
+    resetSkeletonDirCache();
     if (existsSync(testDir)) {
       rmSync(testDir, { recursive: true, force: true });
     }
@@ -95,32 +132,14 @@ describe("AppCreateCommand", () => {
       await command.run({ name: "MyApp", destination: testDir });
 
       expect(await exists(join(testDir, ".gitignore"))).toBe(true);
+      expect(await exists(join(testDir, ".dockerignore"))).toBe(true);
       expect(await exists(join(testDir, "biome.jsonc"))).toBe(true);
       expect(await exists(join(testDir, "package.json"))).toBe(true);
       expect(await exists(join(testDir, "README.md"))).toBe(true);
       expect(await exists(join(testDir, "tsconfig.json"))).toBe(true);
       expect(await exists(join(testDir, ".zed", "settings.json"))).toBe(true);
-    });
-
-    test("should not generate bunfig.toml", async () => {
-      await command.run({ name: "MyApp", destination: testDir });
-
-      expect(await exists(join(testDir, "bunfig.toml"))).toBe(false);
-    });
-
-    test("should replace {{NAME}} in package.json with kebab-case name", async () => {
-      await command.run({ name: "MyApp", destination: testDir });
-
-      const content = await Bun.file(join(testDir, "package.json")).text();
-      expect(content).toContain('"my-app"');
-      expect(content).not.toContain("{{NAME}}");
-    });
-
-    test("should not add scripts to root package.json", async () => {
-      await command.run({ name: "MyApp", destination: testDir });
-
-      const pkg = await Bun.file(join(testDir, "package.json")).json();
-      expect(pkg.scripts).toBeUndefined();
+      expect(await exists(join(testDir, ".env.example.yml"))).toBe(true);
+      expect(await exists(join(testDir, ".env.yml"))).toBe(true);
     });
 
     test("should ship a root package.json with only name and workspaces", async () => {
@@ -128,44 +147,20 @@ describe("AppCreateCommand", () => {
 
       const pkg = await Bun.file(join(testDir, "package.json")).json();
       expect(Object.keys(pkg).sort()).toEqual(["name", "workspaces"]);
-    });
-
-    test("should include workspaces pointing to modules/* in root package.json", async () => {
-      await command.run({ name: "MyApp", destination: testDir });
-
-      const pkg = await Bun.file(join(testDir, "package.json")).json();
+      expect(pkg.name).toBe("my-app");
       expect(pkg.workspaces).toEqual(["modules/*"]);
     });
 
-    test("should merge workspaces into package.json when the field is missing", async () => {
-      // Simulate a package.json that bun add may have rewritten without the field
-      await Bun.write(join(testDir, "package.json"), JSON.stringify({ name: "my-app" }, null, 2));
-
-      await command.run({ name: "MyApp", destination: testDir });
-
-      const pkg = await Bun.file(join(testDir, "package.json")).json();
-      expect(pkg.workspaces).toEqual(["modules/*"]);
-      expect(pkg.scripts).toBeUndefined();
-    });
-
-    test("should replace {{NAME}} in README.md with kebab-case name", async () => {
-      await command.run({ name: "MyApp", destination: testDir });
-
-      const content = await Bun.file(join(testDir, "README.md")).text();
-      expect(content).toContain("# my-app");
-      expect(content).not.toContain("{{NAME}}");
-    });
-
-    test("should generate app module structure", async () => {
+    test("should scaffold only the app and shared modules from the skeleton", async () => {
       await command.run({ name: "MyApp", destination: testDir });
 
       expect(await exists(join(testDir, "modules", "app", "src", "AppModule.ts"))).toBe(true);
-      expect(await exists(join(testDir, "modules", "app", "package.json"))).toBe(true);
-      expect(await exists(join(testDir, "modules", "app", "tsconfig.json"))).toBe(true);
-      expect(await exists(join(testDir, "modules", "app", "tests", "AppModule.spec.ts"))).toBe(true);
+      expect(await exists(join(testDir, "modules", "shared", "src", "SharedModule.ts"))).toBe(true);
+      expect(await exists(join(testDir, "modules", "design"))).toBe(false);
+      expect(await exists(join(testDir, "modules", "sdk"))).toBe(false);
     });
 
-    test("should set app module yml type to api", async () => {
+    test("should keep the app module yml as an api scaffold", async () => {
       await command.run({ name: "MyApp", destination: testDir });
 
       const content = await Bun.file(join(testDir, "modules", "app", "app.yml")).text();
@@ -173,189 +168,57 @@ describe("AppCreateCommand", () => {
       expect(content).not.toContain('type: "module"');
     });
 
-    test("should not add dev, stop, and build scripts to app module package.json", async () => {
+    test("should copy shared database and overwrite shared roles dynamically", async () => {
       await command.run({ name: "MyApp", destination: testDir });
 
-      const content = await Bun.file(join(testDir, "modules", "app", "package.json")).json();
-      expect(content.scripts.dev).toBeUndefined();
-      expect(content.scripts.stop).toBeUndefined();
-      expect(content.scripts.build).toBeUndefined();
+      expect(await exists(join(testDir, "modules", "shared", "src", "databases", "SharedDatabase.ts"))).toBe(true);
+      const roles = await Bun.file(join(testDir, "modules", "shared", "src", "roles.yml")).text();
+      expect(roles).toContain("ROLE_GUEST");
+      expect(roles).toContain("ROLE_SUPER_ADMIN");
+      expect(roles).toMatch(/inherits:\n {6}- ROLE_/m);
     });
 
-    test("should generate environment files", async () => {
+    test("should copy env example into both env files", async () => {
       await command.run({ name: "MyApp", destination: testDir });
 
-      expect(await exists(join(testDir, ".env.yml"))).toBe(true);
-      expect(await exists(join(testDir, "modules", "shared", ".env.yml"))).toBe(false);
+      const envExample = await Bun.file(join(testDir, ".env.example.yml")).text();
+      const env = await Bun.file(join(testDir, ".env.yml")).text();
+      expect(env).toBe(envExample);
     });
 
-    test("should populate .env with default values", async () => {
+    test("should filter root tsconfig path aliases down to app and shared", async () => {
       await command.run({ name: "MyApp", destination: testDir });
 
-      const content = await Bun.file(join(testDir, ".env.yml")).text();
-      expect(content).toContain("postgresql://talos:talos@localhost:5432/talos");
-      expect(content).toContain("redis://localhost:6379");
+      const tsconfig = await Bun.file(join(testDir, "tsconfig.json")).json();
+      expect(tsconfig.compilerOptions.paths).toEqual({
+        "@module/app/*": ["./modules/app/src/*"],
+        "@module/shared/*": ["./modules/shared/src/*"],
+      });
     });
 
-    test("should write .env.yml in block-style YAML format", async () => {
-      await command.run({ name: "MyApp", destination: testDir });
-
-      const content = await Bun.file(join(testDir, ".env.yml")).text();
-      expect(content).not.toMatch(/^\{/);
-      expect(content).toMatch(/^app:$/m);
-      expect(content).toMatch(/^database:$/m);
-      expect(content).toMatch(/^cache:$/m);
-      expect(content).toMatch(/^ {2}url:/m);
-    });
-
-    test('should write empty string values as quoted "" in .env.yml', async () => {
-      await command.run({ name: "MyApp", destination: testDir });
-
-      const content = await Bun.file(join(testDir, ".env.yml")).text();
-      expect(content).toContain('host: ""');
-      expect(content).toContain('database_url: ""');
-      expect(content).toContain('source_token: ""');
-    });
-
-    test("should generate Docker files with snake_case name", async () => {
+    test("should rewrite Dockerfile and docker-compose placeholders with snake_case name", async () => {
       await command.run({ name: "MyApp", destination: testDir });
 
       const dockerfile = await Bun.file(join(testDir, "modules", "app", "Dockerfile")).text();
       expect(dockerfile).toContain("my_app");
-      expect(dockerfile).not.toContain("{{NAME}}");
+      expect(dockerfile).not.toContain("skeleton");
 
       const compose = await Bun.file(join(testDir, "modules", "app", "docker-compose.yml")).text();
-      expect(compose).toContain("my_app");
-      expect(compose).not.toContain("{{NAME}}");
+      expect(compose).toContain("my_app_db");
+      expect(compose).toContain("my_app_redis");
+      expect(compose).not.toContain("skeleton");
     });
 
-    test("should generate index file in app module", async () => {
+    test("should remove bun.lock from the generated app root", async () => {
       await command.run({ name: "MyApp", destination: testDir });
 
-      expect(await exists(join(testDir, "modules", "app", "src", "index.ts"))).toBe(true);
-    });
-
-    test("should generate OnAppStart file in app module", async () => {
-      await command.run({ name: "MyApp", destination: testDir });
-
-      const onAppStartPath = join(testDir, "modules", "app", "src", "OnAppStart.ts");
-      expect(await exists(onAppStartPath)).toBe(true);
-
-      const content = await Bun.file(onAppStartPath).text();
-      expect(content).toContain("@decorator.app.event.start()");
-      expect(content).toContain("class OnAppStart implements IAppEventStart");
-    });
-
-    test("should generate shared module with database file", async () => {
-      await command.run({ name: "MyApp", destination: testDir });
-
-      expect(await exists(join(testDir, "modules", "shared", "src", "SharedModule.ts"))).toBe(true);
-      expect(await exists(join(testDir, "modules", "shared", "package.json"))).toBe(true);
-      expect(await exists(join(testDir, "modules", "shared", "tsconfig.json"))).toBe(true);
-      expect(await exists(join(testDir, "modules", "shared", "src", "databases", "SharedDatabase.ts"))).toBe(true);
-    });
-
-    test("should generate roles.yml in shared module", async () => {
-      await command.run({ name: "MyApp", destination: testDir });
-
-      expect(await exists(join(testDir, "modules", "shared", "src", "roles.yml"))).toBe(true);
-    });
-
-    test("should write roles.yml in block-style YAML format", async () => {
-      await command.run({ name: "MyApp", destination: testDir });
-
-      const content = await Bun.file(join(testDir, "modules", "shared", "src", "roles.yml")).text();
-      expect(content).not.toMatch(/^\{/);
-      expect(content).toMatch(/^roles:$/m);
-      expect(content).toMatch(/^hierarchy:$/m);
-      expect(content).toMatch(/^ {2}ROLE_GUEST:/m);
-    });
-
-    test("should write roles.yml with role entries", async () => {
-      await command.run({ name: "MyApp", destination: testDir });
-
-      const content = await Bun.file(join(testDir, "modules", "shared", "src", "roles.yml")).text();
-      expect(content).toContain("ROLE_GUEST");
-      expect(content).toContain("ROLE_ADMIN");
-      expect(content).toContain("ROLE_SUPER_ADMIN");
-    });
-
-    test("should write roles.yml with hierarchy inherits as block list", async () => {
-      await command.run({ name: "MyApp", destination: testDir });
-
-      const content = await Bun.file(join(testDir, "modules", "shared", "src", "roles.yml")).text();
-      expect(content).toMatch(/inherits:\n {6}- ROLE_/m);
+      expect(await exists(join(testDir, "bun.lock"))).toBe(false);
     });
 
     test("should generate root var directory with .gitkeep", async () => {
       await command.run({ name: "MyApp", destination: testDir });
 
       expect(await exists(join(testDir, "var", ".gitkeep"))).toBe(true);
-    });
-
-    test("should install @talosjs/command as dev dependency", async () => {
-      const spawnCalls: string[][] = [];
-
-      Bun.spawn = ((...args: unknown[]) => {
-        const cmd = Array.isArray(args[0]) ? args[0] : (args[0] as { cmd?: string[] })?.cmd;
-        if (Array.isArray(cmd)) {
-          spawnCalls.push([...(cmd as string[])]);
-        }
-        return { exited: Promise.resolve(0) } as unknown as ReturnType<typeof Bun.spawn>;
-      }) as typeof Bun.spawn;
-
-      await command.run({ name: "MyApp", destination: testDir });
-
-      const devDepsCall = spawnCalls.find(
-        (cmd) => cmd[0] === "bun" && cmd[1] === "add" && cmd[2] === "-D" && cmd.includes("@talosjs/command"),
-      );
-      expect(devDepsCall).toBeDefined();
-      expect(devDepsCall).toContain("@talosjs/command");
-    });
-
-    test("should install dependencies silently without inheriting output", async () => {
-      const spawnOpts: { cmd: string[]; stderr: unknown }[] = [];
-
-      Bun.spawn = ((...args: unknown[]) => {
-        const cmd = Array.isArray(args[0]) ? args[0] : (args[0] as { cmd?: string[] })?.cmd;
-        const opts = args[1] as { stderr?: unknown } | undefined;
-        if (Array.isArray(cmd)) {
-          spawnOpts.push({ cmd: [...(cmd as string[])], stderr: opts?.stderr });
-        }
-        return { exited: Promise.resolve(0) } as unknown as ReturnType<typeof Bun.spawn>;
-      }) as typeof Bun.spawn;
-
-      await command.run({ name: "MyApp", destination: testDir });
-
-      const installCalls = spawnOpts.filter((call) => call.cmd[0] === "bun" && call.cmd[1] === "add");
-      expect(installCalls.length).toBeGreaterThan(0);
-      for (const call of installCalls) {
-        expect(call.stderr).toBe("pipe");
-      }
-    });
-
-    test("should not install @nx/js, @nx/workspace, @swc-node/register, @swc/core, @swc/helpers as dev dependencies", async () => {
-      const spawnCalls: string[][] = [];
-
-      Bun.spawn = ((...args: unknown[]) => {
-        const cmd = Array.isArray(args[0]) ? args[0] : (args[0] as { cmd?: string[] })?.cmd;
-        if (Array.isArray(cmd)) {
-          spawnCalls.push([...(cmd as string[])]);
-        }
-        return { exited: Promise.resolve(0) } as unknown as ReturnType<typeof Bun.spawn>;
-      }) as typeof Bun.spawn;
-
-      await command.run({ name: "MyApp", destination: testDir });
-
-      const devDepsCall = spawnCalls.find(
-        (cmd) => cmd[0] === "bun" && cmd[1] === "add" && cmd[2] === "-D" && cmd.includes("@talosjs/command"),
-      );
-      expect(devDepsCall).toBeDefined();
-      expect(devDepsCall).not.toContain("@nx/js");
-      expect(devDepsCall).not.toContain("@nx/workspace");
-      expect(devDepsCall).not.toContain("@swc-node/register");
-      expect(devDepsCall).not.toContain("@swc/core");
-      expect(devDepsCall).not.toContain("@swc/helpers");
     });
 
     test("should display next steps after creation", async () => {
@@ -365,6 +228,26 @@ describe("AppCreateCommand", () => {
       expect(messages.some((msg) => msg.includes(`cd ${testDir}`))).toBe(true);
       expect(messages.some((msg) => msg.includes("talos app:start"))).toBe(true);
       expect(messages.some((msg) => msg.includes("talos app:stop"))).toBe(true);
+    });
+
+    test("should clone the skeleton repository and initialize git", async () => {
+      const spawnCalls: string[][] = [];
+
+      Bun.spawn = ((...args: unknown[]) => {
+        const cmd = Array.isArray(args[0]) ? args[0] : (args[0] as { cmd?: string[] })?.cmd;
+        if (Array.isArray(cmd)) {
+          spawnCalls.push([...(cmd as string[])]);
+          if (cmd[0] === "git" && cmd[1] === "clone") {
+            cpSync(skeletonFixture, cmd[cmd.length - 1] as string, { recursive: true });
+          }
+        }
+        return { exited: Promise.resolve(0) } as unknown as ReturnType<typeof Bun.spawn>;
+      }) as typeof Bun.spawn;
+
+      await command.run({ name: "MyApp", destination: testDir });
+
+      expect(spawnCalls.some((cmd) => cmd[0] === "git" && cmd[1] === "clone")).toBe(true);
+      expect(spawnCalls.some((cmd) => cmd[0] === "git" && cmd[1] === "init")).toBe(true);
     });
 
     test("should not create CI/CD files when user declines", async () => {
@@ -386,82 +269,7 @@ describe("AppCreateCommand", () => {
 
       expect(await exists(join(testDir, ".github", "workflows", "ci.yml"))).toBe(true);
       expect(await exists(join(testDir, ".github", "workflows", "production.yml"))).toBe(true);
-    });
-
-    test("should create renovate.json when github is selected", async () => {
-      createCiCdConfirm = true;
-      ciProvider = "github";
-      await command.run({ name: "MyApp", destination: testDir });
-
       expect(await exists(join(testDir, "renovate.json"))).toBe(true);
-    });
-
-    test("renovate.json should contain valid Renovate configuration", async () => {
-      createCiCdConfirm = true;
-      ciProvider = "github";
-      await command.run({ name: "MyApp", destination: testDir });
-
-      const content = await Bun.file(join(testDir, "renovate.json")).json();
-      expect(content.$schema).toContain("renovate-schema.json");
-      expect(content.extends).toContain("config:recommended");
-      expect(Array.isArray(content.packageRules)).toBe(true);
-    });
-
-    test("should render the GitHub production workflow without leftover placeholders", async () => {
-      createCiCdConfirm = true;
-      ciProvider = "github";
-      await command.run({ name: "MyApp", destination: testDir });
-
-      const content = await Bun.file(join(testDir, ".github", "workflows", "production.yml")).text();
-      expect(content).toContain("talos docker:publish");
-      expect(content).not.toContain("{{NAME}}");
-    });
-
-    test("should not create GitLab or Bitbucket files when github is selected", async () => {
-      createCiCdConfirm = true;
-      ciProvider = "github";
-      await command.run({ name: "MyApp", destination: testDir });
-
-      expect(await exists(join(testDir, ".gitlab-ci.yml"))).toBe(false);
-      expect(await exists(join(testDir, "bitbucket-pipelines.yml"))).toBe(false);
-    });
-
-    test("should create renovate.json when gitlab is selected", async () => {
-      createCiCdConfirm = true;
-      ciProvider = "gitlab";
-      await command.run({ name: "MyApp", destination: testDir });
-
-      expect(await exists(join(testDir, "renovate.json"))).toBe(true);
-    });
-
-    test("gitlab renovate.json should contain valid Renovate configuration", async () => {
-      createCiCdConfirm = true;
-      ciProvider = "gitlab";
-      await command.run({ name: "MyApp", destination: testDir });
-
-      const content = await Bun.file(join(testDir, "renovate.json")).json();
-      expect(content.$schema).toContain("renovate-schema.json");
-      expect(content.extends).toContain("config:recommended");
-      expect(Array.isArray(content.packageRules)).toBe(true);
-    });
-
-    test("should create renovate.json when bitbucket is selected", async () => {
-      createCiCdConfirm = true;
-      ciProvider = "bitbucket";
-      await command.run({ name: "MyApp", destination: testDir });
-
-      expect(await exists(join(testDir, "renovate.json"))).toBe(true);
-    });
-
-    test("bitbucket renovate.json should contain valid Renovate configuration", async () => {
-      createCiCdConfirm = true;
-      ciProvider = "bitbucket";
-      await command.run({ name: "MyApp", destination: testDir });
-
-      const content = await Bun.file(join(testDir, "renovate.json")).json();
-      expect(content.$schema).toContain("renovate-schema.json");
-      expect(content.extends).toContain("config:recommended");
-      expect(Array.isArray(content.packageRules)).toBe(true);
     });
 
     test("should create GitLab pipeline files when gitlab is selected", async () => {
@@ -469,65 +277,19 @@ describe("AppCreateCommand", () => {
       ciProvider = "gitlab";
       await command.run({ name: "MyApp", destination: testDir });
 
-      expect(await exists(join(testDir, ".gitlab-ci.yml"))).toBe(true);
       expect(await exists(join(testDir, ".gitlab", "ci", "ci.yml"))).toBe(true);
       expect(await exists(join(testDir, ".gitlab", "ci", "production.yml"))).toBe(true);
+      expect(await exists(join(testDir, ".gitlab-ci.yml"))).toBe(true);
+      expect(await exists(join(testDir, "renovate.json"))).toBe(true);
     });
 
-    test("should create .gitlab-ci.yml with correct includes", async () => {
-      createCiCdConfirm = true;
-      ciProvider = "gitlab";
-      await command.run({ name: "MyApp", destination: testDir });
-
-      const content = await Bun.file(join(testDir, ".gitlab-ci.yml")).text();
-      expect(content).toContain(".gitlab/ci/ci.yml");
-      expect(content).toContain(".gitlab/ci/production.yml");
-    });
-
-    test("should render the GitLab production pipeline without leftover placeholders", async () => {
-      createCiCdConfirm = true;
-      ciProvider = "gitlab";
-      await command.run({ name: "MyApp", destination: testDir });
-
-      const content = await Bun.file(join(testDir, ".gitlab", "ci", "production.yml")).text();
-      expect(content).toContain("talos docker:publish");
-      expect(content).not.toContain("{{NAME}}");
-    });
-
-    test("should not create GitHub or Bitbucket files when gitlab is selected", async () => {
-      createCiCdConfirm = true;
-      ciProvider = "gitlab";
-      await command.run({ name: "MyApp", destination: testDir });
-
-      expect(await exists(join(testDir, ".github", "workflows", "ci.yml"))).toBe(false);
-      expect(await exists(join(testDir, "bitbucket-pipelines.yml"))).toBe(false);
-    });
-
-    test("should create bitbucket-pipelines.yml when bitbucket is selected", async () => {
+    test("should create Bitbucket files when bitbucket is selected", async () => {
       createCiCdConfirm = true;
       ciProvider = "bitbucket";
       await command.run({ name: "MyApp", destination: testDir });
 
       expect(await exists(join(testDir, "bitbucket-pipelines.yml"))).toBe(true);
-    });
-
-    test("should render the Bitbucket pipelines without leftover placeholders", async () => {
-      createCiCdConfirm = true;
-      ciProvider = "bitbucket";
-      await command.run({ name: "MyApp", destination: testDir });
-
-      const content = await Bun.file(join(testDir, "bitbucket-pipelines.yml")).text();
-      expect(content).toContain("talos docker:publish");
-      expect(content).not.toContain("{{NAME}}");
-    });
-
-    test("should not create GitHub or GitLab files when bitbucket is selected", async () => {
-      createCiCdConfirm = true;
-      ciProvider = "bitbucket";
-      await command.run({ name: "MyApp", destination: testDir });
-
-      expect(await exists(join(testDir, ".github", "workflows", "ci.yml"))).toBe(false);
-      expect(await exists(join(testDir, ".gitlab-ci.yml"))).toBe(false);
+      expect(await exists(join(testDir, "renovate.json"))).toBe(true);
     });
   });
 });

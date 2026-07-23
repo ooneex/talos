@@ -6,6 +6,8 @@ import { askAgentSkills } from "../prompts/askAgentSkills";
 type CommandOptionsType = {
   cwd?: string;
   agents?: string[];
+  name?: string;
+  silent?: boolean;
 };
 
 /**
@@ -27,7 +29,11 @@ export class AgentSkillsCreateCommand<T extends CommandOptionsType = CommandOpti
     const agentDirs = options?.agents ?? (await askAgentSkills({ name: "Add skills for which assistants?" }));
 
     for (const configDir of agentDirs) {
-      await scaffoldAgentConfig(configDir, options?.cwd);
+      const scaffoldOptions = {
+        ...(options?.name ? { appName: options.name } : {}),
+        ...(options?.silent !== undefined ? { silent: options.silent } : {}),
+      };
+      await scaffoldAgentConfig(configDir, options?.cwd, scaffoldOptions);
     }
   }
 }

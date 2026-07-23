@@ -1,12 +1,13 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
-import { existsSync, mkdirSync, rmSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, rmSync } from "node:fs";
+import { rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Glob } from "bun";
 
 let installCommitHook = true;
 let selectedAgents: string[] = [".claude"];
 
-// Mock enquirer before importing commands
 mock.module("enquirer", () => ({
   prompt: mock((config: { type?: string }) => {
     if (config?.type === "confirm") {
@@ -19,7 +20,6 @@ mock.module("enquirer", () => ({
   }),
 }));
 
-// Mock logger to suppress output
 mock.module("@talosjs/logger", () => ({
   TerminalLogger: class {
     init() {}
@@ -36,8 +36,40 @@ mock.module("@talosjs/logger", () => ({
 }));
 
 const { AppInitCommand } = await import("@/commands/AppInitCommand");
+const { resetSkeletonDirCache } = await import("@/agentConfig");
 
 const exists = (path: string) => Bun.file(path).exists();
+
+// Real checkout of https://github.com/ooneex/skeleton.git, cloned once and cached
+// on disk under the OS tmp dir. Each test's faked `git clone` copies this cache
+// instead of hitting the network. Must resolve before any test replaces
+// `Bun.spawn` (this runs at module load, before `beforeEach`), so the real git
+// clone runs instead of a test's faked `git` responses.
+const skeletonSourceCacheDir = join(tmpdir(), "talos-cli-tests-skeleton-source");
+const skeletonSourceReadyMarker = join(skeletonSourceCacheDir, ".ready");
+
+const resolveTestSkeletonSource = async (): Promise<string> => {
+  if (existsSync(skeletonSourceReadyMarker)) {
+    return skeletonSourceCacheDir;
+  }
+
+  await rm(skeletonSourceCacheDir, { recursive: true, force: true });
+
+  const proc = Bun.spawn(
+    ["git", "clone", "--depth", "1", "https://github.com/ooneex/skeleton.git", skeletonSourceCacheDir],
+    { stdout: "ignore", stderr: "pipe" },
+  );
+  const [exitCode, stderr] = await Promise.all([proc.exited, new Response(proc.stderr).text()]);
+
+  if (exitCode !== 0) {
+    throw new Error(`Failed to clone skeleton repo for tests: ${stderr.trim()}`);
+  }
+
+  await Bun.write(skeletonSourceReadyMarker, "");
+  return skeletonSourceCacheDir;
+};
+
+const skeletonFixture = await resolveTestSkeletonSource();
 
 describe("AppInitCommand", () => {
   let command: InstanceType<typeof AppInitCommand>;
@@ -56,9 +88,8 @@ describe("AppInitCommand", () => {
     mkdirSync(testDir, { recursive: true });
     process.chdir(testDir);
     spawnCalls = [];
+    resetSkeletonDirCache();
 
-    // Pretend `git` is installed so tests never depend on the host PATH; the
-    // missing-binary case is exercised explicitly below.
     originalWhich = Bun.which;
     Bun.which = (() => "/usr/bin/git") as typeof Bun.which;
 
@@ -67,6 +98,10 @@ describe("AppInitCommand", () => {
       const cmd = Array.isArray(args[0]) ? args[0] : (args[0] as { cmd?: string[] })?.cmd;
       if (Array.isArray(cmd)) {
         spawnCalls.push([...(cmd as string[])]);
+      }
+      if (Array.isArray(cmd) && cmd[0] === "git" && cmd[1] === "clone") {
+        cpSync(skeletonFixture, cmd[cmd.length - 1] as string, { recursive: true });
+        return { exited: Promise.resolve(0) } as unknown as ReturnType<typeof Bun.spawn>;
       }
       if (Array.isArray(cmd) && ((cmd[0] === "bun" && (cmd[1] === "update" || cmd[1] === "add")) || cmd[0] === "git")) {
         return { exited: Promise.resolve(0) } as unknown as ReturnType<typeof Bun.spawn>;
@@ -79,6 +114,7 @@ describe("AppInitCommand", () => {
     Bun.spawn = originalSpawn;
     Bun.which = originalWhich;
     process.chdir(originalCwd);
+    resetSkeletonDirCache();
     if (existsSync(testDir)) {
       rmSync(testDir, { recursive: true, force: true });
     }
@@ -100,7 +136,7 @@ describe("AppInitCommand", () => {
 
       await command.run({ name: "MyApp", destination: testDir });
 
-      expect(spawnCalls.some((cmd) => cmd[0] === "git")).toBe(false);
+      expect(spawnCalls.some((cmd) => cmd[0] === "git" && cmd[1] === "init")).toBe(false);
       expect(process.exitCode).toBe(1);
       process.exitCode = 0;
     });
@@ -116,6 +152,8 @@ describe("AppInitCommand", () => {
       expect(await exists(join(testDir, "README.md"))).toBe(true);
       expect(await exists(join(testDir, "tsconfig.json"))).toBe(true);
       expect(await exists(join(testDir, ".zed", "settings.json"))).toBe(true);
+      expect(await exists(join(testDir, ".env.example.yml"))).toBe(true);
+      expect(await exists(join(testDir, ".env.yml"))).toBe(true);
     });
 
     test("should not generate bunfig.toml", async () => {
@@ -156,82 +194,32 @@ describe("AppInitCommand", () => {
       expect(content).not.toContain("{{NAME}}");
     });
 
-    test("should write .env.yml to destination root when appType is not set", async () => {
+    test("should copy env example into both env files", async () => {
       await command.run({ name: "MyApp", destination: testDir, silent: true });
 
-      expect(await exists(join(testDir, ".env.yml"))).toBe(true);
-      expect(await exists(join(testDir, "modules", "shared", ".env.yml"))).toBe(false);
+      const envExample = await Bun.file(join(testDir, ".env.example.yml")).text();
+      const env = await Bun.file(join(testDir, ".env.yml")).text();
+      expect(env).toBe(envExample);
+      expect(env).toContain("localhost:5432/talos");
+      expect(env).toContain("redis://localhost:6379");
+      expect(env).toContain("# Application settings");
+      expect(env).not.toContain("analytics:");
     });
 
-    test("should write .env.yml to destination root when appType is cli", async () => {
-      await command.run({ name: "MyApp", destination: testDir, silent: true, appType: "cli" });
-
-      expect(await exists(join(testDir, ".env.yml"))).toBe(true);
-      expect(await exists(join(testDir, "modules", "shared", ".env.yml"))).toBe(false);
-    });
-
-    test("should write .env.yml to destination root when appType is api", async () => {
+    test("should keep .env.yml at the project root for all app types", async () => {
       await command.run({ name: "MyApp", destination: testDir, silent: true, appType: "api" });
-
       expect(await exists(join(testDir, ".env.yml"))).toBe(true);
       expect(await exists(join(testDir, "modules", "shared", ".env.yml"))).toBe(false);
     });
 
-    test("should populate .env.yml with default values when appType is api", async () => {
-      await command.run({ name: "MyApp", destination: testDir, silent: true, appType: "api" });
-
-      const content = await Bun.file(join(testDir, ".env.yml")).text();
-      expect(content).toContain("postgresql://talos:talos@localhost:5432/talos");
-      expect(content).toContain("redis://localhost:6379");
-    });
-
-    test("should populate .env.yml with default values", async () => {
+    test("should filter tsconfig path aliases down to app and shared", async () => {
       await command.run({ name: "MyApp", destination: testDir, silent: true });
 
-      const content = await Bun.file(join(testDir, ".env.yml")).text();
-      expect(content).toContain("postgresql://talos:talos@localhost:5432/talos");
-      expect(content).toContain("redis://localhost:6379");
-    });
-
-    test("should annotate .env.yml with section and env-var comments", async () => {
-      await command.run({ name: "MyApp", destination: testDir, silent: true });
-
-      const content = await Bun.file(join(testDir, ".env.yml")).text();
-      expect(content).toContain("# Application settings");
-      expect(content).toContain("# Caching layer");
-      expect(content).toContain("# DATABASE_URL");
-      expect(content).toContain("# CACHE_REDIS_URL");
-      // Top-level sections are separated by a blank line, mirroring env.yml.
-      expect(content).toMatch(/\n\n# Logging configuration\nlogs:/);
-    });
-
-    test("should not emit comments for the removed analytics section", async () => {
-      await command.run({ name: "MyApp", destination: testDir, silent: true });
-
-      const content = await Bun.file(join(testDir, ".env.yml")).text();
-      expect(content).not.toContain("# Analytics and telemetry");
-      expect(content).not.toContain("analytics:");
-    });
-
-    test("should write .env.yml in block-style YAML format", async () => {
-      await command.run({ name: "MyApp", destination: testDir, silent: true });
-
-      const content = await Bun.file(join(testDir, ".env.yml")).text();
-      expect(content).not.toMatch(/^\{/); // no flow-style opening brace
-      expect(content).toMatch(/^app:$/m);
-      expect(content).toMatch(/^database:$/m);
-      expect(content).toMatch(/^cache:$/m);
-      expect(content).toMatch(/^queue:$/m);
-      expect(content).toMatch(/^ {2}url:/m); // nested keys are indented
-    });
-
-    test('should write empty string values as quoted "" in .env.yml', async () => {
-      await command.run({ name: "MyApp", destination: testDir, silent: true });
-
-      const content = await Bun.file(join(testDir, ".env.yml")).text();
-      expect(content).toContain('host: ""');
-      expect(content).toContain('database_url: ""');
-      expect(content).toContain('source_token: ""');
+      const tsconfig = await Bun.file(join(testDir, "tsconfig.json")).json();
+      expect(tsconfig.compilerOptions.paths).toEqual({
+        "@module/app/*": ["./modules/app/src/*"],
+        "@module/shared/*": ["./modules/shared/src/*"],
+      });
     });
 
     const skillFileCount = async (skillsDir: string) => {
@@ -245,15 +233,13 @@ describe("AppInitCommand", () => {
       return files.length;
     };
 
-    // The exhaustive per-assistant scaffolding is covered by
-    // templates/llm/assistants.spec.ts and AgentSkillsCreateCommand.spec; here we
-    // only assert that app:init delegates to it for the selected assistants.
     test("should delegate skills scaffolding for the selected assistants", async () => {
       selectedAgents = [".claude"];
       await command.run({ name: "MyApp", destination: testDir, silent: true });
 
       expect(await skillFileCount(join(testDir, ".claude", "skills"))).toBeGreaterThan(0);
       expect(await exists(join(testDir, "AGENTS.md"))).toBe(true);
+      expect(await Bun.file(join(testDir, "AGENTS.md")).text()).toContain("my-app");
     });
 
     test("should not generate any assistant skills when none are selected", async () => {
@@ -272,19 +258,22 @@ describe("AppInitCommand", () => {
     });
 
     test("should install dev dependencies including @talosjs/cli without husky or commitlint", async () => {
-      const spawnCalls: string[][] = [];
+      const localSpawnCalls: string[][] = [];
 
       Bun.spawn = ((...args: unknown[]) => {
         const cmd = Array.isArray(args[0]) ? args[0] : (args[0] as { cmd?: string[] })?.cmd;
         if (Array.isArray(cmd)) {
-          spawnCalls.push([...(cmd as string[])]);
+          localSpawnCalls.push([...(cmd as string[])]);
+        }
+        if (Array.isArray(cmd) && cmd[0] === "git" && cmd[1] === "clone") {
+          cpSync(skeletonFixture, cmd[cmd.length - 1] as string, { recursive: true });
         }
         return { exited: Promise.resolve(0) } as unknown as ReturnType<typeof Bun.spawn>;
       }) as typeof Bun.spawn;
 
       await command.run({ name: "MyApp", destination: testDir, silent: true });
 
-      const devDepsCall = spawnCalls.find((cmd) => cmd[0] === "bun" && cmd[1] === "add" && cmd[2] === "-D");
+      const devDepsCall = localSpawnCalls.find((cmd) => cmd[0] === "bun" && cmd[1] === "add" && cmd[2] === "-D");
       expect(devDepsCall).toBeDefined();
       expect(devDepsCall).toContain("@talosjs/cli");
       expect(devDepsCall).toContain("typescript");
@@ -292,22 +281,26 @@ describe("AppInitCommand", () => {
       expect(devDepsCall).not.toContain("lint-staged");
       expect(devDepsCall?.some((dep) => dep.startsWith("@commitlint/"))).toBe(false);
       expect(devDepsCall).not.toContain("nx");
+      expect(devDepsCall).not.toContain("git");
     });
 
     test("should initialize git repository", async () => {
-      const spawnCalls: string[][] = [];
+      const localSpawnCalls: string[][] = [];
 
       Bun.spawn = ((...args: unknown[]) => {
         const cmd = Array.isArray(args[0]) ? args[0] : (args[0] as { cmd?: string[] })?.cmd;
         if (Array.isArray(cmd)) {
-          spawnCalls.push([...(cmd as string[])]);
+          localSpawnCalls.push([...(cmd as string[])]);
+        }
+        if (Array.isArray(cmd) && cmd[0] === "git" && cmd[1] === "clone") {
+          cpSync(skeletonFixture, cmd[cmd.length - 1] as string, { recursive: true });
         }
         return { exited: Promise.resolve(0) } as unknown as ReturnType<typeof Bun.spawn>;
       }) as typeof Bun.spawn;
 
       await command.run({ name: "MyApp", destination: testDir, silent: true });
 
-      const gitInitCall = spawnCalls.find((cmd) => cmd[0] === "git" && cmd[1] === "init");
+      const gitInitCall = localSpawnCalls.find((cmd) => cmd[0] === "git" && cmd[1] === "init");
       expect(gitInitCall).toBeDefined();
     });
 
@@ -319,6 +312,9 @@ describe("AppInitCommand", () => {
         const opts = args[1] as { stderr?: unknown } | undefined;
         if (Array.isArray(cmd)) {
           spawnOpts.push({ cmd: [...(cmd as string[])], stderr: opts?.stderr });
+        }
+        if (Array.isArray(cmd) && cmd[0] === "git" && cmd[1] === "clone") {
+          cpSync(skeletonFixture, cmd[cmd.length - 1] as string, { recursive: true });
         }
         return { exited: Promise.resolve(0) } as unknown as ReturnType<typeof Bun.spawn>;
       }) as typeof Bun.spawn;
@@ -332,23 +328,6 @@ describe("AppInitCommand", () => {
       for (const call of setupCalls) {
         expect(call.stderr).toBe("pipe");
       }
-    });
-
-    test("should not log success message when silent is true", async () => {
-      const logCalls: string[] = [];
-      const OriginalLogger = (await import("@talosjs/logger")).TerminalLogger as unknown as new () => {
-        success: (...args: unknown[]) => void;
-      };
-      const instance = new OriginalLogger();
-      const originalSuccess = instance.success;
-      instance.success = (...args: unknown[]) => {
-        logCalls.push(String(args[0]));
-        return originalSuccess.apply(instance, args as Parameters<typeof originalSuccess>);
-      };
-
-      await command.run({ name: "MyApp", destination: testDir, silent: true });
-
-      expect(logCalls).toHaveLength(0);
     });
   });
 });

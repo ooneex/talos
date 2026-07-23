@@ -1,19 +1,15 @@
 import { join } from "node:path";
-import { envConfig, envContent } from "@talosjs/app-env";
 import type { ICommand } from "@talosjs/command";
 import { decorator } from "@talosjs/command";
 import { TerminalLogger } from "@talosjs/logger";
 import { toKebabCase } from "@talosjs/utils/toKebabCase";
+import { copySkeletonPath, getSkeletonDir, readSkeletonFile } from "../agentConfig";
 import { askConfirm } from "../prompts/askConfirm";
 import { askDestination } from "../prompts/askDestination";
 import { askName } from "../prompts/askName";
-import gitignoreTemplate from "../templates/app/.gitignore.txt";
-import biomeTemplate from "../templates/app/biome.jsonc.txt";
 import packageTemplate from "../templates/app/package.json.txt";
 import readmeTemplate from "../templates/app/README.md.txt";
-import tsconfigTemplate from "../templates/app/tsconfig.json.txt";
-import zedSettingsTemplate from "../templates/app/zed-settings.json.txt";
-import { ensureBin, extractYamlComments, LOG_OPTIONS, spawnStep, toYaml } from "../utils";
+import { ensureBin, LOG_OPTIONS, spawnStep } from "../utils";
 import { AgentSkillsCreateCommand } from "./AgentSkillsCreateCommand";
 import { CommitlintInitCommand } from "./CommitlintInitCommand";
 
@@ -48,44 +44,37 @@ export class AppInitCommand<T extends CommandOptionsType = CommandOptionsType> i
       destination = await askDestination({ message: "Enter destination path", initial: kebabName });
     }
 
+    const skeletonDir = await getSkeletonDir(logger, silent);
+    if (!skeletonDir) return;
+
     const packageContent = packageTemplate.replace(/{{NAME}}/g, kebabName);
     const packageJsonPath = join(destination, "package.json");
     const packageJsonExists = await Bun.file(packageJsonPath).exists();
+    const tsconfig = JSON.parse(await readSkeletonFile(skeletonDir, "tsconfig.json")) as {
+      compilerOptions?: { paths?: Record<string, string[]> };
+    };
+    const sourcePaths = tsconfig.compilerOptions?.paths ?? {};
 
-    // These project files target independent paths, so write them concurrently.
+    tsconfig.compilerOptions ??= {};
+    tsconfig.compilerOptions.paths = {
+      "@module/app/*": sourcePaths["@module/app/*"] ?? ["./modules/app/src/*"],
+      "@module/shared/*": sourcePaths["@module/shared/*"] ?? ["./modules/shared/src/*"],
+    };
+
+    const envExampleContent = await readSkeletonFile(skeletonDir, ".env.example.yml");
+
     await Promise.all([
-      Bun.write(join(destination, ".gitignore"), gitignoreTemplate),
-      Bun.write(join(destination, "biome.jsonc"), biomeTemplate),
+      copySkeletonPath(skeletonDir, ".gitignore", join(destination, ".gitignore")),
+      copySkeletonPath(skeletonDir, "biome.jsonc", join(destination, "biome.jsonc")),
       Bun.write(join(destination, "README.md"), readmeTemplate.replace(/{{NAME}}/g, kebabName)),
-      Bun.write(join(destination, "tsconfig.json"), tsconfigTemplate),
-      Bun.write(join(destination, ".zed", "settings.json"), zedSettingsTemplate),
+      Bun.write(join(destination, "tsconfig.json"), `${JSON.stringify(tsconfig, null, 2)}\n`),
+      copySkeletonPath(skeletonDir, ".zed/settings.json", join(destination, ".zed", "settings.json")),
+      Bun.write(join(destination, ".env.example.yml"), envExampleContent),
+      Bun.write(join(destination, ".env.yml"), envExampleContent),
       Bun.write(join(destination, "var", ".gitkeep"), ""),
       ...(packageJsonExists ? [] : [Bun.write(packageJsonPath, packageContent)]),
     ]);
 
-    const envData = structuredClone(envConfig) as {
-      analytics?: unknown;
-      cache: { redis: { url: string } };
-      pubsub: { redis: { url: string } };
-      rate_limit: { redis: { url: string } };
-      queue: { redis: { url: string } };
-      database: { url: string; redis: { url: string } };
-      [key: string]: unknown;
-    };
-
-    delete envData.analytics;
-
-    envData.cache.redis.url = "redis://localhost:6379";
-    envData.pubsub.redis.url = "redis://localhost:6379";
-    envData.rate_limit.redis.url = "redis://localhost:6379";
-    envData.queue.redis.url = "redis://localhost:6379";
-    envData.database.url = "postgresql://talos:talos@localhost:5432/talos";
-    envData.database.redis.url = "redis://localhost:6379";
-
-    const envComments = extractYamlComments(envContent);
-    await Bun.write(join(destination, ".env.yml"), `${toYaml(envData, 0, envComments)}\n`);
-
-    // Install dev dependencies
     const devDepsInstalled = await spawnStep(
       logger,
       [
@@ -110,10 +99,10 @@ export class AppInitCommand<T extends CommandOptionsType = CommandOptionsType> i
     );
     if (!devDepsInstalled) return;
 
-    // Initialize git repository
     if (!ensureBin(logger, "git", silent)) {
       return;
     }
+
     const gitInitialized = await spawnStep(
       logger,
       ["git", "init"],
@@ -129,12 +118,14 @@ export class AppInitCommand<T extends CommandOptionsType = CommandOptionsType> i
     const runCommitlintHook = await askConfirm({ message: "Install the commit-msg hook?", initial: true });
 
     if (runCommitlintHook) {
-      // Install the commit-msg hook that lints commit messages.
       await new CommitlintInitCommand().run({ cwd: destination });
     }
 
-    // Scaffold shared skills/config for whichever assistants the user selects.
-    await new AgentSkillsCreateCommand().run({ cwd: destination });
+    await new AgentSkillsCreateCommand().run({
+      cwd: destination,
+      name: kebabName,
+      ...(silent !== undefined ? { silent } : {}),
+    });
 
     if (!silent) {
       logger.success(`${kebabName} initialized successfully at ${destination}`, undefined, LOG_OPTIONS);

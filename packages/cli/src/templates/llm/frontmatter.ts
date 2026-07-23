@@ -1,7 +1,7 @@
-// Shared helpers for turning the Claude-flavoured `.md.txt` agent/skill
-// templates into the various formats every other assistant expects. The prose
-// bodies are assistant-agnostic Talos guidance, so the templates are the single
-// source of truth and each assistant adapter renders its own wrapper from them.
+// Shared helpers for turning the Claude-flavoured agent/skill Markdown into the
+// various formats every other assistant expects. The prose bodies are
+// assistant-agnostic Talos guidance, so each adapter renders its own wrapper
+// around the same canonical content.
 
 export type ParsedTemplate = {
   data: Record<string, string>;
@@ -9,7 +9,7 @@ export type ParsedTemplate = {
 };
 
 /**
- * Split a `.md.txt` template into its `---`-delimited front matter and body. The
+ * Split a Markdown template into its `---`-delimited front matter and body. The
  * front matter is a flat `key: value` list (no nested YAML in these templates),
  * so a line-by-line parse is enough and keeps the CLI dependency-free. The body
  * is trimmed of surrounding blank lines.

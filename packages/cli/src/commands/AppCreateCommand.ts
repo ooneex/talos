@@ -1,3 +1,4 @@
+import { rm } from "node:fs/promises";
 import { join } from "node:path";
 import type { ICommand } from "@talosjs/command";
 import { decorator } from "@talosjs/command";
@@ -5,16 +6,11 @@ import { TerminalLogger } from "@talosjs/logger";
 import { rolesConfig } from "@talosjs/role";
 import { toKebabCase } from "@talosjs/utils/toKebabCase";
 import { toSnakeCase } from "@talosjs/utils/toSnakeCase";
+import { copySkeletonPath, getSkeletonDir } from "../agentConfig";
 import { askCiProvider } from "../prompts/askCiProvider";
 import { askConfirm } from "../prompts/askConfirm";
 import { askDestination } from "../prompts/askDestination";
 import { askName } from "../prompts/askName";
-import dockerignoreTemplate from "../templates/app/.dockerignore.txt";
-import databaseTemplate from "../templates/app/app-database.txt";
-import dockerfileTemplate from "../templates/app/Dockerfile.txt";
-import dockerComposeTemplate from "../templates/app/docker-compose.yml.txt";
-import indexTemplate from "../templates/app/index.ts.txt";
-import onAppStartTemplate from "../templates/app/OnAppStart.ts.txt";
 import packageTemplate from "../templates/app/package.json.txt";
 import { templates as bitbucketTemplates } from "../templates/bitbucket/index";
 import { templates as githubTemplates } from "../templates/github/index";
@@ -22,7 +18,6 @@ import { templates as gitlabTemplates } from "../templates/gitlab/index";
 import renovateTemplate from "../templates/renovate.json.txt";
 import { LOG_OPTIONS, LOG_OPTIONS_PLAIN, spawnStep, toYaml } from "../utils";
 import { AppInitCommand } from "./AppInitCommand";
-import { ModuleCreateCommand } from "./ModuleCreateCommand";
 
 type CommandOptionsType = {
   name?: string;
@@ -53,48 +48,31 @@ export class AppCreateCommand<T extends CommandOptionsType = CommandOptionsType>
       destination = await askDestination({ message: "Enter destination path", initial: kebabName });
     }
 
-    // Create app module
-    const makeModuleCommand = new ModuleCreateCommand();
-    await makeModuleCommand.run({
-      name: "app",
-      cwd: destination,
-      silent: true,
-    });
+    const skeletonDir = await getSkeletonDir(logger);
+    if (!skeletonDir) return;
 
-    const appModulePackagePath = join(destination, "modules", "app", "package.json");
-    const appModulePackageJson = await Bun.file(appModulePackagePath).json();
-    await Bun.write(appModulePackagePath, JSON.stringify(appModulePackageJson, null, 2));
+    await Promise.all([
+      copySkeletonPath(skeletonDir, "modules/app", join(destination, "modules", "app")),
+      copySkeletonPath(skeletonDir, "modules/shared", join(destination, "modules", "shared")),
+      copySkeletonPath(skeletonDir, ".dockerignore", join(destination, ".dockerignore")),
+      Bun.write(join(destination, "var", ".gitkeep"), ""),
+    ]);
 
-    // The app module is an API, not a generic module
-    const appYmlPath = join(destination, "modules", "app", "app.yml");
-    const appYmlContent = await Bun.file(appYmlPath).text();
-    await Bun.write(appYmlPath, appYmlContent.replace('type: "module"', 'type: "api"'));
-
-    await Bun.write(join(destination, "modules", "app", "src", "index.ts"), indexTemplate);
-    await Bun.write(join(destination, "modules", "app", "src", "OnAppStart.ts"), onAppStartTemplate);
-
-    // Create shared module
-    await makeModuleCommand.run({
-      name: "shared",
-      cwd: destination,
-      silent: true,
-    });
-    await Bun.write(join(destination, "modules", "shared", "src", "databases", "SharedDatabase.ts"), databaseTemplate);
     await Bun.write(join(destination, "modules", "shared", "src", "roles.yml"), `${toYaml(rolesConfig)}\n`);
-    const snakeName = toSnakeCase(name);
-    const dockerComposeContent = dockerComposeTemplate.replace(/{{NAME}}/g, snakeName);
-    await Bun.write(join(destination, "modules", "app", "docker-compose.yml"), dockerComposeContent);
-    const dockerfileContent = dockerfileTemplate.replace(/{{NAME}}/g, snakeName);
-    await Bun.write(join(destination, "modules", "app", "Dockerfile"), dockerfileContent);
-    await Bun.write(join(destination, ".dockerignore"), dockerignoreTemplate);
-    await Bun.write(join(destination, "var", ".gitkeep"), "");
 
-    // Initialize app (config files, env, git, commit hook) before installing deps
-    // so that package.json exists at destination when bun add runs
+    const snakeName = toSnakeCase(name);
+    const dockerfilePath = join(destination, "modules", "app", "Dockerfile");
+    const dockerComposePath = join(destination, "modules", "app", "docker-compose.yml");
+
+    await Promise.all([
+      Bun.write(dockerfilePath, (await Bun.file(dockerfilePath).text()).replace(/skeleton/g, snakeName)),
+      Bun.write(dockerComposePath, (await Bun.file(dockerComposePath).text()).replace(/skeleton/g, snakeName)),
+      rm(join(destination, "bun.lock"), { force: true }),
+    ]);
+
     const appInitCommand = new AppInitCommand();
     await appInitCommand.run({ name, destination, silent: true, appType: "api" });
 
-    // Install dependencies
     const depsInstalled = await spawnStep(
       logger,
       [
@@ -136,7 +114,6 @@ export class AppCreateCommand<T extends CommandOptionsType = CommandOptionsType>
     );
     if (!depsInstalled) return;
 
-    // Install dev dependencies
     const devDepsInstalled = await spawnStep(
       logger,
       ["bun", "add", "-D", "@talosjs/command", "@talosjs/migrations", "@talosjs/seeds"],
@@ -148,7 +125,6 @@ export class AppCreateCommand<T extends CommandOptionsType = CommandOptionsType>
     );
     if (!devDepsInstalled) return;
 
-    // Ensure scripts and workspaces are preserved after bun add rewrites package.json
     const rootPackagePath = join(destination, "package.json");
     const rootPackage = await Bun.file(rootPackagePath).json();
     const templatePackage = JSON.parse(packageTemplate.replace(/{{NAME}}/g, kebabName));
@@ -159,9 +135,7 @@ export class AppCreateCommand<T extends CommandOptionsType = CommandOptionsType>
     logger.success(`${kebabName} created successfully at ${destination}`, undefined, LOG_OPTIONS);
 
     logger.info(`\nGet started:\n  cd ${destination}`, undefined, LOG_OPTIONS_PLAIN);
-
     logger.info("\nStart the app:\n  talos app:start", undefined, LOG_OPTIONS_PLAIN);
-
     logger.info("Stop the app:\n  talos app:stop", undefined, LOG_OPTIONS_PLAIN);
 
     const createCiCd = await askConfirm({ message: "Create CI/CD files?", initial: true });
