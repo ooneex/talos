@@ -1,11 +1,11 @@
 import { cpSync } from "node:fs";
 import { mkdir, readdir, rm } from "node:fs/promises";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import type { ICommand } from "@talosjs/command";
 import { decorator } from "@talosjs/command";
 import { TerminalLogger } from "@talosjs/logger";
 import { toKebabCase } from "@talosjs/utils/toKebabCase";
-import { getSkeletonDir } from "../agentConfig";
+import { getSkeletonDir, resetSkeletonDirCache } from "../agentConfig";
 import { askConfirm } from "../prompts/askConfirm";
 import { askDestination } from "../prompts/askDestination";
 import { askName } from "../prompts/askName";
@@ -48,6 +48,9 @@ export class AppInitCommand<T extends CommandOptionsType = CommandOptionsType> i
     if (!skeletonDir) return;
 
     cpSync(skeletonDir, destination, { recursive: true, force: true });
+
+    await rm(dirname(skeletonDir), { recursive: true, force: true });
+    resetSkeletonDirCache();
 
     await rm(join(destination, ".git"), { recursive: true, force: true });
     await rm(join(destination, "bun.lock"), { force: true });
