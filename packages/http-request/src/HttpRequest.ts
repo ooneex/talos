@@ -58,7 +58,7 @@ export class HttpRequest<Config extends RequestConfigType = RequestConfigType> i
         region: null,
       };
     } else {
-      const languages = parser.parse(this.header.get("Accept-Language") ?? "en-US");
+      const languages = parser.parse(this.header.get("Accept-Language") || "en-US");
       const language = languages[0];
       this.lang = {
         code: language?.code as LocaleType,

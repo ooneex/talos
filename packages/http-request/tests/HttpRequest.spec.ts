@@ -341,10 +341,10 @@ describe("HttpRequest", () => {
       mockHeaders.set("Accept-Language", "fr-CH, fr;q=0.9, en;q=0.8, de;q=0.7, *;q=0.5");
       const request = new HttpRequest(mockRequest);
 
-      // Falls back to default when parser doesn't handle complex format
+      // Parser picks the highest quality entry, "fr-CH", as the primary language
       expect(request.lang).toEqual({
-        code: "en",
-        region: "US",
+        code: "fr",
+        region: "CH",
       });
     });
 
