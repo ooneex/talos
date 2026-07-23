@@ -7,9 +7,28 @@ use clap::Args;
 use fs_extra::dir::{CopyOptions, copy as copy_dir};
 
 use crate::utils::{
-    Action, Spinner, ask_confirm, clone_skeleton, ensure_bin, resolve_name_and_destination,
-    run_actions,
+    Action, Spinner, ask_confirm, ask_multiselect, clone_skeleton, ensure_bin,
+    resolve_name_and_destination, run_actions,
 };
+
+/// Coding assistants `agent:skills:create` can scaffold shared skills/config
+/// for, mapped to the directory each one reads its configuration from — mirrors
+/// the `AGENTS` list in `packages/cli/src/prompts/askAgentSkills.ts`. The third
+/// field marks the assistants enabled by default. Passing these dirs explicitly
+/// via `--agents` bypasses the subcommand's interactive multiselect, which would
+/// otherwise hang when driven as a captured, non-interactive child process.
+const AGENT_SKILLS: [(&str, &str, bool); 10] = [
+    ("Claude", ".claude", true),
+    ("Codex", ".codex", true),
+    ("Cursor", ".cursor", false),
+    ("Gemini", ".gemini", false),
+    ("Windsurf", ".windsurf", false),
+    ("Cline", ".cline", false),
+    ("JetBrains Junie", ".junie", false),
+    ("Roo Code", ".roo", false),
+    ("Continue", ".continue", false),
+    ("Zed", ".zed", false),
+];
 
 /// Rust port of `packages/cli/src/commands/AppInitCommand.ts`.
 #[derive(Args, Debug)]
@@ -112,6 +131,16 @@ pub fn execute(options: AppInitOptions) -> Option<PathBuf> {
         .map(|output| output.status.success())
         .unwrap_or(false);
 
+    // Resolve which assistant config dirs to scaffold up front (like the hook
+    // prompt above) so the answer is passed explicitly to `oo` via `--agents`.
+    // Without it the subcommand falls back to an interactive multiselect, which
+    // hangs forever when run as a captured child process with no usable stdin.
+    let agent_dirs = if oo_available {
+        resolve_agent_dirs(silent)
+    } else {
+        Vec::new()
+    };
+
     // The three steps below have no ordering dependency on each other, so they
     // run in parallel instead of one after another — the dominant cost is the
     // network-bound `bun install`, which now overlaps with `git init` and the
@@ -132,11 +161,11 @@ pub fn execute(options: AppInitOptions) -> Option<PathBuf> {
             }
         }),
     ];
-    if oo_available {
+    if oo_available && !agent_dirs.is_empty() {
         actions.push(Action::new("Scaffolding agent skills", {
             let destination = destination.clone();
             let kebab_name = kebab_name.clone();
-            move || run_agent_skills(&destination, &kebab_name, silent)
+            move || run_agent_skills(&destination, &kebab_name, &agent_dirs, silent)
         }));
     }
 
@@ -306,14 +335,53 @@ exec talos commitlint:check --file \"$1\"\n";
 /// above native while reusing the single source of truth for that logic.
 /// Output is captured so it can run behind the concurrent action spinner; the
 /// combined stdout/stderr is returned on failure.
-fn run_agent_skills(destination: &Path, kebab_name: &str, silent: bool) -> Result<(), String> {
+/// Returns the assistant config dirs to scaffold. In silent/unattended mode
+/// (e.g. when driven by `app:create`) it falls back to the default-enabled
+/// assistants; otherwise the user picks from an interactive multiselect. The
+/// dirs are passed to `oo agent:skills:create --agents` so the child process
+/// never blocks on its own prompt.
+fn resolve_agent_dirs(silent: bool) -> Vec<String> {
+    let default_dirs = || {
+        AGENT_SKILLS
+            .iter()
+            .filter(|(_, _, enabled)| *enabled)
+            .map(|(_, dir, _)| (*dir).to_string())
+            .collect::<Vec<_>>()
+    };
+
+    if silent {
+        return default_dirs();
+    }
+
+    let labels: Vec<&str> = AGENT_SKILLS.iter().map(|(name, _, _)| *name).collect();
+    let defaults: Vec<bool> = AGENT_SKILLS.iter().map(|(_, _, enabled)| *enabled).collect();
+
+    match ask_multiselect("Add skills for which assistants?", &labels, &defaults) {
+        Some(indices) => indices
+            .into_iter()
+            .filter_map(|index| AGENT_SKILLS.get(index).map(|(_, dir, _)| (*dir).to_string()))
+            .collect(),
+        // A cancelled prompt (e.g. Ctrl-C) falls back to the defaults rather
+        // than silently scaffolding nothing.
+        None => default_dirs(),
+    }
+}
+
+fn run_agent_skills(
+    destination: &Path,
+    kebab_name: &str,
+    agent_dirs: &[String],
+    silent: bool,
+) -> Result<(), String> {
     let mut command = Command::new("oo");
     command
         .arg("agent:skills:create")
         .arg("--name")
         .arg(kebab_name)
         .arg("--cwd")
-        .arg(destination);
+        .arg(destination)
+        .arg("--agents")
+        .arg(agent_dirs.join(","));
 
     if silent {
         command.arg("--silent");

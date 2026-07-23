@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 
-use dialoguer::{Confirm, Input, Select, theme::ColorfulTheme};
+use dialoguer::{Confirm, Input, MultiSelect, Select, theme::ColorfulTheme};
 use regex::Regex;
 
 use super::case::to_kebab_case;
@@ -106,6 +106,18 @@ pub fn ask_select(prompt: &str, items: &[&str]) -> Option<usize> {
         .with_prompt(prompt)
         .items(items)
         .default(0)
+        .interact()
+        .ok()
+}
+
+/// Mirrors `askAgentSkills`' `multiselect` prompt: renders `items` with the
+/// entries flagged in `defaults` pre-checked and returns the indices of the
+/// selected entries (an empty `Vec` when nothing is picked).
+pub fn ask_multiselect(prompt: &str, items: &[&str], defaults: &[bool]) -> Option<Vec<usize>> {
+    MultiSelect::with_theme(&ColorfulTheme::default())
+        .with_prompt(prompt)
+        .items(items)
+        .defaults(defaults)
         .interact()
         .ok()
 }

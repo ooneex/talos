@@ -61,8 +61,8 @@ pub use parallel::{Action, run_actions, run_actions_rendered};
 pub use process::{ensure_bin, run_spinner_step, run_step};
 pub use prompts::{
     ask_confirm, ask_destination, ask_destination_module, ask_input, ask_input_with_default,
-    ask_name, ask_password, ask_plain_input, ask_route_method, ask_route_name, ask_route_path,
-    ask_select, resolve_name_and_destination, validate_destination, validate_name,
+    ask_multiselect, ask_name, ask_password, ask_plain_input, ask_route_method, ask_route_name,
+    ask_route_path, ask_select, resolve_name_and_destination, validate_destination, validate_name,
     validate_route_method, validate_route_name, validate_route_path,
 };
 pub use run_module_scripts::{RunModuleScriptsOptions, run_module_scripts};
