@@ -40,6 +40,7 @@ describe("SpaRemoveCommand", () => {
         mkdirSync(join(templateDir, "src"), { recursive: true });
         writeFileSync(join(templateDir, "src", "App.tsx"), "export const App = () => null;\n");
         writeFileSync(join(templateDir, "package.json"), JSON.stringify({ dependencies: {}, devDependencies: {} }));
+        writeFileSync(join(templateDir, "spa.yml"), 'name: "spa"\ntype: "spa"\n');
       }
 
       return { exited: Promise.resolve(0) } as unknown as ReturnType<typeof Bun.spawn>;

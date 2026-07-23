@@ -7,8 +7,11 @@ mock.module("enquirer", () => ({
   prompt: mock(() => Promise.resolve({ name: "Test" })),
 }));
 
-// Mock ensureModule to avoid creating full module structure in tests
+// Mock ensureModule to avoid creating full module structure in tests, while keeping
+// every other export intact so other test files importing "@/utils" aren't affected.
+const actualUtils = await import("@/utils");
 mock.module("@/utils", () => ({
+  ...actualUtils,
   ensureModule: mock(() => Promise.resolve()),
 }));
 
