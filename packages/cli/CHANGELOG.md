@@ -1,5 +1,31 @@
 # Changelog
 
+## [1.32.0](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.32.0) - 2026-07-23
+
+### Added
+
+- Allow agent skills scaffolding to reuse an existing source dir| — Franck ([540a3d35](https://github.com/ooneex/talos/commit/540a3d35))
+- Load agent templates from skeleton repo instead of bundled files| — Franck ([1369a4fd](https://github.com/ooneex/talos/commit/1369a4fd))
+
+### Changed
+
+- Remove stale agent skills and assistants test specs| — Franck ([07d976a6](https://github.com/ooneex/talos/commit/07d976a6))
+- Fix mocked utils and spa clone fixtures| — Franck ([669d92e6](https://github.com/ooneex/talos/commit/669d92e6))
+- Remove unused generic database template| — Franck ([5274ccc4](https://github.com/ooneex/talos/commit/5274ccc4))
+- Fix mocked microservice clone to include .env.example.yml| — Franck ([d93c9ad5](https://github.com/ooneex/talos/commit/d93c9ad5))
+- Pull microservice bootstrap files from skeleton repo| — Franck ([81774d33](https://github.com/ooneex/talos/commit/81774d33))
+- Add specs for AppCreateCommand and AppInitCommand| — Franck ([4bb7a736](https://github.com/ooneex/talos/commit/4bb7a736))
+- Delegate app create scaffolding to AppInitCommand skeleton copy| — Franck ([758e252b](https://github.com/ooneex/talos/commit/758e252b))
+- Scaffold app init by copying full skeleton repo tree| — Franck ([feb031c3](https://github.com/ooneex/talos/commit/feb031c3))
+
+### Fixed
+
+- Register path alias and preserve yml fields for design and spa modules| — Franck ([31b59654](https://github.com/ooneex/talos/commit/31b59654))
+- Copy full design and spa templates instead of scaffolding a module| — Franck ([cdf588f9](https://github.com/ooneex/talos/commit/cdf588f9))
+- Point design and spa scaffolding at unified skeleton repo| — Franck ([003422ec](https://github.com/ooneex/talos/commit/003422ec))
+- Clean up temp skeleton clone after app init| — Franck ([6b11c1e0](https://github.com/ooneex/talos/commit/6b11c1e0))
+- Generate package.json from skeleton repo content| — Franck ([60514445](https://github.com/ooneex/talos/commit/60514445))
+
 ## [1.31.1](https://github.com/ooneex/talos/releases/tag/@talosjs/cli@1.31.1) - 2026-07-20
 
 ### Fixed
