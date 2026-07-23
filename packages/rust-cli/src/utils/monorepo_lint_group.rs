@@ -14,7 +14,7 @@ use std::path::Path;
 use super::monorepo_task::{Task, TaskStatus};
 use super::monorepo_test_group::collect_test_files;
 use crate::utils::monorepo_fmt_group::collect_fmt_files;
-use crate::utils::{MonorepoTarget, is_rust_module, resolve_biome_command};
+use crate::utils::{MonorepoTarget, is_rust_module, resolve_biome_command, resolve_tsc_command};
 
 pub(crate) const LINT_COMMAND: &str = "lint";
 
@@ -132,13 +132,15 @@ pub(crate) fn build_lint_group(targets: &[MonorepoTarget]) -> Vec<Task> {
 
         let mut target_tasks = Vec::new();
         if target.dir.join("tsconfig.json").is_file() {
+            let mut argv = resolve_tsc_command(&target.dir);
+            argv.push("--noEmit".to_string());
             target_tasks.push(Task {
                 key: format!("{}#{LINT_COMMAND}#tsc", target.key),
                 label: format!("{}:{LINT_COMMAND}:tsc", target.name),
                 target_key: Some(target.key.clone()),
                 command: format!("{LINT_COMMAND}:tsc"),
                 cwd: target.dir.clone(),
-                argv: vec!["tsc".to_string(), "--noEmit".to_string()],
+                argv,
                 cacheable: true,
                 deps: Vec::new(),
                 status: TaskStatus::Pending,

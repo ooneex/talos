@@ -248,9 +248,30 @@ fn collect_files(dir: &Path) -> Vec<String> {
 /// when no local binary is found, so an unusual workspace layout still
 /// works, just without the fast path.
 pub fn resolve_biome_command(start_dir: &Path) -> Vec<String> {
+    resolve_local_bin(start_dir, "biome")
+}
+
+/// Resolves the `tsc` binary directly (walking up from `start_dir` to the
+/// nearest `node_modules/.bin/tsc`) instead of relying on `tsc` being present
+/// on the process `PATH`. Package scripts run through a package manager that
+/// injects `node_modules/.bin` into `PATH`, but the scheduler spawns each
+/// task's `argv[0]` directly, so a bare `tsc` fails with
+/// `No such file or directory (os error 2)` whenever `PATH` lacks it — the
+/// intermittent `lint:tsc` failure this fixes (it only surfaces on a cache
+/// miss, since a cache hit never spawns the process). Falls back to
+/// `bunx tsc` when no local binary is found.
+pub fn resolve_tsc_command(start_dir: &Path) -> Vec<String> {
+    resolve_local_bin(start_dir, "tsc")
+}
+
+/// Walks up from `start_dir` to the nearest `node_modules/.bin/<bin>`,
+/// returning its absolute path so the scheduler can spawn it directly.
+/// Falls back to `bunx <bin>` when no local binary is found, so an unusual
+/// workspace layout still works, just without the fast path.
+fn resolve_local_bin(start_dir: &Path, bin: &str) -> Vec<String> {
     let mut dir = start_dir.to_path_buf();
     loop {
-        let candidate = dir.join("node_modules/.bin/biome");
+        let candidate = dir.join(format!("node_modules/.bin/{bin}"));
         if candidate.is_file() {
             return vec![candidate.to_string_lossy().to_string()];
         }
@@ -258,7 +279,7 @@ pub fn resolve_biome_command(start_dir: &Path) -> Vec<String> {
             break;
         }
     }
-    vec!["bunx".to_string(), "biome".to_string()]
+    vec!["bunx".to_string(), bin.to_string()]
 }
 
 /// True when `root_dir` is itself the top level of a git repository.

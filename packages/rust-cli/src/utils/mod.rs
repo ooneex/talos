@@ -48,7 +48,7 @@ pub use monorepo::{
     CacheEntryMeta, FileHashCache, FingerprintMemo, MONOREPO_CACHE_DIR, MONOREPO_CACHE_VERSION,
     MonorepoTarget, TargetType, compute_task_hash, discover_targets, fingerprint_target,
     hash_root_inputs, is_git_workspace_root, load_file_hash_cache, read_cache_entry,
-    resolve_biome_command, restore_cache_outputs, save_file_hash_cache,
+    resolve_biome_command, resolve_tsc_command, restore_cache_outputs, save_file_hash_cache,
     sort_targets_by_dependencies, write_cache_entry,
 };
 pub(crate) use monorepo_group::{INSTALL_COMMAND, build_group, build_install_group};
