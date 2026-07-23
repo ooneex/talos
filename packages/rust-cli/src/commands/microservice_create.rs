@@ -50,24 +50,38 @@ fn detect_ci_provider(cwd: &Path) -> Option<&'static str> {
     }
 }
 
-fn next_available_port(cwd: &Path) -> u16 {
-    let modules_dir = cwd.join("modules");
-    let mut used = std::collections::BTreeSet::new();
-    if let Ok(entries) = fs::read_dir(&modules_dir) {
-        for entry in entries.flatten() {
-            let env_path = entry.path().join(".env.yml");
-            if let Ok(content) = fs::read_to_string(env_path) {
-                for line in content.lines() {
-                    let trimmed = line.trim();
-                    if let Some(value) = trimmed.strip_prefix("port:")
-                        && let Ok(port) = value.trim().parse::<u16>()
-                    {
-                        used.insert(port);
-                    }
+fn collect_used_ports(dir: &Path, used: &mut std::collections::BTreeSet<u16>) {
+    let Ok(entries) = fs::read_dir(dir) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            let skip = matches!(
+                path.file_name().and_then(|name| name.to_str()),
+                Some("node_modules" | ".git" | "target" | "dist" | ".turbo" | ".next")
+            );
+            if !skip {
+                collect_used_ports(&path, used);
+            }
+        } else if path.file_name().and_then(|name| name.to_str()) == Some(".env.yml")
+            && let Ok(content) = fs::read_to_string(&path)
+        {
+            for line in content.lines() {
+                let trimmed = line.trim();
+                if let Some(value) = trimmed.strip_prefix("port:")
+                    && let Ok(port) = value.trim().parse::<u16>()
+                {
+                    used.insert(port);
                 }
             }
         }
     }
+}
+
+fn next_available_port(cwd: &Path) -> u16 {
+    let mut used = std::collections::BTreeSet::new();
+    collect_used_ports(cwd, &mut used);
     let mut port = 8030;
     while used.contains(&port) {
         port += 1;
@@ -75,30 +89,11 @@ fn next_available_port(cwd: &Path) -> u16 {
     port
 }
 
-fn declare_in_app_yml(app_yml_path: &Path, kebab_name: &str, const_name: &str) {
-    let Ok(mut content) = fs::read_to_string(app_yml_path) else {
-        return;
-    };
-    if content.contains(&format!("- name: \"{kebab_name}\"")) {
-        return;
-    }
-    let env_var = format!("MICROSERVICE_{const_name}_URL");
-    let item = format!(
-        "  # {kebab_name} microservice\n  - name: \"{kebab_name}\"\n    url: {env_var} # env var name\n"
-    );
-    if content.contains("microservices:\n") {
-        content = content.replacen("microservices:\n", &format!("microservices:\n{item}"), 1);
-    } else {
-        content = format!("{}\n\nmicroservices:\n{item}", content.trim_end());
-    }
-    let _ = fs::write(app_yml_path, content);
-}
-
-fn add_to_env_yml(env_yml_path: &Path, kebab_name: &str) {
+fn add_to_env_yml(env_yml_path: &Path, kebab_name: &str, port: u16) {
     let Ok(mut content) = fs::read_to_string(env_yml_path) else {
         return;
     };
-    let entry = format!("  {kebab_name}:\n    url: \"\"\n");
+    let entry = format!("  {kebab_name}:\n    url: \"http://localhost:{port}\"\n");
     if content.contains("microservices:\n") {
         if content.contains(&format!("\n  {kebab_name}:")) {
             return;
@@ -234,6 +229,12 @@ pub fn run(args: &MicroserviceCreateArgs) {
         test_content,
     );
 
+    let index_path = src_dir.join("index.ts");
+    if let Ok(index_content) = fs::read_to_string(&index_path) {
+        let updated = index_content.replace("MicroserviceModule", &format!("{pascal_name}Module"));
+        let _ = fs::write(&index_path, updated);
+    }
+
     let package_path = module_dir.join("package.json");
     if let Ok(raw) = fs::read_to_string(&package_path)
         && let Ok(mut package_json) = serde_json::from_str::<Value>(&raw)
@@ -249,10 +250,11 @@ pub fn run(args: &MicroserviceCreateArgs) {
     }
 
     let env_example = fs::read_to_string(repo_dir.join(".env.example.yml")).unwrap_or_default();
+    let port = next_available_port(&cwd);
     let env_content = regex::Regex::new(r"(?m)^(\s*port:\s*)\d+")
         .ok()
         .map(|re| {
-            re.replace(&env_example, format!("${{1}}{}", next_available_port(&cwd)))
+            re.replace(&env_example, format!("${{1}}{port}"))
                 .into_owned()
         })
         .unwrap_or(env_example);
@@ -261,13 +263,9 @@ pub fn run(args: &MicroserviceCreateArgs) {
     let _ = fs::remove_dir_all(repo_dir.parent().unwrap_or(&repo_dir));
 
     if kebab_name != "app" {
-        let app_yml_path = cwd.join("modules").join("app").join("app.yml");
-        if app_yml_path.exists() {
-            declare_in_app_yml(&app_yml_path, &kebab_name, &snake_name.to_uppercase());
-        }
         let env_yml_path = cwd.join(".env.yml");
         if env_yml_path.exists() {
-            add_to_env_yml(&env_yml_path, &kebab_name);
+            add_to_env_yml(&env_yml_path, &kebab_name, port);
         }
     }
 
