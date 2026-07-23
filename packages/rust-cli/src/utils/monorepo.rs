@@ -7,6 +7,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
 
+use dashmap::DashMap;
+use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
@@ -333,8 +335,16 @@ pub struct FileHashRecord {
 }
 
 /// Granular, cross-run file-hash cache: an absolute path → its content hash
-/// keyed by (size, mtime), so an unchanged file is never re-read.
-pub type FileHashCache = HashMap<String, FileHashRecord>;
+/// keyed by (size, mtime), so an unchanged file is never re-read. Backed by
+/// `DashMap` (a sharded, lock-free-reads concurrent map) rather than a plain
+/// `HashMap` behind a mutex, so targets hashed on different threads don't
+/// serialize on a single global lock.
+pub type FileHashCache = DashMap<String, FileHashRecord>;
+
+/// Per-run memo of target key → content fingerprint, shared across the
+/// thread pool the same way as `FileHashCache` so multiple targets can
+/// fingerprint concurrently while still hashing shared dependencies once.
+pub type FingerprintMemo = DashMap<String, String>;
 
 const FILEHASH_CACHE_FILE: &str = "filehashes.json";
 
@@ -367,8 +377,11 @@ fn mtime_millis(metadata: &fs::Metadata) -> f64 {
 }
 
 /// Content-hash a file, reusing the persisted hash when the file's size and
-/// mtime are unchanged so an unmodified file is never re-read.
-fn hash_file_cached(path: &Path, cache: &mut FileHashCache) -> Option<String> {
+/// mtime are unchanged so an unmodified file is never re-read. Takes the
+/// cache by shared reference — `DashMap` shards its locking internally, so
+/// concurrent callers (different files, different targets) don't contend on
+/// a single global lock the way a `Mutex<HashMap<_>>` would.
+fn hash_file_cached(path: &Path, cache: &FileHashCache) -> Option<String> {
     let metadata = fs::metadata(path).ok()?;
     let size = metadata.len();
     let mtime_ms = mtime_millis(&metadata);
@@ -393,8 +406,12 @@ fn hash_file_cached(path: &Path, cache: &mut FileHashCache) -> Option<String> {
     Some(hash)
 }
 
-/// Content-hash every file of a directory into a single fingerprint.
-pub fn fingerprint_dir(dir: &Path, use_git: bool, file_hash_cache: &mut FileHashCache) -> String {
+/// Content-hash every file of a directory into a single fingerprint. Files
+/// are hashed in parallel across the rayon thread pool (I/O plus SHA-256 per
+/// file is independent work), then folded into the fingerprint in a fixed,
+/// sorted order so the result stays deterministic regardless of thread
+/// scheduling.
+pub fn fingerprint_dir(dir: &Path, use_git: bool, file_hash_cache: &FileHashCache) -> String {
     let files = if use_git {
         collect_files_with_git(dir)
     } else {
@@ -402,9 +419,14 @@ pub fn fingerprint_dir(dir: &Path, use_git: bool, file_hash_cache: &mut FileHash
     }
     .unwrap_or_else(|| collect_files(dir));
 
+    let hashes: Vec<Option<String>> = files
+        .par_iter()
+        .map(|file| hash_file_cached(&dir.join(file), file_hash_cache))
+        .collect();
+
     let mut hasher = Sha256::new();
-    for file in &files {
-        if let Some(hash) = hash_file_cached(&dir.join(file), file_hash_cache) {
+    for (file, hash) in files.iter().zip(hashes) {
+        if let Some(hash) = hash {
             hasher.update(format!("{file}={hash}\n").as_bytes());
         }
     }
@@ -413,11 +435,15 @@ pub fn fingerprint_dir(dir: &Path, use_git: bool, file_hash_cache: &mut FileHash
 
 /// Content-hash every file of a target into a single fingerprint, memoized
 /// per target key in `memo` so shared dependencies are hashed once per run.
+/// `memo` and `file_hash_cache` are shared (`DashMap`) references so this
+/// can safely run for several targets concurrently — a target already being
+/// fingerprinted on another thread is simply recomputed rather than raced,
+/// since correctness never depends on which thread wins.
 pub fn fingerprint_target(
     target: &MonorepoTarget,
-    memo: &mut HashMap<String, String>,
+    memo: &FingerprintMemo,
     use_git: bool,
-    file_hash_cache: &mut FileHashCache,
+    file_hash_cache: &FileHashCache,
 ) -> String {
     if let Some(cached) = memo.get(&target.key) {
         return cached.clone();
@@ -462,21 +488,25 @@ fn transitive_deps<'a>(
     deps
 }
 
-/// Compute the cache hash of one task (`target` × `command`).
+/// Compute the cache hash of one task (`target` × `command`). `memo` and
+/// `file_hash_cache` are shared references so this itself may be called
+/// concurrently for several targets; a target's transitive dependencies are
+/// also fingerprinted in parallel here, on top of the per-file parallelism
+/// inside `fingerprint_dir`.
 pub fn compute_task_hash(
     target: &MonorepoTarget,
     command: &str,
     targets: &[MonorepoTarget],
     root_hash: &str,
-    memo: &mut HashMap<String, String>,
+    memo: &FingerprintMemo,
     use_git: bool,
-    file_hash_cache: &mut FileHashCache,
+    file_hash_cache: &FileHashCache,
 ) -> String {
     let by_key: HashMap<&str, &MonorepoTarget> =
         targets.iter().map(|t| (t.key.as_str(), t)).collect();
     let deps = transitive_deps(target, &by_key);
     let mut dep_lines: Vec<String> = deps
-        .iter()
+        .par_iter()
         .map(|dep| {
             format!(
                 "{}={}",

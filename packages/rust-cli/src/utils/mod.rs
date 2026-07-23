@@ -16,6 +16,7 @@ mod process;
 mod prompts;
 mod run_module_scripts;
 mod runnable_modules;
+mod rust_module;
 mod scaffold;
 mod skeleton;
 mod style;
@@ -38,10 +39,10 @@ pub use module_registry::{
     remove_from_app_module, remove_from_shared_module, remove_path_alias, strip_jsonc,
 };
 pub use monorepo::{
-    CacheEntryMeta, FileHashCache, MONOREPO_CACHE_DIR, MONOREPO_CACHE_VERSION, MonorepoTarget,
-    TargetType, compute_task_hash, discover_targets, fingerprint_target, hash_root_inputs,
-    is_git_workspace_root, load_file_hash_cache, read_cache_entry, restore_cache_outputs,
-    save_file_hash_cache, sort_targets_by_dependencies, write_cache_entry,
+    CacheEntryMeta, FileHashCache, FingerprintMemo, MONOREPO_CACHE_DIR, MONOREPO_CACHE_VERSION,
+    MonorepoTarget, TargetType, compute_task_hash, discover_targets, fingerprint_target,
+    hash_root_inputs, is_git_workspace_root, load_file_hash_cache, read_cache_entry,
+    restore_cache_outputs, save_file_hash_cache, sort_targets_by_dependencies, write_cache_entry,
 };
 pub use process::{ensure_bin, run_step};
 pub use prompts::{
@@ -54,6 +55,7 @@ pub use run_module_scripts::{RunModuleScriptsOptions, run_module_scripts};
 pub use runnable_modules::{
     RunnableModule, RunnableModuleType, collect_runnable_modules, select_runnable_modules,
 };
+pub use rust_module::is_rust_module;
 pub use scaffold::{
     ScaffoldConfig, ScaffoldOptions, current_dir, ensure_module, install_dependency,
     scaffold_resource,

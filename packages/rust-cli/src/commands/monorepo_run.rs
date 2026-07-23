@@ -10,19 +10,21 @@
 //! live, redrawing TTY footer with a spinner and progress bar, since that's
 //! a cosmetic layer with no behavioral effect on what gets run or cached.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 use std::time::Instant;
 
 use clap::Args;
+use console::style;
+use rayon::prelude::*;
 use regex::Regex;
 
 use crate::utils::{
-    CacheEntryMeta, MONOREPO_CACHE_DIR, MONOREPO_CACHE_VERSION, MonorepoTarget, TargetType,
-    compute_task_hash, current_dir, discover_targets, hash_root_inputs, is_git_workspace_root,
-    load_file_hash_cache, read_cache_entry, restore_cache_outputs, save_file_hash_cache,
-    sort_targets_by_dependencies, write_cache_entry,
+    CacheEntryMeta, FingerprintMemo, MONOREPO_CACHE_DIR, MONOREPO_CACHE_VERSION, MonorepoTarget,
+    TargetType, compute_task_hash, current_dir, discover_targets, hash_root_inputs,
+    is_git_workspace_root, load_file_hash_cache, read_cache_entry, restore_cache_outputs,
+    save_file_hash_cache, sort_targets_by_dependencies, write_cache_entry,
 };
 
 const INSTALL_COMMAND: &str = "install";
@@ -110,7 +112,7 @@ pub fn execute(args: &MonorepoRunArgs) -> bool {
     let all_targets = discover_targets(&root_dir);
     let root_hash = hash_root_inputs(&root_dir);
     let use_git = is_git_workspace_root(&root_dir);
-    let mut file_hash_cache = load_file_hash_cache(&cache_dir);
+    let file_hash_cache = load_file_hash_cache(&cache_dir);
 
     let Some(targets) = filter_targets(
         &all_targets,
@@ -139,17 +141,26 @@ pub fn execute(args: &MonorepoRunArgs) -> bool {
         .collect();
 
     let total_tasks: usize = groups.iter().map(|g| g.len()).sum();
-    crate::utils::step(format!(
-        "{}  {} task{} across {} target{}",
-        commands.join(", "),
-        total_tasks,
-        if total_tasks == 1 { "" } else { "s" },
-        sorted.len(),
-        if sorted.len() == 1 { "" } else { "s" },
-    ));
+    // Mirrors `MonorepoRunCommand.run`'s opening line: an accent-colored `▸`
+    // symbol, a bold accent-colored command list, then the task/target
+    // counts in dim — the same split-color style as the TypeScript
+    // version's `colorize`/`bold` calls.
+    println!(
+        "{}{}{}",
+        style("▸ ").magenta(),
+        style(commands.join(", ")).magenta().bold(),
+        style(format!(
+            "  {} task{} across {} target{}",
+            total_tasks,
+            if total_tasks == 1 { "" } else { "s" },
+            sorted.len(),
+            if sorted.len() == 1 { "" } else { "s" },
+        ))
+        .dim()
+    );
 
     let started_at = Instant::now();
-    let mut fingerprint_memo: HashMap<String, String> = HashMap::new();
+    let fingerprint_memo = FingerprintMemo::new();
     let mut stopped = false;
     let mut any_failed = false;
 
@@ -162,10 +173,10 @@ pub fn execute(args: &MonorepoRunArgs) -> bool {
             &all_targets,
             &root_hash,
             &cache_dir,
-            &mut fingerprint_memo,
+            &fingerprint_memo,
             use_git,
             args.no_cache,
-            &mut file_hash_cache,
+            &file_hash_cache,
         );
         if group_failed {
             stopped = true;
@@ -198,12 +209,18 @@ pub fn execute(args: &MonorepoRunArgs) -> bool {
     if skipped > 0 {
         parts.push(format!("{skipped} skipped"));
     }
-    crate::utils::success(format!(
-        "Ran {}  {}  in {}",
-        commands.join(", "),
-        parts.join(" · "),
-        format_duration(started_at.elapsed().as_millis() as u64)
-    ));
+    // Mirrors the TypeScript version's closing line: a green `✔ Ran ...`
+    // segment followed by the counts/duration in dim.
+    println!(
+        "{}{}",
+        style(format!("✔ Ran {}", commands.join(", "))).green(),
+        style(format!(
+            "  {}  in {}",
+            parts.join(" · "),
+            format_duration(started_at.elapsed().as_millis() as u64)
+        ))
+        .dim()
+    );
     true
 }
 
@@ -368,10 +385,10 @@ fn run_group(
     all_targets: &[MonorepoTarget],
     root_hash: &str,
     cache_dir: &Path,
-    fingerprint_memo: &mut HashMap<String, String>,
+    fingerprint_memo: &FingerprintMemo,
     use_git: bool,
     no_cache: bool,
-    file_hash_cache: &mut crate::utils::FileHashCache,
+    file_hash_cache: &crate::utils::FileHashCache,
 ) -> bool {
     for task in tasks.iter() {
         if task.status == TaskStatus::Skipped {
@@ -405,22 +422,42 @@ fn run_group(
             break;
         }
 
-        // Compute cache hashes and check for cache hits sequentially: the
-        // fingerprint memo and file-hash cache are shared, mutable state that
-        // isn't worth making thread-safe just for this cheap, mostly-cached step.
+        // Compute cache hashes and check for cache hits in parallel: the
+        // fingerprint memo and file-hash cache are both `DashMap`s (sharded,
+        // lock-free-reads under the hood), so hashing several targets' files
+        // concurrently — on top of each target's own per-file parallelism in
+        // `fingerprint_dir` — no longer serializes on a single lock. Each
+        // closure only reads its own task by index, so the borrow is safe to
+        // share across threads.
+        let ready_tasks: &[Task] = tasks;
+        let hash_results: Vec<(usize, Option<TaskHashResult>)> = ready_indices
+            .par_iter()
+            .map(|&index| {
+                (
+                    index,
+                    try_cache_hit(
+                        &ready_tasks[index],
+                        all_targets,
+                        root_hash,
+                        cache_dir,
+                        fingerprint_memo,
+                        use_git,
+                        no_cache,
+                        file_hash_cache,
+                    ),
+                )
+            })
+            .collect();
+
         let mut to_spawn: Vec<usize> = Vec::new();
-        for &index in &ready_indices {
-            let cache_hit = try_cache_hit(
-                &mut tasks[index],
-                all_targets,
-                root_hash,
-                cache_dir,
-                fingerprint_memo,
-                use_git,
-                no_cache,
-                file_hash_cache,
-            );
-            if cache_hit {
+        for (index, result) in hash_results {
+            let Some(result) = result else {
+                to_spawn.push(index);
+                continue;
+            };
+            let is_hit = result.hit.is_some();
+            apply_task_hash_result(&mut tasks[index], result);
+            if is_hit {
                 done.insert(tasks[index].key.clone());
                 report_finish(&tasks[index]);
             } else {
@@ -506,29 +543,40 @@ fn run_group(
     failed
 }
 
-/// Checks the task cache for a hit; restores cached outputs and marks the
-/// task `Cached` when found. Returns whether the task was resolved from
-/// cache (so the caller should not spawn a process for it).
+/// Result of a cache-hash check for one task: the content hash is always
+/// computed (needed later to write a fresh cache entry on a miss), and
+/// `hit` carries the restored output when the cache already had it. Kept
+/// free of `Task` so this can run inside a shared (`&[Task]`) parallel
+/// closure.
+struct TaskHashResult {
+    hash: String,
+    hit: Option<CacheHit>,
+}
+
+struct CacheHit {
+    output: String,
+    duration_ms: u64,
+}
+
+/// Computes a task's content hash and checks the cache for a hit, restoring
+/// cached outputs when found. Returns `None` only for non-cacheable tasks
+/// (e.g. install) where there is no hash to compute at all.
 #[allow(clippy::too_many_arguments)]
 fn try_cache_hit(
-    task: &mut Task,
+    task: &Task,
     all_targets: &[MonorepoTarget],
     root_hash: &str,
     cache_dir: &Path,
-    fingerprint_memo: &mut HashMap<String, String>,
+    fingerprint_memo: &FingerprintMemo,
     use_git: bool,
     no_cache: bool,
-    file_hash_cache: &mut crate::utils::FileHashCache,
-) -> bool {
+    file_hash_cache: &crate::utils::FileHashCache,
+) -> Option<TaskHashResult> {
     if !task.cacheable || no_cache {
-        return false;
+        return None;
     }
-    let Some(target_key) = &task.target_key else {
-        return false;
-    };
-    let Some(target) = all_targets.iter().find(|t| &t.key == target_key) else {
-        return false;
-    };
+    let target_key = task.target_key.as_ref()?;
+    let target = all_targets.iter().find(|t| &t.key == target_key)?;
 
     let hash = compute_task_hash(
         target,
@@ -539,41 +587,62 @@ fn try_cache_hit(
         use_git,
         file_hash_cache,
     );
-    task.hash = Some(hash.clone());
 
-    let Some((meta, output)) = read_cache_entry(cache_dir, &hash) else {
-        return false;
-    };
-    restore_cache_outputs(cache_dir, &meta, &target.dir);
-    task.output = output;
-    task.duration_ms = meta.duration_ms;
-    task.status = TaskStatus::Cached;
-    true
+    let hit = read_cache_entry(cache_dir, &hash).map(|(meta, output)| {
+        restore_cache_outputs(cache_dir, &meta, &target.dir);
+        CacheHit {
+            output,
+            duration_ms: meta.duration_ms,
+        }
+    });
+
+    Some(TaskHashResult { hash, hit })
+}
+
+/// Applies a resolved hash/cache-hit result to its task. When there was a
+/// cache hit, marks the task `Cached`; otherwise just stamps the hash so a
+/// successful run can write a fresh cache entry under it.
+fn apply_task_hash_result(task: &mut Task, result: TaskHashResult) {
+    task.hash = Some(result.hash);
+    if let Some(hit) = result.hit {
+        task.output = hit.output;
+        task.duration_ms = hit.duration_ms;
+        task.status = TaskStatus::Cached;
+    }
 }
 
 /// Prints a task's final state to stdout. A successful task gets a one-line
 /// `✔ label duration`; a failed task gets its status line plus a trimmed
 /// excerpt of the output that explains the failure. Cached and skipped tasks
 /// stay silent, matching the TypeScript version (the closing summary still
-/// reports their counts).
+/// reports their counts). Colors mirror `reportFinish` in
+/// `MonorepoRunCommand.ts`: a colored status symbol, the plain-colored task
+/// label, and the duration/exit-code detail dimmed.
 fn report_finish(task: &Task) {
     match task.status {
         TaskStatus::Success => {
-            crate::utils::success(format!(
-                "{}  {}",
+            println!(
+                "{} {}{}",
+                style("✔").green(),
                 task.label,
-                format_duration(task.duration_ms)
-            ));
+                style(format!("  {}", format_duration(task.duration_ms))).dim()
+            );
         }
         TaskStatus::Failed => {
-            crate::utils::error(format!(
-                "{}  failed  exit {}  {}",
+            eprintln!(
+                "{} {}{}{}",
+                style("✖").red(),
                 task.label,
-                task.exit_code.unwrap_or(1),
-                format_duration(task.duration_ms)
-            ));
+                style("  failed").red(),
+                style(format!(
+                    "  exit {}  {}",
+                    task.exit_code.unwrap_or(1),
+                    format_duration(task.duration_ms)
+                ))
+                .dim()
+            );
             for line in failure_excerpt(&task.output) {
-                eprintln!("┃ {line}");
+                eprintln!("{} {line}", style("┃").red());
             }
         }
         TaskStatus::Cached | TaskStatus::Skipped => {}
