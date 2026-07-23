@@ -1,10 +1,11 @@
 use std::path::PathBuf;
-use std::process::Command;
 
+use base64::Engine;
+use base64::engine::general_purpose::STANDARD as BASE64;
 use clap::Args;
 use serde_json::json;
 
-use crate::utils::{ask_input, ask_password, current_dir, read_credentials};
+use crate::utils::{ask_input, ask_password, current_dir, git_origin_url, read_credentials};
 
 /// Rust port of `packages/cli/src/commands/BitbucketSecretPushCommand.ts`.
 #[derive(Args, Debug)]
@@ -41,18 +42,6 @@ fn read_credentials_pair() -> Option<(String, String)> {
     Some((username?, token?))
 }
 
-fn git_origin_url(cwd: &std::path::Path) -> Option<String> {
-    let output = Command::new("git")
-        .args(["config", "--get", "remote.origin.url"])
-        .current_dir(cwd)
-        .output()
-        .ok()?;
-    output
-        .status
-        .success()
-        .then(|| String::from_utf8_lossy(&output.stdout).trim().to_string())
-}
-
 fn parse_repository(input: &str) -> Option<(String, String)> {
     let remote = input.trim().trim_end_matches('/').trim_end_matches(".git");
     let path = regex::Regex::new(r"^(?:ssh://)?git@[^/:]+[:/](.+)$")
@@ -70,6 +59,10 @@ fn parse_repository(input: &str) -> Option<(String, String)> {
         .then(|| (parts[0].to_string(), parts[1].to_string()))
 }
 
+fn basic_auth_header(username: &str, token: &str) -> String {
+    format!("Basic {}", BASE64.encode(format!("{username}:{token}")))
+}
+
 fn curl_bitbucket(
     method: &str,
     url: &str,
@@ -77,36 +70,30 @@ fn curl_bitbucket(
     username: &str,
     token: &str,
 ) -> Option<(u16, String)> {
-    let output = Command::new("curl")
-        .args([
-            "-sS",
-            "-X",
-            method,
-            url,
-            "-u",
-            &format!("{username}:{token}"),
-            "-H",
-            "Content-Type: application/json",
-            "-w",
-            "\n%{http_code}",
-            "-d",
-            body,
-        ])
-        .output()
-        .ok()?;
-    let stdout = String::from_utf8_lossy(&output.stdout).to_string();
-    let (body, code) = stdout.rsplit_once('\n')?;
-    Some((code.trim().parse().ok()?, body.to_string()))
+    let request = ureq::request(method, url)
+        .set("Authorization", &basic_auth_header(username, token))
+        .set("Content-Type", "application/json");
+    match request.send_string(body) {
+        Ok(response) => Some((
+            response.status(),
+            response.into_string().unwrap_or_default(),
+        )),
+        Err(ureq::Error::Status(code, response)) => {
+            Some((code, response.into_string().unwrap_or_default()))
+        }
+        Err(ureq::Error::Transport(_)) => None,
+    }
 }
 
 fn find_variable_uuid(base: &str, name: &str, username: &str, token: &str) -> Option<String> {
     let mut url = format!("{base}?pagelen=100");
     loop {
-        let output = Command::new("curl")
-            .args(["-sS", &url, "-u", &format!("{username}:{token}")])
-            .output()
+        let value: serde_json::Value = ureq::get(&url)
+            .set("Authorization", &basic_auth_header(username, token))
+            .call()
+            .ok()?
+            .into_json()
             .ok()?;
-        let value: serde_json::Value = serde_json::from_slice(&output.stdout).ok()?;
         if let Some(uuid) = value
             .get("values")
             .and_then(|v| v.as_array())

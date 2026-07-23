@@ -1,10 +1,9 @@
 use std::path::PathBuf;
-use std::process::Command;
 
 use clap::Args;
 use serde_json::json;
 
-use crate::utils::{ask_input, ask_password, current_dir, read_credentials};
+use crate::utils::{ask_input, ask_password, current_dir, git_origin_url, read_credentials};
 
 /// Rust port of `packages/cli/src/commands/GitlabSecretPushCommand.ts`.
 #[derive(Args, Debug)]
@@ -31,18 +30,6 @@ fn read_token() -> Option<String> {
     profile
         .into_iter()
         .find_map(|(key, value)| (key == "token").then_some(value))
-}
-
-fn git_origin_url(cwd: &std::path::Path) -> Option<String> {
-    let output = Command::new("git")
-        .args(["config", "--get", "remote.origin.url"])
-        .current_dir(cwd)
-        .output()
-        .ok()?;
-    output
-        .status
-        .success()
-        .then(|| String::from_utf8_lossy(&output.stdout).trim().to_string())
 }
 
 fn parse_project(input: &str) -> Option<(String, String)> {
@@ -84,26 +71,19 @@ fn percent_encode(input: &str) -> String {
 }
 
 fn curl_json(method: &str, url: &str, body: &str, token: &str) -> Option<(u16, String)> {
-    let output = Command::new("curl")
-        .args([
-            "-sS",
-            "-X",
-            method,
-            url,
-            "-H",
-            &format!("PRIVATE-TOKEN: {token}"),
-            "-H",
-            "Content-Type: application/json",
-            "-w",
-            "\n%{http_code}",
-            "-d",
-            body,
-        ])
-        .output()
-        .ok()?;
-    let stdout = String::from_utf8_lossy(&output.stdout).to_string();
-    let (body, code) = stdout.rsplit_once('\n')?;
-    Some((code.trim().parse().ok()?, body.to_string()))
+    let request = ureq::request(method, url)
+        .set("PRIVATE-TOKEN", token)
+        .set("Content-Type", "application/json");
+    match request.send_string(body) {
+        Ok(response) => Some((
+            response.status(),
+            response.into_string().unwrap_or_default(),
+        )),
+        Err(ureq::Error::Status(code, response)) => {
+            Some((code, response.into_string().unwrap_or_default()))
+        }
+        Err(ureq::Error::Transport(_)) => None,
+    }
 }
 
 pub fn run(args: &GitlabSecretPushArgs) {

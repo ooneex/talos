@@ -204,25 +204,18 @@ pub fn scaffold_destination(
 /// Installs the git `commit-msg` hook, mirroring `CommitlintInitCommand`.
 /// `pub` so it is exercised directly by the integration tests in `tests/`.
 pub fn install_commitlint_hook(destination: &Path) -> Result<(), String> {
+    let repo = git2::Repository::open(destination)
+        .map_err(|_| "commitlint:init must run inside a git repository".to_string())?;
+
     // Clear husky's redirection first so the hook lands in — and is later read
     // from — the standard hooks directory.
-    let _ = Command::new("git")
-        .args(["config", "--unset", "core.hooksPath"])
-        .current_dir(destination)
-        .output();
+    let _ = repo
+        .config()
+        .and_then(|mut config| config.remove("core.hooksPath"));
 
-    let output = Command::new("git")
-        .args(["rev-parse", "--git-path", "hooks"])
-        .current_dir(destination)
-        .output()
-        .map_err(|e| e.to_string())?;
-
-    if !output.status.success() {
-        return Err("commitlint:init must run inside a git repository".to_string());
-    }
-
-    let hooks_dir_raw = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    let hooks_dir = destination.join(hooks_dir_raw);
+    // Mirrors `git rev-parse --git-path hooks`: after the reset above, this is
+    // always `<git-dir>/hooks`.
+    let hooks_dir = repo.path().join("hooks");
 
     fs::create_dir_all(&hooks_dir).map_err(|e| e.to_string())?;
 

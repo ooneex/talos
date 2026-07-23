@@ -1,9 +1,11 @@
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use clap::Args;
+use flate2::read::GzDecoder;
 use serde_json::Value;
+use tar::Archive;
 
 use crate::utils::{current_dir, ensure_bin, read_credentials};
 
@@ -121,21 +123,55 @@ fn version_exists(name: &str, version: &str, token: &str) -> bool {
         percent_encode(name),
         percent_encode(version)
     );
-    Command::new("curl")
-        .args([
-            "-sS",
-            "-o",
-            "/dev/null",
-            "-w",
-            "%{http_code}",
-            "-H",
-            &format!("Authorization: Bearer {token}"),
-            &url,
-        ])
-        .output()
-        .ok()
-        .and_then(|o| String::from_utf8(o.stdout).ok())
-        .is_some_and(|code| code.trim() == "200")
+    matches!(
+        ureq::get(&url)
+            .set("Authorization", &format!("Bearer {token}"))
+            .call(),
+        Ok(response) if response.status() == 200
+    )
+}
+
+/// Deletes every `*.tgz` file directly inside `dir`, mirroring
+/// `rm -f ./dist/*.tgz` run with `dir` as the current directory.
+fn remove_tgz_files(dir: &Path) {
+    let Ok(entries) = fs::read_dir(dir) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.extension().is_some_and(|ext| ext == "tgz") {
+            let _ = fs::remove_file(path);
+        }
+    }
+}
+
+/// Extracts a gzip tarball into `destination`, dropping each entry's
+/// top-level path component. Mirrors `tar -xzf <tarball> -C <destination>
+/// --strip-components=1`, which is what npm-style package tarballs need
+/// (everything lives under a single `package/` root in the archive).
+fn extract_tarball_stripping_root(tarball: &Path, destination: &Path) -> std::io::Result<()> {
+    let file = fs::File::open(tarball)?;
+    let mut archive = Archive::new(GzDecoder::new(file));
+    for entry in archive.entries()? {
+        let mut entry = entry?;
+        let entry_path = entry.path()?.into_owned();
+        let mut components = entry_path.components();
+        components.next(); // drop the leading `package/` (or similar) component
+        let relative: PathBuf = components.collect();
+        if relative.as_os_str().is_empty() {
+            continue;
+        }
+        let target = destination.join(&relative);
+        if entry.header().entry_type().is_dir() {
+            fs::create_dir_all(&target)?;
+        } else {
+            if let Some(parent) = target.parent() {
+                fs::create_dir_all(parent)?;
+            }
+            entry.unpack(&target)?;
+        }
+    }
+    Ok(())
 }
 
 pub fn run(args: &NpmPublishArgs) {
@@ -197,11 +233,7 @@ pub fn run(args: &NpmPublishArgs) {
         let publish_dir = dist_dir.join("publish");
         let _ = fs::remove_dir_all(&publish_dir);
         let _ = fs::create_dir_all(&publish_dir);
-        let _ = Command::new("sh")
-            .arg("-c")
-            .arg("rm -f ./dist/*.tgz")
-            .current_dir(&target_dir)
-            .status();
+        remove_tgz_files(&dist_dir);
         let packed = Command::new("bun")
             .args(["pm", "pack", "--destination", "./dist"])
             .current_dir(&target_dir)
@@ -232,17 +264,7 @@ pub fn run(args: &NpmPublishArgs) {
             }
             continue;
         };
-        let extracted = Command::new("tar")
-            .args([
-                "-xzf",
-                tarball.to_string_lossy().as_ref(),
-                "-C",
-                publish_dir.to_string_lossy().as_ref(),
-                "--strip-components=1",
-            ])
-            .status()
-            .map(|s| s.success())
-            .unwrap_or(false);
+        let extracted = extract_tarball_stripping_root(&tarball, &publish_dir).is_ok();
         let published = extracted
             && Command::new("npm")
                 .args(["publish", "--access", &args.access])

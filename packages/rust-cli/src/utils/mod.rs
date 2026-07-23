@@ -6,6 +6,7 @@
 mod case;
 mod commitlint;
 mod credentials;
+mod git;
 mod index_exports;
 mod issue;
 mod migration_version;
@@ -25,6 +26,9 @@ pub use commitlint::{
     get_valid_scopes, lint_commit_message, strip_commit_comments,
 };
 pub use credentials::{read_credentials, save_credentials};
+pub use git::{
+    discover as discover_git_repo, origin_url as git_origin_url, toplevel as git_toplevel,
+};
 pub use index_exports::write_export_index;
 pub use issue::{IssueYaml, generate_issue_id, issue_to_yaml};
 pub use migration_version::generate_migration_version;

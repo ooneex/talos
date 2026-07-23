@@ -1,9 +1,8 @@
 use std::path::PathBuf;
-use std::process::Command;
 
 use clap::Args;
 
-use crate::utils::{check_commit_message_file, current_dir};
+use crate::utils::{check_commit_message_file, current_dir, git_toplevel};
 
 /// Rust port of `packages/cli/src/commands/CommitlintCheckCommand.ts`.
 #[derive(Args, Debug)]
@@ -15,19 +14,6 @@ pub struct CommitlintCheckArgs {
     /// Working directory (defaults to git root or current directory).
     #[arg(long)]
     pub cwd: Option<String>,
-}
-
-fn resolve_git_root(cwd: &std::path::Path) -> Option<PathBuf> {
-    let output = Command::new("git")
-        .args(["rev-parse", "--show-toplevel"])
-        .current_dir(cwd)
-        .output()
-        .ok()?;
-    if !output.status.success() {
-        return None;
-    }
-    let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    Some(PathBuf::from(stdout))
 }
 
 pub fn run(args: &CommitlintCheckArgs) {
@@ -45,7 +31,7 @@ pub fn run(args: &CommitlintCheckArgs) {
         .cwd
         .as_ref()
         .map(PathBuf::from)
-        .or_else(|| resolve_git_root(&fallback_cwd))
+        .or_else(|| git_toplevel(&fallback_cwd))
         .unwrap_or(fallback_cwd);
 
     let errors = check_commit_message_file(&PathBuf::from(file), &root_dir);

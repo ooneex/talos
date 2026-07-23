@@ -3,7 +3,9 @@ use std::process::{Command, Stdio};
 
 use clap::Args;
 
-use crate::utils::{ask_input, ask_password, current_dir, ensure_bin, read_credentials};
+use crate::utils::{
+    ask_input, ask_password, current_dir, ensure_bin, git_origin_url, read_credentials,
+};
 
 /// Rust port of `packages/cli/src/commands/GithubSecretPushCommand.ts`.
 #[derive(Args, Debug)]
@@ -30,18 +32,6 @@ fn read_token() -> Option<String> {
     profile
         .into_iter()
         .find_map(|(key, value)| (key == "token").then_some(value))
-}
-
-fn git_origin_url(cwd: &std::path::Path) -> Option<String> {
-    let output = Command::new("git")
-        .args(["config", "--get", "remote.origin.url"])
-        .current_dir(cwd)
-        .output()
-        .ok()?;
-    output
-        .status
-        .success()
-        .then(|| String::from_utf8_lossy(&output.stdout).trim().to_string())
 }
 
 fn normalize_repository(input: &str) -> Option<String> {

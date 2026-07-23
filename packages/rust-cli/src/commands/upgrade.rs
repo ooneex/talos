@@ -18,19 +18,14 @@ pub struct UpgradeArgs {
 }
 
 fn fetch_latest_version() -> Option<String> {
-    let output = Command::new("curl")
-        .args([
-            "-sS",
-            "-H",
-            "accept: application/json",
-            &format!("https://registry.npmjs.org/{CLI_PACKAGE_NAME}/latest"),
-        ])
-        .output()
-        .ok()?;
-    if !output.status.success() {
-        return None;
-    }
-    let value: Value = serde_json::from_slice(&output.stdout).ok()?;
+    let value: Value = ureq::get(&format!(
+        "https://registry.npmjs.org/{CLI_PACKAGE_NAME}/latest"
+    ))
+    .set("accept", "application/json")
+    .call()
+    .ok()?
+    .into_json()
+    .ok()?;
     value
         .get("version")
         .and_then(Value::as_str)

@@ -1,5 +1,4 @@
 use std::path::PathBuf;
-use std::process::Command;
 
 use clap::Args;
 use serde::{Deserialize, Serialize};
@@ -55,21 +54,14 @@ fn read_linear_token() -> Option<String> {
 }
 
 fn linear_request(token: &str, query: &str, variables: Value) -> Option<Value> {
-    let body = json!({"query": query, "variables": variables}).to_string();
-    let output = Command::new("curl")
-        .args([
-            "-sS",
-            "https://api.linear.app/graphql",
-            "-H",
-            &format!("Authorization: {token}"),
-            "-H",
-            "Content-Type: application/json",
-            "-d",
-            &body,
-        ])
-        .output()
+    let body = json!({"query": query, "variables": variables});
+    let response: Value = ureq::post("https://api.linear.app/graphql")
+        .set("Authorization", token)
+        .set("Content-Type", "application/json")
+        .send_json(body)
+        .ok()?
+        .into_json()
         .ok()?;
-    let response: Value = serde_json::from_slice(&output.stdout).ok()?;
     if response.get("errors").is_some() {
         return None;
     }

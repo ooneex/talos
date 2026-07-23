@@ -68,8 +68,16 @@ fn exec(cwd: &Path, args: &[&str]) -> Option<String> {
 }
 
 fn has_pending_changes(cwd: &Path) -> bool {
-    exec(cwd, &["git", "--no-pager", "status", "--porcelain"])
-        .is_some_and(|stdout| !stdout.trim().is_empty())
+    // Mirrors `git --no-pager status --porcelain`: any tracked or untracked
+    // (non-ignored) change makes the working tree dirty.
+    let Ok(repo) = git2::Repository::open(cwd) else {
+        return false;
+    };
+    let mut options = git2::StatusOptions::new();
+    options.include_untracked(true).recurse_untracked_dirs(true);
+    repo.statuses(Some(&mut options))
+        .map(|statuses| !statuses.is_empty())
+        .unwrap_or(false)
 }
 
 fn get_last_tag(cwd: &Path, package_name: &str) -> Option<String> {
@@ -178,7 +186,9 @@ fn bump_version(version: &str, kind: &str) -> String {
 }
 
 fn get_repo_url(cwd: &Path) -> Option<String> {
-    exec(cwd, &["git", "--no-pager", "remote", "get-url", "origin"]).map(|url| {
+    // Mirrors `git remote get-url origin`, then reshapes it into an HTTPS
+    // browse URL the same way the original TypeScript/git CLI version did.
+    crate::utils::git_origin_url(cwd).map(|url| {
         url.trim()
             .trim_end_matches(".git")
             .replace("git@", "https://")

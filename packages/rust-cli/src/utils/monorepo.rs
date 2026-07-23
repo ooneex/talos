@@ -5,7 +5,6 @@
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 use std::time::UNIX_EPOCH;
 
 use serde::{Deserialize, Serialize};
@@ -239,17 +238,9 @@ fn collect_files(dir: &Path) -> Vec<String> {
 
 /// True when `root_dir` is itself the top level of a git repository.
 pub fn is_git_workspace_root(root_dir: &Path) -> bool {
-    let Ok(output) = Command::new("git")
-        .args(["rev-parse", "--show-toplevel"])
-        .current_dir(root_dir)
-        .output()
-    else {
+    let Some(toplevel) = crate::utils::git::toplevel(root_dir) else {
         return false;
     };
-    if !output.status.success() {
-        return false;
-    }
-    let toplevel = String::from_utf8_lossy(&output.stdout).trim().to_string();
     let Ok(resolved_toplevel) = fs::canonicalize(&toplevel) else {
         return false;
     };
@@ -260,32 +251,64 @@ pub fn is_git_workspace_root(root_dir: &Path) -> bool {
 }
 
 /// List a target's files through git: tracked files plus untracked ones that
-/// are not ignored. Returns `None` when git fails.
+/// are not ignored. Returns `None` when git fails. Mirrors
+/// `git ls-files --cached --others --exclude-standard -z` run with `dir` as
+/// the current directory (paths scoped to, and relative to, `dir`).
 fn collect_files_with_git(dir: &Path) -> Option<Vec<String>> {
-    let output = Command::new("git")
-        .args([
-            "ls-files",
-            "--cached",
-            "--others",
-            "--exclude-standard",
-            "-z",
-        ])
-        .current_dir(dir)
-        .output()
-        .ok()?;
-    if !output.status.success() {
-        return None;
+    let repo = git2::Repository::discover(dir).ok()?;
+    let workdir = repo.workdir()?;
+    let prefix = dir.strip_prefix(workdir).ok()?;
+    let prefix_str = prefix.to_string_lossy().replace('\\', "/");
+    let strip = |path: &str| -> Option<String> {
+        if prefix_str.is_empty() {
+            Some(path.to_string())
+        } else {
+            path.strip_prefix(&prefix_str)
+                .map(|rest| rest.trim_start_matches('/').to_string())
+        }
+    };
+
+    let mut files = Vec::new();
+
+    // Tracked files (`--cached`), via the index.
+    let index = repo.index().ok()?;
+    for entry in index.iter() {
+        let path = String::from_utf8_lossy(&entry.path).replace('\\', "/");
+        if let Some(relative) = strip(&path) {
+            files.push(relative);
+        }
     }
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    let mut files: Vec<String> = stdout
-        .split('\0')
-        .filter(|s| !s.is_empty())
+
+    // Untracked, non-ignored files (`--others --exclude-standard`).
+    let mut status_options = git2::StatusOptions::new();
+    status_options
+        .include_untracked(true)
+        .recurse_untracked_dirs(true)
+        .include_ignored(false)
+        .include_unmodified(false);
+    if !prefix_str.is_empty() {
+        status_options.pathspec(&prefix_str);
+    }
+    let statuses = repo.statuses(Some(&mut status_options)).ok()?;
+    for status_entry in statuses.iter() {
+        if !status_entry.status().contains(git2::Status::WT_NEW) {
+            continue;
+        }
+        let Some(path) = status_entry.path() else {
+            continue;
+        };
+        if let Some(relative) = strip(path) {
+            files.push(relative);
+        }
+    }
+
+    let mut files: Vec<String> = files
+        .into_iter()
         .filter(|file| {
             !file
                 .split('/')
                 .any(|segment| EXCLUDED_DIRS.contains(&segment))
         })
-        .map(|s| s.to_string())
         .collect();
     files.sort();
     files.dedup();
@@ -563,4 +586,84 @@ pub fn write_cache_entry(cache_dir: &Path, meta: &CacheEntryMeta, output: &str, 
 
     let _ = fs::remove_dir_all(&entry_dir);
     let _ = fs::rename(&temp_dir, &entry_dir);
+}
+
+#[cfg(test)]
+mod git_backed_file_listing_tests {
+    use super::*;
+    use std::process::Command;
+
+    /// Ground truth via the real `git` CLI, to validate the `git2`-backed
+    /// `collect_files_with_git` mirrors `git ls-files --cached --others
+    /// --exclude-standard -z` scoped to `dir`.
+    fn git_ls_files(dir: &Path) -> Option<Vec<String>> {
+        let output = Command::new("git")
+            .args([
+                "ls-files",
+                "--cached",
+                "--others",
+                "--exclude-standard",
+                "-z",
+            ])
+            .current_dir(dir)
+            .output()
+            .ok()?;
+        if !output.status.success() {
+            return None;
+        }
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let mut files: Vec<String> = stdout
+            .split('\0')
+            .filter(|s| !s.is_empty())
+            .filter(|file| {
+                !file
+                    .split('/')
+                    .any(|segment| EXCLUDED_DIRS.contains(&segment))
+            })
+            .map(|s| s.to_string())
+            .collect();
+        files.sort();
+        files.dedup();
+        Some(files)
+    }
+
+    #[test]
+    fn collect_files_with_git_matches_the_git_cli_at_the_crate_root() {
+        let dir = Path::new(env!("CARGO_MANIFEST_DIR"));
+        let Some(expected) = git_ls_files(dir) else {
+            return; // not inside a git checkout (e.g. a packaged source archive)
+        };
+        let actual = collect_files_with_git(dir).expect("git2 should discover the repository");
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn collect_files_with_git_matches_the_git_cli_for_a_subdirectory() {
+        let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+        let Some(expected) = git_ls_files(&dir) else {
+            return;
+        };
+        let actual = collect_files_with_git(&dir).expect("git2 should discover the repository");
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn is_git_workspace_root_matches_the_git_cli() {
+        let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
+        assert!(!is_git_workspace_root(manifest_dir));
+        let Some(toplevel) = git_ls_files(manifest_dir).map(|_| ()).and(
+            Command::new("git")
+                .args(["rev-parse", "--show-toplevel"])
+                .current_dir(manifest_dir)
+                .output()
+                .ok(),
+        ) else {
+            return;
+        };
+        if !toplevel.status.success() {
+            return;
+        }
+        let toplevel_dir = PathBuf::from(String::from_utf8_lossy(&toplevel.stdout).trim());
+        assert!(is_git_workspace_root(&toplevel_dir));
+    }
 }
