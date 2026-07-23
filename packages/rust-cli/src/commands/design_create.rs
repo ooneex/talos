@@ -111,11 +111,12 @@ pub fn run(args: &DesignCreateArgs) {
 
     let template_yml_path = module_dir.join("design.yml");
     let yml_path = module_dir.join(format!("{kebab_name}.yml"));
-    if template_yml_path != yml_path && template_yml_path.exists() {
-        if let Ok(yml_content) = fs::read_to_string(&template_yml_path) {
-            let _ = fs::write(&yml_path, yml_content);
-            let _ = fs::remove_file(&template_yml_path);
-        }
+    if template_yml_path != yml_path
+        && template_yml_path.exists()
+        && let Ok(yml_content) = fs::read_to_string(&template_yml_path)
+    {
+        let _ = fs::write(&yml_path, yml_content);
+        let _ = fs::remove_file(&template_yml_path);
     }
 
     let package_path = module_dir.join("package.json");

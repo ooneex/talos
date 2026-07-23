@@ -351,10 +351,11 @@ fn hash_file_cached(path: &Path, cache: &mut FileHashCache) -> Option<String> {
     let mtime_ms = mtime_millis(&metadata);
     let path_key = path.to_string_lossy().to_string();
 
-    if let Some(record) = cache.get(&path_key) {
-        if record.size == size && record.mtime_ms == mtime_ms {
-            return Some(record.hash.clone());
-        }
+    if let Some(record) = cache.get(&path_key)
+        && record.size == size
+        && record.mtime_ms == mtime_ms
+    {
+        return Some(record.hash.clone());
     }
 
     let hash = hash_file(path)?;

@@ -92,14 +92,13 @@ fn extract_volume_names(template: &str) -> Vec<String> {
         if in_volumes && line.starts_with("networks:") {
             break;
         }
-        if in_volumes {
-            if let Some(name) = line.strip_prefix("  ")
-                && !name.trim().is_empty()
-                && !name.starts_with(' ')
-                && name.ends_with(':')
-            {
-                volumes.push(name.trim_end_matches(':').to_string());
-            }
+        if in_volumes
+            && let Some(name) = line.strip_prefix("  ")
+            && !name.trim().is_empty()
+            && !name.starts_with(' ')
+            && name.ends_with(':')
+        {
+            volumes.push(name.trim_end_matches(':').to_string());
         }
     }
 

@@ -370,9 +370,9 @@ fn run_group(
     no_cache: bool,
     file_hash_cache: &mut crate::utils::FileHashCache,
 ) -> bool {
-    for index in 0..tasks.len() {
-        if tasks[index].status == TaskStatus::Skipped {
-            report_finish(&tasks[index]);
+    for task in tasks.iter() {
+        if task.status == TaskStatus::Skipped {
+            report_finish(task);
         }
     }
 
@@ -459,29 +459,25 @@ fn run_group(
                     task.exit_code = output.status.code();
                     if output.status.success() {
                         task.status = TaskStatus::Success;
-                        if task.cacheable {
-                            if let Some(hash) = &task.hash {
-                                if let Some(target_key) = &task.target_key {
-                                    if let Some(target) =
-                                        all_targets.iter().find(|t| &t.key == target_key)
-                                    {
-                                        write_cache_entry(
-                                            cache_dir,
-                                            &CacheEntryMeta {
-                                                version: MONOREPO_CACHE_VERSION,
-                                                target: target.key.clone(),
-                                                command: task.command.clone(),
-                                                hash: hash.clone(),
-                                                created_at: chrono::Utc::now().to_rfc3339(),
-                                                duration_ms: task.duration_ms,
-                                                outputs: target.outputs.clone(),
-                                            },
-                                            &task.output,
-                                            &target.dir,
-                                        );
-                                    }
-                                }
-                            }
+                        if task.cacheable
+                            && let Some(hash) = &task.hash
+                            && let Some(target_key) = &task.target_key
+                            && let Some(target) = all_targets.iter().find(|t| &t.key == target_key)
+                        {
+                            write_cache_entry(
+                                cache_dir,
+                                &CacheEntryMeta {
+                                    version: MONOREPO_CACHE_VERSION,
+                                    target: target.key.clone(),
+                                    command: task.command.clone(),
+                                    hash: hash.clone(),
+                                    created_at: chrono::Utc::now().to_rfc3339(),
+                                    duration_ms: task.duration_ms,
+                                    outputs: target.outputs.clone(),
+                                },
+                                &task.output,
+                                &target.dir,
+                            );
                         }
                     } else {
                         task.status = TaskStatus::Failed;

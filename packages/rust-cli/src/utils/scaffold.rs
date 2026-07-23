@@ -14,6 +14,7 @@ use super::prompts::{ask_confirm, ask_input};
 
 /// Static configuration for one resource kind (e.g. "Service"), mirroring
 /// `ScaffoldConfigType`.
+#[derive(Default)]
 pub struct ScaffoldConfig {
     /// Human-readable resource label used in messages (e.g. "Cache").
     pub label: &'static str,
@@ -37,26 +38,11 @@ pub struct ScaffoldConfig {
     pub dependency: Option<&'static str>,
     /// Extra `{{KEY}}` replacements applied to the source template, computed
     /// from the normalized name (mirrors `ScaffoldConfigType.templateData`).
-    pub template_data: Option<Box<dyn Fn(&str) -> Vec<(&'static str, String)>>>,
+    pub template_data: Option<TemplateDataFn>,
 }
 
-impl Default for ScaffoldConfig {
-    fn default() -> Self {
-        Self {
-            label: "",
-            prompt_message: "",
-            suffix: "",
-            template: "",
-            test_template: "",
-            dir: "",
-            tests_dir: None,
-            strip_suffixes: &[],
-            module_field: None,
-            dependency: None,
-            template_data: None,
-        }
-    }
-}
+/// Computes extra `{{KEY}}` template replacements from the normalized resource name.
+pub type TemplateDataFn = Box<dyn Fn(&str) -> Vec<(&'static str, String)>>;
 
 /// Runtime options for [`scaffold_resource`], mirroring `ScaffoldOptionsType`.
 pub struct ScaffoldOptions {
@@ -102,18 +88,18 @@ pub fn add_class_to_module(
         &content[(line_end + 1).min(content.len())..]
     );
 
-    if let Ok(re) = Regex::new(&format!(r"(?s)({field}:\s*\[)([^\]]*)")) {
-        if let Some(caps) = re.captures(&content) {
-            let existing = caps.get(2).map(|m| m.as_str().trim()).unwrap_or("");
-            let new_value = if existing.is_empty() {
-                class_name.to_string()
-            } else {
-                format!("{existing}, {class_name}")
-            };
-            let whole = caps.get(0).unwrap().as_str().to_string();
-            let prefix = caps.get(1).unwrap().as_str().to_string();
-            content = content.replacen(&whole, &format!("{prefix}{new_value}"), 1);
-        }
+    if let Ok(re) = Regex::new(&format!(r"(?s)({field}:\s*\[)([^\]]*)"))
+        && let Some(caps) = re.captures(&content)
+    {
+        let existing = caps.get(2).map(|m| m.as_str().trim()).unwrap_or("");
+        let new_value = if existing.is_empty() {
+            class_name.to_string()
+        } else {
+            format!("{existing}, {class_name}")
+        };
+        let whole = caps.get(0).unwrap().as_str().to_string();
+        let prefix = caps.get(1).unwrap().as_str().to_string();
+        content = content.replacen(&whole, &format!("{prefix}{new_value}"), 1);
     }
 
     fs::write(module_path, content).map_err(|e| e.to_string())

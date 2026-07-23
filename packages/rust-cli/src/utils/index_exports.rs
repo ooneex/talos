@@ -33,10 +33,10 @@ fn collect_matching_class_names_into(
         let Some(file_name) = path.file_name().and_then(|n| n.to_str()) else {
             continue;
         };
-        if let Some(class_name) = file_name.strip_suffix(".ts") {
-            if filter(class_name) {
-                names.push(class_name.to_string());
-            }
+        if let Some(class_name) = file_name.strip_suffix(".ts")
+            && filter(class_name)
+        {
+            names.push(class_name.to_string());
         }
     }
 }
