@@ -156,7 +156,7 @@ pub fn run(args: &SpaFeatureCreateArgs) {
             let _ = std::fs::create_dir_all(parent);
         }
         let _ = std::fs::write(&path, content);
-        println!("✔ {} created successfully", path.display());
+        crate::utils::success(format!("{} created successfully", path.display()));
     }
 
     let package_json_path = cwd.join("package.json");

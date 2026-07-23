@@ -192,7 +192,7 @@ pub fn scaffold_resource(config: &ScaffoldConfig, options: ScaffoldOptions, cwd:
         let _ = fs::create_dir_all(parent);
     }
     if fs::write(&file_path, content).is_err() {
-        eprintln!("✖ Failed to write {}", file_path.display());
+        super::style::error(format!("Failed to write {}", file_path.display()));
         return;
     }
 
@@ -224,18 +224,18 @@ pub fn scaffold_resource(config: &ScaffoldConfig, options: ScaffoldOptions, cwd:
         }
     }
 
-    println!(
-        "✔ {} created successfully",
+    super::style::success(format!(
+        "{} created successfully",
         local_dir
             .join(format!("{name}{}.ts", config.suffix))
             .display()
-    );
-    println!(
-        "✔ {} created successfully",
+    ));
+    super::style::success(format!(
+        "{} created successfully",
         tests_local_dir
             .join(format!("{name}{}.spec.ts", config.suffix))
             .display()
-    );
+    ));
 
     if let Some(dependency) = config.dependency {
         install_dependency(dependency, cwd);

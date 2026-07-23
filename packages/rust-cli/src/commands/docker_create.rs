@@ -120,7 +120,7 @@ pub fn run(args: &DockerCreateArgs) {
         },
     };
     let Some(template_content) = template_for(&name) else {
-        eprintln!("✖ Unsupported docker service \"{name}\"");
+        crate::utils::error(format!("Unsupported docker service \"{name}\""));
         return;
     };
     let cwd = args
@@ -134,12 +134,14 @@ pub fn run(args: &DockerCreateArgs) {
 
     if compose_path.exists() {
         let Ok(existing_content) = std::fs::read_to_string(&compose_path) else {
-            eprintln!("✖ Failed to read {}", compose_path.display());
+            crate::utils::error(format!("Failed to read {}", compose_path.display()));
             return;
         };
 
         if service_exists(&existing_content, &name) {
-            println!("⚠ Service \"{name}\" already exists in docker-compose.yml");
+            crate::utils::warn(format!(
+                "Service \"{name}\" already exists in docker-compose.yml"
+            ));
             return;
         }
 
@@ -191,11 +193,17 @@ pub fn run(args: &DockerCreateArgs) {
         }
 
         if let Err(error) = std::fs::write(&compose_path, updated_content) {
-            eprintln!("✖ Failed to write {}: {error}", compose_path.display());
+            crate::utils::error(format!(
+                "Failed to write {}: {error}",
+                compose_path.display()
+            ));
             return;
         }
     } else if let Err(error) = std::fs::write(&compose_path, template_content) {
-        eprintln!("✖ Failed to write {}: {error}", compose_path.display());
+        crate::utils::error(format!(
+            "Failed to write {}: {error}",
+            compose_path.display()
+        ));
         return;
     }
 
@@ -225,6 +233,6 @@ pub fn run(args: &DockerCreateArgs) {
         }
     }
 
-    println!("✔ Service \"{name}\" added to docker-compose.yml");
-    println!("→ Run 'bun run dev' to start docker containers and the app");
+    crate::utils::success(format!("Service \"{name}\" added to docker-compose.yml"));
+    crate::utils::info("Run 'bun run dev' to start docker containers and the app");
 }

@@ -823,6 +823,7 @@ dependencies = [
  "base64",
  "chrono",
  "clap",
+ "console",
  "dialoguer",
  "flate2",
  "fs_extra",

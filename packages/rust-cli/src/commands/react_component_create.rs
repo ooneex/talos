@@ -118,8 +118,8 @@ pub fn run(args: &ReactComponentCreateArgs) {
     let _ = std::fs::write(&component_path, component_content);
     let _ = std::fs::write(&spec_path, spec_content);
 
-    println!("✔ {} created successfully", component_path.display());
-    println!("✔ {} created successfully", spec_path.display());
+    crate::utils::success(format!("{} created successfully", component_path.display()));
+    crate::utils::success(format!("{} created successfully", spec_path.display()));
 
     for (path, content) in [
         (module_local_dir.join("happydom.ts"), HAPPYDOM_TEMPLATE),
@@ -127,7 +127,7 @@ pub fn run(args: &ReactComponentCreateArgs) {
     ] {
         if !path.exists() {
             let _ = std::fs::write(&path, content);
-            println!("✔ {} created successfully", path.display());
+            crate::utils::success(format!("{} created successfully", path.display()));
         }
     }
 

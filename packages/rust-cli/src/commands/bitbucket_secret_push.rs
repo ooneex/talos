@@ -116,8 +116,8 @@ pub fn run(args: &BitbucketSecretPushArgs) {
         Some(value) => value,
         None => {
             if !args.silent {
-                eprintln!(
-                    "✖ No Bitbucket credentials found. Run `talos bitbucket:credentials:create` first."
+                crate::utils::error(
+                    "No Bitbucket credentials found. Run `talos bitbucket:credentials:create` first.",
                 );
             }
             std::process::exit(1);
@@ -132,8 +132,8 @@ pub fn run(args: &BitbucketSecretPushArgs) {
         Some(repo) => repo,
         None => {
             if !args.silent {
-                eprintln!(
-                    "✖ Could not determine the Bitbucket repository from `.git/config` in the current directory."
+                crate::utils::error(
+                    "Could not determine the Bitbucket repository from `.git/config` in the current directory.",
                 );
             }
             std::process::exit(1);
@@ -170,15 +170,17 @@ pub fn run(args: &BitbucketSecretPushArgs) {
     };
     if !ok {
         if !args.silent {
-            eprintln!("✖ Failed to push variable \"{name}\" to {workspace}/{slug}");
+            crate::utils::error(format!(
+                "Failed to push variable \"{name}\" to {workspace}/{slug}"
+            ));
             eprintln!("{}", result.1.trim());
         }
         std::process::exit(1);
     }
     if !args.silent {
-        println!("✔ Variable \"{name}\" pushed to {workspace}/{slug}");
-        println!(
-            "→ View it at https://bitbucket.org/{workspace}/{slug}/admin/pipelines/repository-variables"
-        );
+        crate::utils::success(format!("Variable \"{name}\" pushed to {workspace}/{slug}"));
+        crate::utils::info(format!(
+            "View it at https://bitbucket.org/{workspace}/{slug}/admin/pipelines/repository-variables"
+        ));
     }
 }

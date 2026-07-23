@@ -18,7 +18,7 @@ pub struct CommitlintCheckArgs {
 
 pub fn run(args: &CommitlintCheckArgs) {
     let Some(file) = args.file.as_ref() else {
-        eprintln!("✖ commitlint:check requires --file <commit-message-file>");
+        crate::utils::error("commitlint:check requires --file <commit-message-file>");
         std::process::exit(1);
     };
 
@@ -44,6 +44,6 @@ pub fn run(args: &CommitlintCheckArgs) {
         .map(|error| format!("  • {error}"))
         .collect::<Vec<_>>()
         .join("\n");
-    eprintln!("✖ Invalid commit message:\n{details}");
+    crate::utils::error(format!("Invalid commit message:\n{details}"));
     std::process::exit(1);
 }

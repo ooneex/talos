@@ -94,22 +94,25 @@ pub fn run(args: &E2eCreateArgs) {
     }
 
     if let Err(error) = std::fs::create_dir_all(&e2e_dir) {
-        eprintln!("✖ Failed to create {}: {error}", e2e_dir.display());
+        crate::utils::error(format!("Failed to create {}: {error}", e2e_dir.display()));
         return;
     }
     if let Err(error) = std::fs::write(&spec_path, SPEC_TEMPLATE) {
-        eprintln!("✖ Failed to write {}: {error}", spec_path.display());
+        crate::utils::error(format!("Failed to write {}: {error}", spec_path.display()));
         return;
     }
-    println!("✔ {} created successfully", spec_path.display());
+    crate::utils::success(format!("{} created successfully", spec_path.display()));
 
     let config_path = base.join("playwright.config.ts");
     if !config_path.exists() {
         if let Err(error) = std::fs::write(&config_path, CONFIG_TEMPLATE) {
-            eprintln!("✖ Failed to write {}: {error}", config_path.display());
+            crate::utils::error(format!(
+                "Failed to write {}: {error}",
+                config_path.display()
+            ));
             return;
         }
-        println!("✔ {} created successfully", config_path.display());
+        crate::utils::success(format!("{} created successfully", config_path.display()));
     }
 
     let package_json_path = base.join("package.json");
@@ -137,7 +140,9 @@ pub fn run(args: &E2eCreateArgs) {
             );
             if let Ok(json) = serde_json::to_string_pretty(&package_json) {
                 let _ = std::fs::write(&package_json_path, format!("{json}\n"));
-                println!("✔ modules/{module}/package.json updated with the e2e script");
+                crate::utils::success(format!(
+                    "modules/{module}/package.json updated with the e2e script"
+                ));
             }
         }
     }

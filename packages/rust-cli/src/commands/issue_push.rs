@@ -197,14 +197,18 @@ pub fn run(args: &IssuePushArgs) {
     let token = match read_linear_token() {
         Some(token) => token,
         None => {
-            eprintln!("✖ No Linear credentials found. Run `talos linear:credentials:create`");
+            crate::utils::error(
+                "No Linear credentials found. Run `talos linear:credentials:create`",
+            );
             std::process::exit(1);
         }
     };
     let issues_dir = cwd.join("modules").join(&module).join("issues");
     let file_path = issues_dir.join(format!("{id}.yml"));
     let Ok(content) = std::fs::read_to_string(&file_path) else {
-        eprintln!("✖ Issue file not found: modules/{module}/issues/{id}.yml");
+        crate::utils::error(format!(
+            "Issue file not found: modules/{module}/issues/{id}.yml"
+        ));
         std::process::exit(1);
     };
     let parsed: ParsedIssue = serde_yaml::from_str(&content).unwrap_or_default();
@@ -258,19 +262,19 @@ pub fn run(args: &IssuePushArgs) {
                 json!({"issueId": issue_id, "body": comment.message}),
             );
         }
-        println!(
-            "✔ Issue {} updated in Linear",
+        crate::utils::success(format!(
+            "Issue {} updated in Linear",
             existing
                 .get("identifier")
                 .and_then(Value::as_str)
                 .unwrap_or_default()
-        );
+        ));
         return;
     }
     let team_id = match find_team_general(&token) {
         Some(id) => id,
         None => {
-            eprintln!("✖ No \"General\" team found in Linear");
+            crate::utils::error("No \"General\" team found in Linear");
             std::process::exit(1);
         }
     };
@@ -279,7 +283,7 @@ pub fn run(args: &IssuePushArgs) {
     if let Some(title) = parsed.title.as_deref() {
         input["title"] = json!(title);
     } else {
-        eprintln!("✖ Issue title is required to create in Linear");
+        crate::utils::error("Issue title is required to create in Linear");
         std::process::exit(1);
     }
     if let Some(priority) = priority {
@@ -289,7 +293,7 @@ pub fn run(args: &IssuePushArgs) {
         input["stateId"] = json!(state_id);
     }
     let Some(data) = linear_request(&token, query, json!({"input": input})) else {
-        eprintln!("✖ Failed to create issue in Linear");
+        crate::utils::error("Failed to create issue in Linear");
         std::process::exit(1);
     };
     let created = data
@@ -324,8 +328,8 @@ pub fn run(args: &IssuePushArgs) {
         if let Ok(yaml) = serde_yaml::to_string(&updated) {
             let _ = std::fs::write(&new_file_path, yaml);
             let _ = std::fs::remove_file(&file_path);
-            println!("✔ Local file renamed to {identifier}.yml");
+            crate::utils::success(format!("Local file renamed to {identifier}.yml"));
         }
     }
-    println!("✔ Issue {identifier} created in Linear");
+    crate::utils::success(format!("Issue {identifier} created in Linear"));
 }

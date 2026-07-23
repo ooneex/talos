@@ -47,7 +47,7 @@ pub fn run(args: &AppStopArgs) {
         .unwrap_or_else(current_dir);
     let app_dir = cwd.join("modules").join("app");
     if !app_dir.join("package.json").exists() {
-        eprintln!("✖ Module app not found");
+        crate::utils::error("Module app not found");
         std::process::exit(1);
     }
     if !ensure_bin("docker") {
@@ -65,7 +65,7 @@ pub fn run(args: &AppStopArgs) {
     });
     let compose_exists = needs_docker && app_dir.join("docker-compose.yml").exists();
     if !compose_exists {
-        eprintln!("✖ No matching Docker services to stop");
+        crate::utils::error("No matching Docker services to stop");
         std::process::exit(1);
     }
 
@@ -77,6 +77,6 @@ pub fn run(args: &AppStopArgs) {
             .args(["compose", "down"])
             .current_dir(&app_dir),
     ) {
-        println!("✔ Docker services stopped for {name}");
+        crate::utils::success(format!("Docker services stopped for {name}"));
     }
 }

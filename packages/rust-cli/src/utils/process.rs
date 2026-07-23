@@ -12,7 +12,9 @@ pub fn ensure_bin(bin: &str) -> bool {
         .unwrap_or(false);
 
     if !available {
-        eprintln!("✖ \"{bin}\" is required but was not found on the PATH");
+        super::style::error(format!(
+            "\"{bin}\" is required but was not found on the PATH"
+        ));
     }
 
     available
@@ -28,11 +30,14 @@ pub fn run_step(silent: bool, start_message: &str, command: &mut Command) -> boo
     match command.status() {
         Ok(status) if status.success() => true,
         Ok(status) => {
-            eprintln!("✖ Failed (exit code: {})", status.code().unwrap_or(-1));
+            super::style::error(format!(
+                "Failed (exit code: {})",
+                status.code().unwrap_or(-1)
+            ));
             false
         }
         Err(error) => {
-            eprintln!("✖ Failed to run command: {error}");
+            super::style::error(format!("Failed to run command: {error}"));
             false
         }
     }

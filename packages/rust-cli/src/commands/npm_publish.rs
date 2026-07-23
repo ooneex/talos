@@ -185,13 +185,15 @@ pub fn run(args: &NpmPublishArgs) {
     }
     let targets = resolve_targets(&cwd, args.packages.as_deref(), args.modules.as_deref());
     if targets.is_empty() {
-        eprintln!("✖ No packages or modules found to publish");
+        crate::utils::error("No packages or modules found to publish");
         std::process::exit(1);
     }
     let token = match read_token() {
         Some(token) => token,
         None => {
-            eprintln!("✖ No npm credentials found. Run `talos npm:credentials:create` first.");
+            crate::utils::error(
+                "No npm credentials found. Run `talos npm:credentials:create` first.",
+            );
             std::process::exit(1);
         }
     };
@@ -201,7 +203,10 @@ pub fn run(args: &NpmPublishArgs) {
         let target_dir = cwd.join(&target.base);
         let pkg_path = target_dir.join("package.json");
         let Ok(raw) = fs::read_to_string(&pkg_path) else {
-            eprintln!("✖ No {} named \"{}\" found", target.kind, target.name);
+            crate::utils::error(format!(
+                "No {} named \"{}\" found",
+                target.kind, target.name
+            ));
             continue;
         };
         let Ok(pkg) = serde_json::from_str::<Value>(&raw) else {
@@ -243,7 +248,7 @@ pub fn run(args: &NpmPublishArgs) {
             .unwrap_or(false);
         if !packed {
             if !args.silent {
-                eprintln!("✖ Failed to pack {label}");
+                crate::utils::error(format!("Failed to pack {label}"));
             }
             continue;
         }
@@ -260,7 +265,7 @@ pub fn run(args: &NpmPublishArgs) {
             });
         let Some(tarball) = tarball else {
             if !args.silent {
-                eprintln!("✖ bun pm pack produced no tarball for {label}");
+                crate::utils::error(format!("bun pm pack produced no tarball for {label}"));
             }
             continue;
         };
@@ -277,10 +282,10 @@ pub fn run(args: &NpmPublishArgs) {
         if published {
             succeeded += 1;
             if !args.silent {
-                println!("✔ Published {label}");
+                crate::utils::success(format!("Published {label}"));
             }
         } else if !args.silent {
-            eprintln!("✖ Failed to publish {label}");
+            crate::utils::error(format!("Failed to publish {label}"));
         }
     }
     if !args.silent {

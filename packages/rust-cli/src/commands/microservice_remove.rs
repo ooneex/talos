@@ -60,7 +60,7 @@ pub fn run(args: &MicroserviceRemoveArgs) {
 
     if kebab_name == "app" || kebab_name == "shared" {
         if !silent {
-            eprintln!("✖ Cannot remove the \"{kebab_name}\" module");
+            crate::utils::error(format!("Cannot remove the \"{kebab_name}\" module"));
         }
         return;
     }
@@ -68,7 +68,7 @@ pub fn run(args: &MicroserviceRemoveArgs) {
     let module_dir = cwd.join("modules").join(&kebab_name);
     if !module_dir.join("package.json").exists() {
         if !silent {
-            eprintln!("✖ Microservice \"{kebab_name}\" does not exist");
+            crate::utils::error(format!("Microservice \"{kebab_name}\" does not exist"));
         }
         return;
     }
@@ -116,6 +116,6 @@ pub fn run(args: &MicroserviceRemoveArgs) {
     let _ = std::fs::remove_dir_all(&module_dir);
 
     if !silent {
-        println!("✔ modules/{kebab_name} removed successfully");
+        crate::utils::success(format!("modules/{kebab_name} removed successfully"));
     }
 }

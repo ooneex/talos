@@ -82,7 +82,10 @@ pub fn run(args: &MailerCreateArgs) {
     let template_test_file_path = tests_dir.join(format!("{name}MailerTemplate.spec.ts"));
 
     if let Err(error) = std::fs::create_dir_all(&mailer_dir) {
-        eprintln!("✖ Failed to create {}: {error}", mailer_dir.display());
+        crate::utils::error(format!(
+            "Failed to create {}: {error}",
+            mailer_dir.display()
+        ));
         return;
     }
     let _ = std::fs::create_dir_all(&tests_dir);
@@ -94,18 +97,27 @@ pub fn run(args: &MailerCreateArgs) {
         (&template_test_file_path, template_test_content.as_str()),
     ] {
         if let Err(error) = std::fs::write(path, content) {
-            eprintln!("✖ Failed to write {}: {error}", path.display());
+            crate::utils::error(format!("Failed to write {}: {error}", path.display()));
             return;
         }
     }
 
-    println!("✔ {} created successfully", mailer_file_path.display());
-    println!("✔ {} created successfully", template_file_path.display());
-    println!("✔ {} created successfully", mailer_test_file_path.display());
-    println!(
-        "✔ {} created successfully",
+    crate::utils::success(format!(
+        "{} created successfully",
+        mailer_file_path.display()
+    ));
+    crate::utils::success(format!(
+        "{} created successfully",
+        template_file_path.display()
+    ));
+    crate::utils::success(format!(
+        "{} created successfully",
+        mailer_test_file_path.display()
+    ));
+    crate::utils::success(format!(
+        "{} created successfully",
         template_test_file_path.display()
-    );
+    ));
 
     install_dependency("@talosjs/mailer", &cwd);
 }

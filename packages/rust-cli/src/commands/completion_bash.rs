@@ -8,12 +8,15 @@ pub struct CompletionBashArgs {}
 
 pub fn run(_args: &CompletionBashArgs) {
     let Some(home) = std::env::var_os("HOME").map(std::path::PathBuf::from) else {
-        eprintln!("✖ Could not resolve the home directory");
+        crate::utils::error("Could not resolve the home directory");
         return;
     };
     let completion_dir = home.join(".local/share/bash-completion/completions");
     if let Err(error) = std::fs::create_dir_all(&completion_dir) {
-        eprintln!("✖ Failed to create {}: {error}", completion_dir.display());
+        crate::utils::error(format!(
+            "Failed to create {}: {error}",
+            completion_dir.display()
+        ));
         return;
     }
 
@@ -22,12 +25,15 @@ pub fn run(_args: &CompletionBashArgs) {
     if std::fs::write(&oo_file_path, BASH_TEMPLATE).is_err()
         || std::fs::write(&talos_file_path, BASH_TEMPLATE).is_err()
     {
-        eprintln!("✖ Failed to write bash completion files");
+        crate::utils::error("Failed to write bash completion files");
         return;
     }
 
-    println!("✔ {} created successfully", oo_file_path.display());
-    println!("✔ {} created successfully", talos_file_path.display());
+    crate::utils::success(format!("{} created successfully", oo_file_path.display()));
+    crate::utils::success(format!(
+        "{} created successfully",
+        talos_file_path.display()
+    ));
     println!(
         "Requires the bash-completion package, which loads this directory automatically.\n  Otherwise add the following to your .bashrc:\n  source ~/.local/share/bash-completion/completions/talos"
     );

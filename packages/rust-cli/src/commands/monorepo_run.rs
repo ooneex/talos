@@ -96,7 +96,7 @@ pub fn run(args: &MonorepoRunArgs) {
 pub fn execute(args: &MonorepoRunArgs) -> bool {
     let commands: Vec<String> = split_csv(args.commands.as_deref());
     if commands.is_empty() {
-        eprintln!("✖ The --commands option is required (e.g. --commands=build,lint)");
+        crate::utils::error("The --commands option is required (e.g. --commands=build,lint)");
         return false;
     }
 
@@ -120,7 +120,7 @@ pub fn execute(args: &MonorepoRunArgs) -> bool {
         return false;
     };
     if targets.is_empty() && commands.iter().any(|c| c != INSTALL_COMMAND) {
-        eprintln!("✖ No packages or modules found to run");
+        crate::utils::error("No packages or modules found to run");
         return false;
     }
 
@@ -139,14 +139,14 @@ pub fn execute(args: &MonorepoRunArgs) -> bool {
         .collect();
 
     let total_tasks: usize = groups.iter().map(|g| g.len()).sum();
-    println!(
-        "▸ {}  {} task{} across {} target{}",
+    crate::utils::step(format!(
+        "{}  {} task{} across {} target{}",
         commands.join(", "),
         total_tasks,
         if total_tasks == 1 { "" } else { "s" },
         sorted.len(),
         if sorted.len() == 1 { "" } else { "s" },
-    );
+    ));
 
     let started_at = Instant::now();
     let mut fingerprint_memo: HashMap<String, String> = HashMap::new();
@@ -198,12 +198,12 @@ pub fn execute(args: &MonorepoRunArgs) -> bool {
     if skipped > 0 {
         parts.push(format!("{skipped} skipped"));
     }
-    println!(
-        "✔ Ran {}  {}  in {}",
+    crate::utils::success(format!(
+        "Ran {}  {}  in {}",
         commands.join(", "),
         parts.join(" · "),
         format_duration(started_at.elapsed().as_millis() as u64)
-    );
+    ));
     true
 }
 
@@ -255,7 +255,10 @@ fn filter_targets(
             .iter()
             .find(|t| t.target_type == target_type && t.name == name)
         else {
-            eprintln!("✖ No {} named \"{name}\" found", target_type.as_str());
+            crate::utils::error(format!(
+                "No {} named \"{name}\" found",
+                target_type.as_str()
+            ));
             return None;
         };
         selected.push(target.clone());
@@ -556,15 +559,19 @@ fn try_cache_hit(
 fn report_finish(task: &Task) {
     match task.status {
         TaskStatus::Success => {
-            println!("✔ {}  {}", task.label, format_duration(task.duration_ms));
+            crate::utils::success(format!(
+                "{}  {}",
+                task.label,
+                format_duration(task.duration_ms)
+            ));
         }
         TaskStatus::Failed => {
-            eprintln!(
-                "✖ {}  failed  exit {}  {}",
+            crate::utils::error(format!(
+                "{}  failed  exit {}  {}",
                 task.label,
                 task.exit_code.unwrap_or(1),
                 format_duration(task.duration_ms)
-            );
+            ));
             for line in failure_excerpt(&task.output) {
                 eprintln!("┃ {line}");
             }

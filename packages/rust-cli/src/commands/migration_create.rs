@@ -39,22 +39,25 @@ pub fn run(args: &MigrationCreateArgs) {
         .replace("{{ version }}", &version);
 
     if let Err(error) = std::fs::create_dir_all(&migrations_dir) {
-        eprintln!("✖ Failed to create {}: {error}", migrations_dir.display());
+        crate::utils::error(format!(
+            "Failed to create {}: {error}",
+            migrations_dir.display()
+        ));
         return;
     }
     let file_path = migrations_dir.join(format!("{name}.ts"));
     if let Err(error) = std::fs::write(&file_path, content) {
-        eprintln!("✖ Failed to write {}: {error}", file_path.display());
+        crate::utils::error(format!("Failed to write {}: {error}", file_path.display()));
         return;
     }
 
     if let Err(error) = write_export_index(&migrations_dir, "migrations.ts", |class_name| {
         class_name.starts_with("Migration")
     }) {
-        eprintln!(
-            "✖ Failed to write {}: {error}",
+        crate::utils::error(format!(
+            "Failed to write {}: {error}",
             migrations_dir.join("migrations.ts").display()
-        );
+        ));
         return;
     }
 
@@ -75,5 +78,5 @@ pub fn run(args: &MigrationCreateArgs) {
         );
     }
 
-    println!("✔ {} created successfully", file_path.display());
+    crate::utils::success(format!("{} created successfully", file_path.display()));
 }

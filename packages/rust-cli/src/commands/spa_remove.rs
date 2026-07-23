@@ -44,7 +44,7 @@ pub fn run(args: &SpaRemoveArgs) {
 
     if kebab_name == "app" || kebab_name == "shared" {
         if !silent {
-            eprintln!("✖ Cannot remove the \"{kebab_name}\" module");
+            crate::utils::error(format!("Cannot remove the \"{kebab_name}\" module"));
         }
         return;
     }
@@ -52,7 +52,7 @@ pub fn run(args: &SpaRemoveArgs) {
     let module_dir = cwd.join("modules").join(&kebab_name);
     if !module_dir.join("package.json").exists() {
         if !silent {
-            eprintln!("✖ Spa \"{kebab_name}\" does not exist");
+            crate::utils::error(format!("Spa \"{kebab_name}\" does not exist"));
         }
         return;
     }
@@ -64,7 +64,7 @@ pub fn run(args: &SpaRemoveArgs) {
             .unwrap_or(false);
     if !is_spa_module {
         if !silent {
-            eprintln!("✖ Module \"{kebab_name}\" is not a spa module");
+            crate::utils::error(format!("Module \"{kebab_name}\" is not a spa module"));
         }
         return;
     }
@@ -98,6 +98,6 @@ pub fn run(args: &SpaRemoveArgs) {
     let _ = std::fs::remove_dir_all(&module_dir);
 
     if !silent {
-        println!("✔ modules/{kebab_name} removed successfully");
+        crate::utils::success(format!("modules/{kebab_name} removed successfully"));
     }
 }

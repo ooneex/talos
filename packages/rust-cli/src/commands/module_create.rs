@@ -121,7 +121,7 @@ pub fn execute(options: ModuleCreateOptions) {
             let _ = std::fs::create_dir_all(parent);
         }
         if let Err(error) = std::fs::write(&path, content) {
-            eprintln!("✖ Failed to write {}: {error}", path.display());
+            crate::utils::error(format!("Failed to write {}: {error}", path.display()));
             return;
         }
     }
@@ -171,6 +171,6 @@ pub fn execute(options: ModuleCreateOptions) {
     }
 
     if !silent {
-        println!("✔ modules/{kebab_name} created successfully");
+        crate::utils::success(format!("modules/{kebab_name} created successfully"));
     }
 }

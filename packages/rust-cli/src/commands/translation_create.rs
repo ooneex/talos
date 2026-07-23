@@ -125,12 +125,12 @@ fn scaffold_spa_translation(
         &hook_path,
         USE_TRANSLATE_TEMPLATE.replace("{{NAME}}", &name),
     );
-    println!("✔ {} created successfully", hook_path.display());
+    crate::utils::success(format!("{} created successfully", hook_path.display()));
 
     let dict_path = translations_dir.join("translations.json");
     if !dict_path.exists() {
         let _ = std::fs::write(&dict_path, JSON_DICT_TEMPLATE);
-        println!("✔ {} created successfully", dict_path.display());
+        crate::utils::success(format!("{} created successfully", dict_path.display()));
     }
 
     let use_lang_path = cwd
@@ -145,7 +145,7 @@ fn scaffold_spa_translation(
             let _ = std::fs::create_dir_all(parent);
         }
         let _ = std::fs::write(&use_lang_path, USE_LANG_TEMPLATE);
-        println!("✔ {} created successfully", use_lang_path.display());
+        crate::utils::success(format!("{} created successfully", use_lang_path.display()));
     }
 
     ensure_dependency(cwd, "@talosjs/utils");
@@ -217,10 +217,10 @@ pub fn run(args: &TranslationCreateArgs) {
         let _ = std::fs::write(&dict_path, YAML_DICT_TEMPLATE);
     }
 
-    println!("✔ {} created successfully", file_path.display());
-    println!("✔ {} created successfully", test_path.display());
+    crate::utils::success(format!("{} created successfully", file_path.display()));
+    crate::utils::success(format!("{} created successfully", test_path.display()));
     if dict_path.exists() {
-        println!("✔ {} created successfully", dict_path.display());
+        crate::utils::success(format!("{} created successfully", dict_path.display()));
     }
 
     ensure_dependency(&cwd, "@talosjs/translation");

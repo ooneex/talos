@@ -152,7 +152,7 @@ fn copy_default_layout(source_root: &Path, config_dir: &str, cwd: &Path, silent:
             if let Ok(content) = fs::read_to_string(file_path) {
                 let _ = fs::write(&dest, content);
                 if !silent {
-                    println!("✔ {} created successfully", dest.display());
+                    crate::utils::success(format!("{} created successfully", dest.display()));
                 }
             }
         };
@@ -177,7 +177,7 @@ fn copy_codex_layout(source_root: &Path, cwd: &Path, silent: bool) {
         if let Ok(content) = fs::read_to_string(file_path) {
             let _ = fs::write(&dest, to_codex_agent(&content));
             if !silent {
-                println!("✔ {} created successfully", dest.display());
+                crate::utils::success(format!("{} created successfully", dest.display()));
             }
         }
     };
@@ -197,7 +197,7 @@ fn copy_codex_layout(source_root: &Path, cwd: &Path, silent: bool) {
                 };
             let _ = fs::write(&dest, final_content);
             if !silent {
-                println!("✔ {} created successfully", dest.display());
+                crate::utils::success(format!("{} created successfully", dest.display()));
             }
         }
     };
@@ -237,7 +237,7 @@ pub fn run(args: &AgentSkillsCreateArgs) {
         let dest = cwd.join("AGENTS.md");
         let _ = fs::write(&dest, rendered);
         if !args.silent {
-            println!("✔ {} created successfully", dest.display());
+            crate::utils::success(format!("{} created successfully", dest.display()));
         }
     }
 

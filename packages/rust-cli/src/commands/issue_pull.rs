@@ -264,7 +264,9 @@ pub fn run(args: &IssuePullArgs) {
     let token = match read_linear_token() {
         Some(token) => token,
         None => {
-            eprintln!("✖ No Linear credentials found. Run `talos linear:credentials:create`");
+            crate::utils::error(
+                "No Linear credentials found. Run `talos linear:credentials:create`",
+            );
             std::process::exit(1);
         }
     };
@@ -273,11 +275,11 @@ pub fn run(args: &IssuePullArgs) {
     let _ = std::fs::create_dir_all(&issues_dir);
     let query = r#"query($id: String!) { issue(id: $id) { identifier title description priority state { name } labels { nodes { name } } comments { nodes { body user { name } } } } }"#;
     let Some(data) = linear_request(&token, query, json!({"id": id})) else {
-        eprintln!("✖ Failed to pull issue from Linear");
+        crate::utils::error("Failed to pull issue from Linear");
         std::process::exit(1);
     };
     let Some(issue) = data.get("issue") else {
-        eprintln!("✖ Issue not found in Linear");
+        crate::utils::error("Issue not found in Linear");
         std::process::exit(1);
     };
     let yaml = linear_issue_to_yaml(issue, &module, &issues_dir);
@@ -288,8 +290,8 @@ pub fn run(args: &IssuePullArgs) {
     let file_path = issues_dir.join(format!("{identifier}.yml"));
     let existed = file_path.exists();
     let _ = std::fs::write(&file_path, yaml);
-    println!(
-        "✔ modules/{module}/issues/{identifier}.yml {} successfully",
+    crate::utils::success(format!(
+        "modules/{module}/issues/{identifier}.yml {} successfully",
         if existed { "updated" } else { "created" }
-    );
+    ));
 }

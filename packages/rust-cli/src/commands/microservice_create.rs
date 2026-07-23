@@ -208,7 +208,7 @@ pub fn run(args: &MicroserviceCreateArgs) {
     let _ = fs::create_dir_all(&module_dir);
     let options = CopyOptions::new().content_only(true).overwrite(true);
     if let Err(error) = copy_dir(&template_dir, &module_dir, &options) {
-        eprintln!("✖ Failed to copy microservice template: {error}");
+        crate::utils::error(format!("Failed to copy microservice template: {error}"));
         let _ = fs::remove_dir_all(repo_dir.parent().unwrap_or(&repo_dir));
         return;
     }
@@ -283,13 +283,13 @@ pub fn run(args: &MicroserviceCreateArgs) {
     };
 
     if !silent {
-        println!("✔ modules/{kebab_name} created successfully");
+        crate::utils::success(format!("modules/{kebab_name} created successfully"));
         if let Some(provider) = ci_provider {
-            println!("✔ {provider} CI/CD files created for {kebab_name}");
+            crate::utils::success(format!("{provider} CI/CD files created for {kebab_name}"));
             if provider == "bitbucket" {
-                println!(
-                    "→ Merge .bitbucket/{kebab_name}-pipelines.yml into bitbucket-pipelines.yml (Bitbucket supports a single pipelines file)"
-                );
+                crate::utils::info(format!(
+                    "Merge .bitbucket/{kebab_name}-pipelines.yml into bitbucket-pipelines.yml (Bitbucket supports a single pipelines file)"
+                ));
             }
         }
     }

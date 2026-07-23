@@ -150,20 +150,20 @@ pub fn run(args: &DockerPublishArgs) {
     }
     let targets = resolve_targets(&cwd, args.packages.as_deref(), args.modules.as_deref());
     if targets.is_empty() {
-        eprintln!("✖ No packages or modules found to publish");
+        crate::utils::error("No packages or modules found to publish");
         std::process::exit(1);
     }
     let (registry, username, token) = match read_docker_credentials() {
         Some(value) => value,
         None => {
-            eprintln!(
-                "✖ No Docker credentials found. Run `talos docker:credentials:create` first."
+            crate::utils::error(
+                "No Docker credentials found. Run `talos docker:credentials:create` first.",
             );
             std::process::exit(1);
         }
     };
     if !docker_login(&registry, &username, &token, &cwd) {
-        eprintln!("✖ Docker login failed");
+        crate::utils::error("Docker login failed");
         std::process::exit(1);
     }
     let mut succeeded = 0;
@@ -209,10 +209,10 @@ pub fn run(args: &DockerPublishArgs) {
         if pushed {
             succeeded += 1;
             if !args.silent {
-                println!("✔ Published {image}");
+                crate::utils::success(format!("Published {image}"));
             }
         } else if !args.silent {
-            eprintln!("✖ Failed to publish {image}");
+            crate::utils::error(format!("Failed to publish {image}"));
         }
     }
     if !args.silent {

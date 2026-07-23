@@ -197,11 +197,14 @@ pub fn run(args: &ControllerCreateArgs) {
     }
 
     if let Err(error) = std::fs::create_dir_all(&controllers_dir) {
-        eprintln!("✖ Failed to create {}: {error}", controllers_dir.display());
+        crate::utils::error(format!(
+            "Failed to create {}: {error}",
+            controllers_dir.display()
+        ));
         return;
     }
     if let Err(error) = std::fs::write(&file_path, content) {
-        eprintln!("✖ Failed to write {}: {error}", file_path.display());
+        crate::utils::error(format!("Failed to write {}: {error}", file_path.display()));
         return;
     }
 
@@ -212,7 +215,10 @@ pub fn run(args: &ControllerCreateArgs) {
     let test_file_path = tests_dir.join(format!("{name}Controller.spec.ts"));
     let _ = std::fs::create_dir_all(&tests_dir);
     if let Err(error) = std::fs::write(&test_file_path, test_content) {
-        eprintln!("✖ Failed to write {}: {error}", test_file_path.display());
+        crate::utils::error(format!(
+            "Failed to write {}: {error}",
+            test_file_path.display()
+        ));
         return;
     }
 
@@ -224,8 +230,8 @@ pub fn run(args: &ControllerCreateArgs) {
         let _ = add_class_to_module(&module_path, &format!("{name}Controller"));
     }
 
-    println!("✔ {} created successfully", file_path.display());
-    println!("✔ {} created successfully", test_file_path.display());
+    crate::utils::success(format!("{} created successfully", file_path.display()));
+    crate::utils::success(format!("{} created successfully", test_file_path.display()));
 
     install_dependency("@talosjs/controller", &cwd);
 }

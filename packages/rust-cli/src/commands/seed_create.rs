@@ -62,7 +62,7 @@ pub fn run(args: &SeedCreateArgs) {
         .replace("{{MODULE}}", &module);
 
     if let Err(error) = std::fs::create_dir_all(&seeds_dir) {
-        eprintln!("✖ Failed to create {}: {error}", seeds_dir.display());
+        crate::utils::error(format!("Failed to create {}: {error}", seeds_dir.display()));
         return;
     }
     if let Some(parent) = std::path::Path::new(&tests_dir).parent() {
@@ -75,25 +75,25 @@ pub fn run(args: &SeedCreateArgs) {
     let test_path = tests_dir.join(format!("{seed_name}.spec.ts"));
 
     if let Err(error) = std::fs::write(&seed_path, seed_content) {
-        eprintln!("✖ Failed to write {}: {error}", seed_path.display());
+        crate::utils::error(format!("Failed to write {}: {error}", seed_path.display()));
         return;
     }
     if let Err(error) = std::fs::write(&data_path, data_content) {
-        eprintln!("✖ Failed to write {}: {error}", data_path.display());
+        crate::utils::error(format!("Failed to write {}: {error}", data_path.display()));
         return;
     }
     if let Err(error) = std::fs::write(&test_path, test_content) {
-        eprintln!("✖ Failed to write {}: {error}", test_path.display());
+        crate::utils::error(format!("Failed to write {}: {error}", test_path.display()));
         return;
     }
 
     if let Err(error) = write_export_index(&seeds_dir, "seeds.ts", |class_name| {
         class_name.ends_with("Seed")
     }) {
-        eprintln!(
-            "✖ Failed to write {}: {error}",
+        crate::utils::error(format!(
+            "Failed to write {}: {error}",
             seeds_dir.join("seeds.ts").display()
-        );
+        ));
         return;
     }
 
@@ -109,7 +109,7 @@ pub fn run(args: &SeedCreateArgs) {
         );
     }
 
-    println!("✔ {} created successfully", seed_path.display());
-    println!("✔ {} created successfully", data_path.display());
-    println!("✔ {} created successfully", test_path.display());
+    crate::utils::success(format!("{} created successfully", seed_path.display()));
+    crate::utils::success(format!("{} created successfully", data_path.display()));
+    crate::utils::success(format!("{} created successfully", test_path.display()));
 }

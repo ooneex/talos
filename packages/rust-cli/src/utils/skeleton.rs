@@ -56,7 +56,7 @@ fn download_skeleton_archive(destination: &Path, silent: bool) -> bool {
     match result {
         Ok(()) => true,
         Err(error) => {
-            eprintln!("✖ Failed to download skeleton archive: {error}");
+            super::style::error(format!("Failed to download skeleton archive: {error}"));
             false
         }
     }

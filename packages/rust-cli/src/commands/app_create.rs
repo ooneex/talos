@@ -48,10 +48,10 @@ pub fn run(args: &AppCreateArgs) {
     };
     let snake_name = to_snake_case(&name);
 
-    println!(
-        "✔ {kebab_name} created successfully at {}",
+    crate::utils::success(format!(
+        "{kebab_name} created successfully at {}",
         destination.display()
-    );
+    ));
     println!("\nGet started:\n  cd {}", destination.display());
     println!("\nStart the app:\n  talos app:start");
     println!("Stop the app:\n  talos app:stop");
@@ -67,11 +67,11 @@ pub fn run(args: &AppCreateArgs) {
     let provider = CI_PROVIDERS[provider_index];
 
     if let Err(error) = write_ci_cd_files(&destination, provider, &snake_name) {
-        eprintln!("✖ {error}");
+        crate::utils::error(&error);
         return;
     }
 
-    println!("✔ {provider} CI/CD files created");
+    crate::utils::success(format!("{provider} CI/CD files created"));
 }
 
 /// Writes `template` to `path` after substituting the `{{NAME}}` placeholder.

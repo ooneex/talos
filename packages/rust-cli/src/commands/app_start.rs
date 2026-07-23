@@ -70,20 +70,20 @@ pub fn run(args: &AppStartArgs) {
         .unwrap_or_else(current_dir);
     let app_dir = cwd.join("modules").join("app");
     let Some(name) = load_app_module_name(&app_dir, "app") else {
-        eprintln!("✖ Module app not found");
+        crate::utils::error("Module app not found");
         return;
     };
 
     let modules = collect_runnable_modules(&cwd.join("modules"));
     if modules.is_empty() {
-        eprintln!("✖ No runnable modules found");
+        crate::utils::error("No runnable modules found");
         return;
     }
 
     let selected =
         select_runnable_modules(&modules, args.modules.as_deref(), args.packages.as_deref());
     if selected.is_empty() {
-        eprintln!("✖ No matching modules found");
+        crate::utils::error("No matching modules found");
         return;
     }
 
@@ -107,7 +107,7 @@ pub fn run(args: &AppStartArgs) {
         ) {
             return;
         }
-        println!("✔ Docker services started for {name}");
+        crate::utils::success(format!("Docker services started for {name}"));
     }
 
     println!(
@@ -124,7 +124,7 @@ pub fn run(args: &AppStartArgs) {
         match spawn_module(&cwd, &module.dir, module.r#type) {
             Ok(child) => children.push((module.name.clone(), child)),
             Err(error) => {
-                eprintln!("✖ Failed to start {}: {error}", module.name);
+                crate::utils::error(format!("Failed to start {}: {error}", module.name));
                 for (_, mut child) in children {
                     let _ = child.kill();
                 }
@@ -139,12 +139,12 @@ pub fn run(args: &AppStartArgs) {
             Ok(status) if status.success() => {}
             Ok(status) => {
                 exit_code = status.code().unwrap_or(1);
-                eprintln!("✖ {name} exited with code {exit_code}");
+                crate::utils::error(format!("{name} exited with code {exit_code}"));
                 break;
             }
             Err(error) => {
                 exit_code = 1;
-                eprintln!("✖ Failed while waiting for {name}: {error}");
+                crate::utils::error(format!("Failed while waiting for {name}: {error}"));
                 break;
             }
         }

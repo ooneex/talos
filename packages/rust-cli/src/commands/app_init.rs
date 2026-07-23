@@ -86,7 +86,7 @@ pub fn execute(options: AppInitOptions) -> Option<PathBuf> {
     if let Err(error) =
         scaffold_destination(&skeleton_repo_dir, &destination, &kebab_name, app_type)
     {
-        eprintln!("✖ {error}");
+        crate::utils::error(&error);
         return None;
     }
     // `skeleton_dir` is a TempDir; it is removed automatically when dropped here.
@@ -111,16 +111,16 @@ pub fn execute(options: AppInitOptions) -> Option<PathBuf> {
     let install_hook = ask_confirm("Install the commit-msg hook?", true);
 
     if install_hook && let Err(error) = install_commitlint_hook(&destination) {
-        eprintln!("✖ {error}");
+        crate::utils::error(&error);
     }
 
     scaffold_agent_skills(&destination, &kebab_name, silent);
 
     if !silent {
-        println!(
-            "✔ {kebab_name} initialized successfully at {}",
+        crate::utils::success(format!(
+            "{kebab_name} initialized successfully at {}",
             destination.display()
-        );
+        ));
     }
 
     Some(destination)
@@ -227,7 +227,7 @@ exec talos commitlint:check --file \"$1\"\n";
     fs::set_permissions(&hook_path, fs::Permissions::from_mode(0o755))
         .map_err(|e| e.to_string())?;
 
-    println!("✔ {} installed successfully", hook_path.display());
+    crate::utils::success(format!("{} installed successfully", hook_path.display()));
     Ok(())
 }
 
@@ -243,7 +243,7 @@ fn scaffold_agent_skills(destination: &Path, kebab_name: &str, silent: bool) {
         .unwrap_or(false);
 
     if !oo_available {
-        eprintln!("⚠ Skipping agent skills scaffolding: \"oo\" was not found on the PATH");
+        crate::utils::warn("Skipping agent skills scaffolding: \"oo\" was not found on the PATH");
         return;
     }
 
@@ -260,6 +260,6 @@ fn scaffold_agent_skills(destination: &Path, kebab_name: &str, silent: bool) {
     }
 
     if let Err(error) = command.status() {
-        eprintln!("✖ Failed to scaffold agent skills: {error}");
+        crate::utils::error(format!("Failed to scaffold agent skills: {error}"));
     }
 }

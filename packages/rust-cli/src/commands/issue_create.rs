@@ -63,9 +63,9 @@ pub fn run(args: &IssueCreateArgs) {
 
     let file_path = issues_dir.join(format!("{resolved_id}.yml"));
     if let Err(error) = std::fs::write(&file_path, yaml) {
-        eprintln!("✖ Failed to write {}: {error}", file_path.display());
+        crate::utils::error(format!("Failed to write {}: {error}", file_path.display()));
         return;
     }
 
-    println!("✔ {} created successfully", file_path.display());
+    crate::utils::success(format!("{} created successfully", file_path.display()));
 }

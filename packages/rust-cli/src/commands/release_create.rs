@@ -278,7 +278,9 @@ pub fn run(args: &ReleaseCreateArgs) {
         .map(PathBuf::from)
         .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
     if has_pending_changes(&cwd) {
-        eprintln!("✖ Working tree has pending changes. Commit or stash them before releasing");
+        crate::utils::error(
+            "Working tree has pending changes. Commit or stash them before releasing",
+        );
         std::process::exit(1);
     }
     let mut dirs = Vec::new();
@@ -296,7 +298,7 @@ pub fn run(args: &ReleaseCreateArgs) {
         }
     }
     if dirs.is_empty() {
-        eprintln!("✖ No packages or modules found");
+        crate::utils::error("No packages or modules found");
         std::process::exit(1);
     }
     let package_names = args
@@ -346,7 +348,7 @@ pub fn run(args: &ReleaseCreateArgs) {
             .collect()
     };
     if target_dirs.is_empty() {
-        eprintln!("✖ No requested packages or modules found");
+        crate::utils::error("No requested packages or modules found");
         std::process::exit(1);
     }
     let repo_url = get_repo_url(&cwd);
@@ -456,24 +458,24 @@ pub fn run(args: &ReleaseCreateArgs) {
                 ),
             ],
         ) {
-            eprintln!(
-                "✖ Failed to release {}",
+            crate::utils::error(format!(
+                "Failed to release {}",
                 plan.package_json
                     .get("name")
                     .and_then(Value::as_str)
                     .unwrap_or_default()
-            );
+            ));
             std::process::exit(1);
         }
-        println!(
-            "✔ {} released ({} bump, {} commit(s))",
+        crate::utils::success(format!(
+            "{} released ({} bump, {} commit(s))",
             plan.package_json
                 .get("name")
                 .and_then(Value::as_str)
                 .unwrap_or_default(),
             plan.bump_type,
             plan.commits.len()
-        );
+        ));
         let base_name = Path::new(&plan.dir.base)
             .file_name()
             .unwrap()
@@ -485,7 +487,7 @@ pub fn run(args: &ReleaseCreateArgs) {
             released_modules.push(base_name);
         }
     }
-    println!("✔ {} package(s) released", plans.len());
+    crate::utils::success(format!("{} package(s) released", plans.len()));
     if ask_confirm("Push commits and tags to remote?", true) {
         let _ = Command::new("bun")
             .arg("install")
@@ -495,7 +497,7 @@ pub fn run(args: &ReleaseCreateArgs) {
         let _ = git(&cwd, &["commit", "-m", "chore(common): Update bun.lock"]);
         let pushed = git(&cwd, &["push"]) && git(&cwd, &["push", "--tags"]);
         if !pushed {
-            eprintln!("✖ Failed to push to remote");
+            crate::utils::error("Failed to push to remote");
         }
     }
     if args.publish {

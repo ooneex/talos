@@ -212,7 +212,7 @@ pub fn run(args: &SpaCreateArgs) {
     let _ = fs::create_dir_all(&module_dir);
     let options = CopyOptions::new().content_only(true).overwrite(true);
     if let Err(error) = copy_dir(&template_dir, &module_dir, &options) {
-        eprintln!("✖ Failed to copy spa template: {error}");
+        crate::utils::error(format!("Failed to copy spa template: {error}"));
         let _ = fs::remove_dir_all(repo_dir.parent().unwrap_or(&repo_dir));
         return;
     }
@@ -333,6 +333,6 @@ pub fn run(args: &SpaCreateArgs) {
     }
 
     if !silent {
-        println!("✔ modules/{kebab_name} created successfully");
+        crate::utils::success(format!("modules/{kebab_name} created successfully"));
     }
 }

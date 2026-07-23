@@ -32,7 +32,7 @@ pub fn save_credentials(
     fs::write(&path, credentials_to_yaml(profile)).ok()?;
 
     if !silent {
-        println!("✔ {label} credentials saved to {}", path.display());
+        super::style::success(format!("{label} credentials saved to {}", path.display()));
     }
 
     Some(path)

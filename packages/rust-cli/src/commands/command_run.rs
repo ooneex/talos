@@ -60,8 +60,8 @@ pub fn run(args: &CommandRunArgs) {
     let command_name = match args.id.clone() {
         Some(id) => id,
         None => {
-            eprintln!(
-                "✖ Command name is required. Usage: talosrs command:run --id <command-name> [args...]"
+            crate::utils::error(
+                "Command name is required. Usage: talosrs command:run --id <command-name> [args...]",
             );
             std::process::exit(1);
         }
@@ -73,7 +73,9 @@ pub fn run(args: &CommandRunArgs) {
         .unwrap_or_else(current_dir);
     let modules_dir = cwd.join("modules");
     if !modules_dir.exists() {
-        eprintln!("⚠ Command \"{command_name}\" not found in any module");
+        crate::utils::warn(format!(
+            "Command \"{command_name}\" not found in any module"
+        ));
         return;
     }
 
@@ -81,7 +83,9 @@ pub fn run(args: &CommandRunArgs) {
         Regex::new(r#"getName\(\)\s*(?::\s*string)?\s*\{\s*return\s*[\"']([^\"']+)[\"'];?\s*\}"#)
             .ok();
     let Ok(entries) = fs::read_dir(&modules_dir) else {
-        eprintln!("⚠ Command \"{command_name}\" not found in any module");
+        crate::utils::warn(format!(
+            "Command \"{command_name}\" not found in any module"
+        ));
         return;
     };
 
@@ -123,7 +127,9 @@ pub fn run(args: &CommandRunArgs) {
     }
 
     if modules.is_empty() {
-        eprintln!("⚠ Command \"{command_name}\" not found in any module");
+        crate::utils::warn(format!(
+            "Command \"{command_name}\" not found in any module"
+        ));
         std::process::exit(1);
     }
 
@@ -139,7 +145,7 @@ pub fn run(args: &CommandRunArgs) {
 
         match output {
             Ok(output) if output.status.success() => {
-                println!("✔ Command \"{command_name}\" completed for {name}");
+                crate::utils::success(format!("Command \"{command_name}\" completed for {name}"));
                 return;
             }
             Ok(output) => {
@@ -153,30 +159,34 @@ pub fn run(args: &CommandRunArgs) {
                 .join("\n");
 
                 if confirmed {
-                    eprintln!(
-                        "✖ Command \"{command_name}\" failed in {name} (exit code: {})",
+                    crate::utils::error(format!(
+                        "Command \"{command_name}\" failed in {name} (exit code: {})",
                         output.status.code().unwrap_or(1)
-                    );
+                    ));
                     if !details.is_empty() {
                         eprintln!("{details}");
                     }
                     std::process::exit(1);
                 }
 
-                eprintln!("⚠ Command \"{command_name}\" not found in {name}");
+                crate::utils::warn(format!("Command \"{command_name}\" not found in {name}"));
                 if !details.is_empty() {
                     eprintln!("{details}");
                 }
             }
             Err(error) => {
                 if confirmed {
-                    eprintln!("✖ Command \"{command_name}\" failed in {name}: {error}");
+                    crate::utils::error(format!(
+                        "Command \"{command_name}\" failed in {name}: {error}"
+                    ));
                     std::process::exit(1);
                 }
             }
         }
     }
 
-    eprintln!("✖ Command \"{command_name}\" not found in any module");
+    crate::utils::error(format!(
+        "Command \"{command_name}\" not found in any module"
+    ));
     std::process::exit(1);
 }

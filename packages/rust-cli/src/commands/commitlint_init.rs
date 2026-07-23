@@ -24,7 +24,7 @@ pub fn run(args: &CommitlintInitArgs) {
     match install_commitlint_hook(&cwd) {
         Ok(()) => {}
         Err(error) => {
-            eprintln!("✖ {error}");
+            crate::utils::error(&error);
             std::process::exit(1);
         }
     }

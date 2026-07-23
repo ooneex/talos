@@ -57,8 +57,8 @@ pub fn run(args: &GithubSecretPushArgs) {
         Some(token) => token,
         None => {
             if !args.silent {
-                eprintln!(
-                    "✖ No GitHub credentials found. Run `talos github:credentials:create` first."
+                crate::utils::error(
+                    "No GitHub credentials found. Run `talos github:credentials:create` first.",
                 );
             }
             std::process::exit(1);
@@ -73,8 +73,8 @@ pub fn run(args: &GithubSecretPushArgs) {
         Some(slug) => slug,
         None => {
             if !args.silent {
-                eprintln!(
-                    "✖ Could not determine the GitHub repository from `.git/config` in the current directory."
+                crate::utils::error(
+                    "Could not determine the GitHub repository from `.git/config` in the current directory.",
                 );
             }
             std::process::exit(1);
@@ -100,7 +100,7 @@ pub fn run(args: &GithubSecretPushArgs) {
         .stderr(Stdio::piped())
         .spawn()
         .unwrap_or_else(|error| {
-            eprintln!("✖ Failed to run gh: {error}");
+            crate::utils::error(format!("Failed to run gh: {error}"));
             std::process::exit(1);
         });
     if let Some(mut stdin) = child.stdin.take() {
@@ -108,7 +108,7 @@ pub fn run(args: &GithubSecretPushArgs) {
         let _ = stdin.write_all(value.as_bytes());
     }
     let output = child.wait_with_output().unwrap_or_else(|error| {
-        eprintln!("✖ Failed to push secret: {error}");
+        crate::utils::error(format!("Failed to push secret: {error}"));
         std::process::exit(1);
     });
     if !output.status.success() {
@@ -118,7 +118,7 @@ pub fn run(args: &GithubSecretPushArgs) {
                 String::from_utf8_lossy(&output.stdout).trim(),
                 String::from_utf8_lossy(&output.stderr).trim()
             );
-            eprintln!("✖ Failed to push secret \"{name}\" to {slug}");
+            crate::utils::error(format!("Failed to push secret \"{name}\" to {slug}"));
             if !raw.trim().is_empty() {
                 eprintln!("{}", raw.trim());
             }
@@ -126,7 +126,9 @@ pub fn run(args: &GithubSecretPushArgs) {
         std::process::exit(1);
     }
     if !args.silent {
-        println!("✔ Secret \"{name}\" pushed to {slug}");
-        println!("→ View it at https://github.com/{slug}/settings/secrets/actions");
+        crate::utils::success(format!("Secret \"{name}\" pushed to {slug}"));
+        crate::utils::info(format!(
+            "View it at https://github.com/{slug}/settings/secrets/actions"
+        ));
     }
 }

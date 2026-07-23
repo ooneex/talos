@@ -476,9 +476,9 @@ pub fn run(args: &SdkCreateArgs) {
     }
 
     if !silent {
-        println!(
-            "✔ modules/{sdk_name} generated with {} module(s)",
+        crate::utils::success(format!(
+            "modules/{sdk_name} generated with {} module(s)",
             generated.len()
-        );
+        ));
     }
 }

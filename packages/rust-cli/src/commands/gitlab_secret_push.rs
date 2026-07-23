@@ -91,8 +91,8 @@ pub fn run(args: &GitlabSecretPushArgs) {
         Some(token) => token,
         None => {
             if !args.silent {
-                eprintln!(
-                    "✖ No GitLab credentials found. Run `talos gitlab:credentials:create` first."
+                crate::utils::error(
+                    "No GitLab credentials found. Run `talos gitlab:credentials:create` first.",
                 );
             }
             std::process::exit(1);
@@ -107,8 +107,8 @@ pub fn run(args: &GitlabSecretPushArgs) {
         Some(project) => project,
         None => {
             if !args.silent {
-                eprintln!(
-                    "✖ Could not determine the GitLab project from `.git/config` in the current directory."
+                crate::utils::error(
+                    "Could not determine the GitLab project from `.git/config` in the current directory.",
                 );
             }
             std::process::exit(1);
@@ -149,13 +149,13 @@ pub fn run(args: &GitlabSecretPushArgs) {
     };
     if !ok {
         if !args.silent {
-            eprintln!("✖ Failed to push variable \"{name}\" to {path}");
+            crate::utils::error(format!("Failed to push variable \"{name}\" to {path}"));
             eprintln!("{}", result.1.trim());
         }
         std::process::exit(1);
     }
     if !args.silent {
-        println!("✔ Variable \"{name}\" pushed to {path}");
-        println!("→ View it at https://{host}/{path}/-/settings/ci_cd");
+        crate::utils::success(format!("Variable \"{name}\" pushed to {path}"));
+        crate::utils::info(format!("View it at https://{host}/{path}/-/settings/ci_cd"));
     }
 }

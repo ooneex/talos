@@ -79,7 +79,10 @@ pub fn run(args: &CommandCreateArgs) {
         .replace("{{MODULE}}", &to_kebab_case(&module));
 
     if let Err(error) = std::fs::create_dir_all(&command_dir) {
-        eprintln!("✖ Failed to create {}: {error}", command_dir.display());
+        crate::utils::error(format!(
+            "Failed to create {}: {error}",
+            command_dir.display()
+        ));
         return;
     }
     let _ = std::fs::create_dir_all(&tests_dir);
@@ -87,21 +90,24 @@ pub fn run(args: &CommandCreateArgs) {
     let test_path = tests_dir.join(format!("{class_name}Command.spec.ts"));
 
     if let Err(error) = std::fs::write(&command_file_path, content) {
-        eprintln!("✖ Failed to write {}: {error}", command_file_path.display());
+        crate::utils::error(format!(
+            "Failed to write {}: {error}",
+            command_file_path.display()
+        ));
         return;
     }
     if let Err(error) = std::fs::write(&test_path, test_content) {
-        eprintln!("✖ Failed to write {}: {error}", test_path.display());
+        crate::utils::error(format!("Failed to write {}: {error}", test_path.display()));
         return;
     }
 
     if let Err(error) = write_export_index(&command_dir, "commands.ts", |class_name| {
         class_name.ends_with("Command")
     }) {
-        eprintln!(
-            "✖ Failed to write {}: {error}",
+        crate::utils::error(format!(
+            "Failed to write {}: {error}",
             command_dir.join("commands.ts").display()
-        );
+        ));
         return;
     }
 
@@ -117,6 +123,9 @@ pub fn run(args: &CommandCreateArgs) {
         );
     }
 
-    println!("✔ {} created successfully", command_file_path.display());
-    println!("✔ {} created successfully", test_path.display());
+    crate::utils::success(format!(
+        "{} created successfully",
+        command_file_path.display()
+    ));
+    crate::utils::success(format!("{} created successfully", test_path.display()));
 }

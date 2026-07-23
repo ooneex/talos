@@ -32,7 +32,7 @@ pub fn run_module_scripts(cwd: &Path, options: RunModuleScriptsOptions) {
 
     let modules_dir = cwd.join("modules");
     if !modules_dir.exists() {
-        println!("⚠ No modules with {} found", options.label);
+        super::style::warn(format!("No modules with {} found", options.label));
         return;
     }
 
@@ -71,7 +71,7 @@ pub fn run_module_scripts(cwd: &Path, options: RunModuleScriptsOptions) {
     }
 
     if modules.is_empty() {
-        println!("⚠ No modules with {} found", options.label);
+        super::style::warn(format!("No modules with {} found", options.label));
         return;
     }
 
@@ -106,7 +106,7 @@ pub fn run_module_scripts(cwd: &Path, options: RunModuleScriptsOptions) {
             );
         }
 
-        println!("▸ Running {} for {name}...", options.label);
+        super::style::step(format!("Running {} for {name}...", options.label));
         let mut command = Command::new("bun");
         command.args(&args).current_dir(&dir);
         if let Some(env) = &options.env {
@@ -116,17 +116,17 @@ pub fn run_module_scripts(cwd: &Path, options: RunModuleScriptsOptions) {
         let status = command.status();
         match status {
             Ok(status) if status.success() => {
-                println!("✔ {titled_label} completed for {name}");
+                super::style::success(format!("{titled_label} completed for {name}"));
             }
             Ok(status) => {
-                eprintln!(
-                    "✖ {titled_label} failed for {name} (exit code: {})",
+                super::style::error(format!(
+                    "{titled_label} failed for {name} (exit code: {})",
                     status.code().unwrap_or(1)
-                );
+                ));
                 std::process::exit(1);
             }
             Err(error) => {
-                eprintln!("✖ {titled_label} failed for {name}: {error}");
+                super::style::error(format!("{titled_label} failed for {name}: {error}"));
                 std::process::exit(1);
             }
         }
