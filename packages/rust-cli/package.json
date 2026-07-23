@@ -1,0 +1,30 @@
+{
+  "name": "@talosjs/color",
+  "description": "",
+  "version": "1.0.0",
+  "type": "module",
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md",
+    "package.json"
+  ],
+  "license": "MIT",
+  "scripts": {
+    "test": "bun test tests",
+    "build": "bunup",
+    "fmt": "bunx biome check --write",
+    "lint": "tsc --noEmit && bunx biome lint"
+  },
+  "dependencies": {},
+  "keywords": [
+    "bun",
+    "color",
+    "hex",
+    "talos",
+    "palette",
+    "theme",
+    "typescript",
+    "ui"
+  ]
+}
