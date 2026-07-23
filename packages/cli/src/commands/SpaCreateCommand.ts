@@ -7,9 +7,9 @@ import { decorator } from "@talosjs/command";
 import { TerminalLogger } from "@talosjs/logger";
 import { toKebabCase } from "@talosjs/utils/toKebabCase";
 import { toPascalCase } from "@talosjs/utils/toPascalCase";
+import { addPathAlias } from "../moduleRegistry";
 import { askDesign } from "../prompts/askDesign";
 import { askName } from "../prompts/askName";
-import ymlTemplate from "../templates/module/yml.txt";
 import { ensureBin, LOG_OPTIONS, spawnStep } from "../utils";
 import { DesignCreateCommand } from "./DesignCreateCommand";
 
@@ -17,6 +17,21 @@ const SPA_REPOSITORY = "https://github.com/ooneex/skeleton.git";
 const SPA_TEMPLATE_PATH = "modules/spa";
 
 const DEFAULT_PORT = 3030;
+
+const DESIGN_FIELD_PATTERN = /^design:\s*".*"$/m;
+
+// Set the spa yml's `design` field to the chosen design module, or drop it when no
+// design is used. Falls back to appending the field when the template doesn't
+// already declare one.
+const withDesignField = (ymlContent: string, designKebab: string | undefined): string => {
+  if (DESIGN_FIELD_PATTERN.test(ymlContent)) {
+    return designKebab
+      ? ymlContent.replace(DESIGN_FIELD_PATTERN, `design: "${designKebab}"`)
+      : ymlContent.replace(new RegExp(`${DESIGN_FIELD_PATTERN.source}\\n?`, "m"), "");
+  }
+
+  return designKebab ? `${ymlContent.trimEnd()}\ndesign: "${designKebab}"\n` : ymlContent;
+};
 
 // Collect every port already referenced by a module's package.json scripts so a new
 // spa module doesn't clash on a port that another module already serves.
@@ -140,13 +155,15 @@ export class SpaCreateCommand<T extends CommandOptionsType = CommandOptionsType>
     const spaTemplateDir = join(tmpDir, SPA_TEMPLATE_PATH);
     await cp(spaTemplateDir, moduleDir, { recursive: true });
 
-    // Mark the module as a spa module in its yml config, recording the design it uses
-    await rm(join(moduleDir, "spa.yml"), { force: true });
-    let ymlContent = ymlTemplate.replace('type: "module"', 'type: "spa"');
-    if (designKebab) {
-      ymlContent = `${ymlContent.trimEnd()}\ndesign: "${designKebab}"\n`;
+    // Rename the template's `spa.yml` to match the module's kebab-case name,
+    // recording the design it uses
+    const templateYmlPath = join(moduleDir, "spa.yml");
+    const ymlPath = join(moduleDir, `${kebabName}.yml`);
+    const ymlContent = withDesignField(await Bun.file(templateYmlPath).text(), designKebab);
+    await Bun.write(ymlPath, ymlContent);
+    if (templateYmlPath !== ymlPath) {
+      await rm(templateYmlPath, { force: true });
     }
-    await Bun.write(join(moduleDir, `${kebabName}.yml`), ymlContent);
 
     // Add the spa dev/build/preview scripts, picking a port no other module uses
     const port = findFreePort(await collectUsedPorts(modulesDir));
@@ -239,6 +256,12 @@ export class SpaCreateCommand<T extends CommandOptionsType = CommandOptionsType>
     // Scaffold the chosen design module when it does not already exist
     if (design && designKebab && !existsSync(join(modulesDir, designKebab))) {
       await new DesignCreateCommand().run({ name: design, cwd, silent });
+    }
+
+    // Add path alias in app module tsconfig
+    const appTsconfigPath = join(cwd, "tsconfig.json");
+    if (await Bun.file(appTsconfigPath).exists()) {
+      await addPathAlias(appTsconfigPath, kebabName);
     }
 
     if (!silent) {

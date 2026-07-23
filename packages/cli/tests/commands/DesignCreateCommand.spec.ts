@@ -270,4 +270,25 @@ describe("DesignCreateCommand", () => {
       expect(content).not.toContain("DesignModule");
     });
   });
+
+  describe("tsconfig integration", () => {
+    beforeEach(async () => {
+      await Bun.write(join(testDir, "tsconfig.json"), JSON.stringify({ compilerOptions: {} }, null, 2));
+    });
+
+    test("should register the design module path alias in the root tsconfig paths", async () => {
+      await command.run({ name: "Design", cwd: testDir, silent: true });
+
+      const tsconfig = JSON.parse(await read(join(testDir, "tsconfig.json")));
+      expect(tsconfig.compilerOptions.paths?.["@module/design/*"]).toEqual(["./modules/design/src/*"]);
+    });
+
+    test("should not create a root tsconfig when it does not exist", async () => {
+      rmSync(join(testDir, "tsconfig.json"), { force: true });
+
+      await command.run({ name: "Design", cwd: testDir, silent: true });
+
+      expect(await exists(join(testDir, "tsconfig.json"))).toBe(false);
+    });
+  });
 });

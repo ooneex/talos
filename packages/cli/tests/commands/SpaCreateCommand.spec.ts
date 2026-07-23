@@ -78,7 +78,7 @@ describe("SpaCreateCommand", () => {
           writeFileSync(join(spaTemplateDir, "src", SPA_SELF_IMPORT_FILE), SPA_SELF_IMPORT_CONTENT);
           writeFileSync(join(spaTemplateDir, "vite.config.ts"), SPA_VITE_CONFIG_CONTENT);
           writeFileSync(join(spaTemplateDir, "tsconfig.json"), JSON.stringify({ extends: "../../tsconfig.json" }));
-          writeFileSync(join(spaTemplateDir, "spa.yml"), 'type: "spa"\n');
+          writeFileSync(join(spaTemplateDir, "spa.yml"), 'type: "spa"\ndesign: "design"\n');
           mkdirSync(join(spaTemplateDir, "public"), { recursive: true });
           writeFileSync(join(spaTemplateDir, "public", SPA_PUBLIC_FILE), SPA_PUBLIC_CONTENT);
           writeFileSync(
@@ -494,11 +494,19 @@ describe("SpaCreateCommand", () => {
       await Bun.write(join(testDir, "tsconfig.json"), JSON.stringify({ compilerOptions: {} }, null, 2));
     });
 
-    test("should not register the spa module in the root tsconfig paths", async () => {
+    test("should register the spa module path alias in the root tsconfig paths", async () => {
       await command.run({ name: "Spa", cwd: testDir, silent: true });
 
       const tsconfig = JSON.parse(await read(join(testDir, "tsconfig.json")));
-      expect(tsconfig.compilerOptions.paths?.["@module/spa/*"]).toBeUndefined();
+      expect(tsconfig.compilerOptions.paths?.["@module/spa/*"]).toEqual(["./modules/spa/src/*"]);
+    });
+
+    test("should not create a root tsconfig when it does not exist", async () => {
+      rmSync(join(testDir, "tsconfig.json"), { force: true });
+
+      await command.run({ name: "Spa", cwd: testDir, silent: true });
+
+      expect(await exists(join(testDir, "tsconfig.json"))).toBe(false);
     });
   });
 });

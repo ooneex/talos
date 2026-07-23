@@ -6,6 +6,7 @@ import { decorator } from "@talosjs/command";
 import { TerminalLogger } from "@talosjs/logger";
 import { toKebabCase } from "@talosjs/utils/toKebabCase";
 import { toPascalCase } from "@talosjs/utils/toPascalCase";
+import { addPathAlias } from "../moduleRegistry";
 import { ensureBin, LOG_OPTIONS, spawnStep } from "../utils";
 
 const DESIGN_REPOSITORY = "https://github.com/ooneex/skeleton.git";
@@ -125,6 +126,12 @@ export class DesignCreateCommand<T extends CommandOptionsType = CommandOptionsTy
     }
 
     await rm(tmpDir, { recursive: true, force: true });
+
+    // Add path alias in app module tsconfig
+    const appTsconfigPath = join(cwd, "tsconfig.json");
+    if (await Bun.file(appTsconfigPath).exists()) {
+      await addPathAlias(appTsconfigPath, kebabName);
+    }
 
     if (!silent) {
       logger.success(`modules/${kebabName} created successfully`, undefined, LOG_OPTIONS);
