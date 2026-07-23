@@ -29,7 +29,26 @@ use crate::utils::{
 
 const INSTALL_COMMAND: &str = "install";
 const TEST_COMMAND: &str = "test";
+const FMT_COMMAND: &str = "fmt";
+const LINT_COMMAND: &str = "lint";
 const ORDER_INDEPENDENT_COMMANDS: &[&str] = &["fmt", "lint"];
+
+/// Directories `fmt`'s per-file walk never descends into: build artifacts,
+/// dependency folders and caches, none of which hold source worth formatting.
+const FMT_EXCLUDED_DIRS: &[&str] = &[
+    "node_modules",
+    "dist",
+    "target",
+    "var",
+    "coverage",
+    ".git",
+    ".temp",
+    ".turbo",
+];
+
+/// Non-Rust file extensions `fmt`'s per-file walk treats as formattable
+/// (mirrors what `bunx biome check --write` would pick up across a target).
+const FMT_WEB_EXTENSIONS: &[&str] = &["ts", "tsx", "js", "jsx", "mjs", "cjs", "json", "jsonc"];
 
 /// Rust port of `MonorepoRunCommand`'s `CommandOptionsType`.
 #[derive(Args, Debug, Default, Clone)]
@@ -364,6 +383,12 @@ fn build_group(
     if command == TEST_COMMAND {
         return build_test_group(targets, included_keys);
     }
+    if command == FMT_COMMAND {
+        return build_fmt_group(targets);
+    }
+    if command == LINT_COMMAND {
+        return build_lint_group(targets);
+    }
 
     let ordered = !ORDER_INDEPENDENT_COMMANDS.contains(&command);
     targets
@@ -497,8 +522,309 @@ fn build_test_group(targets: &[MonorepoTarget], included_keys: &HashSet<String>)
     tasks
 }
 
-// A single root-level `bun install`. It is not tied to a target and is never
-// cached, since bun already skips work when the lockfile is unchanged.
+/// Formattable files under a target's whole directory, as paths relative to
+/// the target's directory: `.rs` files for Rust targets, common web source
+/// (`.ts`/`.tsx`/`.js`/`.jsx`/`.mjs`/`.cjs`/`.json`/`.jsonc`) for everything
+/// else. Scanned recursively, skipping build/dependency folders.
+fn collect_fmt_files(target: &MonorepoTarget) -> Vec<PathBuf> {
+    let is_rust = is_rust_target(target);
+    let mut files = Vec::new();
+    let mut stack = vec![target.dir.clone()];
+    while let Some(dir) = stack.pop() {
+        let Ok(entries) = std::fs::read_dir(&dir) else {
+            continue;
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            let name = entry.file_name();
+            let name_str = name.to_string_lossy();
+            if path.is_dir() {
+                if !FMT_EXCLUDED_DIRS.contains(&name_str.as_ref()) {
+                    stack.push(path);
+                }
+                continue;
+            }
+            let ext_matches = path
+                .extension()
+                .and_then(|e| e.to_str())
+                .is_some_and(|ext| {
+                    if is_rust {
+                        ext == "rs"
+                    } else {
+                        FMT_WEB_EXTENSIONS.contains(&ext)
+                    }
+                });
+            if ext_matches && let Ok(rel) = path.strip_prefix(&target.dir) {
+                files.push(rel.to_path_buf());
+            }
+        }
+    }
+    files.sort();
+    files
+}
+
+// One task per source file rather than per target, so every file formats
+// concurrently instead of a single `cargo fmt`/`bunx biome check --write`
+// invocation walking the whole target serially. Rust targets run
+// `cargo fmt -- <file>` per `.rs` file; every other target runs
+// `bunx biome check --write <file>` per matching source file. Targets
+// without the `fmt` script, or without any formattable files, are marked
+// skipped up front. `fmt` stays order-independent (it's listed in
+// `ORDER_INDEPENDENT_COMMANDS`), so file tasks carry no dependency edges.
+fn build_fmt_group(targets: &[MonorepoTarget]) -> Vec<Task> {
+    let mut tasks: Vec<Task> = Vec::new();
+
+    for target in targets {
+        let has_script = target.scripts.contains_key(FMT_COMMAND);
+        let fmt_files = if has_script {
+            collect_fmt_files(target)
+        } else {
+            Vec::new()
+        };
+
+        if fmt_files.is_empty() {
+            tasks.push(Task {
+                key: format!("{}#{FMT_COMMAND}", target.key),
+                label: format!("{}:{FMT_COMMAND}", target.name),
+                target_key: Some(target.key.clone()),
+                command: FMT_COMMAND.to_string(),
+                cwd: target.dir.clone(),
+                argv: Vec::new(),
+                cacheable: false,
+                deps: Vec::new(),
+                status: TaskStatus::Skipped,
+                output: String::new(),
+                exit_code: None,
+                duration_ms: 0,
+                hash: None,
+            });
+            continue;
+        }
+
+        let is_rust = is_rust_target(target);
+        for file in &fmt_files {
+            let rel = file.to_string_lossy().replace('\\', "/");
+            let argv = if is_rust {
+                vec![
+                    "cargo".to_string(),
+                    "fmt".to_string(),
+                    "--".to_string(),
+                    rel.clone(),
+                ]
+            } else {
+                vec![
+                    "bunx".to_string(),
+                    "biome".to_string(),
+                    "check".to_string(),
+                    "--write".to_string(),
+                    format!("./{rel}"),
+                ]
+            };
+            // The command discriminator feeds the cache-content hash, so it
+            // must carry the file identity too, otherwise every file task
+            // for a target would collide on the same cache entry.
+            tasks.push(Task {
+                key: format!("{}#{FMT_COMMAND}#{rel}", target.key),
+                label: format!("{}:{FMT_COMMAND}:{rel}", target.name),
+                target_key: Some(target.key.clone()),
+                command: format!("{FMT_COMMAND}:{rel}"),
+                cwd: target.dir.clone(),
+                argv,
+                cacheable: true,
+                deps: Vec::new(),
+                status: TaskStatus::Pending,
+                output: String::new(),
+                exit_code: None,
+                duration_ms: 0,
+                hash: None,
+            });
+        }
+    }
+
+    tasks
+}
+
+/// True when `dir` exists and directly contains at least one `.rs` file
+/// (non-recursive — matches how Cargo discovers `src/bin/*.rs`,
+/// `examples/*.rs` and `benches/*.rs` targets).
+fn dir_has_rs_files(dir: &Path) -> bool {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return false;
+    };
+    entries
+        .flatten()
+        .any(|e| e.path().extension().and_then(|e| e.to_str()) == Some("rs"))
+}
+
+/// Builds one `cargo clippy` task scoped to a single crate target (`--lib`,
+/// `--bins`, `--examples`, `--benches` or `--test <name>`) instead of the
+/// whole crate, so Cargo's own target types become the unit of parallelism —
+/// the direct equivalent of splitting `test` by file, since clippy (like
+/// rustc) can only meaningfully lint a compilation target, not an arbitrary
+/// source file.
+fn push_clippy_task(tasks: &mut Vec<Task>, target: &MonorepoTarget, suffix: &str, flag: &[&str]) {
+    let mut argv = vec!["cargo".to_string(), "clippy".to_string()];
+    argv.extend(flag.iter().map(|s| s.to_string()));
+    argv.push("--quiet".to_string());
+    tasks.push(Task {
+        key: format!("{}#{LINT_COMMAND}#{suffix}", target.key),
+        label: format!("{}:{LINT_COMMAND}:{suffix}", target.name),
+        target_key: Some(target.key.clone()),
+        command: format!("{LINT_COMMAND}:{suffix}"),
+        cwd: target.dir.clone(),
+        argv,
+        cacheable: true,
+        deps: Vec::new(),
+        status: TaskStatus::Pending,
+        output: String::new(),
+        exit_code: None,
+        duration_ms: 0,
+        hash: None,
+    });
+}
+
+/// One `cargo clippy` task per crate target (lib, bins, examples, benches,
+/// and one per `tests/<name>_spec.rs`) instead of a single `--all-targets`
+/// run. Falls back to one `--all-targets` task if nothing recognizable was
+/// found, so a crate with an unconventional layout still gets linted.
+fn build_rust_lint_tasks(target: &MonorepoTarget) -> Vec<Task> {
+    let mut tasks = Vec::new();
+
+    if target.dir.join("src/lib.rs").is_file() {
+        push_clippy_task(&mut tasks, target, "lib", &["--lib"]);
+    }
+    if target.dir.join("src/main.rs").is_file() || dir_has_rs_files(&target.dir.join("src/bin")) {
+        push_clippy_task(&mut tasks, target, "bins", &["--bins"]);
+    }
+    if dir_has_rs_files(&target.dir.join("examples")) {
+        push_clippy_task(&mut tasks, target, "examples", &["--examples"]);
+    }
+    if dir_has_rs_files(&target.dir.join("benches")) {
+        push_clippy_task(&mut tasks, target, "benches", &["--benches"]);
+    }
+    for file in collect_test_files(target) {
+        let stem = file
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or_default()
+            .to_string();
+        push_clippy_task(&mut tasks, target, &stem, &["--test", &stem]);
+    }
+
+    if tasks.is_empty() {
+        push_clippy_task(&mut tasks, target, "all", &["--all-targets"]);
+    }
+
+    tasks
+}
+
+// One task per source file (plus a single whole-project type-check task)
+// rather than one `tsc --noEmit && bunx biome lint` invocation per target, so
+// linting runs concurrently instead of walking every file serially. `tsc`
+// still runs once for the whole target — type-checking isn't meaningful
+// scoped to a single file, unlike formatting/testing — but `biome lint` runs
+// once per matching source file, same discovery as `fmt`. Rust targets skip
+// straight to `build_rust_lint_tasks`, since clippy's unit of work is a crate
+// target, not a source file. Targets without the `lint` script, or without
+// anything to lint, are marked skipped up front. `lint` stays
+// order-independent (it's listed in `ORDER_INDEPENDENT_COMMANDS`), so no
+// task here carries dependency edges.
+fn build_lint_group(targets: &[MonorepoTarget]) -> Vec<Task> {
+    let mut tasks: Vec<Task> = Vec::new();
+
+    for target in targets {
+        if !target.scripts.contains_key(LINT_COMMAND) {
+            tasks.push(Task {
+                key: format!("{}#{LINT_COMMAND}", target.key),
+                label: format!("{}:{LINT_COMMAND}", target.name),
+                target_key: Some(target.key.clone()),
+                command: LINT_COMMAND.to_string(),
+                cwd: target.dir.clone(),
+                argv: Vec::new(),
+                cacheable: false,
+                deps: Vec::new(),
+                status: TaskStatus::Skipped,
+                output: String::new(),
+                exit_code: None,
+                duration_ms: 0,
+                hash: None,
+            });
+            continue;
+        }
+
+        if is_rust_target(target) {
+            tasks.extend(build_rust_lint_tasks(target));
+            continue;
+        }
+
+        let mut target_tasks = Vec::new();
+        if target.dir.join("tsconfig.json").is_file() {
+            target_tasks.push(Task {
+                key: format!("{}#{LINT_COMMAND}#tsc", target.key),
+                label: format!("{}:{LINT_COMMAND}:tsc", target.name),
+                target_key: Some(target.key.clone()),
+                command: format!("{LINT_COMMAND}:tsc"),
+                cwd: target.dir.clone(),
+                argv: vec!["tsc".to_string(), "--noEmit".to_string()],
+                cacheable: true,
+                deps: Vec::new(),
+                status: TaskStatus::Pending,
+                output: String::new(),
+                exit_code: None,
+                duration_ms: 0,
+                hash: None,
+            });
+        }
+        for file in collect_fmt_files(target) {
+            let rel = file.to_string_lossy().replace('\\', "/");
+            // Same cache-collision reasoning as `fmt`: the command
+            // discriminator must carry the file identity.
+            target_tasks.push(Task {
+                key: format!("{}#{LINT_COMMAND}#{rel}", target.key),
+                label: format!("{}:{LINT_COMMAND}:{rel}", target.name),
+                target_key: Some(target.key.clone()),
+                command: format!("{LINT_COMMAND}:{rel}"),
+                cwd: target.dir.clone(),
+                argv: vec![
+                    "bunx".to_string(),
+                    "biome".to_string(),
+                    "lint".to_string(),
+                    format!("./{rel}"),
+                ],
+                cacheable: true,
+                deps: Vec::new(),
+                status: TaskStatus::Pending,
+                output: String::new(),
+                exit_code: None,
+                duration_ms: 0,
+                hash: None,
+            });
+        }
+
+        if target_tasks.is_empty() {
+            tasks.push(Task {
+                key: format!("{}#{LINT_COMMAND}", target.key),
+                label: format!("{}:{LINT_COMMAND}", target.name),
+                target_key: Some(target.key.clone()),
+                command: LINT_COMMAND.to_string(),
+                cwd: target.dir.clone(),
+                argv: Vec::new(),
+                cacheable: false,
+                deps: Vec::new(),
+                status: TaskStatus::Skipped,
+                output: String::new(),
+                exit_code: None,
+                duration_ms: 0,
+                hash: None,
+            });
+        } else {
+            tasks.extend(target_tasks);
+        }
+    }
+
+    tasks
+}
+
 fn build_install_group(root_dir: &Path) -> Vec<Task> {
     vec![Task {
         key: format!("root#{INSTALL_COMMAND}"),
