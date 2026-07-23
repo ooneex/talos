@@ -70,6 +70,7 @@ describe("ModuleRemoveCommand", () => {
         const dest = cmd[cmd.length - 1] as string;
         const templateDir = join(dest, "modules", "microservice");
         mkdirSync(join(templateDir, "src"), { recursive: true });
+        writeFileSync(join(dest, ".env.example.yml"), "app:\n  env: local\nport: 3000\n");
         writeFileSync(join(templateDir, "src", "index.ts"), MICROSERVICE_INDEX_CONTENT);
         writeFileSync(join(templateDir, "src", "OnAppStart.ts"), MICROSERVICE_ON_APP_START_CONTENT);
         writeFileSync(join(templateDir, "Dockerfile"), MICROSERVICE_DOCKERFILE_CONTENT);
