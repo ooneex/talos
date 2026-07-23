@@ -6,9 +6,7 @@ import { decorator } from "@talosjs/command";
 import { TerminalLogger } from "@talosjs/logger";
 import { toKebabCase } from "@talosjs/utils/toKebabCase";
 import { toPascalCase } from "@talosjs/utils/toPascalCase";
-import { removeFromAppModule, removeFromSharedModule } from "../moduleRegistry";
 import { ensureBin, LOG_OPTIONS, spawnStep } from "../utils";
-import { ModuleCreateCommand } from "./ModuleCreateCommand";
 
 const DESIGN_REPOSITORY = "https://github.com/ooneex/skeleton.git";
 const DESIGN_TEMPLATE_PATH = "modules/design";
@@ -39,31 +37,6 @@ export class DesignCreateCommand<T extends CommandOptionsType = CommandOptionsTy
     const moduleDir = join(cwd, "modules", kebabName);
     const srcDir = join(moduleDir, "src");
 
-    // Scaffold the base module (package.json, tsconfig.json, yml, tests, registration)
-    await new ModuleCreateCommand().run({ name, cwd, silent: true });
-
-    // A design module must not be registered into AppModule or SharedModule
-    await removeFromAppModule(join(cwd, "modules", "app", "src", "AppModule.ts"), pascalName, kebabName);
-    await removeFromSharedModule(join(cwd, "modules", "shared", "src", "SharedModule.ts"), pascalName, kebabName);
-
-    // Drop the scaffolded module class — the design source provides its own src content —
-    // along with the now-orphaned spec that imported it
-    await rm(join(srcDir, `${pascalName}Module.ts`), { force: true });
-    await rm(join(moduleDir, "tests", `${pascalName}Module.spec.ts`), { force: true });
-
-    // Mark the module as a design module in its yml config
-    const ymlPath = join(moduleDir, `${kebabName}.yml`);
-    if (await Bun.file(ymlPath).exists()) {
-      const ymlContent = await Bun.file(ymlPath).text();
-      await Bun.write(ymlPath, ymlContent.replace('type: "module"', 'type: "design"'));
-    }
-
-    // Ensure the package name matches the module's kebab-case name
-    const packagePath = join(moduleDir, "package.json");
-    const packageJson = await Bun.file(packagePath).json();
-    packageJson.name = `@module/${kebabName}`;
-    await Bun.write(packagePath, `${JSON.stringify(packageJson, null, 2)}\n`);
-
     // Pull the design source from the upstream repository
     const tmpDir = join(tmpdir(), `talos-design-${kebabName}`);
     await rm(tmpDir, { recursive: true, force: true });
@@ -84,9 +57,28 @@ export class DesignCreateCommand<T extends CommandOptionsType = CommandOptionsTy
     );
     if (!cloned) return;
 
-    // Use the design template's src as the module src content
+    // Copy the whole design template directory (package.json, tsconfig.json, yml,
+    // src) as the module content — a design module is not a scaffolded module class,
+    // it's the design system source itself.
     const designTemplateDir = join(tmpDir, DESIGN_TEMPLATE_PATH);
-    await cp(join(designTemplateDir, "src"), srcDir, { recursive: true });
+    await cp(designTemplateDir, moduleDir, { recursive: true });
+
+    // Rename the template's `design.yml` to match the module's kebab-case name
+    const templateYmlPath = join(moduleDir, "design.yml");
+    const ymlPath = join(moduleDir, `${kebabName}.yml`);
+    if (templateYmlPath !== ymlPath && (await Bun.file(templateYmlPath).exists())) {
+      const ymlContent = await Bun.file(templateYmlPath).text();
+      await Bun.write(ymlPath, ymlContent);
+      await rm(templateYmlPath, { force: true });
+    }
+
+    // Ensure the package name matches the module's kebab-case name
+    const packagePath = join(moduleDir, "package.json");
+    const packageJson = await Bun.file(packagePath).json();
+    const deps = Object.keys(packageJson.dependencies ?? {});
+    const devDeps = Object.keys(packageJson.devDependencies ?? {});
+    packageJson.name = `@module/${kebabName}`;
+    await Bun.write(packagePath, `${JSON.stringify(packageJson, null, 2)}\n`);
 
     // Rewrite hardcoded `@module/design` imports (from the template's own module name)
     // to the target module's `@module/{name}` alias. The `design` segment must be
@@ -104,10 +96,6 @@ export class DesignCreateCommand<T extends CommandOptionsType = CommandOptionsTy
     }
 
     // Install the design dependencies from the root of the project
-    const designPackage = await Bun.file(join(designTemplateDir, "package.json")).json();
-    const deps = Object.keys(designPackage.dependencies ?? {});
-    const devDeps = Object.keys(designPackage.devDependencies ?? {});
-
     if (deps.length > 0) {
       const depsInstalled = await spawnStep(
         logger,

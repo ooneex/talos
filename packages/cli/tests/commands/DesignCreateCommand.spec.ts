@@ -58,7 +58,16 @@ describe("DesignCreateCommand", () => {
         writeFileSync(join(templateDir, "src", DESIGN_SELF_IMPORT_FILE), DESIGN_SELF_IMPORT_CONTENT);
         writeFileSync(
           join(templateDir, "package.json"),
-          JSON.stringify({ dependencies: DESIGN_DEPENDENCIES, devDependencies: DESIGN_DEV_DEPENDENCIES }),
+          JSON.stringify({
+            name: "@module/design",
+            dependencies: DESIGN_DEPENDENCIES,
+            devDependencies: DESIGN_DEV_DEPENDENCIES,
+          }),
+        );
+        writeFileSync(join(templateDir, "design.yml"), 'type: "design"\n');
+        writeFileSync(
+          join(templateDir, "tsconfig.json"),
+          JSON.stringify({ extends: "../../tsconfig.json", include: ["**/*.ts", "**/*.tsx"] }),
         );
       }
 

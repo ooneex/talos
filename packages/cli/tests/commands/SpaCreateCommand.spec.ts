@@ -77,22 +77,36 @@ describe("SpaCreateCommand", () => {
           writeFileSync(join(spaTemplateDir, "src", SPA_SRC_FILE), SPA_SRC_CONTENT);
           writeFileSync(join(spaTemplateDir, "src", SPA_SELF_IMPORT_FILE), SPA_SELF_IMPORT_CONTENT);
           writeFileSync(join(spaTemplateDir, "vite.config.ts"), SPA_VITE_CONFIG_CONTENT);
+          writeFileSync(join(spaTemplateDir, "tsconfig.json"), JSON.stringify({ extends: "../../tsconfig.json" }));
+          writeFileSync(join(spaTemplateDir, "spa.yml"), 'type: "spa"\n');
           mkdirSync(join(spaTemplateDir, "public"), { recursive: true });
           writeFileSync(join(spaTemplateDir, "public", SPA_PUBLIC_FILE), SPA_PUBLIC_CONTENT);
           writeFileSync(
             join(spaTemplateDir, "package.json"),
-            JSON.stringify({ dependencies: SPA_DEPENDENCIES, devDependencies: SPA_DEV_DEPENDENCIES }),
+            JSON.stringify({
+              name: "@module/spa",
+              scripts: {
+                test: "bun test tests",
+                lint: "tsc --noEmit && bunx biome lint",
+                fmt: "bunx biome check --write",
+              },
+              dependencies: SPA_DEPENDENCIES,
+              devDependencies: SPA_DEV_DEPENDENCIES,
+            }),
           );
         } else {
-          // DesignCreateCommand clones the shared skeleton repo and reads its
-          // design template from modules/design/{src,package.json}.
-          const designSrcDir = join(dest, "modules", "design", "src");
+          // DesignCreateCommand clones the shared skeleton repo and copies its
+          // whole design template dir (src, package.json, design.yml, tsconfig.json).
+          const designTemplateDir = join(dest, "modules", "design");
+          const designSrcDir = join(designTemplateDir, "src");
           mkdirSync(designSrcDir, { recursive: true });
           writeFileSync(join(designSrcDir, "index.ts"), DESIGN_SRC_CONTENT);
           writeFileSync(
-            join(dest, "modules", "design", "package.json"),
-            JSON.stringify({ dependencies: {}, devDependencies: {} }),
+            join(designTemplateDir, "package.json"),
+            JSON.stringify({ name: "@module/design", dependencies: {}, devDependencies: {} }),
           );
+          writeFileSync(join(designTemplateDir, "design.yml"), 'type: "design"\n');
+          writeFileSync(join(designTemplateDir, "tsconfig.json"), JSON.stringify({ extends: "../../tsconfig.json" }));
         }
       }
 

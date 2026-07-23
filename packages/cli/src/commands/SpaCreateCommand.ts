@@ -7,12 +7,11 @@ import { decorator } from "@talosjs/command";
 import { TerminalLogger } from "@talosjs/logger";
 import { toKebabCase } from "@talosjs/utils/toKebabCase";
 import { toPascalCase } from "@talosjs/utils/toPascalCase";
-import { removeFromAppModule, removeFromSharedModule, removePathAlias } from "../moduleRegistry";
 import { askDesign } from "../prompts/askDesign";
 import { askName } from "../prompts/askName";
+import ymlTemplate from "../templates/module/yml.txt";
 import { ensureBin, LOG_OPTIONS, spawnStep } from "../utils";
 import { DesignCreateCommand } from "./DesignCreateCommand";
-import { ModuleCreateCommand } from "./ModuleCreateCommand";
 
 const SPA_REPOSITORY = "https://github.com/ooneex/skeleton.git";
 const SPA_TEMPLATE_PATH = "modules/spa";
@@ -115,46 +114,6 @@ export class SpaCreateCommand<T extends CommandOptionsType = CommandOptionsType>
     }
     const designKebab = design ? toKebabCase(toPascalCase(design).replace(/Module$/, "")) : undefined;
 
-    // Scaffold the base module (package.json, tsconfig.json, yml, tests, registration)
-    await new ModuleCreateCommand().run({ name, cwd, silent: true });
-
-    // A spa module must not be registered into AppModule or SharedModule
-    await removeFromAppModule(join(cwd, "modules", "app", "src", "AppModule.ts"), pascalName, kebabName);
-    await removeFromSharedModule(join(cwd, "modules", "shared", "src", "SharedModule.ts"), pascalName, kebabName);
-
-    // A spa module must not be registered in the root tsconfig.json paths
-    await removePathAlias(join(cwd, "tsconfig.json"), kebabName);
-
-    // Drop the scaffolded module class — the spa source provides its own src content —
-    // along with the now-orphaned spec that imported it
-    await rm(join(srcDir, `${pascalName}Module.ts`), { force: true });
-    await rm(join(moduleDir, "tests", `${pascalName}Module.spec.ts`), { force: true });
-
-    // Mark the module as a spa module in its yml config, recording the design it uses
-    const ymlPath = join(moduleDir, `${kebabName}.yml`);
-    if (await Bun.file(ymlPath).exists()) {
-      const ymlContent = await Bun.file(ymlPath).text();
-      let updated = ymlContent.replace('type: "module"', 'type: "spa"');
-      if (designKebab) {
-        updated = `${updated.trimEnd()}\ndesign: "${designKebab}"\n`;
-      }
-      await Bun.write(ymlPath, updated);
-    }
-
-    // Add the spa dev/build/preview scripts, picking a port no other module uses
-    const port = findFreePort(await collectUsedPorts(modulesDir));
-    const packagePath = join(moduleDir, "package.json");
-    const packageJson = await Bun.file(packagePath).json();
-    packageJson.name = `@module/${kebabName}`;
-    packageJson.type = "module";
-    packageJson.scripts = {
-      ...packageJson.scripts,
-      dev: `bun --bun run vite --port ${port}`,
-      build: "bun --bun run vite build",
-      preview: "bun --bun run vite preview",
-    };
-    await Bun.write(packagePath, `${JSON.stringify(packageJson, null, 2)}\n`);
-
     // Pull the spa source from the upstream repository
     const tmpDir = join(tmpdir(), `talos-spa-${kebabName}`);
     await rm(tmpDir, { recursive: true, force: true });
@@ -175,9 +134,35 @@ export class SpaCreateCommand<T extends CommandOptionsType = CommandOptionsType>
     );
     if (!cloned) return;
 
-    // Use the spa template's src as the module src content
+    // Copy the whole spa template directory (package.json, tsconfig.json, yml,
+    // vite config, public assets, src) as the module content — a spa module is not
+    // a scaffolded module class, it's the spa source itself.
     const spaTemplateDir = join(tmpDir, SPA_TEMPLATE_PATH);
-    await cp(join(spaTemplateDir, "src"), srcDir, { recursive: true });
+    await cp(spaTemplateDir, moduleDir, { recursive: true });
+
+    // Mark the module as a spa module in its yml config, recording the design it uses
+    await rm(join(moduleDir, "spa.yml"), { force: true });
+    let ymlContent = ymlTemplate.replace('type: "module"', 'type: "spa"');
+    if (designKebab) {
+      ymlContent = `${ymlContent.trimEnd()}\ndesign: "${designKebab}"\n`;
+    }
+    await Bun.write(join(moduleDir, `${kebabName}.yml`), ymlContent);
+
+    // Add the spa dev/build/preview scripts, picking a port no other module uses
+    const port = findFreePort(await collectUsedPorts(modulesDir));
+    const packagePath = join(moduleDir, "package.json");
+    const packageJson = await Bun.file(packagePath).json();
+    const deps = Object.keys(packageJson.dependencies ?? {});
+    const devDeps = Object.keys(packageJson.devDependencies ?? {});
+    packageJson.name = `@module/${kebabName}`;
+    packageJson.type = "module";
+    packageJson.scripts = {
+      ...packageJson.scripts,
+      dev: `bun --bun run vite --port ${port}`,
+      build: "bun --bun run vite build",
+      preview: "bun --bun run vite preview",
+    };
+    await Bun.write(packagePath, `${JSON.stringify(packageJson, null, 2)}\n`);
 
     // Rewrite hardcoded `@module/spa` imports (from the template's own module name)
     // to the target module's `@module/{name}` alias. The `spa` segment must be
@@ -194,41 +179,32 @@ export class SpaCreateCommand<T extends CommandOptionsType = CommandOptionsType>
       }
     }
 
-    // Include the repository's vite config at the module root, adding a design alias
-    // so the spa can resolve `@module/{design}/` imports against the design module src.
-    const viteConfigSrc = join(spaTemplateDir, "vite.config.ts");
-    if (existsSync(viteConfigSrc)) {
-      const viteConfigDest = join(moduleDir, "vite.config.ts");
-      await cp(viteConfigSrc, viteConfigDest);
-
-      if (designKebab) {
-        const viteContent = await Bun.file(viteConfigDest).text();
-        const withAlias = viteContent.replace(
-          '      "@": fileURLToPath(new URL("./src", import.meta.url)),',
-          '      "@": fileURLToPath(new URL("./src", import.meta.url)),\n' +
-            `      "@module/${designKebab}": fileURLToPath(\n` +
-            `        new URL("../${designKebab}/src", import.meta.url),\n` +
-            "      ),",
-        );
-        if (withAlias !== viteContent) {
-          await Bun.write(viteConfigDest, withAlias);
-        }
+    // The vite config was already copied to the module root along with the rest of
+    // the template. Drop any `@module/*` alias it may already carry (e.g. the
+    // template's own default design alias) and set the one matching the chosen design.
+    const viteConfigDest = join(moduleDir, "vite.config.ts");
+    if (existsSync(viteConfigDest)) {
+      const viteContent = await Bun.file(viteConfigDest).text();
+      const withoutAlias = viteContent.replace(
+        /\n\s*"@module\/[\w-]+":\s*fileURLToPath\(\s*\n?\s*new URL\("\.\.\/[\w-]+\/src",\s*import\.meta\.url\),?\s*\n?\s*\),/g,
+        "",
+      );
+      const withAlias = designKebab
+        ? withoutAlias.replace(
+            '      "@": fileURLToPath(new URL("./src", import.meta.url)),',
+            '      "@": fileURLToPath(new URL("./src", import.meta.url)),\n' +
+              `      "@module/${designKebab}": fileURLToPath(\n` +
+              `        new URL("../${designKebab}/src", import.meta.url),\n` +
+              "      ),",
+          )
+        : withoutAlias;
+      if (withAlias !== viteContent) {
+        await Bun.write(viteConfigDest, withAlias);
       }
     }
 
     // Keep the shared folder tracked while empty; its sub-layers are created on demand
     await Bun.write(join(srcDir, "shared", ".gitkeep"), "");
-
-    // Copy the repository's public dir for static assets into the module root
-    const publicTemplateDir = join(spaTemplateDir, "public");
-    if (existsSync(publicTemplateDir)) {
-      await cp(publicTemplateDir, join(moduleDir, "public"), { recursive: true });
-    }
-
-    // Install the spa dependencies from the root of the project
-    const spaPackage = await Bun.file(join(spaTemplateDir, "package.json")).json();
-    const deps = Object.keys(spaPackage.dependencies ?? {});
-    const devDeps = Object.keys(spaPackage.devDependencies ?? {});
 
     if (deps.length > 0) {
       const depsInstalled = await spawnStep(

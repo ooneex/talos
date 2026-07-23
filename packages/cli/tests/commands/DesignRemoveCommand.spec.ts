@@ -39,7 +39,11 @@ describe("DesignRemoveCommand", () => {
         const templateDir = join(dest, "modules", "design");
         mkdirSync(join(templateDir, "src"), { recursive: true });
         writeFileSync(join(templateDir, "src", "Button.tsx"), "export const Button = () => null;\n");
-        writeFileSync(join(templateDir, "package.json"), JSON.stringify({ dependencies: {}, devDependencies: {} }));
+        writeFileSync(
+          join(templateDir, "package.json"),
+          JSON.stringify({ name: "@module/design", dependencies: {}, devDependencies: {} }),
+        );
+        writeFileSync(join(templateDir, "design.yml"), 'type: "design"\n');
       }
 
       return { exited: Promise.resolve(0) } as unknown as ReturnType<typeof Bun.spawn>;
