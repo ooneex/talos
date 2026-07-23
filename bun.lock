@@ -584,6 +584,10 @@
         "@talosjs/types": "workspace:^",
       },
     },
+    "packages/rust-cli": {
+      "name": "@talosjs/rust-cli",
+      "version": "1.0.0",
+    },
     "packages/seeds": {
       "name": "@talosjs/seeds",
       "version": "1.2.1",
@@ -1142,6 +1146,8 @@
     "@talosjs/role": ["@talosjs/role@workspace:packages/role"],
 
     "@talosjs/routing": ["@talosjs/routing@workspace:packages/routing"],
+
+    "@talosjs/rust-cli": ["@talosjs/rust-cli@workspace:packages/rust-cli"],
 
     "@talosjs/seeds": ["@talosjs/seeds@workspace:packages/seeds"],
 

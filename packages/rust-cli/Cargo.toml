@@ -3,9 +3,16 @@ name = "rust-cli"
 version = "0.1.0"
 edition = "2024"
 
+[lib]
+name = "rust_cli"
+path = "src/lib.rs"
+
 [[bin]]
 name = "talosrs"
 path = "src/main.rs"
 
 [dependencies]
 clap = { version = "4.6.4", features = ["derive"] }
+dialoguer = "0.12.0"
+fs_extra = "1.3.0"
+tempfile = "3.27.0"

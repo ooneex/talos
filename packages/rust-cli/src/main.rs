@@ -1,10 +1,8 @@
-mod commands;
-
 use clap::Parser;
-use commands::Commands;
+use rust_cli::commands::Commands;
 
 #[derive(Parser)]
-#[command(name = "talos", about = "Talos CLI", version)]
+#[command(name = "talosrs", about = "Talosrs CLI", version)]
 struct Cli {
     #[command(subcommand)]
     command: Option<Commands>,
