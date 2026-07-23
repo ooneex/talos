@@ -38,8 +38,10 @@ export class DesignCreateCommand<T extends CommandOptionsType = CommandOptionsTy
     const moduleDir = join(cwd, "modules", kebabName);
     const srcDir = join(moduleDir, "src");
 
-    // Pull the design source from the upstream repository
-    const tmpDir = join(tmpdir(), `talos-design-${kebabName}`);
+    // Pull the design source from the upstream repository. The tmp dir includes a
+    // random suffix (not just the module name) so concurrent invocations targeting
+    // the same module name never clash on the same clone directory.
+    const tmpDir = join(tmpdir(), `talos-design-${kebabName}-${crypto.randomUUID()}`);
     await rm(tmpDir, { recursive: true, force: true });
 
     if (!ensureBin(logger, "git", silent)) {

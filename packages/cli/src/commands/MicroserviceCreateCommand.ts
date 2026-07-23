@@ -173,8 +173,10 @@ export class MicroserviceCreateCommand<T extends CommandOptionsType = CommandOpt
 
     // Pull the microservice bootstrap source (index.ts, OnAppStart.ts, Dockerfile,
     // package.json, roles.yml, tsconfig.json) from the upstream skeleton repository
-    // instead of bundling static templates in the CLI.
-    const tmpDir = join(tmpdir(), `talos-microservice-${kebabName}`);
+    // instead of bundling static templates in the CLI. The tmp dir includes a random
+    // suffix (not just the module name) so concurrent invocations targeting the same
+    // module name never clash on the same clone directory.
+    const tmpDir = join(tmpdir(), `talos-microservice-${kebabName}-${crypto.randomUUID()}`);
     await rm(tmpDir, { recursive: true, force: true });
 
     if (!ensureBin(logger, "git", silent)) {

@@ -129,8 +129,10 @@ export class SpaCreateCommand<T extends CommandOptionsType = CommandOptionsType>
     }
     const designKebab = design ? toKebabCase(toPascalCase(design).replace(/Module$/, "")) : undefined;
 
-    // Pull the spa source from the upstream repository
-    const tmpDir = join(tmpdir(), `talos-spa-${kebabName}`);
+    // Pull the spa source from the upstream repository. The tmp dir includes a
+    // random suffix (not just the module name) so concurrent invocations targeting
+    // the same module name never clash on the same clone directory.
+    const tmpDir = join(tmpdir(), `talos-spa-${kebabName}-${crypto.randomUUID()}`);
     await rm(tmpDir, { recursive: true, force: true });
 
     if (!ensureBin(logger, "git", silent)) {

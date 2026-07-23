@@ -36,7 +36,7 @@ const { resetSkeletonDirCache } = await import("@/agentConfig");
 // offline and fast: no network call is ever made, and there's nothing to
 // clone or block on. Each test's faked `git clone` (see the `Bun.spawn` mock
 // below) copies this fixture instead of hitting the network.
-const skeletonFixtureDir = join(tmpdir(), "talos-cli-tests-skeleton-fixture");
+const skeletonFixtureDir = join(tmpdir(), "talos-cli-tests-skeleton-fixture-app-create");
 
 const buildTestSkeletonFixture = async (): Promise<string> => {
   await rm(skeletonFixtureDir, { recursive: true, force: true });
