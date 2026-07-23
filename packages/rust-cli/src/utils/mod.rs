@@ -12,6 +12,12 @@ mod issue;
 mod migration_version;
 mod module_registry;
 mod monorepo;
+mod monorepo_fmt_group;
+mod monorepo_group;
+mod monorepo_lint_group;
+mod monorepo_scheduler;
+mod monorepo_task;
+mod monorepo_test_group;
 mod process;
 mod prompts;
 mod run_module_scripts;
@@ -44,6 +50,9 @@ pub use monorepo::{
     hash_root_inputs, is_git_workspace_root, load_file_hash_cache, read_cache_entry,
     restore_cache_outputs, save_file_hash_cache, sort_targets_by_dependencies, write_cache_entry,
 };
+pub(crate) use monorepo_group::{INSTALL_COMMAND, build_group, build_install_group};
+pub(crate) use monorepo_scheduler::run_group;
+pub(crate) use monorepo_task::{Task, TaskStatus, format_duration};
 pub use process::{ensure_bin, run_step};
 pub use prompts::{
     ask_confirm, ask_destination, ask_destination_module, ask_input, ask_input_with_default,
