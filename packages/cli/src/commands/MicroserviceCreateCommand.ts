@@ -1,26 +1,24 @@
+import { cp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { envConfig } from "@talosjs/app-env";
 import type { ICommand } from "@talosjs/command";
 import { decorator } from "@talosjs/command";
 import { TerminalLogger } from "@talosjs/logger";
-import { rolesConfig } from "@talosjs/role";
 import { toKebabCase } from "@talosjs/utils/toKebabCase";
 import { toPascalCase } from "@talosjs/utils/toPascalCase";
 import { toSnakeCase } from "@talosjs/utils/toSnakeCase";
 import { addPathAlias } from "../moduleRegistry";
 import { askName } from "../prompts/askName";
-import dockerfileTemplate from "../templates/app/Dockerfile.txt";
-import indexTemplate from "../templates/app/index.ts.txt";
-import onAppStartTemplate from "../templates/app/OnAppStart.ts.txt";
 import { templates as bitbucketTemplates } from "../templates/bitbucket/index";
 import { templates as githubTemplates } from "../templates/github/index";
 import { templates as gitlabTemplates } from "../templates/gitlab/index";
 import moduleTemplate from "../templates/module/module.txt";
-import packageTemplate from "../templates/module/package.txt";
 import testTemplate from "../templates/module/test.txt";
-import tsconfigTemplate from "../templates/module/tsconfig.txt";
 import ymlTemplate from "../templates/module/yml.txt";
-import { type CiProviderType, detectCiProvider, LOG_OPTIONS, LOG_OPTIONS_PLAIN, toYaml } from "../utils";
+import { type CiProviderType, detectCiProvider, ensureBin, LOG_OPTIONS, LOG_OPTIONS_PLAIN, spawnStep } from "../utils";
+
+const MICROSERVICE_REPOSITORY = "https://github.com/ooneex/skeleton.git";
+const MICROSERVICE_TEMPLATE_PATH = "modules/microservice";
 
 type CommandOptionsType = {
   name?: string;
@@ -154,6 +152,7 @@ export class MicroserviceCreateCommand<T extends CommandOptionsType = CommandOpt
 
   public async run(options: T): Promise<void> {
     const { cwd = process.cwd(), silent = false } = options;
+    const logger = new TerminalLogger();
     let { name } = options;
 
     if (!name) {
@@ -169,50 +168,60 @@ export class MicroserviceCreateCommand<T extends CommandOptionsType = CommandOpt
     const testsDir = join(moduleDir, "tests");
 
     const moduleContent = moduleTemplate.replace(/{{NAME}}/g, pascalName);
-    const packageContent = packageTemplate.replace(/{{NAME}}/g, kebabName);
     const testContent = testTemplate.replace(/{{NAME}}/g, pascalName).replace(/{{name}}/g, kebabName);
     const ymlContent = ymlTemplate.replace(/{{name}}/g, kebabName).replace('type: "module"', 'type: "microservice"');
 
-    // The index template targets the app module, so point it at this microservice's
-    // own module. The Dockerfile lets the microservice be built and deployed alone.
-    const indexContent = indexTemplate.replace(/AppModule/g, `${pascalName}Module`);
-    const dockerfileContent = dockerfileTemplate
-      .replace(/{{NAME}}/g, snakeName)
-      .replace(/modules\/app\//g, `modules/${kebabName}/`);
+    // Pull the microservice bootstrap source (index.ts, OnAppStart.ts, Dockerfile,
+    // package.json, roles.yml, tsconfig.json) from the upstream skeleton repository
+    // instead of bundling static templates in the CLI.
+    const tmpDir = join(tmpdir(), `talos-microservice-${kebabName}`);
+    await rm(tmpDir, { recursive: true, force: true });
 
-    // Every file below targets an independent path, so write them concurrently.
+    if (!ensureBin(logger, "git", silent)) {
+      return;
+    }
+
+    const cloned = await spawnStep(
+      logger,
+      ["git", "clone", "--depth", "1", MICROSERVICE_REPOSITORY, tmpDir],
+      cwd,
+      {
+        start: "Cloning microservice source...",
+        failure: (exitCode) => `Failed to clone microservice source (exit code: ${exitCode})`,
+      },
+      { silent },
+    );
+    if (!cloned) return;
+
+    const microserviceTemplateDir = join(tmpDir, MICROSERVICE_TEMPLATE_PATH);
+    await cp(join(microserviceTemplateDir), moduleDir, { recursive: true });
+
     await Promise.all([
-      Bun.write(join(srcDir, `${pascalName}Module.ts`), moduleContent),
-      Bun.write(join(moduleDir, "roles.yml"), `${toYaml(rolesConfig)}\n`),
-      Bun.write(join(moduleDir, "package.json"), packageContent),
-      Bun.write(join(moduleDir, "tsconfig.json"), tsconfigTemplate),
-      Bun.write(join(moduleDir, `${kebabName}.yml`), ymlContent),
-      Bun.write(join(testsDir, `${pascalName}Module.spec.ts`), testContent),
-      Bun.write(join(srcDir, "index.ts"), indexContent),
-      Bun.write(join(srcDir, "OnAppStart.ts"), onAppStartTemplate),
-      Bun.write(join(moduleDir, "Dockerfile"), dockerfileContent),
+      rm(join(moduleDir, "src", "MicroserviceModule.ts"), { force: true }),
+      rm(join(moduleDir, "tests", "MicroserviceModule.spec.ts"), { force: true }),
+      rm(join(moduleDir, "microservice.yml"), { force: true }),
     ]);
 
-    // Create the microservice env file at the module root, on its own distinct port
-    const envData = structuredClone(envConfig) as {
-      app: { port: number };
-      cache: { redis: { url: string } };
-      pubsub: { redis: { url: string } };
-      rate_limit: { redis: { url: string } };
-      queue: { redis: { url: string } };
-      database: { url: string; redis: { url: string } };
-      [key: string]: unknown;
-    };
-    envData.app.port = await this.nextAvailablePort(cwd);
+    await Promise.all([
+      Bun.write(join(srcDir, `${pascalName}Module.ts`), moduleContent),
+      Bun.write(join(moduleDir, `${kebabName}.yml`), ymlContent),
+      Bun.write(join(testsDir, `${pascalName}Module.spec.ts`), testContent),
+    ]);
 
-    envData.cache.redis.url = "redis://localhost:6379";
-    envData.pubsub.redis.url = "redis://localhost:6379";
-    envData.rate_limit.redis.url = "redis://localhost:6379";
-    envData.queue.redis.url = "redis://localhost:6379";
-    envData.database.url = "postgresql://talos:talos@localhost:5432/talos";
-    envData.database.redis.url = "redis://localhost:6379";
+    // Ensure the package name matches the module's kebab-case name
+    const modulePackageJson = await Bun.file(join(moduleDir, "package.json")).json();
+    modulePackageJson.name = `@module/${kebabName}`;
 
-    await Bun.write(join(moduleDir, ".env.yml"), `${toYaml(envData)}\n`);
+    await Promise.all([Bun.write(join(moduleDir, "package.json"), `${JSON.stringify(modulePackageJson, null, 2)}\n`)]);
+
+    // Create the microservice env file at the module root, on its own distinct port.
+    // All other values in the template are already set, so only the port needs updating.
+    const envExampleContent = await Bun.file(join(tmpDir, ".env.example.yml")).text();
+    const port = await this.nextAvailablePort(cwd);
+    const envContent = envExampleContent.replace(/^(\s*port:\s*)\d+/m, `$1${port}`);
+    await Bun.write(join(moduleDir, ".env.yml"), envContent);
+
+    await rm(tmpDir, { recursive: true, force: true });
 
     // A microservice must not be registered into AppModule or SharedModule
     if (kebabName !== "app") {
@@ -240,8 +249,6 @@ export class MicroserviceCreateCommand<T extends CommandOptionsType = CommandOpt
     const ciProvider = silent ? null : await this.createCiCdFiles(cwd, kebabName, snakeName);
 
     if (!silent) {
-      const logger = new TerminalLogger();
-
       logger.success(`modules/${kebabName} created successfully`, undefined, LOG_OPTIONS);
 
       if (ciProvider) {

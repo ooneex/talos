@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
-import { rmSync } from "node:fs";
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import moduleTemplate from "@/templates/module/module.txt";
 
@@ -14,20 +14,77 @@ const { MicroserviceRemoveCommand } = await import("@/commands/MicroserviceRemov
 const exists = (path: string) => Bun.file(path).exists();
 const read = (path: string) => Bun.file(path).text();
 
+// Source files the mocked clone of the microservice repository exposes
+const MICROSERVICE_INDEX_CONTENT = `import { App } from "@talosjs/app";
+import { AppModule } from "./AppModule";
+import { OnAppStart } from "./OnAppStart";
+
+const app = new App({
+  middlewares: AppModule.middlewares,
+  cronJobs: AppModule.cronJobs,
+  onStart: OnAppStart,
+});
+
+await app.run();
+`;
+const MICROSERVICE_ON_APP_START_CONTENT = `import { decorator, type IAppEventStart } from "@talosjs/app";
+import type { Server } from "bun";
+
+@decorator.app.event.start()
+export class OnAppStart implements IAppEventStart {
+  public handle(_server: Server<unknown>): void | Promise<void> {}
+}
+`;
+const MICROSERVICE_DOCKERFILE_CONTENT = `# {{NAME}} backend
+# docker build -f modules/app/Dockerfile --target production -t {{NAME}}:latest .
+COPY modules/app/ ./modules/app/
+`;
+
 describe("MicroserviceRemoveCommand", () => {
   let makeCommand: InstanceType<typeof MicroserviceCreateCommand>;
   let removeCommand: InstanceType<typeof MicroserviceRemoveCommand>;
   let testDir: string;
   let originalCwd: string;
+  let originalSpawn: typeof Bun.spawn;
+  let originalWhich: typeof Bun.which;
 
   beforeEach(() => {
     makeCommand = new MicroserviceCreateCommand();
     removeCommand = new MicroserviceRemoveCommand();
     originalCwd = process.cwd();
     testDir = join(originalCwd, ".temp", `remove-microservice-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+
+    // Pretend `git` is installed so tests never depend on the host PATH.
+    originalWhich = Bun.which;
+    Bun.which = (() => "/usr/bin/git") as typeof Bun.which;
+
+    // Stub Bun.spawn so "git clone" materializes a fake repository and "bun add" is a no-op
+    originalSpawn = Bun.spawn;
+    Bun.spawn = ((...args: unknown[]) => {
+      const cmd = args[0] as string[];
+
+      if (cmd[0] === "git" && cmd[1] === "clone") {
+        const dest = cmd[cmd.length - 1] as string;
+        const templateDir = join(dest, "modules", "microservice");
+        mkdirSync(join(templateDir, "src"), { recursive: true });
+        writeFileSync(join(templateDir, "src", "index.ts"), MICROSERVICE_INDEX_CONTENT);
+        writeFileSync(join(templateDir, "src", "OnAppStart.ts"), MICROSERVICE_ON_APP_START_CONTENT);
+        writeFileSync(join(templateDir, "Dockerfile"), MICROSERVICE_DOCKERFILE_CONTENT);
+        writeFileSync(join(templateDir, "roles.yml"), "roles:\n  GUEST: ROLE_GUEST\nhierarchy:\n  ROLE_GUEST: {}\n");
+        writeFileSync(join(templateDir, "tsconfig.json"), '{"extends": "../../tsconfig.json"}');
+        writeFileSync(
+          join(templateDir, "package.json"),
+          JSON.stringify({ name: "@module/microservice", dependencies: {}, devDependencies: {} }),
+        );
+      }
+
+      return { exited: Promise.resolve(0) } as unknown as ReturnType<typeof Bun.spawn>;
+    }) as typeof Bun.spawn;
   });
 
   afterEach(() => {
+    Bun.spawn = originalSpawn;
+    Bun.which = originalWhich;
     process.chdir(originalCwd);
     rmSync(testDir, { recursive: true, force: true });
   });
