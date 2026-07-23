@@ -2,7 +2,7 @@ import { afterAll, afterEach, beforeEach, describe, expect, test } from "bun:tes
 import { rm } from "node:fs/promises";
 import { File, FileException } from "@/index";
 
-const TEST_DIR = ".temp/talos-fs-test";
+const TEST_DIR = ".temp/talos-fs-test-file";
 const TEST_FILE = `${TEST_DIR}/test.txt`;
 const TEST_JSON_FILE = `${TEST_DIR}/test.json`;
 
@@ -60,7 +60,7 @@ describe("File", () => {
       const file = new File(TEST_FILE);
       const dir = file.getDirectory();
       expect(dir.getPath()).toBe(TEST_DIR);
-      expect(dir.getName()).toBe("talos-fs-test");
+      expect(dir.getName()).toBe("talos-fs-test-file");
     });
   });
 
