@@ -110,10 +110,12 @@ export class AppInitCommand<T extends CommandOptionsType = CommandOptionsType> i
     );
     if (!gitInitialized) return;
 
-    const runCommitlintHook = await askConfirm({ message: "Install the commit-msg hook?", initial: true });
+    if (!silent) {
+      const runCommitlintHook = await askConfirm({ message: "Install the commit-msg hook?", initial: true });
 
-    if (runCommitlintHook) {
-      await new CommitlintInitCommand().run({ cwd: destination });
+      if (runCommitlintHook) {
+        await new CommitlintInitCommand().run({ cwd: destination });
+      }
     }
 
     await new AgentSkillsCreateCommand().run({
