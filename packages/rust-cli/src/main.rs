@@ -7,10 +7,13 @@ use commands::Commands;
 #[command(name = "talos", about = "Talos CLI", version)]
 struct Cli {
     #[command(subcommand)]
-    command: Commands,
+    command: Option<Commands>,
 }
 
 fn main() {
     let cli = Cli::parse();
-    cli.command.run();
+
+    if let Some(command) = cli.command {
+        command.run();
+    }
 }
