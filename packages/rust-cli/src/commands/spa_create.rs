@@ -224,7 +224,9 @@ pub fn run(args: &SpaCreateArgs) {
     if let Ok(yml_content) = fs::read_to_string(&template_yml) {
         let updated = with_design_field(&yml_content, design_kebab.as_deref());
         let _ = fs::write(&yml_path, updated);
-        let _ = fs::remove_file(&template_yml);
+        if template_yml != yml_path {
+            let _ = fs::remove_file(&template_yml);
+        }
     }
 
     let port = find_free_port(&collect_used_ports(&modules_dir));
