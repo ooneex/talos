@@ -142,11 +142,10 @@ describe("AppCreateCommand", () => {
       expect(await exists(join(testDir, ".env.yml"))).toBe(true);
     });
 
-    test("should ship a root package.json with only name and workspaces", async () => {
+    test("should ship a root package.json derived from the skeleton with the app name and workspaces", async () => {
       await command.run({ name: "MyApp", destination: testDir });
 
       const pkg = await Bun.file(join(testDir, "package.json")).json();
-      expect(Object.keys(pkg).sort()).toEqual(["name", "workspaces"]);
       expect(pkg.name).toBe("my-app");
       expect(pkg.workspaces).toEqual(["modules/*"]);
     });

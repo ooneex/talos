@@ -168,7 +168,7 @@ describe("AppInitCommand", () => {
       expect(await exists(join(testDir, "var", ".gitkeep"))).toBe(true);
     });
 
-    test("should replace {{NAME}} in package.json with kebab-case name", async () => {
+    test("should set the app name in package.json from the skeleton template", async () => {
       await command.run({ name: "MyApp", destination: testDir, silent: true });
 
       const content = await Bun.file(join(testDir, "package.json")).text();

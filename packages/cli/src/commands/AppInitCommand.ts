@@ -7,7 +7,6 @@ import { copySkeletonPath, getSkeletonDir, readSkeletonFile } from "../agentConf
 import { askConfirm } from "../prompts/askConfirm";
 import { askDestination } from "../prompts/askDestination";
 import { askName } from "../prompts/askName";
-import packageTemplate from "../templates/app/package.json.txt";
 import readmeTemplate from "../templates/app/README.md.txt";
 import { ensureBin, LOG_OPTIONS, spawnStep } from "../utils";
 import { AgentSkillsCreateCommand } from "./AgentSkillsCreateCommand";
@@ -47,9 +46,11 @@ export class AppInitCommand<T extends CommandOptionsType = CommandOptionsType> i
     const skeletonDir = await getSkeletonDir(logger, silent);
     if (!skeletonDir) return;
 
-    const packageContent = packageTemplate.replace(/{{NAME}}/g, kebabName);
     const packageJsonPath = join(destination, "package.json");
     const packageJsonExists = await Bun.file(packageJsonPath).exists();
+    const skeletonPackage = JSON.parse(await readSkeletonFile(skeletonDir, "package.json")) as { name?: string };
+    skeletonPackage.name = kebabName;
+    const packageContent = `${JSON.stringify(skeletonPackage, null, 2)}\n`;
     const tsconfig = JSON.parse(await readSkeletonFile(skeletonDir, "tsconfig.json")) as {
       compilerOptions?: { paths?: Record<string, string[]> };
     };
