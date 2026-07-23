@@ -1,13 +1,14 @@
+import { cpSync } from "node:fs";
+import { mkdir, readdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 import type { ICommand } from "@talosjs/command";
 import { decorator } from "@talosjs/command";
 import { TerminalLogger } from "@talosjs/logger";
 import { toKebabCase } from "@talosjs/utils/toKebabCase";
-import { copySkeletonPath, getSkeletonDir, readSkeletonFile } from "../agentConfig";
+import { getSkeletonDir } from "../agentConfig";
 import { askConfirm } from "../prompts/askConfirm";
 import { askDestination } from "../prompts/askDestination";
 import { askName } from "../prompts/askName";
-import readmeTemplate from "../templates/app/README.md.txt";
 import { ensureBin, LOG_OPTIONS, spawnStep } from "../utils";
 import { AgentSkillsCreateCommand } from "./AgentSkillsCreateCommand";
 import { CommitlintInitCommand } from "./CommitlintInitCommand";
@@ -30,7 +31,7 @@ export class AppInitCommand<T extends CommandOptionsType = CommandOptionsType> i
   }
 
   public async run(options: T): Promise<void> {
-    let { name, destination, silent } = options;
+    let { name, destination, silent, appType } = options;
     const logger = new TerminalLogger();
 
     if (!name) {
@@ -46,59 +47,49 @@ export class AppInitCommand<T extends CommandOptionsType = CommandOptionsType> i
     const skeletonDir = await getSkeletonDir(logger, silent);
     if (!skeletonDir) return;
 
-    const packageJsonPath = join(destination, "package.json");
-    const packageJsonExists = await Bun.file(packageJsonPath).exists();
-    const skeletonPackage = JSON.parse(await readSkeletonFile(skeletonDir, "package.json")) as { name?: string };
-    skeletonPackage.name = kebabName;
-    const packageContent = `${JSON.stringify(skeletonPackage, null, 2)}\n`;
-    const tsconfig = JSON.parse(await readSkeletonFile(skeletonDir, "tsconfig.json")) as {
-      compilerOptions?: { paths?: Record<string, string[]> };
-    };
-    const sourcePaths = tsconfig.compilerOptions?.paths ?? {};
+    cpSync(skeletonDir, destination, { recursive: true, force: true });
 
-    tsconfig.compilerOptions ??= {};
-    tsconfig.compilerOptions.paths = {
-      "@module/app/*": sourcePaths["@module/app/*"] ?? ["./modules/app/src/*"],
-      "@module/shared/*": sourcePaths["@module/shared/*"] ?? ["./modules/shared/src/*"],
-    };
+    await rm(join(destination, ".git"), { recursive: true, force: true });
+    await rm(join(destination, "bun.lock"), { force: true });
 
-    const envExampleContent = await readSkeletonFile(skeletonDir, ".env.example.yml");
+    const envExamplePath = join(destination, ".env.example.yml");
+    await Bun.write(join(destination, ".env.yml"), await Bun.file(envExamplePath).text());
+    await rm(envExamplePath, { force: true });
 
-    await Promise.all([
-      copySkeletonPath(skeletonDir, ".gitignore", join(destination, ".gitignore")),
-      copySkeletonPath(skeletonDir, "biome.jsonc", join(destination, "biome.jsonc")),
-      Bun.write(join(destination, "README.md"), readmeTemplate.replace(/{{NAME}}/g, kebabName)),
-      Bun.write(join(destination, "tsconfig.json"), `${JSON.stringify(tsconfig, null, 2)}\n`),
-      copySkeletonPath(skeletonDir, ".zed/settings.json", join(destination, ".zed", "settings.json")),
-      Bun.write(join(destination, ".env.example.yml"), envExampleContent),
-      Bun.write(join(destination, ".env.yml"), envExampleContent),
-      Bun.write(join(destination, "var", ".gitkeep"), ""),
-      ...(packageJsonExists ? [] : [Bun.write(packageJsonPath, packageContent)]),
-    ]);
+    const readmePath = join(destination, "README.md");
+    const readme = await Bun.file(readmePath).text();
+    await Bun.write(readmePath, readme.replace(/^# .+/, `# ${kebabName}`));
 
-    const devDepsInstalled = await spawnStep(
+    if (appType === "cli") {
+      const modulesDir = join(destination, "modules");
+      await rm(modulesDir, { recursive: true, force: true });
+      await mkdir(modulesDir, { recursive: true });
+
+      await rm(join(destination, ".dockerignore"), { force: true });
+    }
+
+    if (appType === "api") {
+      const modulesDir = join(destination, "modules");
+      const keptModules = new Set(["app", "shared"]);
+      const moduleEntries = await readdir(modulesDir, { withFileTypes: true });
+      await Promise.all(
+        moduleEntries
+          .filter((entry) => entry.isDirectory() && !keptModules.has(entry.name))
+          .map((entry) => rm(join(modulesDir, entry.name), { recursive: true, force: true })),
+      );
+    }
+
+    const depsInstalled = await spawnStep(
       logger,
-      [
-        "bun",
-        "add",
-        "-D",
-        "@biomejs/biome",
-        "@types/bun",
-        "@types/node",
-        "@types/react",
-        "@types/react-dom",
-        "@talosjs/cli",
-        "typescript",
-        "undici-types",
-      ],
+      ["bun", "install"],
       destination,
       {
-        start: "Installing dev dependencies...",
-        failure: (exitCode) => `Failed to install dev dependencies (exit code: ${exitCode})`,
+        start: "Installing dependencies...",
+        failure: (exitCode) => `Failed to install dependencies (exit code: ${exitCode})`,
       },
       { silent },
     );
-    if (!devDepsInstalled) return;
+    if (!depsInstalled) return;
 
     if (!ensureBin(logger, "git", silent)) {
       return;
