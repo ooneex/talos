@@ -273,10 +273,10 @@ pub fn run(args: &SpaCreateArgs) {
 
     visit_files_recursive(&src_dir, &mut |file_path| {
         if let Ok(content) = fs::read_to_string(file_path) {
-            let rewritten = regex::Regex::new(r#"from \"@module/spa(?=[\"/])"#)
+            let rewritten = regex::Regex::new(r#"from \"@module/spa(["/])"#)
                 .ok()
                 .map(|re| {
-                    re.replace_all(&content, format!("from \"@module/{kebab_name}"))
+                    re.replace_all(&content, format!("from \"@module/{kebab_name}$1"))
                         .into_owned()
                 })
                 .unwrap_or(content.clone());
