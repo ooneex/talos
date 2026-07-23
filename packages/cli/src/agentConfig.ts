@@ -104,10 +104,10 @@ const readSkeletonSkills = async (skeletonDir: string): Promise<Record<string, S
 
 export const loadScaffoldInput = async (
   cwd = process.cwd(),
-  options?: { appName?: string; silent?: boolean },
+  options?: { appName?: string; silent?: boolean; sourceDir?: string },
 ): Promise<ScaffoldInput | null> => {
   const logger = new TerminalLogger();
-  const skeletonDir = await getSkeletonDir(logger, options?.silent);
+  const skeletonDir = options?.sourceDir ?? (await getSkeletonDir(logger, options?.silent));
 
   if (!skeletonDir) {
     return null;
@@ -133,7 +133,7 @@ export const loadScaffoldInput = async (
 export const scaffoldAgentConfig = async (
   configDir: string,
   cwd = process.cwd(),
-  options?: { appName?: string; silent?: boolean },
+  options?: { appName?: string; silent?: boolean; sourceDir?: string },
 ): Promise<void> => {
   const logger = new TerminalLogger();
   const input = await loadScaffoldInput(cwd, options);

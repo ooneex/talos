@@ -119,6 +119,7 @@ export class AppInitCommand<T extends CommandOptionsType = CommandOptionsType> i
     await new AgentSkillsCreateCommand().run({
       cwd: destination,
       name: kebabName,
+      sourceDir: destination,
       ...(silent !== undefined ? { silent } : {}),
     });
 

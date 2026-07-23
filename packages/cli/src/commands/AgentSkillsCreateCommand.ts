@@ -8,6 +8,7 @@ type CommandOptionsType = {
   agents?: string[];
   name?: string;
   silent?: boolean;
+  sourceDir?: string;
 };
 
 /**
@@ -32,6 +33,7 @@ export class AgentSkillsCreateCommand<T extends CommandOptionsType = CommandOpti
       const scaffoldOptions = {
         ...(options?.name ? { appName: options.name } : {}),
         ...(options?.silent !== undefined ? { silent: options.silent } : {}),
+        ...(options?.sourceDir ? { sourceDir: options.sourceDir } : {}),
       };
       await scaffoldAgentConfig(configDir, options?.cwd, scaffoldOptions);
     }
