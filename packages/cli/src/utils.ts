@@ -222,8 +222,10 @@ export const loadAppModuleName = async (appDir: string, fallback = "app"): Promi
  * Reports success/failure through the logger, sets `process.exitCode` to 1 on
  * failure and returns whether the process exited cleanly.
  *
- * Pass `silent` to suppress the spinner and success message (the failure log is
- * always emitted); pass `env` to extend the child's environment.
+ * Pass `silent` to suppress the success message (the spinner and failure log
+ * are always shown, since a long-running step like a clone should still give
+ * feedback even when the caller wants a quieter overall output); pass `env` to
+ * extend the child's environment.
  */
 export const spawnStep = async (
   logger: TerminalLogger,
@@ -232,7 +234,7 @@ export const spawnStep = async (
   messages: { start?: string; success?: string; failure: (exitCode: number) => string },
   options?: { silent?: boolean | undefined; env?: Record<string, string> | undefined },
 ): Promise<boolean> => {
-  const spinner = !options?.silent && messages.start ? createSpinner(messages.start) : null;
+  const spinner = messages.start ? createSpinner(messages.start) : null;
 
   let stdout = "";
   let stderr = "";
