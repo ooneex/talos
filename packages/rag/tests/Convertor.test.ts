@@ -1,9 +1,14 @@
-import { describe, expect, test } from "bun:test";
+import { afterAll, describe, expect, test } from "bun:test";
+import { rm } from "node:fs/promises";
 import { Convertor, ConvertorException } from "@/index";
 
 const outputDir = "tests/tmp";
 
 describe("Convertor", () => {
+  afterAll(async () => {
+    await rm(outputDir, { recursive: true, force: true });
+  });
+
   test("should convert file-sample.pdf and produce section chunks", async () => {
     const convertor = new Convertor("tests/file-sample.pdf");
     const generator = convertor.convert({ outputDir, quiet: true });
