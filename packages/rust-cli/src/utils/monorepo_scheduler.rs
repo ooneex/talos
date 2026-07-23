@@ -4,11 +4,11 @@
 
 use std::collections::HashSet;
 use std::path::Path;
-use std::process::{Command, Output};
+use std::process::Command;
+use std::sync::mpsc::channel;
 use std::time::Instant;
 
 use console::style;
-use rayon::prelude::*;
 use regex::Regex;
 
 use super::monorepo_task::{Task, TaskStatus, format_duration};
@@ -17,11 +17,38 @@ use crate::utils::{
     compute_task_hash, read_cache_entry, restore_cache_outputs, write_cache_entry,
 };
 
+/// The result a worker thread hands back for one launched task: either a
+/// cache hit (restored output, no subprocess) or a finished subprocess run.
+/// Owned end-to-end so it can cross the channel without borrowing `tasks`.
+enum TaskOutcome {
+    Cached {
+        hash: String,
+        output: String,
+        duration_ms: u64,
+    },
+    Ran {
+        hash: Option<String>,
+        output: String,
+        exit_code: Option<i32>,
+        success: bool,
+        duration_ms: u64,
+    },
+}
+
 /// Runs a command group's tasks, launching every task whose workspace
 /// dependencies are already done and bounding concurrency to the available
 /// CPU parallelism. Skipped tasks count as done up front. Returns whether
 /// any task in the group failed (which aborts the whole run, matching the
 /// TypeScript version).
+///
+/// Scheduling mirrors the TypeScript `runGroup`: instead of running tasks in
+/// fixed waves and waiting for every task in a wave before starting the next
+/// (which idles cores whenever task durations are uneven — the common case
+/// across modules of very different sizes), it keeps a rolling pool of up to
+/// `limit` tasks in flight and refills a slot the moment any single task
+/// finishes. Each worker computes its own cache hash and either restores the
+/// cached output or runs the subprocess, so hashing overlaps with other
+/// tasks' subprocesses rather than serializing at a wave boundary.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn run_group(
     tasks: &mut [Task],
@@ -49,139 +76,163 @@ pub(crate) fn run_group(
         .unwrap_or(1)
         .max(1);
     let mut failed = false;
+    let mut launched = vec![false; tasks.len()];
 
-    loop {
-        let ready_indices: Vec<usize> = tasks
-            .iter()
-            .enumerate()
-            .filter(|(_, t)| {
-                t.status == TaskStatus::Pending && t.deps.iter().all(|d| done.contains(d))
-            })
-            .map(|(i, _)| i)
-            .take(limit)
-            .collect();
+    std::thread::scope(|scope| {
+        let (tx, rx) = channel::<(usize, TaskOutcome)>();
+        let mut inflight = 0usize;
 
-        if ready_indices.is_empty() {
-            break;
-        }
+        loop {
+            // Keep the pool full: launch every ready task until we hit the
+            // concurrency limit. Once a task has failed we stop launching new
+            // work but keep draining whatever is already running (matching the
+            // TypeScript version's `Promise.allSettled` on abort).
+            while !failed && inflight < limit {
+                let next = (0..tasks.len()).find(|&i| {
+                    !launched[i]
+                        && tasks[i].status == TaskStatus::Pending
+                        && tasks[i].deps.iter().all(|d| done.contains(d))
+                });
+                let Some(index) = next else { break };
 
-        // Compute cache hashes and check for cache hits in parallel: the
-        // fingerprint memo and file-hash cache are both `DashMap`s (sharded,
-        // lock-free-reads under the hood), so hashing several targets' files
-        // concurrently — on top of each target's own per-file parallelism in
-        // `fingerprint_dir` — no longer serializes on a single lock. Each
-        // closure only reads its own task by index, so the borrow is safe to
-        // share across threads.
-        let ready_tasks: &[Task] = tasks;
-        let hash_results: Vec<(usize, Option<TaskHashResult>)> = ready_indices
-            .par_iter()
-            .map(|&index| {
-                (
-                    index,
-                    try_cache_hit(
-                        &ready_tasks[index],
-                        all_targets,
-                        root_hash,
-                        cache_dir,
-                        fingerprint_memo,
-                        use_git,
-                        no_cache,
-                        file_hash_cache,
-                    ),
-                )
-            })
-            .collect();
+                launched[index] = true;
+                inflight += 1;
 
-        let mut to_spawn: Vec<usize> = Vec::new();
-        for (index, result) in hash_results {
-            let Some(result) = result else {
-                to_spawn.push(index);
-                continue;
-            };
-            let is_hit = result.hit.is_some();
-            apply_task_hash_result(&mut tasks[index], result);
-            if is_hit {
-                done.insert(tasks[index].key.clone());
-                report_finish(&tasks[index]);
-            } else {
-                to_spawn.push(index);
-            }
-        }
+                let argv = tasks[index].argv.clone();
+                let cwd = tasks[index].cwd.clone();
+                let cacheable = tasks[index].cacheable;
+                let command = tasks[index].command.clone();
+                let target_key = tasks[index].target_key.clone();
+                let tx = tx.clone();
 
-        // Run every cache miss's subprocess in parallel (each thread owns its
-        // own `Command`/`Output`, so no shared mutable state crosses threads).
-        let results: Vec<(usize, std::io::Result<Output>, u64)> = std::thread::scope(|scope| {
-            let handles: Vec<_> = to_spawn
-                .iter()
-                .map(|&index| {
-                    let argv = tasks[index].argv.clone();
-                    let cwd = tasks[index].cwd.clone();
-                    scope.spawn(move || {
-                        let started = Instant::now();
-                        let output = Command::new(&argv[0])
-                            .args(&argv[1..])
-                            .current_dir(&cwd)
-                            .output();
-                        (index, output, started.elapsed().as_millis() as u64)
-                    })
-                })
-                .collect();
-            handles.into_iter().map(|h| h.join().unwrap()).collect()
-        });
-
-        for (index, output_result, duration_ms) in results {
-            let task = &mut tasks[index];
-            task.duration_ms = duration_ms;
-            match output_result {
-                Ok(output) => {
-                    task.output = format!(
-                        "{}{}",
-                        String::from_utf8_lossy(&output.stdout),
-                        String::from_utf8_lossy(&output.stderr)
-                    );
-                    task.exit_code = output.status.code();
-                    if output.status.success() {
-                        task.status = TaskStatus::Success;
-                        if task.cacheable
-                            && let Some(hash) = &task.hash
-                            && let Some(target_key) = &task.target_key
-                            && let Some(target) = all_targets.iter().find(|t| &t.key == target_key)
-                        {
-                            write_cache_entry(
-                                cache_dir,
-                                &CacheEntryMeta {
-                                    version: MONOREPO_CACHE_VERSION,
-                                    target: target.key.clone(),
-                                    command: task.command.clone(),
-                                    hash: hash.clone(),
-                                    created_at: chrono::Utc::now().to_rfc3339(),
-                                    duration_ms: task.duration_ms,
-                                    outputs: target.outputs.clone(),
-                                },
-                                &task.output,
-                                &target.dir,
-                            );
-                        }
+                scope.spawn(move || {
+                    let cache = if cacheable && !no_cache {
+                        try_cache_hit(
+                            target_key.as_deref(),
+                            &command,
+                            all_targets,
+                            root_hash,
+                            cache_dir,
+                            fingerprint_memo,
+                            use_git,
+                            file_hash_cache,
+                        )
                     } else {
-                        task.status = TaskStatus::Failed;
-                        failed = true;
+                        None
+                    };
+
+                    let outcome = match cache {
+                        Some(TaskHashResult {
+                            hash,
+                            hit: Some(hit),
+                        }) => TaskOutcome::Cached {
+                            hash,
+                            output: hit.output,
+                            duration_ms: hit.duration_ms,
+                        },
+                        other => {
+                            let hash = other.map(|r| r.hash);
+                            let started = Instant::now();
+                            let result = Command::new(&argv[0])
+                                .args(&argv[1..])
+                                .current_dir(&cwd)
+                                .output();
+                            let duration_ms = started.elapsed().as_millis() as u64;
+                            match result {
+                                Ok(output) => TaskOutcome::Ran {
+                                    hash,
+                                    output: format!(
+                                        "{}{}",
+                                        String::from_utf8_lossy(&output.stdout),
+                                        String::from_utf8_lossy(&output.stderr)
+                                    ),
+                                    exit_code: output.status.code(),
+                                    success: output.status.success(),
+                                    duration_ms,
+                                },
+                                Err(error) => TaskOutcome::Ran {
+                                    hash,
+                                    output: error.to_string(),
+                                    exit_code: Some(1),
+                                    success: false,
+                                    duration_ms,
+                                },
+                            }
+                        }
+                    };
+
+                    let _ = tx.send((index, outcome));
+                });
+            }
+
+            if inflight == 0 {
+                break;
+            }
+
+            // Wait for the next task to finish, free its slot, then loop to
+            // refill it — this is the rolling equivalent of `Promise.race`.
+            let (index, outcome) = rx.recv().unwrap();
+            inflight -= 1;
+
+            {
+                let task = &mut tasks[index];
+                match outcome {
+                    TaskOutcome::Cached {
+                        hash,
+                        output,
+                        duration_ms,
+                    } => {
+                        task.hash = Some(hash);
+                        task.output = output;
+                        task.duration_ms = duration_ms;
+                        task.status = TaskStatus::Cached;
+                    }
+                    TaskOutcome::Ran {
+                        hash,
+                        output,
+                        exit_code,
+                        success,
+                        duration_ms,
+                    } => {
+                        task.hash = hash;
+                        task.output = output;
+                        task.exit_code = exit_code;
+                        task.duration_ms = duration_ms;
+                        if success {
+                            task.status = TaskStatus::Success;
+                            if task.cacheable
+                                && let Some(hash) = &task.hash
+                                && let Some(target_key) = &task.target_key
+                                && let Some(target) =
+                                    all_targets.iter().find(|t| &t.key == target_key)
+                            {
+                                write_cache_entry(
+                                    cache_dir,
+                                    &CacheEntryMeta {
+                                        version: MONOREPO_CACHE_VERSION,
+                                        target: target.key.clone(),
+                                        command: task.command.clone(),
+                                        hash: hash.clone(),
+                                        created_at: chrono::Utc::now().to_rfc3339(),
+                                        duration_ms: task.duration_ms,
+                                        outputs: target.outputs.clone(),
+                                    },
+                                    &task.output,
+                                    &target.dir,
+                                );
+                            }
+                        } else {
+                            task.status = TaskStatus::Failed;
+                            failed = true;
+                        }
                     }
                 }
-                Err(error) => {
-                    task.output = error.to_string();
-                    task.exit_code = Some(1);
-                    task.status = TaskStatus::Failed;
-                    failed = true;
-                }
             }
-            done.insert(task.key.clone());
-            report_finish(task);
-        }
 
-        if failed {
-            break;
+            done.insert(tasks[index].key.clone());
+            report_finish(&tasks[index]);
         }
-    }
+    });
 
     failed
 }
@@ -202,28 +253,27 @@ struct CacheHit {
 }
 
 /// Computes a task's content hash and checks the cache for a hit, restoring
-/// cached outputs when found. Returns `None` only for non-cacheable tasks
-/// (e.g. install) where there is no hash to compute at all.
+/// cached outputs when found. Returns `None` only when the task has no target
+/// to hash against (e.g. install), where there is no hash to compute at all.
+/// Takes the task's cache-relevant fields directly rather than a `&Task` so
+/// it can run on a worker thread without borrowing the shared `tasks` slice.
 #[allow(clippy::too_many_arguments)]
 fn try_cache_hit(
-    task: &Task,
+    target_key: Option<&str>,
+    command: &str,
     all_targets: &[MonorepoTarget],
     root_hash: &str,
     cache_dir: &Path,
     fingerprint_memo: &FingerprintMemo,
     use_git: bool,
-    no_cache: bool,
     file_hash_cache: &FileHashCache,
 ) -> Option<TaskHashResult> {
-    if !task.cacheable || no_cache {
-        return None;
-    }
-    let target_key = task.target_key.as_ref()?;
-    let target = all_targets.iter().find(|t| &t.key == target_key)?;
+    let target_key = target_key?;
+    let target = all_targets.iter().find(|t| t.key == target_key)?;
 
     let hash = compute_task_hash(
         target,
-        &task.command,
+        command,
         all_targets,
         root_hash,
         fingerprint_memo,
@@ -240,18 +290,6 @@ fn try_cache_hit(
     });
 
     Some(TaskHashResult { hash, hit })
-}
-
-/// Applies a resolved hash/cache-hit result to its task. When there was a
-/// cache hit, marks the task `Cached`; otherwise just stamps the hash so a
-/// successful run can write a fresh cache entry under it.
-fn apply_task_hash_result(task: &mut Task, result: TaskHashResult) {
-    task.hash = Some(result.hash);
-    if let Some(hit) = result.hit {
-        task.output = hit.output;
-        task.duration_ms = hit.duration_ms;
-        task.status = TaskStatus::Cached;
-    }
 }
 
 /// Prints a task's final state to stdout. A successful task gets a one-line

@@ -238,6 +238,29 @@ fn collect_files(dir: &Path) -> Vec<String> {
     files
 }
 
+/// Resolves the `biome` binary directly (walking up from `start_dir` to the
+/// nearest `node_modules/.bin/biome`) instead of going through `bunx`.
+/// `bunx` re-resolves and forks a package-manager wrapper on every single
+/// invocation — on the order of 100ms+ of pure overhead — which is
+/// negligible for the one whole-project call the TypeScript CLI makes per
+/// target, but multiplies into seconds once spent across the thousand-plus
+/// per-file `fmt`/`lint` tasks this port issues. Falls back to `bunx biome`
+/// when no local binary is found, so an unusual workspace layout still
+/// works, just without the fast path.
+pub fn resolve_biome_command(start_dir: &Path) -> Vec<String> {
+    let mut dir = start_dir.to_path_buf();
+    loop {
+        let candidate = dir.join("node_modules/.bin/biome");
+        if candidate.is_file() {
+            return vec![candidate.to_string_lossy().to_string()];
+        }
+        if !dir.pop() {
+            break;
+        }
+    }
+    vec!["bunx".to_string(), "biome".to_string()]
+}
+
 /// True when `root_dir` is itself the top level of a git repository.
 pub fn is_git_workspace_root(root_dir: &Path) -> bool {
     let Some(toplevel) = crate::utils::git::toplevel(root_dir) else {

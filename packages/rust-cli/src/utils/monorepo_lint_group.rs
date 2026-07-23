@@ -4,15 +4,17 @@
 //! `--all-targets` run, since clippy's unit of work is a compilation target,
 //! not an arbitrary source file. Every other target gets a single
 //! whole-project `tsc --noEmit` task (type-checking isn't meaningful scoped
-//! to one file) plus one `bunx biome lint <file>` task per matching source
-//! file.
+//! to one file) plus a single whole-directory `biome lint .` task: unlike
+//! clippy, `biome` pays a fixed per-invocation cost that dwarfs the cost of
+//! one more file, so splitting it per file (as `fmt` briefly did) made a
+//! full-workspace lint run several times slower, not faster.
 
 use std::path::Path;
 
 use super::monorepo_task::{Task, TaskStatus};
 use super::monorepo_test_group::collect_test_files;
 use crate::utils::monorepo_fmt_group::collect_fmt_files;
-use crate::utils::{MonorepoTarget, is_rust_module};
+use crate::utils::{MonorepoTarget, is_rust_module, resolve_biome_command};
 
 pub(crate) const LINT_COMMAND: &str = "lint";
 
@@ -90,16 +92,15 @@ fn build_rust_lint_tasks(target: &MonorepoTarget) -> Vec<Task> {
     tasks
 }
 
-// One task per source file (plus a single whole-project type-check task)
-// rather than one `tsc --noEmit && bunx biome lint` invocation per target, so
-// linting runs concurrently instead of walking every file serially. `tsc`
-// still runs once for the whole target — type-checking isn't meaningful
-// scoped to a single file, unlike formatting/testing — but `biome lint` runs
-// once per matching source file, same discovery as `fmt`. Rust targets skip
-// straight to `build_rust_lint_tasks`, since clippy's unit of work is a crate
-// target, not a source file. Targets without the `lint` script, or without
-// anything to lint, are marked skipped up front. `lint` stays
-// order-independent (it's listed in `ORDER_INDEPENDENT_COMMANDS`), so no
+// Splits each non-Rust target's `lint` script into two independently
+// cacheable/parallel tasks — a whole-project `tsc --noEmit` type-check plus
+// a whole-directory `biome lint .` — instead of the single combined
+// `tsc --noEmit && bunx biome lint` invocation the TypeScript CLI runs, so a
+// tsc-only or biome-only change doesn't force re-running the other. Rust
+// targets skip straight to `build_rust_lint_tasks`, since clippy's unit of
+// work is a crate target, not a source file. Targets without the `lint`
+// script, or without anything to lint, are marked skipped up front. `lint`
+// stays order-independent (it's listed in `ORDER_INDEPENDENT_COMMANDS`), so no
 // task here carries dependency edges.
 pub(crate) fn build_lint_group(targets: &[MonorepoTarget]) -> Vec<Task> {
     let mut tasks: Vec<Task> = Vec::new();
@@ -147,22 +148,17 @@ pub(crate) fn build_lint_group(targets: &[MonorepoTarget]) -> Vec<Task> {
                 hash: None,
             });
         }
-        for file in collect_fmt_files(target) {
-            let rel = file.to_string_lossy().replace('\\', "/");
-            // Same cache-collision reasoning as `fmt`: the command
-            // discriminator must carry the file identity.
+        if !collect_fmt_files(target).is_empty() {
+            let mut argv = resolve_biome_command(&target.dir);
+            argv.push("lint".to_string());
+            argv.push(".".to_string());
             target_tasks.push(Task {
-                key: format!("{}#{LINT_COMMAND}#{rel}", target.key),
-                label: format!("{}:{LINT_COMMAND}:{rel}", target.name),
+                key: format!("{}#{LINT_COMMAND}#biome", target.key),
+                label: format!("{}:{LINT_COMMAND}:biome", target.name),
                 target_key: Some(target.key.clone()),
-                command: format!("{LINT_COMMAND}:{rel}"),
+                command: format!("{LINT_COMMAND}:biome"),
                 cwd: target.dir.clone(),
-                argv: vec![
-                    "bunx".to_string(),
-                    "biome".to_string(),
-                    "lint".to_string(),
-                    format!("./{rel}"),
-                ],
+                argv,
                 cacheable: true,
                 deps: Vec::new(),
                 status: TaskStatus::Pending,
