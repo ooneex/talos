@@ -6,7 +6,7 @@ use clap::Args;
 use serde_json::Value;
 
 use crate::commands::npm_publish::{self, NpmPublishArgs};
-use crate::utils::ask_confirm;
+use crate::utils::{ask_confirm, run_spinner_step};
 
 #[derive(Clone)]
 struct TargetDir {
@@ -489,10 +489,11 @@ pub fn run(args: &ReleaseCreateArgs) {
     }
     crate::utils::success(format!("{} package(s) released", plans.len()));
     if ask_confirm("Push commits and tags to remote?", true) {
-        let _ = Command::new("bun")
-            .arg("install")
-            .current_dir(&cwd)
-            .status();
+        let _ = run_spinner_step(
+            false,
+            "Refreshing bun.lock",
+            Command::new("bun").arg("install").current_dir(&cwd),
+        );
         let _ = git(&cwd, &["add", "bun.lock"]);
         let _ = git(&cwd, &["commit", "-m", "chore(common): Update bun.lock"]);
         let pushed = git(&cwd, &["push"]) && git(&cwd, &["push", "--tags"]);

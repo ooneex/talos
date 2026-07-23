@@ -3,7 +3,9 @@ use std::process::Command;
 use clap::Args;
 use serde_json::Value;
 
-use crate::utils::{ask_confirm, ask_input, current_dir, run_step, to_kebab_case, to_pascal_case};
+use crate::utils::{
+    ask_confirm, ask_input, current_dir, run_spinner_step, to_kebab_case, to_pascal_case,
+};
 
 const ROUTE_TEMPLATE: &str = include_str!("../templates/spa/spa-feature.route.txt");
 const LAYOUT_TEMPLATE: &str = include_str!("../templates/spa/spa-feature.layout.txt");
@@ -178,9 +180,9 @@ pub fn run(args: &SpaFeatureCreateArgs) {
         .unwrap_or(false);
 
     if !has_dependency {
-        let _ = run_step(
+        let _ = run_spinner_step(
             false,
-            "Installing @tanstack/react-query...",
+            "Installing @tanstack/react-query",
             Command::new("bun")
                 .args(["add", "@tanstack/react-query"])
                 .current_dir(&cwd),

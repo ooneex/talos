@@ -6,8 +6,8 @@ use clap::Args;
 
 use crate::commands::module_create::{self, ModuleCreateOptions};
 use crate::utils::{
-    current_dir, remove_from_app_module, remove_from_shared_module, run_step, to_kebab_case,
-    to_pascal_case,
+    current_dir, remove_from_app_module, remove_from_shared_module, run_spinner_step,
+    to_kebab_case, to_pascal_case,
 };
 
 const BUNUP_CONFIG: &str = r#"import { defineConfig } from \"bunup\";
@@ -451,9 +451,9 @@ pub fn run(args: &SdkCreateArgs) {
     );
     let _ = fs::write(sdk_src_dir.join("index.ts"), index_content);
 
-    if !run_step(
+    if !run_spinner_step(
         silent,
-        "Installing dependencies...",
+        "Installing dependencies",
         Command::new("bun")
             .args([
                 "add",
@@ -465,9 +465,9 @@ pub fn run(args: &SdkCreateArgs) {
     ) {
         return;
     }
-    if !run_step(
+    if !run_spinner_step(
         silent,
-        "Installing bunup...",
+        "Installing bunup",
         Command::new("bun")
             .args(["add", "-D", "bunup"])
             .current_dir(&sdk_dir),

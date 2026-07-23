@@ -3,7 +3,9 @@ use std::process::Command;
 use clap::Args;
 use serde_json::Value;
 
-use crate::utils::{ask_confirm, ask_input, current_dir, run_step, to_kebab_case, to_pascal_case};
+use crate::utils::{
+    ask_confirm, ask_input, current_dir, run_spinner_step, to_kebab_case, to_pascal_case,
+};
 
 const COMPONENT_TEMPLATE: &str = include_str!("../templates/react-component.txt");
 const SPEC_TEMPLATE: &str = include_str!("../templates/react-component.spec.txt");
@@ -150,9 +152,9 @@ pub fn run(args: &ReactComponentCreateArgs) {
     }
 
     if !missing.is_empty() {
-        let _ = run_step(
+        let _ = run_spinner_step(
             false,
-            &format!("Installing {}...", missing.join(", ")),
+            &format!("Installing {}", missing.join(", ")),
             Command::new("bun")
                 .args(["add", "-d"])
                 .args(&missing)

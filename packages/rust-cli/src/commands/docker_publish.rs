@@ -5,7 +5,7 @@ use std::process::{Command, Stdio};
 use clap::Args;
 use serde_json::Value;
 
-use crate::utils::{current_dir, ensure_bin, read_credentials};
+use crate::utils::{Action, current_dir, ensure_bin, read_credentials, run_actions_rendered};
 
 const DEFAULT_REGISTRY: &str = "docker.io";
 
@@ -166,8 +166,8 @@ pub fn run(args: &DockerPublishArgs) {
         crate::utils::error("Docker login failed");
         std::process::exit(1);
     }
-    let mut succeeded = 0;
     let mut ignored = 0;
+    let mut actions: Vec<Action> = Vec::new();
     for target in targets {
         let target_dir = cwd.join(&target.base);
         if !target_dir.join("Dockerfile").exists() {
@@ -193,29 +193,59 @@ pub fn run(args: &DockerPublishArgs) {
         } else {
             format!("{registry}/{repo}:{tag}")
         };
-        let built = Command::new("docker")
-            .args(["build", "-t", &image, "."])
-            .current_dir(&target_dir)
-            .status()
-            .map(|s| s.success())
-            .unwrap_or(false);
-        let pushed = built
-            && Command::new("docker")
-                .args(["push", &image])
-                .current_dir(&target_dir)
-                .status()
-                .map(|s| s.success())
-                .unwrap_or(false);
-        if pushed {
-            succeeded += 1;
-            if !args.silent {
-                crate::utils::success(format!("Published {image}"));
+
+        // Each image builds and pushes from its own directory to a distinct
+        // repository, so the images publish concurrently rather than serially.
+        actions.push(Action::new(format!("Publishing {image}"), move || {
+            build_and_push(&target_dir, &image)
+        }));
+    }
+
+    let total = actions.len();
+    let failures = run_actions_rendered(actions, !args.silent);
+    if !args.silent {
+        for (label, message) in &failures {
+            crate::utils::error(label.clone());
+            if !message.trim().is_empty() {
+                eprintln!("{}", message.trim_end());
             }
-        } else if !args.silent {
-            crate::utils::error(format!("Failed to publish {image}"));
         }
     }
+    let succeeded = total - failures.len();
     if !args.silent {
         println!("Summary: {succeeded} published, {ignored} ignored");
+    }
+}
+
+/// Builds and pushes a single Docker image with its subprocess output captured
+/// (so it can run behind the concurrent action spinner). Returns the combined
+/// command output on failure.
+fn build_and_push(target_dir: &std::path::Path, image: &str) -> Result<(), String> {
+    let build = Command::new("docker")
+        .args(["build", "-t", image, "."])
+        .current_dir(target_dir)
+        .output()
+        .map_err(|e| e.to_string())?;
+    if !build.status.success() {
+        return Err(format!(
+            "docker build failed\n{}{}",
+            String::from_utf8_lossy(&build.stdout),
+            String::from_utf8_lossy(&build.stderr)
+        ));
+    }
+
+    let push = Command::new("docker")
+        .args(["push", image])
+        .current_dir(target_dir)
+        .output()
+        .map_err(|e| e.to_string())?;
+    if push.status.success() {
+        Ok(())
+    } else {
+        Err(format!(
+            "docker push failed\n{}{}",
+            String::from_utf8_lossy(&push.stdout),
+            String::from_utf8_lossy(&push.stderr)
+        ))
     }
 }

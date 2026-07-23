@@ -66,7 +66,10 @@ pub fn run(args: &AppCreateArgs) {
     };
     let provider = CI_PROVIDERS[provider_index];
 
-    if let Err(error) = write_ci_cd_files(&destination, provider, &snake_name) {
+    let spinner = crate::utils::Spinner::start(format!("Writing {provider} CI/CD files..."));
+    let written = write_ci_cd_files(&destination, provider, &snake_name);
+    spinner.stop();
+    if let Err(error) = written {
         crate::utils::error(&error);
         return;
     }

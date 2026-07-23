@@ -6,7 +6,7 @@ use clap::Args;
 use serde_json::Value;
 
 use crate::utils::{
-    RunnableModuleType, collect_runnable_modules, current_dir, ensure_bin, run_step,
+    RunnableModuleType, collect_runnable_modules, current_dir, ensure_bin, run_spinner_step,
     select_runnable_modules,
 };
 
@@ -98,16 +98,15 @@ pub fn run(args: &AppStartArgs) {
         if !ensure_bin("docker") {
             return;
         }
-        if !run_step(
+        if !run_spinner_step(
             false,
-            &format!("Starting Docker services for {name}..."),
+            &format!("Starting Docker services for {name}"),
             Command::new("docker")
                 .args(["compose", "up", "-d"])
                 .current_dir(&app_dir),
         ) {
             return;
         }
-        crate::utils::success(format!("Docker services started for {name}"));
     }
 
     println!(

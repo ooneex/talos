@@ -7,8 +7,8 @@ use fs_extra::dir::{CopyOptions, copy as copy_dir};
 use serde_json::Value;
 
 use crate::utils::{
-    add_path_alias, clone_skeleton_in_workspace, current_dir, run_step, to_kebab_case,
-    to_pascal_case,
+    Spinner, add_path_alias, clone_skeleton_in_workspace, current_dir, run_spinner_step,
+    to_kebab_case, to_pascal_case,
 };
 
 /// Rust port of `packages/cli/src/commands/DesignCreateCommand.ts`.
@@ -48,9 +48,9 @@ fn install_dependencies(
     silent: bool,
 ) -> bool {
     if !dependencies.is_empty()
-        && !run_step(
+        && !run_spinner_step(
             silent,
-            "Installing design dependencies...",
+            "Installing design dependencies",
             Command::new("bun")
                 .args(["add"])
                 .args(dependencies)
@@ -61,9 +61,9 @@ fn install_dependencies(
     }
 
     if !dev_dependencies.is_empty()
-        && !run_step(
+        && !run_spinner_step(
             silent,
-            "Installing design dev dependencies...",
+            "Installing design dev dependencies",
             Command::new("bun")
                 .args(["add", "-D"])
                 .args(dev_dependencies)
@@ -94,8 +94,10 @@ pub fn run(args: &DesignCreateArgs) {
     let module_dir = cwd.join("modules").join(&kebab_name);
     let src_dir = module_dir.join("src");
 
-    let Some(repo_dir) = clone_skeleton_in_workspace(&cwd, &format!("design-{kebab_name}"), silent)
-    else {
+    let clone_spinner = Spinner::start("Downloading design template...");
+    let cloned = clone_skeleton_in_workspace(&cwd, &format!("design-{kebab_name}"), true);
+    clone_spinner.stop();
+    let Some(repo_dir) = cloned else {
         return;
     };
 

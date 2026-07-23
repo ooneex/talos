@@ -9,7 +9,7 @@ use std::process::Command;
 use regex::Regex;
 
 use super::case::to_pascal_case;
-use super::process::run_step;
+use super::process::run_spinner_step;
 use super::prompts::{ask_confirm, ask_input};
 
 /// Static configuration for one resource kind (e.g. "Service"), mirroring
@@ -125,9 +125,9 @@ pub fn install_dependency(dependency: &str, cwd: &std::path::Path) {
         return;
     }
 
-    run_step(
+    run_spinner_step(
         false,
-        &format!("Installing {dependency}..."),
+        &format!("Installing {dependency}"),
         Command::new("bun")
             .args(["add", dependency])
             .current_dir(cwd),

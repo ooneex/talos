@@ -19,6 +19,7 @@ mod monorepo_lint_group;
 mod monorepo_scheduler;
 mod monorepo_task;
 mod monorepo_test_group;
+mod parallel;
 mod process;
 mod prompts;
 mod run_module_scripts;
@@ -56,7 +57,8 @@ pub(crate) use monorepo_footer::Footer;
 pub(crate) use monorepo_group::{INSTALL_COMMAND, build_group, build_install_group};
 pub(crate) use monorepo_scheduler::run_group;
 pub(crate) use monorepo_task::{Task, TaskStatus, format_duration};
-pub use process::{ensure_bin, run_step};
+pub use parallel::{Action, run_actions, run_actions_rendered};
+pub use process::{ensure_bin, run_spinner_step, run_step};
 pub use prompts::{
     ask_confirm, ask_destination, ask_destination_module, ask_input, ask_input_with_default,
     ask_name, ask_password, ask_plain_input, ask_route_method, ask_route_name, ask_route_path,

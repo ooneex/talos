@@ -5,7 +5,7 @@ use clap::Args;
 use serde_json::Value;
 
 use crate::commands::{completion_bash, completion_fish, completion_zsh};
-use crate::utils::current_dir;
+use crate::utils::{Spinner, current_dir, run_spinner_step};
 
 const CLI_PACKAGE_NAME: &str = "@talosjs/cli";
 
@@ -39,7 +39,10 @@ pub fn run(args: &UpgradeArgs) {
         .map(PathBuf::from)
         .unwrap_or_else(current_dir);
     let current_version = env!("CARGO_PKG_VERSION");
-    let Some(latest_version) = fetch_latest_version() else {
+    let version_spinner = Spinner::start("Checking for updates...");
+    let latest = fetch_latest_version();
+    version_spinner.stop();
+    let Some(latest_version) = latest else {
         crate::utils::error(format!(
             "Unable to determine the latest version for {CLI_PACKAGE_NAME}"
         ));
@@ -51,13 +54,13 @@ pub fn run(args: &UpgradeArgs) {
         ));
         return;
     }
-    println!("Upgrading from v{current_version} to v{latest_version}...");
-    let succeeded = Command::new("bun")
-        .args(["add", "-g", &format!("{CLI_PACKAGE_NAME}@latest")])
-        .current_dir(&cwd)
-        .status()
-        .map(|s| s.success())
-        .unwrap_or(false);
+    let succeeded = run_spinner_step(
+        false,
+        &format!("Upgrading from v{current_version} to v{latest_version}"),
+        Command::new("bun")
+            .args(["add", "-g", &format!("{CLI_PACKAGE_NAME}@latest")])
+            .current_dir(&cwd),
+    );
     if !succeeded {
         crate::utils::error(format!(
             "Upgrade failed. You can upgrade manually with: bun add -g {CLI_PACKAGE_NAME}@latest"

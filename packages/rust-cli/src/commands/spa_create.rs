@@ -8,8 +8,8 @@ use serde_json::Value;
 
 use crate::commands::design_create::{self, DesignCreateArgs};
 use crate::utils::{
-    add_path_alias, ask_input, ask_select, clone_skeleton_in_workspace, current_dir, run_step,
-    to_kebab_case, to_pascal_case,
+    Spinner, add_path_alias, ask_input, ask_select, clone_skeleton_in_workspace, current_dir,
+    run_spinner_step, to_kebab_case, to_pascal_case,
 };
 
 /// Rust port of `packages/cli/src/commands/SpaCreateCommand.ts`.
@@ -125,9 +125,9 @@ fn install_root_dependencies(
     silent: bool,
 ) -> bool {
     if !deps.is_empty()
-        && !run_step(
+        && !run_spinner_step(
             false,
-            "Installing spa dependencies...",
+            "Installing spa dependencies",
             Command::new("bun")
                 .args(["add"])
                 .args(deps)
@@ -137,9 +137,9 @@ fn install_root_dependencies(
         return false;
     }
     if !dev_deps.is_empty()
-        && !run_step(
+        && !run_spinner_step(
             false,
-            "Installing spa dev dependencies...",
+            "Installing spa dev dependencies",
             Command::new("bun")
                 .args(["add", "-D"])
                 .args(dev_deps)
@@ -203,8 +203,10 @@ pub fn run(args: &SpaCreateArgs) {
         )
     });
 
-    let Some(repo_dir) = clone_skeleton_in_workspace(&cwd, &format!("spa-{kebab_name}"), silent)
-    else {
+    let clone_spinner = Spinner::start("Downloading spa template...");
+    let cloned = clone_skeleton_in_workspace(&cwd, &format!("spa-{kebab_name}"), true);
+    clone_spinner.stop();
+    let Some(repo_dir) = cloned else {
         return;
     };
     let template_dir = repo_dir.join("modules").join("spa");

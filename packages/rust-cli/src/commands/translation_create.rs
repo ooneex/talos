@@ -4,8 +4,8 @@ use clap::Args;
 use serde_json::Value;
 
 use crate::utils::{
-    ask_confirm, ask_input, current_dir, ensure_module, run_step, to_kebab_case, to_pascal_case,
-    to_snake_case,
+    ask_confirm, ask_input, current_dir, ensure_module, run_spinner_step, to_kebab_case,
+    to_pascal_case, to_snake_case,
 };
 
 const TRANSLATION_TEMPLATE: &str = include_str!("../templates/translation.txt");
@@ -53,9 +53,9 @@ fn ensure_dependency(cwd: &std::path::Path, dependency: &str) {
     if present {
         return;
     }
-    let _ = run_step(
+    let _ = run_spinner_step(
         false,
-        &format!("Installing {dependency}..."),
+        &format!("Installing {dependency}"),
         Command::new("bun")
             .args(["add", dependency])
             .current_dir(cwd),

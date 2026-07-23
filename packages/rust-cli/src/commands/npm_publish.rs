@@ -7,7 +7,7 @@ use flate2::read::GzDecoder;
 use serde_json::Value;
 use tar::Archive;
 
-use crate::utils::{current_dir, ensure_bin, read_credentials};
+use crate::utils::{Action, current_dir, ensure_bin, read_credentials, run_actions_rendered};
 
 const NPM_REGISTRY: &str = "registry.npmjs.org";
 
@@ -197,8 +197,8 @@ pub fn run(args: &NpmPublishArgs) {
             std::process::exit(1);
         }
     };
-    let mut succeeded = 0;
     let mut ignored = 0;
+    let mut actions: Vec<Action> = Vec::new();
     for target in targets {
         let target_dir = cwd.join(&target.base);
         let pkg_path = target_dir.join("package.json");
@@ -234,61 +234,93 @@ pub fn run(args: &NpmPublishArgs) {
             }
             continue;
         }
-        let dist_dir = target_dir.join("dist");
-        let publish_dir = dist_dir.join("publish");
-        let _ = fs::remove_dir_all(&publish_dir);
-        let _ = fs::create_dir_all(&publish_dir);
-        remove_tgz_files(&dist_dir);
-        let packed = Command::new("bun")
-            .args(["pm", "pack", "--destination", "./dist"])
-            .current_dir(&target_dir)
-            .env(format!("npm_config_//{NPM_REGISTRY}/:_authToken"), &token)
-            .status()
-            .map(|s| s.success())
-            .unwrap_or(false);
-        if !packed {
-            if !args.silent {
-                crate::utils::error(format!("Failed to pack {label}"));
+
+        // Each package publishes into its own directory with no shared mutable
+        // state (only the read-only token is shared), so the packages publish
+        // concurrently instead of one after another.
+        let access = args.access.clone();
+        let token = token.clone();
+        actions.push(Action::new(format!("Publishing {label}"), move || {
+            publish_one(&target_dir, &access, &token)
+        }));
+    }
+
+    let total = actions.len();
+    let failures = run_actions_rendered(actions, !args.silent);
+    if !args.silent {
+        for (label, message) in &failures {
+            crate::utils::error(label.clone());
+            if !message.trim().is_empty() {
+                eprintln!("{}", message.trim_end());
             }
-            continue;
-        }
-        let tarball = fs::read_dir(&dist_dir)
-            .ok()
-            .into_iter()
-            .flatten()
-            .flatten()
-            .find_map(|e| {
-                e.file_name()
-                    .to_str()
-                    .filter(|n| n.ends_with(".tgz"))
-                    .map(|n| dist_dir.join(n))
-            });
-        let Some(tarball) = tarball else {
-            if !args.silent {
-                crate::utils::error(format!("bun pm pack produced no tarball for {label}"));
-            }
-            continue;
-        };
-        let extracted = extract_tarball_stripping_root(&tarball, &publish_dir).is_ok();
-        let published = extracted
-            && Command::new("npm")
-                .args(["publish", "--access", &args.access])
-                .current_dir(&publish_dir)
-                .env(format!("npm_config_//{NPM_REGISTRY}/:_authToken"), &token)
-                .status()
-                .map(|s| s.success())
-                .unwrap_or(false);
-        let _ = fs::remove_dir_all(&publish_dir);
-        if published {
-            succeeded += 1;
-            if !args.silent {
-                crate::utils::success(format!("Published {label}"));
-            }
-        } else if !args.silent {
-            crate::utils::error(format!("Failed to publish {label}"));
         }
     }
+    let succeeded = total - failures.len();
     if !args.silent {
         println!("Summary: {succeeded} published, {ignored} ignored");
+    }
+}
+
+/// Packs, extracts, and publishes a single package/module directory to npm with
+/// its subprocess output captured (so it can run behind the concurrent action
+/// spinner). Returns the combined command output on failure.
+fn publish_one(target_dir: &Path, access: &str, token: &str) -> Result<(), String> {
+    let dist_dir = target_dir.join("dist");
+    let publish_dir = dist_dir.join("publish");
+    let _ = fs::remove_dir_all(&publish_dir);
+    fs::create_dir_all(&publish_dir).map_err(|e| e.to_string())?;
+    remove_tgz_files(&dist_dir);
+
+    let pack = Command::new("bun")
+        .args(["pm", "pack", "--destination", "./dist"])
+        .current_dir(target_dir)
+        .env(format!("npm_config_//{NPM_REGISTRY}/:_authToken"), token)
+        .output()
+        .map_err(|e| e.to_string())?;
+    if !pack.status.success() {
+        let _ = fs::remove_dir_all(&publish_dir);
+        return Err(format!(
+            "bun pm pack failed\n{}{}",
+            String::from_utf8_lossy(&pack.stdout),
+            String::from_utf8_lossy(&pack.stderr)
+        ));
+    }
+
+    let tarball = fs::read_dir(&dist_dir)
+        .ok()
+        .into_iter()
+        .flatten()
+        .flatten()
+        .find_map(|e| {
+            e.file_name()
+                .to_str()
+                .filter(|n| n.ends_with(".tgz"))
+                .map(|n| dist_dir.join(n))
+        });
+    let Some(tarball) = tarball else {
+        let _ = fs::remove_dir_all(&publish_dir);
+        return Err("bun pm pack produced no tarball".to_string());
+    };
+
+    if let Err(error) = extract_tarball_stripping_root(&tarball, &publish_dir) {
+        let _ = fs::remove_dir_all(&publish_dir);
+        return Err(format!("failed to extract tarball: {error}"));
+    }
+
+    let publish = Command::new("npm")
+        .args(["publish", "--access", access])
+        .current_dir(&publish_dir)
+        .env(format!("npm_config_//{NPM_REGISTRY}/:_authToken"), token)
+        .output();
+    let _ = fs::remove_dir_all(&publish_dir);
+
+    match publish {
+        Ok(output) if output.status.success() => Ok(()),
+        Ok(output) => Err(format!(
+            "npm publish failed\n{}{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        )),
+        Err(error) => Err(error.to_string()),
     }
 }

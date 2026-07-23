@@ -3,7 +3,9 @@ use std::process::Command;
 use clap::Args;
 use serde_json::{Map, Value};
 
-use crate::utils::{ask_confirm, ask_input, current_dir, ensure_module, run_step, to_pascal_case};
+use crate::utils::{
+    ask_confirm, ask_input, current_dir, ensure_module, run_spinner_step, to_pascal_case,
+};
 
 const SPEC_TEMPLATE: &str = include_str!("../templates/e2e.spec.txt");
 const CONFIG_TEMPLATE: &str = include_str!("../templates/playwright.config.txt");
@@ -46,9 +48,9 @@ fn ensure_playwright_dependency(cwd: &std::path::Path) {
         return;
     }
 
-    let _ = run_step(
+    let _ = run_spinner_step(
         false,
-        "Installing @playwright/test...",
+        "Installing @playwright/test",
         Command::new("bun")
             .args(["add", "-d", "@playwright/test"])
             .current_dir(cwd),
@@ -148,9 +150,9 @@ pub fn run(args: &E2eCreateArgs) {
     }
 
     ensure_playwright_dependency(&cwd);
-    let _ = run_step(
+    let _ = run_spinner_step(
         false,
-        "Installing Playwright browsers...",
+        "Installing Playwright browsers",
         Command::new("bunx")
             .args(["playwright", "install"])
             .current_dir(&cwd),

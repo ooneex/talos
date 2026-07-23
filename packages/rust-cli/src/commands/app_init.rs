@@ -7,7 +7,8 @@ use clap::Args;
 use fs_extra::dir::{CopyOptions, copy as copy_dir};
 
 use crate::utils::{
-    ask_confirm, clone_skeleton, ensure_bin, resolve_name_and_destination, run_step,
+    Action, Spinner, ask_confirm, clone_skeleton, ensure_bin, resolve_name_and_destination,
+    run_actions,
 };
 
 /// Rust port of `packages/cli/src/commands/AppInitCommand.ts`.
@@ -80,41 +81,85 @@ pub fn execute(options: AppInitOptions) -> Option<PathBuf> {
         return None;
     }
 
-    let skeleton_dir = clone_skeleton(silent)?;
+    let skeleton_spinner = Spinner::start("Downloading skeleton...");
+    let skeleton_dir = clone_skeleton(true);
+    skeleton_spinner.stop();
+    let skeleton_dir = skeleton_dir?;
+    crate::utils::success("Skeleton downloaded");
     let skeleton_repo_dir = skeleton_dir.path().join("repo");
 
-    if let Err(error) =
-        scaffold_destination(&skeleton_repo_dir, &destination, &kebab_name, app_type)
-    {
+    let scaffold_spinner = Spinner::start("Preparing project files...");
+    let scaffolded = scaffold_destination(&skeleton_repo_dir, &destination, &kebab_name, app_type);
+    scaffold_spinner.stop();
+    if let Err(error) = scaffolded {
         crate::utils::error(&error);
         return None;
     }
     // `skeleton_dir` is a TempDir; it is removed automatically when dropped here.
     drop(skeleton_dir);
+    crate::utils::success("Project files prepared");
 
-    if !run_step(
-        silent,
-        "Installing dependencies...",
-        Command::new("bun").arg("install").current_dir(&destination),
-    ) {
-        return None;
-    }
-
-    if !run_step(
-        silent,
-        "Initializing git repository...",
-        Command::new("git").arg("init").current_dir(&destination),
-    ) {
-        return None;
-    }
-
+    // Ask the one interactive question up front so the slow, dependency-free
+    // steps below can run concurrently behind an animated spinner without a
+    // prompt interrupting the live display.
     let install_hook = ask_confirm("Install the commit-msg hook?", true);
 
-    if install_hook && let Err(error) = install_commitlint_hook(&destination) {
-        crate::utils::error(&error);
+    // `oo` is probed once here (rather than inside the concurrent action) so a
+    // "not found" warning never corrupts the live multi-line spinner.
+    let oo_available = Command::new("oo")
+        .arg("--version")
+        .output()
+        .map(|output| output.status.success())
+        .unwrap_or(false);
+
+    // The three steps below have no ordering dependency on each other, so they
+    // run in parallel instead of one after another — the dominant cost is the
+    // network-bound `bun install`, which now overlaps with `git init` and the
+    // `oo` agent-skills scaffold (itself a whole CLI boot).
+    let mut actions = vec![
+        Action::new("Installing dependencies", {
+            let destination = destination.clone();
+            move || run_captured(Command::new("bun").arg("install").current_dir(&destination))
+        }),
+        Action::new("Initializing git repository", {
+            let destination = destination.clone();
+            move || {
+                run_captured(Command::new("git").arg("init").current_dir(&destination))?;
+                if install_hook {
+                    write_commitlint_hook(&destination)?;
+                }
+                Ok(())
+            }
+        }),
+    ];
+    if oo_available {
+        actions.push(Action::new("Scaffolding agent skills", {
+            let destination = destination.clone();
+            let kebab_name = kebab_name.clone();
+            move || run_agent_skills(&destination, &kebab_name, silent)
+        }));
     }
 
-    scaffold_agent_skills(&destination, &kebab_name, silent);
+    let failures = run_actions(actions);
+    if !oo_available {
+        crate::utils::warn("Skipping agent skills scaffolding: \"oo\" was not found on the PATH");
+    }
+
+    let mut fatal = false;
+    for (label, message) in &failures {
+        crate::utils::error(format!("{label} failed"));
+        if !message.trim().is_empty() {
+            eprintln!("{}", message.trim_end());
+        }
+        // Agent-skills scaffolding is best-effort (as in the TypeScript CLI);
+        // only a failed install or git init aborts the flow.
+        if label != "Scaffolding agent skills" {
+            fatal = true;
+        }
+    }
+    if fatal {
+        return None;
+    }
 
     if !silent {
         crate::utils::success(format!(
@@ -124,6 +169,21 @@ pub fn execute(options: AppInitOptions) -> Option<PathBuf> {
     }
 
     Some(destination)
+}
+
+/// Runs `command` with its output captured, returning the combined
+/// stdout/stderr as the error message on failure so callers (e.g. the parallel
+/// action runner) can surface it without streaming into a live spinner.
+fn run_captured(command: &mut Command) -> Result<(), String> {
+    match command.output() {
+        Ok(output) if output.status.success() => Ok(()),
+        Ok(output) => Err(format!(
+            "{}{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        )),
+        Err(error) => Err(error.to_string()),
+    }
 }
 
 /// Copies the skeleton into `destination` and rewrites the per-app files
@@ -204,6 +264,16 @@ pub fn scaffold_destination(
 /// Installs the git `commit-msg` hook, mirroring `CommitlintInitCommand`.
 /// `pub` so it is exercised directly by the integration tests in `tests/`.
 pub fn install_commitlint_hook(destination: &Path) -> Result<(), String> {
+    let hook_path = write_commitlint_hook(destination)?;
+    crate::utils::success(format!("{} installed successfully", hook_path.display()));
+    Ok(())
+}
+
+/// Writes the git `commit-msg` hook and returns its path, without printing —
+/// the printing variant [`install_commitlint_hook`] wraps this, while the
+/// concurrent `app:init` flow uses it directly so no success line corrupts the
+/// live multi-line spinner.
+fn write_commitlint_hook(destination: &Path) -> Result<PathBuf, String> {
     let repo = git2::Repository::open(destination)
         .map_err(|_| "commitlint:init must run inside a git repository".to_string())?;
 
@@ -227,26 +297,16 @@ exec talos commitlint:check --file \"$1\"\n";
     fs::set_permissions(&hook_path, fs::Permissions::from_mode(0o755))
         .map_err(|e| e.to_string())?;
 
-    crate::utils::success(format!("{} installed successfully", hook_path.display()));
-    Ok(())
+    Ok(hook_path)
 }
 
 /// Delegates AGENTS.md/agent/skill scaffolding to the existing `@talosjs/cli`
 /// `agent:skills:create` command (via the `oo` binary), which owns the full
 /// per-assistant template system. This keeps the pure filesystem/git flow
 /// above native while reusing the single source of truth for that logic.
-fn scaffold_agent_skills(destination: &Path, kebab_name: &str, silent: bool) {
-    let oo_available = Command::new("oo")
-        .arg("--version")
-        .output()
-        .map(|output| output.status.success())
-        .unwrap_or(false);
-
-    if !oo_available {
-        crate::utils::warn("Skipping agent skills scaffolding: \"oo\" was not found on the PATH");
-        return;
-    }
-
+/// Output is captured so it can run behind the concurrent action spinner; the
+/// combined stdout/stderr is returned on failure.
+fn run_agent_skills(destination: &Path, kebab_name: &str, silent: bool) -> Result<(), String> {
     let mut command = Command::new("oo");
     command
         .arg("agent:skills:create")
@@ -259,7 +319,5 @@ fn scaffold_agent_skills(destination: &Path, kebab_name: &str, silent: bool) {
         command.arg("--silent");
     }
 
-    if let Err(error) = command.status() {
-        crate::utils::error(format!("Failed to scaffold agent skills: {error}"));
-    }
+    run_captured(&mut command)
 }

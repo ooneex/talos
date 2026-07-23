@@ -6,7 +6,7 @@ use clap::Args;
 use serde_json::Value;
 
 use crate::utils::{
-    RunnableModuleType, collect_runnable_modules, current_dir, ensure_bin, run_step,
+    RunnableModuleType, collect_runnable_modules, current_dir, ensure_bin, run_spinner_step,
     select_runnable_modules,
 };
 
@@ -70,13 +70,11 @@ pub fn run(args: &AppStopArgs) {
     }
 
     let name = load_package_name(&app_dir, "app");
-    if run_step(
+    run_spinner_step(
         false,
-        &format!("Stopping Docker services for {name}..."),
+        &format!("Stopping Docker services for {name}"),
         Command::new("docker")
             .args(["compose", "down"])
             .current_dir(&app_dir),
-    ) {
-        crate::utils::success(format!("Docker services stopped for {name}"));
-    }
+    );
 }
