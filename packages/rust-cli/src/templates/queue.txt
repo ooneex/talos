@@ -1,0 +1,97 @@
+import { AppEnv } from "@talosjs/app-env";
+import { inject } from "@talosjs/container";
+import { decorator, Queue, QueueException, type ScalarType } from "@talosjs/queue";
+import { RedisClient } from "bun";
+import { type BunRedisRawClient, createBunRedisClient, type Job, Queue as BullQueue, Worker } from "bullmq";
+
+export type {{NAME}}QueueDataType = Record<string, ScalarType>;
+export type {{NAME}}QueueReturnType = unknown;
+
+@decorator.queue()
+export class {{NAME}}Queue extends Queue<{{NAME}}QueueDataType, {{NAME}}QueueReturnType> {
+  private readonly name = "{{NAME}}";
+  protected queue: BullQueue<{{NAME}}QueueDataType, {{NAME}}QueueReturnType>;
+  protected worker: Worker<{{NAME}}QueueDataType, {{NAME}}QueueReturnType>;
+
+  constructor(@inject(AppEnv) private readonly env: AppEnv) {
+    super();
+
+    if (!this.env.QUEUE_REDIS_URL) {
+      throw new QueueException(
+        "Queue Redis URL is required. Please set the QUEUE_REDIS_URL environment variable.",
+        "QUEUE_REDIS_URL_REQUIRED",
+      );
+    }
+
+    const rawClient = new RedisClient(this.env.QUEUE_REDIS_URL);
+    const connection = createBunRedisClient(rawClient as BunRedisRawClient);
+
+    this.queue = new BullQueue<{{NAME}}QueueDataType, {{NAME}}QueueReturnType>(this.name, {
+      connection,
+      defaultJobOptions: {
+        // Retry transient failures with exponential backoff instead of dropping the job.
+        attempts: 3,
+        backoff: { type: "exponential", delay: 1000 },
+        // Keep Redis bounded under high traffic: retain a small, recent window of jobs
+        // for observability and let bullmq evict the rest automatically.
+        removeOnComplete: { age: 3600, count: 1000 },
+        removeOnFail: { age: 24 * 3600, count: 5000 },
+      },
+    });
+
+    this.worker = new Worker<{{NAME}}QueueDataType, {{NAME}}QueueReturnType>(
+      this.name,
+      (job) => this.handler(job),
+      {
+        connection,
+        // Process jobs in parallel to sustain high throughput. Raise or lower this to
+        // match the workload and the downstream resources this handler depends on.
+        concurrency: 10,
+        // Cap how many jobs start per second to shield downstream services from spikes.
+        limiter: { max: 100, duration: 1000 },
+        // Reclaim jobs whose worker died, but give up after repeated stalls so a poison
+        // job cannot loop forever.
+        stalledInterval: 30_000,
+        maxStalledCount: 3,
+        // Renew the job lock periodically so long-running jobs are not wrongly stalled.
+        lockDuration: 30_000,
+      },
+    );
+
+    this.registerEvents();
+  }
+
+  public async handler(job: Job<{{NAME}}QueueDataType, {{NAME}}QueueReturnType>): Promise<{{NAME}}QueueReturnType> {
+    // TODO: Implement the job processing logic for the "{{NAME}}" queue.
+    return job.data;
+  }
+
+  /**
+   * Triggered when a job has been processed successfully by the worker.
+   *
+   * @param job - The job that completed.
+   * @param result - The value returned by the job handler.
+   */
+  public onCompleted(job: Job<{{NAME}}QueueDataType, {{NAME}}QueueReturnType>, result: {{NAME}}QueueReturnType): void {
+    console.info(`[{{NAME}}Queue] job ${job.id} completed:`, result);
+  }
+
+  /**
+   * Triggered when a job fails after exhausting its retry attempts.
+   *
+   * @param job - The job that failed, or `undefined` if it could not be identified.
+   * @param error - The error that caused the failure.
+   */
+  public onFailed(job: Job<{{NAME}}QueueDataType, {{NAME}}QueueReturnType> | undefined, error: Error): void {
+    console.error(`[{{NAME}}Queue] job ${job?.id} failed:`, error);
+  }
+
+  /**
+   * Triggered when the worker itself encounters an error unrelated to a specific job.
+   *
+   * @param error - The error emitted by the worker.
+   */
+  public onError(error: Error): void {
+    console.error(`[{{NAME}}Queue] worker error:`, error);
+  }
+}

@@ -1,0 +1,22 @@
+import { has, trans, type TransDictType, type TransParamsType } from "@talosjs/utils/trans";
+import { useLang } from "../../../shared/hooks/useLang";
+import dict from "./translations.json";
+
+// Translation hook for the {{NAME}} resource. `useLang` resolves the active
+// language from the `lang` query param; keys are looked up in `translations.json`
+// and interpolated by `trans` from @talosjs/utils.
+export const use{{NAME}}Translate = () => {
+  const { lang } = useLang();
+
+  return {
+    // Translates `key`, interpolating `params` and pluralizing on `count`.
+    // Returns the key itself when no matching entry exists.
+    trans: (key: string, params?: TransParamsType, count?: number): string => {
+      const result = trans(dict as TransDictType, key, { lang, params, count });
+
+      return result.found ? result.value : key;
+    },
+    // Whether `key` exists in the dictionary.
+    has: (key: string): boolean => has(dict as TransDictType, key),
+  };
+};

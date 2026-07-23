@@ -1,0 +1,124 @@
+import { inject } from "@talosjs/container";
+import type { ITypeormDatabase } from "@talosjs/database";
+import { decorator } from "@talosjs/repository";
+import type { FilterResultType } from "@talosjs/types";
+import type { FindManyOptions, FindOptionsWhere, Repository, SaveOptions, UpdateResult } from "typeorm";
+import { {{NAME}}Entity } from "../entities/{{NAME}}Entity";
+
+@decorator.repository()
+export class {{NAME}}Repository {
+  constructor(
+    @inject("database")
+    private readonly database: ITypeormDatabase,
+  ) {}
+
+  public async open(): Promise<Repository<{{NAME}}Entity>> {
+    return await this.database.open({{NAME}}Entity);
+  }
+
+  public async close(): Promise<void> {
+    await this.database.close();
+  }
+
+  public async find(
+    criteria: FindManyOptions<{{NAME}}Entity> & { page?: number; limit?: number; q?: string },
+  ): Promise<FilterResultType<{{NAME}}Entity>> {
+    const repository = await this.open();
+
+    const { page = 1, limit = 100, q, ...rest } = criteria;
+
+    let skip: number | undefined;
+    const take = limit === 0 ? 100 : limit;
+
+    if (page && page > 0 && limit && limit > 0) {
+      skip = (page - 1) * take;
+    }
+
+    let findOptions = { ...rest, take, ...(skip !== undefined && { skip }) };
+    if (q) {
+      findOptions = {
+        ...findOptions,
+        where: {
+          ...rest.where,
+          // name: ILike(`%${q}%`),
+        },
+      };
+    }
+
+    const result = await repository.find(findOptions);
+
+    // Apply the same where conditions for count including name search
+    let countWhere = rest.where;
+    if (q) {
+      countWhere = {
+        ...rest.where,
+        // name: ILike(`%${q}%`),
+      };
+    }
+
+    const total = await this.count(countWhere);
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      resources: result,
+      total,
+      totalPages,
+      page,
+      limit,
+    };
+  }
+
+  public async findOne(id: string): Promise<{{NAME}}Entity | null> {
+    const repository = await this.open();
+
+    return await repository.findOne({
+      where: { id },
+    });
+  }
+
+  public async findOneBy(criteria: FindOptionsWhere<{{NAME}}Entity>): Promise<{{NAME}}Entity | null> {
+    const repository = await this.open();
+
+    return await repository.findOne({
+      where: criteria,
+    });
+  }
+
+  public async create(entity: {{NAME}}Entity, options?: SaveOptions): Promise<{{NAME}}Entity> {
+    const repository = await this.open();
+
+    return await repository.save(entity, options);
+  }
+
+  public async createMany(entities: {{NAME}}Entity[], options?: SaveOptions): Promise<{{NAME}}Entity[]> {
+    const repository = await this.open();
+
+    return await repository.save(entities, options);
+  }
+
+  public async update(entity: Partial<{{NAME}}Entity> & { id: string }): Promise<UpdateResult> {
+    const repository = await this.open();
+
+    return await repository.update(entity.id, entity);
+  }
+
+  public async updateMany(entities: (Partial<{{NAME}}Entity> & { id: string })[]): Promise<UpdateResult[]> {
+    const repository = await this.open();
+
+    return await Promise.all(entities.map((entity) => repository.update(entity.id, entity)));
+  }
+
+  public async delete(
+    criteria: FindOptionsWhere<{{NAME}}Entity> | FindOptionsWhere<{{NAME}}Entity>[],
+  ): Promise<UpdateResult> {
+    const repository = await this.open();
+
+    return await repository.softDelete(criteria);
+  }
+
+  public async count(criteria?: FindOptionsWhere<{{NAME}}Entity> | FindOptionsWhere<{{NAME}}Entity>[]): Promise<number> {
+    const repository = await this.open();
+
+    return await repository.count(criteria ? { where: criteria } : {});
+  }
+}

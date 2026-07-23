@@ -1,0 +1,7 @@
+type {{NAME}}PropsType = {
+  children?: React.ReactNode;
+};
+
+export const {{NAME}} = ({ children }: {{NAME}}PropsType) => {
+  return <div>{children}</div>;
+};

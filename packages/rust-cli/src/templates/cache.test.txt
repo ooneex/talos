@@ -1,0 +1,28 @@
+import { describe, expect, test } from "bun:test";
+import { {{NAME}}Cache } from "@module/{{MODULE}}/cache/{{NAME}}Cache";
+
+describe("{{NAME}}Cache", () => {
+  test("should have class name ending with 'Cache'", () => {
+    expect({{NAME}}Cache.name.endsWith("Cache")).toBe(true);
+  });
+
+  test("should have 'get' method", () => {
+    expect({{NAME}}Cache.prototype.get).toBeDefined();
+    expect(typeof {{NAME}}Cache.prototype.get).toBe("function");
+  });
+
+  test("should have 'set' method", () => {
+    expect({{NAME}}Cache.prototype.set).toBeDefined();
+    expect(typeof {{NAME}}Cache.prototype.set).toBe("function");
+  });
+
+  test("should have 'delete' method", () => {
+    expect({{NAME}}Cache.prototype.delete).toBeDefined();
+    expect(typeof {{NAME}}Cache.prototype.delete).toBe("function");
+  });
+
+  test("should have 'has' method", () => {
+    expect({{NAME}}Cache.prototype.has).toBeDefined();
+    expect(typeof {{NAME}}Cache.prototype.has).toBe("function");
+  });
+});

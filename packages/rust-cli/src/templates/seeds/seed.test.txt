@@ -1,0 +1,50 @@
+import { join } from "node:path";
+import { describe, expect, test } from "bun:test";
+import { {{NAME}}Seed } from "@module/{{MODULE}}/seeds/{{NAME}}Seed";
+import {{MODULE}}Yml from "../../{{MODULE}}.yml";
+
+describe("{{NAME}}Seed", () => {
+  test("should have class name ending with 'Seed'", () => {
+    expect({{NAME}}Seed.name.endsWith("Seed")).toBe(true);
+  });
+
+  test("should have 'run' method", () => {
+    expect({{NAME}}Seed.prototype.run).toBeDefined();
+    expect(typeof {{NAME}}Seed.prototype.run).toBe("function");
+  });
+
+  test("should have 'isActive' method", () => {
+    expect({{NAME}}Seed.prototype.isActive).toBeDefined();
+    expect(typeof {{NAME}}Seed.prototype.isActive).toBe("function");
+  });
+
+  test("should have 'getDependencies' method", () => {
+    expect({{NAME}}Seed.prototype.getDependencies).toBeDefined();
+    expect(typeof {{NAME}}Seed.prototype.getDependencies).toBe("function");
+  });
+
+  test("should have 'getEnv' method", () => {
+    expect({{NAME}}Seed.prototype.getEnv).toBeDefined();
+    expect(typeof {{NAME}}Seed.prototype.getEnv).toBe("function");
+  });
+
+  test("should return empty array from 'getEnv' by default", () => {
+    const seed = new {{NAME}}Seed();
+    expect(seed.getEnv()).toEqual([]);
+  });
+
+  test("should have a data yml file", async () => {
+    const dataFile = Bun.file(join(import.meta.dir, "../../src/seeds/{{DATA_FILE}}.yml"));
+    expect(await dataFile.exists()).toBe(true);
+  });
+
+  test("should match the locked hash in {{MODULE}}.yml", async () => {
+    const content = await Bun.file(join(import.meta.dir, "../../src/seeds/{{DATA_FILE}}.yml")).text();
+    const actualHash = new Bun.CryptoHasher("sha256").update(content).digest("hex");
+
+    const lockedSeeds = {{MODULE}}Yml.seeds as Record<string, { hash: string }>;
+    const lockedHash = lockedSeeds["{{DATA_FILE}}"]?.hash;
+    expect(lockedHash).toBeDefined();
+    expect(actualHash).toBe(lockedHash as string);
+  });
+});

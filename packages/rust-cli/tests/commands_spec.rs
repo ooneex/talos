@@ -5,6 +5,7 @@ use clap::Parser;
 use rust_cli::commands::Commands;
 
 #[derive(Parser)]
+#[command(disable_help_subcommand = true)]
 struct TestCli {
     #[command(subcommand)]
     command: Option<Commands>,

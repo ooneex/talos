@@ -1,0 +1,450 @@
+#compdef oo talos
+
+_talos_modules() {
+  local -a modules
+  if [[ -d modules ]]; then
+    modules=(${(@f)"$(command ls -1 modules 2>/dev/null)"})
+    compadd -a modules
+  fi
+}
+
+_talos_publish_packages() {
+  local -a packages
+  if [[ -d packages ]]; then
+    packages=(packages/*/package.json(N))
+    packages=(${${packages%/package.json}#packages/})
+    _values -s , 'packages' $packages
+  fi
+}
+
+_talos_publish_modules() {
+  local -a modules
+  if [[ -d modules ]]; then
+    modules=(modules/*/package.json(N))
+    modules=(${${modules%/package.json}#modules/})
+    _values -s , 'modules' $modules
+  fi
+}
+
+_talos_docker_publish_packages() {
+  local -a packages
+  if [[ -d packages ]]; then
+    packages=(packages/*/Dockerfile(N))
+    packages=(${${packages%/Dockerfile}#packages/})
+    _values -s , 'packages' $packages
+  fi
+}
+
+_talos_docker_publish_modules() {
+  local -a modules
+  if [[ -d modules ]]; then
+    modules=(modules/*/Dockerfile(N))
+    modules=(${${modules%/Dockerfile}#modules/})
+    _values -s , 'modules' $modules
+  fi
+}
+
+_talos_custom_commands() {
+  local -a cmds
+  if [[ -d modules ]]; then
+    cmds=(${(@f)"$(command grep -rh -A1 'getName' modules/*/src/commands/*Command.ts 2>/dev/null | sed -n 's/.*return "\(.*\)".*/\1/p' | sort -u)"})
+    compadd -a cmds
+  fi
+}
+
+_talos_run_commands() {
+  local -a pkgfiles cmds
+  pkgfiles=(modules/*/package.json(N) packages/*/package.json(N))
+  # `install` is a built-in monorepo:run command, not a package.json script.
+  cmds=(install)
+  if (( ${#pkgfiles} )); then
+    cmds+=(${(f)"$(command awk '
+      /"scripts"[[:space:]]*:[[:space:]]*\{/ { inside=1; next }
+      inside && /^[[:space:]]*\}/ { inside=0; next }
+      inside { if (match($0, /"[^"]+"/)) print substr($0, RSTART+1, RLENGTH-2) }
+    ' $pkgfiles 2>/dev/null)"})
+  fi
+  # Deduplicate script names collected across every package and module.
+  cmds=(${(u)cmds})
+  _values -s , 'commands' $cmds
+}
+
+_talos_design_modules() {
+  local -a designs
+  if [[ -d modules ]]; then
+    designs=(${(@f)"$(command grep -rl 'type: "design"' modules/*/*.yml 2>/dev/null | sed -n 's|modules/\([^/]*\)/.*|\1|p' | sort -u)"})
+    compadd -a designs
+  fi
+}
+
+_talos_destination_modules() {
+  local -a destinations
+  if [[ -d modules ]]; then
+    destinations=(${(@f)"$(command grep -rlE 'type: "(api|microservice)"' modules/*/*.yml 2>/dev/null | sed -n 's|modules/\([^/]*\)/.*|\1|p' | sort -u)"})
+    compadd -a destinations
+  fi
+}
+
+_talos_sdk_modules() {
+  local -a targets
+  if [[ -d modules ]]; then
+    targets=(app ${(@f)"$(command grep -rl 'type: "microservice"' modules/*/*.yml 2>/dev/null | sed -n 's|modules/\([^/]*\)/.*|\1|p' | sort -u)"})
+    compadd -a targets
+  fi
+}
+
+_talos_sdk_names() {
+  local -a names
+  if [[ -d modules ]]; then
+    names=(${(@f)"$(command grep -rl 'type: "sdk"' modules/*/*.yml 2>/dev/null | sed -n 's|modules/\([^/]*\)/.*|\1|p' | sort -u)"})
+    compadd -a names
+  fi
+}
+
+_talos_runnable_modules() {
+  local -a modules
+  if [[ -d modules ]]; then
+    modules=(${(@f)"$(command grep -rlE 'type: "(api|microservice|spa|storybook|swagger)"' modules/*/*.yml 2>/dev/null | sed -n 's|modules/\([^/]*\)/.*|\1|p' | sort -u)"})
+    _values -s , 'modules' $modules
+  fi
+}
+
+_talos_agent_dirs() {
+  local -a dirs
+  dirs=(
+    '.claude:Claude'
+    '.codex:Codex'
+    '.cursor:Cursor'
+    '.gemini:Gemini'
+    '.windsurf:Windsurf'
+    '.cline:Cline'
+    '.junie:JetBrains Junie'
+    '.roo:Roo Code'
+    '.continue:Continue'
+    '.zed:Zed'
+  )
+  _values -s , 'agents' $dirs
+}
+
+_talos() {
+  local -a commands
+  commands=(
+    'app\:create:Create a new application'
+    'app\:init:Initialize an application'
+    'app\:start:Start the application'
+    'app\:stop:Stop the application'
+    'agent\:skills\:create:Scaffold skills and configuration for coding assistants'
+    'command\:run:Run a custom command from a module'
+    'completion\:zsh:Install Zsh completion for oo command'
+    'completion\:bash:Install Bash completion for oo command'
+    'completion\:fish:Install Fish completion for oo command'
+    'help:Show available commands'
+    'version:Print the installed CLI version'
+    'upgrade:Upgrade the CLI to its latest version'
+    'issue\:create:Create a YAML skeleton file for a new issue'
+    'issue\:pull:Pull an issue from Linear or Jira and save it as a YAML file'
+    'issue\:push:Push a local issue YAML to Linear (create or update)'
+    'ai\:chat\:create:Generate a new AI chat class'
+    'ai\:tool\:create:Generate a new AI tool class'
+    'ai\:middleware\:create:Generate a new AI middleware class'
+    'analytics\:create:Generate a new analytics class'
+    'cache\:create:Generate a new cache class'
+    'command\:create:Generate a new command class'
+    'controller\:create:Generate a new controller class'
+    'cron\:create:Generate a new cron class'
+    'database\:create:Generate a new database class'
+    'design\:create:Generate a new design module'
+    'design\:remove:Remove an existing design module'
+    'docker\:create:Add a docker service to docker-compose.yml'
+    'docker\:credentials\:create:Save a Docker registry access token under the user config'
+    'docker\:publish:Build and push a package or module Docker image to Docker Hub'
+    'github\:credentials\:create:Save a GitHub Personal Access Token under the user config'
+    'github\:secret\:push:Create or update a GitHub Actions secret on a repository'
+    'gitlab\:credentials\:create:Save a GitLab Personal Access Token under the user config'
+    'gitlab\:secret\:push:Create or update a GitLab CI/CD variable on a project'
+    'bitbucket\:credentials\:create:Save a Bitbucket app password under the user config'
+    'bitbucket\:secret\:push:Create or update a Bitbucket Pipelines repository variable'
+    'jira\:credentials\:create:Save a Jira API token under the user config'
+    'linear\:credentials\:create:Save a Linear Personal API key under the user config'
+    'npm\:credentials\:create:Save an npm Granular Access Token under the user config'
+    'npm\:publish:Publish a package or module to npm'
+    'monorepo\:run:Run package.json scripts across packages and modules with granular caching'
+    'run:Alias for monorepo:run — run package.json scripts across packages and modules with granular caching'
+    'monorepo\:check:Run install, build, lint and test across packages and modules with granular caching'
+    'check:Alias for monorepo:check — run install, build, fmt, lint and test across packages and modules with granular caching'
+    'build:Alias for monorepo:run --commands=build — run the build script across packages and modules with granular caching'
+    'fmt:Alias for monorepo:run --commands=fmt — run the fmt script across packages and modules with granular caching'
+    'lint:Alias for monorepo:run --commands=lint — run the lint script across packages and modules with granular caching'
+    'test:Alias for monorepo:run --commands=test — run the test script across packages and modules with granular caching'
+    'e2e\:run:Alias for monorepo:run --commands=e2e — run the e2e script across packages and modules with granular caching'
+    'e2e\:create:Generate a new Playwright e2e test'
+    'entity\:create:Generate a new entity class'
+    'flag\:create:Generate a new feature flag class'
+    'logger\:create:Generate a new logger class'
+    'mailer\:create:Generate a new mailer class'
+    'middleware\:create:Generate a new middleware class'
+    'permission\:create:Generate a new permission class'
+    'queue\:create:Generate a new queue class'
+    'rate-limit\:create:Generate a new rate limiter class'
+    'event\:create:Generate a new event class'
+    'release\:create:Release packages with version bump, changelog, and git tag'
+    'repository\:create:Generate a new repository class'
+    'sdk\:create:Generate a browser SDK from module controllers'
+    'service\:create:Generate a new service class'
+    'spa\:create:Generate a new spa module'
+    'spa\:feature\:create:Generate a new spa feature (route, layout, hooks and folders)'
+    'react\:component\:create:Generate a new react component (with test) in a module or feature'
+    'spa\:remove:Remove an existing spa module'
+    'storage\:create:Generate a new storage class'
+    'translation\:create:Generate a new translation class'
+    'vector-database\:create:Generate a new vector database class'
+    'workflow\:create:Generate a new workflow class'
+    'workflow\:transition\:create:Generate a new workflow transition class'
+    'microservice\:create:Generate a new microservice'
+    'microservice\:remove:Remove an existing microservice'
+    'migration\:create:Generate a new migration file'
+    'migration\:up:Run migrations for all modules'
+    'migration\:down:Roll back migrations for all modules'
+    'module\:create:Generate a new module'
+    'module\:remove:Remove an existing module'
+    'seed\:create:Generate a new seed file'
+    'seed\:run:Run seeds for all modules'
+  )
+
+  _arguments -s \
+    '1:command:->cmds' \
+    '*::options:->opts' \
+    && return 0
+
+  case "$state" in
+    cmds)
+      _describe -t commands 'talos command' commands
+      ;;
+    opts)
+      case "$words[1]" in
+        completion:zsh|completion:bash|completion:fish|help|version|upgrade)
+          ;;
+        agent:skills:create)
+          _arguments -s \
+            '--agents=-[Assistant config dir(s), comma-separated]::agents:_talos_agent_dirs' \
+            '--cwd=[Working directory]:cwd:_files -/'
+          ;;
+        app:start|app:stop)
+          _arguments -s \
+            '--modules=-[Module name(s), comma-separated (default: all)]::modules:_talos_runnable_modules' \
+            '--packages=-[Alias for --modules, comma-separated (default: all)]::modules:_talos_runnable_modules'
+          ;;
+        sdk:create)
+          _arguments -s \
+            '--name=[Name of the SDK module]:name:_talos_sdk_names' \
+            '--module=[Target module the SDK is generated from]:module:_talos_sdk_modules'
+          ;;
+        app:create)
+          _arguments -s \
+            '--name=[Name of the resource]:name' \
+            '--destination=[Destination path]:destination:_files -/'
+          ;;
+        app:init)
+          _arguments -s \
+            '--name=[Name of the resource]:name' \
+            '--destination=[Destination path]:destination:_files -/' \
+            '--app-type=[Application type]:type:(cli api)'
+          ;;
+        command:run)
+          _arguments -s \
+            '1:command name:_talos_custom_commands'
+          ;;
+        issue:create)
+          _arguments -s \
+            '--title=[Issue title]:title' \
+            '--priority=[Issue priority]:priority:(Low Medium High Urgent)' \
+            '--description=[Issue description]:description' \
+            '*--labels=[Label (repeatable)]:label' \
+            '--module=[Module name]:module:_talos_modules' \
+            '--interactive[Prompt for all fields]'
+          ;;
+        issue:pull)
+          _arguments -s \
+            '--id=[Issue ID or identifier]:id' \
+            '--module=[Module name]:module:_talos_modules'
+          ;;
+        issue:push)
+          _arguments -s \
+            '--id=[Local issue ID to push]:id' \
+            '--module=[Module name]:module:_talos_modules'
+          ;;
+        react:component:create)
+          _arguments -s \
+            '--name=[Name of the resource]:name' \
+            '--module=[Module name]:module:_talos_modules' \
+            '--feature=[Feature name (scopes the component to a feature)]:feature' \
+            '--override[Override existing file]'
+          ;;
+        ai:chat:create|ai:tool:create|ai:middleware:create|analytics:create|cache:create|command:create|cron:create|database:create|e2e:create|flag:create|logger:create|mailer:create|permission:create|queue:create|rate-limit:create|repository:create|service:create|spa:feature:create|storage:create|translation:create|vector-database:create|workflow:create|workflow:transition:create)
+          _arguments -s \
+            '--name=[Name of the resource]:name' \
+            '--module=[Module name]:module:_talos_modules' \
+            '--override[Override existing file]'
+          ;;
+        controller:create)
+          _arguments -s \
+            '--name=[Name of the resource]:name' \
+            '--module=[Module name]:module:_talos_modules' \
+            '--route-name=[Route name]:route_name' \
+            '--route-path=[Route path]:route_path' \
+            '--route-method=[Route HTTP method]:method:(GET POST PUT PATCH DELETE HEAD OPTIONS)' \
+            '--is-socket[Socket mode]' \
+            '--override[Override existing file]'
+          ;;
+        docker:create)
+          _arguments -s \
+            '--name=[Docker service name]:name:(clickhouse elasticsearch grafana jaeger keycloak libretranslate maildev memcached minio mongodb mysql nats postgres prometheus rabbitmq redis temporal vault)'
+          ;;
+        docker:credentials:create)
+          _arguments -s \
+            '--registry=[Docker registry]:registry' \
+            '--username=[Docker username]:username' \
+            '--token=[Docker access token]:token'
+          ;;
+        docker:publish)
+          _arguments -s \
+            '--packages=-[Package name(s), comma-separated (default: all)]::packages:_talos_docker_publish_packages' \
+            '--modules=-[Module name(s), comma-separated (default: all)]::modules:_talos_docker_publish_modules' \
+            '--tag=[Image tag (default: package.json version or latest)]:tag'
+          ;;
+        github:credentials:create)
+          _arguments -s \
+            '--token=[GitHub Personal Access Token]:token'
+          ;;
+        github:secret:push)
+          _arguments -s \
+            '--name=[Secret name]:name' \
+            '--value=[Secret value]:value'
+          ;;
+        gitlab:credentials:create)
+          _arguments -s \
+            '--token=[GitLab Personal Access Token]:token'
+          ;;
+        gitlab:secret:push)
+          _arguments -s \
+            '--name=[Variable name]:name' \
+            '--value=[Variable value]:value'
+          ;;
+        bitbucket:credentials:create)
+          _arguments -s \
+            '--username=[Bitbucket username]:username' \
+            '--token=[Bitbucket app password]:token'
+          ;;
+        bitbucket:secret:push)
+          _arguments -s \
+            '--name=[Variable name]:name' \
+            '--value=[Variable value]:value'
+          ;;
+        jira:credentials:create)
+          _arguments -s \
+            '--base-url=[Jira base URL]:baseUrl' \
+            '--email=[Jira account email]:email' \
+            '--token=[Jira API token]:token'
+          ;;
+        linear:credentials:create)
+          _arguments -s \
+            '--token=[Linear Personal API key]:token'
+          ;;
+        npm:credentials:create)
+          _arguments -s \
+            '--token=[npm Granular Access Token]:token'
+          ;;
+        npm:publish)
+          _arguments -s \
+            '--packages=-[Package name(s), comma-separated (default: all)]::packages:_talos_publish_packages' \
+            '--modules=-[Module name(s), comma-separated (default: all)]::modules:_talos_publish_modules' \
+            '--access=[Registry access level]:access:(public restricted)'
+          ;;
+        monorepo:run|run)
+          _arguments -s \
+            '--commands=[Command name(s), comma-separated (required)]:commands:_talos_run_commands' \
+            '--packages=-[Package name(s), comma-separated (default: all)]::packages:_talos_publish_packages' \
+            '--modules=-[Module name(s), comma-separated (default: all)]::modules:_talos_publish_modules' \
+            '--logs[Stream plain logs instead of the interactive view]' \
+            '--no-cache[Skip reading and writing the task cache]'
+          ;;
+        monorepo:check|check|build|fmt|lint|test|e2e:run)
+          _arguments -s \
+            '--packages=-[Package name(s), comma-separated (default: all)]::packages:_talos_publish_packages' \
+            '--modules=-[Module name(s), comma-separated (default: all)]::modules:_talos_publish_modules' \
+            '--logs[Stream plain logs instead of the interactive view]' \
+            '--no-cache[Skip reading and writing the task cache]'
+          ;;
+        entity:create)
+          _arguments -s \
+            '--name=[Name of the resource]:name' \
+            '--module=[Module name]:module:_talos_modules' \
+            '--table-name=[Database table name]:table_name' \
+            '--override[Override existing file]'
+          ;;
+        middleware:create)
+          _arguments -s \
+            '--name=[Name of the resource]:name' \
+            '--module=[Module name]:module:_talos_modules' \
+            '--is-socket[Socket mode]' \
+            '--override[Override existing file]'
+          ;;
+        event:create)
+          _arguments -s \
+            '--name=[Name of the resource]:name' \
+            '--module=[Module name]:module:_talos_modules' \
+            '--channel=[Channel name]:channel' \
+            '--override[Override existing file]'
+          ;;
+        migration:create)
+          _arguments -s \
+            '--module=[Module name]:module:_talos_modules'
+          ;;
+        release:create)
+          _arguments -s \
+            '--packages=-[Package name(s), comma-separated (default: all)]::packages:_talos_publish_packages' \
+            '--modules=-[Module name(s), comma-separated (default: all)]::modules:_talos_publish_modules' \
+            '--publish[Publish released packages to npm]'
+          ;;
+        migration:up)
+          _arguments -s \
+            '--drop[Drop the database before running]' \
+            '--no-cache[Skip the per-migration run cache]'
+          ;;
+        seed:run)
+          _arguments -s \
+            '--drop[Drop the database before running]'
+          ;;
+        migration:down)
+          _arguments -s \
+            '--version=[Version of the migration to roll back]:version'
+          ;;
+        design:create|microservice:create)
+          _arguments -s \
+            '--name=[Name of the resource]:name'
+          ;;
+        module:create)
+          _arguments -s \
+            '--name=[Name of the resource]:name' \
+            '--destination=[Destination module]:destination:_talos_destination_modules'
+          ;;
+        spa:create)
+          _arguments -s \
+            '--name=[Name of the resource]:name' \
+            '--design=[Design module name]:design:_talos_design_modules'
+          ;;
+        design:remove|spa:remove|microservice:remove|module:remove)
+          _arguments -s \
+            '--name=[Module name]:name:_talos_modules'
+          ;;
+        seed:create)
+          _arguments -s \
+            '--name=[Name of the resource]:name' \
+            '--module=[Module name]:module:_talos_modules'
+          ;;
+      esac
+      ;;
+  esac
+}
+
+_talos "$@"

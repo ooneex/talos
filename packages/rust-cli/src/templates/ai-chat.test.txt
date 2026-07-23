@@ -1,0 +1,32 @@
+import { describe, expect, test } from "bun:test";
+import { {{NAME}}Chat } from "@module/{{MODULE}}/ai/chats/{{NAME}}Chat";
+
+describe("{{NAME}}Chat", () => {
+  const chat = new {{NAME}}Chat();
+
+  test("should have class name ending with 'Chat'", () => {
+    expect({{NAME}}Chat.name.endsWith("Chat")).toBe(true);
+  });
+
+  test("should expose a model string", () => {
+    expect(typeof chat.getModel()).toBe("string");
+    expect(chat.getModel().length).toBeGreaterThan(0);
+  });
+
+  test("should expose system prompts as an array", () => {
+    expect(Array.isArray(chat.getSystemPrompts())).toBe(true);
+  });
+
+  test("should expose tools as an array", () => {
+    expect(Array.isArray(chat.getTools())).toBe(true);
+  });
+
+  test("should expose middlewares as an array", () => {
+    expect(Array.isArray(chat.getMiddlewares())).toBe(true);
+  });
+
+  test("should have 'run' and 'stream' methods", () => {
+    expect(typeof chat.run).toBe("function");
+    expect(typeof chat.stream).toBe("function");
+  });
+});

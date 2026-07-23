@@ -2,7 +2,12 @@ use clap::Parser;
 use rust_cli::commands::Commands;
 
 #[derive(Parser)]
-#[command(name = "talosrs", about = "Talosrs CLI", version)]
+#[command(
+    name = "talosrs",
+    about = "Talosrs CLI",
+    version,
+    disable_help_subcommand = true
+)]
 struct Cli {
     #[command(subcommand)]
     command: Option<Commands>,

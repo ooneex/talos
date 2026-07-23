@@ -1,0 +1,40 @@
+import { DataSource } from "typeorm";
+import { TypeormDatabase, DatabaseException, decorator } from "@talosjs/database";
+import { inject } from "@talosjs/container";
+import { AppEnv } from "@talosjs/app-env";
+import { SharedModule } from "@module/shared/SharedModule";
+
+@decorator.database()
+export class {{NAME}}Database extends TypeormDatabase {
+  public constructor(@inject(AppEnv) private readonly env: AppEnv) {
+    super();
+  }
+
+  public getSource(_database?: string): DataSource {
+    if (this.source) {
+      return this.source;
+    }
+
+    const url = this.env.DATABASE_URL ?? "";
+
+    if (!url) {
+      throw new DatabaseException(
+        "Database URL is required. Please provide a URL either through the constructor options or set the DATABASE_URL environment variable.",
+        "CONNECTION_FAILED",
+      );
+    }
+
+    this.source = new DataSource({
+      synchronize: false,
+      entities: SharedModule.entities,
+      extra: {
+        max: 10,
+        // idleTimeoutMillis: 30000,
+      },
+      url,
+      type: "postgres",
+    });
+
+    return this.source;
+  }
+}

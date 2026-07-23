@@ -1,0 +1,12 @@
+import { decorator } from "@talosjs/service";
+import type { IService } from "@talosjs/service";
+
+type ServiceDataType = Record<string, unknown>;
+
+@decorator.service()
+export class {{NAME}}Service implements IService {
+  // biome-ignore lint/suspicious/noExplicitAny: trust me
+  public async execute(data?: ServiceDataType): Promise<any> {
+    // TODO: Implement service logic
+  }
+}

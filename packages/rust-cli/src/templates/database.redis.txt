@@ -1,0 +1,10 @@
+import { RedisDatabase, decorator } from "@talosjs/database";
+import { inject } from "@talosjs/container";
+import { AppEnv } from "@talosjs/app-env";
+
+@decorator.database()
+export class {{NAME}}Database extends RedisDatabase {
+  public constructor(@inject(AppEnv) env: AppEnv) {
+    super(env);
+  }
+}

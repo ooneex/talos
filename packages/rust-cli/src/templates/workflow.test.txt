@@ -1,0 +1,27 @@
+import { describe, expect, test } from "bun:test";
+import { {{NAME}}Workflow } from "@module/{{MODULE}}/workflows/{{NAME}}Workflow";
+
+describe("{{NAME}}Workflow", () => {
+  const workflow = new {{NAME}}Workflow();
+
+  test("should have class name ending with 'Workflow'", () => {
+    expect({{NAME}}Workflow.name.endsWith("Workflow")).toBe(true);
+  });
+
+  test("should expose a non-empty name", () => {
+    expect(typeof workflow.getName()).toBe("string");
+    expect(workflow.getName().length).toBeGreaterThan(0);
+  });
+
+  test("should expose a description", () => {
+    expect(typeof workflow.getDescription()).toBe("string");
+  });
+
+  test("should expose transitions as an array", () => {
+    expect(Array.isArray(workflow.getTransitions())).toBe(true);
+  });
+
+  test("should expose a run method", () => {
+    expect(typeof workflow.run).toBe("function");
+  });
+});

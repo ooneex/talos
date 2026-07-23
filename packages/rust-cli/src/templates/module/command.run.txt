@@ -1,0 +1,6 @@
+#!/usr/bin/env bun
+
+import { run } from "@talosjs/command";
+import "@module/{{name}}/commands/commands";
+
+await run();

@@ -1,0 +1,14 @@
+services:
+  # Jaeger - Distributed tracing system
+  # Docs: https://www.jaegertracing.io/docs/
+  # Web UI: http://localhost:16686
+  # Agent (UDP): localhost:6831
+  # Collector: localhost:14268
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: jaeger
+    restart: "on-failure"
+    ports:
+      - "16686:16686"
+      - "6831:6831/udp"
+      - "14268:14268"

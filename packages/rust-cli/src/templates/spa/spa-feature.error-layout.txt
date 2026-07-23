@@ -1,0 +1,17 @@
+import type { ErrorComponentProps } from "@tanstack/react-router";
+import type { ReactNode } from "react";
+
+// Rendered by the route's `errorComponent` when loading or rendering throws.
+// `error` is the thrown error and `reset` retries the route's error boundary.
+// See TanStack Router "Data Loading".
+export const {{NAME}}ErrorLayout = ({ error, reset }: ErrorComponentProps): ReactNode => {
+  return (
+    <section role="alert">
+      <h1>Something went wrong</h1>
+      <p>{error.message}</p>
+      <button type="button" onClick={reset}>
+        Retry
+      </button>
+    </section>
+  );
+};

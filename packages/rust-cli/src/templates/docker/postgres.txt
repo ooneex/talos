@@ -1,0 +1,21 @@
+services:
+  # PostgreSQL - Primary relational database
+  # Docs: https://www.postgresql.org/docs/
+  # Connection: postgresql://talos:talos@localhost:5432/talos
+  postgres:
+    image: postgres:17-alpine
+    container_name: postgres
+    restart: "on-failure"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_db:/var/lib/postgresql/data:rw
+    environment:
+      - POSTGRES_ROOT_PASSWORD=talos
+      - POSTGRES_DATABASE=talos
+      - POSTGRES_USER=talos
+      - POSTGRES_PASSWORD=talos
+      - PGDATA=/var/lib/postgresql/data/pgdata
+
+volumes:
+  postgres_db:

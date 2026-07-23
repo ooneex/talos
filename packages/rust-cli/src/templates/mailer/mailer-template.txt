@@ -1,0 +1,15 @@
+import { MailerLayout } from "@talosjs/mailer";
+
+export type {{NAME}}MailerPropsType = {
+  link: string;
+};
+
+export const {{NAME}}MailerTemplate = (props?: {{NAME}}MailerPropsType) => (
+  <MailerLayout>
+    <MailerLayout.Header />
+    <MailerLayout.Body>
+      <a href={props?.link}>Login</a>
+    </MailerLayout.Body>
+    <MailerLayout.Footer />
+  </MailerLayout>
+);

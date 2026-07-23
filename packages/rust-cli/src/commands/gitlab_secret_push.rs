@@ -1,0 +1,181 @@
+use std::path::PathBuf;
+use std::process::Command;
+
+use clap::Args;
+use serde_json::json;
+
+use crate::utils::{ask_input, ask_password, current_dir, read_credentials};
+
+/// Rust port of `packages/cli/src/commands/GitlabSecretPushCommand.ts`.
+#[derive(Args, Debug)]
+pub struct GitlabSecretPushArgs {
+    /// Variable name.
+    #[arg(long)]
+    pub name: Option<String>,
+
+    /// Variable value.
+    #[arg(long)]
+    pub value: Option<String>,
+
+    /// Suppress success/error messages.
+    #[arg(long, default_value_t = false)]
+    pub silent: bool,
+
+    /// Working directory (defaults to the current directory).
+    #[arg(long)]
+    pub cwd: Option<String>,
+}
+
+fn read_token() -> Option<String> {
+    let profile = read_credentials("gitlab.yml")?;
+    profile
+        .into_iter()
+        .find_map(|(key, value)| (key == "token").then_some(value))
+}
+
+fn git_origin_url(cwd: &std::path::Path) -> Option<String> {
+    let output = Command::new("git")
+        .args(["config", "--get", "remote.origin.url"])
+        .current_dir(cwd)
+        .output()
+        .ok()?;
+    output
+        .status
+        .success()
+        .then(|| String::from_utf8_lossy(&output.stdout).trim().to_string())
+}
+
+fn parse_project(input: &str) -> Option<(String, String)> {
+    let remote = input.trim().trim_end_matches('/').trim_end_matches(".git");
+    let ssh = regex::Regex::new(r"^(?:ssh://)?git@([^/:]+)[:/](.+)$")
+        .ok()?
+        .captures(remote);
+    let https = regex::Regex::new(r"^https?://(?:[^@/]+@)?([^/]+)/(.+)$")
+        .ok()?
+        .captures(remote);
+    let host = ssh
+        .as_ref()
+        .and_then(|caps| caps.get(1))
+        .or_else(|| https.as_ref().and_then(|caps| caps.get(1)))?
+        .as_str()
+        .to_string();
+    let path = ssh
+        .as_ref()
+        .and_then(|caps| caps.get(2))
+        .or_else(|| https.as_ref().and_then(|caps| caps.get(2)))?
+        .as_str()
+        .to_string();
+    regex::Regex::new(r"^[^/\s]+/[^\s]+$")
+        .ok()?
+        .is_match(&path)
+        .then_some((host, path))
+}
+
+fn percent_encode(input: &str) -> String {
+    input
+        .bytes()
+        .map(|byte| match byte {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                (byte as char).to_string()
+            }
+            _ => format!("%{:02X}", byte),
+        })
+        .collect()
+}
+
+fn curl_json(method: &str, url: &str, body: &str, token: &str) -> Option<(u16, String)> {
+    let output = Command::new("curl")
+        .args([
+            "-sS",
+            "-X",
+            method,
+            url,
+            "-H",
+            &format!("PRIVATE-TOKEN: {token}"),
+            "-H",
+            "Content-Type: application/json",
+            "-w",
+            "\n%{http_code}",
+            "-d",
+            body,
+        ])
+        .output()
+        .ok()?;
+    let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+    let (body, code) = stdout.rsplit_once('\n')?;
+    Some((code.trim().parse().ok()?, body.to_string()))
+}
+
+pub fn run(args: &GitlabSecretPushArgs) {
+    let token = match read_token() {
+        Some(token) => token,
+        None => {
+            if !args.silent {
+                eprintln!(
+                    "✖ No GitLab credentials found. Run `talos gitlab:credentials:create` first."
+                );
+            }
+            std::process::exit(1);
+        }
+    };
+    let cwd = args
+        .cwd
+        .clone()
+        .map(PathBuf::from)
+        .unwrap_or_else(current_dir);
+    let (host, path) = match git_origin_url(&cwd).and_then(|url| parse_project(&url)) {
+        Some(project) => project,
+        None => {
+            if !args.silent {
+                eprintln!(
+                    "✖ Could not determine the GitLab project from `.git/config` in the current directory."
+                );
+            }
+            std::process::exit(1);
+        }
+    };
+    let name = args
+        .name
+        .clone()
+        .or_else(|| ask_input("Enter variable name"))
+        .unwrap_or_default();
+    let value = args
+        .value
+        .clone()
+        .or_else(|| ask_password("Enter variable value"))
+        .unwrap_or_default();
+    let base = format!(
+        "https://{host}/api/v4/projects/{}/variables",
+        percent_encode(&path)
+    );
+    let body = json!({"key": name, "value": value, "masked": true, "protected": false}).to_string();
+    let result = curl_json("POST", &base, &body, &token)
+        .or_else(|| Some((0, "curl failed".to_string())))
+        .unwrap();
+    let ok = if result.0 == 200 || result.0 == 201 {
+        true
+    } else if result.0 == 400 && result.1.to_lowercase().contains("already been taken") {
+        let update_body = json!({"value": value, "masked": true, "protected": false}).to_string();
+        curl_json(
+            "PUT",
+            &format!("{base}/{}", percent_encode(&name)),
+            &update_body,
+            &token,
+        )
+        .map(|(code, _)| code == 200)
+        .unwrap_or(false)
+    } else {
+        false
+    };
+    if !ok {
+        if !args.silent {
+            eprintln!("✖ Failed to push variable \"{name}\" to {path}");
+            eprintln!("{}", result.1.trim());
+        }
+        std::process::exit(1);
+    }
+    if !args.silent {
+        println!("✔ Variable \"{name}\" pushed to {path}");
+        println!("→ View it at https://{host}/{path}/-/settings/ci_cd");
+    }
+}

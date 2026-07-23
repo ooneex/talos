@@ -1,0 +1,13 @@
+services:
+  # NATS - High-performance messaging system with JetStream
+  # Docs: https://docs.nats.io/
+  # Client: localhost:4222
+  # Monitoring: http://localhost:8222
+  nats:
+    image: nats:2.10-alpine
+    container_name: nats
+    restart: "on-failure"
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    command: "--jetstream --http_port 8222"

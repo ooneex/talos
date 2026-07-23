@@ -1,0 +1,30 @@
+import { describe, expect, test } from "bun:test";
+import { Permission } from "@talosjs/permission";
+import { {{NAME}}Permission } from "@module/{{MODULE}}/permissions/{{NAME}}Permission";
+
+describe("{{NAME}}Permission", () => {
+  test("should have class name ending with 'Permission'", () => {
+    expect({{NAME}}Permission.name.endsWith("Permission")).toBe(true);
+  });
+
+  test("should extend Permission", () => {
+    const permission = new {{NAME}}Permission();
+    expect(permission).toBeInstanceOf(Permission);
+  });
+
+  test("should have 'allow' method", () => {
+    expect({{NAME}}Permission.prototype.allow).toBeDefined();
+    expect(typeof {{NAME}}Permission.prototype.allow).toBe("function");
+  });
+
+  test("should have 'setUserPermissions' method", () => {
+    expect({{NAME}}Permission.prototype.setUserPermissions).toBeDefined();
+    expect(typeof {{NAME}}Permission.prototype.setUserPermissions).toBe("function");
+  });
+
+  test("should have 'check' method", () => {
+    expect({{NAME}}Permission.prototype.check).toBeDefined();
+    expect(typeof {{NAME}}Permission.prototype.check).toBe("function");
+  });
+
+});

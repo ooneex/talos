@@ -1,0 +1,35 @@
+import { useQuery } from "@tanstack/react-query";
+
+export type {{NAME}}Type = {
+  id: string;
+  name: string;
+};
+
+// Query key factory — the single source of truth for this feature's keys, so
+// reads and invalidations always agree. See "Effective React Query Keys".
+export const {{CAMEL}}Keys = {
+  all: ["{{KEBAB}}"] as const,
+  details: () => [...{{CAMEL}}Keys.all, "detail"] as const,
+  detail: (id: string) => [...{{CAMEL}}Keys.details(), id] as const,
+};
+
+const get{{NAME}} = async (id: string, signal: AbortSignal): Promise<{{NAME}}Type> => {
+  const response = await fetch(`/api/{{KEBAB}}/${id}`, { signal });
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch {{KEBAB}}");
+  }
+
+  return (await response.json()) as {{NAME}}Type;
+};
+
+// Example TanStack Query custom hook for reading {{KEBAB}} data.
+export const useGet{{NAME}} = (id: string) => {
+  return useQuery({
+    queryKey: {{CAMEL}}Keys.detail(id),
+    // The injected signal cancels the request if the query unmounts or refetches.
+    queryFn: ({ signal }) => get{{NAME}}(id, signal),
+    // Skip running until an id is available (e.g. before a route param resolves).
+    enabled: Boolean(id),
+  });
+};

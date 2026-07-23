@@ -1,0 +1,12 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { {{NAME}}ErrorLayout } from "../features/{{KEBAB}}/layouts/{{NAME}}ErrorLayout";
+import { {{NAME}}Layout } from "../features/{{KEBAB}}/layouts/{{NAME}}Layout";
+import { {{NAME}}NotFoundLayout } from "../features/{{KEBAB}}/layouts/{{NAME}}NotFoundLayout";
+import { {{NAME}}SkeletonLayout } from "../features/{{KEBAB}}/layouts/{{NAME}}SkeletonLayout";
+
+export const Route = createFileRoute("/{{KEBAB}}")({
+  component: {{NAME}}Layout,
+  pendingComponent: {{NAME}}SkeletonLayout,
+  errorComponent: {{NAME}}ErrorLayout,
+  notFoundComponent: {{NAME}}NotFoundLayout,
+});

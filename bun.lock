@@ -587,6 +587,9 @@
     "packages/rust-cli": {
       "name": "@talosjs/rust-cli",
       "version": "1.0.0",
+      "dependencies": {
+        "@talosjs/translation": "^1.1.3",
+      },
     },
     "packages/seeds": {
       "name": "@talosjs/seeds",

@@ -1,0 +1,35 @@
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { {{CAMEL}}Keys, type {{NAME}}Type } from "./useGet{{NAME}}";
+
+type Update{{NAME}}InputType = Partial<Omit<{{NAME}}Type, "id">> & { id: string };
+
+const update{{NAME}} = async ({ id, ...input }: Update{{NAME}}InputType): Promise<{{NAME}}Type> => {
+  const response = await fetch(`/api/{{KEBAB}}/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to update {{KEBAB}}");
+  }
+
+  return (await response.json()) as {{NAME}}Type;
+};
+
+// Example TanStack Query custom hook for updating {{KEBAB}} data.
+export const useUpdate{{NAME}} = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: update{{NAME}},
+    onSuccess: (data) => {
+      // Seed the cache with the server response so observers see it immediately,
+      // then invalidate to refetch anything else keyed under this feature.
+      queryClient.setQueryData({{CAMEL}}Keys.detail(data.id), data);
+
+      // Returning the promise keeps the mutation pending until the refetch settles.
+      return queryClient.invalidateQueries({ queryKey: {{CAMEL}}Keys.all });
+    },
+  });
+};

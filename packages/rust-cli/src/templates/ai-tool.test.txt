@@ -1,0 +1,28 @@
+import { describe, expect, test } from "bun:test";
+import { {{NAME}}Tool } from "@module/{{MODULE}}/ai/tools/{{NAME}}Tool";
+
+describe("{{NAME}}Tool", () => {
+  const tool = new {{NAME}}Tool();
+
+  test("should have class name ending with 'Tool'", () => {
+    expect({{NAME}}Tool.name.endsWith("Tool")).toBe(true);
+  });
+
+  test("should expose a non-empty name", () => {
+    expect(typeof tool.getName()).toBe("string");
+    expect(tool.getName().length).toBeGreaterThan(0);
+  });
+
+  test("should expose a description", () => {
+    expect(typeof tool.getDescription()).toBe("string");
+  });
+
+  test("should expose an input schema", () => {
+    expect(tool.getInputSchema).toBeDefined();
+    expect(tool.getInputSchema?.()).toBeDefined();
+  });
+
+  test("should expose a handler", () => {
+    expect(typeof tool.handler).toBe("function");
+  });
+});

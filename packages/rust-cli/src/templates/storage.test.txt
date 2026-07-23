@@ -1,0 +1,17 @@
+import { describe, expect, test } from "bun:test";
+import { {{NAME}}StorageAdapter } from "@module/{{MODULE}}/storage/{{NAME}}StorageAdapter";
+
+describe("{{NAME}}StorageAdapter", () => {
+  test("should have class name ending with 'StorageAdapter'", () => {
+    expect({{NAME}}StorageAdapter.name.endsWith("StorageAdapter")).toBe(true);
+  });
+
+  test("should have 'bucket' field", () => {
+    expect("bucket" in {{NAME}}StorageAdapter.prototype || "bucket" in Object.getOwnPropertyNames({{NAME}}StorageAdapter.prototype)).toBe(true);
+  });
+
+  test("should have 'getOptions' method", () => {
+    expect({{NAME}}StorageAdapter.prototype.getOptions).toBeDefined();
+    expect(typeof {{NAME}}StorageAdapter.prototype.getOptions).toBe("function");
+  });
+});

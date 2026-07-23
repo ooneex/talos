@@ -1,0 +1,14 @@
+import { Outlet } from "@tanstack/react-router";
+import type { ReactNode } from "react";
+
+type {{NAME}}LayoutPropsType = {
+  children?: ReactNode;
+};
+
+export const {{NAME}}Layout = ({ children }: {{NAME}}LayoutPropsType): ReactNode => {
+  return (
+    <section>
+      {children ?? <Outlet />}
+    </section>
+  );
+};

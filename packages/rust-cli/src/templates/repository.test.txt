@@ -1,0 +1,63 @@
+import { describe, expect, test } from "bun:test";
+import { {{NAME}}Repository } from "@module/{{MODULE}}/repositories/{{NAME}}Repository";
+
+describe("{{NAME}}Repository", () => {
+  test("should have class name ending with 'Repository'", () => {
+    expect({{NAME}}Repository.name.endsWith("Repository")).toBe(true);
+  });
+
+  test("should have 'open' method", () => {
+    expect({{NAME}}Repository.prototype.open).toBeDefined();
+    expect(typeof {{NAME}}Repository.prototype.open).toBe("function");
+  });
+
+  test("should have 'close' method", () => {
+    expect({{NAME}}Repository.prototype.close).toBeDefined();
+    expect(typeof {{NAME}}Repository.prototype.close).toBe("function");
+  });
+
+  test("should have 'find' method", () => {
+    expect({{NAME}}Repository.prototype.find).toBeDefined();
+    expect(typeof {{NAME}}Repository.prototype.find).toBe("function");
+  });
+
+  test("should have 'findOne' method", () => {
+    expect({{NAME}}Repository.prototype.findOne).toBeDefined();
+    expect(typeof {{NAME}}Repository.prototype.findOne).toBe("function");
+  });
+
+  test("should have 'findOneBy' method", () => {
+    expect({{NAME}}Repository.prototype.findOneBy).toBeDefined();
+    expect(typeof {{NAME}}Repository.prototype.findOneBy).toBe("function");
+  });
+
+  test("should have 'create' method", () => {
+    expect({{NAME}}Repository.prototype.create).toBeDefined();
+    expect(typeof {{NAME}}Repository.prototype.create).toBe("function");
+  });
+
+  test("should have 'createMany' method", () => {
+    expect({{NAME}}Repository.prototype.createMany).toBeDefined();
+    expect(typeof {{NAME}}Repository.prototype.createMany).toBe("function");
+  });
+
+  test("should have 'update' method", () => {
+    expect({{NAME}}Repository.prototype.update).toBeDefined();
+    expect(typeof {{NAME}}Repository.prototype.update).toBe("function");
+  });
+
+  test("should have 'updateMany' method", () => {
+    expect({{NAME}}Repository.prototype.updateMany).toBeDefined();
+    expect(typeof {{NAME}}Repository.prototype.updateMany).toBe("function");
+  });
+
+  test("should have 'delete' method", () => {
+    expect({{NAME}}Repository.prototype.delete).toBeDefined();
+    expect(typeof {{NAME}}Repository.prototype.delete).toBe("function");
+  });
+
+  test("should have 'count' method", () => {
+    expect({{NAME}}Repository.prototype.count).toBeDefined();
+    expect(typeof {{NAME}}Repository.prototype.count).toBe("function");
+  });
+});

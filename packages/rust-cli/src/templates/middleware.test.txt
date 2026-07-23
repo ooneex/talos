@@ -1,0 +1,13 @@
+import { describe, expect, test } from "bun:test";
+import { {{NAME}}Middleware } from "@module/{{MODULE}}/middlewares/{{NAME}}Middleware";
+
+describe("{{NAME}}Middleware", () => {
+  test("should have class name ending with 'Middleware'", () => {
+    expect({{NAME}}Middleware.name.endsWith("Middleware")).toBe(true);
+  });
+
+  test("should have 'handler' method", () => {
+    expect({{NAME}}Middleware.prototype.handler).toBeDefined();
+    expect(typeof {{NAME}}Middleware.prototype.handler).toBe("function");
+  });
+});

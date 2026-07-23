@@ -1,0 +1,13 @@
+import { describe, expect, test } from "bun:test";
+import { {{NAME}}Mailer } from "@module/{{MODULE}}/mailers/{{NAME}}Mailer";
+
+describe("{{NAME}}Mailer", () => {
+  test("should have class name ending with 'Mailer'", () => {
+    expect({{NAME}}Mailer.name.endsWith("Mailer")).toBe(true);
+  });
+
+  test("should have 'send' method", () => {
+    expect({{NAME}}Mailer.prototype.send).toBeDefined();
+    expect(typeof {{NAME}}Mailer.prototype.send).toBe("function");
+  });
+});

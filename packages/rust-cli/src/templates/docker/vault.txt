@@ -1,0 +1,15 @@
+services:
+  # Vault - Secrets management and encryption
+  # Docs: https://developer.hashicorp.com/vault/docs
+  # Web UI: http://localhost:8200 (token: talos)
+  vault:
+    image: hashicorp/vault:latest
+    container_name: vault
+    restart: "on-failure"
+    ports:
+      - "8200:8200"
+    environment:
+      - VAULT_DEV_ROOT_TOKEN_ID=talos
+      - VAULT_DEV_LISTEN_ADDRESS=0.0.0.0:8200
+    cap_add:
+      - IPC_LOCK

@@ -1,0 +1,338 @@
+# Fish completion for the Talos CLI (oo / talos)
+#
+# https://fishshell.com/docs/current/completions.html
+#
+# Command names use a "group:action" form (e.g. app:create). Fish keeps the
+# colon inside a single token, so __fish_seen_subcommand_from matches them as-is.
+
+function __talos_modules
+    test -d modules; or return
+    command ls -1 modules 2>/dev/null
+end
+
+function __talos_packages
+    test -d packages; or return
+    for f in packages/*/package.json
+        test -f "$f"; and string replace -r '^packages/([^/]+)/package\.json$' '$1' -- "$f"
+    end
+end
+
+function __talos_pkg_modules
+    test -d modules; or return
+    for f in modules/*/package.json
+        test -f "$f"; and string replace -r '^modules/([^/]+)/package\.json$' '$1' -- "$f"
+    end
+end
+
+function __talos_docker_packages
+    test -d packages; or return
+    for f in packages/*/Dockerfile
+        test -f "$f"; and string replace -r '^packages/([^/]+)/Dockerfile$' '$1' -- "$f"
+    end
+end
+
+function __talos_docker_modules
+    test -d modules; or return
+    for f in modules/*/Dockerfile
+        test -f "$f"; and string replace -r '^modules/([^/]+)/Dockerfile$' '$1' -- "$f"
+    end
+end
+
+function __talos_yaml_modules --argument-names type
+    test -d modules; or return
+    # `set` tolerates a non-matching glob (unlike passing it straight to grep).
+    set -l files modules/*/*.yml
+    test (count $files) -gt 0; or return
+    command grep -l "type: \"$type\"" $files 2>/dev/null \
+        | command sed -n 's|modules/\([^/]*\)/.*|\1|p' | command sort -u
+end
+
+function __talos_design_modules
+    __talos_yaml_modules design
+end
+
+function __talos_microservice_modules
+    __talos_yaml_modules microservice
+end
+
+function __talos_runnable_modules
+    test -d modules; or return
+    set -l files modules/*/*.yml
+    test (count $files) -gt 0; or return
+    command grep -lE 'type: "(api|microservice|spa|storybook|swagger)"' $files 2>/dev/null \
+        | command sed -n 's|modules/\([^/]*\)/.*|\1|p' | command sort -u
+end
+
+function __talos_sdk_names
+    __talos_yaml_modules sdk
+end
+
+function __talos_destination_modules
+    test -d modules; or return
+    set -l files modules/*/*.yml
+    test (count $files) -gt 0; or return
+    command grep -lE 'type: "(api|microservice)"' $files 2>/dev/null \
+        | command sed -n 's|modules/\([^/]*\)/.*|\1|p' | command sort -u
+end
+
+function __talos_sdk_modules
+    echo app
+    __talos_microservice_modules
+end
+
+function __talos_custom_commands
+    test -d modules; or return
+    set -l files modules/*/src/commands/*Command.ts
+    test (count $files) -gt 0; or return
+    command grep -h -A1 getName $files 2>/dev/null \
+        | command sed -n 's/.*return "\(.*\)".*/\1/p' | command sort -u
+end
+
+function __talos_agent_dirs
+    printf '%s\n' \
+        '.claude'\t'Claude' \
+        '.codex'\t'Codex' \
+        '.cursor'\t'Cursor' \
+        '.gemini'\t'Gemini' \
+        '.windsurf'\t'Windsurf' \
+        '.cline'\t'Cline' \
+        '.junie'\t'JetBrains Junie' \
+        '.roo'\t'Roo Code' \
+        '.continue'\t'Continue' \
+        '.zed'\t'Zed'
+end
+
+function __talos_run_commands
+    echo install
+    set -l pkgfiles
+    for f in modules/*/package.json packages/*/package.json
+        test -f "$f"; and set -a pkgfiles "$f"
+    end
+    test (count $pkgfiles) -gt 0; or return
+    command awk '
+        /"scripts"[[:space:]]*:[[:space:]]*\{/ { inside=1; next }
+        inside && /^[[:space:]]*\}/ { inside=0; next }
+        inside { if (match($0, /"[^"]+"/)) print substr($0, RSTART+1, RLENGTH-2) }
+    ' $pkgfiles 2>/dev/null | command sort -u
+end
+
+# Commands that share the --name/--module/--override option set.
+set -l __talos_resource_cmds \
+    ai:chat:create ai:tool:create ai:middleware:create analytics:create \
+    cache:create command:create cron:create database:create flag:create \
+    logger:create mailer:create permission:create queue:create rate-limit:create \
+    repository:create service:create spa:feature:create storage:create \
+    translation:create vector-database:create workflow:create workflow:transition:create
+
+for cmd in oo talos
+    # ---- Subcommands (only when none has been entered yet) --------------------
+    complete -c $cmd -f -n __fish_use_subcommand -a app:create -d 'Create a new application'
+    complete -c $cmd -f -n __fish_use_subcommand -a app:init -d 'Initialize an application'
+    complete -c $cmd -f -n __fish_use_subcommand -a app:start -d 'Start the application'
+    complete -c $cmd -f -n __fish_use_subcommand -a app:stop -d 'Stop the application'
+    complete -c $cmd -f -n __fish_use_subcommand -a agent:skills:create -d 'Scaffold skills and configuration for coding assistants'
+    complete -c $cmd -f -n __fish_use_subcommand -a command:run -d 'Run a custom command from a module'
+    complete -c $cmd -f -n __fish_use_subcommand -a completion:zsh -d 'Install Zsh completion for oo command'
+    complete -c $cmd -f -n __fish_use_subcommand -a completion:bash -d 'Install Bash completion for oo command'
+    complete -c $cmd -f -n __fish_use_subcommand -a completion:fish -d 'Install Fish completion for oo command'
+    complete -c $cmd -f -n __fish_use_subcommand -a help -d 'Show available commands'
+    complete -c $cmd -f -n __fish_use_subcommand -a version -d 'Print the installed CLI version'
+    complete -c $cmd -f -n __fish_use_subcommand -a upgrade -d 'Upgrade the CLI to its latest version'
+    complete -c $cmd -f -n __fish_use_subcommand -a issue:create -d 'Create a YAML skeleton file for a new issue'
+    complete -c $cmd -f -n __fish_use_subcommand -a issue:pull -d 'Pull an issue from Linear and save it as a YAML file'
+    complete -c $cmd -f -n __fish_use_subcommand -a issue:push -d 'Push a local issue YAML to Linear (create or update)'
+    complete -c $cmd -f -n __fish_use_subcommand -a analytics:create -d 'Generate a new analytics class'
+    complete -c $cmd -f -n __fish_use_subcommand -a cache:create -d 'Generate a new cache class'
+    complete -c $cmd -f -n __fish_use_subcommand -a command:create -d 'Generate a new command class'
+    complete -c $cmd -f -n __fish_use_subcommand -a controller:create -d 'Generate a new controller class'
+    complete -c $cmd -f -n __fish_use_subcommand -a cron:create -d 'Generate a new cron class'
+    complete -c $cmd -f -n __fish_use_subcommand -a database:create -d 'Generate a new database class'
+    complete -c $cmd -f -n __fish_use_subcommand -a ai:chat:create -d 'Generate a new AI chat class'
+    complete -c $cmd -f -n __fish_use_subcommand -a ai:tool:create -d 'Generate a new AI tool class'
+    complete -c $cmd -f -n __fish_use_subcommand -a ai:middleware:create -d 'Generate a new AI middleware class'
+    complete -c $cmd -f -n __fish_use_subcommand -a design:create -d 'Generate a new design module'
+    complete -c $cmd -f -n __fish_use_subcommand -a design:remove -d 'Remove an existing design module'
+    complete -c $cmd -f -n __fish_use_subcommand -a docker:create -d 'Add a docker service to docker-compose.yml'
+    complete -c $cmd -f -n __fish_use_subcommand -a docker:credentials:create -d 'Save a Docker registry access token under the user config'
+    complete -c $cmd -f -n __fish_use_subcommand -a docker:publish -d 'Build and push a package or module Docker image to Docker Hub'
+    complete -c $cmd -f -n __fish_use_subcommand -a github:credentials:create -d 'Save a GitHub Personal Access Token under the user config'
+    complete -c $cmd -f -n __fish_use_subcommand -a github:secret:push -d 'Create or update a GitHub Actions secret on a repository'
+    complete -c $cmd -f -n __fish_use_subcommand -a gitlab:credentials:create -d 'Save a GitLab Personal Access Token under the user config'
+    complete -c $cmd -f -n __fish_use_subcommand -a gitlab:secret:push -d 'Create or update a GitLab CI/CD variable on a project'
+    complete -c $cmd -f -n __fish_use_subcommand -a bitbucket:credentials:create -d 'Save a Bitbucket app password under the user config'
+    complete -c $cmd -f -n __fish_use_subcommand -a bitbucket:secret:push -d 'Create or update a Bitbucket Pipelines repository variable'
+    complete -c $cmd -f -n __fish_use_subcommand -a jira:credentials:create -d 'Save a Jira API token under the user config'
+    complete -c $cmd -f -n __fish_use_subcommand -a linear:credentials:create -d 'Save a Linear Personal API key under the user config'
+    complete -c $cmd -f -n __fish_use_subcommand -a npm:credentials:create -d 'Save an npm Granular Access Token under the user config'
+    complete -c $cmd -f -n __fish_use_subcommand -a npm:publish -d 'Publish a package or module to npm'
+    complete -c $cmd -f -n __fish_use_subcommand -a monorepo:run -d 'Run package.json scripts across packages and modules with granular caching'
+    complete -c $cmd -f -n __fish_use_subcommand -a run -d 'Alias for monorepo:run'
+    complete -c $cmd -f -n __fish_use_subcommand -a monorepo:check -d 'Run install, build, lint and test across packages and modules with granular caching'
+    complete -c $cmd -f -n __fish_use_subcommand -a check -d 'Alias for monorepo:check'
+    complete -c $cmd -f -n __fish_use_subcommand -a build -d 'Alias for monorepo:run --commands=build'
+    complete -c $cmd -f -n __fish_use_subcommand -a fmt -d 'Alias for monorepo:run --commands=fmt'
+    complete -c $cmd -f -n __fish_use_subcommand -a lint -d 'Alias for monorepo:run --commands=lint'
+    complete -c $cmd -f -n __fish_use_subcommand -a test -d 'Alias for monorepo:run --commands=test'
+    complete -c $cmd -f -n __fish_use_subcommand -a entity:create -d 'Generate a new entity class'
+    complete -c $cmd -f -n __fish_use_subcommand -a flag:create -d 'Generate a new feature flag class'
+    complete -c $cmd -f -n __fish_use_subcommand -a logger:create -d 'Generate a new logger class'
+    complete -c $cmd -f -n __fish_use_subcommand -a mailer:create -d 'Generate a new mailer class'
+    complete -c $cmd -f -n __fish_use_subcommand -a middleware:create -d 'Generate a new middleware class'
+    complete -c $cmd -f -n __fish_use_subcommand -a permission:create -d 'Generate a new permission class'
+    complete -c $cmd -f -n __fish_use_subcommand -a queue:create -d 'Generate a new queue class'
+    complete -c $cmd -f -n __fish_use_subcommand -a rate-limit:create -d 'Generate a new rate limiter class'
+    complete -c $cmd -f -n __fish_use_subcommand -a event:create -d 'Generate a new event class'
+    complete -c $cmd -f -n __fish_use_subcommand -a release:create -d 'Release packages with version bump, changelog, and git tag'
+    complete -c $cmd -f -n __fish_use_subcommand -a repository:create -d 'Generate a new repository class'
+    complete -c $cmd -f -n __fish_use_subcommand -a sdk:create -d 'Generate a browser SDK from module controllers'
+    complete -c $cmd -f -n __fish_use_subcommand -a service:create -d 'Generate a new service class'
+    complete -c $cmd -f -n __fish_use_subcommand -a spa:create -d 'Generate a new spa module'
+    complete -c $cmd -f -n __fish_use_subcommand -a spa:feature:create -d 'Generate a new spa feature (route, layout, hooks and folders)'
+    complete -c $cmd -f -n __fish_use_subcommand -a spa:remove -d 'Remove an existing spa module'
+    complete -c $cmd -f -n __fish_use_subcommand -a storage:create -d 'Generate a new storage class'
+    complete -c $cmd -f -n __fish_use_subcommand -a translation:create -d 'Generate a new translation class'
+    complete -c $cmd -f -n __fish_use_subcommand -a vector-database:create -d 'Generate a new vector database class'
+    complete -c $cmd -f -n __fish_use_subcommand -a workflow:create -d 'Generate a new workflow class'
+    complete -c $cmd -f -n __fish_use_subcommand -a workflow:transition:create -d 'Generate a new workflow transition class'
+    complete -c $cmd -f -n __fish_use_subcommand -a microservice:create -d 'Generate a new microservice'
+    complete -c $cmd -f -n __fish_use_subcommand -a microservice:remove -d 'Remove an existing microservice'
+    complete -c $cmd -f -n __fish_use_subcommand -a migration:create -d 'Generate a new migration file'
+    complete -c $cmd -f -n __fish_use_subcommand -a migration:up -d 'Run migrations for all modules'
+    complete -c $cmd -f -n __fish_use_subcommand -a migration:down -d 'Roll back migrations for all modules'
+    complete -c $cmd -f -n __fish_use_subcommand -a module:create -d 'Generate a new module'
+    complete -c $cmd -f -n __fish_use_subcommand -a module:remove -d 'Remove an existing module'
+    complete -c $cmd -f -n __fish_use_subcommand -a seed:create -d 'Generate a new seed file'
+    complete -c $cmd -f -n __fish_use_subcommand -a seed:run -d 'Run seeds for all modules'
+
+    # ---- Per-command options --------------------------------------------------
+    # Commands that take no arguments: suppress the default file completion.
+    complete -c $cmd -f -n '__fish_seen_subcommand_from completion:zsh completion:bash completion:fish help version upgrade'
+
+    complete -c $cmd -n '__fish_seen_subcommand_from agent:skills:create' -l agents -x -a '(__talos_agent_dirs)' -d 'Assistant config dir(s), comma-separated'
+    complete -c $cmd -n '__fish_seen_subcommand_from agent:skills:create' -l cwd -r -f -a '(__fish_complete_directories)' -d 'Working directory'
+
+    complete -c $cmd -n '__fish_seen_subcommand_from app:start app:stop' -l modules -a '(__talos_runnable_modules)' -d 'Module name(s), comma-separated (default: all)'
+    complete -c $cmd -n '__fish_seen_subcommand_from app:start app:stop' -l packages -a '(__talos_runnable_modules)' -d 'Alias for --modules, comma-separated (default: all)'
+
+    complete -c $cmd -n '__fish_seen_subcommand_from sdk:create' -l name -x -a '(__talos_sdk_names)' -d 'Name of the SDK module'
+    complete -c $cmd -n '__fish_seen_subcommand_from sdk:create' -l module -x -a '(__talos_sdk_modules)' -d 'Target module the SDK is generated from'
+
+    complete -c $cmd -n '__fish_seen_subcommand_from app:create' -l name -x -d 'Name of the resource'
+    complete -c $cmd -n '__fish_seen_subcommand_from app:create' -l destination -r -f -a '(__fish_complete_directories)' -d 'Destination path'
+
+    complete -c $cmd -n '__fish_seen_subcommand_from app:init' -l name -x -d 'Name of the resource'
+    complete -c $cmd -n '__fish_seen_subcommand_from app:init' -l destination -r -f -a '(__fish_complete_directories)' -d 'Destination path'
+    complete -c $cmd -n '__fish_seen_subcommand_from app:init' -l app-type -x -a 'cli api' -d 'Application type'
+
+    complete -c $cmd -n '__fish_seen_subcommand_from command:run' -f -a '(__talos_custom_commands)' -d 'Custom command'
+
+    complete -c $cmd -n '__fish_seen_subcommand_from issue:create' -l title -x -d 'Issue title'
+    complete -c $cmd -n '__fish_seen_subcommand_from issue:create' -l priority -x -a 'Low Medium High Urgent' -d 'Issue priority'
+    complete -c $cmd -n '__fish_seen_subcommand_from issue:create' -l description -x -d 'Issue description'
+    complete -c $cmd -n '__fish_seen_subcommand_from issue:create' -l labels -x -d 'Label (repeatable)'
+    complete -c $cmd -n '__fish_seen_subcommand_from issue:create' -l module -x -a '(__talos_modules)' -d 'Module name'
+    complete -c $cmd -n '__fish_seen_subcommand_from issue:create' -l interactive -d 'Prompt for all fields'
+
+    complete -c $cmd -n '__fish_seen_subcommand_from issue:pull' -l id -x -d 'Issue ID or identifier'
+    complete -c $cmd -n '__fish_seen_subcommand_from issue:pull' -l module -x -a '(__talos_modules)' -d 'Module name'
+
+    complete -c $cmd -n '__fish_seen_subcommand_from issue:push' -l id -x -d 'Local issue ID to push'
+    complete -c $cmd -n '__fish_seen_subcommand_from issue:push' -l module -x -a '(__talos_modules)' -d 'Module name'
+
+    complete -c $cmd -n "__fish_seen_subcommand_from $__talos_resource_cmds" -l name -x -d 'Name of the resource'
+    complete -c $cmd -n "__fish_seen_subcommand_from $__talos_resource_cmds" -l module -x -a '(__talos_modules)' -d 'Module name'
+    complete -c $cmd -n "__fish_seen_subcommand_from $__talos_resource_cmds" -l override -d 'Override existing file'
+
+    complete -c $cmd -n '__fish_seen_subcommand_from controller:create' -l name -x -d 'Name of the resource'
+    complete -c $cmd -n '__fish_seen_subcommand_from controller:create' -l module -x -a '(__talos_modules)' -d 'Module name'
+    complete -c $cmd -n '__fish_seen_subcommand_from controller:create' -l route-name -x -d 'Route name'
+    complete -c $cmd -n '__fish_seen_subcommand_from controller:create' -l route-path -x -d 'Route path'
+    complete -c $cmd -n '__fish_seen_subcommand_from controller:create' -l route-method -x -a 'GET POST PUT PATCH DELETE HEAD OPTIONS' -d 'Route HTTP method'
+    complete -c $cmd -n '__fish_seen_subcommand_from controller:create' -l is-socket -d 'Socket mode'
+    complete -c $cmd -n '__fish_seen_subcommand_from controller:create' -l override -d 'Override existing file'
+
+    complete -c $cmd -n '__fish_seen_subcommand_from docker:create' -l name -x -a 'clickhouse elasticsearch grafana jaeger keycloak libretranslate maildev memcached minio mongodb mysql nats postgres prometheus rabbitmq redis temporal vault' -d 'Docker service name'
+
+    complete -c $cmd -n '__fish_seen_subcommand_from docker:credentials:create' -l registry -x -d 'Docker registry'
+    complete -c $cmd -n '__fish_seen_subcommand_from docker:credentials:create' -l username -x -d 'Docker username'
+    complete -c $cmd -n '__fish_seen_subcommand_from docker:credentials:create' -l token -x -d 'Docker access token'
+
+    complete -c $cmd -n '__fish_seen_subcommand_from docker:publish' -l packages -a '(__talos_docker_packages)' -d 'Package name(s), comma-separated'
+    complete -c $cmd -n '__fish_seen_subcommand_from docker:publish' -l modules -a '(__talos_docker_modules)' -d 'Module name(s), comma-separated'
+    complete -c $cmd -n '__fish_seen_subcommand_from docker:publish' -l tag -x -d 'Image tag'
+
+    complete -c $cmd -n '__fish_seen_subcommand_from github:credentials:create' -l token -x -d 'GitHub Personal Access Token'
+    complete -c $cmd -n '__fish_seen_subcommand_from github:secret:push' -l name -x -d 'Secret name'
+    complete -c $cmd -n '__fish_seen_subcommand_from github:secret:push' -l value -x -d 'Secret value'
+    complete -c $cmd -n '__fish_seen_subcommand_from gitlab:credentials:create' -l token -x -d 'GitLab Personal Access Token'
+    complete -c $cmd -n '__fish_seen_subcommand_from gitlab:secret:push' -l name -x -d 'Variable name'
+    complete -c $cmd -n '__fish_seen_subcommand_from gitlab:secret:push' -l value -x -d 'Variable value'
+    complete -c $cmd -n '__fish_seen_subcommand_from bitbucket:credentials:create' -l username -x -d 'Bitbucket username'
+    complete -c $cmd -n '__fish_seen_subcommand_from bitbucket:credentials:create' -l token -x -d 'Bitbucket app password'
+    complete -c $cmd -n '__fish_seen_subcommand_from bitbucket:secret:push' -l name -x -d 'Variable name'
+    complete -c $cmd -n '__fish_seen_subcommand_from bitbucket:secret:push' -l value -x -d 'Variable value'
+
+    complete -c $cmd -n '__fish_seen_subcommand_from jira:credentials:create' -l base-url -x -d 'Jira base URL'
+    complete -c $cmd -n '__fish_seen_subcommand_from jira:credentials:create' -l email -x -d 'Jira account email'
+    complete -c $cmd -n '__fish_seen_subcommand_from jira:credentials:create' -l token -x -d 'Jira API token'
+
+    complete -c $cmd -n '__fish_seen_subcommand_from linear:credentials:create' -l token -x -d 'Linear Personal API key'
+
+    complete -c $cmd -n '__fish_seen_subcommand_from npm:credentials:create' -l token -x -d 'npm Granular Access Token'
+
+    complete -c $cmd -n '__fish_seen_subcommand_from npm:publish' -l packages -a '(__talos_packages)' -d 'Package name(s), comma-separated'
+    complete -c $cmd -n '__fish_seen_subcommand_from npm:publish' -l modules -a '(__talos_pkg_modules)' -d 'Module name(s), comma-separated'
+    complete -c $cmd -n '__fish_seen_subcommand_from npm:publish' -l access -x -a 'public restricted' -d 'Registry access level'
+
+    complete -c $cmd -n '__fish_seen_subcommand_from monorepo:run run' -l commands -x -a '(__talos_run_commands)' -d 'Command name(s), comma-separated (required)'
+    complete -c $cmd -n '__fish_seen_subcommand_from monorepo:run run' -l packages -a '(__talos_packages)' -d 'Package name(s), comma-separated'
+    complete -c $cmd -n '__fish_seen_subcommand_from monorepo:run run' -l modules -a '(__talos_pkg_modules)' -d 'Module name(s), comma-separated'
+    complete -c $cmd -n '__fish_seen_subcommand_from monorepo:run run' -l logs -d 'Stream plain logs instead of the interactive view'
+    complete -c $cmd -n '__fish_seen_subcommand_from monorepo:run run' -l no-cache -d 'Skip reading and writing the task cache'
+
+    complete -c $cmd -n '__fish_seen_subcommand_from monorepo:check check build fmt lint test' -l packages -a '(__talos_packages)' -d 'Package name(s), comma-separated'
+    complete -c $cmd -n '__fish_seen_subcommand_from monorepo:check check build fmt lint test' -l modules -a '(__talos_pkg_modules)' -d 'Module name(s), comma-separated'
+    complete -c $cmd -n '__fish_seen_subcommand_from monorepo:check check build fmt lint test' -l logs -d 'Stream plain logs instead of the interactive view'
+    complete -c $cmd -n '__fish_seen_subcommand_from monorepo:check check build fmt lint test' -l no-cache -d 'Skip reading and writing the task cache'
+
+    complete -c $cmd -n '__fish_seen_subcommand_from entity:create' -l name -x -d 'Name of the resource'
+    complete -c $cmd -n '__fish_seen_subcommand_from entity:create' -l module -x -a '(__talos_modules)' -d 'Module name'
+    complete -c $cmd -n '__fish_seen_subcommand_from entity:create' -l table-name -x -d 'Database table name'
+    complete -c $cmd -n '__fish_seen_subcommand_from entity:create' -l override -d 'Override existing file'
+
+    complete -c $cmd -n '__fish_seen_subcommand_from middleware:create' -l name -x -d 'Name of the resource'
+    complete -c $cmd -n '__fish_seen_subcommand_from middleware:create' -l module -x -a '(__talos_modules)' -d 'Module name'
+    complete -c $cmd -n '__fish_seen_subcommand_from middleware:create' -l is-socket -d 'Socket mode'
+    complete -c $cmd -n '__fish_seen_subcommand_from middleware:create' -l override -d 'Override existing file'
+
+    complete -c $cmd -n '__fish_seen_subcommand_from event:create' -l name -x -d 'Name of the resource'
+    complete -c $cmd -n '__fish_seen_subcommand_from event:create' -l module -x -a '(__talos_modules)' -d 'Module name'
+    complete -c $cmd -n '__fish_seen_subcommand_from event:create' -l channel -x -d 'Channel name'
+    complete -c $cmd -n '__fish_seen_subcommand_from event:create' -l override -d 'Override existing file'
+
+    complete -c $cmd -n '__fish_seen_subcommand_from migration:create' -l module -x -a '(__talos_modules)' -d 'Module name'
+
+    complete -c $cmd -n '__fish_seen_subcommand_from release:create' -l packages -a '(__talos_packages)' -d 'Package name(s), comma-separated'
+    complete -c $cmd -n '__fish_seen_subcommand_from release:create' -l modules -a '(__talos_pkg_modules)' -d 'Module name(s), comma-separated'
+    complete -c $cmd -n '__fish_seen_subcommand_from release:create' -l publish -d 'Publish released packages to npm'
+
+    complete -c $cmd -n '__fish_seen_subcommand_from migration:up' -l drop -d 'Drop the database before running'
+    complete -c $cmd -n '__fish_seen_subcommand_from migration:up' -l no-cache -d 'Skip the per-migration run cache'
+
+    complete -c $cmd -n '__fish_seen_subcommand_from seed:run' -l drop -d 'Drop the database before running'
+
+    complete -c $cmd -n '__fish_seen_subcommand_from migration:down' -l version -x -d 'Version of the migration to roll back'
+
+    complete -c $cmd -n '__fish_seen_subcommand_from design:create microservice:create' -l name -x -d 'Name of the resource'
+
+    complete -c $cmd -n '__fish_seen_subcommand_from module:create' -l name -x -d 'Name of the resource'
+    complete -c $cmd -n '__fish_seen_subcommand_from module:create' -l destination -x -a '(__talos_destination_modules)' -d 'Destination module'
+
+    complete -c $cmd -n '__fish_seen_subcommand_from spa:create' -l name -x -d 'Name of the resource'
+    complete -c $cmd -n '__fish_seen_subcommand_from spa:create' -l design -x -a '(__talos_design_modules)' -d 'Design module name'
+
+    complete -c $cmd -n '__fish_seen_subcommand_from design:remove spa:remove microservice:remove module:remove' -l name -x -a '(__talos_modules)' -d 'Module name'
+
+    complete -c $cmd -n '__fish_seen_subcommand_from seed:create' -l name -x -d 'Name of the resource'
+    complete -c $cmd -n '__fish_seen_subcommand_from seed:create' -l module -x -a '(__talos_modules)' -d 'Module name'
+end

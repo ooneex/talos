@@ -1,0 +1,12 @@
+#!/usr/bin/env bun
+
+import { down } from "@talosjs/migrations";
+import { AppEnv } from "@talosjs/app-env";
+import "@module/{{name}}/migrations/migrations";
+
+const env = new AppEnv();
+
+await down({
+  databaseUrl: env.DATABASE_URL,
+  tableName: "migrations",
+});

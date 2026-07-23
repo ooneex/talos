@@ -1,0 +1,36 @@
+import { DataSource } from "typeorm";
+import { TypeormDatabase, DatabaseException, decorator } from "@talosjs/database";
+import { inject } from "@talosjs/container";
+import { AppEnv } from "@talosjs/app-env";
+import { SharedModule } from "@module/shared/SharedModule";
+
+@decorator.database()
+export class {{NAME}}Database extends TypeormDatabase {
+  public constructor(@inject(AppEnv) private readonly env: AppEnv) {
+    super();
+  }
+
+  public getSource(database?: string): DataSource {
+    database = database || this.env.SQLITE_DATABASE_PATH || "var/db";
+
+    if (!database) {
+      throw new DatabaseException(
+        "SQLite database path is required. Please provide a database path either through the constructor options or set the SQLITE_DATABASE_PATH environment variable.",
+        "CONNECTION_FAILED",
+      );
+    }
+
+    if (!this.source) {
+      this.source = new DataSource({
+        synchronize: false,
+        entities: SharedModule.entities,
+        enableWAL: true,
+        timeout: 30_000,
+        database,
+        type: "better-sqlite3",
+      });
+    }
+
+    return this.source;
+  }
+}

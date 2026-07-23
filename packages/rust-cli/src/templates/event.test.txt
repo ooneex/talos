@@ -1,0 +1,38 @@
+import { describe, expect, test } from "bun:test";
+import { {{NAME}}Event } from "@module/{{MODULE}}/events/{{NAME}}Event";
+
+describe("{{NAME}}Event", () => {
+  test("should have class name ending with 'Event'", () => {
+    expect({{NAME}}Event.name.endsWith("Event")).toBe(true);
+  });
+
+  test("should have 'getChannel' method", () => {
+    expect({{NAME}}Event.prototype.getChannel).toBeDefined();
+    expect(typeof {{NAME}}Event.prototype.getChannel).toBe("function");
+  });
+
+  test("should have 'handler' method", () => {
+    expect({{NAME}}Event.prototype.handler).toBeDefined();
+    expect(typeof {{NAME}}Event.prototype.handler).toBe("function");
+  });
+
+  test("should have 'publish' method", () => {
+    expect({{NAME}}Event.prototype.publish).toBeDefined();
+    expect(typeof {{NAME}}Event.prototype.publish).toBe("function");
+  });
+
+  test("should have 'subscribe' method", () => {
+    expect({{NAME}}Event.prototype.subscribe).toBeDefined();
+    expect(typeof {{NAME}}Event.prototype.subscribe).toBe("function");
+  });
+
+  test("should have 'unsubscribe' method", () => {
+    expect({{NAME}}Event.prototype.unsubscribe).toBeDefined();
+    expect(typeof {{NAME}}Event.prototype.unsubscribe).toBe("function");
+  });
+
+  test("should have 'unsubscribeAll' method", () => {
+    expect({{NAME}}Event.prototype.unsubscribeAll).toBeDefined();
+    expect(typeof {{NAME}}Event.prototype.unsubscribeAll).toBe("function");
+  });
+});

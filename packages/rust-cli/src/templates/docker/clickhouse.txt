@@ -1,0 +1,21 @@
+services:
+  # ClickHouse - Column-oriented OLAP database for analytics
+  # Docs: https://clickhouse.com/docs
+  # HTTP API: http://localhost:8123
+  # Native: localhost:9009
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    container_name: clickhouse
+    restart: "on-failure"
+    ports:
+      - "8123:8123"
+      - "9009:9000"
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse:rw
+    environment:
+      - CLICKHOUSE_USER=talos
+      - CLICKHOUSE_PASSWORD=talos
+      - CLICKHOUSE_DB=talos
+
+volumes:
+  clickhouse_data:

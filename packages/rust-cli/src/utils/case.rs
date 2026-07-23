@@ -53,3 +53,49 @@ pub fn to_snake_case(input: &str) -> String {
         .collect::<Vec<_>>()
         .join("_")
 }
+
+/// Approximates the `pluralize` npm package's English singular-to-plural rules
+/// for the common cases `EntityCreateCommand` needs when deriving a table
+/// name (e.g. "Category" -> "Categories", "Box" -> "Boxes", "User" -> "Users").
+/// Not a full linguistic implementation (irregular plurals like "person" ->
+/// "people" aren't covered), but matches typical entity name shapes.
+pub fn pluralize(word: &str) -> String {
+    if word.is_empty() {
+        return word.to_string();
+    }
+
+    let lower = word.to_lowercase();
+    if lower.ends_with("y")
+        && !lower.ends_with("ay")
+        && !lower.ends_with("ey")
+        && !lower.ends_with("oy")
+        && !lower.ends_with("uy")
+    {
+        return format!("{}ies", &word[..word.len() - 1]);
+    }
+    if lower.ends_with('s')
+        || lower.ends_with('x')
+        || lower.ends_with('z')
+        || lower.ends_with("ch")
+        || lower.ends_with("sh")
+    {
+        return format!("{word}es");
+    }
+    format!("{word}s")
+}
+
+pub fn to_pascal_case(input: &str) -> String {
+    split_to_words(input)
+        .into_iter()
+        .map(|word| {
+            let mut chars = word.chars();
+            match chars.next() {
+                Some(first) => {
+                    first.to_uppercase().collect::<String>() + &chars.as_str().to_lowercase()
+                }
+                None => String::new(),
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("")
+}

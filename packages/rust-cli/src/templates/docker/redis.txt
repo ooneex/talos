@@ -1,0 +1,15 @@
+services:
+  # Redis - In-memory data store for caching and sessions
+  # Docs: https://redis.io/docs/
+  # Connection: redis://localhost:6379
+  redis:
+    image: redis:8.4-alpine
+    container_name: redis
+    restart: "on-failure"
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data:rw
+
+volumes:
+  redis_data:

@@ -1,0 +1,12 @@
+import type { ContextType } from "@talosjs/controller";
+import { decorator, type IMiddleware } from "@talosjs/middleware";
+
+@decorator.middleware()
+export class {{NAME}}Middleware implements IMiddleware {
+  public async handler(context: ContextType): Promise<ContextType> {
+    // Example: Add custom header
+    // context.response.header("X-Custom-Header", "value");
+
+    return context
+  }
+}

@@ -1,0 +1,10 @@
+import type { TranslationDictType } from "@talosjs/translation";
+import { decorator, Translation } from "@talosjs/translation";
+import dict from "./translations.yml";
+
+@decorator.translation()
+export class {{NAME}}Translation extends Translation {
+  public getName = (): string => "{{SNAKE}}";
+
+  public getDict = (): TranslationDictType => dict as TranslationDictType;
+}

@@ -1,0 +1,27 @@
+import { describe, expect, test } from "bun:test";
+import { {{NAME}}FeatureFlag } from "@module/{{MODULE}}/feature-flag/{{NAME}}FeatureFlag";
+
+describe("{{NAME}}FeatureFlag", () => {
+  test("should have class name ending with 'FeatureFlag'", () => {
+    expect({{NAME}}FeatureFlag.name.endsWith("FeatureFlag")).toBe(true);
+  });
+
+  test("should have no constructor dependencies", () => {
+    expect({{NAME}}FeatureFlag.length).toBe(0);
+  });
+
+  test("should have 'getKey' method", () => {
+    expect({{NAME}}FeatureFlag.prototype.getKey).toBeDefined();
+    expect(typeof {{NAME}}FeatureFlag.prototype.getKey).toBe("function");
+  });
+
+  test("should have 'getDescription' method", () => {
+    expect({{NAME}}FeatureFlag.prototype.getDescription).toBeDefined();
+    expect(typeof {{NAME}}FeatureFlag.prototype.getDescription).toBe("function");
+  });
+
+  test("should have 'isEnabled' method", () => {
+    expect({{NAME}}FeatureFlag.prototype.isEnabled).toBeDefined();
+    expect(typeof {{NAME}}FeatureFlag.prototype.isEnabled).toBe("function");
+  });
+});

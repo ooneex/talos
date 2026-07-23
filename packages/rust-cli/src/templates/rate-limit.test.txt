@@ -1,0 +1,28 @@
+import { describe, expect, test } from "bun:test";
+import { {{NAME}}RateLimiter } from "@module/{{MODULE}}/rate-limit/{{NAME}}RateLimiter";
+
+describe("{{NAME}}RateLimiter", () => {
+  test("should have class name ending with 'RateLimiter'", () => {
+    expect({{NAME}}RateLimiter.name.endsWith("RateLimiter")).toBe(true);
+  });
+
+  test("should have 'check' method", () => {
+    expect({{NAME}}RateLimiter.prototype.check).toBeDefined();
+    expect(typeof {{NAME}}RateLimiter.prototype.check).toBe("function");
+  });
+
+  test("should have 'isLimited' method", () => {
+    expect({{NAME}}RateLimiter.prototype.isLimited).toBeDefined();
+    expect(typeof {{NAME}}RateLimiter.prototype.isLimited).toBe("function");
+  });
+
+  test("should have 'reset' method", () => {
+    expect({{NAME}}RateLimiter.prototype.reset).toBeDefined();
+    expect(typeof {{NAME}}RateLimiter.prototype.reset).toBe("function");
+  });
+
+  test("should have 'getCount' method", () => {
+    expect({{NAME}}RateLimiter.prototype.getCount).toBeDefined();
+    expect(typeof {{NAME}}RateLimiter.prototype.getCount).toBe("function");
+  });
+});

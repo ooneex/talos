@@ -1,0 +1,62 @@
+import { useNavigate, useSearch } from "@tanstack/react-router";
+import { useCallback } from "react";
+import { create } from "zustand";
+import { createJSONStorage, persist } from "zustand/middleware";
+
+export const DEFAULT_LANG = "en";
+
+/** localStorage key holding the last chosen language. */
+export const LANG_STORAGE_KEY = "lang";
+
+type LangStore = {
+  lang: string;
+  setLang: (lang: string) => void;
+};
+
+// Zustand store persisting the chosen language to localStorage. Referencing
+// `localStorage` throws where it is unavailable (SSR, privacy mode); the throw is
+// caught by `createJSONStorage`, which then skips persistence and keeps the store
+// in memory.
+const useLangStore = create<LangStore>()(
+  persist(
+    (set) => ({
+      lang: DEFAULT_LANG,
+      setLang: (lang) => set({ lang }),
+    }),
+    {
+      name: LANG_STORAGE_KEY,
+      storage: createJSONStorage(() => localStorage),
+    },
+  ),
+);
+
+type UseLangType = {
+  lang: string;
+  setLang: (lang: string) => void;
+};
+
+// Resolves the active language and returns it alongside a setter.
+//
+// `lang` follows the priority order: the `lang` query param (e.g. `?lang=fr`), then
+// the value persisted in the store, which defaults to `DEFAULT_LANG`. `strict: false`
+// opts out of route-specific search typing so the hook works from any route.
+//
+// `setLang` persists the choice to the store (mirrored to localStorage) and onto the
+// `?lang` search param, which this hook reads — so every consumer re-renders with the
+// new locale. `replace` keeps language toggles out of the browser history.
+export const useLang = (): UseLangType => {
+  const search = useSearch({ strict: false }) as { lang?: string };
+  const lang = useLangStore((state) => state.lang);
+  const persistLang = useLangStore((state) => state.setLang);
+  const navigate = useNavigate();
+
+  const setLang = useCallback(
+    (next: string): void => {
+      persistLang(next);
+      void navigate({ to: ".", search: (prev) => ({ ...prev, lang: next }), replace: true });
+    },
+    [navigate, persistLang],
+  );
+
+  return { lang: search.lang ?? lang, setLang };
+};

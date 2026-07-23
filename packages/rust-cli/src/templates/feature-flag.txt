@@ -1,0 +1,16 @@
+import { decorator, type IFeatureFlag } from "@talosjs/feature-flag";
+
+@decorator.featureFlag()
+export class {{NAME}}FeatureFlag implements IFeatureFlag {
+  public getKey(): string {
+    return "{{KEY}}";
+  }
+
+  public getDescription(): string {
+    return "";
+  }
+
+  public isEnabled(): Promise<boolean> | boolean {
+    return false;
+  }
+}

@@ -1,0 +1,17 @@
+#!/usr/bin/env bun
+
+import { SharedDatabase } from "@module/shared/databases/SharedDatabase";
+import { AppEnv } from "@talosjs/app-env";
+import { container } from "@talosjs/container";
+import { run } from "@talosjs/seeds";
+import "@module/{{name}}/seeds/seeds";
+
+if (!container.has(AppEnv)) {
+  container.add(AppEnv);
+}
+if (!container.has(SharedDatabase)) {
+  container.add(SharedDatabase);
+}
+container.addConstant("database", container.get(SharedDatabase));
+
+await run();

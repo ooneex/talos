@@ -1,0 +1,33 @@
+import { describe, expect, test } from "bun:test";
+import { {{NAME}}Middleware } from "@module/{{MODULE}}/ai/middlewares/{{NAME}}Middleware";
+import type { ChatMiddlewareContext, ErrorInfo, FinishInfo } from "@talosjs/ai";
+
+describe("{{NAME}}Middleware", () => {
+  test("should have class name ending with 'Middleware'", () => {
+    expect({{NAME}}Middleware.name.endsWith("Middleware")).toBe(true);
+  });
+
+  test("should expose a non-empty name", () => {
+    const middleware = new {{NAME}}Middleware();
+    expect(typeof middleware.getName()).toBe("string");
+    expect(middleware.getName().length).toBeGreaterThan(0);
+  });
+
+  test("should expose lifecycle event hooks", () => {
+    const middleware = new {{NAME}}Middleware();
+    expect(typeof middleware.onStart).toBe("function");
+    expect(typeof middleware.onFinish).toBe("function");
+    expect(typeof middleware.onError).toBe("function");
+  });
+
+  test("should record an event for each lifecycle hook", () => {
+    const middleware = new {{NAME}}Middleware();
+    const ctx = { requestId: "req-1", model: "test-model" } as unknown as ChatMiddlewareContext;
+
+    middleware.onStart(ctx);
+    middleware.onFinish(ctx, { finishReason: "stop", duration: 12, content: "" } as FinishInfo);
+    middleware.onError(ctx, { error: new Error("boom"), duration: 34 } as ErrorInfo);
+
+    expect(middleware.events).toHaveLength(3);
+  });
+});

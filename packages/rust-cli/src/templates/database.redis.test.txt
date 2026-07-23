@@ -1,0 +1,13 @@
+import { describe, expect, test } from "bun:test";
+import { {{NAME}}Database } from "@module/{{MODULE}}/databases/{{NAME}}Database";
+
+describe("{{NAME}}Database", () => {
+  test("should have class name ending with 'Database'", () => {
+    expect({{NAME}}Database.name.endsWith("Database")).toBe(true);
+  });
+
+  test("should have 'getClient' method", () => {
+    expect({{NAME}}Database.prototype.getClient).toBeDefined();
+    expect(typeof {{NAME}}Database.prototype.getClient).toBe("function");
+  });
+});
