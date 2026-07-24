@@ -1,6 +1,12 @@
-import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
 import type { LocaleType } from "@talosjs/translation";
+import realAcceptLanguageParser from "accept-language-parser";
 import { HttpRequest } from "@/HttpRequest";
+
+// Capture the real parser before mocking so it can be restored afterwards.
+// Bun's mock.module is global and persists across test files in the same
+// process, so without restoring it the mock would leak into other specs.
+const realParser = realAcceptLanguageParser;
 
 // Mock the accept-language-parser to test language parsing edge cases
 const mockParser = {
@@ -28,6 +34,14 @@ const mockParser = {
 mock.module("accept-language-parser", () => ({
   default: mockParser,
 }));
+
+// Restore the real module so the mock does not leak into other test files
+// when the whole suite runs in a single process.
+afterAll(() => {
+  mock.module("accept-language-parser", () => ({
+    default: realParser,
+  }));
+});
 
 describe("HttpRequest Integration Tests", () => {
   let mockRequest: Request;
