@@ -10,7 +10,7 @@ struct TestCli {
 #[test]
 fn spa_create_parses_all_flags() {
     let cli = TestCli::try_parse_from([
-        "talosrs", "--name", "MySpa", "--design", "material", "--cwd", "./here", "--silent",
+        "talos", "--name", "MySpa", "--design", "material", "--cwd", "./here", "--silent",
     ])
     .expect("valid arguments should parse");
 
@@ -22,7 +22,7 @@ fn spa_create_parses_all_flags() {
 
 #[test]
 fn spa_create_defaults_are_empty() {
-    let cli = TestCli::try_parse_from(["talosrs"]).expect("no arguments is valid");
+    let cli = TestCli::try_parse_from(["talos"]).expect("no arguments is valid");
 
     assert!(cli.args.name.is_none());
     assert!(cli.args.design.is_none());
@@ -32,5 +32,5 @@ fn spa_create_defaults_are_empty() {
 
 #[test]
 fn spa_create_rejects_unknown_flag() {
-    assert!(TestCli::try_parse_from(["talosrs", "--definitely-not-a-flag"]).is_err());
+    assert!(TestCli::try_parse_from(["talos", "--definitely-not-a-flag"]).is_err());
 }

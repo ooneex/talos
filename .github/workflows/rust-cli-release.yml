@@ -25,19 +25,19 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: talosrs-darwin-arm64
+          - name: talos-darwin-arm64
             os: macos-14
             target: aarch64-apple-darwin
-          - name: talosrs-darwin-x64
+          - name: talos-darwin-x64
             os: macos-13
             target: x86_64-apple-darwin
-          - name: talosrs-linux-x64
+          - name: talos-linux-x64
             os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-          - name: talosrs-linux-arm64
+          - name: talos-linux-arm64
             os: ubuntu-24.04-arm
             target: aarch64-unknown-linux-gnu
-          - name: talosrs-windows-x64
+          - name: talos-windows-x64
             os: windows-latest
             target: x86_64-pc-windows-msvc
     steps:
@@ -63,13 +63,13 @@ jobs:
       - name: Package (Unix)
         if: runner.os != 'Windows'
         run: |
-          tar -czf "${{ matrix.name }}.tar.gz" -C "target/${{ matrix.target }}/release" talosrs
+          tar -czf "${{ matrix.name }}.tar.gz" -C "target/${{ matrix.target }}/release" talos
 
       - name: Package (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          Compress-Archive -Path "target/${{ matrix.target }}/release/talosrs.exe" -DestinationPath "${{ matrix.name }}.zip"
+          Compress-Archive -Path "target/${{ matrix.target }}/release/talos.exe" -DestinationPath "${{ matrix.name }}.zip"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

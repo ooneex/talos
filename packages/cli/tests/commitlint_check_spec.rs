@@ -9,7 +9,7 @@ struct TestCli {
 
 #[test]
 fn commitlint_check_parses_all_flags() {
-    let cli = TestCli::try_parse_from(["talosrs", "--file", "./msg.txt", "--cwd", "./here"])
+    let cli = TestCli::try_parse_from(["talos", "--file", "./msg.txt", "--cwd", "./here"])
         .expect("valid arguments should parse");
 
     assert_eq!(cli.args.file.as_deref(), Some("./msg.txt"));
@@ -18,7 +18,7 @@ fn commitlint_check_parses_all_flags() {
 
 #[test]
 fn commitlint_check_defaults_are_empty() {
-    let cli = TestCli::try_parse_from(["talosrs"]).expect("no arguments is valid");
+    let cli = TestCli::try_parse_from(["talos"]).expect("no arguments is valid");
 
     assert!(cli.args.file.is_none());
     assert!(cli.args.cwd.is_none());
@@ -26,5 +26,5 @@ fn commitlint_check_defaults_are_empty() {
 
 #[test]
 fn commitlint_check_rejects_unknown_flag() {
-    assert!(TestCli::try_parse_from(["talosrs", "--definitely-not-a-flag"]).is_err());
+    assert!(TestCli::try_parse_from(["talos", "--definitely-not-a-flag"]).is_err());
 }

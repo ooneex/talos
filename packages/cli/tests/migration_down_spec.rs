@@ -9,7 +9,7 @@ struct TestCli {
 
 #[test]
 fn migration_down_parses_all_flags() {
-    let cli = TestCli::try_parse_from(["talosrs", "--version", "20240101", "--cwd", "./here"])
+    let cli = TestCli::try_parse_from(["talos", "--version", "20240101", "--cwd", "./here"])
         .expect("valid arguments should parse");
 
     assert_eq!(cli.args.version.as_deref(), Some("20240101"));
@@ -18,7 +18,7 @@ fn migration_down_parses_all_flags() {
 
 #[test]
 fn migration_down_defaults_are_empty() {
-    let cli = TestCli::try_parse_from(["talosrs"]).expect("no arguments is valid");
+    let cli = TestCli::try_parse_from(["talos"]).expect("no arguments is valid");
 
     assert!(cli.args.version.is_none());
     assert!(cli.args.cwd.is_none());
@@ -26,5 +26,5 @@ fn migration_down_defaults_are_empty() {
 
 #[test]
 fn migration_down_rejects_unknown_flag() {
-    assert!(TestCli::try_parse_from(["talosrs", "--definitely-not-a-flag"]).is_err());
+    assert!(TestCli::try_parse_from(["talos", "--definitely-not-a-flag"]).is_err());
 }

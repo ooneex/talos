@@ -81,7 +81,7 @@ pub fn run(args: &UpgradeArgs) {
         "bash" => completion_bash::run(&completion_bash::CompletionBashArgs {}),
         "fish" => completion_fish::run(&completion_fish::CompletionFishArgs {}),
         _ => crate::utils::info(
-            "Could not detect your shell; run `talosrs completion:zsh`, `talosrs completion:bash`, or `talosrs completion:fish` to refresh completions.",
+            "Could not detect your shell; run `talos completion:zsh`, `talos completion:bash`, or `talos completion:fish` to refresh completions.",
         ),
     }
 }

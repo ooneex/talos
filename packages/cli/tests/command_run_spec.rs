@@ -9,7 +9,7 @@ struct TestCli {
 
 #[test]
 fn command_run_parses_id_and_cwd() {
-    let cli = TestCli::try_parse_from(["talosrs", "--id", "seed", "--cwd", "./here"])
+    let cli = TestCli::try_parse_from(["talos", "--id", "seed", "--cwd", "./here"])
         .expect("valid arguments should parse");
 
     assert_eq!(cli.args.id.as_deref(), Some("seed"));
@@ -19,7 +19,7 @@ fn command_run_parses_id_and_cwd() {
 
 #[test]
 fn command_run_collects_trailing_var_args() {
-    let cli = TestCli::try_parse_from(["talosrs", "--id", "seed", "--", "run", "--flag", "-x"])
+    let cli = TestCli::try_parse_from(["talos", "--id", "seed", "--", "run", "--flag", "-x"])
         .expect("trailing arguments should parse");
 
     assert_eq!(cli.args.id.as_deref(), Some("seed"));
@@ -31,7 +31,7 @@ fn command_run_collects_trailing_var_args() {
 
 #[test]
 fn command_run_allows_hyphen_values_in_trailing_args() {
-    let cli = TestCli::try_parse_from(["talosrs", "--", "--only-hyphenated"])
+    let cli = TestCli::try_parse_from(["talos", "--", "--only-hyphenated"])
         .expect("hyphenated trailing arguments should parse");
 
     assert_eq!(cli.args.args, vec!["--only-hyphenated".to_string()]);
@@ -39,7 +39,7 @@ fn command_run_allows_hyphen_values_in_trailing_args() {
 
 #[test]
 fn command_run_defaults_are_empty() {
-    let cli = TestCli::try_parse_from(["talosrs"]).expect("no arguments is valid");
+    let cli = TestCli::try_parse_from(["talos"]).expect("no arguments is valid");
 
     assert!(cli.args.id.is_none());
     assert!(cli.args.cwd.is_none());

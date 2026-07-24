@@ -9,10 +9,9 @@ struct TestCli {
 
 #[test]
 fn design_remove_parses_all_flags() {
-    let cli = TestCli::try_parse_from([
-        "talosrs", "--name", "MyDesign", "--cwd", "./here", "--silent",
-    ])
-    .expect("valid arguments should parse");
+    let cli =
+        TestCli::try_parse_from(["talos", "--name", "MyDesign", "--cwd", "./here", "--silent"])
+            .expect("valid arguments should parse");
 
     assert_eq!(cli.args.name.as_deref(), Some("MyDesign"));
     assert_eq!(cli.args.cwd.as_deref(), Some("./here"));
@@ -21,7 +20,7 @@ fn design_remove_parses_all_flags() {
 
 #[test]
 fn design_remove_defaults_are_empty() {
-    let cli = TestCli::try_parse_from(["talosrs"]).expect("no arguments is valid");
+    let cli = TestCli::try_parse_from(["talos"]).expect("no arguments is valid");
 
     assert!(cli.args.name.is_none());
     assert!(cli.args.cwd.is_none());
@@ -30,5 +29,5 @@ fn design_remove_defaults_are_empty() {
 
 #[test]
 fn design_remove_rejects_unknown_flag() {
-    assert!(TestCli::try_parse_from(["talosrs", "--definitely-not-a-flag"]).is_err());
+    assert!(TestCli::try_parse_from(["talos", "--definitely-not-a-flag"]).is_err());
 }

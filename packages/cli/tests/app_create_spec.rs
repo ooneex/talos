@@ -32,7 +32,7 @@ fn make_templates_dir() -> tempfile::TempDir {
 
 #[test]
 fn app_create_args_parses_all_flags() {
-    let cli = TestCli::try_parse_from(["talosrs", "--name", "MyApi", "--destination", "./my-api"])
+    let cli = TestCli::try_parse_from(["talos", "--name", "MyApi", "--destination", "./my-api"])
         .expect("valid arguments should parse");
 
     assert_eq!(cli.args.name.as_deref(), Some("MyApi"));
@@ -41,7 +41,7 @@ fn app_create_args_parses_all_flags() {
 
 #[test]
 fn app_create_args_defaults_are_none() {
-    let cli = TestCli::try_parse_from(["talosrs"]).expect("no arguments is valid");
+    let cli = TestCli::try_parse_from(["talos"]).expect("no arguments is valid");
 
     assert!(cli.args.name.is_none());
     assert!(cli.args.destination.is_none());

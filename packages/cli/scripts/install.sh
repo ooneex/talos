@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# talosrs installer for macOS and Linux.
+# talos installer for macOS and Linux.
 #
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/ooneex/talos/main/packages/cli/scripts/install.sh | bash
 #
 # Environment variables:
-#   TALOSRS_INSTALL   Install directory (default: $HOME/.talosrs)
-#   TALOSRS_VERSION   Version tag to install (default: latest)
+#   TALOS_INSTALL   Install directory (default: $HOME/.talos)
+#   TALOS_VERSION   Version tag to install (default: latest)
 
 GITHUB_REPO="ooneex/talos"
-BINARY="talosrs"
+BINARY="talos"
 
 reset="\033[0m"
 red="\033[31m"
@@ -53,14 +53,14 @@ esac
 target="${BINARY}-${os}-${arch}"
 asset="${target}.tar.gz"
 
-version="${TALOSRS_VERSION:-latest}"
+version="${TALOS_VERSION:-latest}"
 if [ "${version}" = "latest" ]; then
   download_url="https://github.com/${GITHUB_REPO}/releases/latest/download/${asset}"
 else
   download_url="https://github.com/${GITHUB_REPO}/releases/download/${version}/${asset}"
 fi
 
-install_dir="${TALOSRS_INSTALL:-${HOME}/.talosrs}"
+install_dir="${TALOS_INSTALL:-${HOME}/.talos}"
 bin_dir="${install_dir}/bin"
 exe="${bin_dir}/${BINARY}"
 
@@ -90,7 +90,7 @@ add_to_path() {
   if [ -w "${profile}" ] || [ ! -e "${profile}" ]; then
     if ! grep -qs "${bin_dir}" "${profile}" 2>/dev/null; then
       echo "" >>"${profile}"
-      echo "# talosrs" >>"${profile}"
+      echo "# talos" >>"${profile}"
       echo "${line}" >>"${profile}"
       info "Added ${bin_dir} to PATH in ${profile}"
     fi

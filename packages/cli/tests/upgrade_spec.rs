@@ -9,7 +9,7 @@ struct TestCli {
 
 #[test]
 fn upgrade_parses_all_flags() {
-    let cli = TestCli::try_parse_from(["talosrs", "--cwd", "./here"])
+    let cli = TestCli::try_parse_from(["talos", "--cwd", "./here"])
         .expect("valid arguments should parse");
 
     assert_eq!(cli.args.cwd.as_deref(), Some("./here"));
@@ -17,12 +17,12 @@ fn upgrade_parses_all_flags() {
 
 #[test]
 fn upgrade_defaults_are_empty() {
-    let cli = TestCli::try_parse_from(["talosrs"]).expect("no arguments is valid");
+    let cli = TestCli::try_parse_from(["talos"]).expect("no arguments is valid");
 
     assert!(cli.args.cwd.is_none());
 }
 
 #[test]
 fn upgrade_rejects_unknown_flag() {
-    assert!(TestCli::try_parse_from(["talosrs", "--definitely-not-a-flag"]).is_err());
+    assert!(TestCli::try_parse_from(["talos", "--definitely-not-a-flag"]).is_err());
 }

@@ -10,7 +10,7 @@ struct TestCli {
 
 #[test]
 fn app_init_subcommand_parses_its_name() {
-    let cli = TestCli::try_parse_from(["talosrs", "app:init", "--name", "MyApp"])
+    let cli = TestCli::try_parse_from(["talos", "app:init", "--name", "MyApp"])
         .expect("app:init should parse");
 
     match cli.command {
@@ -21,7 +21,7 @@ fn app_init_subcommand_parses_its_name() {
 
 #[test]
 fn app_create_subcommand_parses_its_name() {
-    let cli = TestCli::try_parse_from(["talosrs", "app:create", "--name", "MyApi"])
+    let cli = TestCli::try_parse_from(["talos", "app:create", "--name", "MyApi"])
         .expect("app:create should parse");
 
     match cli.command {
@@ -32,11 +32,11 @@ fn app_create_subcommand_parses_its_name() {
 
 #[test]
 fn no_subcommand_is_valid() {
-    let cli = TestCli::try_parse_from(["talosrs"]).expect("no subcommand should parse");
+    let cli = TestCli::try_parse_from(["talos"]).expect("no subcommand should parse");
     assert!(cli.command.is_none());
 }
 
 #[test]
 fn unknown_subcommand_is_rejected() {
-    assert!(TestCli::try_parse_from(["talosrs", "not-a-command"]).is_err());
+    assert!(TestCli::try_parse_from(["talos", "not-a-command"]).is_err());
 }

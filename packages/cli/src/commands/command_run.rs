@@ -57,7 +57,7 @@ pub fn run(args: &CommandRunArgs) {
         Some(id) => id,
         None => {
             crate::utils::error(
-                "Command name is required. Usage: talosrs command:run --id <command-name> [args...]",
+                "Command name is required. Usage: talos command:run --id <command-name> [args...]",
             );
             std::process::exit(1);
         }

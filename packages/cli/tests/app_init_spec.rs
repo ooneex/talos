@@ -18,7 +18,7 @@ struct TestCli {
 #[test]
 fn app_init_args_parses_all_flags() {
     let cli = TestCli::try_parse_from([
-        "talosrs",
+        "talos",
         "--name",
         "MyApp",
         "--destination",
@@ -34,7 +34,7 @@ fn app_init_args_parses_all_flags() {
 
 #[test]
 fn app_init_args_defaults_are_none_and_not_silent() {
-    let cli = TestCli::try_parse_from(["talosrs"]).expect("no arguments is valid");
+    let cli = TestCli::try_parse_from(["talos"]).expect("no arguments is valid");
 
     assert!(cli.args.name.is_none());
     assert!(cli.args.destination.is_none());

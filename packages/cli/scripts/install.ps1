@@ -1,17 +1,17 @@
 #!/usr/bin/env pwsh
-# talosrs installer for Windows.
+# talos installer for Windows.
 #
 # Usage:
 #   powershell -c "irm https://raw.githubusercontent.com/ooneex/talos/main/packages/cli/scripts/install.ps1 | iex"
 #
 # Environment variables:
-#   $env:TALOSRS_INSTALL   Install directory (default: $HOME\.talosrs)
-#   $env:TALOSRS_VERSION   Version tag to install (default: latest)
+#   $env:TALOS_INSTALL   Install directory (default: $HOME\.talos)
+#   $env:TALOS_VERSION   Version tag to install (default: latest)
 
 $ErrorActionPreference = "Stop"
 
 $GithubRepo = "ooneex/talos"
-$Binary = "talosrs"
+$Binary = "talos"
 
 # Detect architecture.
 $arch = switch ($env:PROCESSOR_ARCHITECTURE) {
@@ -23,14 +23,14 @@ $arch = switch ($env:PROCESSOR_ARCHITECTURE) {
 $target = "$Binary-windows-$arch"
 $asset = "$target.zip"
 
-$version = if ($env:TALOSRS_VERSION) { $env:TALOSRS_VERSION } else { "latest" }
+$version = if ($env:TALOS_VERSION) { $env:TALOS_VERSION } else { "latest" }
 $downloadUrl = if ($version -eq "latest") {
   "https://github.com/$GithubRepo/releases/latest/download/$asset"
 } else {
   "https://github.com/$GithubRepo/releases/download/$version/$asset"
 }
 
-$installDir = if ($env:TALOSRS_INSTALL) { $env:TALOSRS_INSTALL } else { "$HOME\.talosrs" }
+$installDir = if ($env:TALOS_INSTALL) { $env:TALOS_INSTALL } else { "$HOME\.talos" }
 $binDir = Join-Path $installDir "bin"
 $exe = Join-Path $binDir "$Binary.exe"
 

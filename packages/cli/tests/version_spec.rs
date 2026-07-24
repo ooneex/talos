@@ -9,12 +9,12 @@ struct TestCli {
 
 #[test]
 fn version_parses_with_no_arguments() {
-    assert!(TestCli::try_parse_from(["talosrs"]).is_ok());
+    assert!(TestCli::try_parse_from(["talos"]).is_ok());
 }
 
 #[test]
 fn version_rejects_unknown_flag() {
-    assert!(TestCli::try_parse_from(["talosrs", "--definitely-not-a-flag"]).is_err());
+    assert!(TestCli::try_parse_from(["talos", "--definitely-not-a-flag"]).is_err());
 }
 
 #[test]

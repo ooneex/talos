@@ -3,8 +3,8 @@ use cli::commands::Commands;
 
 #[derive(Parser)]
 #[command(
-    name = "talosrs",
-    about = "Talosrs CLI",
+    name = "talos",
+    about = "Talos CLI",
     version,
     disable_help_subcommand = true
 )]

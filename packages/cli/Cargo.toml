@@ -8,7 +8,7 @@ name = "cli"
 path = "src/lib.rs"
 
 [[bin]]
-name = "talosrs"
+name = "talos"
 path = "src/main.rs"
 
 [dependencies]

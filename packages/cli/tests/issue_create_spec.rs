@@ -10,7 +10,7 @@ struct TestCli {
 #[test]
 fn issue_create_parses_all_flags() {
     let cli = TestCli::try_parse_from([
-        "talosrs",
+        "talos",
         "--title",
         "My issue",
         "--priority",
@@ -38,7 +38,7 @@ fn issue_create_parses_all_flags() {
 
 #[test]
 fn issue_create_defaults_are_empty() {
-    let cli = TestCli::try_parse_from(["talosrs"]).expect("no arguments is valid");
+    let cli = TestCli::try_parse_from(["talos"]).expect("no arguments is valid");
 
     assert!(cli.args.title.is_none());
     assert!(cli.args.priority.is_none());
@@ -50,5 +50,5 @@ fn issue_create_defaults_are_empty() {
 
 #[test]
 fn issue_create_rejects_unknown_flag() {
-    assert!(TestCli::try_parse_from(["talosrs", "--definitely-not-a-flag"]).is_err());
+    assert!(TestCli::try_parse_from(["talos", "--definitely-not-a-flag"]).is_err());
 }
