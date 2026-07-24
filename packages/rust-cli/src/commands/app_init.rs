@@ -273,7 +273,7 @@ fn write_commitlint_hook(destination: &Path) -> Result<PathBuf, String> {
 
     let hook_path = hooks_dir.join("commit-msg");
     let hook_content = "#!/usr/bin/env sh\n\
-# Talos commit-message linter — installed by `oo commitlint:init`.\n\
+# Talos commit-message linter — installed by `talos commitlint:init`.\n\
 exec talos commitlint:check --file \"$1\"\n";
     fs::write(&hook_path, hook_content).map_err(|e| e.to_string())?;
     fs::set_permissions(&hook_path, fs::Permissions::from_mode(0o755))

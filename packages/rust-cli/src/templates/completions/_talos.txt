@@ -138,6 +138,8 @@ _talos() {
     'completion\:zsh:Install Zsh completion for oo command'
     'completion\:bash:Install Bash completion for oo command'
     'completion\:fish:Install Fish completion for oo command'
+    'commitlint\:check:Validate a commit message file against the conventional-commit rules'
+    'commitlint\:init:Install the git commit-msg hook that lints commit messages'
     'help:Show available commands'
     'version:Print the installed CLI version'
     'upgrade:Upgrade the CLI to its latest version'
@@ -256,6 +258,15 @@ _talos() {
         command:run)
           _arguments -s \
             '1:command name:_talos_custom_commands'
+          ;;
+        commitlint:check)
+          _arguments -s \
+            '--file=[Commit message file to validate]:file:_files' \
+            '--cwd=[Working directory]:cwd:_files -/'
+          ;;
+        commitlint:init)
+          _arguments -s \
+            '--cwd=[Working directory]:cwd:_files -/'
           ;;
         issue:create)
           _arguments -s \
