@@ -72,6 +72,12 @@ pub(crate) fn run_group(
         .filter(|t| t.status == TaskStatus::Skipped)
         .map(|t| t.key.clone())
         .collect();
+    // Cap the in-flight pool at the machine's parallelism. The tasks this
+    // scheduler runs (`cargo test`/`cargo clippy`/`tsc`/`bun test`/`biome`) are
+    // CPU-bound — they spend their time compiling and type-checking, not idling
+    // on I/O — so oversubscribing past the core count only adds context-switch
+    // thrash, memory pressure, and cache contention, making the whole run
+    // slower. One task per core is the sweet spot.
     let limit = std::thread::available_parallelism()
         .map(|n| n.get())
         .unwrap_or(1)
