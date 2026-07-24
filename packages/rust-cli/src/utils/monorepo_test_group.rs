@@ -4,7 +4,7 @@
 //! `cargo test --test <name>` per `tests/<name>_spec.rs`; every other target
 //! runs `bun test ./tests/<name>.spec.ts` per matching file.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::path::PathBuf;
 
 use regex::Regex;
@@ -67,24 +67,17 @@ pub(crate) fn collect_test_files(target: &MonorepoTarget) -> Vec<PathBuf> {
 // serializing them. Rust targets run `cargo test --test <name>` per
 // `tests/<name>_spec.rs`; every other target runs `bun test ./tests/<name>.spec.ts`
 // per matching file. Targets without the `test` script, or without any
-// matching files, are marked skipped up front. `test` is always ordered
-// (it isn't in `ORDER_INDEPENDENT_COMMANDS`), so a target's file tasks
-// depend on *all* of its workspace dependencies' file tasks.
+// matching files, are marked skipped up front. `test` is order-independent
+// (it's in `ORDER_INDEPENDENT_COMMANDS`): a target's tests never need its
+// workspace dependencies' tests to have run first, so file tasks carry no
+// dependency edges and every test in the run can execute fully in parallel.
 pub(crate) fn build_test_group(
     targets: &[MonorepoTarget],
-    included_keys: &HashSet<String>,
+    _included_keys: &HashSet<String>,
 ) -> Vec<Task> {
     let mut tasks: Vec<Task> = Vec::new();
-    let mut keys_by_target: HashMap<String, Vec<String>> = HashMap::new();
 
     for target in targets {
-        let dep_keys: Vec<String> = target
-            .workspace_deps
-            .iter()
-            .filter(|k| included_keys.contains(*k))
-            .flat_map(|k| keys_by_target.get(k).cloned().unwrap_or_default())
-            .collect();
-
         let has_script = target.scripts.contains_key(TEST_COMMAND);
         let test_files = if has_script {
             collect_test_files(target)
@@ -102,19 +95,17 @@ pub(crate) fn build_test_group(
                 cwd: target.dir.clone(),
                 argv: Vec::new(),
                 cacheable: false,
-                deps: dep_keys,
+                deps: Vec::new(),
                 status: TaskStatus::Skipped,
                 output: String::new(),
                 exit_code: None,
                 duration_ms: 0,
                 hash: None,
             });
-            keys_by_target.insert(target.key.clone(), vec![key]);
             continue;
         }
 
         let is_rust = is_rust_module(&target.dir);
-        let mut own_keys = Vec::new();
         for file in &test_files {
             let stem = file
                 .file_stem()
@@ -137,23 +128,21 @@ pub(crate) fn build_test_group(
             // for a target would collide on the same cache entry.
             let key = format!("{}#{TEST_COMMAND}#{stem}", target.key);
             tasks.push(Task {
-                key: key.clone(),
+                key,
                 label: format!("{}:{TEST_COMMAND}:{stem}", target.name),
                 target_key: Some(target.key.clone()),
                 command: format!("{TEST_COMMAND}:{stem}"),
                 cwd: target.dir.clone(),
                 argv,
                 cacheable: true,
-                deps: dep_keys.clone(),
+                deps: Vec::new(),
                 status: TaskStatus::Pending,
                 output: String::new(),
                 exit_code: None,
                 duration_ms: 0,
                 hash: None,
             });
-            own_keys.push(key);
         }
-        keys_by_target.insert(target.key.clone(), own_keys);
     }
 
     tasks

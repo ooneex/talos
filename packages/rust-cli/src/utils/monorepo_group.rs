@@ -16,7 +16,7 @@ use super::monorepo_test_group::{TEST_COMMAND, build_test_group};
 use crate::utils::MonorepoTarget;
 
 pub(crate) const INSTALL_COMMAND: &str = "install";
-pub(crate) const ORDER_INDEPENDENT_COMMANDS: &[&str] = &["fmt", "lint"];
+pub(crate) const ORDER_INDEPENDENT_COMMANDS: &[&str] = &["fmt", "lint", "test"];
 
 // One task per target for a command. Targets whose package.json lacks the
 // script are marked skipped up front. Order-independent commands carry no
