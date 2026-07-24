@@ -4,17 +4,10 @@ use std::path::Path;
 use clap::Args;
 
 use crate::commands::app_init::{self, AppInitOptions, AppType};
-use crate::utils::{ask_confirm, ask_select, resolve_name_and_destination, to_snake_case};
-
-const GITHUB_CI: &str = include_str!("../../../cli/src/templates/github/ci.yml.txt");
-const GITHUB_PRODUCTION: &str =
-    include_str!("../../../cli/src/templates/github/production.yml.txt");
-const GITLAB_CI: &str = include_str!("../../../cli/src/templates/gitlab/ci.yml.txt");
-const GITLAB_PRODUCTION: &str =
-    include_str!("../../../cli/src/templates/gitlab/production.yml.txt");
-const BITBUCKET_PIPELINES: &str =
-    include_str!("../../../cli/src/templates/bitbucket/pipelines.yml.txt");
-const RENOVATE_JSON: &str = include_str!("../../../cli/src/templates/renovate.json.txt");
+use crate::utils::{
+    ask_confirm, ask_select, read_template, resolve_name_and_destination, skeleton_templates_dir,
+    to_snake_case,
+};
 
 pub const CI_PROVIDERS: [&str; 3] = ["github", "gitlab", "bitbucket"];
 
@@ -66,11 +59,17 @@ pub fn run(args: &AppCreateArgs) {
     };
     let provider = CI_PROVIDERS[provider_index];
 
+    let Some(templates_dir) = skeleton_templates_dir(false) else {
+        return;
+    };
+
     let spinner = crate::utils::Spinner::start(format!("Writing {provider} CI/CD files..."));
-    let written = write_ci_cd_files(&destination, provider, &snake_name);
+    let written = write_ci_cd_files(&templates_dir, &destination, provider, &snake_name);
     spinner.stop();
     if let Err(error) = written {
-        crate::utils::error(&error);
+        if !error.is_empty() {
+            crate::utils::error(&error);
+        }
         return;
     }
 
@@ -85,15 +84,18 @@ pub fn write_named(path: &Path, template: &str, snake_name: &str) -> Result<(), 
 }
 
 pub fn write_ci_cd_files(
+    templates_dir: &Path,
     destination: &Path,
     provider: &str,
     snake_name: &str,
 ) -> Result<(), String> {
+    let read = |name: &str| read_template(templates_dir, name).ok_or_else(String::new);
+
     match provider {
         "github" => {
             write_named(
                 &destination.join(".github").join("workflows").join("ci.yml"),
-                GITHUB_CI,
+                &read("github/ci.yml.txt")?,
                 snake_name,
             )?;
             write_named(
@@ -101,14 +103,14 @@ pub fn write_ci_cd_files(
                     .join(".github")
                     .join("workflows")
                     .join("production.yml"),
-                GITHUB_PRODUCTION,
+                &read("github/production.yml.txt")?,
                 snake_name,
             )?;
         }
         "gitlab" => {
             write_named(
                 &destination.join(".gitlab").join("ci").join("ci.yml"),
-                GITLAB_CI,
+                &read("gitlab/ci.yml.txt")?,
                 snake_name,
             )?;
             write_named(
@@ -116,7 +118,7 @@ pub fn write_ci_cd_files(
                     .join(".gitlab")
                     .join("ci")
                     .join("production.yml"),
-                GITLAB_PRODUCTION,
+                &read("gitlab/production.yml.txt")?,
                 snake_name,
             )?;
             fs::write(
@@ -128,13 +130,17 @@ pub fn write_ci_cd_files(
         _ => {
             write_named(
                 &destination.join("bitbucket-pipelines.yml"),
-                BITBUCKET_PIPELINES,
+                &read("bitbucket/pipelines.yml.txt")?,
                 snake_name,
             )?;
         }
     }
 
-    fs::write(destination.join("renovate.json"), RENOVATE_JSON).map_err(|e| e.to_string())?;
+    fs::write(
+        destination.join("renovate.json"),
+        read("renovate.json.txt")?,
+    )
+    .map_err(|e| e.to_string())?;
 
     Ok(())
 }

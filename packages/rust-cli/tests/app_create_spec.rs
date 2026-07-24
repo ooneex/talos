@@ -10,6 +10,26 @@ struct TestCli {
     args: AppCreateArgs,
 }
 
+fn make_templates_dir() -> tempfile::TempDir {
+    let dir = tempdir().unwrap();
+    let files = [
+        "github/ci.yml.txt",
+        "github/production.yml.txt",
+        "gitlab/ci.yml.txt",
+        "gitlab/production.yml.txt",
+        "bitbucket/pipelines.yml.txt",
+        "renovate.json.txt",
+    ];
+    for file in files {
+        let path = dir.path().join(file);
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent).unwrap();
+        }
+        fs::write(&path, "name: {{NAME}}\n").unwrap();
+    }
+    dir
+}
+
 #[test]
 fn app_create_args_parses_all_flags() {
     let cli = TestCli::try_parse_from(["talosrs", "--name", "MyApi", "--destination", "./my-api"])
@@ -40,8 +60,9 @@ fn write_named_substitutes_name_placeholder() {
 #[test]
 fn write_ci_cd_files_writes_github_workflows_and_renovate() {
     let dir = tempdir().unwrap();
+    let templates = make_templates_dir();
 
-    write_ci_cd_files(dir.path(), "github", "my_app").unwrap();
+    write_ci_cd_files(templates.path(), dir.path(), "github", "my_app").unwrap();
 
     assert!(
         dir.path()
@@ -57,6 +78,10 @@ fn write_ci_cd_files_writes_github_workflows_and_renovate() {
             .join("production.yml")
             .is_file()
     );
+    assert_eq!(
+        fs::read_to_string(dir.path().join(".github").join("workflows").join("ci.yml")).unwrap(),
+        "name: my_app\n"
+    );
     assert!(dir.path().join("renovate.json").is_file());
     assert!(!dir.path().join(".gitlab-ci.yml").exists());
 }
@@ -64,8 +89,9 @@ fn write_ci_cd_files_writes_github_workflows_and_renovate() {
 #[test]
 fn write_ci_cd_files_writes_gitlab_pipeline_and_include_file() {
     let dir = tempdir().unwrap();
+    let templates = make_templates_dir();
 
-    write_ci_cd_files(dir.path(), "gitlab", "my_app").unwrap();
+    write_ci_cd_files(templates.path(), dir.path(), "gitlab", "my_app").unwrap();
 
     assert!(
         dir.path()
@@ -90,11 +116,27 @@ fn write_ci_cd_files_writes_gitlab_pipeline_and_include_file() {
 #[test]
 fn write_ci_cd_files_writes_bitbucket_pipelines() {
     let dir = tempdir().unwrap();
+    let templates = make_templates_dir();
 
-    write_ci_cd_files(dir.path(), "bitbucket", "my_app").unwrap();
+    write_ci_cd_files(templates.path(), dir.path(), "bitbucket", "my_app").unwrap();
 
     assert!(dir.path().join("bitbucket-pipelines.yml").is_file());
+    assert_eq!(
+        fs::read_to_string(dir.path().join("bitbucket-pipelines.yml")).unwrap(),
+        "name: my_app\n"
+    );
     assert!(dir.path().join("renovate.json").is_file());
+}
+
+#[test]
+fn write_ci_cd_files_returns_error_when_template_missing() {
+    let dir = tempdir().unwrap();
+    let empty_templates = tempdir().unwrap();
+
+    let result = write_ci_cd_files(empty_templates.path(), dir.path(), "github", "my_app");
+
+    assert!(result.is_err());
+    assert!(!dir.path().join(".github").exists());
 }
 
 #[test]
