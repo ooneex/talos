@@ -1,0 +1,118 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# talosrs installer for macOS and Linux.
+#
+# Usage:
+#   curl -fsSL https://raw.githubusercontent.com/ooneex/talos/main/packages/rust-cli/scripts/install.sh | bash
+#
+# Environment variables:
+#   TALOSRS_INSTALL   Install directory (default: $HOME/.talosrs)
+#   TALOSRS_VERSION   Version tag to install (default: latest)
+
+GITHUB_REPO="ooneex/talos"
+BINARY="talosrs"
+
+reset="\033[0m"
+red="\033[31m"
+green="\033[32m"
+bold="\033[1m"
+
+error() {
+  echo -e "${red}error${reset}: $*" >&2
+  exit 1
+}
+
+info() {
+  echo -e "${bold}$*${reset}"
+}
+
+success() {
+  echo -e "${green}$*${reset}"
+}
+
+command -v curl >/dev/null 2>&1 || error "curl is required to install ${BINARY}."
+command -v tar >/dev/null 2>&1 || error "tar is required to install ${BINARY}."
+
+# Detect operating system.
+os="$(uname -s)"
+case "${os}" in
+  Darwin) os="darwin" ;;
+  Linux) os="linux" ;;
+  *) error "Unsupported operating system: ${os}" ;;
+esac
+
+# Detect architecture.
+arch="$(uname -m)"
+case "${arch}" in
+  x86_64 | amd64) arch="x64" ;;
+  arm64 | aarch64) arch="arm64" ;;
+  *) error "Unsupported architecture: ${arch}" ;;
+esac
+
+target="${BINARY}-${os}-${arch}"
+asset="${target}.tar.gz"
+
+version="${TALOSRS_VERSION:-latest}"
+if [ "${version}" = "latest" ]; then
+  download_url="https://github.com/${GITHUB_REPO}/releases/latest/download/${asset}"
+else
+  download_url="https://github.com/${GITHUB_REPO}/releases/download/${version}/${asset}"
+fi
+
+install_dir="${TALOSRS_INSTALL:-${HOME}/.talosrs}"
+bin_dir="${install_dir}/bin"
+exe="${bin_dir}/${BINARY}"
+
+info "Installing ${BINARY} (${os}-${arch})..."
+
+tmp_dir="$(mktemp -d)"
+trap 'rm -rf "${tmp_dir}"' EXIT
+
+info "Downloading ${download_url}"
+if ! curl -fSL --progress-bar "${download_url}" -o "${tmp_dir}/${asset}"; then
+  error "Failed to download ${asset}. Check that a release exists for '${version}'."
+fi
+
+info "Extracting archive..."
+tar -xzf "${tmp_dir}/${asset}" -C "${tmp_dir}"
+
+mkdir -p "${bin_dir}"
+mv "${tmp_dir}/${BINARY}" "${exe}"
+chmod +x "${exe}"
+
+success "${BINARY} was installed successfully to ${exe}"
+
+# Add to PATH via the user's shell profile.
+add_to_path() {
+  local profile="$1"
+  local line="$2"
+  if [ -w "${profile}" ] || [ ! -e "${profile}" ]; then
+    if ! grep -qs "${bin_dir}" "${profile}" 2>/dev/null; then
+      echo "" >>"${profile}"
+      echo "# talosrs" >>"${profile}"
+      echo "${line}" >>"${profile}"
+      info "Added ${bin_dir} to PATH in ${profile}"
+    fi
+  fi
+}
+
+case "${SHELL:-}" in
+  */zsh)
+    add_to_path "${HOME}/.zshrc" "export PATH=\"${bin_dir}:\$PATH\""
+    ;;
+  */bash)
+    profile="${HOME}/.bashrc"
+    [ -f "${HOME}/.bash_profile" ] && profile="${HOME}/.bash_profile"
+    add_to_path "${profile}" "export PATH=\"${bin_dir}:\$PATH\""
+    ;;
+  */fish)
+    add_to_path "${HOME}/.config/fish/config.fish" "fish_add_path ${bin_dir}"
+    ;;
+  *)
+    info "Manually add ${bin_dir} to your PATH."
+    ;;
+esac
+
+echo ""
+success "Run '${BINARY} --version' to get started (restart your shell first)."

@@ -1,0 +1,98 @@
+name: rust-cli release
+
+on:
+  push:
+    tags:
+      - "rust-cli-v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to publish (e.g. rust-cli-v0.1.0)"
+        required: true
+
+permissions:
+  contents: write
+
+defaults:
+  run:
+    working-directory: packages/rust-cli
+
+jobs:
+  build:
+    name: Build ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: talosrs-darwin-arm64
+            os: macos-14
+            target: aarch64-apple-darwin
+          - name: talosrs-darwin-x64
+            os: macos-13
+            target: x86_64-apple-darwin
+          - name: talosrs-linux-x64
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - name: talosrs-linux-arm64
+            os: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+          - name: talosrs-windows-x64
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            packages/rust-cli/target
+          key: ${{ matrix.target }}-cargo-${{ hashFiles('packages/rust-cli/Cargo.lock') }}
+
+      - name: Build release binary
+        run: cargo build --release --locked --target ${{ matrix.target }}
+
+      - name: Package (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          tar -czf "${{ matrix.name }}.tar.gz" -C "target/${{ matrix.target }}/release" talosrs
+
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Compress-Archive -Path "target/${{ matrix.target }}/release/talosrs.exe" -DestinationPath "${{ matrix.name }}.zip"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: |
+            packages/rust-cli/${{ matrix.name }}.tar.gz
+            packages/rust-cli/${{ matrix.name }}.zip
+          if-no-files-found: ignore
+
+  release:
+    name: Publish release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+          files: artifacts/*
+          generate_release_notes: true
