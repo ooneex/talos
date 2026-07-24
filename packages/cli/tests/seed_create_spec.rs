@@ -1,5 +1,5 @@
 use clap::Parser;
-use rust_cli::commands::seed_create::SeedCreateArgs;
+use cli::commands::seed_create::SeedCreateArgs;
 
 #[derive(Parser)]
 struct TestCli {

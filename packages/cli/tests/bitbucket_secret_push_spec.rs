@@ -1,5 +1,5 @@
 use clap::Parser;
-use rust_cli::commands::bitbucket_secret_push::BitbucketSecretPushArgs;
+use cli::commands::bitbucket_secret_push::BitbucketSecretPushArgs;
 
 #[derive(Parser)]
 struct TestCli {

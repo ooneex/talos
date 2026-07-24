@@ -1,5 +1,5 @@
 use clap::Parser;
-use rust_cli::commands::docker_publish::DockerPublishArgs;
+use cli::commands::docker_publish::DockerPublishArgs;
 
 #[derive(Parser)]
 struct TestCli {

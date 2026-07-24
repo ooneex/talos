@@ -1,5 +1,5 @@
 use clap::Parser;
-use rust_cli::commands::spa_remove::SpaRemoveArgs;
+use cli::commands::spa_remove::SpaRemoveArgs;
 
 #[derive(Parser)]
 struct TestCli {

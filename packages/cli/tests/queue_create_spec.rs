@@ -1,5 +1,5 @@
 use clap::Parser;
-use rust_cli::commands::queue_create::QueueCreateArgs;
+use cli::commands::queue_create::QueueCreateArgs;
 
 #[derive(Parser)]
 struct TestCli {

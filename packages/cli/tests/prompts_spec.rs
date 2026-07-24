@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use rust_cli::utils::{resolve_name_and_destination, validate_destination, validate_name};
+use cli::utils::{resolve_name_and_destination, validate_destination, validate_name};
 
 #[test]
 fn validate_name_accepts_letters_numbers_and_hyphens() {

@@ -1,5 +1,5 @@
 use clap::Parser;
-use rust_cli::commands::completion_fish::CompletionFishArgs;
+use cli::commands::completion_fish::CompletionFishArgs;
 
 #[derive(Parser)]
 struct TestCli {

@@ -4,7 +4,7 @@ use std::path::Path;
 use std::process::Command;
 
 use clap::Parser;
-use rust_cli::commands::app_init::{
+use cli::commands::app_init::{
     AppInitArgs, AppType, install_commitlint_hook, scaffold_destination,
 };
 use tempfile::tempdir;

@@ -1,5 +1,5 @@
 use clap::Parser;
-use rust_cli::commands::monorepo_check::MonorepoCheckArgs;
+use cli::commands::monorepo_check::MonorepoCheckArgs;
 
 #[derive(Parser)]
 struct TestCli {

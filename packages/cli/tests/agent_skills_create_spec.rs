@@ -1,5 +1,5 @@
 use clap::Parser;
-use rust_cli::commands::agent_skills_create::AgentSkillsCreateArgs;
+use cli::commands::agent_skills_create::AgentSkillsCreateArgs;
 
 #[derive(Parser)]
 struct TestCli {

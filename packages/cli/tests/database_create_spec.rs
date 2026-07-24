@@ -1,5 +1,5 @@
 use clap::Parser;
-use rust_cli::commands::database_create::DatabaseCreateArgs;
+use cli::commands::database_create::DatabaseCreateArgs;
 
 #[derive(Parser)]
 struct TestCli {

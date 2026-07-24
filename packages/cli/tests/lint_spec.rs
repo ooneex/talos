@@ -1,5 +1,5 @@
 use clap::Parser;
-use rust_cli::commands::lint::LintArgs;
+use cli::commands::lint::LintArgs;
 
 #[derive(Parser)]
 struct TestCli {

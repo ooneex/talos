@@ -1,5 +1,5 @@
 use clap::Parser;
-use rust_cli::commands::docker_create::DockerCreateArgs;
+use cli::commands::docker_create::DockerCreateArgs;
 
 #[derive(Parser)]
 struct TestCli {

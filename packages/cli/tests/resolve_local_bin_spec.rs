@@ -1,6 +1,6 @@
 use std::fs;
 
-use rust_cli::utils::{resolve_biome_command, resolve_tsc_command};
+use cli::utils::{resolve_biome_command, resolve_tsc_command};
 
 #[test]
 fn resolve_tsc_command_prefers_nearest_local_binary() {

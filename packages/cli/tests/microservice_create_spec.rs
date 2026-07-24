@@ -1,5 +1,5 @@
 use clap::Parser;
-use rust_cli::commands::microservice_create::MicroserviceCreateArgs;
+use cli::commands::microservice_create::MicroserviceCreateArgs;
 
 #[derive(Parser)]
 struct TestCli {

@@ -1,7 +1,7 @@
 use std::fs;
 use std::sync::Once;
 
-use rust_cli::commands::module_create::{ModuleCreateOptions, execute};
+use cli::commands::module_create::{ModuleCreateOptions, execute};
 
 static INIT_TEMPLATES: Once = Once::new();
 
@@ -9,7 +9,7 @@ fn use_fixture_templates() {
     INIT_TEMPLATES.call_once(|| {
         let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/templates");
         unsafe {
-            std::env::set_var(rust_cli::utils::TEMPLATES_DIR_ENV, dir);
+            std::env::set_var(cli::utils::TEMPLATES_DIR_ENV, dir);
         }
     });
 }

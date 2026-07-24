@@ -1,5 +1,5 @@
 use clap::Parser;
-use rust_cli::commands::e2e_run::E2eRunArgs;
+use cli::commands::e2e_run::E2eRunArgs;
 
 #[derive(Parser)]
 struct TestCli {

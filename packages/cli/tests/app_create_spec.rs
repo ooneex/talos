@@ -1,7 +1,7 @@
 use std::fs;
 
 use clap::Parser;
-use rust_cli::commands::app_create::{AppCreateArgs, CI_PROVIDERS, write_ci_cd_files, write_named};
+use cli::commands::app_create::{AppCreateArgs, CI_PROVIDERS, write_ci_cd_files, write_named};
 use tempfile::tempdir;
 
 #[derive(Parser)]

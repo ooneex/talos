@@ -1,10 +1,10 @@
 [package]
-name = "rust-cli"
+name = "cli"
 version = "0.1.0"
 edition = "2024"
 
 [lib]
-name = "rust_cli"
+name = "cli"
 path = "src/lib.rs"
 
 [[bin]]

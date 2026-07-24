@@ -1,5 +1,5 @@
 use clap::Parser;
-use rust_cli::commands::storage_create::StorageCreateArgs;
+use cli::commands::storage_create::StorageCreateArgs;
 
 #[derive(Parser)]
 struct TestCli {

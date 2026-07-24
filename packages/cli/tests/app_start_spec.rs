@@ -1,5 +1,5 @@
 use clap::Parser;
-use rust_cli::commands::app_start::AppStartArgs;
+use cli::commands::app_start::AppStartArgs;
 
 #[derive(Parser)]
 struct TestCli {

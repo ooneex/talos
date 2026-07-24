@@ -1,5 +1,5 @@
 use clap::Parser;
-use rust_cli::commands::event_create::EventCreateArgs;
+use cli::commands::event_create::EventCreateArgs;
 
 #[derive(Parser)]
 struct TestCli {

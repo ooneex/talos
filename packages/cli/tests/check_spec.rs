@@ -1,5 +1,5 @@
 use clap::Parser;
-use rust_cli::commands::check::CheckArgs;
+use cli::commands::check::CheckArgs;
 
 #[derive(Parser)]
 struct TestCli {

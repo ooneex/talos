@@ -1,5 +1,5 @@
 use clap::Parser;
-use rust_cli::commands::feature_flag_create::FeatureFlagCreateArgs;
+use cli::commands::feature_flag_create::FeatureFlagCreateArgs;
 
 #[derive(Parser)]
 struct TestCli {

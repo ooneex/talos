@@ -1,5 +1,5 @@
 use clap::Parser;
-use rust_cli::commands::vector_database_create::VectorDatabaseCreateArgs;
+use cli::commands::vector_database_create::VectorDatabaseCreateArgs;
 
 #[derive(Parser)]
 struct TestCli {

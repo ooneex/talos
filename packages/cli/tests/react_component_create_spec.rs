@@ -1,5 +1,5 @@
 use clap::Parser;
-use rust_cli::commands::react_component_create::ReactComponentCreateArgs;
+use cli::commands::react_component_create::ReactComponentCreateArgs;
 
 #[derive(Parser)]
 struct TestCli {

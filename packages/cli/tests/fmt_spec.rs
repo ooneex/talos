@@ -1,5 +1,5 @@
 use clap::Parser;
-use rust_cli::commands::fmt::FmtArgs;
+use cli::commands::fmt::FmtArgs;
 
 #[derive(Parser)]
 struct TestCli {

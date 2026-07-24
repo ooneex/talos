@@ -1,5 +1,5 @@
 use clap::Parser;
-use rust_cli::commands::Commands;
+use cli::commands::Commands;
 
 #[derive(Parser)]
 #[command(

@@ -193,6 +193,31 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c8d4a3bb8b1e0c1050499d1815f5ab16d04f0959b233085fb31653fbfc9d98f9"
 
 [[package]]
+name = "cli"
+version = "0.1.0"
+dependencies = [
+ "base64 0.23.0",
+ "chrono",
+ "clap",
+ "console",
+ "dashmap",
+ "dialoguer",
+ "flate2",
+ "fs_extra",
+ "git2",
+ "num_cpus",
+ "rayon",
+ "regex",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "sha2",
+ "tar",
+ "tempfile",
+ "ureq",
+]
+
+[[package]]
 name = "colorchoice"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -975,31 +1000,6 @@ dependencies = [
  "libc",
  "untrusted",
  "windows-sys 0.52.0",
-]
-
-[[package]]
-name = "rust-cli"
-version = "0.1.0"
-dependencies = [
- "base64 0.23.0",
- "chrono",
- "clap",
- "console",
- "dashmap",
- "dialoguer",
- "flate2",
- "fs_extra",
- "git2",
- "num_cpus",
- "rayon",
- "regex",
- "serde",
- "serde_json",
- "serde_yaml",
- "sha2",
- "tar",
- "tempfile",
- "ureq",
 ]
 
 [[package]]

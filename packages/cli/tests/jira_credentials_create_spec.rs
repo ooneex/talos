@@ -1,5 +1,5 @@
 use clap::Parser;
-use rust_cli::commands::jira_credentials_create::JiraCredentialsCreateArgs;
+use cli::commands::jira_credentials_create::JiraCredentialsCreateArgs;
 
 #[derive(Parser)]
 struct TestCli {

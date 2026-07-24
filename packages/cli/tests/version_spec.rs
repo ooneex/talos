@@ -1,5 +1,5 @@
 use clap::Parser;
-use rust_cli::commands::version::VersionArgs;
+use cli::commands::version::VersionArgs;
 
 #[derive(Parser)]
 struct TestCli {
@@ -19,5 +19,5 @@ fn version_rejects_unknown_flag() {
 
 #[test]
 fn version_run_does_not_panic() {
-    rust_cli::commands::version::run(&VersionArgs {});
+    cli::commands::version::run(&VersionArgs {});
 }

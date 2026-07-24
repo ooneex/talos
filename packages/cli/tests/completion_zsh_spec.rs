@@ -1,5 +1,5 @@
 use clap::Parser;
-use rust_cli::commands::completion_zsh::CompletionZshArgs;
+use cli::commands::completion_zsh::CompletionZshArgs;
 
 #[derive(Parser)]
 struct TestCli {

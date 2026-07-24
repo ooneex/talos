@@ -1,5 +1,5 @@
 use clap::Parser;
-use rust_cli::commands::linear_credentials_create::LinearCredentialsCreateArgs;
+use cli::commands::linear_credentials_create::LinearCredentialsCreateArgs;
 
 #[derive(Parser)]
 struct TestCli {

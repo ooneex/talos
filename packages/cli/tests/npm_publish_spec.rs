@@ -1,5 +1,5 @@
 use clap::Parser;
-use rust_cli::commands::npm_publish::NpmPublishArgs;
+use cli::commands::npm_publish::NpmPublishArgs;
 
 #[derive(Parser)]
 struct TestCli {

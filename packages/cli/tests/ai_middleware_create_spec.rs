@@ -1,5 +1,5 @@
 use clap::Parser;
-use rust_cli::commands::ai_middleware_create::AiMiddlewareCreateArgs;
+use cli::commands::ai_middleware_create::AiMiddlewareCreateArgs;
 
 #[derive(Parser)]
 struct TestCli {

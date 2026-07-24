@@ -1,5 +1,5 @@
 use clap::Parser;
-use rust_cli::commands::microservice_remove::MicroserviceRemoveArgs;
+use cli::commands::microservice_remove::MicroserviceRemoveArgs;
 
 #[derive(Parser)]
 struct TestCli {

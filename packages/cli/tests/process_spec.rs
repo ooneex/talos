@@ -1,6 +1,6 @@
 use std::process::Command;
 
-use rust_cli::utils::{ensure_bin, run_spinner_step, run_step};
+use cli::utils::{ensure_bin, run_spinner_step, run_step};
 
 #[test]
 fn ensure_bin_finds_a_real_binary() {

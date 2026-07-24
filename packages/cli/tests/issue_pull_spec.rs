@@ -1,5 +1,5 @@
 use clap::Parser;
-use rust_cli::commands::issue_pull::IssuePullArgs;
+use cli::commands::issue_pull::IssuePullArgs;
 
 #[derive(Parser)]
 struct TestCli {

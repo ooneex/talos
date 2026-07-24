@@ -1,5 +1,5 @@
 use clap::Parser;
-use rust_cli::commands::controller_create::ControllerCreateArgs;
+use cli::commands::controller_create::ControllerCreateArgs;
 
 #[derive(Parser)]
 struct TestCli {

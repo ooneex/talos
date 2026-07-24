@@ -1,5 +1,5 @@
 use clap::Parser;
-use rust_cli::commands::cron_create::CronCreateArgs;
+use cli::commands::cron_create::CronCreateArgs;
 
 #[derive(Parser)]
 struct TestCli {

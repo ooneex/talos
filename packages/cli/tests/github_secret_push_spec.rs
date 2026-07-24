@@ -1,5 +1,5 @@
 use clap::Parser;
-use rust_cli::commands::github_secret_push::GithubSecretPushArgs;
+use cli::commands::github_secret_push::GithubSecretPushArgs;
 
 #[derive(Parser)]
 struct TestCli {

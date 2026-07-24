@@ -1,5 +1,5 @@
 use clap::Parser;
-use rust_cli::commands::command_run::CommandRunArgs;
+use cli::commands::command_run::CommandRunArgs;
 
 #[derive(Parser)]
 struct TestCli {

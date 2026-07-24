@@ -1,5 +1,5 @@
 use clap::Parser;
-use rust_cli::commands::rate_limit_create::RateLimitCreateArgs;
+use cli::commands::rate_limit_create::RateLimitCreateArgs;
 
 #[derive(Parser)]
 struct TestCli {

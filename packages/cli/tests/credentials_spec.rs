@@ -1,4 +1,4 @@
-use rust_cli::utils::{read_credentials, save_credentials};
+use cli::utils::{read_credentials, save_credentials};
 
 #[test]
 fn save_and_read_credentials_round_trip() {

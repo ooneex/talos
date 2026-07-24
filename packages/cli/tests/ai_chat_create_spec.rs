@@ -1,5 +1,5 @@
 use clap::Parser;
-use rust_cli::commands::ai_chat_create::AiChatCreateArgs;
+use cli::commands::ai_chat_create::AiChatCreateArgs;
 
 #[derive(Parser)]
 struct TestCli {

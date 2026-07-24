@@ -1,5 +1,5 @@
 use clap::Parser;
-use rust_cli::commands::bitbucket_credentials_create::BitbucketCredentialsCreateArgs;
+use cli::commands::bitbucket_credentials_create::BitbucketCredentialsCreateArgs;
 
 #[derive(Parser)]
 struct TestCli {

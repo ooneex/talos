@@ -1,5 +1,5 @@
 use clap::Parser;
-use rust_cli::commands::sdk_create::SdkCreateArgs;
+use cli::commands::sdk_create::SdkCreateArgs;
 
 #[derive(Parser)]
 struct TestCli {

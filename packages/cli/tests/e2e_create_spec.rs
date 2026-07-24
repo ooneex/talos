@@ -1,5 +1,5 @@
 use clap::Parser;
-use rust_cli::commands::e2e_create::E2eCreateArgs;
+use cli::commands::e2e_create::E2eCreateArgs;
 
 #[derive(Parser)]
 struct TestCli {

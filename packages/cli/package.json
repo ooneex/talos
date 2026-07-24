@@ -1,5 +1,5 @@
 {
-  "name": "@talosjs/rust-cli",
+  "name": "@talos/cli",
   "description": "",
   "version": "1.0.0",
   "type": "module",
@@ -8,8 +8,6 @@
     "test": "cargo test",
     "fmt": "cargo fmt",
     "lint": "cargo clippy --all-targets --quiet"
-  },
-  "dependencies": {
   },
   "keywords": []
 }

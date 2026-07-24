@@ -1,5 +1,5 @@
 use clap::Parser;
-use rust_cli::commands::upgrade::UpgradeArgs;
+use cli::commands::upgrade::UpgradeArgs;
 
 #[derive(Parser)]
 struct TestCli {

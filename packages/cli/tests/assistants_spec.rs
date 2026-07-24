@@ -1,4 +1,4 @@
-use rust_cli::templates::llm::assistants::{
+use cli::templates::llm::assistants::{
     ASSISTANTS, ScaffoldInput, default_config_dirs, resolve_adapter,
 };
 

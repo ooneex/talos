@@ -2,7 +2,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Barrier, Mutex};
 
-use rust_cli::utils::{Action, run_actions, run_actions_rendered};
+use cli::utils::{Action, run_actions, run_actions_rendered};
 
 #[test]
 fn run_actions_reports_no_failures_when_all_succeed() {

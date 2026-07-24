@@ -1,5 +1,5 @@
 use clap::Parser;
-use rust_cli::commands::commitlint_init::CommitlintInitArgs;
+use cli::commands::commitlint_init::CommitlintInitArgs;
 
 #[derive(Parser)]
 struct TestCli {

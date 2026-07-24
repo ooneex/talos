@@ -1,5 +1,5 @@
 use clap::Parser;
-use rust_cli::commands::gitlab_credentials_create::GitlabCredentialsCreateArgs;
+use cli::commands::gitlab_credentials_create::GitlabCredentialsCreateArgs;
 
 #[derive(Parser)]
 struct TestCli {

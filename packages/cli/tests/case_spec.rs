@@ -1,4 +1,4 @@
-use rust_cli::utils::{to_kebab_case, to_snake_case};
+use cli::utils::{to_kebab_case, to_snake_case};
 
 #[test]
 fn to_kebab_case_converts_simple_words() {

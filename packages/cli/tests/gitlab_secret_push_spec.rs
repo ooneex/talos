@@ -1,5 +1,5 @@
 use clap::Parser;
-use rust_cli::commands::gitlab_secret_push::GitlabSecretPushArgs;
+use cli::commands::gitlab_secret_push::GitlabSecretPushArgs;
 
 #[derive(Parser)]
 struct TestCli {

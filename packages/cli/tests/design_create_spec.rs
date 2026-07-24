@@ -1,5 +1,5 @@
 use clap::Parser;
-use rust_cli::commands::design_create::DesignCreateArgs;
+use cli::commands::design_create::DesignCreateArgs;
 
 #[derive(Parser)]
 struct TestCli {

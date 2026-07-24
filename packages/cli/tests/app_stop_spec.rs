@@ -1,5 +1,5 @@
 use clap::Parser;
-use rust_cli::commands::app_stop::AppStopArgs;
+use cli::commands::app_stop::AppStopArgs;
 
 #[derive(Parser)]
 struct TestCli {

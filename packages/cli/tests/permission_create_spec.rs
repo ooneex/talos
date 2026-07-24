@@ -1,5 +1,5 @@
 use clap::Parser;
-use rust_cli::commands::permission_create::PermissionCreateArgs;
+use cli::commands::permission_create::PermissionCreateArgs;
 
 #[derive(Parser)]
 struct TestCli {

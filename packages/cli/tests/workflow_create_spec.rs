@@ -1,5 +1,5 @@
 use clap::Parser;
-use rust_cli::commands::workflow_create::WorkflowCreateArgs;
+use cli::commands::workflow_create::WorkflowCreateArgs;
 
 #[derive(Parser)]
 struct TestCli {

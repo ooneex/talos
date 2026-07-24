@@ -1,5 +1,5 @@
 use clap::Parser;
-use rust_cli::commands::migration_create::MigrationCreateArgs;
+use cli::commands::migration_create::MigrationCreateArgs;
 
 #[derive(Parser)]
 struct TestCli {

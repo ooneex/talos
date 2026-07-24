@@ -1,5 +1,5 @@
 use clap::Parser;
-use rust_cli::commands::mailer_create::MailerCreateArgs;
+use cli::commands::mailer_create::MailerCreateArgs;
 
 #[derive(Parser)]
 struct TestCli {

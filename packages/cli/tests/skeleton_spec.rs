@@ -1,4 +1,4 @@
-use rust_cli::utils::{SKELETON_REPO_URL, clone_skeleton, read_template};
+use cli::utils::{SKELETON_REPO_URL, clone_skeleton, read_template};
 
 #[test]
 fn skeleton_repo_url_points_at_the_ooneex_skeleton_repo() {

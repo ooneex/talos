@@ -1,5 +1,5 @@
 use clap::Parser;
-use rust_cli::commands::help::HelpArgs;
+use cli::commands::help::HelpArgs;
 
 #[derive(Parser)]
 struct TestCli {
@@ -19,5 +19,5 @@ fn help_rejects_unknown_flag() {
 
 #[test]
 fn help_run_does_not_panic() {
-    rust_cli::commands::help::run(&HelpArgs {});
+    cli::commands::help::run(&HelpArgs {});
 }

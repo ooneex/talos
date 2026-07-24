@@ -1,5 +1,5 @@
 use clap::Parser;
-use rust_cli::commands::analytics_create::AnalyticsCreateArgs;
+use cli::commands::analytics_create::AnalyticsCreateArgs;
 
 #[derive(Parser)]
 struct TestCli {

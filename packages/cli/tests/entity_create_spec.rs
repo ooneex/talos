@@ -1,5 +1,5 @@
 use clap::Parser;
-use rust_cli::commands::entity_create::EntityCreateArgs;
+use cli::commands::entity_create::EntityCreateArgs;
 
 #[derive(Parser)]
 struct TestCli {
