@@ -3,11 +3,11 @@ name: rust-cli release
 on:
   push:
     tags:
-      - "rust-cli-v*"
+      - "@talos/cli@*"
   workflow_dispatch:
     inputs:
       tag:
-        description: "Release tag to publish (e.g. rust-cli-v0.1.0)"
+        description: "Release tag to publish (e.g. @talos/cli@0.1.0)"
         required: true
 
 permissions:
