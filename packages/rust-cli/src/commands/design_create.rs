@@ -7,8 +7,8 @@ use fs_extra::dir::{CopyOptions, copy as copy_dir};
 use serde_json::Value;
 
 use crate::utils::{
-    Spinner, add_path_alias, clone_skeleton_in_workspace, current_dir, run_spinner_step,
-    to_kebab_case, to_pascal_case,
+    Spinner, add_path_alias, clone_skeleton, current_dir, run_spinner_step, to_kebab_case,
+    to_pascal_case,
 };
 
 /// Rust port of `packages/cli/src/commands/DesignCreateCommand.ts`.
@@ -95,7 +95,7 @@ pub fn run(args: &DesignCreateArgs) {
     let src_dir = module_dir.join("src");
 
     let clone_spinner = Spinner::start("Downloading design template...");
-    let cloned = clone_skeleton_in_workspace(&cwd, &format!("design-{kebab_name}"), true);
+    let cloned = clone_skeleton(true);
     clone_spinner.stop();
     let Some(repo_dir) = cloned else {
         return;
@@ -107,7 +107,6 @@ pub fn run(args: &DesignCreateArgs) {
     let options = CopyOptions::new().content_only(true).overwrite(true);
     if let Err(error) = copy_dir(&design_template_dir, &module_dir, &options) {
         crate::utils::error(format!("Failed to copy design template: {error}"));
-        let _ = fs::remove_dir_all(repo_dir.parent().unwrap_or(&repo_dir));
         return;
     }
 
@@ -161,11 +160,8 @@ pub fn run(args: &DesignCreateArgs) {
     });
 
     if !install_dependencies(&cwd, &dependencies, &dev_dependencies, silent) {
-        let _ = fs::remove_dir_all(repo_dir.parent().unwrap_or(&repo_dir));
         return;
     }
-
-    let _ = fs::remove_dir_all(repo_dir.parent().unwrap_or(&repo_dir));
 
     let app_tsconfig_path = cwd.join("tsconfig.json");
     if app_tsconfig_path.exists() {

@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 use clap::Args;
 
-use crate::utils::{clone_skeleton_in_workspace, current_dir};
+use crate::utils::{clone_skeleton, current_dir};
 
 const DEFAULT_AGENTS: &[&str] = &[".claude", ".codex"];
 
@@ -225,7 +225,7 @@ pub fn run(args: &AgentSkillsCreateArgs) {
     let repo_dir = if let Some(source_dir) = &args.source_dir {
         PathBuf::from(source_dir)
     } else {
-        match clone_skeleton_in_workspace(&cwd, "agent-skills", args.silent) {
+        match clone_skeleton(args.silent) {
             Some(path) => path,
             None => return,
         }
@@ -247,9 +247,5 @@ pub fn run(args: &AgentSkillsCreateArgs) {
         } else {
             copy_default_layout(&repo_dir, config_dir, &cwd, args.silent);
         }
-    }
-
-    if args.source_dir.is_none() {
-        let _ = fs::remove_dir_all(repo_dir.parent().unwrap_or(&repo_dir));
     }
 }

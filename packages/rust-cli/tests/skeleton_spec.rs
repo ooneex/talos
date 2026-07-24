@@ -8,11 +8,12 @@ fn skeleton_repo_url_points_at_the_ooneex_skeleton_repo() {
     assert_eq!(SKELETON_REPO_URL, "https://github.com/ooneex/skeleton.git");
 }
 
-/// Network-dependent: performs a real shallow clone. Run explicitly with
-/// `cargo test -- --ignored` when verifying connectivity to GitHub.
+/// Network-dependent: performs a real clone into the user cache. Run explicitly
+/// with `cargo test -- --ignored` when verifying connectivity to GitHub.
 #[test]
 #[ignore = "requires network access to clone the real skeleton repository"]
-fn clone_skeleton_shallow_clones_into_a_repo_subdirectory() {
+fn clone_skeleton_clones_into_the_user_cache() {
     let cloned = clone_skeleton(true).expect("clone should succeed");
-    assert!(cloned.path().join("repo").join("package.json").is_file());
+    assert!(cloned.ends_with(".talos/skeleton"));
+    assert!(cloned.join("package.json").is_file());
 }

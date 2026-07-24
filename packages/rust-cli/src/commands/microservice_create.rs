@@ -6,8 +6,8 @@ use fs_extra::dir::{CopyOptions, copy as copy_dir};
 use serde_json::Value;
 
 use crate::utils::{
-    add_path_alias, ask_input, clone_skeleton_in_workspace, current_dir, to_kebab_case,
-    to_pascal_case, to_snake_case,
+    add_path_alias, ask_input, clone_skeleton, current_dir, to_kebab_case, to_pascal_case,
+    to_snake_case,
 };
 
 const MODULE_TEMPLATE: &str = include_str!("../templates/module/module.txt");
@@ -193,9 +193,7 @@ pub fn run(args: &MicroserviceCreateArgs) {
     let src_dir = module_dir.join("src");
     let tests_dir = module_dir.join("tests");
 
-    let Some(repo_dir) =
-        clone_skeleton_in_workspace(&cwd, &format!("microservice-{kebab_name}"), silent)
-    else {
+    let Some(repo_dir) = clone_skeleton(silent) else {
         return;
     };
     let template_dir = repo_dir.join("modules").join("microservice");
@@ -204,7 +202,6 @@ pub fn run(args: &MicroserviceCreateArgs) {
     let options = CopyOptions::new().content_only(true).overwrite(true);
     if let Err(error) = copy_dir(&template_dir, &module_dir, &options) {
         crate::utils::error(format!("Failed to copy microservice template: {error}"));
-        let _ = fs::remove_dir_all(repo_dir.parent().unwrap_or(&repo_dir));
         return;
     }
 
@@ -259,8 +256,6 @@ pub fn run(args: &MicroserviceCreateArgs) {
         })
         .unwrap_or(env_example);
     let _ = fs::write(module_dir.join(".env.yml"), env_content);
-
-    let _ = fs::remove_dir_all(repo_dir.parent().unwrap_or(&repo_dir));
 
     if kebab_name != "app" {
         let env_yml_path = cwd.join(".env.yml");

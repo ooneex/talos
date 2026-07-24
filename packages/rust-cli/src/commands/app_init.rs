@@ -103,9 +103,8 @@ pub fn execute(options: AppInitOptions) -> Option<PathBuf> {
     let skeleton_spinner = Spinner::start("Downloading skeleton...");
     let skeleton_dir = clone_skeleton(true);
     skeleton_spinner.stop();
-    let skeleton_dir = skeleton_dir?;
+    let skeleton_repo_dir = skeleton_dir?;
     crate::utils::success("Skeleton downloaded");
-    let skeleton_repo_dir = skeleton_dir.path().join("repo");
 
     let scaffold_spinner = Spinner::start("Preparing project files...");
     let scaffolded = scaffold_destination(&skeleton_repo_dir, &destination, &kebab_name, app_type);
@@ -114,8 +113,6 @@ pub fn execute(options: AppInitOptions) -> Option<PathBuf> {
         crate::utils::error(&error);
         return None;
     }
-    // `skeleton_dir` is a TempDir; it is removed automatically when dropped here.
-    drop(skeleton_dir);
     crate::utils::success("Project files prepared");
 
     // Ask the one interactive question up front so the slow, dependency-free

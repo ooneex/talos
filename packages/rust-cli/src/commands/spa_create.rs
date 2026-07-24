@@ -8,8 +8,8 @@ use serde_json::Value;
 
 use crate::commands::design_create::{self, DesignCreateArgs};
 use crate::utils::{
-    Spinner, add_path_alias, ask_input, ask_select, clone_skeleton_in_workspace, current_dir,
-    run_spinner_step, to_kebab_case, to_pascal_case,
+    Spinner, add_path_alias, ask_input, ask_select, clone_skeleton, current_dir, run_spinner_step,
+    to_kebab_case, to_pascal_case,
 };
 
 /// Rust port of `packages/cli/src/commands/SpaCreateCommand.ts`.
@@ -204,7 +204,7 @@ pub fn run(args: &SpaCreateArgs) {
     });
 
     let clone_spinner = Spinner::start("Downloading spa template...");
-    let cloned = clone_skeleton_in_workspace(&cwd, &format!("spa-{kebab_name}"), true);
+    let cloned = clone_skeleton(true);
     clone_spinner.stop();
     let Some(repo_dir) = cloned else {
         return;
@@ -215,7 +215,6 @@ pub fn run(args: &SpaCreateArgs) {
     let options = CopyOptions::new().content_only(true).overwrite(true);
     if let Err(error) = copy_dir(&template_dir, &module_dir, &options) {
         crate::utils::error(format!("Failed to copy spa template: {error}"));
-        let _ = fs::remove_dir_all(repo_dir.parent().unwrap_or(&repo_dir));
         return;
     }
 
@@ -315,10 +314,8 @@ pub fn run(args: &SpaCreateArgs) {
     let _ = fs::write(src_dir.join("shared").join(".gitkeep"), "");
 
     if !install_root_dependencies(&cwd, &deps, &dev_deps, silent) {
-        let _ = fs::remove_dir_all(repo_dir.parent().unwrap_or(&repo_dir));
         return;
     }
-    let _ = fs::remove_dir_all(repo_dir.parent().unwrap_or(&repo_dir));
 
     if let Some(design_name) = design.as_ref()
         && let Some(design_kebab) = design_kebab.as_ref()
