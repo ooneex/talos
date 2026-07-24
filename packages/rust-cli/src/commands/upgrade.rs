@@ -19,10 +19,11 @@ fn fetch_latest_version() -> Option<String> {
     let value: Value = ureq::get(&format!(
         "https://registry.npmjs.org/{CLI_PACKAGE_NAME}/latest"
     ))
-    .set("accept", "application/json")
+    .header("accept", "application/json")
     .call()
     .ok()?
-    .into_json()
+    .into_body()
+    .read_json()
     .ok()?;
     value
         .get("version")

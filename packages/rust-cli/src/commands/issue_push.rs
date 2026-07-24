@@ -52,11 +52,12 @@ fn read_linear_token() -> Option<String> {
 fn linear_request(token: &str, query: &str, variables: Value) -> Option<Value> {
     let body = json!({"query": query, "variables": variables});
     let response: Value = ureq::post("https://api.linear.app/graphql")
-        .set("Authorization", token)
-        .set("Content-Type", "application/json")
+        .header("Authorization", token)
+        .header("Content-Type", "application/json")
         .send_json(body)
         .ok()?
-        .into_json()
+        .into_body()
+        .read_json()
         .ok()?;
     if response.get("errors").is_some() {
         return None;

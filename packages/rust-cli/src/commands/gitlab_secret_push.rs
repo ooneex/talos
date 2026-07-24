@@ -66,18 +66,25 @@ fn percent_encode(input: &str) -> String {
 }
 
 fn curl_json(method: &str, url: &str, body: &str, token: &str) -> Option<(u16, String)> {
-    let request = ureq::request(method, url)
-        .set("PRIVATE-TOKEN", token)
-        .set("Content-Type", "application/json");
-    match request.send_string(body) {
-        Ok(response) => Some((
-            response.status(),
-            response.into_string().unwrap_or_default(),
-        )),
-        Err(ureq::Error::Status(code, response)) => {
-            Some((code, response.into_string().unwrap_or_default()))
+    let request = match method {
+        "POST" => ureq::post(url),
+        "PUT" => ureq::put(url),
+        _ => return None,
+    }
+    .config()
+    .http_status_as_error(false)
+    .build()
+    .header("PRIVATE-TOKEN", token)
+    .header("Content-Type", "application/json");
+    match request.send(body) {
+        Ok(response) => {
+            let status = response.status().as_u16();
+            Some((
+                status,
+                response.into_body().read_to_string().unwrap_or_default(),
+            ))
         }
-        Err(ureq::Error::Transport(_)) => None,
+        Err(_) => None,
     }
 }
 

@@ -8,7 +8,11 @@ pub fn discover(dir: &Path) -> Option<Repository> {
 
 pub fn origin_url(cwd: &Path) -> Option<String> {
     let repo = discover(cwd)?;
-    repo.find_remote("origin").ok()?.url().map(str::to_string)
+    repo.find_remote("origin")
+        .ok()?
+        .url()
+        .ok()
+        .map(str::to_string)
 }
 
 pub fn toplevel(dir: &Path) -> Option<PathBuf> {

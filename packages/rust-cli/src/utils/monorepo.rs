@@ -292,7 +292,7 @@ fn collect_files_with_git(dir: &Path) -> Option<Vec<String>> {
         if !status_entry.status().contains(git2::Status::WT_NEW) {
             continue;
         }
-        let Some(path) = status_entry.path() else {
+        let Ok(path) = status_entry.path() else {
             continue;
         };
         if let Some(relative) = strip(path) {
@@ -313,11 +313,19 @@ fn collect_files_with_git(dir: &Path) -> Option<Vec<String>> {
     Some(files)
 }
 
+fn to_hex(bytes: impl AsRef<[u8]>) -> String {
+    use std::fmt::Write;
+    bytes.as_ref().iter().fold(String::new(), |mut acc, byte| {
+        let _ = write!(acc, "{byte:02x}");
+        acc
+    })
+}
+
 fn hash_file(path: &Path) -> Option<String> {
     let bytes = fs::read(path).ok()?;
     let mut hasher = Sha256::new();
     hasher.update(&bytes);
-    Some(format!("{:x}", hasher.finalize()))
+    Some(to_hex(hasher.finalize()))
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -402,7 +410,7 @@ pub fn fingerprint_dir(dir: &Path, use_git: bool, file_hash_cache: &FileHashCach
             hasher.update(format!("{file}={hash}\n").as_bytes());
         }
     }
-    format!("{:x}", hasher.finalize())
+    to_hex(hasher.finalize())
 }
 
 pub fn fingerprint_target(
@@ -426,7 +434,7 @@ pub fn hash_root_inputs(root_dir: &Path) -> String {
             hasher.update(format!("{name}={hash}\n").as_bytes());
         }
     }
-    format!("{:x}", hasher.finalize())
+    to_hex(hasher.finalize())
 }
 
 fn transitive_deps<'a>(
@@ -491,7 +499,7 @@ pub fn compute_task_hash(
 
     let mut hasher = Sha256::new();
     hasher.update(lines.join("\n").as_bytes());
-    format!("{:x}", hasher.finalize())
+    to_hex(hasher.finalize())
 }
 
 #[derive(Clone, Serialize, Deserialize)]

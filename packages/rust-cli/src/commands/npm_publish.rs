@@ -119,9 +119,9 @@ fn version_exists(name: &str, version: &str, token: &str) -> bool {
     );
     matches!(
         ureq::get(&url)
-            .set("Authorization", &format!("Bearer {token}"))
+            .header("Authorization", &format!("Bearer {token}"))
             .call(),
-        Ok(response) if response.status() == 200
+        Ok(response) if response.status().as_u16() == 200
     )
 }
 

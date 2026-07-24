@@ -47,7 +47,7 @@ fn download_skeleton_archive(destination: &Path, silent: bool) -> bool {
             .tempdir_in(parent)?;
 
         let response = ureq::get(&skeleton_archive_url()).call()?;
-        let tar = GzDecoder::new(response.into_reader());
+        let tar = GzDecoder::new(response.into_body().into_reader());
         let mut archive = Archive::new(tar);
         archive.unpack(staging.path())?;
 

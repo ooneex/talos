@@ -65,18 +65,25 @@ fn curl_bitbucket(
     username: &str,
     token: &str,
 ) -> Option<(u16, String)> {
-    let request = ureq::request(method, url)
-        .set("Authorization", &basic_auth_header(username, token))
-        .set("Content-Type", "application/json");
-    match request.send_string(body) {
-        Ok(response) => Some((
-            response.status(),
-            response.into_string().unwrap_or_default(),
-        )),
-        Err(ureq::Error::Status(code, response)) => {
-            Some((code, response.into_string().unwrap_or_default()))
+    let request = match method {
+        "POST" => ureq::post(url),
+        "PUT" => ureq::put(url),
+        _ => return None,
+    }
+    .config()
+    .http_status_as_error(false)
+    .build()
+    .header("Authorization", &basic_auth_header(username, token))
+    .header("Content-Type", "application/json");
+    match request.send(body) {
+        Ok(response) => {
+            let status = response.status().as_u16();
+            Some((
+                status,
+                response.into_body().read_to_string().unwrap_or_default(),
+            ))
         }
-        Err(ureq::Error::Transport(_)) => None,
+        Err(_) => None,
     }
 }
 
@@ -84,10 +91,11 @@ fn find_variable_uuid(base: &str, name: &str, username: &str, token: &str) -> Op
     let mut url = format!("{base}?pagelen=100");
     loop {
         let value: serde_json::Value = ureq::get(&url)
-            .set("Authorization", &basic_auth_header(username, token))
+            .header("Authorization", &basic_auth_header(username, token))
             .call()
             .ok()?
-            .into_json()
+            .into_body()
+            .read_json()
             .ok()?;
         if let Some(uuid) = value
             .get("values")
