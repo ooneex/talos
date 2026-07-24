@@ -1,6 +1,18 @@
 //! Rust port of `packages/cli/src/commands/MonorepoRunCommand.ts`: runs
-//! `package.json` scripts across packages and modules with granular,
-//! content-addressed caching.
+//! commands across packages and modules with granular, content-addressed
+//! caching.
+//!
+//! Note on what "runs a command" means here: a target's `package.json`
+//! script is only consulted as a *gate* — a target participates in a command
+//! iff it declares a script of that name. The `fmt`/`lint`/`test` commands
+//! then ignore the script *body* and run an optimized, sharded equivalent
+//! instead (per-file `test` tasks, split `tsc`/`biome lint` tasks, per-crate
+//! `cargo clippy`/`cargo test` targets — see the `monorepo_*_group`
+//! builders), which parallelizes and caches at a finer grain than the single
+//! serial process the raw script would spawn. Only generic commands (e.g.
+//! `build`) actually execute the declared script verbatim via `bun run
+//! <command>`. This means a package whose `fmt`/`lint`/`test` script deviates
+//! from the standard form will have its custom body ignored.
 //!
 //! This port keeps the caching engine and scheduling semantics (dependency
 //! ordering, order-independent `fmt`/`lint`, skip-if-no-tests, install

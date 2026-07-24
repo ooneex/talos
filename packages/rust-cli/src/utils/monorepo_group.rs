@@ -1,7 +1,10 @@
 //! Builds `monorepo:run`'s per-command task groups: dispatches `test`/`fmt`/
-//! `lint` to their dedicated per-file builders, falls back to one task per
-//! target for any other `package.json` script (e.g. `build`), and builds the
-//! single root-level `install` task.
+//! `lint` to their dedicated per-file builders (which use the target's
+//! `package.json` script only as a gate and run an optimized, sharded
+//! equivalent — not the script body), and falls back to one `bun run
+//! <command>` task per target that *does* execute the declared script
+//! verbatim for any other command (e.g. `build`), plus the single root-level
+//! `install` task.
 
 use std::collections::HashSet;
 use std::path::Path;
