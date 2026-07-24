@@ -6,23 +6,12 @@ use std::process::Command;
 use clap::Args;
 use fs_extra::dir::{CopyOptions, copy as copy_dir};
 
+use crate::commands::agent_skills_create::AgentSkillsCreateArgs;
+use crate::templates::llm::assistants::ASSISTANTS;
 use crate::utils::{
     Action, Spinner, ask_confirm, ask_multiselect, clone_skeleton, ensure_bin,
     resolve_name_and_destination, run_actions,
 };
-
-const AGENT_SKILLS: [(&str, &str, bool); 10] = [
-    ("Claude", ".claude", true),
-    ("Codex", ".codex", true),
-    ("Cursor", ".cursor", false),
-    ("Gemini", ".gemini", false),
-    ("Windsurf", ".windsurf", false),
-    ("Cline", ".cline", false),
-    ("JetBrains Junie", ".junie", false),
-    ("Roo Code", ".roo", false),
-    ("Continue", ".continue", false),
-    ("Zed", ".zed", false),
-];
 
 #[derive(Args, Debug)]
 pub struct AppInitArgs {
@@ -104,17 +93,7 @@ pub fn execute(options: AppInitOptions) -> Option<PathBuf> {
 
     let install_hook = ask_confirm("Install the commit-msg hook?", true);
 
-    let oo_available = Command::new("oo")
-        .arg("--version")
-        .output()
-        .map(|output| output.status.success())
-        .unwrap_or(false);
-
-    let agent_dirs = if oo_available {
-        resolve_agent_dirs(silent)
-    } else {
-        Vec::new()
-    };
+    let agent_dirs = resolve_agent_dirs(silent);
 
     let mut actions = vec![
         Action::new("Installing dependencies", {
@@ -132,18 +111,24 @@ pub fn execute(options: AppInitOptions) -> Option<PathBuf> {
             }
         }),
     ];
-    if oo_available && !agent_dirs.is_empty() {
+    if !agent_dirs.is_empty() {
         actions.push(Action::new("Scaffolding agent skills", {
             let destination = destination.clone();
             let kebab_name = kebab_name.clone();
-            move || run_agent_skills(&destination, &kebab_name, &agent_dirs, silent)
+            let skeleton_repo_dir = skeleton_repo_dir.clone();
+            move || {
+                run_agent_skills(
+                    &skeleton_repo_dir,
+                    &destination,
+                    &kebab_name,
+                    &agent_dirs,
+                    silent,
+                )
+            }
         }));
     }
 
     let failures = run_actions(actions);
-    if !oo_available {
-        crate::utils::warn("Skipping agent skills scaffolding: \"oo\" was not found on the PATH");
-    }
 
     let mut fatal = false;
     for (label, message) in &failures {
@@ -284,7 +269,7 @@ exec talos commitlint:check --file \"$1\"\n";
 
 fn resolve_agent_dirs(silent: bool) -> Vec<String> {
     let default_dirs = || {
-        AGENT_SKILLS
+        ASSISTANTS
             .iter()
             .filter(|(_, _, enabled)| *enabled)
             .map(|(_, dir, _)| (*dir).to_string())
@@ -295,44 +280,34 @@ fn resolve_agent_dirs(silent: bool) -> Vec<String> {
         return default_dirs();
     }
 
-    let labels: Vec<&str> = AGENT_SKILLS.iter().map(|(name, _, _)| *name).collect();
-    let defaults: Vec<bool> = AGENT_SKILLS
-        .iter()
-        .map(|(_, _, enabled)| *enabled)
-        .collect();
+    let labels: Vec<&str> = ASSISTANTS.iter().map(|(name, _, _)| *name).collect();
+    let defaults: Vec<bool> = ASSISTANTS.iter().map(|(_, _, enabled)| *enabled).collect();
 
     match ask_multiselect("Add skills for which assistants?", &labels, &defaults) {
         Some(indices) => indices
             .into_iter()
-            .filter_map(|index| {
-                AGENT_SKILLS
-                    .get(index)
-                    .map(|(_, dir, _)| (*dir).to_string())
-            })
+            .filter_map(|index| ASSISTANTS.get(index).map(|(_, dir, _)| (*dir).to_string()))
             .collect(),
         None => default_dirs(),
     }
 }
 
 fn run_agent_skills(
+    skeleton_repo_dir: &Path,
     destination: &Path,
     kebab_name: &str,
     agent_dirs: &[String],
     silent: bool,
 ) -> Result<(), String> {
-    let mut command = Command::new("oo");
-    command
-        .arg("agent:skills:create")
-        .arg("--name")
-        .arg(kebab_name)
-        .arg("--cwd")
-        .arg(destination)
-        .arg("--agents")
-        .arg(agent_dirs.join(","));
+    let args = AgentSkillsCreateArgs {
+        agents: agent_dirs.to_vec(),
+        name: Some(kebab_name.to_string()),
+        source_dir: Some(skeleton_repo_dir.to_string_lossy().into_owned()),
+        silent,
+        cwd: Some(destination.to_string_lossy().into_owned()),
+        no_cache: false,
+    };
 
-    if silent {
-        command.arg("--silent");
-    }
-
-    run_captured(&mut command)
+    crate::commands::agent_skills_create::run(&args);
+    Ok(())
 }

@@ -3,10 +3,10 @@ use std::path::{Path, PathBuf};
 
 use clap::Args;
 
-use crate::templates::llm::assistants::{ScaffoldInput, SkillInput, resolve_adapter};
+use crate::templates::llm::assistants::{
+    ScaffoldInput, SkillInput, default_config_dirs, resolve_adapter,
+};
 use crate::utils::{clone_skeleton, current_dir};
-
-const DEFAULT_AGENTS: &[&str] = &[".claude", ".codex"];
 
 #[derive(Args, Debug)]
 pub struct AgentSkillsCreateArgs {
@@ -126,7 +126,7 @@ pub fn run(args: &AgentSkillsCreateArgs) {
         .map(PathBuf::from)
         .unwrap_or_else(current_dir);
     let agent_dirs: Vec<String> = if args.agents.is_empty() {
-        DEFAULT_AGENTS.iter().map(|v| (*v).to_string()).collect()
+        default_config_dirs()
     } else {
         args.agents.clone()
     };

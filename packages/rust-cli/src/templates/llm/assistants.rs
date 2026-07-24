@@ -503,6 +503,30 @@ pub fn zed_adapter(input: &ScaffoldInput, _config_dir: &str) -> Vec<GeneratedFil
     files
 }
 
+/// Every assistant the scaffolder can target: display name, config directory,
+/// and whether it is enabled by default.
+pub const ASSISTANTS: [(&str, &str, bool); 10] = [
+    ("Claude", ".claude", true),
+    ("Codex", ".codex", true),
+    ("Cursor", ".cursor", false),
+    ("Gemini", ".gemini", false),
+    ("Windsurf", ".windsurf", false),
+    ("Cline", ".cline", false),
+    ("JetBrains Junie", ".junie", false),
+    ("Roo Code", ".roo", false),
+    ("Continue", ".continue", false),
+    ("Zed", ".zed", false),
+];
+
+/// The config directories enabled by default (Claude and Codex).
+pub fn default_config_dirs() -> Vec<String> {
+    ASSISTANTS
+        .iter()
+        .filter(|(_, _, enabled)| *enabled)
+        .map(|(_, dir, _)| (*dir).to_string())
+        .collect()
+}
+
 /// Resolve the adapter for a config directory, falling back to the Claude-style
 /// layout for `.claude` and any assistant without a dedicated adapter.
 pub fn resolve_adapter(config_dir: &str) -> AssistantAdapter {
