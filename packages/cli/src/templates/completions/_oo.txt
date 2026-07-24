@@ -1,7 +1,0 @@
-#compdef oo
-
-_oo() {
-  _talos "$@"
-}
-
-_oo "$@"
