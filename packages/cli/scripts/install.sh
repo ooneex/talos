@@ -4,7 +4,7 @@ set -euo pipefail
 # talosrs installer for macOS and Linux.
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/ooneex/talos/main/packages/rust-cli/scripts/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/ooneex/talos/main/packages/cli/scripts/install.sh | bash
 #
 # Environment variables:
 #   TALOSRS_INSTALL   Install directory (default: $HOME/.talosrs)

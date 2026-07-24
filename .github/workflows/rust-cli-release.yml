@@ -15,7 +15,7 @@ permissions:
 
 defaults:
   run:
-    working-directory: packages/rust-cli
+    working-directory: packages/cli
 
 jobs:
   build:
@@ -54,8 +54,8 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-            packages/rust-cli/target
-          key: ${{ matrix.target }}-cargo-${{ hashFiles('packages/rust-cli/Cargo.lock') }}
+            packages/cli/target
+          key: ${{ matrix.target }}-cargo-${{ hashFiles('packages/cli/Cargo.lock') }}
 
       - name: Build release binary
         run: cargo build --release --locked --target ${{ matrix.target }}
@@ -76,8 +76,8 @@ jobs:
         with:
           name: ${{ matrix.name }}
           path: |
-            packages/rust-cli/${{ matrix.name }}.tar.gz
-            packages/rust-cli/${{ matrix.name }}.zip
+            packages/cli/${{ matrix.name }}.tar.gz
+            packages/cli/${{ matrix.name }}.zip
           if-no-files-found: ignore
 
   release:

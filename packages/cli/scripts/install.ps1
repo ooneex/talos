@@ -2,7 +2,7 @@
 # talosrs installer for Windows.
 #
 # Usage:
-#   powershell -c "irm https://raw.githubusercontent.com/ooneex/talos/main/packages/rust-cli/scripts/install.ps1 | iex"
+#   powershell -c "irm https://raw.githubusercontent.com/ooneex/talos/main/packages/cli/scripts/install.ps1 | iex"
 #
 # Environment variables:
 #   $env:TALOSRS_INSTALL   Install directory (default: $HOME\.talosrs)
