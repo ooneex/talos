@@ -2,7 +2,6 @@ use clap::Args;
 
 const BASH_TEMPLATE: &str = include_str!("../templates/completions/talos.bash.txt");
 
-/// Rust port of `packages/cli/src/commands/CompletionBashCommand.ts`.
 #[derive(Args, Debug)]
 pub struct CompletionBashArgs {}
 

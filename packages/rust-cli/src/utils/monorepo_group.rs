@@ -1,11 +1,3 @@
-//! Builds `monorepo:run`'s per-command task groups: dispatches `test`/`fmt`/
-//! `lint` to their dedicated per-file builders (which use the target's
-//! `package.json` script only as a gate and run an optimized, sharded
-//! equivalent — not the script body), and falls back to one `bun run
-//! <command>` task per target that *does* execute the declared script
-//! verbatim for any other command (e.g. `build`), plus the single root-level
-//! `install` task.
-
 use std::collections::HashSet;
 use std::path::Path;
 
@@ -18,9 +10,6 @@ use crate::utils::MonorepoTarget;
 pub(crate) const INSTALL_COMMAND: &str = "install";
 pub(crate) const ORDER_INDEPENDENT_COMMANDS: &[&str] = &["fmt", "lint", "test"];
 
-// One task per target for a command. Targets whose package.json lacks the
-// script are marked skipped up front. Order-independent commands carry no
-// dependency edges, so every target in that group can run concurrently.
 pub(crate) fn build_group(
     targets: &[MonorepoTarget],
     included_keys: &HashSet<String>,
@@ -73,8 +62,6 @@ pub(crate) fn build_group(
         .collect()
 }
 
-// A single root-level `bun install`. It is not tied to a target and is never
-// cached, since bun already skips work when the lockfile is unchanged.
 pub(crate) fn build_install_group(root_dir: &Path) -> Vec<Task> {
     vec![Task {
         key: format!("root#{INSTALL_COMMAND}"),

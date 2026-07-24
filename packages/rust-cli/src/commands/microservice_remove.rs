@@ -6,18 +6,14 @@ use crate::utils::{
     remove_path_alias, to_kebab_case, to_pascal_case,
 };
 
-/// Rust port of `packages/cli/src/commands/MicroserviceRemoveCommand.ts`.
 #[derive(Args, Debug)]
 pub struct MicroserviceRemoveArgs {
-    /// Microservice name to remove.
     #[arg(long)]
     pub name: Option<String>,
 
-    /// Working directory (defaults to the current directory).
     #[arg(long)]
     pub cwd: Option<String>,
 
-    /// Suppress prompts and success/error messages.
     #[arg(long, default_value_t = false)]
     pub silent: bool,
 }

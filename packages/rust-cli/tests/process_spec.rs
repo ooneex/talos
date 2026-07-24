@@ -1,6 +1,3 @@
-//! Integration tests for `rust_cli::utils::{ensure_bin, run_step}`, moved out
-//! of `src/utils/process.rs`.
-
 use std::process::Command;
 
 use rust_cli::utils::{ensure_bin, run_spinner_step, run_step};

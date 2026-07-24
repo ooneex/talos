@@ -1,5 +1,3 @@
-//! Integration tests for `rust_cli::commands::docker_publish` argument parsing.
-
 use clap::Parser;
 use rust_cli::commands::docker_publish::DockerPublishArgs;
 

@@ -1,9 +1,3 @@
-//! Builds `monorepo:run`'s `test` task group: one task per test file rather
-//! than per target, so every spec runs concurrently instead of a single
-//! `bun run test`/`cargo test` invocation serializing them. Rust targets run
-//! `cargo test --test <name>` per `tests/<name>_spec.rs`; every other target
-//! runs `bun test ./tests/<name>.spec.ts` per matching file.
-
 use std::collections::HashSet;
 use std::path::PathBuf;
 
@@ -14,11 +8,6 @@ use crate::utils::{MonorepoTarget, is_rust_module};
 
 pub(crate) const TEST_COMMAND: &str = "test";
 
-/// Test files a target's `tests/` folder holds, as paths relative to the
-/// target's directory. Rust targets only look at the folder's direct `.rs`
-/// children (Cargo only treats those as integration-test binaries); other
-/// targets are scanned recursively for `*.test.*`/`*.spec.*` files, mirroring
-/// what `bun test` would pick up.
 pub(crate) fn collect_test_files(target: &MonorepoTarget) -> Vec<PathBuf> {
     let tests_dir = target.dir.join("tests");
     let mut files = Vec::new();
@@ -62,15 +51,6 @@ pub(crate) fn collect_test_files(target: &MonorepoTarget) -> Vec<PathBuf> {
     files
 }
 
-// One task per test *file* rather than per target, so every spec runs
-// concurrently instead of a single `bun run test`/`cargo test` invocation
-// serializing them. Rust targets run `cargo test --test <name>` per
-// `tests/<name>_spec.rs`; every other target runs `bun test ./tests/<name>.spec.ts`
-// per matching file. Targets without the `test` script, or without any
-// matching files, are marked skipped up front. `test` is order-independent
-// (it's in `ORDER_INDEPENDENT_COMMANDS`): a target's tests never need its
-// workspace dependencies' tests to have run first, so file tasks carry no
-// dependency edges and every test in the run can execute fully in parallel.
 pub(crate) fn build_test_group(
     targets: &[MonorepoTarget],
     _included_keys: &HashSet<String>,
@@ -123,9 +103,6 @@ pub(crate) fn build_test_group(
                 let rel = file.to_string_lossy().replace('\\', "/");
                 vec!["bun".to_string(), "test".to_string(), format!("./{rel}")]
             };
-            // The command discriminator feeds the cache-content hash, so it
-            // must carry the file identity too, otherwise every file task
-            // for a target would collide on the same cache entry.
             let key = format!("{}#{TEST_COMMAND}#{stem}", target.key);
             tasks.push(Task {
                 key,

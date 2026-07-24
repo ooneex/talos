@@ -1,7 +1,3 @@
-//! Monorepo task engine backing the `monorepo:run` command family. Mirrors
-//! `packages/cli/src/monorepo.ts`: project discovery, a workspace dependency
-//! graph and content-addressed task caching under `var/cache/monorepo/<hash>/`.
-
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -20,7 +16,6 @@ const TARGET_ROOTS: &[(&str, TargetType)] = &[
     ("modules", TargetType::Module),
 ];
 
-/// Build artifacts and dependency folders never participate in the input hash.
 const EXCLUDED_DIRS: &[&str] = &[
     "node_modules",
     "dist",
@@ -31,7 +26,6 @@ const EXCLUDED_DIRS: &[&str] = &[
     ".turbo",
 ];
 
-/// Root-level files whose content invalidates every task when they change.
 const ROOT_INPUT_FILES: &[&str] = &["package.json", "bun.lock", "tsconfig.json", "biome.jsonc"];
 
 const DEFAULT_OUTPUTS: &[&str] = &["dist"];
@@ -51,20 +45,14 @@ impl TargetType {
     }
 }
 
-/// Mirrors `MonorepoTargetType`.
 #[derive(Clone, Debug)]
 pub struct MonorepoTarget {
-    /// Unique key, e.g. `packages/billing`.
     pub key: String,
-    /// Directory name, e.g. `billing`.
     pub name: String,
     pub target_type: TargetType,
-    /// Absolute directory of the target.
     pub dir: PathBuf,
     pub scripts: HashMap<String, String>,
-    /// Keys of other discovered targets this one depends on.
     pub workspace_deps: Vec<String>,
-    /// Directories (relative to the target) captured and restored by the cache.
     pub outputs: Vec<String>,
 }
 
@@ -98,9 +86,6 @@ struct TalosMonorepoField {
     outputs: Option<Vec<String>>,
 }
 
-/// Discover every package and module of the workspace rooted at `root_dir`
-/// that has a `package.json`, and resolve their dependencies on one another
-/// (any declared dependency whose name matches another discovered target).
 pub fn discover_targets(root_dir: &Path) -> Vec<MonorepoTarget> {
     let mut targets: Vec<MonorepoTarget> = Vec::new();
     let mut key_by_package_name: HashMap<String, String> = HashMap::new();
@@ -169,8 +154,6 @@ pub fn discover_targets(root_dir: &Path) -> Vec<MonorepoTarget> {
     targets
 }
 
-/// Order targets so every target comes after its workspace dependencies.
-/// Cycles are tolerated: members of a cycle keep their discovery order.
 pub fn sort_targets_by_dependencies(targets: &[MonorepoTarget]) -> Vec<MonorepoTarget> {
     let by_key: HashMap<&str, &MonorepoTarget> =
         targets.iter().map(|t| (t.key.as_str(), t)).collect();
@@ -206,7 +189,6 @@ pub fn sort_targets_by_dependencies(targets: &[MonorepoTarget]) -> Vec<MonorepoT
     sorted
 }
 
-/// Walk a directory tree, appending every hashable file as a relative path.
 fn walk_files(dir: &Path, base: &str, files: &mut Vec<String>) {
     let Ok(entries) = fs::read_dir(dir) else {
         return;
@@ -230,7 +212,6 @@ fn walk_files(dir: &Path, base: &str, files: &mut Vec<String>) {
     }
 }
 
-/// List every hashable file of a directory, recursively, as sorted relative paths.
 fn collect_files(dir: &Path) -> Vec<String> {
     let mut files = Vec::new();
     walk_files(dir, "", &mut files);
@@ -238,36 +219,14 @@ fn collect_files(dir: &Path) -> Vec<String> {
     files
 }
 
-/// Resolves the `biome` binary directly (walking up from `start_dir` to the
-/// nearest `node_modules/.bin/biome`) instead of going through `bunx`.
-/// `bunx` re-resolves and forks a package-manager wrapper on every single
-/// invocation — on the order of 100ms+ of pure overhead — which is
-/// negligible for the one whole-project call the TypeScript CLI makes per
-/// target, but multiplies into seconds once spent across the thousand-plus
-/// per-file `fmt`/`lint` tasks this port issues. Falls back to `bunx biome`
-/// when no local binary is found, so an unusual workspace layout still
-/// works, just without the fast path.
 pub fn resolve_biome_command(start_dir: &Path) -> Vec<String> {
     resolve_local_bin(start_dir, "biome")
 }
 
-/// Resolves the `tsc` binary directly (walking up from `start_dir` to the
-/// nearest `node_modules/.bin/tsc`) instead of relying on `tsc` being present
-/// on the process `PATH`. Package scripts run through a package manager that
-/// injects `node_modules/.bin` into `PATH`, but the scheduler spawns each
-/// task's `argv[0]` directly, so a bare `tsc` fails with
-/// `No such file or directory (os error 2)` whenever `PATH` lacks it — the
-/// intermittent `lint:tsc` failure this fixes (it only surfaces on a cache
-/// miss, since a cache hit never spawns the process). Falls back to
-/// `bunx tsc` when no local binary is found.
 pub fn resolve_tsc_command(start_dir: &Path) -> Vec<String> {
     resolve_local_bin(start_dir, "tsc")
 }
 
-/// Walks up from `start_dir` to the nearest `node_modules/.bin/<bin>`,
-/// returning its absolute path so the scheduler can spawn it directly.
-/// Falls back to `bunx <bin>` when no local binary is found, so an unusual
-/// workspace layout still works, just without the fast path.
 fn resolve_local_bin(start_dir: &Path, bin: &str) -> Vec<String> {
     let mut dir = start_dir.to_path_buf();
     loop {
@@ -282,7 +241,6 @@ fn resolve_local_bin(start_dir: &Path, bin: &str) -> Vec<String> {
     vec!["bunx".to_string(), bin.to_string()]
 }
 
-/// True when `root_dir` is itself the top level of a git repository.
 pub fn is_git_workspace_root(root_dir: &Path) -> bool {
     let Some(toplevel) = crate::utils::git::toplevel(root_dir) else {
         return false;
@@ -296,10 +254,6 @@ pub fn is_git_workspace_root(root_dir: &Path) -> bool {
     resolved_toplevel == resolved_root
 }
 
-/// List a target's files through git: tracked files plus untracked ones that
-/// are not ignored. Returns `None` when git fails. Mirrors
-/// `git ls-files --cached --others --exclude-standard -z` run with `dir` as
-/// the current directory (paths scoped to, and relative to, `dir`).
 fn collect_files_with_git(dir: &Path) -> Option<Vec<String>> {
     let repo = git2::Repository::discover(dir).ok()?;
     let workdir = repo.workdir()?;
@@ -316,7 +270,6 @@ fn collect_files_with_git(dir: &Path) -> Option<Vec<String>> {
 
     let mut files = Vec::new();
 
-    // Tracked files (`--cached`), via the index.
     let index = repo.index().ok()?;
     for entry in index.iter() {
         let path = String::from_utf8_lossy(&entry.path).replace('\\', "/");
@@ -325,7 +278,6 @@ fn collect_files_with_git(dir: &Path) -> Option<Vec<String>> {
         }
     }
 
-    // Untracked, non-ignored files (`--others --exclude-standard`).
     let mut status_options = git2::StatusOptions::new();
     status_options
         .include_untracked(true)
@@ -361,7 +313,6 @@ fn collect_files_with_git(dir: &Path) -> Option<Vec<String>> {
     Some(files)
 }
 
-/// Hash a file's content, or `None` when it cannot be read.
 fn hash_file(path: &Path) -> Option<String> {
     let bytes = fs::read(path).ok()?;
     let mut hasher = Sha256::new();
@@ -369,7 +320,6 @@ fn hash_file(path: &Path) -> Option<String> {
     Some(format!("{:x}", hasher.finalize()))
 }
 
-/// Persisted per-file content-hash record.
 #[derive(Clone, Serialize, Deserialize)]
 pub struct FileHashRecord {
     pub size: u64,
@@ -378,22 +328,12 @@ pub struct FileHashRecord {
     pub hash: String,
 }
 
-/// Granular, cross-run file-hash cache: an absolute path → its content hash
-/// keyed by (size, mtime), so an unchanged file is never re-read. Backed by
-/// `DashMap` (a sharded, lock-free-reads concurrent map) rather than a plain
-/// `HashMap` behind a mutex, so targets hashed on different threads don't
-/// serialize on a single global lock.
 pub type FileHashCache = DashMap<String, FileHashRecord>;
 
-/// Per-run memo of target key → content fingerprint, shared across the
-/// thread pool the same way as `FileHashCache` so multiple targets can
-/// fingerprint concurrently while still hashing shared dependencies once.
 pub type FingerprintMemo = DashMap<String, String>;
 
 const FILEHASH_CACHE_FILE: &str = "filehashes.json";
 
-/// Load the persisted file-hash cache from the cache dir, or an empty one
-/// when absent or corrupt.
 pub fn load_file_hash_cache(cache_dir: &Path) -> FileHashCache {
     let path = cache_dir.join(FILEHASH_CACHE_FILE);
     let Ok(raw) = fs::read_to_string(&path) else {
@@ -402,8 +342,6 @@ pub fn load_file_hash_cache(cache_dir: &Path) -> FileHashCache {
     serde_json::from_str(&raw).unwrap_or_default()
 }
 
-/// Persist the file-hash cache. Best-effort: a failed write only costs a
-/// cold fingerprint next run.
 pub fn save_file_hash_cache(cache_dir: &Path, cache: &FileHashCache) {
     let _ = fs::create_dir_all(cache_dir);
     if let Ok(json) = serde_json::to_string(cache) {
@@ -420,11 +358,6 @@ fn mtime_millis(metadata: &fs::Metadata) -> f64 {
         .unwrap_or(0.0)
 }
 
-/// Content-hash a file, reusing the persisted hash when the file's size and
-/// mtime are unchanged so an unmodified file is never re-read. Takes the
-/// cache by shared reference — `DashMap` shards its locking internally, so
-/// concurrent callers (different files, different targets) don't contend on
-/// a single global lock the way a `Mutex<HashMap<_>>` would.
 fn hash_file_cached(path: &Path, cache: &FileHashCache) -> Option<String> {
     let metadata = fs::metadata(path).ok()?;
     let size = metadata.len();
@@ -450,11 +383,6 @@ fn hash_file_cached(path: &Path, cache: &FileHashCache) -> Option<String> {
     Some(hash)
 }
 
-/// Content-hash every file of a directory into a single fingerprint. Files
-/// are hashed in parallel across the rayon thread pool (I/O plus SHA-256 per
-/// file is independent work), then folded into the fingerprint in a fixed,
-/// sorted order so the result stays deterministic regardless of thread
-/// scheduling.
 pub fn fingerprint_dir(dir: &Path, use_git: bool, file_hash_cache: &FileHashCache) -> String {
     let files = if use_git {
         collect_files_with_git(dir)
@@ -477,12 +405,6 @@ pub fn fingerprint_dir(dir: &Path, use_git: bool, file_hash_cache: &FileHashCach
     format!("{:x}", hasher.finalize())
 }
 
-/// Content-hash every file of a target into a single fingerprint, memoized
-/// per target key in `memo` so shared dependencies are hashed once per run.
-/// `memo` and `file_hash_cache` are shared (`DashMap`) references so this
-/// can safely run for several targets concurrently — a target already being
-/// fingerprinted on another thread is simply recomputed rather than raced,
-/// since correctness never depends on which thread wins.
 pub fn fingerprint_target(
     target: &MonorepoTarget,
     memo: &FingerprintMemo,
@@ -497,7 +419,6 @@ pub fn fingerprint_target(
     fingerprint
 }
 
-/// Fingerprint the root config files shared by every task of the workspace.
 pub fn hash_root_inputs(root_dir: &Path) -> String {
     let mut hasher = Sha256::new();
     for name in ROOT_INPUT_FILES {
@@ -508,7 +429,6 @@ pub fn hash_root_inputs(root_dir: &Path) -> String {
     format!("{:x}", hasher.finalize())
 }
 
-/// Every workspace dependency reachable from the target, direct or transitive.
 fn transitive_deps<'a>(
     target: &MonorepoTarget,
     by_key: &HashMap<&str, &'a MonorepoTarget>,
@@ -532,11 +452,6 @@ fn transitive_deps<'a>(
     deps
 }
 
-/// Compute the cache hash of one task (`target` × `command`). `memo` and
-/// `file_hash_cache` are shared references so this itself may be called
-/// concurrently for several targets; a target's transitive dependencies are
-/// also fingerprinted in parallel here, on top of the per-file parallelism
-/// inside `fingerprint_dir`.
 pub fn compute_task_hash(
     target: &MonorepoTarget,
     command: &str,
@@ -579,7 +494,6 @@ pub fn compute_task_hash(
     format!("{:x}", hasher.finalize())
 }
 
-/// Mirrors `CacheEntryMetaType`.
 #[derive(Clone, Serialize, Deserialize)]
 pub struct CacheEntryMeta {
     pub version: u32,
@@ -593,19 +507,12 @@ pub struct CacheEntryMeta {
     pub outputs: Vec<String>,
 }
 
-/// Read a cache entry's metadata, or `None` on miss. The stored `output.log`
-/// is intentionally not read: a cache *hit* replays nothing to the terminal
-/// (cached tasks report silently), and a task's captured output is only ever
-/// consulted to explain a *failure* — which always comes from a fresh run,
-/// never a cache hit. Skipping that read saves one file open per cached task,
-/// the common case on a warm workspace where nearly every task hits.
 pub fn read_cache_entry(cache_dir: &Path, hash: &str) -> Option<CacheEntryMeta> {
     let meta_path = cache_dir.join(hash).join("meta.json");
     let raw_meta = fs::read_to_string(&meta_path).ok()?;
     serde_json::from_str(&raw_meta).ok()
 }
 
-/// Copy the cached output artifacts of an entry back into the target directory.
 pub fn restore_cache_outputs(cache_dir: &Path, meta: &CacheEntryMeta, target_dir: &Path) {
     for output in &meta.outputs {
         let source = cache_dir.join(&meta.hash).join("outputs").join(output);
@@ -632,9 +539,6 @@ fn copy_dir_recursive(source: &Path, dest: &Path) -> std::io::Result<()> {
     Ok(())
 }
 
-/// Persist a successful task run: metadata, replayable output and the output
-/// artifacts that exist. The entry is assembled in a temp directory and
-/// renamed into place so a crashed run never leaves a half-written entry.
 pub fn write_cache_entry(cache_dir: &Path, meta: &CacheEntryMeta, output: &str, target_dir: &Path) {
     let temp_dir = cache_dir.join(format!(".tmp-{}", meta.hash));
     let entry_dir = cache_dir.join(&meta.hash);
@@ -669,9 +573,6 @@ mod git_backed_file_listing_tests {
     use super::*;
     use std::process::Command;
 
-    /// Ground truth via the real `git` CLI, to validate the `git2`-backed
-    /// `collect_files_with_git` mirrors `git ls-files --cached --others
-    /// --exclude-standard -z` scoped to `dir`.
     fn git_ls_files(dir: &Path) -> Option<Vec<String>> {
         let output = Command::new("git")
             .args([
@@ -707,7 +608,7 @@ mod git_backed_file_listing_tests {
     fn collect_files_with_git_matches_the_git_cli_at_the_crate_root() {
         let dir = Path::new(env!("CARGO_MANIFEST_DIR"));
         let Some(expected) = git_ls_files(dir) else {
-            return; // not inside a git checkout (e.g. a packaged source archive)
+            return;
         };
         let actual = collect_files_with_git(dir).expect("git2 should discover the repository");
         assert_eq!(actual, expected);

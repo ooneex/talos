@@ -6,24 +6,18 @@ use crate::utils::{
     remove_path_alias, to_kebab_case, to_pascal_case,
 };
 
-/// Rust port of `packages/cli/src/commands/ModuleRemoveCommand.ts`.
 #[derive(Args, Debug)]
 pub struct ModuleRemoveArgs {
-    /// Module name to remove.
     #[arg(long)]
     pub name: Option<String>,
 
-    /// Working directory (defaults to the current directory).
     #[arg(long)]
     pub cwd: Option<String>,
 
-    /// Suppress prompts and success/error messages.
     #[arg(long, default_value_t = false)]
     pub silent: bool,
 }
 
-/// Reads the `type:` field declared in the module's `<name>.yml` config, or
-/// `None` when the file is missing or the field isn't present.
 fn read_module_type(module_dir: &std::path::Path, kebab_name: &str) -> Option<String> {
     let yml_path = module_dir.join(format!("{kebab_name}.yml"));
     let content = std::fs::read_to_string(yml_path).ok()?;
@@ -33,7 +27,6 @@ fn read_module_type(module_dir: &std::path::Path, kebab_name: &str) -> Option<St
         .map(|m| m.as_str().to_string())
 }
 
-/// Removes the microservice's comment line and list item from `app.yml`.
 fn remove_from_app_yml(app_yml_path: &std::path::Path, kebab_name: &str) {
     let Ok(mut content) = std::fs::read_to_string(app_yml_path) else {
         return;

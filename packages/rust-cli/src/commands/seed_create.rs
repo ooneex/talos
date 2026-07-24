@@ -8,18 +8,14 @@ const SEED_TEMPLATE: &str = include_str!("../templates/seeds/seed.txt");
 const SEED_TEST_TEMPLATE: &str = include_str!("../templates/seeds/seed.test.txt");
 const SEED_RUN_TEMPLATE: &str = include_str!("../templates/module/seed.run.txt");
 
-/// Rust port of `packages/cli/src/commands/SeedCreateCommand.ts`.
 #[derive(Args, Debug)]
 pub struct SeedCreateArgs {
-    /// Seed name.
     #[arg(long)]
     pub name: Option<String>,
 
-    /// Destination module (defaults to "shared").
     #[arg(long)]
     pub module: Option<String>,
 
-    /// Working directory (defaults to the current directory).
     #[arg(long)]
     pub cwd: Option<String>,
 }
@@ -97,7 +93,6 @@ pub fn run(args: &SeedCreateArgs) {
         return;
     }
 
-    // Create bin/seed/run.ts if it doesn't exist yet.
     let bin_run_path = base.join("bin").join("seed").join("run.ts");
     if !bin_run_path.exists() {
         if let Some(parent) = bin_run_path.parent() {

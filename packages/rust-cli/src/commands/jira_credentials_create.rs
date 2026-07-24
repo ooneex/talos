@@ -4,22 +4,17 @@ use crate::utils::{ask_input_with_default, ask_password, ask_plain_input, save_c
 
 const JIRA_TOKEN_URL: &str = "https://id.atlassian.com/manage-profile/security/api-tokens";
 
-/// Rust port of `packages/cli/src/commands/JiraCredentialsCreateCommand.ts`.
 #[derive(Args, Debug)]
 pub struct JiraCredentialsCreateArgs {
-    /// Jira base URL (defaults to "https://your-domain.atlassian.net" when prompted).
     #[arg(long)]
     pub base_url: Option<String>,
 
-    /// Jira account email (prompted for when omitted).
     #[arg(long)]
     pub email: Option<String>,
 
-    /// Jira API token (prompted for when omitted).
     #[arg(long)]
     pub token: Option<String>,
 
-    /// Suppress informational messages.
     #[arg(long, default_value_t = false)]
     pub silent: bool,
 }

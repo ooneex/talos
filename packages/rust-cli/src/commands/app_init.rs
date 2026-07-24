@@ -11,12 +11,6 @@ use crate::utils::{
     resolve_name_and_destination, run_actions,
 };
 
-/// Coding assistants `agent:skills:create` can scaffold shared skills/config
-/// for, mapped to the directory each one reads its configuration from — mirrors
-/// the `AGENTS` list in `packages/cli/src/prompts/askAgentSkills.ts`. The third
-/// field marks the assistants enabled by default. Passing these dirs explicitly
-/// via `--agents` bypasses the subcommand's interactive multiselect, which would
-/// otherwise hang when driven as a captured, non-interactive child process.
 const AGENT_SKILLS: [(&str, &str, bool); 10] = [
     ("Claude", ".claude", true),
     ("Codex", ".codex", true),
@@ -30,31 +24,21 @@ const AGENT_SKILLS: [(&str, &str, bool); 10] = [
     ("Zed", ".zed", false),
 ];
 
-/// Rust port of `packages/cli/src/commands/AppInitCommand.ts`.
 #[derive(Args, Debug)]
 pub struct AppInitArgs {
-    /// Application name.
     #[arg(long)]
     pub name: Option<String>,
 
-    /// Destination path for the new application.
     #[arg(long)]
     pub destination: Option<String>,
 
-    /// Suppress success/progress messages.
     #[arg(long, default_value_t = false)]
     pub silent: bool,
 
-    /// Ignore the cached skeleton and re-download it.
     #[arg(long, default_value_t = false)]
     pub no_cache: bool,
 }
 
-/// Mirrors the `appType` option of `AppInitCommand`, which prunes the
-/// scaffolded `modules/` directory for non-full-stack applications. Not
-/// exposed as a CLI flag (it isn't in the TypeScript CLI either); it is only
-/// used when another command (e.g. `app:create`) drives `app:init`
-/// programmatically.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AppType {
     #[allow(
@@ -65,8 +49,6 @@ pub enum AppType {
     Api,
 }
 
-/// Fully-resolved options for [`execute`], built either from CLI args
-/// ([`AppInitArgs`]) or programmatically by another command.
 pub struct AppInitOptions {
     pub name: String,
     pub destination: PathBuf,
@@ -91,8 +73,6 @@ pub fn run(args: &AppInitArgs) {
     });
 }
 
-/// Runs the full init flow and returns the destination on success, so callers
-/// like `app:create` can chain further scaffolding onto it.
 pub fn execute(options: AppInitOptions) -> Option<PathBuf> {
     let AppInitOptions {
         name,
@@ -122,33 +102,20 @@ pub fn execute(options: AppInitOptions) -> Option<PathBuf> {
     }
     crate::utils::success("Project files prepared");
 
-    // Ask the one interactive question up front so the slow, dependency-free
-    // steps below can run concurrently behind an animated spinner without a
-    // prompt interrupting the live display.
     let install_hook = ask_confirm("Install the commit-msg hook?", true);
 
-    // `oo` is probed once here (rather than inside the concurrent action) so a
-    // "not found" warning never corrupts the live multi-line spinner.
     let oo_available = Command::new("oo")
         .arg("--version")
         .output()
         .map(|output| output.status.success())
         .unwrap_or(false);
 
-    // Resolve which assistant config dirs to scaffold up front (like the hook
-    // prompt above) so the answer is passed explicitly to `oo` via `--agents`.
-    // Without it the subcommand falls back to an interactive multiselect, which
-    // hangs forever when run as a captured child process with no usable stdin.
     let agent_dirs = if oo_available {
         resolve_agent_dirs(silent)
     } else {
         Vec::new()
     };
 
-    // The three steps below have no ordering dependency on each other, so they
-    // run in parallel instead of one after another — the dominant cost is the
-    // network-bound `bun install`, which now overlaps with `git init` and the
-    // `oo` agent-skills scaffold (itself a whole CLI boot).
     let mut actions = vec![
         Action::new("Installing dependencies", {
             let destination = destination.clone();
@@ -184,8 +151,6 @@ pub fn execute(options: AppInitOptions) -> Option<PathBuf> {
         if !message.trim().is_empty() {
             eprintln!("{}", message.trim_end());
         }
-        // Agent-skills scaffolding is best-effort (as in the TypeScript CLI);
-        // only a failed install or git init aborts the flow.
         if label != "Scaffolding agent skills" {
             fatal = true;
         }
@@ -204,9 +169,6 @@ pub fn execute(options: AppInitOptions) -> Option<PathBuf> {
     Some(destination)
 }
 
-/// Runs `command` with its output captured, returning the combined
-/// stdout/stderr as the error message on failure so callers (e.g. the parallel
-/// action runner) can surface it without streaming into a live spinner.
 fn run_captured(command: &mut Command) -> Result<(), String> {
     match command.output() {
         Ok(output) if output.status.success() => Ok(()),
@@ -219,9 +181,6 @@ fn run_captured(command: &mut Command) -> Result<(), String> {
     }
 }
 
-/// Copies the skeleton into `destination` and rewrites the per-app files
-/// (`.env.yml`, `README.md`), optionally pruning `modules/` per `app_type`.
-/// `pub` so it is exercised directly by the integration tests in `tests/`.
 pub fn scaffold_destination(
     skeleton_dir: &Path,
     destination: &Path,
@@ -294,30 +253,20 @@ pub fn scaffold_destination(
     Ok(())
 }
 
-/// Installs the git `commit-msg` hook, mirroring `CommitlintInitCommand`.
-/// `pub` so it is exercised directly by the integration tests in `tests/`.
 pub fn install_commitlint_hook(destination: &Path) -> Result<(), String> {
     let hook_path = write_commitlint_hook(destination)?;
     crate::utils::success(format!("{} installed successfully", hook_path.display()));
     Ok(())
 }
 
-/// Writes the git `commit-msg` hook and returns its path, without printing —
-/// the printing variant [`install_commitlint_hook`] wraps this, while the
-/// concurrent `app:init` flow uses it directly so no success line corrupts the
-/// live multi-line spinner.
 fn write_commitlint_hook(destination: &Path) -> Result<PathBuf, String> {
     let repo = git2::Repository::open(destination)
         .map_err(|_| "commitlint:init must run inside a git repository".to_string())?;
 
-    // Clear husky's redirection first so the hook lands in — and is later read
-    // from — the standard hooks directory.
     let _ = repo
         .config()
         .and_then(|mut config| config.remove("core.hooksPath"));
 
-    // Mirrors `git rev-parse --git-path hooks`: after the reset above, this is
-    // always `<git-dir>/hooks`.
     let hooks_dir = repo.path().join("hooks");
 
     fs::create_dir_all(&hooks_dir).map_err(|e| e.to_string())?;
@@ -333,17 +282,6 @@ exec talos commitlint:check --file \"$1\"\n";
     Ok(hook_path)
 }
 
-/// Delegates AGENTS.md/agent/skill scaffolding to the existing `@talosjs/cli`
-/// `agent:skills:create` command (via the `oo` binary), which owns the full
-/// per-assistant template system. This keeps the pure filesystem/git flow
-/// above native while reusing the single source of truth for that logic.
-/// Output is captured so it can run behind the concurrent action spinner; the
-/// combined stdout/stderr is returned on failure.
-/// Returns the assistant config dirs to scaffold. In silent/unattended mode
-/// (e.g. when driven by `app:create`) it falls back to the default-enabled
-/// assistants; otherwise the user picks from an interactive multiselect. The
-/// dirs are passed to `oo agent:skills:create --agents` so the child process
-/// never blocks on its own prompt.
 fn resolve_agent_dirs(silent: bool) -> Vec<String> {
     let default_dirs = || {
         AGENT_SKILLS
@@ -372,8 +310,6 @@ fn resolve_agent_dirs(silent: bool) -> Vec<String> {
                     .map(|(_, dir, _)| (*dir).to_string())
             })
             .collect(),
-        // A cancelled prompt (e.g. Ctrl-C) falls back to the defaults rather
-        // than silently scaffolding nothing.
         None => default_dirs(),
     }
 }

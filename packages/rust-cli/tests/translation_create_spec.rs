@@ -1,5 +1,3 @@
-//! Integration tests for `rust_cli::commands::translation_create` argument parsing.
-
 use clap::Parser;
 use rust_cli::commands::translation_create::TranslationCreateArgs;
 

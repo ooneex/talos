@@ -4,22 +4,17 @@ use crate::utils::{ask_input_with_default, ask_password, ask_plain_input, save_c
 
 const DOCKER_TOKEN_URL: &str = "https://app.docker.com/settings/personal-access-tokens/create";
 
-/// Rust port of `packages/cli/src/commands/DockerCredentialsCreateCommand.ts`.
 #[derive(Args, Debug)]
 pub struct DockerCredentialsCreateArgs {
-    /// Docker registry (defaults to "docker.io" when prompted).
     #[arg(long)]
     pub registry: Option<String>,
 
-    /// Docker username (prompted for when omitted).
     #[arg(long)]
     pub username: Option<String>,
 
-    /// Docker access token (prompted for when omitted).
     #[arg(long)]
     pub token: Option<String>,
 
-    /// Suppress informational messages.
     #[arg(long, default_value_t = false)]
     pub silent: bool,
 }

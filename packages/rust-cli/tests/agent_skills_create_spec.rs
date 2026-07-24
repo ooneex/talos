@@ -1,5 +1,3 @@
-//! Integration tests for `rust_cli::commands::agent_skills_create` argument parsing.
-
 use clap::Parser;
 use rust_cli::commands::agent_skills_create::AgentSkillsCreateArgs;
 

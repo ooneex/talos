@@ -7,18 +7,14 @@ use crate::utils::{
 const TEMPLATE: &str = include_str!("../templates/ai-middleware.txt");
 const TEST_TEMPLATE: &str = include_str!("../templates/ai-middleware.test.txt");
 
-/// Rust port of `packages/cli/src/commands/AiMiddlewareCreateCommand.ts`.
 #[derive(Args, Debug)]
 pub struct AiMiddlewareCreateArgs {
-    /// Resource name.
     #[arg(long)]
     pub name: Option<String>,
 
-    /// Destination module (defaults to "shared").
     #[arg(long)]
     pub module: Option<String>,
 
-    /// Overwrite the file if it already exists without prompting.
     #[arg(long, default_value_t = false)]
     pub r#override: bool,
 }

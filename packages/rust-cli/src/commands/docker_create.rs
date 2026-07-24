@@ -24,14 +24,11 @@ const DOCKER_SERVICES: &[&str] = &[
     "vault",
 ];
 
-/// Rust port of `packages/cli/src/commands/DockerCreateCommand.ts`.
 #[derive(Args, Debug)]
 pub struct DockerCreateArgs {
-    /// Docker service name.
     #[arg(long)]
     pub name: Option<String>,
 
-    /// Working directory (defaults to the current directory).
     #[arg(long)]
     pub cwd: Option<String>,
 }

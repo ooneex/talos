@@ -35,22 +35,17 @@ struct ReleasePlan {
     tag: String,
 }
 
-/// Rust port of `packages/cli/src/commands/ReleaseCreateCommand.ts`.
 #[derive(Args, Debug)]
 pub struct ReleaseCreateArgs {
-    /// Comma-separated module names.
     #[arg(long)]
     pub modules: Option<String>,
 
-    /// Comma-separated package names.
     #[arg(long)]
     pub packages: Option<String>,
 
-    /// Publish released packages to npm after tagging.
     #[arg(long, default_value_t = false)]
     pub publish: bool,
 
-    /// Working directory (defaults to the current directory).
     #[arg(long)]
     pub cwd: Option<String>,
 }
@@ -68,8 +63,6 @@ fn exec(cwd: &Path, args: &[&str]) -> Option<String> {
 }
 
 fn has_pending_changes(cwd: &Path) -> bool {
-    // Mirrors `git --no-pager status --porcelain`: any tracked or untracked
-    // (non-ignored) change makes the working tree dirty.
     let Ok(repo) = git2::Repository::open(cwd) else {
         return false;
     };
@@ -186,8 +179,6 @@ fn bump_version(version: &str, kind: &str) -> String {
 }
 
 fn get_repo_url(cwd: &Path) -> Option<String> {
-    // Mirrors `git remote get-url origin`, then reshapes it into an HTTPS
-    // browse URL the same way the original TypeScript/git CLI version did.
     crate::utils::git_origin_url(cwd).map(|url| {
         url.trim()
             .trim_end_matches(".git")

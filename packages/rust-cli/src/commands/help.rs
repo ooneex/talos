@@ -1,14 +1,8 @@
 use clap::Args;
 
-/// Rust port of `packages/cli/src/commands/HelpCommand.ts`. Mirrors the
-/// TypeScript CLI's `COMMANDS_CONTAINER` registry with a static list, since
-/// `rust-cli` has no runtime command registry to iterate.
 #[derive(Args, Debug)]
 pub struct HelpArgs {}
 
-/// `(name, description)` for every command registered in [`super::Commands`].
-/// Kept in sync manually with the `#[command(name = "...")]` attributes and
-/// doc comments there.
 const COMMANDS: &[(&str, &str)] = &[
     ("ai:chat:create", "Generate a new AI chat class"),
     ("ai:middleware:create", "Generate a new AI middleware class"),

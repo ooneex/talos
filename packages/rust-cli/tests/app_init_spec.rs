@@ -1,6 +1,3 @@
-//! Integration tests for `rust_cli::commands::app_init`, moved out of
-//! `src/commands/app_init.rs`.
-
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
@@ -44,8 +41,6 @@ fn app_init_args_defaults_are_none_and_not_silent() {
     assert!(!cli.args.silent);
 }
 
-/// Builds a fake skeleton directory with the same shape as the real
-/// `ooneex/skeleton` repo (as far as `scaffold_destination` cares about).
 fn build_fake_skeleton(root: &Path) {
     fs::create_dir_all(root.join(".git")).unwrap();
     fs::write(root.join("bun.lock"), "{}").unwrap();

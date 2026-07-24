@@ -1,6 +1,3 @@
-//! Integration tests for `rust_cli::commands::Commands` subcommand dispatch,
-//! moved out of `src/commands/mod.rs`.
-
 use clap::Parser;
 use rust_cli::commands::Commands;
 

@@ -10,22 +10,17 @@ use crate::utils::{
 const SPEC_TEMPLATE: &str = include_str!("../templates/e2e.spec.txt");
 const CONFIG_TEMPLATE: &str = include_str!("../templates/playwright.config.txt");
 
-/// Rust port of `packages/cli/src/commands/E2eCreateCommand.ts`.
 #[derive(Args, Debug)]
 pub struct E2eCreateArgs {
-    /// E2E test name.
     #[arg(long)]
     pub name: Option<String>,
 
-    /// Destination module (defaults to "shared").
     #[arg(long)]
     pub module: Option<String>,
 
-    /// Overwrite the file if it already exists without prompting.
     #[arg(long, default_value_t = false)]
     pub r#override: bool,
 
-    /// Working directory (defaults to the current directory).
     #[arg(long)]
     pub cwd: Option<String>,
 }

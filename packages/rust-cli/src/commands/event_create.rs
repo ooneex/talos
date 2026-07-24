@@ -7,22 +7,17 @@ use crate::utils::{
 const TEMPLATE: &str = include_str!("../templates/event.txt");
 const TEST_TEMPLATE: &str = include_str!("../templates/event.test.txt");
 
-/// Rust port of `packages/cli/src/commands/EventCreateCommand.ts`.
 #[derive(Args, Debug)]
 pub struct EventCreateArgs {
-    /// Resource name.
     #[arg(long)]
     pub name: Option<String>,
 
-    /// Destination module (defaults to "shared").
     #[arg(long)]
     pub module: Option<String>,
 
-    /// Overwrite the file if it already exists without prompting.
     #[arg(long, default_value_t = false)]
     pub r#override: bool,
 
-    /// Pub/sub channel name (defaults to the kebab-case event name).
     #[arg(long)]
     pub channel: Option<String>,
 }

@@ -1,5 +1,3 @@
-//! Integration tests for `rust_cli::utils::{Action, run_actions}`.
-
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Barrier, Mutex};
@@ -75,9 +73,6 @@ fn run_actions_runs_every_action_concurrently() {
             let observed_together = observed_together.clone();
             let arrived = arrived.clone();
             Action::new(format!("task-{index}"), move || {
-                // Every action must reach this point before any is allowed to
-                // continue; a sequential runner would deadlock here, so a clean
-                // return proves the work genuinely overlapped.
                 arrived.fetch_add(1, Ordering::SeqCst);
                 barrier.wait();
                 *observed_together.lock().unwrap() = true;

@@ -42,22 +42,17 @@ struct ControllerDefinition {
     type_declaration: String,
 }
 
-/// Rust port of `packages/cli/src/commands/SdkCreateCommand.ts`.
 #[derive(Args, Debug)]
 pub struct SdkCreateArgs {
-    /// SDK module name.
     #[arg(long)]
     pub name: Option<String>,
 
-    /// Source module to generate the SDK from.
     #[arg(long)]
     pub module: Option<String>,
 
-    /// Working directory (defaults to the current directory).
     #[arg(long)]
     pub cwd: Option<String>,
 
-    /// Suppress progress and success messages.
     #[arg(long, default_value_t = false)]
     pub silent: bool,
 }

@@ -3,7 +3,6 @@ use clap::Args;
 const OO_TEMPLATE: &str = include_str!("../templates/completions/_oo.txt");
 const TALOS_TEMPLATE: &str = include_str!("../templates/completions/_talos.txt");
 
-/// Rust port of `packages/cli/src/commands/CompletionZshCommand.ts`.
 #[derive(Args, Debug)]
 pub struct CompletionZshArgs {}
 

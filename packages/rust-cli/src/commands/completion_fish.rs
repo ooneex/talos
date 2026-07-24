@@ -2,7 +2,6 @@ use clap::Args;
 
 const FISH_TEMPLATE: &str = include_str!("../templates/completions/talos.fish.txt");
 
-/// Rust port of `packages/cli/src/commands/CompletionFishCommand.ts`.
 #[derive(Args, Debug)]
 pub struct CompletionFishArgs {}
 

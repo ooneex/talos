@@ -10,38 +10,29 @@ const CONTROLLER_TEMPLATE: &str = include_str!("../templates/controller.txt");
 const SOCKET_CONTROLLER_TEMPLATE: &str = include_str!("../templates/controller.socket.txt");
 const TEST_TEMPLATE: &str = include_str!("../templates/controller.test.txt");
 
-/// Rust port of `packages/cli/src/commands/ControllerCreateCommand.ts`.
 #[derive(Args, Debug)]
 pub struct ControllerCreateArgs {
-    /// Controller class name.
     #[arg(long)]
     pub name: Option<String>,
 
-    /// Destination module (defaults to "shared").
     #[arg(long)]
     pub module: Option<String>,
 
-    /// Generate a socket controller instead of an HTTP controller.
     #[arg(long)]
     pub is_socket: Option<bool>,
 
-    /// Overwrite the file if it already exists without prompting.
     #[arg(long, default_value_t = false)]
     pub r#override: bool,
 
-    /// Route name (for example: api.users.list).
     #[arg(long = "route.name")]
     pub route_name: Option<String>,
 
-    /// Route path (for example: /users).
     #[arg(long = "route.path")]
     pub route_path: Option<String>,
 
-    /// Route method (GET, POST, PUT, DELETE, PATCH, OPTIONS, HEAD).
     #[arg(long = "route.method")]
     pub route_method: Option<String>,
 
-    /// Working directory (defaults to the current directory).
     #[arg(long)]
     pub cwd: Option<String>,
 }

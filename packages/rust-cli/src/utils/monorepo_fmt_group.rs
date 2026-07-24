@@ -1,14 +1,3 @@
-//! Builds `monorepo:run`'s `fmt` task group: one whole-crate `cargo fmt`
-//! task per Rust target, one whole-directory `bunx biome check --write .`
-//! task per every other target. Both tools pay a fixed per-invocation cost
-//! (cargo resolving the workspace; biome loading `biome.jsonc` and walking
-//! the project) that dwarfs the marginal cost of formatting one more file,
-//! so a per-file split was tried and reverted: `cargo fmt -- <file>` and a
-//! plain `cargo fmt` cost the same ~130ms regardless of file count, and
-//! `bunx biome check --write <file>` likewise cost the same as running it
-//! against the whole directory — so one process per crate/package beats one
-//! process per file by several times across a large workspace.
-
 use std::path::PathBuf;
 
 use super::monorepo_task::{Task, TaskStatus};
@@ -16,8 +5,6 @@ use crate::utils::{MonorepoTarget, is_rust_module, resolve_biome_command};
 
 pub(crate) const FMT_COMMAND: &str = "fmt";
 
-/// Directories `fmt`'s file walk never descends into: build artifacts,
-/// dependency folders and caches, none of which hold source worth formatting.
 const FMT_EXCLUDED_DIRS: &[&str] = &[
     "node_modules",
     "dist",
@@ -29,16 +16,8 @@ const FMT_EXCLUDED_DIRS: &[&str] = &[
     ".turbo",
 ];
 
-/// Non-Rust file extensions `fmt`'s file walk treats as formattable (mirrors
-/// what `bunx biome check --write` would pick up across a target).
 const FMT_WEB_EXTENSIONS: &[&str] = &["ts", "tsx", "js", "jsx", "mjs", "cjs", "json", "jsonc"];
 
-/// Formattable files under a target's whole directory, as paths relative to
-/// the target's directory: `.rs` files for Rust targets, common web source
-/// (`.ts`/`.tsx`/`.js`/`.jsx`/`.mjs`/`.cjs`/`.json`/`.jsonc`) for everything
-/// else. Scanned recursively, skipping build/dependency folders. Used only
-/// to decide whether a target has anything to format at all — the actual
-/// `fmt` task always runs against the whole target directory in one shot.
 pub(crate) fn collect_fmt_files(target: &MonorepoTarget) -> Vec<PathBuf> {
     let is_rust = is_rust_module(&target.dir);
     let mut files = Vec::new();
@@ -76,12 +55,6 @@ pub(crate) fn collect_fmt_files(target: &MonorepoTarget) -> Vec<PathBuf> {
     files
 }
 
-// One whole-crate `cargo fmt` task per Rust target, one whole-directory
-// `biome check --write .` task per every other target — see the module doc
-// comment for why per-file splitting doesn't help here. Targets without the
-// `fmt` script, or without any formattable files, are marked skipped up
-// front. `fmt` stays order-independent (it's listed in
-// `ORDER_INDEPENDENT_COMMANDS`), so no task here carries dependency edges.
 pub(crate) fn build_fmt_group(targets: &[MonorepoTarget]) -> Vec<Task> {
     let mut tasks: Vec<Task> = Vec::new();
 

@@ -1,5 +1,3 @@
-//! Integration tests for `rust_cli::commands::ai_middleware_create` argument parsing.
-
 use clap::Parser;
 use rust_cli::commands::ai_middleware_create::AiMiddlewareCreateArgs;
 

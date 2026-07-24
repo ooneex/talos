@@ -1,9 +1,5 @@
-//! Subprocess helpers, mirroring `packages/cli/src/utils.ts`'s `ensureBin` and
-//! `spawnStep`.
-
 use std::process::Command;
 
-/// Mirrors `ensureBin`: checks a binary is reachable on the `PATH`.
 pub fn ensure_bin(bin: &str) -> bool {
     let available = Command::new(bin)
         .arg("--version")
@@ -20,8 +16,6 @@ pub fn ensure_bin(bin: &str) -> bool {
     available
 }
 
-/// Mirrors `spawnStep`: runs a command, optionally announcing it, and reports
-/// failures uniformly.
 pub fn run_step(silent: bool, start_message: &str, command: &mut Command) -> bool {
     if !silent {
         println!("{start_message}");
@@ -43,12 +37,6 @@ pub fn run_step(silent: bool, start_message: &str, command: &mut Command) -> boo
     }
 }
 
-/// Spinner variant of [`run_step`] for a single discrete action: renders
-/// `label` behind an animated spinner while the command runs with its output
-/// captured, then leaves a `✔ label` line on success or a `✖ label` line plus
-/// the captured stderr/stdout on failure. Output is captured (not streamed) so
-/// the spinner is never corrupted; `silent` suppresses only the success line
-/// (the spinner itself already no-ops on a non-TTY, keeping CI output clean).
 pub fn run_spinner_step(silent: bool, label: &str, command: &mut Command) -> bool {
     let spinner = super::style::Spinner::start(format!("{label}..."));
     let result = command.output();

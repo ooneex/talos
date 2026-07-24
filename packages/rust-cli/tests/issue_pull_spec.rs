@@ -1,5 +1,3 @@
-//! Integration tests for `rust_cli::commands::issue_pull` argument parsing.
-
 use clap::Parser;
 use rust_cli::commands::issue_pull::IssuePullArgs;
 

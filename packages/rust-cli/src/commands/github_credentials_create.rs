@@ -4,14 +4,11 @@ use crate::utils::{ask_password, save_credentials};
 
 const GITHUB_TOKEN_URL: &str = "https://github.com/settings/personal-access-tokens/new";
 
-/// Rust port of `packages/cli/src/commands/GithubCredentialsCreateCommand.ts`.
 #[derive(Args, Debug)]
 pub struct GithubCredentialsCreateArgs {
-    /// GitHub Personal Access Token (prompted for when omitted).
     #[arg(long)]
     pub token: Option<String>,
 
-    /// Suppress informational messages.
     #[arg(long, default_value_t = false)]
     pub silent: bool,
 }

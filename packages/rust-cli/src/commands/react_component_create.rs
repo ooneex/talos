@@ -17,26 +17,20 @@ const TEST_DEPENDENCIES: &[&str] = &[
     "@testing-library/jest-dom",
 ];
 
-/// Rust port of `packages/cli/src/commands/ReactComponentCreateCommand.ts`.
 #[derive(Args, Debug)]
 pub struct ReactComponentCreateArgs {
-    /// Component name.
     #[arg(long)]
     pub name: Option<String>,
 
-    /// SPA module name.
     #[arg(long)]
     pub module: Option<String>,
 
-    /// Optional feature name.
     #[arg(long)]
     pub feature: Option<String>,
 
-    /// Overwrite the file if it already exists without prompting.
     #[arg(long, default_value_t = false)]
     pub r#override: bool,
 
-    /// Working directory (defaults to the current directory).
     #[arg(long)]
     pub cwd: Option<String>,
 }

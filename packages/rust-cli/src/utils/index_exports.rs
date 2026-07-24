@@ -1,15 +1,6 @@
-//! Rebuilds the aggregated `commands.ts`/`migrations.ts`/`seeds.ts` barrel
-//! files, mirroring the `Bun.Glob("**/*Command.ts")` + sorted `export`
-//! scan done by `@talosjs/command`'s `commandCreate` (and the equivalent
-//! logic in `@talosjs/migrations`'s `migrationCreate` and `@talosjs/seeds`'s
-//! `seedCreate`).
-
 use std::fs;
 use std::path::Path;
 
-/// Recursively collects every file name (without extension) under `dir` for
-/// which `filter` returns `true`, mirroring a `Bun.Glob("**/<pattern>.ts")`
-/// scan followed by a class-name filter.
 fn collect_matching_class_names(dir: &Path, filter: &dyn Fn(&str) -> bool) -> Vec<String> {
     let mut names = Vec::new();
     collect_matching_class_names_into(dir, filter, &mut names);
@@ -41,11 +32,6 @@ fn collect_matching_class_names_into(
     }
 }
 
-/// Writes `<dir>/<index_file_name>` as a sorted list of
-/// `export { X } from './X';` lines for every `.ts` class name under `dir`
-/// matching `filter` (the index file itself is excluded by the filter, e.g.
-/// `Migration*` prefix or `*Command`/`*Seed` suffix, since it never matches
-/// those patterns).
 pub fn write_export_index(
     dir: &Path,
     index_file_name: &str,

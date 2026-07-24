@@ -2,30 +2,23 @@ use clap::Args;
 
 use crate::utils::{IssueYaml, current_dir, ensure_module, generate_issue_id, issue_to_yaml};
 
-/// Rust port of `packages/cli/src/commands/IssueCreateCommand.ts`.
 #[derive(Args, Debug)]
 pub struct IssueCreateArgs {
-    /// Issue title.
     #[arg(long)]
     pub title: Option<String>,
 
-    /// Issue priority (defaults to "Medium").
     #[arg(long)]
     pub priority: Option<String>,
 
-    /// Issue description.
     #[arg(long)]
     pub description: Option<String>,
 
-    /// Issue labels (repeatable).
     #[arg(long = "label")]
     pub labels: Vec<String>,
 
-    /// Destination module (defaults to "shared").
     #[arg(long)]
     pub module: Option<String>,
 
-    /// Working directory (defaults to the current directory).
     #[arg(long)]
     pub cwd: Option<String>,
 }

@@ -2,8 +2,6 @@ use clap::Args;
 
 use crate::commands::monorepo_run::{self, MonorepoRunArgs};
 
-/// Rust port of `packages/cli/src/commands/E2eRunCommand.ts`: a short alias
-/// for `monorepo:run --commands=e2e`.
 #[derive(Args, Debug)]
 pub struct E2eRunArgs {
     #[arg(long)]

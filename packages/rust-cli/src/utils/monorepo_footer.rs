@@ -1,26 +1,3 @@
-//! The live TTY footer for `monorepo:run`: a spinner-animated progress bar
-//! pinned to the bottom of the terminal while tasks run, with finished tasks
-//! streaming into scrollback above it. This is the Rust equivalent of the
-//! `startRenderer`/`buildFooter` pair in
-//! `packages/cli/src/commands/MonorepoRunCommand.ts`.
-//!
-//! Unlike the TypeScript version — which streams each subprocess's stdout and
-//! can therefore show the latest log line next to every running task — the
-//! Rust scheduler captures a task's output in one shot via `Command::output`,
-//! so no partial output exists mid-run. The footer instead shows a spinner
-//! and the label of each in-flight task, plus the shared progress bar and a
-//! running/failed/elapsed summary.
-//!
-//! Rendering discipline: exactly one thread writes to stdout at a time. The
-//! animation thread and the scheduler thread (via `task_finished`) both hold
-//! the same mutex for the whole build-and-write, so a footer redraw can never
-//! interleave with a persisted scrollback line. The invariant maintained
-//! across every write is "the cursor sits at column 0 of the footer's first
-//! line"; every routine clears from there to the end of the screen with
-//! `\x1b[0J`, draws, then returns the cursor to that spot, so the next writer
-//! can rely on the same starting point. A no-op when stdout isn't a TTY, so
-//! piped/CI output keeps the plain scrollback stream with no escape codes.
-
 use std::io::{Write, stdout};
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -32,14 +9,10 @@ use console::{Term, style};
 
 use super::monorepo_task::format_duration;
 
-/// Braille spinner frames, matching `SPINNER_FRAMES` in
-/// `packages/cli/src/utils.ts` (and the standalone `Spinner` in `style.rs`).
 const FRAMES: [&str; 10] = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 const TICK: Duration = Duration::from_millis(80);
-/// Progress bar width in cells, matching `buildFooter`'s `width = 22`.
 const BAR_WIDTH: usize = 22;
 
-/// Live progress state shared between the scheduler and the animation thread.
 struct FooterState {
     total: usize,
     finished: usize,
@@ -54,8 +27,6 @@ struct FooterInner {
     started_at: Instant,
 }
 
-/// Handle to the live footer. Dropping it (or calling [`Footer::stop`]) stops
-/// the animation thread, clears the footer, and restores the cursor.
 pub(crate) struct Footer {
     inner: Arc<FooterInner>,
     handle: Option<JoinHandle<()>>,
@@ -63,10 +34,6 @@ pub(crate) struct Footer {
 }
 
 impl Footer {
-    /// Starts the footer for a run of `total` tasks. Returns a disabled
-    /// (no-op) handle when stdout isn't an interactive terminal, so callers
-    /// can unconditionally drive it and fall back to plain scrollback via
-    /// [`Footer::enabled`].
     pub(crate) fn start(total: usize) -> Self {
         let inner = Arc::new(FooterInner {
             state: Mutex::new(FooterState {
@@ -88,7 +55,7 @@ impl Footer {
             };
         }
 
-        print!("\u{1b}[?25l"); // hide cursor
+        print!("\u{1b}[?25l");
         let _ = stdout().flush();
 
         let thread_inner = inner.clone();
@@ -115,15 +82,10 @@ impl Footer {
         }
     }
 
-    /// Whether a live footer is being drawn. `false` means non-interactive
-    /// output, so the scheduler should print finish lines to scrollback
-    /// itself instead of routing them through [`Footer::task_finished`].
     pub(crate) fn enabled(&self) -> bool {
         self.enabled
     }
 
-    /// Records that a task has started running, so its label appears under the
-    /// progress bar with a spinner until it finishes.
     pub(crate) fn task_started(&self, label: &str) {
         if !self.enabled {
             return;
@@ -132,11 +94,6 @@ impl Footer {
         state.running.push(label.to_string());
     }
 
-    /// Records that a task has finished, updating the progress counters and
-    /// persisting `scrollback` (its finish line and any failure excerpt) above
-    /// the footer in one atomic redraw. `scrollback` may be empty for cached
-    /// or skipped tasks, which still advance the progress bar but print
-    /// nothing.
     pub(crate) fn task_finished(&self, label: &str, failed: bool, scrollback: &[String]) {
         if !self.enabled {
             return;
@@ -153,21 +110,16 @@ impl Footer {
         }
 
         let mut buf = String::new();
-        buf.push_str("\u{1b}[0J"); // wipe the current footer
+        buf.push_str("\u{1b}[0J");
         for line in scrollback {
             buf.push_str(line);
             buf.push('\n');
         }
-        // Cursor now sits at the footer's first line again; repaint it there
-        // so the counters update immediately rather than on the next tick.
         paint_footer(&state, cols, elapsed, &mut buf);
         print!("{buf}");
         let _ = stdout().flush();
     }
 
-    /// Stops the animation thread, clears the footer, and restores the cursor.
-    /// Equivalent to dropping the handle, but named for readability at call
-    /// sites (mirrors `renderer.stop()` in the TypeScript version).
     pub(crate) fn stop(self) {}
 }
 
@@ -176,15 +128,12 @@ impl Drop for Footer {
         self.inner.stop.store(true, Ordering::Relaxed);
         if let Some(handle) = self.handle.take() {
             let _ = handle.join();
-            print!("\u{1b}[0J\u{1b}[?25h"); // clear the footer, show cursor
+            print!("\u{1b}[0J\u{1b}[?25h");
             let _ = stdout().flush();
         }
     }
 }
 
-/// Clears from the cursor (the footer's first line) to the end of the screen,
-/// draws the footer, then returns the cursor to that first line so the next
-/// writer starts from the same known position.
 fn paint_footer(state: &FooterState, cols: usize, elapsed_ms: u64, buf: &mut String) {
     buf.push_str("\u{1b}[0J");
     let lines = build_footer_lines(state, cols, elapsed_ms);
@@ -198,9 +147,6 @@ fn paint_footer(state: &FooterState, cols: usize, elapsed_ms: u64, buf: &mut Str
     buf.push('\r');
 }
 
-/// Builds the footer's lines: a blank spacer, the progress bar with its
-/// running/failed/elapsed summary, then one spinner+label line per in-flight
-/// task. Mirrors `buildFooter` in `MonorepoRunCommand.ts`.
 fn build_footer_lines(state: &FooterState, cols: usize, elapsed_ms: u64) -> Vec<String> {
     let ratio = if state.total == 0 {
         1.0
@@ -245,9 +191,6 @@ fn build_footer_lines(state: &FooterState, cols: usize, elapsed_ms: u64) -> Vec<
     lines
 }
 
-/// Truncates a plain (un-styled) label to at most `max` display characters,
-/// ending with an ellipsis when shortened, so a long label never wraps and
-/// breaks the footer's line-count bookkeeping.
 fn truncate(label: &str, max: usize) -> String {
     if max == 0 {
         return String::new();

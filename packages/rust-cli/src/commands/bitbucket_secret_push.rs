@@ -7,22 +7,17 @@ use serde_json::json;
 
 use crate::utils::{ask_input, ask_password, current_dir, git_origin_url, read_credentials};
 
-/// Rust port of `packages/cli/src/commands/BitbucketSecretPushCommand.ts`.
 #[derive(Args, Debug)]
 pub struct BitbucketSecretPushArgs {
-    /// Variable name.
     #[arg(long)]
     pub name: Option<String>,
 
-    /// Variable value.
     #[arg(long)]
     pub value: Option<String>,
 
-    /// Suppress success/error messages.
     #[arg(long, default_value_t = false)]
     pub silent: bool,
 
-    /// Working directory (defaults to the current directory).
     #[arg(long)]
     pub cwd: Option<String>,
 }

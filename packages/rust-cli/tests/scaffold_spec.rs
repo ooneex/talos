@@ -1,8 +1,3 @@
-//! Integration tests for `rust_cli::utils::scaffold_resource`, mirroring
-//! `packages/cli/src/scaffold.ts`'s `scaffoldResource`. Uses a representative
-//! config (mirroring `CacheCreateCommand`) since every `*:create` command
-//! that uses `scaffold_resource` shares the same code path.
-
 use std::fs;
 
 use rust_cli::utils::{ScaffoldConfig, ScaffoldOptions, scaffold_resource};

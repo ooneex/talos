@@ -1,5 +1,3 @@
-//! Integration tests for `rust_cli::commands::e2e_run` argument parsing.
-
 use clap::Parser;
 use rust_cli::commands::e2e_run::E2eRunArgs;
 

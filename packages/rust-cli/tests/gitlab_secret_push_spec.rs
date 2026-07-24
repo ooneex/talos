@@ -1,5 +1,3 @@
-//! Integration tests for `rust_cli::commands::gitlab_secret_push` argument parsing.
-
 use clap::Parser;
 use rust_cli::commands::gitlab_secret_push::GitlabSecretPushArgs;
 

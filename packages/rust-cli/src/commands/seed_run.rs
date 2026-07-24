@@ -2,22 +2,17 @@ use clap::Args;
 
 use crate::utils::{RunModuleScriptsOptions, current_dir, run_module_scripts};
 
-/// Rust port of `packages/cli/src/commands/SeedRunCommand.ts`.
 #[derive(Args, Debug)]
 pub struct SeedRunArgs {
-    /// Drop existing data before seeding.
     #[arg(long, default_value_t = false)]
     pub drop: bool,
 
-    /// Target environment (forwarded as `APP_ENV`).
     #[arg(long)]
     pub env: Option<String>,
 
-    /// Bypass each module's per-seed run cache.
     #[arg(long, default_value_t = false)]
     pub no_cache: bool,
 
-    /// Working directory (defaults to the current directory).
     #[arg(long)]
     pub cwd: Option<String>,
 }

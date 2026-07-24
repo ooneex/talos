@@ -17,22 +17,17 @@ const SKELETON_LAYOUT_TEMPLATE: &str =
 const QUERY_TEMPLATE: &str = include_str!("../templates/spa/spa-feature.query.txt");
 const MUTATION_TEMPLATE: &str = include_str!("../templates/spa/spa-feature.mutation.txt");
 
-/// Rust port of `packages/cli/src/commands/SpaFeatureCreateCommand.ts`.
 #[derive(Args, Debug)]
 pub struct SpaFeatureCreateArgs {
-    /// Feature name.
     #[arg(long)]
     pub name: Option<String>,
 
-    /// SPA module name.
     #[arg(long)]
     pub module: Option<String>,
 
-    /// Overwrite the feature if it already exists without prompting.
     #[arg(long, default_value_t = false)]
     pub r#override: bool,
 
-    /// Working directory (defaults to the current directory).
     #[arg(long)]
     pub cwd: Option<String>,
 }

@@ -10,22 +10,17 @@ const MAILER_TEMPLATE_TEMPLATE: &str = include_str!("../templates/mailer/mailer-
 const MAILER_TEMPLATE_TEST_TEMPLATE: &str =
     include_str!("../templates/mailer/mailer-template.test.txt");
 
-/// Rust port of `packages/cli/src/commands/MailerCreateCommand.ts`.
 #[derive(Args, Debug)]
 pub struct MailerCreateArgs {
-    /// Mailer class name.
     #[arg(long)]
     pub name: Option<String>,
 
-    /// Destination module (defaults to "shared").
     #[arg(long)]
     pub module: Option<String>,
 
-    /// Overwrite the file if it already exists without prompting.
     #[arg(long, default_value_t = false)]
     pub r#override: bool,
 
-    /// Working directory (defaults to the current directory).
     #[arg(long)]
     pub cwd: Option<String>,
 }

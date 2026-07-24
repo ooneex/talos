@@ -11,26 +11,20 @@ use crate::utils::{Action, current_dir, ensure_bin, read_credentials, run_action
 
 const NPM_REGISTRY: &str = "registry.npmjs.org";
 
-/// Rust port of `packages/cli/src/commands/NpmPublishCommand.ts`.
 #[derive(Args, Debug)]
 pub struct NpmPublishArgs {
-    /// Comma-separated package names to publish.
     #[arg(long)]
     pub packages: Option<String>,
 
-    /// Comma-separated module names to publish.
     #[arg(long)]
     pub modules: Option<String>,
 
-    /// Publish access level.
     #[arg(long, default_value = "public")]
     pub access: String,
 
-    /// Suppress success/error messages.
     #[arg(long, default_value_t = false)]
     pub silent: bool,
 
-    /// Working directory (defaults to the current directory).
     #[arg(long)]
     pub cwd: Option<String>,
 }
@@ -131,8 +125,6 @@ fn version_exists(name: &str, version: &str, token: &str) -> bool {
     )
 }
 
-/// Deletes every `*.tgz` file directly inside `dir`, mirroring
-/// `rm -f ./dist/*.tgz` run with `dir` as the current directory.
 fn remove_tgz_files(dir: &Path) {
     let Ok(entries) = fs::read_dir(dir) else {
         return;
@@ -145,10 +137,6 @@ fn remove_tgz_files(dir: &Path) {
     }
 }
 
-/// Extracts a gzip tarball into `destination`, dropping each entry's
-/// top-level path component. Mirrors `tar -xzf <tarball> -C <destination>
-/// --strip-components=1`, which is what npm-style package tarballs need
-/// (everything lives under a single `package/` root in the archive).
 fn extract_tarball_stripping_root(tarball: &Path, destination: &Path) -> std::io::Result<()> {
     let file = fs::File::open(tarball)?;
     let mut archive = Archive::new(GzDecoder::new(file));
@@ -156,7 +144,7 @@ fn extract_tarball_stripping_root(tarball: &Path, destination: &Path) -> std::io
         let mut entry = entry?;
         let entry_path = entry.path()?.into_owned();
         let mut components = entry_path.components();
-        components.next(); // drop the leading `package/` (or similar) component
+        components.next();
         let relative: PathBuf = components.collect();
         if relative.as_os_str().is_empty() {
             continue;
@@ -235,9 +223,6 @@ pub fn run(args: &NpmPublishArgs) {
             continue;
         }
 
-        // Each package publishes into its own directory with no shared mutable
-        // state (only the read-only token is shared), so the packages publish
-        // concurrently instead of one after another.
         let access = args.access.clone();
         let token = token.clone();
         actions.push(Action::new(format!("Publishing {label}"), move || {
@@ -261,9 +246,6 @@ pub fn run(args: &NpmPublishArgs) {
     }
 }
 
-/// Packs, extracts, and publishes a single package/module directory to npm with
-/// its subprocess output captured (so it can run behind the concurrent action
-/// spinner). Returns the combined command output on failure.
 fn publish_one(target_dir: &Path, access: &str, token: &str) -> Result<(), String> {
     let dist_dir = target_dir.join("dist");
     let publish_dir = dist_dir.join("publish");

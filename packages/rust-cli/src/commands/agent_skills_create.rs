@@ -7,30 +7,23 @@ use crate::utils::{clone_skeleton, current_dir};
 
 const DEFAULT_AGENTS: &[&str] = &[".claude", ".codex"];
 
-/// Rust port of `packages/cli/src/commands/AgentSkillsCreateCommand.ts`.
 #[derive(Args, Debug)]
 pub struct AgentSkillsCreateArgs {
-    /// Assistant config directories (repeatable), for example: .claude .codex.
     #[arg(long = "agents")]
     pub agents: Vec<String>,
 
-    /// Application name used to substitute `{{NAME}}` in AGENTS.md.
     #[arg(long)]
     pub name: Option<String>,
 
-    /// Override the skeleton source directory.
     #[arg(long = "source-dir")]
     pub source_dir: Option<String>,
 
-    /// Suppress success messages.
     #[arg(long, default_value_t = false)]
     pub silent: bool,
 
-    /// Working directory (defaults to the current directory).
     #[arg(long)]
     pub cwd: Option<String>,
 
-    /// Ignore the cached skeleton and re-download it.
     #[arg(long, default_value_t = false)]
     pub no_cache: bool,
 }

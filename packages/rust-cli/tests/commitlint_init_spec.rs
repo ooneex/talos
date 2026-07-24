@@ -1,5 +1,3 @@
-//! Integration tests for `rust_cli::commands::commitlint_init` argument parsing.
-
 use clap::Parser;
 use rust_cli::commands::commitlint_init::CommitlintInitArgs;
 

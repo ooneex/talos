@@ -10,18 +10,14 @@ use crate::utils::{
     select_runnable_modules,
 };
 
-/// Rust port of `packages/cli/src/commands/AppStartCommand.ts`.
 #[derive(Args, Debug)]
 pub struct AppStartArgs {
-    /// Comma-separated module names to run.
     #[arg(long)]
     pub modules: Option<String>,
 
-    /// Alias for `--modules`.
     #[arg(long)]
     pub packages: Option<String>,
 
-    /// Working directory (defaults to the current directory).
     #[arg(long)]
     pub cwd: Option<String>,
 }

@@ -7,22 +7,17 @@ use crate::utils::{
 const TEMPLATE: &str = include_str!("../templates/entity.txt");
 const TEST_TEMPLATE: &str = include_str!("../templates/entity.test.txt");
 
-/// Rust port of `packages/cli/src/commands/EntityCreateCommand.ts`.
 #[derive(Args, Debug)]
 pub struct EntityCreateArgs {
-    /// Entity name.
     #[arg(long)]
     pub name: Option<String>,
 
-    /// Destination module (defaults to "shared").
     #[arg(long)]
     pub module: Option<String>,
 
-    /// Database table name (defaults to the snake_case pluralized entity name).
     #[arg(long)]
     pub table_name: Option<String>,
 
-    /// Overwrite the file if it already exists without prompting.
     #[arg(long, default_value_t = false)]
     pub r#override: bool,
 }

@@ -13,26 +13,20 @@ const REDIS_TEST_TEMPLATE: &str = include_str!("../templates/database.redis.test
 
 const DATABASE_TYPES: &[&str] = &["postgres", "sqlite", "redis"];
 
-/// Rust port of `packages/cli/src/commands/DatabaseCreateCommand.ts`.
 #[derive(Args, Debug)]
 pub struct DatabaseCreateArgs {
-    /// Database class name.
     #[arg(long)]
     pub name: Option<String>,
 
-    /// Destination module (defaults to "shared").
     #[arg(long)]
     pub module: Option<String>,
 
-    /// Database type: postgres, sqlite, or redis.
     #[arg(long)]
     pub r#type: Option<String>,
 
-    /// Overwrite the file if it already exists without prompting.
     #[arg(long, default_value_t = false)]
     pub r#override: bool,
 
-    /// Working directory (defaults to the current directory).
     #[arg(long)]
     pub cwd: Option<String>,
 }

@@ -1,7 +1,3 @@
-//! String case conversion, mirroring `@talosjs/utils/{toKebabCase,toSnakeCase,splitToWords}`.
-
-/// Word-splitting shared by [`to_kebab_case`] and [`to_snake_case`], mirroring
-/// `@talosjs/utils/splitToWords` (camelCase/PascalCase/acronym-aware).
 fn split_to_words(input: &str) -> Vec<String> {
     let chars: Vec<char> = input.trim().chars().collect();
     let mut words: Vec<String> = Vec::new();
@@ -36,7 +32,6 @@ fn split_to_words(input: &str) -> Vec<String> {
     words
 }
 
-/// Mirrors `@talosjs/utils/toKebabCase`.
 pub fn to_kebab_case(input: &str) -> String {
     split_to_words(input)
         .into_iter()
@@ -45,7 +40,6 @@ pub fn to_kebab_case(input: &str) -> String {
         .join("-")
 }
 
-/// Mirrors `@talosjs/utils/toSnakeCase`.
 pub fn to_snake_case(input: &str) -> String {
     split_to_words(input)
         .into_iter()
@@ -54,11 +48,6 @@ pub fn to_snake_case(input: &str) -> String {
         .join("_")
 }
 
-/// Approximates the `pluralize` npm package's English singular-to-plural rules
-/// for the common cases `EntityCreateCommand` needs when deriving a table
-/// name (e.g. "Category" -> "Categories", "Box" -> "Boxes", "User" -> "Users").
-/// Not a full linguistic implementation (irregular plurals like "person" ->
-/// "people" aren't covered), but matches typical entity name shapes.
 pub fn pluralize(word: &str) -> String {
     if word.is_empty() {
         return word.to_string();

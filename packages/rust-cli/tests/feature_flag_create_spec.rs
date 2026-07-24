@@ -1,5 +1,3 @@
-//! Integration tests for `rust_cli::commands::feature_flag_create` argument parsing.
-
 use clap::Parser;
 use rust_cli::commands::feature_flag_create::FeatureFlagCreateArgs;
 

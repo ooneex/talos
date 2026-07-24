@@ -12,26 +12,20 @@ use crate::utils::{
     to_kebab_case, to_pascal_case,
 };
 
-/// Rust port of `packages/cli/src/commands/SpaCreateCommand.ts`.
 #[derive(Args, Debug)]
 pub struct SpaCreateArgs {
-    /// SPA module name.
     #[arg(long)]
     pub name: Option<String>,
 
-    /// Design module name.
     #[arg(long)]
     pub design: Option<String>,
 
-    /// Working directory (defaults to the current directory).
     #[arg(long)]
     pub cwd: Option<String>,
 
-    /// Suppress progress and success messages.
     #[arg(long, default_value_t = false)]
     pub silent: bool,
 
-    /// Ignore the cached skeleton and re-download it.
     #[arg(long, default_value_t = false)]
     pub no_cache: bool,
 }

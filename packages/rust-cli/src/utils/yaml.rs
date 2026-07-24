@@ -1,8 +1,3 @@
-//! Minimal YAML serializer for string maps, mirroring the subset of
-//! `packages/cli/src/utils.ts`'s `toYaml` used by `credentials.rs`
-//! (`{ profiles: { default: { ...key: value } } }`).
-
-/// Mirrors `needsQuoting` in `packages/cli/src/utils.ts`.
 fn needs_quoting(value: &str) -> bool {
     let starts_with_special = value
         .chars()
@@ -24,7 +19,6 @@ fn needs_quoting(value: &str) -> bool {
         || looks_like_scalar
 }
 
-/// Mirrors `toYaml` for a plain string, quoting with JSON-style escaping when needed.
 fn scalar_to_yaml(value: &str) -> String {
     if value.is_empty() || needs_quoting(value) {
         format!("{value:?}")
@@ -33,7 +27,6 @@ fn scalar_to_yaml(value: &str) -> String {
     }
 }
 
-/// Serializes a single-level string map as a YAML mapping, one `key: value` per line.
 pub fn map_to_yaml(map: &[(String, String)], indent: usize) -> String {
     let pad = "  ".repeat(indent);
     map.iter()
@@ -42,17 +35,12 @@ pub fn map_to_yaml(map: &[(String, String)], indent: usize) -> String {
         .join("\n")
 }
 
-/// Serializes `{ profiles: { default: { ...profile } } }`, mirroring the shape
-/// written by `saveCredentials` in `packages/cli/src/credentials.ts`.
 pub fn credentials_to_yaml(profile: &[(String, String)]) -> String {
     let mut lines = vec!["profiles:".to_string(), "  default:".to_string()];
     lines.push(map_to_yaml(profile, 2));
     format!("{}\n", lines.join("\n"))
 }
 
-/// Parses the flat `key: value` (optionally quoted) lines written by
-/// [`credentials_to_yaml`] back into a map. Only supports the subset of YAML
-/// this module writes; not a general-purpose YAML parser.
 pub fn parse_default_profile(content: &str) -> Vec<(String, String)> {
     let mut entries = Vec::new();
     let mut in_default = false;
@@ -86,7 +74,6 @@ pub fn parse_default_profile(content: &str) -> Vec<(String, String)> {
     entries
 }
 
-/// Unescapes a JSON-style quoted string without pulling in a JSON dependency.
 fn serde_json_like_unquote(value: &str) -> String {
     let inner = &value[1..value.len() - 1];
     let mut result = String::with_capacity(inner.len());

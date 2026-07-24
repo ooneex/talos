@@ -1,7 +1,3 @@
-//! Integration tests for `rust_cli::commands::command_run` argument parsing.
-//! `command:run` forwards trailing arguments (after `--`) untouched to the
-//! module command, so those are validated separately from the named flags.
-
 use clap::Parser;
 use rust_cli::commands::command_run::CommandRunArgs;
 

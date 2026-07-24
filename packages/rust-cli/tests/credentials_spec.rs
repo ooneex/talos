@@ -1,10 +1,3 @@
-//! Integration tests for `rust_cli::utils`'s credentials persistence, mirroring
-//! `packages/cli/src/credentials.ts`'s `saveCredentials`/`readCredentials`.
-//!
-//! All scenarios run in a single `#[test]` function because they mutate the
-//! process-wide `HOME` environment variable, which would race across threads
-//! if split into separate parallel tests.
-
 use rust_cli::utils::{read_credentials, save_credentials};
 
 #[test]

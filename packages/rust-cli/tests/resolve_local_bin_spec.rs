@@ -1,7 +1,3 @@
-//! Integration tests for `rust_cli::utils::{resolve_biome_command,
-//! resolve_tsc_command}`, which resolve the local `node_modules/.bin/<bin>`
-//! so the scheduler can spawn it directly instead of relying on `PATH`.
-
 use std::fs;
 
 use rust_cli::utils::{resolve_biome_command, resolve_tsc_command};
@@ -28,9 +24,6 @@ fn resolve_tsc_command_falls_back_to_bunx() {
     let root = std::env::temp_dir().join(format!("talos-tsc-nobin-{}", std::process::id()));
     fs::create_dir_all(&root).unwrap();
 
-    // A directory with no `node_modules/.bin/tsc` up the chain resolves to the
-    // `bunx tsc` fallback. The temp dir has no ancestor bin, but the real
-    // filesystem root won't either, so the tail of the command is what matters.
     let command = resolve_tsc_command(&root);
     assert_eq!(command.last().map(String::as_str), Some("tsc"));
     if command.len() == 2 {

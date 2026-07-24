@@ -16,21 +16,16 @@ const BITBUCKET_PIPELINES: &str =
     include_str!("../../../cli/src/templates/bitbucket/pipelines.yml.txt");
 const RENOVATE_JSON: &str = include_str!("../../../cli/src/templates/renovate.json.txt");
 
-/// `pub` so it is exercised directly by the integration tests in `tests/`.
 pub const CI_PROVIDERS: [&str; 3] = ["github", "gitlab", "bitbucket"];
 
-/// Rust port of `packages/cli/src/commands/AppCreateCommand.ts`.
 #[derive(Args, Debug)]
 pub struct AppCreateArgs {
-    /// Application name.
     #[arg(long)]
     pub name: Option<String>,
 
-    /// Destination path for the new application.
     #[arg(long)]
     pub destination: Option<String>,
 
-    /// Ignore the cached skeleton and re-download it.
     #[arg(long, default_value_t = false)]
     pub no_cache: bool,
 }
@@ -82,8 +77,6 @@ pub fn run(args: &AppCreateArgs) {
     crate::utils::success(format!("{provider} CI/CD files created"));
 }
 
-/// Writes `template` to `path` after substituting the `{{NAME}}` placeholder.
-/// `pub` so it is exercised directly by the integration tests in `tests/`.
 pub fn write_named(path: &Path, template: &str, snake_name: &str) -> Result<(), String> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).map_err(|e| e.to_string())?;
@@ -91,8 +84,6 @@ pub fn write_named(path: &Path, template: &str, snake_name: &str) -> Result<(), 
     fs::write(path, template.replace("{{NAME}}", snake_name)).map_err(|e| e.to_string())
 }
 
-/// Writes the CI/CD pipeline files for the given `provider` into `destination`.
-/// `pub` so it is exercised directly by the integration tests in `tests/`.
 pub fn write_ci_cd_files(
     destination: &Path,
     provider: &str,

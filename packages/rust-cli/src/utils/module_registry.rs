@@ -1,16 +1,10 @@
-//! Registers/unregisters generated modules into `AppModule`/`SharedModule`/
-//! microservice modules and `tsconfig.json` path aliases, mirroring
-//! `packages/cli/src/moduleRegistry.ts`.
-
 use std::fs;
 use std::path::Path;
 
 use regex::Regex;
 use serde_json::Value;
 
-/// Fields spread into `AppModule` (entities live in `SharedModule` instead).
 pub const APP_MODULE_FIELDS: [&str; 4] = ["controllers", "middlewares", "cronJobs", "events"];
-/// A microservice is standalone (no `SharedModule`), so it also owns its entities.
 pub const MICROSERVICE_MODULE_FIELDS: [&str; 5] = [
     "controllers",
     "entities",
@@ -19,8 +13,6 @@ pub const MICROSERVICE_MODULE_FIELDS: [&str; 5] = [
     "events",
 ];
 
-/// Mirrors `spreadIntoField`: appends `...ModuleName.field` into the `field: [...]`
-/// array literal in `content`, preserving existing entries and indentation.
 fn spread_into_field(content: &str, field: &str, module_name: &str) -> String {
     let Ok(re) = Regex::new(&format!(r"(?s)({field}:\s*\[)([^\]]*)")) else {
         return content.to_string();
@@ -56,7 +48,6 @@ fn spread_into_field(content: &str, field: &str, module_name: &str) -> String {
     content.replacen(whole, &format!("{prefix}{new_value}"), 1)
 }
 
-/// Mirrors `removeSpreadFromFields`.
 fn remove_spread_from_fields(content: &str, module_name: &str, fields: &[&str]) -> String {
     let mut content = content.to_string();
     for field in fields {
@@ -72,8 +63,6 @@ fn remove_spread_from_fields(content: &str, module_name: &str, fields: &[&str]) 
     content
 }
 
-/// Mirrors `insertImport`: inserts an import line right after the last
-/// existing `import ` line in `content`.
 fn insert_import(content: &str, module_name: &str, import_path: &str) -> String {
     let import_line = format!("import {{ {module_name} }} from \"{import_path}\";\n");
     let Some(last_import_index) = content.rfind("import ") else {
@@ -90,7 +79,6 @@ fn insert_import(content: &str, module_name: &str, import_path: &str) -> String 
     )
 }
 
-/// Mirrors `removeImport`.
 fn remove_import(content: &str, module_name: &str, import_path: &str) -> String {
     let escaped_path = regex::escape(import_path);
     let pattern = format!(r#"import\s*\{{\s*{module_name}\s*\}}\s*from\s*"{escaped_path}";\s*\n"#);
@@ -100,7 +88,6 @@ fn remove_import(content: &str, module_name: &str, import_path: &str) -> String 
     }
 }
 
-/// Mirrors `addToAppModule`.
 pub fn add_to_app_module(
     app_module_path: &Path,
     pascal_name: &str,
@@ -121,7 +108,6 @@ pub fn add_to_app_module(
     fs::write(app_module_path, content).map_err(|e| e.to_string())
 }
 
-/// Mirrors `addToMicroserviceModule`.
 pub fn add_to_microservice_module(
     microservice_module_path: &Path,
     pascal_name: &str,
@@ -142,7 +128,6 @@ pub fn add_to_microservice_module(
     fs::write(microservice_module_path, content).map_err(|e| e.to_string())
 }
 
-/// Mirrors `addToSharedModule`.
 pub fn add_to_shared_module(
     shared_module_path: &Path,
     pascal_name: &str,
@@ -161,7 +146,6 @@ pub fn add_to_shared_module(
     fs::write(shared_module_path, content).map_err(|e| e.to_string())
 }
 
-/// Mirrors `removeFromAppModule`. No-op when `app_module_path` doesn't exist.
 pub fn remove_from_app_module(
     app_module_path: &Path,
     pascal_name: &str,
@@ -183,7 +167,6 @@ pub fn remove_from_app_module(
     fs::write(app_module_path, content).map_err(|e| e.to_string())
 }
 
-/// Mirrors `removeFromSharedModule`. No-op when `shared_module_path` doesn't exist.
 pub fn remove_from_shared_module(
     shared_module_path: &Path,
     pascal_name: &str,
@@ -205,8 +188,6 @@ pub fn remove_from_shared_module(
     fs::write(shared_module_path, content).map_err(|e| e.to_string())
 }
 
-/// Mirrors `addPathAlias`: adds `@module/<kebab_name>/*` to
-/// `compilerOptions.paths` in `tsconfig.json`, preserving other keys.
 pub fn add_path_alias(tsconfig_path: &Path, kebab_name: &str) -> Result<(), String> {
     let raw = fs::read_to_string(tsconfig_path).map_err(|e| e.to_string())?;
     let mut tsconfig: Value =
@@ -240,7 +221,6 @@ pub fn add_path_alias(tsconfig_path: &Path, kebab_name: &str) -> Result<(), Stri
     .map_err(|e| e.to_string())
 }
 
-/// Mirrors `removePathAlias`. No-op when `tsconfig_path` doesn't exist.
 pub fn remove_path_alias(tsconfig_path: &Path, kebab_name: &str) -> Result<(), String> {
     if !tsconfig_path.exists() {
         return Ok(());
@@ -267,8 +247,6 @@ pub fn remove_path_alias(tsconfig_path: &Path, kebab_name: &str) -> Result<(), S
     .map_err(|e| e.to_string())
 }
 
-/// Mirrors `parseJsonc`: strips `//`/`/* */` comments and trailing commas
-/// (string-literal aware) so `tsconfig.json` (JSONC) parses as plain JSON.
 pub fn strip_jsonc(text: &str) -> String {
     let mut stripped = String::with_capacity(text.len());
     let mut chars = text.char_indices().peekable();
@@ -322,7 +300,6 @@ pub fn strip_jsonc(text: &str) -> String {
         stripped.push(c);
     }
 
-    // Drop trailing commas before a closing `}`/`]`, skipping those inside strings.
     let mut cleaned = String::with_capacity(stripped.len());
     let bytes: Vec<char> = stripped.chars().collect();
     in_string = false;

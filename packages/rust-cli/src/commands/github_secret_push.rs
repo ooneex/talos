@@ -7,22 +7,17 @@ use crate::utils::{
     ask_input, ask_password, current_dir, ensure_bin, git_origin_url, read_credentials,
 };
 
-/// Rust port of `packages/cli/src/commands/GithubSecretPushCommand.ts`.
 #[derive(Args, Debug)]
 pub struct GithubSecretPushArgs {
-    /// Secret name.
     #[arg(long)]
     pub name: Option<String>,
 
-    /// Secret value.
     #[arg(long)]
     pub value: Option<String>,
 
-    /// Suppress success/error messages.
     #[arg(long, default_value_t = false)]
     pub silent: bool,
 
-    /// Working directory (defaults to the current directory).
     #[arg(long)]
     pub cwd: Option<String>,
 }

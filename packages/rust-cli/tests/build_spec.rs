@@ -1,5 +1,3 @@
-//! Integration tests for `rust_cli::commands::build` argument parsing.
-
 use clap::Parser;
 use rust_cli::commands::build::BuildArgs;
 

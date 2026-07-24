@@ -1,5 +1,3 @@
-//! Integration tests for `rust_cli::commands::app_stop` argument parsing.
-
 use clap::Parser;
 use rust_cli::commands::app_stop::AppStopArgs;
 

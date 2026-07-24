@@ -2,8 +2,6 @@ use clap::Args;
 
 use crate::commands::monorepo_check::{self, MonorepoCheckArgs};
 
-/// Rust port of `packages/cli/src/commands/CheckCommand.ts`: a short alias
-/// for `monorepo:check`.
 #[derive(Args, Debug)]
 pub struct CheckArgs {
     #[arg(long)]

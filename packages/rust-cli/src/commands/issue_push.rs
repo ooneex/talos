@@ -30,18 +30,14 @@ struct ParsedIssue {
     comments: Vec<IssueComment>,
 }
 
-/// Rust port of `packages/cli/src/commands/IssuePushCommand.ts`.
 #[derive(Args, Debug)]
 pub struct IssuePushArgs {
-    /// Issue identifier / local YAML filename stem.
     #[arg(long)]
     pub id: Option<String>,
 
-    /// Module name (defaults to shared).
     #[arg(long)]
     pub module: Option<String>,
 
-    /// Working directory (defaults to the current directory).
     #[arg(long)]
     pub cwd: Option<String>,
 }

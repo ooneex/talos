@@ -1,5 +1,3 @@
-//! Integration tests for `rust_cli::commands::version`.
-
 use clap::Parser;
 use rust_cli::commands::version::VersionArgs;
 

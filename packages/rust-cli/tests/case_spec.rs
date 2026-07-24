@@ -1,6 +1,3 @@
-//! Integration tests for `rust_cli::utils::{to_kebab_case, to_snake_case}`,
-//! moved out of `src/utils/case.rs`.
-
 use rust_cli::utils::{to_kebab_case, to_snake_case};
 
 #[test]

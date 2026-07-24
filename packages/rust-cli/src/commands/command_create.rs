@@ -9,22 +9,17 @@ const COMMAND_TEMPLATE: &str = include_str!("../templates/command/command.txt");
 const COMMAND_TEST_TEMPLATE: &str = include_str!("../templates/command/command.test.txt");
 const COMMAND_RUN_TEMPLATE: &str = include_str!("../templates/module/command.run.txt");
 
-/// Rust port of `packages/cli/src/commands/CommandCreateCommand.ts`.
 #[derive(Args, Debug)]
 pub struct CommandCreateArgs {
-    /// Command class name.
     #[arg(long)]
     pub name: Option<String>,
 
-    /// Destination module (defaults to "shared").
     #[arg(long)]
     pub module: Option<String>,
 
-    /// Overwrite the file if it already exists without prompting.
     #[arg(long, default_value_t = false)]
     pub r#override: bool,
 
-    /// Working directory (defaults to the current directory).
     #[arg(long)]
     pub cwd: Option<String>,
 }
@@ -111,7 +106,6 @@ pub fn run(args: &CommandCreateArgs) {
         return;
     }
 
-    // Create bin/command/run.ts if it doesn't exist yet.
     let bin_run_path = base.join("bin").join("command").join("run.ts");
     if !bin_run_path.exists() {
         if let Some(parent) = bin_run_path.parent() {

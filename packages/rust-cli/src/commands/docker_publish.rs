@@ -9,26 +9,20 @@ use crate::utils::{Action, current_dir, ensure_bin, read_credentials, run_action
 
 const DEFAULT_REGISTRY: &str = "docker.io";
 
-/// Rust port of `packages/cli/src/commands/DockerPublishCommand.ts`.
 #[derive(Args, Debug)]
 pub struct DockerPublishArgs {
-    /// Comma-separated package names to publish.
     #[arg(long)]
     pub packages: Option<String>,
 
-    /// Comma-separated module names to publish.
     #[arg(long)]
     pub modules: Option<String>,
 
-    /// Image tag override.
     #[arg(long)]
     pub tag: Option<String>,
 
-    /// Suppress success/error messages.
     #[arg(long, default_value_t = false)]
     pub silent: bool,
 
-    /// Working directory (defaults to the current directory).
     #[arg(long)]
     pub cwd: Option<String>,
 }
@@ -194,8 +188,6 @@ pub fn run(args: &DockerPublishArgs) {
             format!("{registry}/{repo}:{tag}")
         };
 
-        // Each image builds and pushes from its own directory to a distinct
-        // repository, so the images publish concurrently rather than serially.
         actions.push(Action::new(format!("Publishing {image}"), move || {
             build_and_push(&target_dir, &image)
         }));
@@ -217,9 +209,6 @@ pub fn run(args: &DockerPublishArgs) {
     }
 }
 
-/// Builds and pushes a single Docker image with its subprocess output captured
-/// (so it can run behind the concurrent action spinner). Returns the combined
-/// command output on failure.
 fn build_and_push(target_dir: &std::path::Path, image: &str) -> Result<(), String> {
     let build = Command::new("docker")
         .args(["build", "-t", image, "."])

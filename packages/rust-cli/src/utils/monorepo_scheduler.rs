@@ -1,7 +1,3 @@
-//! Runs a command group's tasks to completion: dependency-ordered,
-//! cache-aware, bounded-parallelism scheduling plus the task-finish
-//! reporting `monorepo:run` prints as tasks complete.
-
 use std::collections::HashSet;
 use std::path::Path;
 use std::process::Command;
@@ -17,10 +13,6 @@ use crate::utils::{
     compute_task_hash, read_cache_entry, restore_cache_outputs, write_cache_entry,
 };
 
-/// The result a worker thread hands back for one launched task: either a
-/// cache hit (no subprocess, no replayed output) or a finished subprocess
-/// run. Owned end-to-end so it can cross the channel without borrowing
-/// `tasks`.
 enum TaskOutcome {
     Cached {
         hash: String,
@@ -35,20 +27,6 @@ enum TaskOutcome {
     },
 }
 
-/// Runs a command group's tasks, launching every task whose workspace
-/// dependencies are already done and bounding concurrency to the available
-/// CPU parallelism. Skipped tasks count as done up front. Returns whether
-/// any task in the group failed (which aborts the whole run, matching the
-/// TypeScript version).
-///
-/// Scheduling mirrors the TypeScript `runGroup`: instead of running tasks in
-/// fixed waves and waiting for every task in a wave before starting the next
-/// (which idles cores whenever task durations are uneven — the common case
-/// across modules of very different sizes), it keeps a rolling pool of up to
-/// `limit` tasks in flight and refills a slot the moment any single task
-/// finishes. Each worker computes its own cache hash and either restores the
-/// cached output or runs the subprocess, so hashing overlaps with other
-/// tasks' subprocesses rather than serializing at a wave boundary.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn run_group(
     tasks: &mut [Task],
@@ -72,12 +50,6 @@ pub(crate) fn run_group(
         .filter(|t| t.status == TaskStatus::Skipped)
         .map(|t| t.key.clone())
         .collect();
-    // Cap the in-flight pool at the machine's parallelism. The tasks this
-    // scheduler runs (`cargo test`/`cargo clippy`/`tsc`/`bun test`/`biome`) are
-    // CPU-bound — they spend their time compiling and type-checking, not idling
-    // on I/O — so oversubscribing past the core count only adds context-switch
-    // thrash, memory pressure, and cache contention, making the whole run
-    // slower. One task per core is the sweet spot.
     let limit = std::thread::available_parallelism()
         .map(|n| n.get())
         .unwrap_or(1)
@@ -90,10 +62,6 @@ pub(crate) fn run_group(
         let mut inflight = 0usize;
 
         loop {
-            // Keep the pool full: launch every ready task until we hit the
-            // concurrency limit. Once a task has failed we stop launching new
-            // work but keep draining whatever is already running (matching the
-            // TypeScript version's `Promise.allSettled` on abort).
             while !failed && inflight < limit {
                 let next = (0..tasks.len()).find(|&i| {
                     !launched[i]
@@ -176,8 +144,6 @@ pub(crate) fn run_group(
                 break;
             }
 
-            // Wait for the next task to finish, free its slot, then loop to
-            // refill it — this is the rolling equivalent of `Promise.race`.
             let (index, outcome) = rx.recv().unwrap();
             inflight -= 1;
 
@@ -239,10 +205,6 @@ pub(crate) fn run_group(
     failed
 }
 
-/// Result of a cache-hash check for one task: the content hash is always
-/// computed (needed later to write a fresh cache entry on a miss), and
-/// `hit` is set when the cache already had an entry for that hash. Kept free
-/// of `Task` so this can run on a worker thread without borrowing `tasks`.
 struct TaskHashResult {
     hash: String,
     hit: Option<CacheHit>,
@@ -252,11 +214,6 @@ struct CacheHit {
     duration_ms: u64,
 }
 
-/// Computes a task's content hash and checks the cache for a hit, restoring
-/// cached outputs when found. Returns `None` only when the task has no target
-/// to hash against (e.g. install), where there is no hash to compute at all.
-/// Takes the task's cache-relevant fields directly rather than a `&Task` so
-/// it can run on a worker thread without borrowing the shared `tasks` slice.
 #[allow(clippy::too_many_arguments)]
 fn try_cache_hit(
     target_key: Option<&str>,
@@ -291,17 +248,6 @@ fn try_cache_hit(
     Some(TaskHashResult { hash, hit })
 }
 
-/// Reports a task's final state. With a live footer, the finish line (and any
-/// failure excerpt) is persisted to scrollback above the footer and the
-/// progress counters advance; without one (non-interactive output) it falls
-/// back to plain stdout/stderr, matching the original port's behavior. A
-/// successful task gets a one-line `✔ label duration`; a failed task gets its
-/// status line plus a trimmed excerpt of the output that explains the failure.
-/// Cached and skipped tasks print nothing but still advance the progress bar,
-/// matching the TypeScript version (the closing summary still reports their
-/// counts). Colors mirror `reportFinish` in `MonorepoRunCommand.ts`: a colored
-/// status symbol, the plain-colored task label, and the duration/exit-code
-/// detail dimmed.
 fn report_finish(task: &Task, footer: &Footer) {
     let (lines, is_error) = finish_lines(task);
 
@@ -321,8 +267,6 @@ fn report_finish(task: &Task, footer: &Footer) {
     }
 }
 
-/// Builds a finished task's scrollback lines and whether it failed. Cached and
-/// skipped tasks yield no lines; only success and failure produce output.
 fn finish_lines(task: &Task) -> (Vec<String>, bool) {
     match task.status {
         TaskStatus::Success => (
@@ -356,9 +300,6 @@ fn finish_lines(task: &Task) -> (Vec<String>, bool) {
     }
 }
 
-/// Reduces a failed task's captured output to just the lines that explain
-/// the failure, plus a little surrounding context. Falls back to the tail of
-/// the output when nothing matches an obvious failure signal.
 fn failure_excerpt(output: &str) -> Vec<String> {
     let normalized = output.replace('\r', "");
     let lines: Vec<String> = normalized.lines().map(str::to_string).collect();

@@ -1,8 +1,3 @@
-//! The `Task`/`TaskStatus` model shared by `monorepo:run`'s command-specific
-//! group builders (`monorepo_group`, `monorepo_test_group`,
-//! `monorepo_fmt_group`, `monorepo_lint_group`) and its scheduler
-//! (`monorepo_scheduler`).
-
 use std::path::PathBuf;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -30,8 +25,6 @@ pub(crate) struct Task {
     pub(crate) hash: Option<String>,
 }
 
-/// Formats a millisecond duration the way `monorepo:run` prints it: plain
-/// milliseconds under a second, one decimal place of seconds after that.
 pub(crate) fn format_duration(ms: u64) -> String {
     if ms < 1000 {
         format!("{ms}ms")

@@ -8,18 +8,14 @@ use serde_json::Value;
 
 use crate::utils::current_dir;
 
-/// Rust port of `packages/cli/src/commands/CommandRunCommand.ts`.
 #[derive(Args, Debug)]
 pub struct CommandRunArgs {
-    /// Command name to run.
     #[arg(long)]
     pub id: Option<String>,
 
-    /// Additional arguments forwarded to the module command runner.
     #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
     pub args: Vec<String>,
 
-    /// Working directory (defaults to the current directory).
     #[arg(long)]
     pub cwd: Option<String>,
 }

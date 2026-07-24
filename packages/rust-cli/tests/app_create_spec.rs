@@ -1,6 +1,3 @@
-//! Integration tests for `rust_cli::commands::app_create`, moved out of
-//! `src/commands/app_create.rs`.
-
 use std::fs;
 
 use clap::Parser;

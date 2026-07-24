@@ -7,18 +7,14 @@ use crate::utils::{
 const TEMPLATE: &str = include_str!("../templates/ai-tool.txt");
 const TEST_TEMPLATE: &str = include_str!("../templates/ai-tool.test.txt");
 
-/// Rust port of `packages/cli/src/commands/AiToolCreateCommand.ts`.
 #[derive(Args, Debug)]
 pub struct AiToolCreateArgs {
-    /// Resource name.
     #[arg(long)]
     pub name: Option<String>,
 
-    /// Destination module (defaults to "shared").
     #[arg(long)]
     pub module: Option<String>,
 
-    /// Overwrite the file if it already exists without prompting.
     #[arg(long, default_value_t = false)]
     pub r#override: bool,
 }

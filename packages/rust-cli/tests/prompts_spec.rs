@@ -1,6 +1,3 @@
-//! Integration tests for `rust_cli::utils` prompt validation and resolution
-//! helpers, moved out of `src/utils/prompts.rs`.
-
 use std::path::PathBuf;
 
 use rust_cli::utils::{resolve_name_and_destination, validate_destination, validate_name};

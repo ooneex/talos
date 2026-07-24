@@ -1,14 +1,8 @@
-//! Mirrors `packages/cli/src/utils.ts`'s `generateIssueId` and `issueToYaml`
-//! helpers (used by `IssueCreateCommand`).
-
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 const LETTERS: &[u8] = b"ABCDEF";
 
-/// Minimal xorshift64 PRNG seeded from the system clock, good enough for
-/// generating human-readable issue IDs (mirrors `Math.random()` usage in the
-/// TypeScript version, which has no cryptographic requirement here).
 struct Rng(u64);
 
 impl Rng {
@@ -34,8 +28,6 @@ impl Rng {
     }
 }
 
-/// Generates a random `XXX-NNNNNN` issue id, re-rolling until it doesn't
-/// collide with an existing `<id>.yml` file under `issues_dir` (when given).
 pub fn generate_issue_id(issues_dir: Option<&Path>) -> String {
     let mut rng = Rng::new();
     loop {
@@ -52,7 +44,6 @@ pub fn generate_issue_id(issues_dir: Option<&Path>) -> String {
     }
 }
 
-/// Options for [`issue_to_yaml`], mirroring `IssueYamlType`.
 #[derive(Default)]
 pub struct IssueYaml {
     pub id: Option<String>,
@@ -86,8 +77,6 @@ fn yaml_literal(text: &str) -> String {
     format!("|\n{indented}")
 }
 
-/// Serializes an issue to the hand-rolled YAML format used by
-/// `packages/cli/src/utils.ts`'s `issueToYaml`.
 pub fn issue_to_yaml(issue: &IssueYaml) -> String {
     let mut lines: Vec<String> = Vec::new();
 

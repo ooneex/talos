@@ -6,14 +6,11 @@ const MIGRATION_TEMPLATE: &str = include_str!("../templates/migrations/migration
 const MIGRATION_UP_TEMPLATE: &str = include_str!("../templates/module/migration.up.txt");
 const MIGRATION_DOWN_TEMPLATE: &str = include_str!("../templates/module/migration.down.txt");
 
-/// Rust port of `packages/cli/src/commands/MigrationCreateCommand.ts`.
 #[derive(Args, Debug)]
 pub struct MigrationCreateArgs {
-    /// Destination module (defaults to "shared").
     #[arg(long)]
     pub module: Option<String>,
 
-    /// Working directory (defaults to the current directory).
     #[arg(long)]
     pub cwd: Option<String>,
 }
@@ -61,7 +58,6 @@ pub fn run(args: &MigrationCreateArgs) {
         return;
     }
 
-    // Create bin/migration/up.ts and bin/migration/down.ts if they don't exist yet.
     let bin_dir = base.join("bin").join("migration");
     let up_path = bin_dir.join("up.ts");
     let down_path = bin_dir.join("down.ts");

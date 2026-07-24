@@ -1,12 +1,6 @@
-//! Mirrors `packages/cli/src/utils.ts`'s `runModuleScripts`: runs a compiled
-//! bin script (`bin/migration/up.ts`, `bin/seed/run.ts`, ...) across every
-//! module that has it, in discovery order, aborting the whole command on the
-//! first failure.
-
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-/// Options for [`run_module_scripts`], mirroring `RunModuleScriptsOptions`.
 pub struct RunModuleScriptsOptions<'a> {
     pub bin_path: &'a [&'a str],
     pub label: &'a str,
@@ -17,10 +11,6 @@ pub struct RunModuleScriptsOptions<'a> {
     pub cache_dir: Option<&'a str>,
 }
 
-/// Runs `<module>/<bin_path>` for every module under `modules/` that has it,
-/// forwarding `--drop`/`--version`/`--no-cache`/`--cache-dir` as applicable.
-/// Exits the process with code 1 on the first failed module, matching the
-/// TypeScript version's `process.exit(1)`.
 pub fn run_module_scripts(cwd: &Path, options: RunModuleScriptsOptions) {
     let titled_label = {
         let mut chars = options.label.chars();

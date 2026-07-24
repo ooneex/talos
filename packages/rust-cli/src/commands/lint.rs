@@ -2,8 +2,6 @@ use clap::Args;
 
 use crate::commands::monorepo_run::{self, MonorepoRunArgs};
 
-/// Rust port of `packages/cli/src/commands/LintCommand.ts`: a short alias
-/// for `monorepo:run --commands=lint`.
 #[derive(Args, Debug)]
 pub struct LintArgs {
     #[arg(long)]

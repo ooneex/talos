@@ -2,8 +2,6 @@ use clap::Args;
 
 use crate::commands::monorepo_run::{self, MonorepoRunArgs};
 
-/// Rust port of `packages/cli/src/commands/FmtCommand.ts`: a short alias
-/// for `monorepo:run --commands=fmt`.
 #[derive(Args, Debug)]
 pub struct FmtArgs {
     #[arg(long)]

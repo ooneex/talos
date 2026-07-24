@@ -4,14 +4,11 @@ use clap::Args;
 
 use crate::utils::{check_commit_message_file, current_dir, git_toplevel};
 
-/// Rust port of `packages/cli/src/commands/CommitlintCheckCommand.ts`.
 #[derive(Args, Debug)]
 pub struct CommitlintCheckArgs {
-    /// Commit message file to validate.
     #[arg(long)]
     pub file: Option<String>,
 
-    /// Working directory (defaults to git root or current directory).
     #[arg(long)]
     pub cwd: Option<String>,
 }

@@ -4,18 +4,14 @@ use crate::utils::{ask_password, ask_plain_input, save_credentials};
 
 const BITBUCKET_APP_PASSWORD_URL: &str = "https://bitbucket.org/account/settings/app-passwords/";
 
-/// Rust port of `packages/cli/src/commands/BitbucketCredentialsCreateCommand.ts`.
 #[derive(Args, Debug)]
 pub struct BitbucketCredentialsCreateArgs {
-    /// Bitbucket username (prompted for when omitted).
     #[arg(long)]
     pub username: Option<String>,
 
-    /// Bitbucket app password (prompted for when omitted).
     #[arg(long)]
     pub token: Option<String>,
 
-    /// Suppress informational messages.
     #[arg(long, default_value_t = false)]
     pub silent: bool,
 }

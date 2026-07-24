@@ -15,22 +15,17 @@ const JSON_DICT_TEMPLATE: &str = include_str!("../templates/translation.json.txt
 const USE_TRANSLATE_TEMPLATE: &str = include_str!("../templates/spa/spa.use-translate.txt");
 const USE_LANG_TEMPLATE: &str = include_str!("../templates/spa/spa.use-lang.txt");
 
-/// Rust port of `packages/cli/src/commands/TranslationCreateCommand.ts`.
 #[derive(Args, Debug)]
 pub struct TranslationCreateArgs {
-    /// Translation name.
     #[arg(long)]
     pub name: Option<String>,
 
-    /// Destination module (defaults to "shared").
     #[arg(long)]
     pub module: Option<String>,
 
-    /// Overwrite the file if it already exists without prompting.
     #[arg(long, default_value_t = false)]
     pub r#override: bool,
 
-    /// Working directory (defaults to the current directory).
     #[arg(long)]
     pub cwd: Option<String>,
 }

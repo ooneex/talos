@@ -1,8 +1,3 @@
-//! Shared helpers used by multiple `rust-cli` commands, split by concern to
-//! avoid duplicating prompt/validation/process logic across `app_init` and
-//! `app_create` (mirrors the shared `packages/cli/src/{prompts,utils}.ts`
-//! helpers those TypeScript commands both rely on).
-
 mod case;
 mod commitlint;
 mod credentials;

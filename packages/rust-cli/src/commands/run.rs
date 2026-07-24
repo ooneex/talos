@@ -2,8 +2,6 @@ use clap::Args;
 
 use crate::commands::monorepo_run::{self, MonorepoRunArgs};
 
-/// Rust port of `packages/cli/src/commands/RunCommand.ts`: a short alias for
-/// `monorepo:run`, forwarding every option untouched.
 #[derive(Args, Debug)]
 pub struct RunArgs {
     #[arg(long)]

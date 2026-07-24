@@ -22,22 +22,17 @@ const GITLAB_MICROSERVICE: &str =
 const BITBUCKET_MICROSERVICE: &str =
     include_str!("../../../cli/src/templates/bitbucket/microservice-pipelines.yml.txt");
 
-/// Rust port of `packages/cli/src/commands/MicroserviceCreateCommand.ts`.
 #[derive(Args, Debug)]
 pub struct MicroserviceCreateArgs {
-    /// Microservice name.
     #[arg(long)]
     pub name: Option<String>,
 
-    /// Working directory (defaults to the current directory).
     #[arg(long)]
     pub cwd: Option<String>,
 
-    /// Suppress progress and success messages.
     #[arg(long, default_value_t = false)]
     pub silent: bool,
 
-    /// Ignore the cached skeleton and re-download it.
     #[arg(long, default_value_t = false)]
     pub no_cache: bool,
 }

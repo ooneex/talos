@@ -1,5 +1,3 @@
-//! Integration tests for `rust_cli::commands::app_start` argument parsing.
-
 use clap::Parser;
 use rust_cli::commands::app_start::AppStartArgs;
 

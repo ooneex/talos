@@ -1,36 +1,3 @@
-//! Rust port of `packages/cli/src/commands/MonorepoRunCommand.ts`: runs
-//! commands across packages and modules with granular, content-addressed
-//! caching.
-//!
-//! Note on what "runs a command" means here: a target's `package.json`
-//! script is only consulted as a *gate* — a target participates in a command
-//! iff it declares a script of that name. The `fmt`/`lint`/`test` commands
-//! then ignore the script *body* and run an optimized, sharded equivalent
-//! instead (per-file `test` tasks, split `tsc`/`biome lint` tasks, per-crate
-//! `cargo clippy`/`cargo test` targets — see the `monorepo_*_group`
-//! builders), which parallelizes and caches at a finer grain than the single
-//! serial process the raw script would spawn. Only generic commands (e.g.
-//! `build`) actually execute the declared script verbatim via `bun run
-//! <command>`. This means a package whose `fmt`/`lint`/`test` script deviates
-//! from the standard form will have its custom body ignored.
-//!
-//! This port keeps the caching engine and scheduling semantics (dependency
-//! ordering, order-independent `fmt`/`lint`, skip-if-no-tests, install
-//! group, abort-on-first-failure) faithful to the TypeScript original, and
-//! on an interactive terminal renders the same live footer: finished tasks
-//! stream into scrollback while a spinner-animated progress bar pinned to the
-//! bottom shows the running/failed/elapsed summary and every in-flight task
-//! (see `crate::utils::Footer`). When stdout isn't a TTY it falls back to the
-//! plain "logs" mode — scrollback lines as tasks finish, with no escape
-//! codes — so piped/CI output stays clean.
-//!
-//! The task model, per-command group builders (`test`/`fmt`/`lint`/generic),
-//! and the cache-aware scheduler that actually runs them all live under
-//! `crate::utils` (`monorepo_task`, `monorepo_test_group`,
-//! `monorepo_fmt_group`, `monorepo_lint_group`, `monorepo_group`,
-//! `monorepo_scheduler`) — this file is just the command's argument parsing
-//! and top-level orchestration.
-
 use std::collections::HashSet;
 use std::path::PathBuf;
 use std::time::Instant;
@@ -45,31 +12,23 @@ use crate::utils::{
     sort_targets_by_dependencies,
 };
 
-/// Rust port of `MonorepoRunCommand`'s `CommandOptionsType`.
 #[derive(Args, Debug, Default, Clone)]
 pub struct MonorepoRunArgs {
-    /// Comma-separated list of package.json scripts to run (e.g. `build,lint`).
     #[arg(long)]
     pub commands: Option<String>,
 
-    /// Comma-separated list of package names to restrict the run to.
     #[arg(long)]
     pub packages: Option<String>,
 
-    /// Comma-separated list of module names to restrict the run to.
     #[arg(long)]
     pub modules: Option<String>,
 
-    /// Reserved for parity with the TypeScript CLI's `--logs` flag; this port
-    /// always runs in the equivalent non-interactive/plain output mode.
     #[arg(long, default_value_t = false)]
     pub logs: bool,
 
-    /// Bypass the task cache entirely.
     #[arg(long, default_value_t = false)]
     pub no_cache: bool,
 
-    /// Working directory (defaults to the current directory).
     #[arg(long)]
     pub cwd: Option<String>,
 }
@@ -80,10 +39,6 @@ pub fn run(args: &MonorepoRunArgs) {
     }
 }
 
-/// Runs `MonorepoRunArgs`'s command groups to completion and returns whether
-/// every task succeeded (used by alias commands, e.g. `monorepo:check`,
-/// which forwards a fixed `--commands` list and otherwise behaves exactly
-/// like `monorepo:run`).
 pub fn execute(args: &MonorepoRunArgs) -> bool {
     let commands: Vec<String> = split_csv(args.commands.as_deref());
     if commands.is_empty() {
@@ -98,12 +53,6 @@ pub fn execute(args: &MonorepoRunArgs) -> bool {
         .unwrap_or_else(current_dir);
     let cache_dir = root_dir.join(MONOREPO_CACHE_DIR);
 
-    // Discovering targets is the one visibly slow step before tasks start
-    // streaming, so cover it with a spinner (mirrors `createSpinner` around
-    // this same step in `MonorepoRunCommand.ts`). These four probes only
-    // depend on `root_dir`/`cache_dir` and never on each other, so run them
-    // on their own threads instead of paying for each round-trip in series
-    // (mirrors the TypeScript version's `Promise.all`).
     let spinner = crate::utils::Spinner::start("Analyzing workspace");
     let (all_targets, root_hash, use_git, file_hash_cache) = std::thread::scope(|scope| {
         let targets_handle = scope.spawn(|| discover_targets(&root_dir));
@@ -119,13 +68,6 @@ pub fn execute(args: &MonorepoRunArgs) -> bool {
     });
     spinner.stop();
 
-    // Number of file-hash entries loaded from disk. `hash_file_cached` only
-    // ever inserts (a new path, or a changed file under an existing path), so
-    // the count strictly grows when the run learns something new. If it hasn't
-    // grown, re-serializing the whole (potentially multi-hundred-KB) cache back
-    // to disk would just rewrite an identical file, so we skip it. Skipping is
-    // always safe: a missing/stale entry only costs a re-hash on a later run,
-    // never a wrong result.
     let file_hash_entries_before = file_hash_cache.len();
 
     let Some(targets) = filter_targets(
@@ -155,10 +97,6 @@ pub fn execute(args: &MonorepoRunArgs) -> bool {
         .collect();
 
     let total_tasks: usize = groups.iter().map(|g| g.len()).sum();
-    // Mirrors `MonorepoRunCommand.run`'s opening line: an accent-colored `▸`
-    // symbol, a bold accent-colored command list, then the task/target
-    // counts in dim — the same split-color style as the TypeScript
-    // version's `colorize`/`bold` calls.
     println!(
         "{}{}{}",
         style("▸ ").magenta(),
@@ -178,10 +116,6 @@ pub fn execute(args: &MonorepoRunArgs) -> bool {
     let mut stopped = false;
     let mut any_failed = false;
 
-    // Live footer for the whole run: finished tasks stream into scrollback
-    // above it while a spinner-animated progress bar summarizes overall
-    // progress (mirrors `startRenderer` wrapping every group in the
-    // TypeScript version). A no-op when stdout isn't a TTY.
     let footer = Footer::start(total_tasks);
 
     for group in &mut groups {
@@ -205,8 +139,6 @@ pub fn execute(args: &MonorepoRunArgs) -> bool {
         }
     }
 
-    // Tear down the footer before any further output so the closing summary
-    // (or an aborted run's error) prints on a clean line.
     footer.stop();
 
     if !args.no_cache && file_hash_cache.len() != file_hash_entries_before {
@@ -234,8 +166,6 @@ pub fn execute(args: &MonorepoRunArgs) -> bool {
     if skipped > 0 {
         parts.push(format!("{skipped} skipped"));
     }
-    // Mirrors the TypeScript version's closing line: a green `✔ Ran ...`
-    // segment followed by the counts/duration in dim.
     println!(
         "{}{}",
         style(format!("✔ Ran {}", commands.join(", "))).green(),
@@ -260,8 +190,6 @@ fn split_csv(value: Option<&str>) -> Vec<String> {
         .unwrap_or_default()
 }
 
-/// Resolve `--packages` / `--modules` into targets. With neither flag, every
-/// package and module runs. Unknown names abort the run.
 fn filter_targets(
     targets: &[MonorepoTarget],
     packages: Option<&str>,

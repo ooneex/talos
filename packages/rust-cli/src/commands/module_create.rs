@@ -13,29 +13,21 @@ const TSCONFIG_TEMPLATE: &str = include_str!("../templates/module/tsconfig.txt")
 const YML_TEMPLATE: &str = include_str!("../templates/module/yml.txt");
 const TEST_TEMPLATE: &str = include_str!("../templates/module/test.txt");
 
-/// Rust port of `packages/cli/src/commands/ModuleCreateCommand.ts`.
 #[derive(Args, Debug)]
 pub struct ModuleCreateArgs {
-    /// Module name.
     #[arg(long)]
     pub name: Option<String>,
 
-    /// Destination module to register the new module into.
     #[arg(long)]
     pub destination: Option<String>,
 
-    /// Working directory (defaults to the current directory).
     #[arg(long)]
     pub cwd: Option<String>,
 
-    /// Suppress success messages and default the destination to `app`.
     #[arg(long, default_value_t = false)]
     pub silent: bool,
 }
 
-/// Fully-resolved options for [`execute`], built either from CLI args
-/// ([`ModuleCreateArgs`]) or programmatically by other scaffolding commands
-/// (e.g. `scaffold_resource`'s `ensure_module`).
 pub struct ModuleCreateOptions {
     pub name: String,
     pub destination: Option<String>,
@@ -65,7 +57,6 @@ pub fn run(args: &ModuleCreateArgs) {
     });
 }
 
-/// Runs the full module scaffolding flow.
 pub fn execute(options: ModuleCreateOptions) {
     let ModuleCreateOptions {
         name,
@@ -126,9 +117,6 @@ pub fn execute(options: ModuleCreateOptions) {
         }
     }
 
-    // Register the module into its destination. For `app` the module is added to
-    // both AppModule and SharedModule (entities); for any other destination it is
-    // registered only into that destination module.
     if kebab_name != destination_kebab {
         if destination_kebab == "app" {
             let app_module_path = cwd
@@ -164,7 +152,6 @@ pub fn execute(options: ModuleCreateOptions) {
         }
     }
 
-    // Add path alias in the app's tsconfig.json.
     let app_tsconfig_path = cwd.join("tsconfig.json");
     if app_tsconfig_path.exists() {
         let _ = add_path_alias(&app_tsconfig_path, &kebab_name);

@@ -14,18 +14,14 @@ struct ParsedDescription {
     dependencies: Vec<String>,
 }
 
-/// Rust port of `packages/cli/src/commands/IssuePullCommand.ts`.
 #[derive(Args, Debug)]
 pub struct IssuePullArgs {
-    /// Linear issue identifier.
     #[arg(long)]
     pub id: Option<String>,
 
-    /// Destination module (defaults to "shared").
     #[arg(long)]
     pub module: Option<String>,
 
-    /// Working directory (defaults to the current directory).
     #[arg(long)]
     pub cwd: Option<String>,
 }

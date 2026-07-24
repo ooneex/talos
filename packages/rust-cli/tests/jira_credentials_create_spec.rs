@@ -1,5 +1,3 @@
-//! Integration tests for `rust_cli::commands::jira_credentials_create` argument parsing.
-
 use clap::Parser;
 use rust_cli::commands::jira_credentials_create::JiraCredentialsCreateArgs;
 

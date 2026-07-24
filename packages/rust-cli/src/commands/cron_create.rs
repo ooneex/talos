@@ -5,18 +5,14 @@ use crate::utils::{ScaffoldConfig, ScaffoldOptions, current_dir, scaffold_resour
 const TEMPLATE: &str = include_str!("../templates/cron.txt");
 const TEST_TEMPLATE: &str = include_str!("../templates/cron.test.txt");
 
-/// Rust port of `packages/cli/src/commands/CronCreateCommand.ts`.
 #[derive(Args, Debug)]
 pub struct CronCreateArgs {
-    /// Resource name.
     #[arg(long)]
     pub name: Option<String>,
 
-    /// Destination module (defaults to "shared").
     #[arg(long)]
     pub module: Option<String>,
 
-    /// Overwrite the file if it already exists without prompting.
     #[arg(long, default_value_t = false)]
     pub r#override: bool,
 }

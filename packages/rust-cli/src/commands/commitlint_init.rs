@@ -3,10 +3,8 @@ use clap::Args;
 use crate::commands::app_init::install_commitlint_hook;
 use crate::utils::{current_dir, ensure_bin};
 
-/// Rust port of `packages/cli/src/commands/CommitlintInitCommand.ts`.
 #[derive(Args, Debug)]
 pub struct CommitlintInitArgs {
-    /// Working directory (defaults to the current directory).
     #[arg(long)]
     pub cwd: Option<String>,
 }

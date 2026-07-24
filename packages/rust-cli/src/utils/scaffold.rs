@@ -1,7 +1,3 @@
-//! Generic resource scaffolding, mirroring `packages/cli/src/scaffold.ts`'s
-//! `scaffoldResource`. Shared by every `*:create` command that generates a
-//! single class + spec file into a module (service, cache, logger, ...).
-
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
@@ -12,47 +8,29 @@ use super::case::to_pascal_case;
 use super::process::run_spinner_step;
 use super::prompts::{ask_confirm, ask_input};
 
-/// Static configuration for one resource kind (e.g. "Service"), mirroring
-/// `ScaffoldConfigType`.
 #[derive(Default)]
 pub struct ScaffoldConfig {
-    /// Human-readable resource label used in messages (e.g. "Cache").
     pub label: &'static str,
-    /// Prompt shown when no name option is provided.
     pub prompt_message: &'static str,
-    /// Class and file name suffix appended to the normalized name (e.g. "Cache").
     pub suffix: &'static str,
-    /// Source file template (`{{NAME}}` is replaced with the normalized name).
     pub template: &'static str,
-    /// Test file template (`{{NAME}}` and `{{MODULE}}` are replaced).
     pub test_template: &'static str,
-    /// Subdirectory under the module's `src/` (e.g. "cache").
     pub dir: &'static str,
-    /// Subdirectory under the module's `tests/`; defaults to `dir` when `None`.
     pub tests_dir: Option<&'static str>,
-    /// Suffixes stripped from the user-provided name; defaults to `[suffix]` when empty.
     pub strip_suffixes: &'static [&'static str],
-    /// Module class array to register the generated class into (e.g. "cronJobs").
     pub module_field: Option<&'static str>,
-    /// Runtime package installed with `bun add` when missing (e.g. "@talosjs/cache").
     pub dependency: Option<&'static str>,
-    /// Extra `{{KEY}}` replacements applied to the source template, computed
-    /// from the normalized name (mirrors `ScaffoldConfigType.templateData`).
     pub template_data: Option<TemplateDataFn>,
 }
 
-/// Computes extra `{{KEY}}` template replacements from the normalized resource name.
 pub type TemplateDataFn = Box<dyn Fn(&str) -> Vec<(&'static str, String)>>;
 
-/// Runtime options for [`scaffold_resource`], mirroring `ScaffoldOptionsType`.
 pub struct ScaffoldOptions {
     pub name: Option<String>,
     pub module: Option<String>,
     pub r#override: bool,
 }
 
-/// Mirrors `ensureModule`: creates the destination module (silently) if it
-/// doesn't already have a `package.json`.
 pub fn ensure_module(module: &str, cwd: &std::path::Path) {
     let package_json = cwd.join("modules").join(module).join("package.json");
     if package_json.exists() {
@@ -66,8 +44,6 @@ pub fn ensure_module(module: &str, cwd: &std::path::Path) {
     });
 }
 
-/// Mirrors `addClassToModule`: inserts an import and pushes `class_name` into
-/// the `field: [...]` array literal of the module file at `module_path`.
 pub fn add_class_to_module(
     module_path: &std::path::Path,
     class_name: &str,
@@ -105,8 +81,6 @@ pub fn add_class_to_module(
     fs::write(module_path, content).map_err(|e| e.to_string())
 }
 
-/// Mirrors `installDependency`: runs `bun add <dependency>` when the current
-/// module's `package.json` doesn't already list it as a dependency.
 pub fn install_dependency(dependency: &str, cwd: &std::path::Path) {
     let package_json_path = cwd.join("package.json");
     let Ok(raw) = fs::read_to_string(&package_json_path) else {
@@ -134,10 +108,6 @@ pub fn install_dependency(dependency: &str, cwd: &std::path::Path) {
     );
 }
 
-/// Mirrors `scaffoldResource`: prompts for a name if missing, normalizes it,
-/// ensures the destination module exists, writes the resource + spec files,
-/// registers the class into the module (when `module_field` is set), and
-/// installs the runtime dependency (when set).
 pub fn scaffold_resource(config: &ScaffoldConfig, options: ScaffoldOptions, cwd: &std::path::Path) {
     let name = match options.name {
         Some(name) => name,
@@ -242,7 +212,6 @@ pub fn scaffold_resource(config: &ScaffoldConfig, options: ScaffoldOptions, cwd:
     }
 }
 
-/// Helper so callers don't need to build [`PathBuf`] boilerplate for `cwd`.
 pub fn current_dir() -> PathBuf {
     std::env::current_dir().unwrap_or_default()
 }

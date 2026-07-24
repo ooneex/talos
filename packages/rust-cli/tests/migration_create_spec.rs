@@ -1,5 +1,3 @@
-//! Integration tests for `rust_cli::commands::migration_create` argument parsing.
-
 use clap::Parser;
 use rust_cli::commands::migration_create::MigrationCreateArgs;
 

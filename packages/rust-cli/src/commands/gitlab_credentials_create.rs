@@ -4,14 +4,11 @@ use crate::utils::{ask_password, save_credentials};
 
 const GITLAB_TOKEN_URL: &str = "https://gitlab.com/-/user_settings/personal_access_tokens";
 
-/// Rust port of `packages/cli/src/commands/GitlabCredentialsCreateCommand.ts`.
 #[derive(Args, Debug)]
 pub struct GitlabCredentialsCreateArgs {
-    /// GitLab Personal Access Token (prompted for when omitted).
     #[arg(long)]
     pub token: Option<String>,
 
-    /// Suppress informational messages.
     #[arg(long, default_value_t = false)]
     pub silent: bool,
 }

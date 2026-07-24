@@ -9,10 +9,8 @@ use crate::utils::{Spinner, current_dir, run_spinner_step};
 
 const CLI_PACKAGE_NAME: &str = "@talosjs/cli";
 
-/// Rust port of `packages/cli/src/commands/UpgradeCommand.ts`.
 #[derive(Args, Debug)]
 pub struct UpgradeArgs {
-    /// Working directory (defaults to the current directory).
     #[arg(long)]
     pub cwd: Option<String>,
 }

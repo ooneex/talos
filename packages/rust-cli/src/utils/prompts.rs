@@ -1,5 +1,3 @@
-//! Interactive prompts, mirroring `packages/cli/src/prompts/*.ts`.
-
 use std::path::PathBuf;
 
 use dialoguer::{Confirm, Input, MultiSelect, Select, theme::ColorfulTheme};
@@ -7,8 +5,6 @@ use regex::Regex;
 
 use super::case::to_kebab_case;
 
-/// Mirrors `AssertName`'s validation, extracted so it can be tested
-/// independently of the interactive `Input` prompt that uses it.
 pub fn validate_name(input: &str) -> Result<(), String> {
     let valid = input
         .chars()
@@ -23,8 +19,6 @@ pub fn validate_name(input: &str) -> Result<(), String> {
     }
 }
 
-/// Mirrors `AssertDestination`'s validation, extracted so it can be tested
-/// independently of the interactive `Input` prompt that uses it.
 pub fn validate_destination(input: &str) -> Result<(), String> {
     let trimmed = input.trim();
     let valid = !trimmed.is_empty()
@@ -42,9 +36,6 @@ pub fn validate_destination(input: &str) -> Result<(), String> {
     }
 }
 
-/// Mirrors `askName`, parameterized over the prompt message (used directly by
-/// `app:init`'s "Enter application name" and by every `*:create` command's
-/// resource-specific prompt, e.g. "Enter service name").
 pub fn ask_input(prompt: &str) -> Option<String> {
     Input::with_theme(&ColorfulTheme::default())
         .with_prompt(prompt)
@@ -53,8 +44,6 @@ pub fn ask_input(prompt: &str) -> Option<String> {
         .ok()
 }
 
-/// Mirrors `askInput` with an `initial` default value and no name-shaped
-/// validation (used by credentials prompts like Docker registry/Jira base URL).
 pub fn ask_input_with_default(prompt: &str, initial: &str) -> Option<String> {
     Input::with_theme(&ColorfulTheme::default())
         .with_prompt(prompt)
@@ -63,8 +52,6 @@ pub fn ask_input_with_default(prompt: &str, initial: &str) -> Option<String> {
         .ok()
 }
 
-/// Mirrors `askInput` with no `initial` value and no name-shaped validation
-/// (used by credentials prompts like Bitbucket username/Jira email).
 pub fn ask_plain_input(prompt: &str) -> Option<String> {
     Input::with_theme(&ColorfulTheme::default())
         .with_prompt(prompt)
@@ -72,7 +59,6 @@ pub fn ask_plain_input(prompt: &str) -> Option<String> {
         .ok()
 }
 
-/// Mirrors `askName`'s `AssertName` validation.
 pub fn ask_name() -> Option<String> {
     Input::with_theme(&ColorfulTheme::default())
         .with_prompt("Enter application name")
@@ -81,7 +67,6 @@ pub fn ask_name() -> Option<String> {
         .ok()
 }
 
-/// Mirrors `askDestination`'s `AssertDestination` validation.
 pub fn ask_destination(initial: &str) -> Option<String> {
     Input::with_theme(&ColorfulTheme::default())
         .with_prompt("Enter destination path")
@@ -91,7 +76,6 @@ pub fn ask_destination(initial: &str) -> Option<String> {
         .ok()
 }
 
-/// Mirrors `askConfirm`.
 pub fn ask_confirm(prompt: &str, default: bool) -> bool {
     Confirm::with_theme(&ColorfulTheme::default())
         .with_prompt(prompt)
@@ -100,7 +84,6 @@ pub fn ask_confirm(prompt: &str, default: bool) -> bool {
         .unwrap_or(default)
 }
 
-/// Mirrors `askCiProvider`'s `select` prompt (`github` / `gitlab` / `bitbucket`).
 pub fn ask_select(prompt: &str, items: &[&str]) -> Option<usize> {
     Select::with_theme(&ColorfulTheme::default())
         .with_prompt(prompt)
@@ -110,9 +93,6 @@ pub fn ask_select(prompt: &str, items: &[&str]) -> Option<usize> {
         .ok()
 }
 
-/// Mirrors `askAgentSkills`' `multiselect` prompt: renders `items` with the
-/// entries flagged in `defaults` pre-checked and returns the indices of the
-/// selected entries (an empty `Vec` when nothing is picked).
 pub fn ask_multiselect(prompt: &str, items: &[&str], defaults: &[bool]) -> Option<Vec<usize>> {
     MultiSelect::with_theme(&ColorfulTheme::default())
         .with_prompt(prompt)
@@ -122,7 +102,6 @@ pub fn ask_multiselect(prompt: &str, items: &[&str], defaults: &[bool]) -> Optio
         .ok()
 }
 
-/// Mirrors `AssertRouteName`'s validation.
 pub fn validate_route_name(input: &str) -> Result<(), String> {
     let trimmed = input.trim();
     let valid = trimmed == input
@@ -141,7 +120,6 @@ pub fn validate_route_name(input: &str) -> Result<(), String> {
     }
 }
 
-/// Mirrors `AssertRoutePath`'s validation.
 pub fn validate_route_path(input: &str) -> Result<(), String> {
     let trimmed = input.trim();
     if trimmed != input {
@@ -195,7 +173,6 @@ pub fn validate_route_path(input: &str) -> Result<(), String> {
     Ok(())
 }
 
-/// Mirrors `AssertRouteMethod`'s validation.
 pub fn validate_route_method(input: &str) -> Result<(), String> {
     const HTTP_METHODS: &[&str] = &["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"];
     if input.trim() != input || !HTTP_METHODS.contains(&input.to_uppercase().as_str()) {
@@ -208,7 +185,6 @@ pub fn validate_route_method(input: &str) -> Result<(), String> {
     }
 }
 
-/// Mirrors `askPassword`.
 pub fn ask_password(prompt: &str) -> Option<String> {
     dialoguer::Password::with_theme(&ColorfulTheme::default())
         .with_prompt(prompt)
@@ -218,9 +194,6 @@ pub fn ask_password(prompt: &str) -> Option<String> {
         .filter(|value| !value.is_empty())
 }
 
-/// Mirrors `askDestinationModule`'s `findDestinationModules`: scans
-/// `<cwd>/modules` for directories whose `<name>.yml` declares `type: "api"`
-/// or `type: "microservice"`.
 pub fn find_destination_modules(cwd: &std::path::Path) -> Vec<String> {
     let modules_dir = cwd.join("modules");
     let Ok(entries) = std::fs::read_dir(&modules_dir) else {
@@ -246,8 +219,6 @@ pub fn find_destination_modules(cwd: &std::path::Path) -> Vec<String> {
     destinations
 }
 
-/// Mirrors `askDestinationModule`: prompts for which module to register a new
-/// module into, defaulting to `app` when there are no valid destinations.
 pub fn ask_destination_module(cwd: &std::path::Path, message: &str) -> String {
     let choices = find_destination_modules(cwd);
     if choices.is_empty() {
@@ -265,9 +236,6 @@ pub fn ask_destination_module(cwd: &std::path::Path, message: &str) -> String {
         .unwrap_or_else(|| "app".to_string())
 }
 
-/// Resolves an optional `--name`/`--destination` pair, prompting interactively
-/// for whichever is missing. Shared by `app:init` and `app:create`, whose CLI
-/// options and prompt fallbacks are identical.
 pub fn resolve_name_and_destination(
     name: Option<String>,
     destination: Option<String>,
@@ -288,7 +256,6 @@ pub fn resolve_name_and_destination(
     Some((name, kebab_name, destination_path))
 }
 
-/// Mirrors `askRouteName`.
 pub fn ask_route_name(prompt: &str) -> Option<String> {
     Input::with_theme(&ColorfulTheme::default())
         .with_prompt(prompt)
@@ -297,7 +264,6 @@ pub fn ask_route_name(prompt: &str) -> Option<String> {
         .ok()
 }
 
-/// Mirrors `askRoutePath`.
 pub fn ask_route_path(prompt: &str, initial: &str) -> Option<String> {
     Input::with_theme(&ColorfulTheme::default())
         .with_prompt(prompt)
@@ -307,7 +273,6 @@ pub fn ask_route_path(prompt: &str, initial: &str) -> Option<String> {
         .ok()
 }
 
-/// Mirrors `askRouteMethod`.
 pub fn ask_route_method(prompt: &str) -> Option<String> {
     const HTTP_METHODS: &[&str] = &["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"];
     Select::with_theme(&ColorfulTheme::default())
