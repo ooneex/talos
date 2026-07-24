@@ -29,6 +29,7 @@ struct ReleasePlan {
     full_dir: PathBuf,
     package_json_path: PathBuf,
     package_json: Value,
+    cargo_toml_path: Option<PathBuf>,
     commits: Vec<CommitInfo>,
     bump_type: &'static str,
     new_version: String,
@@ -253,6 +254,40 @@ fn update_changelog(
     let _ = fs::write(changelog_path, new_content);
 }
 
+fn update_cargo_version(path: &Path, new_version: &str) {
+    let Ok(content) = fs::read_to_string(path) else {
+        return;
+    };
+    let mut in_package = false;
+    let mut updated = false;
+    let mut lines: Vec<String> = Vec::new();
+    for line in content.lines() {
+        let trimmed = line.trim();
+        if trimmed.starts_with('[') && trimmed.ends_with(']') {
+            in_package = trimmed == "[package]";
+        }
+        if in_package
+            && !updated
+            && trimmed
+                .split_once('=')
+                .map(|(key, _)| key.trim() == "version")
+                .unwrap_or(false)
+        {
+            lines.push(format!("version = \"{new_version}\""));
+            updated = true;
+            continue;
+        }
+        lines.push(line.to_string());
+    }
+    if updated {
+        let mut output = lines.join("\n");
+        if content.ends_with('\n') {
+            output.push('\n');
+        }
+        let _ = fs::write(path, output);
+    }
+}
+
 fn git(cwd: &Path, args: &[&str]) -> bool {
     Command::new("git")
         .args(args)
@@ -378,11 +413,14 @@ pub fn run(args: &ReleaseCreateArgs) {
             root.insert("version".to_string(), Value::String(new_version.clone()));
         }
         let tag = format!("{package_name}@{new_version}");
+        let cargo_toml_path = full_dir.join("Cargo.toml");
+        let cargo_toml_path = cargo_toml_path.is_file().then_some(cargo_toml_path);
         plans.push(ReleasePlan {
             dir,
             full_dir,
             package_json_path,
             package_json,
+            cargo_toml_path,
             commits,
             bump_type,
             new_version,
@@ -410,45 +448,54 @@ pub fn run(args: &ReleaseCreateArgs) {
             &plan.commits,
             repo_url.as_deref(),
         );
-        if !git(
-            &cwd,
-            &[
-                "add",
-                &format!("{}/package.json", plan.dir.base),
-                &format!("{}/CHANGELOG.md", plan.dir.base),
-            ],
-        ) || !git(
-            &cwd,
-            &[
-                "commit",
-                "--no-verify",
-                "-m",
-                &format!(
-                    "chore(release): {}@{}",
-                    plan.package_json
-                        .get("name")
-                        .and_then(Value::as_str)
-                        .unwrap_or_default(),
-                    plan.new_version
-                ),
-            ],
-        ) || !git(
-            &cwd,
-            &[
-                "tag",
-                "-a",
-                &plan.tag,
-                "-m",
-                &format!(
-                    "chore(release): {}@{}",
-                    plan.package_json
-                        .get("name")
-                        .and_then(Value::as_str)
-                        .unwrap_or_default(),
-                    plan.new_version
-                ),
-            ],
-        ) {
+        let is_rust = plan.cargo_toml_path.is_some();
+        if let Some(cargo_toml_path) = &plan.cargo_toml_path {
+            update_cargo_version(cargo_toml_path, &plan.new_version);
+        }
+        let mut add_paths = vec![
+            "add".to_string(),
+            format!("{}/package.json", plan.dir.base),
+            format!("{}/CHANGELOG.md", plan.dir.base),
+        ];
+        if is_rust {
+            add_paths.push(format!("{}/Cargo.toml", plan.dir.base));
+        }
+        let add_refs: Vec<&str> = add_paths.iter().map(String::as_str).collect();
+        if !git(&cwd, &add_refs)
+            || !git(
+                &cwd,
+                &[
+                    "commit",
+                    "--no-verify",
+                    "-m",
+                    &format!(
+                        "chore(release): {}@{}",
+                        plan.package_json
+                            .get("name")
+                            .and_then(Value::as_str)
+                            .unwrap_or_default(),
+                        plan.new_version
+                    ),
+                ],
+            )
+            || !git(
+                &cwd,
+                &[
+                    "tag",
+                    "-a",
+                    &plan.tag,
+                    "-m",
+                    &format!(
+                        "chore(release): {}@{}",
+                        plan.package_json
+                            .get("name")
+                            .and_then(Value::as_str)
+                            .unwrap_or_default(),
+                        plan.new_version
+                    ),
+                ],
+            )
+        {
             crate::utils::error(format!(
                 "Failed to release {}",
                 plan.package_json
@@ -472,6 +519,9 @@ pub fn run(args: &ReleaseCreateArgs) {
             .unwrap()
             .to_string_lossy()
             .to_string();
+        if is_rust {
+            continue;
+        }
         if plan.dir.kind == "package" {
             released_packages.push(base_name);
         } else {
