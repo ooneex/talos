@@ -4,14 +4,9 @@ use clap::Args;
 
 use crate::utils::{
     add_path_alias, add_to_app_module, add_to_microservice_module, add_to_shared_module,
-    ask_destination_module, ask_input, current_dir, to_kebab_case, to_pascal_case,
+    ask_destination_module, ask_input, current_dir, read_template, skeleton_templates_dir,
+    to_kebab_case, to_pascal_case,
 };
-
-const MODULE_TEMPLATE: &str = include_str!("../templates/module/module.txt");
-const PACKAGE_TEMPLATE: &str = include_str!("../templates/module/package.txt");
-const TSCONFIG_TEMPLATE: &str = include_str!("../templates/module/tsconfig.txt");
-const YML_TEMPLATE: &str = include_str!("../templates/module/yml.txt");
-const TEST_TEMPLATE: &str = include_str!("../templates/module/test.txt");
 
 #[derive(Args, Debug)]
 pub struct ModuleCreateArgs {
@@ -84,12 +79,31 @@ pub fn execute(options: ModuleCreateOptions) {
     let src_dir = module_dir.join("src");
     let tests_dir = module_dir.join("tests");
 
-    let module_content = MODULE_TEMPLATE.replace("{{NAME}}", &pascal_name);
-    let package_content = PACKAGE_TEMPLATE.replace("{{NAME}}", &kebab_name);
-    let test_content = TEST_TEMPLATE
+    let Some(templates_dir) = skeleton_templates_dir(silent) else {
+        return;
+    };
+    let Some(module_template) = read_template(&templates_dir, "module/module.txt") else {
+        return;
+    };
+    let Some(package_template) = read_template(&templates_dir, "module/package.txt") else {
+        return;
+    };
+    let Some(tsconfig_template) = read_template(&templates_dir, "module/tsconfig.txt") else {
+        return;
+    };
+    let Some(yml_template) = read_template(&templates_dir, "module/yml.txt") else {
+        return;
+    };
+    let Some(test_template) = read_template(&templates_dir, "module/test.txt") else {
+        return;
+    };
+
+    let module_content = module_template.replace("{{NAME}}", &pascal_name);
+    let package_content = package_template.replace("{{NAME}}", &kebab_name);
+    let test_content = test_template
         .replace("{{NAME}}", &pascal_name)
         .replace("{{name}}", &kebab_name);
-    let yml_content = YML_TEMPLATE.replace("{{name}}", &kebab_name);
+    let yml_content = yml_template.replace("{{name}}", &kebab_name);
 
     let writes: [(PathBuf, &str); 5] = [
         (
@@ -97,7 +111,7 @@ pub fn execute(options: ModuleCreateOptions) {
             module_content.as_str(),
         ),
         (module_dir.join("package.json"), package_content.as_str()),
-        (module_dir.join("tsconfig.json"), TSCONFIG_TEMPLATE),
+        (module_dir.join("tsconfig.json"), tsconfig_template.as_str()),
         (
             module_dir.join(format!("{kebab_name}.yml")),
             yml_content.as_str(),

@@ -1,9 +1,9 @@
 use clap::Args;
 
-use crate::utils::{ScaffoldConfig, ScaffoldOptions, current_dir, scaffold_resource};
-
-const TEMPLATE: &str = include_str!("../templates/analytics.txt");
-const TEST_TEMPLATE: &str = include_str!("../templates/analytics.test.txt");
+use crate::utils::{
+    ScaffoldConfig, ScaffoldOptions, current_dir, read_template, scaffold_resource,
+    skeleton_templates_dir,
+};
 
 #[derive(Args, Debug)]
 pub struct AnalyticsCreateArgs {
@@ -18,13 +18,22 @@ pub struct AnalyticsCreateArgs {
 }
 
 pub fn run(args: &AnalyticsCreateArgs) {
+    let Some(templates_dir) = skeleton_templates_dir(false) else {
+        return;
+    };
+    let Some(template) = read_template(&templates_dir, "analytics.txt") else {
+        return;
+    };
+    let Some(test_template) = read_template(&templates_dir, "analytics.test.txt") else {
+        return;
+    };
     scaffold_resource(
         &ScaffoldConfig {
             label: "Analytics",
             prompt_message: "Enter analytics name",
             suffix: "Analytics",
-            template: TEMPLATE,
-            test_template: TEST_TEMPLATE,
+            template,
+            test_template,
             dir: "analytics",
             dependency: Some("@talosjs/analytics"),
             ..Default::default()

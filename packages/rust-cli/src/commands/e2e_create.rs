@@ -4,11 +4,9 @@ use clap::Args;
 use serde_json::{Map, Value};
 
 use crate::utils::{
-    ask_confirm, ask_input, current_dir, ensure_module, run_spinner_step, to_pascal_case,
+    ask_confirm, ask_input, current_dir, ensure_module, read_template, run_spinner_step,
+    skeleton_templates_dir, to_pascal_case,
 };
-
-const SPEC_TEMPLATE: &str = include_str!("../templates/e2e.spec.txt");
-const CONFIG_TEMPLATE: &str = include_str!("../templates/playwright.config.txt");
 
 #[derive(Args, Debug)]
 pub struct E2eCreateArgs {
@@ -76,6 +74,16 @@ pub fn run(args: &E2eCreateArgs) {
 
     ensure_module(&module, &cwd);
 
+    let Some(templates_dir) = skeleton_templates_dir(false) else {
+        return;
+    };
+    let Some(spec_template) = read_template(&templates_dir, "e2e.spec.txt") else {
+        return;
+    };
+    let Some(config_template) = read_template(&templates_dir, "playwright.config.txt") else {
+        return;
+    };
+
     let base = cwd.join("modules").join(&module);
     let e2e_dir = base.join("e2e");
     let spec_path = e2e_dir.join(format!("{name}.spec.ts"));
@@ -94,7 +102,7 @@ pub fn run(args: &E2eCreateArgs) {
         crate::utils::error(format!("Failed to create {}: {error}", e2e_dir.display()));
         return;
     }
-    if let Err(error) = std::fs::write(&spec_path, SPEC_TEMPLATE) {
+    if let Err(error) = std::fs::write(&spec_path, &spec_template) {
         crate::utils::error(format!("Failed to write {}: {error}", spec_path.display()));
         return;
     }
@@ -102,7 +110,7 @@ pub fn run(args: &E2eCreateArgs) {
 
     let config_path = base.join("playwright.config.ts");
     if !config_path.exists() {
-        if let Err(error) = std::fs::write(&config_path, CONFIG_TEMPLATE) {
+        if let Err(error) = std::fs::write(&config_path, &config_template) {
             crate::utils::error(format!(
                 "Failed to write {}: {error}",
                 config_path.display()

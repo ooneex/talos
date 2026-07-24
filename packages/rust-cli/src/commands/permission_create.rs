@@ -1,9 +1,9 @@
 use clap::Args;
 
-use crate::utils::{ScaffoldConfig, ScaffoldOptions, current_dir, scaffold_resource};
-
-const TEMPLATE: &str = include_str!("../templates/permission.txt");
-const TEST_TEMPLATE: &str = include_str!("../templates/permission.test.txt");
+use crate::utils::{
+    ScaffoldConfig, ScaffoldOptions, current_dir, read_template, scaffold_resource,
+    skeleton_templates_dir,
+};
 
 #[derive(Args, Debug)]
 pub struct PermissionCreateArgs {
@@ -18,13 +18,22 @@ pub struct PermissionCreateArgs {
 }
 
 pub fn run(args: &PermissionCreateArgs) {
+    let Some(templates_dir) = skeleton_templates_dir(false) else {
+        return;
+    };
+    let Some(template) = read_template(&templates_dir, "permission.txt") else {
+        return;
+    };
+    let Some(test_template) = read_template(&templates_dir, "permission.test.txt") else {
+        return;
+    };
     scaffold_resource(
         &ScaffoldConfig {
             label: "Permission",
             prompt_message: "Enter permission name",
             suffix: "Permission",
-            template: TEMPLATE,
-            test_template: TEST_TEMPLATE,
+            template,
+            test_template,
             dir: "permissions",
             dependency: Some("@talosjs/permission"),
             ..Default::default()

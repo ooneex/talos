@@ -1,12 +1,9 @@
 use clap::Args;
 
 use crate::utils::{
-    ask_input, current_dir, ensure_module, to_kebab_case, to_pascal_case, write_export_index,
+    ask_input, current_dir, ensure_module, read_template, skeleton_templates_dir, to_kebab_case,
+    to_pascal_case, write_export_index,
 };
-
-const SEED_TEMPLATE: &str = include_str!("../templates/seeds/seed.txt");
-const SEED_TEST_TEMPLATE: &str = include_str!("../templates/seeds/seed.test.txt");
-const SEED_RUN_TEMPLATE: &str = include_str!("../templates/module/seed.run.txt");
 
 #[derive(Args, Debug)]
 pub struct SeedCreateArgs {
@@ -37,6 +34,19 @@ pub fn run(args: &SeedCreateArgs) {
 
     ensure_module(&module, &cwd);
 
+    let Some(templates_dir) = skeleton_templates_dir(false) else {
+        return;
+    };
+    let Some(seed_template) = read_template(&templates_dir, "seeds/seed.txt") else {
+        return;
+    };
+    let Some(seed_test_template) = read_template(&templates_dir, "seeds/seed.test.txt") else {
+        return;
+    };
+    let Some(seed_run_template) = read_template(&templates_dir, "module/seed.run.txt") else {
+        return;
+    };
+
     let base = cwd.join("modules").join(&module);
     let seeds_dir = base.join("src").join("seeds");
     let tests_dir = base.join("tests").join("seeds");
@@ -48,11 +58,11 @@ pub fn run(args: &SeedCreateArgs) {
     let seed_name = format!("{class_name}Seed");
     let data_file = to_kebab_case(&seed_name);
 
-    let seed_content = SEED_TEMPLATE
+    let seed_content = seed_template
         .replace("{{ name }}", &seed_name)
         .replace("{{ dataFile }}", &data_file);
     let data_content = "# Seed data\n";
-    let test_content = SEED_TEST_TEMPLATE
+    let test_content = seed_test_template
         .replace("{{NAME}}", &class_name)
         .replace("{{DATA_FILE}}", &data_file)
         .replace("{{MODULE}}", &module);
@@ -100,7 +110,7 @@ pub fn run(args: &SeedCreateArgs) {
         }
         let _ = std::fs::write(
             &bin_run_path,
-            SEED_RUN_TEMPLATE.replace("{{name}}", &module),
+            seed_run_template.replace("{{name}}", &module),
         );
     }
 

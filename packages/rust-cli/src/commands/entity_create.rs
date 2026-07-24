@@ -1,11 +1,9 @@
 use clap::Args;
 
 use crate::utils::{
-    ScaffoldConfig, ScaffoldOptions, current_dir, pluralize, scaffold_resource, to_snake_case,
+    ScaffoldConfig, ScaffoldOptions, current_dir, pluralize, read_template, scaffold_resource,
+    skeleton_templates_dir, to_snake_case,
 };
-
-const TEMPLATE: &str = include_str!("../templates/entity.txt");
-const TEST_TEMPLATE: &str = include_str!("../templates/entity.test.txt");
 
 #[derive(Args, Debug)]
 pub struct EntityCreateArgs {
@@ -23,14 +21,23 @@ pub struct EntityCreateArgs {
 }
 
 pub fn run(args: &EntityCreateArgs) {
+    let Some(templates_dir) = skeleton_templates_dir(false) else {
+        return;
+    };
+    let Some(template) = read_template(&templates_dir, "entity.txt") else {
+        return;
+    };
+    let Some(test_template) = read_template(&templates_dir, "entity.test.txt") else {
+        return;
+    };
     let table_name = args.table_name.clone();
     scaffold_resource(
         &ScaffoldConfig {
             label: "Entity",
             prompt_message: "Enter entity name",
             suffix: "Entity",
-            template: TEMPLATE,
-            test_template: TEST_TEMPLATE,
+            template,
+            test_template,
             dir: "entities",
             module_field: Some("entities"),
             template_data: Some(Box::new(move |name: &str| {

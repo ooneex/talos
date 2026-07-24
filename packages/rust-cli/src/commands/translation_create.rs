@@ -4,16 +4,9 @@ use clap::Args;
 use serde_json::Value;
 
 use crate::utils::{
-    ask_confirm, ask_input, current_dir, ensure_module, run_spinner_step, to_kebab_case,
-    to_pascal_case, to_snake_case,
+    ask_confirm, ask_input, current_dir, ensure_module, read_template, run_spinner_step,
+    skeleton_templates_dir, to_kebab_case, to_pascal_case, to_snake_case,
 };
-
-const TRANSLATION_TEMPLATE: &str = include_str!("../templates/translation.txt");
-const TEST_TEMPLATE: &str = include_str!("../templates/translation.test.txt");
-const YAML_DICT_TEMPLATE: &str = include_str!("../templates/translation.yml.txt");
-const JSON_DICT_TEMPLATE: &str = include_str!("../templates/translation.json.txt");
-const USE_TRANSLATE_TEMPLATE: &str = include_str!("../templates/spa/spa.use-translate.txt");
-const USE_LANG_TEMPLATE: &str = include_str!("../templates/spa/spa.use-lang.txt");
 
 #[derive(Args, Debug)]
 pub struct TranslationCreateArgs {
@@ -115,16 +108,30 @@ fn scaffold_spa_translation(
         return;
     }
 
+    let Some(templates_dir) = skeleton_templates_dir(false) else {
+        return;
+    };
+    let Some(use_translate_template) = read_template(&templates_dir, "spa/spa.use-translate.txt")
+    else {
+        return;
+    };
+    let Some(json_dict_template) = read_template(&templates_dir, "translation.json.txt") else {
+        return;
+    };
+    let Some(use_lang_template) = read_template(&templates_dir, "spa/spa.use-lang.txt") else {
+        return;
+    };
+
     let _ = std::fs::create_dir_all(&translations_dir);
     let _ = std::fs::write(
         &hook_path,
-        USE_TRANSLATE_TEMPLATE.replace("{{NAME}}", &name),
+        use_translate_template.replace("{{NAME}}", &name),
     );
     crate::utils::success(format!("{} created successfully", hook_path.display()));
 
     let dict_path = translations_dir.join("translations.json");
     if !dict_path.exists() {
-        let _ = std::fs::write(&dict_path, JSON_DICT_TEMPLATE);
+        let _ = std::fs::write(&dict_path, &json_dict_template);
         crate::utils::success(format!("{} created successfully", dict_path.display()));
     }
 
@@ -139,7 +146,7 @@ fn scaffold_spa_translation(
         if let Some(parent) = use_lang_path.parent() {
             let _ = std::fs::create_dir_all(parent);
         }
-        let _ = std::fs::write(&use_lang_path, USE_LANG_TEMPLATE);
+        let _ = std::fs::write(&use_lang_path, &use_lang_template);
         crate::utils::success(format!("{} created successfully", use_lang_path.display()));
     }
 
@@ -191,8 +198,21 @@ pub fn run(args: &TranslationCreateArgs) {
         return;
     }
 
+    let Some(templates_dir) = skeleton_templates_dir(false) else {
+        return;
+    };
+    let Some(translation_template) = read_template(&templates_dir, "translation.txt") else {
+        return;
+    };
+    let Some(test_template) = read_template(&templates_dir, "translation.test.txt") else {
+        return;
+    };
+    let Some(yaml_dict_template) = read_template(&templates_dir, "translation.yml.txt") else {
+        return;
+    };
+
     let _ = std::fs::create_dir_all(&translations_dir);
-    let content = TRANSLATION_TEMPLATE
+    let content = translation_template
         .replace("{{NAME}}", &name)
         .replace("{{SNAKE}}", &to_snake_case(&name));
     let _ = std::fs::write(&file_path, content);
@@ -202,14 +222,14 @@ pub fn run(args: &TranslationCreateArgs) {
     let test_path = tests_dir.join(format!("{name}Translation.spec.ts"));
     let _ = std::fs::write(
         &test_path,
-        TEST_TEMPLATE
+        test_template
             .replace("{{NAME}}", &name)
             .replace("{{MODULE}}", &module_kebab),
     );
 
     let dict_path = base.join("src").join("translations.yml");
     if !dict_path.exists() {
-        let _ = std::fs::write(&dict_path, YAML_DICT_TEMPLATE);
+        let _ = std::fs::write(&dict_path, &yaml_dict_template);
     }
 
     crate::utils::success(format!("{} created successfully", file_path.display()));

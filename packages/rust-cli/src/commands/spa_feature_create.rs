@@ -4,18 +4,9 @@ use clap::Args;
 use serde_json::Value;
 
 use crate::utils::{
-    ask_confirm, ask_input, current_dir, run_spinner_step, to_kebab_case, to_pascal_case,
+    ask_confirm, ask_input, current_dir, read_template, run_spinner_step, skeleton_templates_dir,
+    to_kebab_case, to_pascal_case,
 };
-
-const ROUTE_TEMPLATE: &str = include_str!("../templates/spa/spa-feature.route.txt");
-const LAYOUT_TEMPLATE: &str = include_str!("../templates/spa/spa-feature.layout.txt");
-const NOT_FOUND_LAYOUT_TEMPLATE: &str =
-    include_str!("../templates/spa/spa-feature.not-found-layout.txt");
-const ERROR_LAYOUT_TEMPLATE: &str = include_str!("../templates/spa/spa-feature.error-layout.txt");
-const SKELETON_LAYOUT_TEMPLATE: &str =
-    include_str!("../templates/spa/spa-feature.skeleton-layout.txt");
-const QUERY_TEMPLATE: &str = include_str!("../templates/spa/spa-feature.query.txt");
-const MUTATION_TEMPLATE: &str = include_str!("../templates/spa/spa-feature.mutation.txt");
 
 #[derive(Args, Debug)]
 pub struct SpaFeatureCreateArgs {
@@ -97,20 +88,52 @@ pub fn run(args: &SpaFeatureCreateArgs) {
         return;
     }
 
+    let Some(templates_dir) = skeleton_templates_dir(false) else {
+        return;
+    };
+    let Some(route_template) = read_template(&templates_dir, "spa/spa-feature.route.txt") else {
+        return;
+    };
+    let Some(layout_template) = read_template(&templates_dir, "spa/spa-feature.layout.txt") else {
+        return;
+    };
+    let Some(not_found_layout_template) =
+        read_template(&templates_dir, "spa/spa-feature.not-found-layout.txt")
+    else {
+        return;
+    };
+    let Some(error_layout_template) =
+        read_template(&templates_dir, "spa/spa-feature.error-layout.txt")
+    else {
+        return;
+    };
+    let Some(skeleton_layout_template) =
+        read_template(&templates_dir, "spa/spa-feature.skeleton-layout.txt")
+    else {
+        return;
+    };
+    let Some(query_template) = read_template(&templates_dir, "spa/spa-feature.query.txt") else {
+        return;
+    };
+    let Some(mutation_template) = read_template(&templates_dir, "spa/spa-feature.mutation.txt")
+    else {
+        return;
+    };
+
     let feature_dir = src_dir.join("features").join(&kebab_name);
     let files = [
         (
             src_dir.join("routes").join(format!("{kebab_name}.tsx")),
-            render(ROUTE_TEMPLATE, &pascal_name, &camel_name, &kebab_name),
+            render(&route_template, &pascal_name, &camel_name, &kebab_name),
         ),
         (
             layout_path.clone(),
-            render(LAYOUT_TEMPLATE, &pascal_name, &camel_name, &kebab_name),
+            render(&layout_template, &pascal_name, &camel_name, &kebab_name),
         ),
         (
             layouts_dir.join(format!("{pascal_name}NotFoundLayout.tsx")),
             render(
-                NOT_FOUND_LAYOUT_TEMPLATE,
+                &not_found_layout_template,
                 &pascal_name,
                 &camel_name,
                 &kebab_name,
@@ -119,7 +142,7 @@ pub fn run(args: &SpaFeatureCreateArgs) {
         (
             layouts_dir.join(format!("{pascal_name}ErrorLayout.tsx")),
             render(
-                ERROR_LAYOUT_TEMPLATE,
+                &error_layout_template,
                 &pascal_name,
                 &camel_name,
                 &kebab_name,
@@ -128,7 +151,7 @@ pub fn run(args: &SpaFeatureCreateArgs) {
         (
             layouts_dir.join(format!("{pascal_name}SkeletonLayout.tsx")),
             render(
-                SKELETON_LAYOUT_TEMPLATE,
+                &skeleton_layout_template,
                 &pascal_name,
                 &camel_name,
                 &kebab_name,
@@ -138,13 +161,13 @@ pub fn run(args: &SpaFeatureCreateArgs) {
             feature_dir
                 .join("hooks")
                 .join(format!("useGet{pascal_name}.ts")),
-            render(QUERY_TEMPLATE, &pascal_name, &camel_name, &kebab_name),
+            render(&query_template, &pascal_name, &camel_name, &kebab_name),
         ),
         (
             feature_dir
                 .join("hooks")
                 .join(format!("useUpdate{pascal_name}.ts")),
-            render(MUTATION_TEMPLATE, &pascal_name, &camel_name, &kebab_name),
+            render(&mutation_template, &pascal_name, &camel_name, &kebab_name),
         ),
     ];
 

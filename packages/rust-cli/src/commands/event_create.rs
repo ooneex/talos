@@ -1,11 +1,9 @@
 use clap::Args;
 
 use crate::utils::{
-    ScaffoldConfig, ScaffoldOptions, current_dir, scaffold_resource, to_kebab_case,
+    ScaffoldConfig, ScaffoldOptions, current_dir, read_template, scaffold_resource,
+    skeleton_templates_dir, to_kebab_case,
 };
-
-const TEMPLATE: &str = include_str!("../templates/event.txt");
-const TEST_TEMPLATE: &str = include_str!("../templates/event.test.txt");
 
 #[derive(Args, Debug)]
 pub struct EventCreateArgs {
@@ -23,6 +21,15 @@ pub struct EventCreateArgs {
 }
 
 pub fn run(args: &EventCreateArgs) {
+    let Some(templates_dir) = skeleton_templates_dir(false) else {
+        return;
+    };
+    let Some(template) = read_template(&templates_dir, "event.txt") else {
+        return;
+    };
+    let Some(test_template) = read_template(&templates_dir, "event.test.txt") else {
+        return;
+    };
     let channel = args.channel.clone();
     scaffold_resource(
         &ScaffoldConfig {
@@ -30,8 +37,8 @@ pub fn run(args: &EventCreateArgs) {
             prompt_message: "Enter name",
             suffix: "Event",
             strip_suffixes: &["Event", "PubSub"],
-            template: TEMPLATE,
-            test_template: TEST_TEMPLATE,
+            template,
+            test_template,
             dir: "events",
             module_field: Some("events"),
             dependency: Some("@talosjs/event"),

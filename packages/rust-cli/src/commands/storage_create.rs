@@ -1,11 +1,9 @@
 use clap::Args;
 
 use crate::utils::{
-    ScaffoldConfig, ScaffoldOptions, current_dir, scaffold_resource, to_snake_case,
+    ScaffoldConfig, ScaffoldOptions, current_dir, read_template, scaffold_resource,
+    skeleton_templates_dir, to_snake_case,
 };
-
-const TEMPLATE: &str = include_str!("../templates/storage.txt");
-const TEST_TEMPLATE: &str = include_str!("../templates/storage.test.txt");
 
 #[derive(Args, Debug)]
 pub struct StorageCreateArgs {
@@ -20,13 +18,22 @@ pub struct StorageCreateArgs {
 }
 
 pub fn run(args: &StorageCreateArgs) {
+    let Some(templates_dir) = skeleton_templates_dir(false) else {
+        return;
+    };
+    let Some(template) = read_template(&templates_dir, "storage.txt") else {
+        return;
+    };
+    let Some(test_template) = read_template(&templates_dir, "storage.test.txt") else {
+        return;
+    };
     scaffold_resource(
         &ScaffoldConfig {
             label: "Storage",
             prompt_message: "Enter storage name",
             suffix: "Storage",
-            template: TEMPLATE,
-            test_template: TEST_TEMPLATE,
+            template,
+            test_template,
             dir: "storage",
             dependency: Some("@talosjs/storage"),
             template_data: Some(Box::new(|name: &str| {

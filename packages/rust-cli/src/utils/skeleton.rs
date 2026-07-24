@@ -9,6 +9,8 @@ use super::process::run_step;
 
 pub const SKELETON_REPO_URL: &str = "https://github.com/ooneex/skeleton.git";
 
+pub const TEMPLATES_DIR_ENV: &str = "TALOS_TEMPLATES_DIR";
+
 const SKELETON_REPO_BRANCH: &str = "main";
 
 fn skeleton_archive_url() -> String {
@@ -82,6 +84,32 @@ fn git_clone_skeleton(destination: &Path, silent: bool) -> bool {
             destination.to_string_lossy().as_ref(),
         ]),
     )
+}
+
+pub fn skeleton_templates_dir(silent: bool) -> Option<PathBuf> {
+    if let Some(dir) = std::env::var_os(TEMPLATES_DIR_ENV) {
+        return Some(PathBuf::from(dir));
+    }
+    let repo = if silent {
+        clone_skeleton(true, true)
+    } else {
+        let spinner = super::style::Spinner::start("Downloading templates...");
+        let repo = clone_skeleton(true, true);
+        spinner.stop();
+        repo
+    };
+    repo.map(|dir| dir.join("templates"))
+}
+
+pub fn read_template(dir: &Path, name: &str) -> Option<String> {
+    let path = dir.join(name);
+    match fs::read_to_string(&path) {
+        Ok(content) => Some(content),
+        Err(error) => {
+            super::style::error(format!("Failed to read template \"{name}\": {error}"));
+            None
+        }
+    }
 }
 
 pub fn clone_skeleton(silent: bool, use_cache: bool) -> Option<PathBuf> {

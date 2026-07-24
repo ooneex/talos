@@ -1,11 +1,9 @@
 use clap::Args;
 
 use crate::utils::{
-    ScaffoldConfig, ScaffoldOptions, current_dir, scaffold_resource, to_kebab_case,
+    ScaffoldConfig, ScaffoldOptions, current_dir, read_template, scaffold_resource,
+    skeleton_templates_dir, to_kebab_case,
 };
-
-const TEMPLATE: &str = include_str!("../templates/feature-flag.txt");
-const TEST_TEMPLATE: &str = include_str!("../templates/feature-flag.test.txt");
 
 #[derive(Args, Debug)]
 pub struct FeatureFlagCreateArgs {
@@ -20,13 +18,22 @@ pub struct FeatureFlagCreateArgs {
 }
 
 pub fn run(args: &FeatureFlagCreateArgs) {
+    let Some(templates_dir) = skeleton_templates_dir(false) else {
+        return;
+    };
+    let Some(template) = read_template(&templates_dir, "feature-flag.txt") else {
+        return;
+    };
+    let Some(test_template) = read_template(&templates_dir, "feature-flag.test.txt") else {
+        return;
+    };
     scaffold_resource(
         &ScaffoldConfig {
             label: "Feature flag",
             prompt_message: "Enter name",
             suffix: "FeatureFlag",
-            template: TEMPLATE,
-            test_template: TEST_TEMPLATE,
+            template,
+            test_template,
             dir: "flags",
             tests_dir: Some("feature-flag"),
             dependency: Some("@talosjs/feature-flag"),

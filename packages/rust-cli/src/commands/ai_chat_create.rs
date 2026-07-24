@@ -1,9 +1,9 @@
 use clap::Args;
 
-use crate::utils::{ScaffoldConfig, ScaffoldOptions, current_dir, scaffold_resource};
-
-const TEMPLATE: &str = include_str!("../templates/ai-chat.txt");
-const TEST_TEMPLATE: &str = include_str!("../templates/ai-chat.test.txt");
+use crate::utils::{
+    ScaffoldConfig, ScaffoldOptions, current_dir, read_template, scaffold_resource,
+    skeleton_templates_dir,
+};
 
 #[derive(Args, Debug)]
 pub struct AiChatCreateArgs {
@@ -18,13 +18,22 @@ pub struct AiChatCreateArgs {
 }
 
 pub fn run(args: &AiChatCreateArgs) {
+    let Some(templates_dir) = skeleton_templates_dir(false) else {
+        return;
+    };
+    let Some(template) = read_template(&templates_dir, "ai-chat.txt") else {
+        return;
+    };
+    let Some(test_template) = read_template(&templates_dir, "ai-chat.test.txt") else {
+        return;
+    };
     scaffold_resource(
         &ScaffoldConfig {
             label: "AI chat",
             prompt_message: "Enter chat name",
             suffix: "Chat",
-            template: TEMPLATE,
-            test_template: TEST_TEMPLATE,
+            template,
+            test_template,
             dir: "ai/chats",
             dependency: Some("@talosjs/ai"),
             ..Default::default()

@@ -1,9 +1,9 @@
 use clap::Args;
 
-use crate::utils::{ScaffoldConfig, ScaffoldOptions, current_dir, scaffold_resource};
-
-const TEMPLATE: &str = include_str!("../templates/cache.txt");
-const TEST_TEMPLATE: &str = include_str!("../templates/cache.test.txt");
+use crate::utils::{
+    ScaffoldConfig, ScaffoldOptions, current_dir, read_template, scaffold_resource,
+    skeleton_templates_dir,
+};
 
 #[derive(Args, Debug)]
 pub struct CacheCreateArgs {
@@ -18,13 +18,22 @@ pub struct CacheCreateArgs {
 }
 
 pub fn run(args: &CacheCreateArgs) {
+    let Some(templates_dir) = skeleton_templates_dir(false) else {
+        return;
+    };
+    let Some(template) = read_template(&templates_dir, "cache.txt") else {
+        return;
+    };
+    let Some(test_template) = read_template(&templates_dir, "cache.test.txt") else {
+        return;
+    };
     scaffold_resource(
         &ScaffoldConfig {
             label: "Cache",
             prompt_message: "Enter cache name",
             suffix: "Cache",
-            template: TEMPLATE,
-            test_template: TEST_TEMPLATE,
+            template,
+            test_template,
             dir: "cache",
             dependency: Some("@talosjs/cache"),
             ..Default::default()

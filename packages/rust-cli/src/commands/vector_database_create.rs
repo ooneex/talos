@@ -1,9 +1,9 @@
 use clap::Args;
 
-use crate::utils::{ScaffoldConfig, ScaffoldOptions, current_dir, scaffold_resource};
-
-const TEMPLATE: &str = include_str!("../templates/vector-database.txt");
-const TEST_TEMPLATE: &str = include_str!("../templates/vector-database.test.txt");
+use crate::utils::{
+    ScaffoldConfig, ScaffoldOptions, current_dir, read_template, scaffold_resource,
+    skeleton_templates_dir,
+};
 
 #[derive(Args, Debug)]
 pub struct VectorDatabaseCreateArgs {
@@ -18,13 +18,22 @@ pub struct VectorDatabaseCreateArgs {
 }
 
 pub fn run(args: &VectorDatabaseCreateArgs) {
+    let Some(templates_dir) = skeleton_templates_dir(false) else {
+        return;
+    };
+    let Some(template) = read_template(&templates_dir, "vector-database.txt") else {
+        return;
+    };
+    let Some(test_template) = read_template(&templates_dir, "vector-database.test.txt") else {
+        return;
+    };
     scaffold_resource(
         &ScaffoldConfig {
             label: "Vector database",
             prompt_message: "Enter vector database name",
             suffix: "VectorDatabase",
-            template: TEMPLATE,
-            test_template: TEST_TEMPLATE,
+            template,
+            test_template,
             dir: "databases",
             strip_suffixes: &["VectorDatabase", "Database"],
             dependency: Some("@talosjs/rag"),

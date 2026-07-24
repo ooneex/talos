@@ -1,14 +1,9 @@
 use clap::Args;
 
 use crate::utils::{
-    ask_confirm, ask_input, current_dir, ensure_module, install_dependency, to_pascal_case,
+    ask_confirm, ask_input, current_dir, ensure_module, install_dependency, read_template,
+    skeleton_templates_dir, to_pascal_case,
 };
-
-const MAILER_TEMPLATE: &str = include_str!("../templates/mailer/mailer.txt");
-const MAILER_TEST_TEMPLATE: &str = include_str!("../templates/mailer/mailer.test.txt");
-const MAILER_TEMPLATE_TEMPLATE: &str = include_str!("../templates/mailer/mailer-template.txt");
-const MAILER_TEMPLATE_TEST_TEMPLATE: &str =
-    include_str!("../templates/mailer/mailer-template.test.txt");
 
 #[derive(Args, Debug)]
 pub struct MailerCreateArgs {
@@ -46,8 +41,28 @@ pub fn run(args: &MailerCreateArgs) {
         .map(str::to_string)
         .unwrap_or(name);
 
-    let mailer_content = MAILER_TEMPLATE.replace("{{NAME}}", &name);
-    let template_content = MAILER_TEMPLATE_TEMPLATE.replace("{{NAME}}", &name);
+    let Some(templates_dir) = skeleton_templates_dir(false) else {
+        return;
+    };
+    let Some(mailer_template) = read_template(&templates_dir, "mailer/mailer.txt") else {
+        return;
+    };
+    let Some(mailer_test_template) = read_template(&templates_dir, "mailer/mailer.test.txt") else {
+        return;
+    };
+    let Some(mailer_template_template) =
+        read_template(&templates_dir, "mailer/mailer-template.txt")
+    else {
+        return;
+    };
+    let Some(mailer_template_test_template) =
+        read_template(&templates_dir, "mailer/mailer-template.test.txt")
+    else {
+        return;
+    };
+
+    let mailer_content = mailer_template.replace("{{NAME}}", &name);
+    let template_content = mailer_template_template.replace("{{NAME}}", &name);
 
     ensure_module(&module, &cwd);
 
@@ -66,10 +81,10 @@ pub fn run(args: &MailerCreateArgs) {
         return;
     }
 
-    let mailer_test_content = MAILER_TEST_TEMPLATE
+    let mailer_test_content = mailer_test_template
         .replace("{{NAME}}", &name)
         .replace("{{MODULE}}", &module);
-    let template_test_content = MAILER_TEMPLATE_TEST_TEMPLATE
+    let template_test_content = mailer_template_test_template
         .replace("{{NAME}}", &name)
         .replace("{{MODULE}}", &module);
     let tests_dir = base.join("tests").join("mailers");

@@ -2,14 +2,8 @@ use clap::Args;
 
 use crate::utils::{
     ask_confirm, ask_input, ask_select, current_dir, ensure_module, install_dependency,
-    to_pascal_case,
+    read_template, skeleton_templates_dir, to_pascal_case,
 };
-
-const PG_TEMPLATE: &str = include_str!("../templates/database.pg.txt");
-const REDIS_TEMPLATE: &str = include_str!("../templates/database.redis.txt");
-const SQLITE_TEMPLATE: &str = include_str!("../templates/database.sqlite.txt");
-const TEST_TEMPLATE: &str = include_str!("../templates/database.test.txt");
-const REDIS_TEST_TEMPLATE: &str = include_str!("../templates/database.redis.test.txt");
 
 const DATABASE_TYPES: &[&str] = &["postgres", "sqlite", "redis"];
 
@@ -61,10 +55,16 @@ pub fn run(args: &DatabaseCreateArgs) {
         },
     };
 
-    let template = match db_type.as_str() {
-        "postgres" => PG_TEMPLATE,
-        "redis" => REDIS_TEMPLATE,
-        _ => SQLITE_TEMPLATE,
+    let Some(templates_dir) = skeleton_templates_dir(false) else {
+        return;
+    };
+    let template_file = match db_type.as_str() {
+        "postgres" => "database.pg.txt",
+        "redis" => "database.redis.txt",
+        _ => "database.sqlite.txt",
+    };
+    let Some(template) = read_template(&templates_dir, template_file) else {
+        return;
     };
     let content = template.replace("{{NAME}}", &name);
 
@@ -96,10 +96,13 @@ pub fn run(args: &DatabaseCreateArgs) {
         return;
     }
 
-    let test_template = if db_type == "redis" {
-        REDIS_TEST_TEMPLATE
+    let test_file = if db_type == "redis" {
+        "database.redis.test.txt"
     } else {
-        TEST_TEMPLATE
+        "database.test.txt"
+    };
+    let Some(test_template) = read_template(&templates_dir, test_file) else {
+        return;
     };
     let test_content = test_template
         .replace("{{NAME}}", &name)

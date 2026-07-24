@@ -1,9 +1,22 @@
 use std::fs;
+use std::sync::Once;
 
 use rust_cli::commands::module_create::{ModuleCreateOptions, execute};
 
+static INIT_TEMPLATES: Once = Once::new();
+
+fn use_fixture_templates() {
+    INIT_TEMPLATES.call_once(|| {
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/templates");
+        unsafe {
+            std::env::set_var(rust_cli::utils::TEMPLATES_DIR_ENV, dir);
+        }
+    });
+}
+
 #[test]
 fn execute_scaffolds_a_module_and_registers_it_into_app_module() {
+    use_fixture_templates();
     let tmp = tempfile::tempdir().expect("tempdir");
     let cwd = tmp.path();
 
@@ -46,6 +59,7 @@ fn execute_scaffolds_a_module_and_registers_it_into_app_module() {
 
 #[test]
 fn execute_skips_registration_when_module_is_its_own_destination() {
+    use_fixture_templates();
     let tmp = tempfile::tempdir().expect("tempdir");
     let cwd = tmp.path();
 

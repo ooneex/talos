@@ -1,9 +1,9 @@
 use clap::Args;
 
-use crate::utils::{ScaffoldConfig, ScaffoldOptions, current_dir, scaffold_resource};
-
-const TEMPLATE: &str = include_str!("../templates/cron.txt");
-const TEST_TEMPLATE: &str = include_str!("../templates/cron.test.txt");
+use crate::utils::{
+    ScaffoldConfig, ScaffoldOptions, current_dir, read_template, scaffold_resource,
+    skeleton_templates_dir,
+};
 
 #[derive(Args, Debug)]
 pub struct CronCreateArgs {
@@ -18,13 +18,22 @@ pub struct CronCreateArgs {
 }
 
 pub fn run(args: &CronCreateArgs) {
+    let Some(templates_dir) = skeleton_templates_dir(false) else {
+        return;
+    };
+    let Some(template) = read_template(&templates_dir, "cron.txt") else {
+        return;
+    };
+    let Some(test_template) = read_template(&templates_dir, "cron.test.txt") else {
+        return;
+    };
     scaffold_resource(
         &ScaffoldConfig {
             label: "Cron",
             prompt_message: "Enter cron name",
             suffix: "Cron",
-            template: TEMPLATE,
-            test_template: TEST_TEMPLATE,
+            template,
+            test_template,
             dir: "crons",
             module_field: Some("cronJobs"),
             dependency: Some("@talosjs/cron"),

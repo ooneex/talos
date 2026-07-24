@@ -1,6 +1,18 @@
 use std::fs;
+use std::sync::Once;
 
 use rust_cli::utils::{ScaffoldConfig, ScaffoldOptions, scaffold_resource};
+
+static INIT_TEMPLATES: Once = Once::new();
+
+fn use_fixture_templates() {
+    INIT_TEMPLATES.call_once(|| {
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/templates");
+        unsafe {
+            std::env::set_var(rust_cli::utils::TEMPLATES_DIR_ENV, dir);
+        }
+    });
+}
 
 const TEMPLATE: &str = "export class {{NAME}}Cache {}\n";
 const TEST_TEMPLATE: &str = "// {{NAME}} in {{MODULE}}\n";
@@ -10,8 +22,8 @@ fn cache_config() -> ScaffoldConfig {
         label: "Cache",
         prompt_message: "Enter cache name",
         suffix: "Cache",
-        template: TEMPLATE,
-        test_template: TEST_TEMPLATE,
+        template: TEMPLATE.to_string(),
+        test_template: TEST_TEMPLATE.to_string(),
         dir: "cache",
         dependency: None,
         ..Default::default()
@@ -68,6 +80,7 @@ fn scaffold_resource_strips_the_suffix_when_the_user_already_included_it() {
 
 #[test]
 fn scaffold_resource_creates_the_destination_module_when_missing() {
+    use_fixture_templates();
     let tmp = tempfile::tempdir().expect("tempdir");
     let cwd = tmp.path();
 

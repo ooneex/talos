@@ -1,9 +1,9 @@
 use clap::Args;
 
-use crate::utils::{ScaffoldConfig, ScaffoldOptions, current_dir, scaffold_resource};
-
-const TEMPLATE: &str = include_str!("../templates/repository.txt");
-const TEST_TEMPLATE: &str = include_str!("../templates/repository.test.txt");
+use crate::utils::{
+    ScaffoldConfig, ScaffoldOptions, current_dir, read_template, scaffold_resource,
+    skeleton_templates_dir,
+};
 
 #[derive(Args, Debug)]
 pub struct RepositoryCreateArgs {
@@ -18,13 +18,22 @@ pub struct RepositoryCreateArgs {
 }
 
 pub fn run(args: &RepositoryCreateArgs) {
+    let Some(templates_dir) = skeleton_templates_dir(false) else {
+        return;
+    };
+    let Some(template) = read_template(&templates_dir, "repository.txt") else {
+        return;
+    };
+    let Some(test_template) = read_template(&templates_dir, "repository.test.txt") else {
+        return;
+    };
     scaffold_resource(
         &ScaffoldConfig {
             label: "Repository",
             prompt_message: "Enter repository name",
             suffix: "Repository",
-            template: TEMPLATE,
-            test_template: TEST_TEMPLATE,
+            template,
+            test_template,
             dir: "repositories",
             dependency: Some("@talosjs/repository"),
             ..Default::default()

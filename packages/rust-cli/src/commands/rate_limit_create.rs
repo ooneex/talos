@@ -1,9 +1,9 @@
 use clap::Args;
 
-use crate::utils::{ScaffoldConfig, ScaffoldOptions, current_dir, scaffold_resource};
-
-const TEMPLATE: &str = include_str!("../templates/rate-limit.txt");
-const TEST_TEMPLATE: &str = include_str!("../templates/rate-limit.test.txt");
+use crate::utils::{
+    ScaffoldConfig, ScaffoldOptions, current_dir, read_template, scaffold_resource,
+    skeleton_templates_dir,
+};
 
 #[derive(Args, Debug)]
 pub struct RateLimitCreateArgs {
@@ -18,13 +18,22 @@ pub struct RateLimitCreateArgs {
 }
 
 pub fn run(args: &RateLimitCreateArgs) {
+    let Some(templates_dir) = skeleton_templates_dir(false) else {
+        return;
+    };
+    let Some(template) = read_template(&templates_dir, "rate-limit.txt") else {
+        return;
+    };
+    let Some(test_template) = read_template(&templates_dir, "rate-limit.test.txt") else {
+        return;
+    };
     scaffold_resource(
         &ScaffoldConfig {
             label: "RateLimiter",
             prompt_message: "Enter rate limiter name",
             suffix: "RateLimiter",
-            template: TEMPLATE,
-            test_template: TEST_TEMPLATE,
+            template,
+            test_template,
             dir: "rate-limit",
             strip_suffixes: &["RateLimiter", "RateLimit"],
             dependency: Some("@talosjs/rate-limit"),

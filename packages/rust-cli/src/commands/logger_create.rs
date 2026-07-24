@@ -1,9 +1,9 @@
 use clap::Args;
 
-use crate::utils::{ScaffoldConfig, ScaffoldOptions, current_dir, scaffold_resource};
-
-const TEMPLATE: &str = include_str!("../templates/logger.txt");
-const TEST_TEMPLATE: &str = include_str!("../templates/logger.test.txt");
+use crate::utils::{
+    ScaffoldConfig, ScaffoldOptions, current_dir, read_template, scaffold_resource,
+    skeleton_templates_dir,
+};
 
 #[derive(Args, Debug)]
 pub struct LoggerCreateArgs {
@@ -18,13 +18,22 @@ pub struct LoggerCreateArgs {
 }
 
 pub fn run(args: &LoggerCreateArgs) {
+    let Some(templates_dir) = skeleton_templates_dir(false) else {
+        return;
+    };
+    let Some(template) = read_template(&templates_dir, "logger.txt") else {
+        return;
+    };
+    let Some(test_template) = read_template(&templates_dir, "logger.test.txt") else {
+        return;
+    };
     scaffold_resource(
         &ScaffoldConfig {
             label: "Logger",
             prompt_message: "Enter logger name",
             suffix: "Logger",
-            template: TEMPLATE,
-            test_template: TEST_TEMPLATE,
+            template,
+            test_template,
             dir: "loggers",
             dependency: Some("@talosjs/logger"),
             ..Default::default()

@@ -3,12 +3,9 @@ use regex::Regex;
 
 use crate::utils::{
     ask_confirm, ask_input, ask_route_method, ask_route_name, ask_route_path, current_dir,
-    ensure_module, install_dependency, to_kebab_case, to_pascal_case,
+    ensure_module, install_dependency, read_template, skeleton_templates_dir, to_kebab_case,
+    to_pascal_case,
 };
-
-const CONTROLLER_TEMPLATE: &str = include_str!("../templates/controller.txt");
-const SOCKET_CONTROLLER_TEMPLATE: &str = include_str!("../templates/controller.socket.txt");
-const TEST_TEMPLATE: &str = include_str!("../templates/controller.test.txt");
 
 #[derive(Args, Debug)]
 pub struct ControllerCreateArgs {
@@ -157,10 +154,19 @@ pub fn run(args: &ControllerCreateArgs) {
         }
     };
 
-    let selected_template = if is_socket {
-        SOCKET_CONTROLLER_TEMPLATE
+    let Some(templates_dir) = skeleton_templates_dir(false) else {
+        return;
+    };
+    let template_file = if is_socket {
+        "controller.socket.txt"
     } else {
-        CONTROLLER_TEMPLATE
+        "controller.txt"
+    };
+    let Some(selected_template) = read_template(&templates_dir, template_file) else {
+        return;
+    };
+    let Some(test_template) = read_template(&templates_dir, "controller.test.txt") else {
+        return;
     };
     let mut content = selected_template.replace("{{NAME}}", &name);
     content = content
@@ -199,7 +205,7 @@ pub fn run(args: &ControllerCreateArgs) {
         return;
     }
 
-    let test_content = TEST_TEMPLATE
+    let test_content = test_template
         .replace("{{NAME}}", &name)
         .replace("{{MODULE}}", &module);
     let tests_dir = base.join("tests").join("controllers");

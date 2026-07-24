@@ -69,6 +69,8 @@ pub use scaffold::{
     ScaffoldConfig, ScaffoldOptions, current_dir, ensure_module, install_dependency,
     scaffold_resource,
 };
-pub use skeleton::{SKELETON_REPO_URL, clone_skeleton};
+pub use skeleton::{
+    SKELETON_REPO_URL, TEMPLATES_DIR_ENV, clone_skeleton, read_template, skeleton_templates_dir,
+};
 
 pub use style::{Spinner, error, info, step, success, warn};

@@ -1,13 +1,9 @@
 use clap::Args;
 
 use crate::utils::{
-    ask_confirm, ask_input, current_dir, ensure_module, to_kebab_case, to_pascal_case,
-    write_export_index,
+    ask_confirm, ask_input, current_dir, ensure_module, read_template, skeleton_templates_dir,
+    to_kebab_case, to_pascal_case, write_export_index,
 };
-
-const COMMAND_TEMPLATE: &str = include_str!("../templates/command/command.txt");
-const COMMAND_TEST_TEMPLATE: &str = include_str!("../templates/command/command.test.txt");
-const COMMAND_RUN_TEMPLATE: &str = include_str!("../templates/module/command.run.txt");
 
 #[derive(Args, Debug)]
 pub struct CommandCreateArgs {
@@ -41,6 +37,20 @@ pub fn run(args: &CommandCreateArgs) {
 
     ensure_module(&module, &cwd);
 
+    let Some(templates_dir) = skeleton_templates_dir(false) else {
+        return;
+    };
+    let Some(command_template) = read_template(&templates_dir, "command/command.txt") else {
+        return;
+    };
+    let Some(command_test_template) = read_template(&templates_dir, "command/command.test.txt")
+    else {
+        return;
+    };
+    let Some(command_run_template) = read_template(&templates_dir, "module/command.run.txt") else {
+        return;
+    };
+
     let base = cwd.join("modules").join(&module);
     let command_dir = base.join("src").join("commands");
     let tests_dir = base.join("tests").join("commands");
@@ -62,14 +72,14 @@ pub fn run(args: &CommandCreateArgs) {
     }
 
     let command_name = to_kebab_case(&class_name).replace('-', ":");
-    let content = COMMAND_TEMPLATE
+    let content = command_template
         .replace("{{NAME}}", &class_name)
         .replace("{{COMMAND_NAME}}", &command_name)
         .replace(
             "{{COMMAND_DESCRIPTION}}",
             &format!("Execute {command_name} command"),
         );
-    let test_content = COMMAND_TEST_TEMPLATE
+    let test_content = command_test_template
         .replace("{{NAME}}", &class_name)
         .replace("{{MODULE}}", &to_kebab_case(&module));
 
@@ -113,7 +123,7 @@ pub fn run(args: &CommandCreateArgs) {
         }
         let _ = std::fs::write(
             &bin_run_path,
-            COMMAND_RUN_TEMPLATE.replace("{{name}}", &module),
+            command_run_template.replace("{{name}}", &module),
         );
     }
 

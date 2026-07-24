@@ -1,10 +1,9 @@
 use clap::Args;
 
-use crate::utils::{current_dir, ensure_module, generate_migration_version, write_export_index};
-
-const MIGRATION_TEMPLATE: &str = include_str!("../templates/migrations/migration.txt");
-const MIGRATION_UP_TEMPLATE: &str = include_str!("../templates/module/migration.up.txt");
-const MIGRATION_DOWN_TEMPLATE: &str = include_str!("../templates/module/migration.down.txt");
+use crate::utils::{
+    current_dir, ensure_module, generate_migration_version, read_template, skeleton_templates_dir,
+    write_export_index,
+};
 
 #[derive(Args, Debug)]
 pub struct MigrationCreateArgs {
@@ -25,13 +24,28 @@ pub fn run(args: &MigrationCreateArgs) {
 
     ensure_module(&module, &cwd);
 
+    let Some(templates_dir) = skeleton_templates_dir(false) else {
+        return;
+    };
+    let Some(migration_template) = read_template(&templates_dir, "migrations/migration.txt") else {
+        return;
+    };
+    let Some(migration_up_template) = read_template(&templates_dir, "module/migration.up.txt")
+    else {
+        return;
+    };
+    let Some(migration_down_template) = read_template(&templates_dir, "module/migration.down.txt")
+    else {
+        return;
+    };
+
     let base = cwd.join("modules").join(&module);
     let migrations_dir = base.join("src").join("migrations");
 
     let version = generate_migration_version();
     let name = format!("Migration{version}");
 
-    let content = MIGRATION_TEMPLATE
+    let content = migration_template
         .replace("{{ name }}", &name)
         .replace("{{ version }}", &version);
 
@@ -65,12 +79,12 @@ pub fn run(args: &MigrationCreateArgs) {
         let _ = std::fs::create_dir_all(&bin_dir);
     }
     if !up_path.exists() {
-        let _ = std::fs::write(&up_path, MIGRATION_UP_TEMPLATE.replace("{{name}}", &module));
+        let _ = std::fs::write(&up_path, migration_up_template.replace("{{name}}", &module));
     }
     if !down_path.exists() {
         let _ = std::fs::write(
             &down_path,
-            MIGRATION_DOWN_TEMPLATE.replace("{{name}}", &module),
+            migration_down_template.replace("{{name}}", &module),
         );
     }
 

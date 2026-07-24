@@ -1,7 +1,7 @@
 use clap::Args;
 use serde_json::{Map, Value};
 
-use crate::utils::{ask_select, current_dir};
+use crate::utils::{ask_select, current_dir, read_template, skeleton_templates_dir};
 
 const DOCKER_SERVICES: &[&str] = &[
     "clickhouse",
@@ -33,27 +33,11 @@ pub struct DockerCreateArgs {
     pub cwd: Option<String>,
 }
 
-fn template_for(name: &str) -> Option<&'static str> {
-    match name {
-        "clickhouse" => Some(include_str!("../templates/docker/clickhouse.txt")),
-        "elasticsearch" => Some(include_str!("../templates/docker/elasticsearch.txt")),
-        "grafana" => Some(include_str!("../templates/docker/grafana.txt")),
-        "jaeger" => Some(include_str!("../templates/docker/jaeger.txt")),
-        "keycloak" => Some(include_str!("../templates/docker/keycloak.txt")),
-        "libretranslate" => Some(include_str!("../templates/docker/libretranslate.txt")),
-        "maildev" => Some(include_str!("../templates/docker/maildev.txt")),
-        "memcached" => Some(include_str!("../templates/docker/memcached.txt")),
-        "minio" => Some(include_str!("../templates/docker/minio.txt")),
-        "mongodb" => Some(include_str!("../templates/docker/mongodb.txt")),
-        "mysql" => Some(include_str!("../templates/docker/mysql.txt")),
-        "nats" => Some(include_str!("../templates/docker/nats.txt")),
-        "postgres" => Some(include_str!("../templates/docker/postgres.txt")),
-        "prometheus" => Some(include_str!("../templates/docker/prometheus.txt")),
-        "rabbitmq" => Some(include_str!("../templates/docker/rabbitmq.txt")),
-        "redis" => Some(include_str!("../templates/docker/redis.txt")),
-        "temporal" => Some(include_str!("../templates/docker/temporal.txt")),
-        "vault" => Some(include_str!("../templates/docker/vault.txt")),
-        _ => None,
+fn template_for(dir: &std::path::Path, name: &str) -> Option<String> {
+    if DOCKER_SERVICES.contains(&name) {
+        read_template(dir, &format!("docker/{name}.txt"))
+    } else {
+        None
     }
 }
 
@@ -116,7 +100,10 @@ pub fn run(args: &DockerCreateArgs) {
             None => return,
         },
     };
-    let Some(template_content) = template_for(&name) else {
+    let Some(templates_dir) = skeleton_templates_dir(false) else {
+        return;
+    };
+    let Some(template_content) = template_for(&templates_dir, &name) else {
         crate::utils::error(format!("Unsupported docker service \"{name}\""));
         return;
     };
@@ -142,8 +129,8 @@ pub fn run(args: &DockerCreateArgs) {
             return;
         }
 
-        let service_block = extract_service_block(template_content);
-        let new_volume_names = extract_volume_names(template_content);
+        let service_block = extract_service_block(&template_content);
+        let new_volume_names = extract_volume_names(&template_content);
 
         let mut updated_content = existing_content;
         let volumes_index = updated_content.find("\nvolumes:");

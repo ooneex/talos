@@ -6,13 +6,10 @@ use fs_extra::dir::{CopyOptions, copy as copy_dir};
 use serde_json::Value;
 
 use crate::utils::{
-    add_path_alias, ask_input, clone_skeleton, current_dir, to_kebab_case, to_pascal_case,
-    to_snake_case,
+    add_path_alias, ask_input, clone_skeleton, current_dir, read_template, to_kebab_case,
+    to_pascal_case, to_snake_case,
 };
 
-const MODULE_TEMPLATE: &str = include_str!("../templates/module/module.txt");
-const TEST_TEMPLATE: &str = include_str!("../templates/module/test.txt");
-const YML_TEMPLATE: &str = include_str!("../templates/module/yml.txt");
 const GITHUB_MICROSERVICE_CI: &str =
     include_str!("../../../cli/src/templates/github/microservice-ci.yml.txt");
 const GITHUB_MICROSERVICE_PRODUCTION: &str =
@@ -208,11 +205,24 @@ pub fn run(args: &MicroserviceCreateArgs) {
     let _ = fs::remove_file(src_dir.join("MicroserviceModule.ts"));
     let _ = fs::remove_file(tests_dir.join("MicroserviceModule.spec.ts"));
 
-    let module_content = MODULE_TEMPLATE.replace("{{NAME}}", &pascal_name);
-    let test_content = TEST_TEMPLATE
+    let templates_dir = std::env::var_os(crate::utils::TEMPLATES_DIR_ENV)
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|| repo_dir.join("templates"));
+    let Some(module_template) = read_template(&templates_dir, "module/module.txt") else {
+        return;
+    };
+    let Some(test_template) = read_template(&templates_dir, "module/test.txt") else {
+        return;
+    };
+    let Some(yml_template) = read_template(&templates_dir, "module/yml.txt") else {
+        return;
+    };
+
+    let module_content = module_template.replace("{{NAME}}", &pascal_name);
+    let test_content = test_template
         .replace("{{NAME}}", &pascal_name)
         .replace("{{name}}", &kebab_name);
-    let yml_content = YML_TEMPLATE
+    let yml_content = yml_template
         .replace("{{name}}", &kebab_name)
         .replace("type: \"module\"", "type: \"microservice\"");
     let _ = fs::write(

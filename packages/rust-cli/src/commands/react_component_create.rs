@@ -4,13 +4,10 @@ use clap::Args;
 use serde_json::Value;
 
 use crate::utils::{
-    ask_confirm, ask_input, current_dir, run_spinner_step, to_kebab_case, to_pascal_case,
+    ask_confirm, ask_input, current_dir, read_template, run_spinner_step, skeleton_templates_dir,
+    to_kebab_case, to_pascal_case,
 };
 
-const COMPONENT_TEMPLATE: &str = include_str!("../templates/react-component.txt");
-const SPEC_TEMPLATE: &str = include_str!("../templates/react-component.spec.txt");
-const HAPPYDOM_TEMPLATE: &str = include_str!("../templates/react-component.happydom.txt");
-const BUNFIG_TEMPLATE: &str = include_str!("../templates/react-component.bunfig.txt");
 const TEST_DEPENDENCIES: &[&str] = &[
     "@happy-dom/global-registrator",
     "@testing-library/react",
@@ -107,8 +104,25 @@ pub fn run(args: &ReactComponentCreateArgs) {
         let _ = std::fs::create_dir_all(parent);
     }
 
-    let component_content = COMPONENT_TEMPLATE.replace("{{NAME}}", &pascal_name);
-    let spec_content = SPEC_TEMPLATE
+    let Some(templates_dir) = skeleton_templates_dir(false) else {
+        return;
+    };
+    let Some(component_template) = read_template(&templates_dir, "react-component.txt") else {
+        return;
+    };
+    let Some(spec_template) = read_template(&templates_dir, "react-component.spec.txt") else {
+        return;
+    };
+    let Some(happydom_template) = read_template(&templates_dir, "react-component.happydom.txt")
+    else {
+        return;
+    };
+    let Some(bunfig_template) = read_template(&templates_dir, "react-component.bunfig.txt") else {
+        return;
+    };
+
+    let component_content = component_template.replace("{{NAME}}", &pascal_name);
+    let spec_content = spec_template
         .replace("{{NAME}}", &pascal_name)
         .replace("{{IMPORT}}", &spec_import);
     let _ = std::fs::write(&component_path, component_content);
@@ -118,8 +132,14 @@ pub fn run(args: &ReactComponentCreateArgs) {
     crate::utils::success(format!("{} created successfully", spec_path.display()));
 
     for (path, content) in [
-        (module_local_dir.join("happydom.ts"), HAPPYDOM_TEMPLATE),
-        (module_local_dir.join("bunfig.toml"), BUNFIG_TEMPLATE),
+        (
+            module_local_dir.join("happydom.ts"),
+            happydom_template.as_str(),
+        ),
+        (
+            module_local_dir.join("bunfig.toml"),
+            bunfig_template.as_str(),
+        ),
     ] {
         if !path.exists() {
             let _ = std::fs::write(&path, content);

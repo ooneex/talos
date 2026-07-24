@@ -1,11 +1,9 @@
 use clap::Args;
 
 use crate::utils::{
-    ScaffoldConfig, ScaffoldOptions, current_dir, scaffold_resource, to_kebab_case,
+    ScaffoldConfig, ScaffoldOptions, current_dir, read_template, scaffold_resource,
+    skeleton_templates_dir, to_kebab_case,
 };
-
-const TEMPLATE: &str = include_str!("../templates/ai-middleware.txt");
-const TEST_TEMPLATE: &str = include_str!("../templates/ai-middleware.test.txt");
 
 #[derive(Args, Debug)]
 pub struct AiMiddlewareCreateArgs {
@@ -20,13 +18,22 @@ pub struct AiMiddlewareCreateArgs {
 }
 
 pub fn run(args: &AiMiddlewareCreateArgs) {
+    let Some(templates_dir) = skeleton_templates_dir(false) else {
+        return;
+    };
+    let Some(template) = read_template(&templates_dir, "ai-middleware.txt") else {
+        return;
+    };
+    let Some(test_template) = read_template(&templates_dir, "ai-middleware.test.txt") else {
+        return;
+    };
     scaffold_resource(
         &ScaffoldConfig {
             label: "AI middleware",
             prompt_message: "Enter middleware name",
             suffix: "Middleware",
-            template: TEMPLATE,
-            test_template: TEST_TEMPLATE,
+            template,
+            test_template,
             dir: "ai/middlewares",
             dependency: Some("@talosjs/ai"),
             template_data: Some(Box::new(|name: &str| vec![("KEBAB", to_kebab_case(name))])),

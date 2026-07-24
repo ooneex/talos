@@ -1,12 +1,9 @@
 use clap::Args;
 
 use crate::utils::{
-    ScaffoldConfig, ScaffoldOptions, ask_confirm, ask_input, current_dir, scaffold_resource,
+    ScaffoldConfig, ScaffoldOptions, ask_confirm, ask_input, current_dir, read_template,
+    scaffold_resource, skeleton_templates_dir,
 };
-
-const TEMPLATE: &str = include_str!("../templates/middleware.txt");
-const SOCKET_TEMPLATE: &str = include_str!("../templates/middleware.socket.txt");
-const TEST_TEMPLATE: &str = include_str!("../templates/middleware.test.txt");
 
 #[derive(Args, Debug)]
 pub struct MiddlewareCreateArgs {
@@ -37,13 +34,28 @@ pub fn run(args: &MiddlewareCreateArgs) {
         None => ask_confirm("Is this a socket middleware?", false),
     };
 
+    let Some(templates_dir) = skeleton_templates_dir(false) else {
+        return;
+    };
+    let template_file = if is_socket {
+        "middleware.socket.txt"
+    } else {
+        "middleware.txt"
+    };
+    let Some(template) = read_template(&templates_dir, template_file) else {
+        return;
+    };
+    let Some(test_template) = read_template(&templates_dir, "middleware.test.txt") else {
+        return;
+    };
+
     scaffold_resource(
         &ScaffoldConfig {
             label: "Middleware",
             prompt_message: "Enter middleware name",
             suffix: "Middleware",
-            template: if is_socket { SOCKET_TEMPLATE } else { TEMPLATE },
-            test_template: TEST_TEMPLATE,
+            template,
+            test_template,
             dir: "middlewares",
             module_field: Some("middlewares"),
             dependency: Some("@talosjs/middleware"),
