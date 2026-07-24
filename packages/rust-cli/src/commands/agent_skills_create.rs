@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 
 use clap::Args;
 
+use crate::templates::llm::assistants::{ScaffoldInput, SkillInput, resolve_adapter};
 use crate::utils::{clone_skeleton, current_dir};
 
 const DEFAULT_AGENTS: &[&str] = &[".claude", ".codex"];
@@ -28,177 +29,94 @@ pub struct AgentSkillsCreateArgs {
     pub no_cache: bool,
 }
 
-fn visit_files_recursive(dir: &Path, callback: &mut impl FnMut(&Path, &Path)) {
-    let Ok(entries) = fs::read_dir(dir) else {
-        return;
+/// Read the skeleton's `.claude/agents/*.md` files into `(name, content)` pairs
+/// sorted by file name.
+fn read_agents(repo_dir: &Path) -> Vec<(String, String)> {
+    let agents_dir = repo_dir.join(".claude").join("agents");
+    let Ok(entries) = fs::read_dir(&agents_dir) else {
+        return Vec::new();
     };
-    for entry in entries.flatten() {
-        let path = entry.path();
-        if path.is_dir() {
-            visit_files_recursive(&path, callback);
-        } else if path.is_file() {
-            callback(dir, &path);
-        }
-    }
-}
 
-fn parse_front_matter(source: &str) -> (std::collections::BTreeMap<String, String>, String) {
-    if let Some(rest) = source.strip_prefix("---\n")
-        && let Some(index) = rest.find("\n---\n")
-    {
-        let front = &rest[..index];
-        let body = rest[index + 5..].trim().to_string();
-        let mut data = std::collections::BTreeMap::new();
-        for line in front.lines() {
-            if let Some((key, value)) = line.split_once(':') {
-                data.insert(key.trim().to_string(), value.trim().to_string());
-            }
-        }
-        return (data, body);
-    }
-    (std::collections::BTreeMap::new(), source.trim().to_string())
-}
-
-fn merge_description(data: &std::collections::BTreeMap<String, String>) -> String {
-    [data.get("description"), data.get("when_to_use")]
-        .into_iter()
+    let mut agents: Vec<(String, String)> = entries
         .flatten()
-        .map(String::as_str)
-        .collect::<Vec<_>>()
-        .join(" ")
-}
-
-fn can_write_files(data: &std::collections::BTreeMap<String, String>) -> bool {
-    data.get("tools")
-        .is_some_and(|tools| tools.contains("Write") || tools.contains("Edit"))
-}
-
-fn to_title_case(name: &str) -> String {
-    name.split(['-', '.'])
-        .filter(|part| !part.is_empty())
-        .map(|part| format!("{}{}", part[..1].to_uppercase(), &part[1..]))
-        .collect::<Vec<_>>()
-        .join(" ")
-}
-
-fn toml_basic_string(value: &str) -> String {
-    format!("\"{}\"", value.replace('\\', "\\\\").replace('"', "\\\""))
-}
-
-fn to_codex_agent(source: &str) -> String {
-    let (data, body) = parse_front_matter(source);
-    let mut lines = vec![
-        format!(
-            "name = {}",
-            toml_basic_string(data.get("name").map(String::as_str).unwrap_or_default())
-        ),
-        format!(
-            "description = {}",
-            toml_basic_string(&merge_description(&data))
-        ),
-    ];
-    if let Some(effort) = data.get("effort") {
-        lines.push(format!(
-            "model_reasoning_effort = {}",
-            toml_basic_string(effort)
-        ));
-    }
-    lines.push(format!(
-        "sandbox_mode = {}",
-        toml_basic_string(if can_write_files(&data) {
-            "workspace-write"
-        } else {
-            "read-only"
+        .filter_map(|entry| {
+            let path = entry.path();
+            if !path.is_file() || path.extension().and_then(|ext| ext.to_str()) != Some("md") {
+                return None;
+            }
+            let name = path.file_stem()?.to_str()?.to_string();
+            let content = fs::read_to_string(&path).ok()?;
+            Some((name, content))
         })
-    ));
-    lines.push(format!(
-        "nickname_candidates = [{}]",
-        toml_basic_string(&to_title_case(
-            data.get("name").map(String::as_str).unwrap_or_default()
-        ))
-    ));
-    lines.push("developer_instructions = '''".to_string());
-    lines.push(body);
-    lines.push("'''".to_string());
-    format!("{}\n", lines.join("\n"))
+        .collect();
+
+    agents.sort_by(|(left, _), (right, _)| left.cmp(right));
+    agents
 }
 
-fn to_codex_skill(source: &str) -> String {
-    let (data, body) = parse_front_matter(source);
-    format!(
-        "---\nname: {}\ndescription: {}\n---\n\n{}\n",
-        data.get("name").cloned().unwrap_or_default(),
-        merge_description(&data),
-        body
-    )
+/// Read a skill's `references/*` files into `(name, content)` pairs sorted by
+/// file name.
+fn read_skill_references(skill_dir: &Path) -> Vec<(String, String)> {
+    let references_dir = skill_dir.join("references");
+    let Ok(entries) = fs::read_dir(&references_dir) else {
+        return Vec::new();
+    };
+
+    let mut references: Vec<(String, String)> = entries
+        .flatten()
+        .filter_map(|entry| {
+            let path = entry.path();
+            if !path.is_file() {
+                return None;
+            }
+            let name = path.file_name()?.to_str()?.to_string();
+            let content = fs::read_to_string(&path).ok()?;
+            Some((name, content))
+        })
+        .collect();
+
+    references.sort_by(|(left, _), (right, _)| left.cmp(right));
+    references
 }
 
-fn copy_default_layout(source_root: &Path, config_dir: &str, cwd: &Path, silent: bool) {
-    let assistants_root = source_root.join(".claude");
-    for folder in ["agents", "skills"] {
-        let source = assistants_root.join(folder);
-        if !source.exists() {
-            continue;
-        }
-        let mut copy_file = |base: &Path, file_path: &Path| {
-            let relative = file_path.strip_prefix(base).unwrap_or(file_path);
-            let dest = cwd.join(config_dir).join(folder).join(relative);
-            if let Some(parent) = dest.parent() {
-                let _ = fs::create_dir_all(parent);
+/// Read the skeleton's `.claude/skills/*/SKILL.md` folders into `(name, skill)`
+/// pairs sorted by directory name.
+fn read_skills(repo_dir: &Path) -> Vec<(String, SkillInput)> {
+    let skills_dir = repo_dir.join(".claude").join("skills");
+    let Ok(entries) = fs::read_dir(&skills_dir) else {
+        return Vec::new();
+    };
+
+    let mut skills: Vec<(String, SkillInput)> = entries
+        .flatten()
+        .filter_map(|entry| {
+            let path = entry.path();
+            if !path.is_dir() {
+                return None;
             }
-            if let Ok(content) = fs::read_to_string(file_path) {
-                let _ = fs::write(&dest, content);
-                if !silent {
-                    crate::utils::success(format!("{} created successfully", dest.display()));
-                }
-            }
-        };
-        visit_files_recursive(&source, &mut copy_file);
+            let name = path.file_name()?.to_str()?.to_string();
+            let source = fs::read_to_string(path.join("SKILL.md")).ok()?;
+            let references = read_skill_references(&path);
+            Some((name, SkillInput { source, references }))
+        })
+        .collect();
+
+    skills.sort_by(|(left, _), (right, _)| left.cmp(right));
+    skills
+}
+
+/// Build the shared scaffold input from the cloned skeleton, rendering the
+/// project name into `AGENTS.md`.
+fn load_scaffold_input(repo_dir: &Path, project_name: &str) -> ScaffoldInput {
+    let agents_md = fs::read_to_string(repo_dir.join("AGENTS.md"))
+        .unwrap_or_default()
+        .replace("{{NAME}}", project_name);
+
+    ScaffoldInput {
+        agents_md,
+        agents: read_agents(repo_dir),
+        skills: read_skills(repo_dir),
     }
-}
-
-fn copy_codex_layout(source_root: &Path, cwd: &Path, silent: bool) {
-    let assistants_root = source_root.join(".claude");
-    let agents_dir = assistants_root.join("agents");
-    let skills_dir = assistants_root.join("skills");
-    let mut copy_agent = |base: &Path, file_path: &Path| {
-        let relative = file_path.strip_prefix(base).unwrap_or(file_path);
-        let dest = cwd
-            .join(".codex")
-            .join("agents")
-            .join(relative)
-            .with_extension("toml");
-        if let Some(parent) = dest.parent() {
-            let _ = fs::create_dir_all(parent);
-        }
-        if let Ok(content) = fs::read_to_string(file_path) {
-            let _ = fs::write(&dest, to_codex_agent(&content));
-            if !silent {
-                crate::utils::success(format!("{} created successfully", dest.display()));
-            }
-        }
-    };
-    visit_files_recursive(&agents_dir, &mut copy_agent);
-    let mut copy_skill = |base: &Path, file_path: &Path| {
-        let relative = file_path.strip_prefix(base).unwrap_or(file_path);
-        let dest = cwd.join(".codex").join("skills").join(relative);
-        if let Some(parent) = dest.parent() {
-            let _ = fs::create_dir_all(parent);
-        }
-        if let Ok(content) = fs::read_to_string(file_path) {
-            let final_content =
-                if file_path.file_name().and_then(|n| n.to_str()) == Some("SKILL.md") {
-                    to_codex_skill(&content)
-                } else {
-                    content
-                };
-            let _ = fs::write(&dest, final_content);
-            if !silent {
-                crate::utils::success(format!("{} created successfully", dest.display()));
-            }
-        }
-    };
-    visit_files_recursive(&skills_dir, &mut copy_skill);
 }
 
 pub fn run(args: &AgentSkillsCreateArgs) {
@@ -228,21 +146,18 @@ pub fn run(args: &AgentSkillsCreateArgs) {
         }
     };
 
-    let agents_md_path = repo_dir.join("AGENTS.md");
-    if let Ok(content) = fs::read_to_string(&agents_md_path) {
-        let rendered = content.replace("{{NAME}}", &project_name);
-        let dest = cwd.join("AGENTS.md");
-        let _ = fs::write(&dest, rendered);
-        if !args.silent {
-            crate::utils::success(format!("{} created successfully", dest.display()));
-        }
-    }
+    let input = load_scaffold_input(&repo_dir, &project_name);
 
     for config_dir in &agent_dirs {
-        if config_dir == ".codex" {
-            copy_codex_layout(&repo_dir, &cwd, args.silent);
-        } else {
-            copy_default_layout(&repo_dir, config_dir, &cwd, args.silent);
+        let adapter = resolve_adapter(config_dir);
+        for file in adapter(&input, config_dir) {
+            let dest = cwd.join(&file.path);
+            if let Some(parent) = dest.parent() {
+                let _ = fs::create_dir_all(parent);
+            }
+            if fs::write(&dest, &file.content).is_ok() && !args.silent {
+                crate::utils::success(format!("{} created successfully", dest.display()));
+            }
         }
     }
 }
