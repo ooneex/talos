@@ -69,4 +69,21 @@ if ($userPath -notlike "*$binDir*") {
 }
 
 Write-Host ""
+
+# Add an 'oo' alias for the talos binary to the user's PowerShell profile.
+$Alias = "oo"
+$aliasLine = "Set-Alias -Name $Alias -Value `"$exe`""
+$profilePath = $PROFILE.CurrentUserAllHosts
+$profileDir = Split-Path -Parent $profilePath
+if (-not (Test-Path $profileDir)) {
+  New-Item -ItemType Directory -Path $profileDir -Force | Out-Null
+}
+$aliasPattern = "Set-Alias -Name $Alias "
+if (-not (Test-Path $profilePath) -or -not (Select-String -Path $profilePath -SimpleMatch $aliasPattern -Quiet)) {
+  Add-Content -Path $profilePath -Value "`n# talos`n$aliasLine"
+  Set-Alias -Name $Alias -Value $exe
+  Write-Host "Added '$Alias' alias for $Binary in $profilePath" -ForegroundColor Cyan
+}
+
+Write-Host ""
 Write-Host "Run '$Binary --version' to get started (restart your terminal first)." -ForegroundColor Green
