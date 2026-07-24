@@ -30,6 +30,10 @@ pub struct SpaCreateArgs {
     /// Suppress progress and success messages.
     #[arg(long, default_value_t = false)]
     pub silent: bool,
+
+    /// Ignore the cached skeleton and re-download it.
+    #[arg(long, default_value_t = false)]
+    pub no_cache: bool,
 }
 
 const DEFAULT_PORT: u16 = 3030;
@@ -204,7 +208,7 @@ pub fn run(args: &SpaCreateArgs) {
     });
 
     let clone_spinner = Spinner::start("Downloading spa template...");
-    let cloned = clone_skeleton(true);
+    let cloned = clone_skeleton(true, !args.no_cache);
     clone_spinner.stop();
     let Some(repo_dir) = cloned else {
         return;
@@ -325,6 +329,7 @@ pub fn run(args: &SpaCreateArgs) {
             name: Some(design_name.clone()),
             cwd: Some(cwd.to_string_lossy().to_string()),
             silent,
+            no_cache: args.no_cache,
         });
     }
 

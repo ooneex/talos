@@ -36,6 +36,10 @@ pub struct MicroserviceCreateArgs {
     /// Suppress progress and success messages.
     #[arg(long, default_value_t = false)]
     pub silent: bool,
+
+    /// Ignore the cached skeleton and re-download it.
+    #[arg(long, default_value_t = false)]
+    pub no_cache: bool,
 }
 
 fn detect_ci_provider(cwd: &Path) -> Option<&'static str> {
@@ -193,7 +197,7 @@ pub fn run(args: &MicroserviceCreateArgs) {
     let src_dir = module_dir.join("src");
     let tests_dir = module_dir.join("tests");
 
-    let Some(repo_dir) = clone_skeleton(silent) else {
+    let Some(repo_dir) = clone_skeleton(silent, !args.no_cache) else {
         return;
     };
     let template_dir = repo_dir.join("modules").join("microservice");

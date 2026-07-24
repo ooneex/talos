@@ -227,7 +227,8 @@ _talos() {
         agent:skills:create)
           _arguments -s \
             '--agents=-[Assistant config dir(s), comma-separated]::agents:_talos_agent_dirs' \
-            '--cwd=[Working directory]:cwd:_files -/'
+            '--cwd=[Working directory]:cwd:_files -/' \
+            '--no-cache[Ignore the cached skeleton and re-download it]'
           ;;
         app:start|app:stop)
           _arguments -s \
@@ -242,13 +243,15 @@ _talos() {
         app:create)
           _arguments -s \
             '--name=[Name of the resource]:name' \
-            '--destination=[Destination path]:destination:_files -/'
+            '--destination=[Destination path]:destination:_files -/' \
+            '--no-cache[Ignore the cached skeleton and re-download it]'
           ;;
         app:init)
           _arguments -s \
             '--name=[Name of the resource]:name' \
             '--destination=[Destination path]:destination:_files -/' \
-            '--app-type=[Application type]:type:(cli api)'
+            '--app-type=[Application type]:type:(cli api)' \
+            '--no-cache[Ignore the cached skeleton and re-download it]'
           ;;
         command:run)
           _arguments -s \
@@ -421,7 +424,8 @@ _talos() {
           ;;
         design:create|microservice:create)
           _arguments -s \
-            '--name=[Name of the resource]:name'
+            '--name=[Name of the resource]:name' \
+            '--no-cache[Ignore the cached skeleton and re-download it]'
           ;;
         module:create)
           _arguments -s \
@@ -431,7 +435,8 @@ _talos() {
         spa:create)
           _arguments -s \
             '--name=[Name of the resource]:name' \
-            '--design=[Design module name]:design:_talos_design_modules'
+            '--design=[Design module name]:design:_talos_design_modules' \
+            '--no-cache[Ignore the cached skeleton and re-download it]'
           ;;
         design:remove|spa:remove|microservice:remove|module:remove)
           _arguments -s \

@@ -210,6 +210,7 @@ for cmd in oo talos
 
     complete -c $cmd -n '__fish_seen_subcommand_from agent:skills:create' -l agents -x -a '(__talos_agent_dirs)' -d 'Assistant config dir(s), comma-separated'
     complete -c $cmd -n '__fish_seen_subcommand_from agent:skills:create' -l cwd -r -f -a '(__fish_complete_directories)' -d 'Working directory'
+    complete -c $cmd -n '__fish_seen_subcommand_from agent:skills:create' -l no-cache -d 'Ignore the cached skeleton and re-download it'
 
     complete -c $cmd -n '__fish_seen_subcommand_from app:start app:stop' -l modules -a '(__talos_runnable_modules)' -d 'Module name(s), comma-separated (default: all)'
     complete -c $cmd -n '__fish_seen_subcommand_from app:start app:stop' -l packages -a '(__talos_runnable_modules)' -d 'Alias for --modules, comma-separated (default: all)'
@@ -219,10 +220,12 @@ for cmd in oo talos
 
     complete -c $cmd -n '__fish_seen_subcommand_from app:create' -l name -x -d 'Name of the resource'
     complete -c $cmd -n '__fish_seen_subcommand_from app:create' -l destination -r -f -a '(__fish_complete_directories)' -d 'Destination path'
+    complete -c $cmd -n '__fish_seen_subcommand_from app:create' -l no-cache -d 'Ignore the cached skeleton and re-download it'
 
     complete -c $cmd -n '__fish_seen_subcommand_from app:init' -l name -x -d 'Name of the resource'
     complete -c $cmd -n '__fish_seen_subcommand_from app:init' -l destination -r -f -a '(__fish_complete_directories)' -d 'Destination path'
     complete -c $cmd -n '__fish_seen_subcommand_from app:init' -l app-type -x -a 'cli api' -d 'Application type'
+    complete -c $cmd -n '__fish_seen_subcommand_from app:init' -l no-cache -d 'Ignore the cached skeleton and re-download it'
 
     complete -c $cmd -n '__fish_seen_subcommand_from command:run' -f -a '(__talos_custom_commands)' -d 'Custom command'
 
@@ -324,12 +327,14 @@ for cmd in oo talos
     complete -c $cmd -n '__fish_seen_subcommand_from migration:down' -l version -x -d 'Version of the migration to roll back'
 
     complete -c $cmd -n '__fish_seen_subcommand_from design:create microservice:create' -l name -x -d 'Name of the resource'
+    complete -c $cmd -n '__fish_seen_subcommand_from design:create microservice:create' -l no-cache -d 'Ignore the cached skeleton and re-download it'
 
     complete -c $cmd -n '__fish_seen_subcommand_from module:create' -l name -x -d 'Name of the resource'
     complete -c $cmd -n '__fish_seen_subcommand_from module:create' -l destination -x -a '(__talos_destination_modules)' -d 'Destination module'
 
     complete -c $cmd -n '__fish_seen_subcommand_from spa:create' -l name -x -d 'Name of the resource'
     complete -c $cmd -n '__fish_seen_subcommand_from spa:create' -l design -x -a '(__talos_design_modules)' -d 'Design module name'
+    complete -c $cmd -n '__fish_seen_subcommand_from spa:create' -l no-cache -d 'Ignore the cached skeleton and re-download it'
 
     complete -c $cmd -n '__fish_seen_subcommand_from design:remove spa:remove microservice:remove module:remove' -l name -x -a '(__talos_modules)' -d 'Module name'
 

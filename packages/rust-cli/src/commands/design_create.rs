@@ -25,6 +25,10 @@ pub struct DesignCreateArgs {
     /// Suppress progress and success messages.
     #[arg(long, default_value_t = false)]
     pub silent: bool,
+
+    /// Ignore the cached skeleton and re-download it.
+    #[arg(long, default_value_t = false)]
+    pub no_cache: bool,
 }
 
 fn visit_files_recursive(dir: &Path, callback: &mut impl FnMut(&Path)) {
@@ -95,7 +99,7 @@ pub fn run(args: &DesignCreateArgs) {
     let src_dir = module_dir.join("src");
 
     let clone_spinner = Spinner::start("Downloading design template...");
-    let cloned = clone_skeleton(true);
+    let cloned = clone_skeleton(true, !args.no_cache);
     clone_spinner.stop();
     let Some(repo_dir) = cloned else {
         return;

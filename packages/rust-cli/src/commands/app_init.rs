@@ -44,6 +44,10 @@ pub struct AppInitArgs {
     /// Suppress success/progress messages.
     #[arg(long, default_value_t = false)]
     pub silent: bool,
+
+    /// Ignore the cached skeleton and re-download it.
+    #[arg(long, default_value_t = false)]
+    pub no_cache: bool,
 }
 
 /// Mirrors the `appType` option of `AppInitCommand`, which prunes the
@@ -68,6 +72,7 @@ pub struct AppInitOptions {
     pub destination: PathBuf,
     pub silent: bool,
     pub app_type: Option<AppType>,
+    pub no_cache: bool,
 }
 
 pub fn run(args: &AppInitArgs) {
@@ -82,6 +87,7 @@ pub fn run(args: &AppInitArgs) {
         destination,
         silent: args.silent,
         app_type: None,
+        no_cache: args.no_cache,
     });
 }
 
@@ -93,6 +99,7 @@ pub fn execute(options: AppInitOptions) -> Option<PathBuf> {
         destination,
         silent,
         app_type,
+        no_cache,
     } = options;
     let kebab_name = crate::utils::to_kebab_case(&name);
 
@@ -101,7 +108,7 @@ pub fn execute(options: AppInitOptions) -> Option<PathBuf> {
     }
 
     let skeleton_spinner = Spinner::start("Downloading skeleton...");
-    let skeleton_dir = clone_skeleton(true);
+    let skeleton_dir = clone_skeleton(true, !no_cache);
     skeleton_spinner.stop();
     let skeleton_repo_dir = skeleton_dir?;
     crate::utils::success("Skeleton downloaded");

@@ -29,6 +29,10 @@ pub struct AgentSkillsCreateArgs {
     /// Working directory (defaults to the current directory).
     #[arg(long)]
     pub cwd: Option<String>,
+
+    /// Ignore the cached skeleton and re-download it.
+    #[arg(long, default_value_t = false)]
+    pub no_cache: bool,
 }
 
 fn visit_files_recursive(dir: &Path, callback: &mut impl FnMut(&Path, &Path)) {
@@ -225,7 +229,7 @@ pub fn run(args: &AgentSkillsCreateArgs) {
     let repo_dir = if let Some(source_dir) = &args.source_dir {
         PathBuf::from(source_dir)
     } else {
-        match clone_skeleton(args.silent) {
+        match clone_skeleton(args.silent, !args.no_cache) {
             Some(path) => path,
             None => return,
         }

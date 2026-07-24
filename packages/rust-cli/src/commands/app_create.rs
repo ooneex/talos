@@ -29,6 +29,10 @@ pub struct AppCreateArgs {
     /// Destination path for the new application.
     #[arg(long)]
     pub destination: Option<String>,
+
+    /// Ignore the cached skeleton and re-download it.
+    #[arg(long, default_value_t = false)]
+    pub no_cache: bool,
 }
 
 pub fn run(args: &AppCreateArgs) {
@@ -43,6 +47,7 @@ pub fn run(args: &AppCreateArgs) {
         destination,
         silent: true,
         app_type: Some(AppType::Api),
+        no_cache: args.no_cache,
     }) else {
         return;
     };

@@ -116,15 +116,19 @@ fn git_clone_skeleton(destination: &Path, silent: bool) -> bool {
 /// Mirrors `getSkeletonDir`/`cloneSkeleton`: returns the skeleton repo path,
 /// cloned directly into the persistent user cache at `~/.talos/skeleton`.
 ///
-/// The cache is checked first: when it is already populated the repo is reused
-/// without any network access. Otherwise the skeleton is fetched (preferring a
-/// tarball download over `git clone` for speed) straight into the cache
-/// directory. No temporary or per-project working copies are created, and the
-/// returned directory is never removed by callers.
-pub fn clone_skeleton(silent: bool) -> Option<PathBuf> {
+/// When `use_cache` is `true` the cache is checked first: an already populated
+/// directory is reused without any network access. When `use_cache` is `false`
+/// (e.g. `--no-cache`) the cached copy is ignored and the skeleton is always
+/// re-fetched, refreshing the cache.
+///
+/// The skeleton is fetched (preferring a tarball download over `git clone` for
+/// speed) straight into the cache directory. No temporary or per-project
+/// working copies are created, and the returned directory is never removed by
+/// callers.
+pub fn clone_skeleton(silent: bool, use_cache: bool) -> Option<PathBuf> {
     let cache_dir = skeleton_cache_dir()?;
 
-    if is_populated(&cache_dir) {
+    if use_cache && is_populated(&cache_dir) {
         return Some(cache_dir);
     }
 

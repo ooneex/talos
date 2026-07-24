@@ -175,7 +175,7 @@ seed:create seed:run"
   case "$cmd" in
     completion:zsh | completion:bash | completion:fish | help | version | upgrade) ;;
     agent:skills:create)
-      opts="--agents --cwd"
+      opts="--agents --cwd --no-cache"
       [[ $flag == --agents ]] && candidates=".claude .codex .cursor .gemini .windsurf .cline .junie .roo .continue .zed"
       [[ $flag == --cwd ]] && dirs=1
       ;;
@@ -190,11 +190,11 @@ seed:create seed:run"
       [[ $flag == --module ]] && candidates="$(_talos_sdk_modules)"
       ;;
     app:create)
-      opts="--name --destination"
+      opts="--name --destination --no-cache"
       [[ $flag == --destination ]] && dirs=1
       ;;
     app:init)
-      opts="--name --destination --app-type"
+      opts="--name --destination --app-type --no-cache"
       [[ $flag == --destination ]] && dirs=1
       [[ $flag == --app-type ]] && candidates="cli api"
       ;;
@@ -311,14 +311,14 @@ seed:create seed:run"
       opts="--version"
       ;;
     design:create | microservice:create)
-      opts="--name"
+      opts="--name --no-cache"
       ;;
     module:create)
       opts="--name --destination"
       [[ $flag == --destination ]] && candidates="$(_talos_destination_modules)"
       ;;
     spa:create)
-      opts="--name --design"
+      opts="--name --design --no-cache"
       [[ $flag == --design ]] && candidates="$(_talos_yaml_modules design)"
       ;;
     design:remove | spa:remove | microservice:remove | module:remove)
