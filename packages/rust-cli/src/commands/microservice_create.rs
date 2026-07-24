@@ -10,15 +10,6 @@ use crate::utils::{
     to_pascal_case, to_snake_case,
 };
 
-const GITHUB_MICROSERVICE_CI: &str =
-    include_str!("../../../cli/src/templates/github/microservice-ci.yml.txt");
-const GITHUB_MICROSERVICE_PRODUCTION: &str =
-    include_str!("../../../cli/src/templates/github/microservice-production.yml.txt");
-const GITLAB_MICROSERVICE: &str =
-    include_str!("../../../cli/src/templates/gitlab/microservice.yml.txt");
-const BITBUCKET_MICROSERVICE: &str =
-    include_str!("../../../cli/src/templates/bitbucket/microservice-pipelines.yml.txt");
-
 #[derive(Args, Debug)]
 pub struct MicroserviceCreateArgs {
     #[arg(long)]
@@ -117,7 +108,12 @@ fn add_gitlab_include(path: &Path, kebab_name: &str) {
     let _ = fs::write(path, content);
 }
 
-fn create_ci_cd_files(cwd: &Path, kebab_name: &str, snake_name: &str) -> Option<&'static str> {
+fn create_ci_cd_files(
+    cwd: &Path,
+    templates_dir: &Path,
+    kebab_name: &str,
+    snake_name: &str,
+) -> Option<&'static str> {
     let provider = detect_ci_provider(cwd)?;
     let substitute = |template: &str| {
         template
@@ -127,36 +123,42 @@ fn create_ci_cd_files(cwd: &Path, kebab_name: &str, snake_name: &str) -> Option<
     };
     match provider {
         "github" => {
+            let ci = read_template(templates_dir, "github/microservice-ci.yml.txt")?;
+            let production =
+                read_template(templates_dir, "github/microservice-production.yml.txt")?;
             let _ = fs::create_dir_all(cwd.join(".github").join("workflows"));
             let _ = fs::write(
                 cwd.join(".github")
                     .join("workflows")
                     .join(format!("{kebab_name}-ci.yml")),
-                substitute(GITHUB_MICROSERVICE_CI),
+                substitute(&ci),
             );
             let _ = fs::write(
                 cwd.join(".github")
                     .join("workflows")
                     .join(format!("{kebab_name}-production.yml")),
-                substitute(GITHUB_MICROSERVICE_PRODUCTION),
+                substitute(&production),
             );
         }
         "gitlab" => {
+            let template = read_template(templates_dir, "gitlab/microservice.yml.txt")?;
             let _ = fs::create_dir_all(cwd.join(".gitlab").join("ci"));
             let _ = fs::write(
                 cwd.join(".gitlab")
                     .join("ci")
                     .join(format!("{kebab_name}.yml")),
-                substitute(GITLAB_MICROSERVICE),
+                substitute(&template),
             );
             add_gitlab_include(&cwd.join(".gitlab-ci.yml"), kebab_name);
         }
         _ => {
+            let template =
+                read_template(templates_dir, "bitbucket/microservice-pipelines.yml.txt")?;
             let _ = fs::create_dir_all(cwd.join(".bitbucket"));
             let _ = fs::write(
                 cwd.join(".bitbucket")
                     .join(format!("{kebab_name}-pipelines.yml")),
-                substitute(BITBUCKET_MICROSERVICE),
+                substitute(&template),
             );
         }
     }
@@ -281,7 +283,7 @@ pub fn run(args: &MicroserviceCreateArgs) {
     let ci_provider = if silent {
         None
     } else {
-        create_ci_cd_files(&cwd, &kebab_name, &snake_name)
+        create_ci_cd_files(&cwd, &templates_dir, &kebab_name, &snake_name)
     };
 
     if !silent {
