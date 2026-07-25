@@ -6,9 +6,7 @@ use std::time::UNIX_EPOCH;
 use dashmap::DashMap;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
-
-pub const MONOREPO_CACHE_VERSION: u32 = 1;
+pub const MONOREPO_CACHE_VERSION: u32 = 2;
 pub const MONOREPO_CACHE_DIR: &str = "var/cache/monorepo";
 
 const TARGET_ROOTS: &[(&str, TargetType)] = &[
@@ -313,19 +311,10 @@ fn collect_files_with_git(dir: &Path) -> Option<Vec<String>> {
     Some(files)
 }
 
-fn to_hex(bytes: impl AsRef<[u8]>) -> String {
-    use std::fmt::Write;
-    bytes.as_ref().iter().fold(String::new(), |mut acc, byte| {
-        let _ = write!(acc, "{byte:02x}");
-        acc
-    })
-}
-
 fn hash_file(path: &Path) -> Option<String> {
-    let bytes = fs::read(path).ok()?;
-    let mut hasher = Sha256::new();
-    hasher.update(&bytes);
-    Some(to_hex(hasher.finalize()))
+    let mut hasher = blake3::Hasher::new();
+    hasher.update_mmap(path).ok()?;
+    Some(hasher.finalize().to_hex().to_string())
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -404,13 +393,13 @@ pub fn fingerprint_dir(dir: &Path, use_git: bool, file_hash_cache: &FileHashCach
         .map(|file| hash_file_cached(&dir.join(file), file_hash_cache))
         .collect();
 
-    let mut hasher = Sha256::new();
+    let mut hasher = blake3::Hasher::new();
     for (file, hash) in files.iter().zip(hashes) {
         if let Some(hash) = hash {
             hasher.update(format!("{file}={hash}\n").as_bytes());
         }
     }
-    to_hex(hasher.finalize())
+    hasher.finalize().to_hex().to_string()
 }
 
 pub fn fingerprint_target(
@@ -428,13 +417,13 @@ pub fn fingerprint_target(
 }
 
 pub fn hash_root_inputs(root_dir: &Path) -> String {
-    let mut hasher = Sha256::new();
+    let mut hasher = blake3::Hasher::new();
     for name in ROOT_INPUT_FILES {
         if let Some(hash) = hash_file(&root_dir.join(name)) {
             hasher.update(format!("{name}={hash}\n").as_bytes());
         }
     }
-    to_hex(hasher.finalize())
+    hasher.finalize().to_hex().to_string()
 }
 
 fn transitive_deps<'a>(
@@ -497,9 +486,9 @@ pub fn compute_task_hash(
     ];
     lines.extend(dep_lines);
 
-    let mut hasher = Sha256::new();
+    let mut hasher = blake3::Hasher::new();
     hasher.update(lines.join("\n").as_bytes());
-    to_hex(hasher.finalize())
+    hasher.finalize().to_hex().to_string()
 }
 
 #[derive(Clone, Serialize, Deserialize)]
