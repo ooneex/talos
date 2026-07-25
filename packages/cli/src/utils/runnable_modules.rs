@@ -23,9 +23,9 @@ fn read_module_type(module_dir: &Path, name: &str) -> Option<String> {
     let prefix = "type:";
     content.lines().find_map(|line| {
         let trimmed = line.trim();
-        trimmed
-            .strip_prefix(prefix)
-            .map(|value| value.trim().trim_matches('"').to_string())
+        let value = trimmed.strip_prefix(prefix)?;
+        let value = value.split('#').next().unwrap_or(value);
+        Some(value.trim().trim_matches('"').to_string())
     })
 }
 
@@ -87,4 +87,42 @@ pub fn select_runnable_modules(
         .filter(|module| requested.contains(&module.name))
         .cloned()
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn collects_module_when_type_has_inline_comment() {
+        let temp = tempfile::tempdir().expect("temp dir");
+        let modules_dir = temp.path();
+        let storybook_dir = modules_dir.join("storybook");
+        fs::create_dir_all(&storybook_dir).expect("create module dir");
+        fs::write(
+            storybook_dir.join("storybook.yml"),
+            "type: \"storybook\" # \"api\" | \"microservice\" | \"storybook\"\ndesign: \"design\"\n",
+        )
+        .expect("write yml");
+
+        let modules = collect_runnable_modules(modules_dir);
+        assert_eq!(modules.len(), 1);
+        assert_eq!(modules[0].name, "storybook");
+        assert_eq!(modules[0].r#type, RunnableModuleType::Storybook);
+    }
+
+    #[test]
+    fn skips_non_runnable_module_type() {
+        let temp = tempfile::tempdir().expect("temp dir");
+        let modules_dir = temp.path();
+        let user_dir = modules_dir.join("user");
+        fs::create_dir_all(&user_dir).expect("create module dir");
+        fs::write(
+            user_dir.join("user.yml"),
+            "type: \"module\" # \"api\" | \"module\"\n",
+        )
+        .expect("write yml");
+
+        assert!(collect_runnable_modules(modules_dir).is_empty());
+    }
 }
