@@ -5,7 +5,30 @@ use super::monorepo_task::{Task, TaskStatus};
 use crate::utils::MonorepoTarget;
 
 pub(crate) const INSTALL_COMMAND: &str = "install";
+pub(crate) const TEST_COMMAND: &str = "test";
 pub(crate) const ORDER_INDEPENDENT_COMMANDS: &[&str] = &["fmt", "lint", "test"];
+
+fn tests_dir_is_empty(dir: &Path) -> bool {
+    fn has_file(dir: &Path) -> bool {
+        let Ok(entries) = std::fs::read_dir(dir) else {
+            return false;
+        };
+        for entry in entries.filter_map(Result::ok) {
+            let Ok(file_type) = entry.file_type() else {
+                continue;
+            };
+            if file_type.is_file() {
+                return true;
+            }
+            if file_type.is_dir() && has_file(&entry.path()) {
+                return true;
+            }
+        }
+        false
+    }
+
+    !has_file(&dir.join("tests"))
+}
 
 pub(crate) fn build_group(
     targets: &[MonorepoTarget],
@@ -16,7 +39,8 @@ pub(crate) fn build_group(
     targets
         .iter()
         .map(|target| {
-            let skipped = !target.scripts.contains_key(command);
+            let skipped = !target.scripts.contains_key(command)
+                || (command == TEST_COMMAND && tests_dir_is_empty(&target.dir));
             Task {
                 key: format!("{}#{command}", target.key),
                 label: format!("{}:{command}", target.name),
@@ -72,7 +96,7 @@ mod tests {
     use super::*;
     use crate::utils::TargetType;
     use std::collections::HashMap;
-    use std::path::PathBuf;
+    use std::path::{Path, PathBuf};
 
     fn target(name: &str, scripts: &[&str], workspace_deps: &[&str]) -> MonorepoTarget {
         MonorepoTarget {
@@ -88,9 +112,18 @@ mod tests {
         }
     }
 
+    fn target_in(dir: &Path, name: &str, scripts: &[&str]) -> MonorepoTarget {
+        let mut t = target(name, scripts, &[]);
+        t.dir = dir.to_path_buf();
+        t
+    }
+
     #[test]
     fn build_group_runs_package_json_script_once_per_target() {
-        let targets = vec![target("core", &["test"], &[])];
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(dir.path().join("tests")).unwrap();
+        std::fs::write(dir.path().join("tests/core.spec.ts"), "").unwrap();
+        let targets = vec![target_in(dir.path(), "core", &["test"])];
         let included: HashSet<String> = targets.iter().map(|t| t.key.clone()).collect();
 
         let tasks = build_group(&targets, &included, "test");
@@ -101,6 +134,45 @@ mod tests {
         assert_eq!(task.command, "test");
         assert_eq!(task.key, "packages/core#test");
         assert_eq!(task.status, TaskStatus::Pending);
+    }
+
+    #[test]
+    fn build_group_skips_test_when_tests_dir_is_empty() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(dir.path().join("tests")).unwrap();
+        let targets = vec![target_in(dir.path(), "core", &["test"])];
+        let included: HashSet<String> = targets.iter().map(|t| t.key.clone()).collect();
+
+        let tasks = build_group(&targets, &included, "test");
+
+        assert_eq!(tasks.len(), 1);
+        assert_eq!(tasks[0].status, TaskStatus::Skipped);
+    }
+
+    #[test]
+    fn build_group_skips_test_when_tests_dir_is_missing() {
+        let dir = tempfile::tempdir().unwrap();
+        let targets = vec![target_in(dir.path(), "core", &["test"])];
+        let included: HashSet<String> = targets.iter().map(|t| t.key.clone()).collect();
+
+        let tasks = build_group(&targets, &included, "test");
+
+        assert_eq!(tasks.len(), 1);
+        assert_eq!(tasks[0].status, TaskStatus::Skipped);
+    }
+
+    #[test]
+    fn build_group_runs_test_when_tests_dir_has_nested_files() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(dir.path().join("tests/services")).unwrap();
+        std::fs::write(dir.path().join("tests/services/user.spec.ts"), "").unwrap();
+        let targets = vec![target_in(dir.path(), "core", &["test"])];
+        let included: HashSet<String> = targets.iter().map(|t| t.key.clone()).collect();
+
+        let tasks = build_group(&targets, &included, "test");
+
+        assert_eq!(tasks.len(), 1);
+        assert_eq!(tasks[0].status, TaskStatus::Pending);
     }
 
     #[test]
