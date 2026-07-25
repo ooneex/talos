@@ -128,6 +128,7 @@ pub fn execute(args: &MonorepoRunArgs) -> bool {
         let group_failed = run_group(
             group,
             &all_targets,
+            &root_dir,
             &root_hash,
             &cache_dir,
             &fingerprint_memo,

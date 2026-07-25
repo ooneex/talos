@@ -7,6 +7,7 @@ mod issue;
 mod migration_version;
 mod module_registry;
 mod monorepo;
+mod monorepo_batch;
 mod monorepo_footer;
 mod monorepo_group;
 mod monorepo_scheduler;
