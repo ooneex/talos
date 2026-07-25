@@ -4,10 +4,14 @@ use std::process::Command;
 use clap::Args;
 use serde_json::Value;
 
-use crate::commands::{completion_bash, completion_fish, completion_zsh};
 use crate::utils::{Spinner, current_dir, run_spinner_step};
 
 const CLI_PACKAGE_NAME: &str = "@talosjs/cli";
+const LATEST_RELEASE_URL: &str = "https://api.github.com/repos/ooneex/talos/releases/latest";
+const INSTALL_SH_URL: &str =
+    "https://raw.githubusercontent.com/ooneex/talos/main/packages/cli/scripts/install.sh";
+const INSTALL_PS1_URL: &str =
+    "https://raw.githubusercontent.com/ooneex/talos/main/packages/cli/scripts/install.ps1";
 
 #[derive(Args, Debug)]
 pub struct UpgradeArgs {
@@ -15,20 +19,29 @@ pub struct UpgradeArgs {
     pub cwd: Option<String>,
 }
 
+// The binary is distributed via GitHub releases (see scripts/install.sh), not
+// npm, so the latest version is resolved from the newest GitHub release tag.
 fn fetch_latest_version() -> Option<String> {
-    let value: Value = ureq::get(&format!(
-        "https://registry.npmjs.org/{CLI_PACKAGE_NAME}/latest"
-    ))
-    .header("accept", "application/json")
-    .call()
-    .ok()?
-    .into_body()
-    .read_json()
-    .ok()?;
-    value
-        .get("version")
-        .and_then(Value::as_str)
-        .map(str::to_string)
+    let value: Value = ureq::get(LATEST_RELEASE_URL)
+        .header("accept", "application/vnd.github+json")
+        .header("user-agent", CLI_PACKAGE_NAME)
+        .call()
+        .ok()?
+        .into_body()
+        .read_json()
+        .ok()?;
+    let tag = value.get("tag_name").and_then(Value::as_str)?;
+    Some(parse_version_from_tag(tag))
+}
+
+// Release tags look like `@talosjs/cli@1.2.3` (optionally `v`-prefixed); keep
+// only the semver part.
+pub fn parse_version_from_tag(tag: &str) -> String {
+    tag.rsplit('@')
+        .next()
+        .unwrap_or(tag)
+        .trim_start_matches('v')
+        .to_string()
 }
 
 pub fn run(args: &UpgradeArgs) {
@@ -53,35 +66,35 @@ pub fn run(args: &UpgradeArgs) {
         ));
         return;
     }
+    let mut install_command = if cfg!(windows) {
+        let mut command = Command::new("powershell");
+        command.args([
+            "-NoProfile",
+            "-Command",
+            &format!("irm {INSTALL_PS1_URL} | iex"),
+        ]);
+        command
+    } else {
+        let mut command = Command::new("bash");
+        command.args(["-c", &format!("curl -fsSL {INSTALL_SH_URL} | bash")]);
+        command
+    };
+    install_command.current_dir(&cwd);
     let succeeded = run_spinner_step(
         false,
         &format!("Upgrading from v{current_version} to v{latest_version}"),
-        Command::new("bun")
-            .args(["add", "-g", &format!("{CLI_PACKAGE_NAME}@latest")])
-            .current_dir(&cwd),
+        &mut install_command,
     );
     if !succeeded {
+        let manual = if cfg!(windows) {
+            format!("powershell -c \"irm {INSTALL_PS1_URL} | iex\"")
+        } else {
+            format!("curl -fsSL {INSTALL_SH_URL} | bash")
+        };
         crate::utils::error(format!(
-            "Upgrade failed. You can upgrade manually with: bun add -g {CLI_PACKAGE_NAME}@latest"
+            "Upgrade failed. You can upgrade manually with: {manual}"
         ));
         return;
     }
     crate::utils::success(format!("Upgraded to v{latest_version}"));
-    let shell = std::env::var("SHELL")
-        .ok()
-        .and_then(|shell| {
-            std::path::Path::new(&shell)
-                .file_name()
-                .and_then(|name| name.to_str())
-                .map(str::to_string)
-        })
-        .unwrap_or_default();
-    match shell.as_str() {
-        "zsh" => completion_zsh::run(&completion_zsh::CompletionZshArgs {}),
-        "bash" => completion_bash::run(&completion_bash::CompletionBashArgs {}),
-        "fish" => completion_fish::run(&completion_fish::CompletionFishArgs {}),
-        _ => crate::utils::info(
-            "Could not detect your shell; run `talos completion:zsh`, `talos completion:bash`, or `talos completion:fish` to refresh completions.",
-        ),
-    }
 }

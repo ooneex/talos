@@ -1,5 +1,5 @@
 use clap::Parser;
-use cli::commands::upgrade::UpgradeArgs;
+use cli::commands::upgrade::{UpgradeArgs, parse_version_from_tag};
 
 #[derive(Parser)]
 struct TestCli {
@@ -25,4 +25,15 @@ fn upgrade_defaults_are_empty() {
 #[test]
 fn upgrade_rejects_unknown_flag() {
     assert!(TestCli::try_parse_from(["talos", "--definitely-not-a-flag"]).is_err());
+}
+
+#[test]
+fn parses_scoped_package_release_tag() {
+    assert_eq!(parse_version_from_tag("@talosjs/cli@1.2.3"), "1.2.3");
+}
+
+#[test]
+fn parses_v_prefixed_and_plain_tags() {
+    assert_eq!(parse_version_from_tag("v0.4.0"), "0.4.0");
+    assert_eq!(parse_version_from_tag("0.4.0"), "0.4.0");
 }
