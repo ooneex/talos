@@ -1,14 +1,45 @@
 use std::fs;
+use std::io::{BufRead, BufReader};
 use std::path::Path;
 use std::process::{Child, Command, Stdio};
+use std::sync::mpsc;
+use std::thread;
+use std::time::Duration;
 
 use clap::Args;
+use console::style;
 use serde_json::Value;
 
 use crate::utils::{
-    RunnableModuleType, collect_runnable_modules, current_dir, ensure_bin, run_spinner_step,
-    select_runnable_modules,
+    RunnableModuleType, Spinner, collect_runnable_modules, current_dir, ensure_bin,
+    run_spinner_step, select_runnable_modules,
 };
+
+enum LogEvent {
+    Line { module: String, text: String },
+}
+
+fn styled_prefix(module: &str, index: usize) -> String {
+    let prefix = style(format!("[{module}]")).bold();
+    let prefix = match index % 6 {
+        0 => prefix.cyan(),
+        1 => prefix.magenta(),
+        2 => prefix.green(),
+        3 => prefix.yellow(),
+        4 => prefix.blue(),
+        _ => prefix.red(),
+    };
+    prefix.to_string()
+}
+
+fn print_log_line(module: &str, text: &str, order: &[String], multiple: bool) {
+    if multiple {
+        let index = order.iter().position(|name| name == module).unwrap_or(0);
+        println!("{} {text}", styled_prefix(module, index));
+    } else {
+        println!("{text}");
+    }
+}
 
 #[derive(Args, Debug)]
 pub struct AppStartArgs {
@@ -53,9 +84,30 @@ fn spawn_module(
         }
     }
     command
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
         .spawn()
+}
+
+fn forward_stream<R: std::io::Read + Send + 'static>(
+    module: String,
+    reader: R,
+    sender: mpsc::Sender<LogEvent>,
+) {
+    thread::spawn(move || {
+        let buffered = BufReader::new(reader);
+        for line in buffered.lines().map_while(Result::ok) {
+            if sender
+                .send(LogEvent::Line {
+                    module: module.clone(),
+                    text: line,
+                })
+                .is_err()
+            {
+                break;
+            }
+        }
+    });
 }
 
 pub fn run(args: &AppStartArgs) {
@@ -105,14 +157,11 @@ pub fn run(args: &AppStartArgs) {
         }
     }
 
-    println!(
-        "Starting {}...",
-        selected
-            .iter()
-            .map(|module| module.name.as_str())
-            .collect::<Vec<_>>()
-            .join(", ")
-    );
+    let module_names = selected
+        .iter()
+        .map(|module| module.name.clone())
+        .collect::<Vec<_>>();
+    let label = format!("Starting {}", module_names.join(", "));
 
     let mut children = Vec::new();
     for module in &selected {
@@ -128,21 +177,77 @@ pub fn run(args: &AppStartArgs) {
         }
     }
 
+    let (sender, receiver) = mpsc::channel::<LogEvent>();
+    for (name, child) in &mut children {
+        if let Some(stdout) = child.stdout.take() {
+            forward_stream(name.clone(), stdout, sender.clone());
+        }
+        if let Some(stderr) = child.stderr.take() {
+            forward_stream(name.clone(), stderr, sender.clone());
+        }
+    }
+    drop(sender);
+
+    let multiple = children.len() > 1;
+    let mut spinner = Some(Spinner::start(format!("{label}...")));
     let mut exit_code = 0;
-    for (name, mut child) in children {
-        match child.wait() {
-            Ok(status) if status.success() => {}
-            Ok(status) => {
-                exit_code = status.code().unwrap_or(1);
-                crate::utils::error(format!("{name} exited with code {exit_code}"));
-                break;
+
+    loop {
+        while let Ok(LogEvent::Line { module, text }) = receiver.try_recv() {
+            if let Some(active) = spinner.take() {
+                active.stop();
+                crate::utils::success(format!("{} started", module_names.join(", ")));
             }
-            Err(error) => {
-                exit_code = 1;
-                crate::utils::error(format!("Failed while waiting for {name}: {error}"));
-                break;
+            print_log_line(&module, &text, &module_names, multiple);
+        }
+
+        let mut index = 0;
+        let mut failure: Option<(String, i32)> = None;
+        while index < children.len() {
+            match children[index].1.try_wait() {
+                Ok(Some(status)) if status.success() => {
+                    children.remove(index);
+                }
+                Ok(Some(status)) => {
+                    let (name, _) = children.remove(index);
+                    failure = Some((name, status.code().unwrap_or(1)));
+                    break;
+                }
+                Ok(None) => index += 1,
+                Err(error) => {
+                    let (name, _) = children.remove(index);
+                    crate::utils::error(format!("Failed while waiting for {name}: {error}"));
+                    failure = Some((name, 1));
+                    break;
+                }
             }
         }
+
+        if let Some((name, code)) = failure {
+            if let Some(active) = spinner.take() {
+                active.stop();
+            }
+            crate::utils::error(format!("{name} exited with code {code}"));
+            exit_code = code;
+            for (_, mut child) in children.drain(..) {
+                let _ = child.kill();
+            }
+            break;
+        }
+
+        if children.is_empty() {
+            break;
+        }
+
+        thread::sleep(Duration::from_millis(60));
+    }
+
+    while let Ok(LogEvent::Line { module, text }) = receiver.try_recv() {
+        print_log_line(&module, &text, &module_names, multiple);
+    }
+
+    if spinner.take().is_some() && exit_code == 0 {
+        crate::utils::success(format!("{} started", module_names.join(", ")));
     }
 
     if exit_code != 0 {
