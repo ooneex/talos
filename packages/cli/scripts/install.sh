@@ -84,6 +84,11 @@ chmod +x "${exe}"
 success "${BINARY} was installed successfully to ${exe}"
 
 ALIAS="oo"
+alias_link="${bin_dir}/${ALIAS}"
+
+# Create the 'oo' symbolic link pointing to the talos binary.
+ln -sf "${exe}" "${alias_link}"
+success "Created '${ALIAS}' symlink at ${alias_link}"
 
 # Add to PATH via the user's shell profile.
 add_to_path() {
@@ -99,17 +104,7 @@ add_to_path() {
   fi
 }
 
-# Add the 'oo' alias for the talos binary via the user's shell profile.
-add_alias() {
-  local profile="$1"
-  local line="$2"
-  if [ -w "${profile}" ] || [ ! -e "${profile}" ]; then
-    if ! grep -qs "alias ${ALIAS}=" "${profile}" 2>/dev/null; then
-      echo "${line}" >>"${profile}"
-      info "Added '${ALIAS}' alias for ${BINARY} in ${profile}"
-    fi
-  fi
-}
+# Add the 'oo' alias for the talos binary via a symbolic link (see above).
 
 # Install shell completions for the given shell using the freshly installed binary.
 install_completion() {
@@ -123,24 +118,20 @@ install_completion() {
 case "${SHELL:-}" in
   */zsh)
     add_to_path "${HOME}/.zshrc" "export PATH=\"${bin_dir}:\$PATH\""
-    add_alias "${HOME}/.zshrc" "alias ${ALIAS}=\"${BINARY}\""
     install_completion "zsh"
     ;;
   */bash)
     profile="${HOME}/.bashrc"
     [ -f "${HOME}/.bash_profile" ] && profile="${HOME}/.bash_profile"
     add_to_path "${profile}" "export PATH=\"${bin_dir}:\$PATH\""
-    add_alias "${profile}" "alias ${ALIAS}=\"${BINARY}\""
     install_completion "bash"
     ;;
   */fish)
     add_to_path "${HOME}/.config/fish/config.fish" "fish_add_path ${bin_dir}"
-    add_alias "${HOME}/.config/fish/config.fish" "alias ${ALIAS} \"${BINARY}\""
     install_completion "fish"
     ;;
   *)
     info "Manually add ${bin_dir} to your PATH."
-    info "Manually add an '${ALIAS}' alias for ${BINARY}."
     info "Run '${BINARY} completion:zsh', '${BINARY} completion:bash', or '${BINARY} completion:fish' to install completions."
     ;;
 esac

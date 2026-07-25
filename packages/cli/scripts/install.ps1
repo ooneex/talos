@@ -59,6 +59,18 @@ try {
 
 Write-Host "$Binary was installed successfully to $exe" -ForegroundColor Green
 
+# Create an 'oo' symbolic link pointing to the talos binary.
+$Alias = "oo"
+$aliasLink = Join-Path $binDir "$Alias.exe"
+try {
+  if (Test-Path $aliasLink) { Remove-Item -Path $aliasLink -Force }
+  New-Item -ItemType SymbolicLink -Path $aliasLink -Target $exe -Force | Out-Null
+  Write-Host "Created '$Alias' symlink at $aliasLink" -ForegroundColor Green
+} catch {
+  Copy-Item -Path $exe -Destination $aliasLink -Force
+  Write-Host "Created '$Alias' copy at $aliasLink (symlink unavailable)" -ForegroundColor Green
+}
+
 # Add to the user's PATH.
 $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
 if ($userPath -notlike "*$binDir*") {
@@ -66,23 +78,6 @@ if ($userPath -notlike "*$binDir*") {
   [Environment]::SetEnvironmentVariable("Path", $newPath, "User")
   $env:Path = "$binDir;$env:Path"
   Write-Host "Added $binDir to your PATH." -ForegroundColor Cyan
-}
-
-Write-Host ""
-
-# Add an 'oo' alias for the talos binary to the user's PowerShell profile.
-$Alias = "oo"
-$aliasLine = "Set-Alias -Name $Alias -Value `"$exe`""
-$profilePath = $PROFILE.CurrentUserAllHosts
-$profileDir = Split-Path -Parent $profilePath
-if (-not (Test-Path $profileDir)) {
-  New-Item -ItemType Directory -Path $profileDir -Force | Out-Null
-}
-$aliasPattern = "Set-Alias -Name $Alias "
-if (-not (Test-Path $profilePath) -or -not (Select-String -Path $profilePath -SimpleMatch $aliasPattern -Quiet)) {
-  Add-Content -Path $profilePath -Value "`n# talos`n$aliasLine"
-  Set-Alias -Name $Alias -Value $exe
-  Write-Host "Added '$Alias' alias for $Binary in $profilePath" -ForegroundColor Cyan
 }
 
 Write-Host ""
