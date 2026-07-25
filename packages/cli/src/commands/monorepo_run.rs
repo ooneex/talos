@@ -8,8 +8,8 @@ use console::style;
 use crate::utils::{
     FingerprintMemo, Footer, INSTALL_COMMAND, MONOREPO_CACHE_DIR, MonorepoTarget, TargetType, Task,
     TaskStatus, build_group, build_install_group, current_dir, discover_targets, format_duration,
-    hash_root_inputs, is_git_workspace_root, load_file_hash_cache, run_group, save_file_hash_cache,
-    sort_targets_by_dependencies,
+    hash_root_inputs, is_git_workspace_root, load_cache_index, load_file_hash_cache, run_group,
+    save_file_hash_cache, sort_targets_by_dependencies,
 };
 
 #[derive(Args, Debug, Default, Clone)]
@@ -54,18 +54,21 @@ pub fn execute(args: &MonorepoRunArgs) -> bool {
     let cache_dir = root_dir.join(MONOREPO_CACHE_DIR);
 
     let spinner = crate::utils::Spinner::start("Analyzing workspace");
-    let (all_targets, root_hash, use_git, file_hash_cache) = std::thread::scope(|scope| {
-        let targets_handle = scope.spawn(|| discover_targets(&root_dir));
-        let root_hash_handle = scope.spawn(|| hash_root_inputs(&root_dir));
-        let use_git_handle = scope.spawn(|| is_git_workspace_root(&root_dir));
-        let cache_handle = scope.spawn(|| load_file_hash_cache(&cache_dir));
-        (
-            targets_handle.join().unwrap(),
-            root_hash_handle.join().unwrap(),
-            use_git_handle.join().unwrap(),
-            cache_handle.join().unwrap(),
-        )
-    });
+    let (all_targets, root_hash, use_git, file_hash_cache, cache_index) =
+        std::thread::scope(|scope| {
+            let targets_handle = scope.spawn(|| discover_targets(&root_dir));
+            let root_hash_handle = scope.spawn(|| hash_root_inputs(&root_dir));
+            let use_git_handle = scope.spawn(|| is_git_workspace_root(&root_dir));
+            let cache_handle = scope.spawn(|| load_file_hash_cache(&cache_dir));
+            let index_handle = scope.spawn(|| load_cache_index(&cache_dir));
+            (
+                targets_handle.join().unwrap(),
+                root_hash_handle.join().unwrap(),
+                use_git_handle.join().unwrap(),
+                cache_handle.join().unwrap(),
+                index_handle.join().unwrap(),
+            )
+        });
     spinner.stop();
 
     let file_hash_entries_before = file_hash_cache.len();
@@ -131,6 +134,7 @@ pub fn execute(args: &MonorepoRunArgs) -> bool {
             use_git,
             args.no_cache,
             &file_hash_cache,
+            &cache_index,
             &footer,
         );
         if group_failed {

@@ -9,8 +9,8 @@ use regex::Regex;
 
 use super::monorepo_task::{Task, TaskStatus, format_duration};
 use crate::utils::{
-    CacheEntryMeta, FileHashCache, FingerprintMemo, Footer, MONOREPO_CACHE_VERSION, MonorepoTarget,
-    compute_task_hash, read_cache_entry, write_cache_entry,
+    CacheEntryMeta, CacheIndex, FileHashCache, FingerprintMemo, Footer, MONOREPO_CACHE_VERSION,
+    MonorepoTarget, compute_task_hash, read_cache_entry, write_cache_entry,
 };
 
 enum TaskOutcome {
@@ -37,6 +37,7 @@ pub(crate) fn run_group(
     use_git: bool,
     no_cache: bool,
     file_hash_cache: &FileHashCache,
+    cache_index: &CacheIndex,
     footer: &Footer,
 ) -> bool {
     for task in tasks.iter() {
@@ -92,6 +93,7 @@ pub(crate) fn run_group(
                             fingerprint_memo,
                             use_git,
                             file_hash_cache,
+                            cache_index,
                         )
                     } else {
                         None
@@ -176,6 +178,7 @@ pub(crate) fn run_group(
                             {
                                 write_cache_entry(
                                     cache_dir,
+                                    cache_index,
                                     &CacheEntryMeta {
                                         version: MONOREPO_CACHE_VERSION,
                                         target: target.key.clone(),
@@ -184,7 +187,6 @@ pub(crate) fn run_group(
                                         created_at: chrono::Utc::now().to_rfc3339(),
                                         duration_ms: task.duration_ms,
                                     },
-                                    &task.output,
                                 );
                             }
                         } else {
@@ -222,6 +224,7 @@ fn try_cache_hit(
     fingerprint_memo: &FingerprintMemo,
     use_git: bool,
     file_hash_cache: &FileHashCache,
+    cache_index: &CacheIndex,
 ) -> Option<TaskHashResult> {
     let target_key = target_key?;
     let target = all_targets.iter().find(|t| t.key == target_key)?;
@@ -236,7 +239,7 @@ fn try_cache_hit(
         file_hash_cache,
     );
 
-    let hit = read_cache_entry(cache_dir, &hash).map(|meta| CacheHit {
+    let hit = read_cache_entry(cache_dir, cache_index, &hash).map(|meta| CacheHit {
         duration_ms: meta.duration_ms,
     });
 

@@ -305,7 +305,44 @@ pub type FileHashCache = DashMap<String, FileHashRecord>;
 
 pub type FingerprintMemo = DashMap<String, String>;
 
+/// Maps a task hash to the nanoid-named `<id>.json` file that stores its cache
+/// entry. Built by scanning the cache directory's entry files, since the id is a
+/// random nanoid and can no longer be derived from the hash.
+pub type CacheIndex = DashMap<String, String>;
+
 const FILEHASH_CACHE_FILE: &str = "filehashes.json";
+
+pub fn load_cache_index(cache_dir: &Path) -> CacheIndex {
+    let index = CacheIndex::new();
+    let Ok(entries) = fs::read_dir(cache_dir) else {
+        return index;
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if !path.is_file() {
+            continue;
+        }
+        let Ok(name) = entry.file_name().into_string() else {
+            continue;
+        };
+        if name == FILEHASH_CACHE_FILE {
+            continue;
+        }
+        let Some(id) = name.strip_suffix(".json") else {
+            continue;
+        };
+        if id.starts_with(".tmp-") {
+            continue;
+        }
+        let Ok(raw) = fs::read_to_string(&path) else {
+            continue;
+        };
+        if let Ok(meta) = serde_json::from_str::<CacheEntryMeta>(&raw) {
+            index.insert(meta.hash, id.to_string());
+        }
+    }
+    index
+}
 
 pub fn load_file_hash_cache(cache_dir: &Path) -> FileHashCache {
     let path = cache_dir.join(FILEHASH_CACHE_FILE);
@@ -479,36 +516,37 @@ pub struct CacheEntryMeta {
     pub duration_ms: u64,
 }
 
-pub fn read_cache_entry(cache_dir: &Path, index: &CacheIndex, hash: &str) -> Option<CacheEntryMeta> {
-    let folder = index.get(hash)?.value().clone();
-    let meta_path = cache_dir.join(folder).join("meta.json");
-    let raw_meta = fs::read_to_string(&meta_path).ok()?;
+pub fn read_cache_entry(
+    cache_dir: &Path,
+    index: &CacheIndex,
+    hash: &str,
+) -> Option<CacheEntryMeta> {
+    let id = index.get(hash)?.value().clone();
+    let raw_meta = fs::read_to_string(cache_dir.join(format!("{id}.json"))).ok()?;
     serde_json::from_str(&raw_meta).ok()
 }
 
-pub fn write_cache_entry(
-    cache_dir: &Path,
-    index: &CacheIndex,
-    meta: &CacheEntryMeta,
-    output: &str,
-) {
-    let folder = index
+const CACHE_ID_ALPHABET: [char; 16] = [
+    'a', 'b', 'c', 'd', 'e', 'f', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+];
+
+pub fn write_cache_entry(cache_dir: &Path, index: &CacheIndex, meta: &CacheEntryMeta) {
+    let id = index
         .get(&meta.hash)
         .map(|existing| existing.value().clone())
-        .unwrap_or_else(|| nanoid::nanoid!());
-    let temp_dir = cache_dir.join(format!(".tmp-{folder}"));
-    let entry_dir = cache_dir.join(&folder);
+        .unwrap_or_else(|| nanoid::nanoid!(15, &CACHE_ID_ALPHABET));
+    let _ = fs::create_dir_all(cache_dir);
 
-    let _ = fs::remove_dir_all(&temp_dir);
-    let _ = fs::create_dir_all(&temp_dir);
+    let temp_path = cache_dir.join(format!(".tmp-{id}.json"));
+    let entry_path = cache_dir.join(format!("{id}.json"));
 
-    if let Ok(json) = serde_json::to_string_pretty(meta) {
-        let _ = fs::write(temp_dir.join("meta.json"), json);
+    if let Ok(json) = serde_json::to_string_pretty(meta)
+        && fs::write(&temp_path, json).is_ok()
+    {
+        let _ = fs::rename(&temp_path, &entry_path);
     }
-    let _ = fs::write(temp_dir.join("output.log"), output);
 
-    let _ = fs::remove_dir_all(&entry_dir);
-    let _ = fs::rename(&temp_dir, &entry_dir);
+    index.insert(meta.hash.clone(), id);
 }
 
 #[cfg(test)]
