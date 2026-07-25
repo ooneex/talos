@@ -2,7 +2,7 @@ use clap::Args;
 
 use crate::commands::monorepo_run::{self, MonorepoRunArgs};
 
-const CHECK_COMMANDS: &str = "build,fmt,lint,test";
+const CHECK_COMMANDS: &str = "lint,test";
 
 #[derive(Args, Debug)]
 pub struct MonorepoCheckArgs {

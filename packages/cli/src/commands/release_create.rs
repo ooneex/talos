@@ -5,6 +5,7 @@ use std::process::Command;
 use clap::Args;
 use serde_json::Value;
 
+use crate::commands::monorepo_run::{self, MonorepoRunArgs};
 use crate::commands::npm_publish::{self, NpmPublishArgs};
 use crate::utils::{ask_confirm, run_spinner_step};
 
@@ -307,6 +308,17 @@ pub fn run(args: &ReleaseCreateArgs) {
         crate::utils::error(
             "Working tree has pending changes. Commit or stash them before releasing",
         );
+        std::process::exit(1);
+    }
+    if !monorepo_run::execute(&MonorepoRunArgs {
+        commands: Some("build,fmt,lint,test".to_string()),
+        packages: args.packages.clone(),
+        modules: args.modules.clone(),
+        logs: false,
+        no_cache: false,
+        cwd: Some(cwd.to_string_lossy().to_string()),
+    }) {
+        crate::utils::error("build, fmt, lint or test failed. Aborting release");
         std::process::exit(1);
     }
     let mut dirs = Vec::new();
