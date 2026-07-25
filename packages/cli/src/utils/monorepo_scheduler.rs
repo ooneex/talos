@@ -10,7 +10,7 @@ use regex::Regex;
 use super::monorepo_task::{Task, TaskStatus, format_duration};
 use crate::utils::{
     CacheEntryMeta, FileHashCache, FingerprintMemo, Footer, MONOREPO_CACHE_VERSION, MonorepoTarget,
-    compute_task_hash, read_cache_entry, restore_cache_outputs, write_cache_entry,
+    compute_task_hash, read_cache_entry, write_cache_entry,
 };
 
 enum TaskOutcome {
@@ -183,10 +183,8 @@ pub(crate) fn run_group(
                                         hash: hash.clone(),
                                         created_at: chrono::Utc::now().to_rfc3339(),
                                         duration_ms: task.duration_ms,
-                                        outputs: target.outputs.clone(),
                                     },
                                     &task.output,
-                                    &target.dir,
                                 );
                             }
                         } else {
@@ -238,11 +236,8 @@ fn try_cache_hit(
         file_hash_cache,
     );
 
-    let hit = read_cache_entry(cache_dir, &hash).map(|meta| {
-        restore_cache_outputs(cache_dir, &meta, &target.dir);
-        CacheHit {
-            duration_ms: meta.duration_ms,
-        }
+    let hit = read_cache_entry(cache_dir, &hash).map(|meta| CacheHit {
+        duration_ms: meta.duration_ms,
     });
 
     Some(TaskHashResult { hash, hit })

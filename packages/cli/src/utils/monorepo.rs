@@ -26,8 +26,6 @@ const EXCLUDED_DIRS: &[&str] = &[
 
 const ROOT_INPUT_FILES: &[&str] = &["package.json", "bun.lock", "tsconfig.json", "biome.jsonc"];
 
-const DEFAULT_OUTPUTS: &[&str] = &["dist"];
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TargetType {
     Package,
@@ -51,7 +49,6 @@ pub struct MonorepoTarget {
     pub dir: PathBuf,
     pub scripts: HashMap<String, String>,
     pub workspace_deps: Vec<String>,
-    pub outputs: Vec<String>,
 }
 
 #[derive(Deserialize)]
@@ -68,20 +65,6 @@ struct PackageJson {
     #[serde(default)]
     #[serde(rename = "peerDependencies")]
     peer_dependencies: HashMap<String, String>,
-    #[serde(default)]
-    talos: Option<TalosField>,
-}
-
-#[derive(Deserialize)]
-struct TalosField {
-    #[serde(default)]
-    monorepo: Option<TalosMonorepoField>,
-}
-
-#[derive(Deserialize)]
-struct TalosMonorepoField {
-    #[serde(default)]
-    outputs: Option<Vec<String>>,
 }
 
 pub fn discover_targets(root_dir: &Path) -> Vec<MonorepoTarget> {
@@ -119,12 +102,6 @@ pub fn discover_targets(root_dir: &Path) -> Vec<MonorepoTarget> {
             deps.extend(package_json.peer_dependencies.keys().cloned());
             declared_deps.insert(key.clone(), deps);
 
-            let outputs = package_json
-                .talos
-                .and_then(|t| t.monorepo)
-                .and_then(|m| m.outputs)
-                .unwrap_or_else(|| DEFAULT_OUTPUTS.iter().map(|s| s.to_string()).collect());
-
             targets.push(MonorepoTarget {
                 key,
                 name,
@@ -132,7 +109,6 @@ pub fn discover_targets(root_dir: &Path) -> Vec<MonorepoTarget> {
                 dir,
                 scripts: package_json.scripts,
                 workspace_deps: Vec::new(),
-                outputs,
             });
         }
     }
@@ -501,62 +477,32 @@ pub struct CacheEntryMeta {
     pub created_at: String,
     #[serde(rename = "durationMs")]
     pub duration_ms: u64,
-    pub outputs: Vec<String>,
 }
 
-pub fn read_cache_entry(cache_dir: &Path, hash: &str) -> Option<CacheEntryMeta> {
-    let meta_path = cache_dir.join(hash).join("meta.json");
+pub fn read_cache_entry(cache_dir: &Path, index: &CacheIndex, hash: &str) -> Option<CacheEntryMeta> {
+    let folder = index.get(hash)?.value().clone();
+    let meta_path = cache_dir.join(folder).join("meta.json");
     let raw_meta = fs::read_to_string(&meta_path).ok()?;
     serde_json::from_str(&raw_meta).ok()
 }
 
-pub fn restore_cache_outputs(cache_dir: &Path, meta: &CacheEntryMeta, target_dir: &Path) {
-    for output in &meta.outputs {
-        let source = cache_dir.join(&meta.hash).join("outputs").join(output);
-        if !source.exists() {
-            continue;
-        }
-        let dest = target_dir.join(output);
-        let _ = fs::remove_dir_all(&dest);
-        let _ = copy_dir_recursive(&source, &dest);
-    }
-}
-
-fn copy_dir_recursive(source: &Path, dest: &Path) -> std::io::Result<()> {
-    fs::create_dir_all(dest)?;
-    for entry in fs::read_dir(source)? {
-        let entry = entry?;
-        let dest_path = dest.join(entry.file_name());
-        if entry.path().is_dir() {
-            copy_dir_recursive(&entry.path(), &dest_path)?;
-        } else {
-            fs::copy(entry.path(), &dest_path)?;
-        }
-    }
-    Ok(())
-}
-
-pub fn write_cache_entry(cache_dir: &Path, meta: &CacheEntryMeta, output: &str, target_dir: &Path) {
-    let temp_dir = cache_dir.join(format!(".tmp-{}", meta.hash));
-    let entry_dir = cache_dir.join(&meta.hash);
+pub fn write_cache_entry(
+    cache_dir: &Path,
+    index: &CacheIndex,
+    meta: &CacheEntryMeta,
+    output: &str,
+) {
+    let folder = index
+        .get(&meta.hash)
+        .map(|existing| existing.value().clone())
+        .unwrap_or_else(|| nanoid::nanoid!());
+    let temp_dir = cache_dir.join(format!(".tmp-{folder}"));
+    let entry_dir = cache_dir.join(&folder);
 
     let _ = fs::remove_dir_all(&temp_dir);
     let _ = fs::create_dir_all(&temp_dir);
 
-    let mut captured_outputs: Vec<String> = Vec::new();
-    for out in &meta.outputs {
-        let source = target_dir.join(out);
-        if !source.exists() {
-            continue;
-        }
-        if copy_dir_recursive(&source, &temp_dir.join("outputs").join(out)).is_ok() {
-            captured_outputs.push(out.clone());
-        }
-    }
-
-    let mut persisted_meta = meta.clone();
-    persisted_meta.outputs = captured_outputs;
-    if let Ok(json) = serde_json::to_string_pretty(&persisted_meta) {
+    if let Ok(json) = serde_json::to_string_pretty(meta) {
         let _ = fs::write(temp_dir.join("meta.json"), json);
     }
     let _ = fs::write(temp_dir.join("output.log"), output);

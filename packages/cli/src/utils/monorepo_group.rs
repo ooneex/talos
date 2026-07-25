@@ -85,7 +85,6 @@ mod tests {
                 .map(|s| (s.to_string(), format!("run-{s}")))
                 .collect::<HashMap<_, _>>(),
             workspace_deps: workspace_deps.iter().map(|s| s.to_string()).collect(),
-            outputs: Vec::new(),
         }
     }
 
