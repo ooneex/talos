@@ -33,6 +33,7 @@ fn execute_scaffolds_a_module_and_registers_it_into_app_module() {
         destination: Some("app".to_string()),
         cwd: cwd.to_path_buf(),
         silent: true,
+        no_cache: false,
     });
 
     let module_dir = cwd.join("modules/billing");
@@ -68,6 +69,7 @@ fn execute_skips_registration_when_module_is_its_own_destination() {
         destination: Some("app".to_string()),
         cwd: cwd.to_path_buf(),
         silent: true,
+        no_cache: false,
     });
 
     assert!(cwd.join("modules/app/src/AppModule.ts").exists());

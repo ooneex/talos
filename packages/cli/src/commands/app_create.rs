@@ -59,7 +59,7 @@ pub fn run(args: &AppCreateArgs) {
     };
     let provider = CI_PROVIDERS[provider_index];
 
-    let Some(templates_dir) = skeleton_templates_dir(false) else {
+    let Some(templates_dir) = skeleton_templates_dir(false, !args.no_cache) else {
         return;
     };
 

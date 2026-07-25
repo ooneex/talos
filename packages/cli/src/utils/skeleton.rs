@@ -86,15 +86,15 @@ fn git_clone_skeleton(destination: &Path, silent: bool) -> bool {
     )
 }
 
-pub fn skeleton_templates_dir(silent: bool) -> Option<PathBuf> {
+pub fn skeleton_templates_dir(silent: bool, use_cache: bool) -> Option<PathBuf> {
     if let Some(dir) = std::env::var_os(TEMPLATES_DIR_ENV) {
         return Some(PathBuf::from(dir));
     }
     let repo = if silent {
-        clone_skeleton(true, true)
+        clone_skeleton(true, use_cache)
     } else {
         let spinner = super::style::Spinner::start("Downloading templates...");
-        let repo = clone_skeleton(true, true);
+        let repo = clone_skeleton(true, use_cache);
         spinner.stop();
         repo
     };

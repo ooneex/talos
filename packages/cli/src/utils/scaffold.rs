@@ -41,6 +41,7 @@ pub fn ensure_module(module: &str, cwd: &std::path::Path) {
         destination: Some("app".to_string()),
         cwd: cwd.to_path_buf(),
         silent: true,
+        no_cache: false,
     });
 }
 

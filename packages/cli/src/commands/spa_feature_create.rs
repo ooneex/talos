@@ -10,6 +10,9 @@ use crate::utils::{
 
 #[derive(Args, Debug)]
 pub struct SpaFeatureCreateArgs {
+    #[arg(long, default_value_t = false)]
+    pub no_cache: bool,
+
     #[arg(long)]
     pub name: Option<String>,
 
@@ -88,7 +91,7 @@ pub fn run(args: &SpaFeatureCreateArgs) {
         return;
     }
 
-    let Some(templates_dir) = skeleton_templates_dir(false) else {
+    let Some(templates_dir) = skeleton_templates_dir(false, !args.no_cache) else {
         return;
     };
     let Some(route_template) = read_template(&templates_dir, "spa/spa-feature.route.txt") else {

@@ -7,6 +7,9 @@ use crate::utils::{
 
 #[derive(Args, Debug)]
 pub struct StorageCreateArgs {
+    #[arg(long, default_value_t = false)]
+    pub no_cache: bool,
+
     #[arg(long)]
     pub name: Option<String>,
 
@@ -18,7 +21,7 @@ pub struct StorageCreateArgs {
 }
 
 pub fn run(args: &StorageCreateArgs) {
-    let Some(templates_dir) = skeleton_templates_dir(false) else {
+    let Some(templates_dir) = skeleton_templates_dir(false, !args.no_cache) else {
         return;
     };
     let Some(template) = read_template(&templates_dir, "storage.txt") else {

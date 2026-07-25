@@ -7,6 +7,9 @@ use crate::utils::{
 
 #[derive(Args, Debug)]
 pub struct AiToolCreateArgs {
+    #[arg(long, default_value_t = false)]
+    pub no_cache: bool,
+
     #[arg(long)]
     pub name: Option<String>,
 
@@ -18,7 +21,7 @@ pub struct AiToolCreateArgs {
 }
 
 pub fn run(args: &AiToolCreateArgs) {
-    let Some(templates_dir) = skeleton_templates_dir(false) else {
+    let Some(templates_dir) = skeleton_templates_dir(false, !args.no_cache) else {
         return;
     };
     let Some(template) = read_template(&templates_dir, "ai-tool.txt") else {

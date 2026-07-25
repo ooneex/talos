@@ -10,6 +10,9 @@ use crate::utils::{
 
 #[derive(Args, Debug)]
 pub struct TranslationCreateArgs {
+    #[arg(long, default_value_t = false)]
+    pub no_cache: bool,
+
     #[arg(long)]
     pub name: Option<String>,
 
@@ -108,7 +111,7 @@ fn scaffold_spa_translation(
         return;
     }
 
-    let Some(templates_dir) = skeleton_templates_dir(false) else {
+    let Some(templates_dir) = skeleton_templates_dir(false, !args.no_cache) else {
         return;
     };
     let Some(use_translate_template) = read_template(&templates_dir, "spa/spa.use-translate.txt")
@@ -198,7 +201,7 @@ pub fn run(args: &TranslationCreateArgs) {
         return;
     }
 
-    let Some(templates_dir) = skeleton_templates_dir(false) else {
+    let Some(templates_dir) = skeleton_templates_dir(false, !args.no_cache) else {
         return;
     };
     let Some(translation_template) = read_template(&templates_dir, "translation.txt") else {

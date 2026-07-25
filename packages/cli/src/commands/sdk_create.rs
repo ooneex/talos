@@ -55,6 +55,9 @@ pub struct SdkCreateArgs {
 
     #[arg(long, default_value_t = false)]
     pub silent: bool,
+
+    #[arg(long, default_value_t = false)]
+    pub no_cache: bool,
 }
 
 fn to_camel_case(value: &str) -> String {
@@ -316,6 +319,7 @@ pub fn run(args: &SdkCreateArgs) {
         destination: None,
         cwd: cwd.clone(),
         silent: true,
+        no_cache: args.no_cache,
     });
     let _ = remove_from_app_module(
         &cwd.join("modules")

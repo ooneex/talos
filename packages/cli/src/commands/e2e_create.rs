@@ -10,6 +10,9 @@ use crate::utils::{
 
 #[derive(Args, Debug)]
 pub struct E2eCreateArgs {
+    #[arg(long, default_value_t = false)]
+    pub no_cache: bool,
+
     #[arg(long)]
     pub name: Option<String>,
 
@@ -74,7 +77,7 @@ pub fn run(args: &E2eCreateArgs) {
 
     ensure_module(&module, &cwd);
 
-    let Some(templates_dir) = skeleton_templates_dir(false) else {
+    let Some(templates_dir) = skeleton_templates_dir(false, !args.no_cache) else {
         return;
     };
     let Some(spec_template) = read_template(&templates_dir, "e2e.spec.txt") else {

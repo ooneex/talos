@@ -9,6 +9,9 @@ const DATABASE_TYPES: &[&str] = &["postgres", "sqlite", "redis"];
 
 #[derive(Args, Debug)]
 pub struct DatabaseCreateArgs {
+    #[arg(long, default_value_t = false)]
+    pub no_cache: bool,
+
     #[arg(long)]
     pub name: Option<String>,
 
@@ -55,7 +58,7 @@ pub fn run(args: &DatabaseCreateArgs) {
         },
     };
 
-    let Some(templates_dir) = skeleton_templates_dir(false) else {
+    let Some(templates_dir) = skeleton_templates_dir(false, !args.no_cache) else {
         return;
     };
     let template_file = match db_type.as_str() {

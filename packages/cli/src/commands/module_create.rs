@@ -21,6 +21,9 @@ pub struct ModuleCreateArgs {
 
     #[arg(long, default_value_t = false)]
     pub silent: bool,
+
+    #[arg(long, default_value_t = false)]
+    pub no_cache: bool,
 }
 
 pub struct ModuleCreateOptions {
@@ -28,6 +31,7 @@ pub struct ModuleCreateOptions {
     pub destination: Option<String>,
     pub cwd: PathBuf,
     pub silent: bool,
+    pub no_cache: bool,
 }
 
 pub fn run(args: &ModuleCreateArgs) {
@@ -49,6 +53,7 @@ pub fn run(args: &ModuleCreateArgs) {
         destination: args.destination.clone(),
         cwd,
         silent: args.silent,
+        no_cache: args.no_cache,
     });
 }
 
@@ -58,6 +63,7 @@ pub fn execute(options: ModuleCreateOptions) {
         destination,
         cwd,
         silent,
+        no_cache,
     } = options;
 
     let destination = destination.unwrap_or_else(|| {
@@ -79,7 +85,7 @@ pub fn execute(options: ModuleCreateOptions) {
     let src_dir = module_dir.join("src");
     let tests_dir = module_dir.join("tests");
 
-    let Some(templates_dir) = skeleton_templates_dir(silent) else {
+    let Some(templates_dir) = skeleton_templates_dir(silent, !no_cache) else {
         return;
     };
     let Some(module_template) = read_template(&templates_dir, "module/module.txt") else {
