@@ -90,18 +90,39 @@ alias_link="${bin_dir}/${ALIAS}"
 ln -sf "${exe}" "${alias_link}"
 success "Created '${ALIAS}' symlink at ${alias_link}"
 
+# Marker used to detect a talos-managed block in a shell profile.
+TALOS_MARKER="# talos"
+
 # Add to PATH via the user's shell profile.
+#
+# Idempotent: the block is only appended when neither the talos marker nor the
+# target line is already present, so re-running the installer never duplicates
+# content in the shell config.
 add_to_path() {
   local profile="$1"
   local line="$2"
-  if [ -w "${profile}" ] || [ ! -e "${profile}" ]; then
-    if ! grep -qs "${bin_dir}" "${profile}" 2>/dev/null; then
-      echo "" >>"${profile}"
-      echo "# talos" >>"${profile}"
-      echo "${line}" >>"${profile}"
-      info "Added ${bin_dir} to PATH in ${profile}"
+
+  # Skip when the profile exists but is not writable.
+  if [ -e "${profile}" ] && [ ! -w "${profile}" ]; then
+    return
+  fi
+
+  if [ -e "${profile}" ]; then
+    if grep -qsF "${TALOS_MARKER}" "${profile}" 2>/dev/null; then
+      return
+    fi
+    if grep -qsF "${line}" "${profile}" 2>/dev/null; then
+      return
+    fi
+    if grep -qsF "${bin_dir}" "${profile}" 2>/dev/null; then
+      return
     fi
   fi
+
+  echo "" >>"${profile}"
+  echo "${TALOS_MARKER}" >>"${profile}"
+  echo "${line}" >>"${profile}"
+  info "Added ${bin_dir} to PATH in ${profile}"
 }
 
 # Add the 'oo' alias for the talos binary via a symbolic link (see above).

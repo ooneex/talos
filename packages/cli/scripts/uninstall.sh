@@ -52,23 +52,45 @@ else
 fi
 
 # Remove the PATH block added by the installer from the user's shell profile.
+#
+# The installer appends a block of the form:
+#   <blank line>
+#   # talos
+#   export PATH="..."
+# so removal also drops the single blank separator line that precedes the
+# marker, ensuring repeated install/uninstall cycles never leave behind
+# accumulating blank lines or duplicate content.
 remove_from_profile() {
   local profile="$1"
   [ -f "${profile}" ] || return 0
   [ -w "${profile}" ] || return 0
 
-  if grep -qs "${bin_dir}" "${profile}" 2>/dev/null; then
+  if grep -qsF "${bin_dir}" "${profile}" 2>/dev/null ||
+    grep -qsF "# talos" "${profile}" 2>/dev/null; then
     local tmp
     tmp="$(mktemp)"
-    # Drop the '# talos' comment and the following PATH line, plus any leftover
+    # Buffer blank lines so the separator preceding the '# talos' block can be
+    # dropped. Remove the marker and its following PATH line, plus any leftover
     # 'oo' alias lines from older installs.
     awk -v bindir="${bin_dir}" -v al="${ALIAS}" '
-      $0 == "# talos" { skip = 1; next }
-      skip == 1 { skip = 0; next }
-      index($0, bindir) > 0 { next }
-      $0 ~ ("alias " al "=") { next }
-      $0 ~ ("alias " al " ") { next }
-      { print }
+      /^[[:space:]]*$/ { blanks++; next }
+      {
+        if ($0 == "# talos") {
+          if (blanks > 0) blanks--
+          for (i = 0; i < blanks; i++) print ""
+          blanks = 0
+          skip = 1
+          next
+        }
+        for (i = 0; i < blanks; i++) print ""
+        blanks = 0
+        if (skip == 1) { skip = 0; next }
+        if (index($0, bindir) > 0) next
+        if ($0 ~ ("alias " al "=")) next
+        if ($0 ~ ("alias " al " ")) next
+        print
+      }
+      END { for (i = 0; i < blanks; i++) print "" }
     ' "${profile}" >"${tmp}"
     mv "${tmp}" "${profile}"
     info "Cleaned talos entries from ${profile}"

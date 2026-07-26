@@ -33,13 +33,23 @@ if (Test-Path $installDir) {
 }
 
 # Remove the bin directory from the user's PATH.
+#
+# Compare exact ';'-separated segments (case-insensitive, trailing-backslash
+# normalized) so removal is reliable and never leaves a duplicate behind.
 $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
-if (-not [string]::IsNullOrEmpty($userPath) -and $userPath -like "*$binDir*") {
-  $newPath = ($userPath -split ';' | Where-Object { $_ -ne $binDir -and $_ -ne "" }) -join ';'
-  [Environment]::SetEnvironmentVariable("Path", $newPath, "User")
-  $env:Path = ($env:Path -split ';' | Where-Object { $_ -ne $binDir -and $_ -ne "" }) -join ';'
-  Write-Host "Removed $binDir from your PATH." -ForegroundColor Cyan
+if (-not [string]::IsNullOrEmpty($userPath)) {
+  $target = $binDir.TrimEnd("\")
+  $segments = $userPath.Split(";") | Where-Object { $_ -ne "" }
+  $newSegments = $segments | Where-Object { $_.TrimEnd("\") -ine $target }
+  if ($newSegments.Count -ne $segments.Count) {
+    [Environment]::SetEnvironmentVariable("Path", ($newSegments -join ";"), "User")
+    Write-Host "Removed $binDir from your PATH." -ForegroundColor Cyan
+  }
 }
+
+# Refresh the current session's PATH, dropping every matching segment.
+$sessionSegments = $env:Path.Split(";") | Where-Object { $_ -ne "" }
+$env:Path = ($sessionSegments | Where-Object { $_.TrimEnd("\") -ine $binDir.TrimEnd("\") }) -join ";"
 
 # Remove any legacy 'oo' alias line from the user's PowerShell profile.
 $profilePath = $PROFILE.CurrentUserAllHosts

@@ -72,12 +72,25 @@ try {
 }
 
 # Add to the user's PATH.
+#
+# Idempotent: compare exact ';'-separated segments (case-insensitive) so
+# re-running the installer never appends a duplicate PATH entry.
 $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
-if ($userPath -notlike "*$binDir*") {
+$segments = @()
+if (-not [string]::IsNullOrEmpty($userPath)) {
+  $segments = $userPath.Split(";") | Where-Object { $_ -ne "" }
+}
+$alreadyPresent = $segments | Where-Object { $_.TrimEnd("\") -ieq $binDir.TrimEnd("\") }
+if (-not $alreadyPresent) {
   $newPath = if ([string]::IsNullOrEmpty($userPath)) { $binDir } else { "$binDir;$userPath" }
   [Environment]::SetEnvironmentVariable("Path", $newPath, "User")
-  $env:Path = "$binDir;$env:Path"
   Write-Host "Added $binDir to your PATH." -ForegroundColor Cyan
+}
+
+# Refresh the current session's PATH without duplicating the entry.
+$sessionSegments = $env:Path.Split(";") | Where-Object { $_ -ne "" }
+if (-not ($sessionSegments | Where-Object { $_.TrimEnd("\") -ieq $binDir.TrimEnd("\") })) {
+  $env:Path = "$binDir;$env:Path"
 }
 
 Write-Host ""
