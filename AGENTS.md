@@ -138,6 +138,8 @@ oo issue:create --interactive --module <name>               # Prompt + save insi
 oo issue:pull                                               # Pull a Linear issue and save as YAML
 oo issue:pull --id <id>                                     # Pull a specific issue by ID
 oo issue:pull --id <id> --module <name>                     # Save issue into a module's issues/ directory
+oo issue:push --id <id1>,<id2>,...                          # Push one or more local issue YAMLs to Linear (create or update)
+oo issue:push --id <id> --module <name>                     # Disambiguate the source module when pushing
 oo ai:create --name <Name> --module <name>                    # AI integration class
 oo analytics:create --name <Name> --module <name>             # Analytics handler class
 oo cache:create --name <Name> --module <name>                 # Cache handler class

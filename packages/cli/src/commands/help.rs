@@ -93,7 +93,7 @@ const COMMANDS: &[(&str, &str)] = &[
     ),
     (
         "issue:push",
-        "Push a local issue YAML to Linear (create or update)",
+        "Push one or more local issue YAML files to Linear (create or update)",
     ),
     (
         "jira:credentials:create",
