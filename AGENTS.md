@@ -184,12 +184,12 @@ oo monorepo:run --commands=test  # Run tests across all modules
 ### Security
 
 ```bash
-oo security:check                    # Audit bun/rust/python modules for known vulnerabilities, report by module (sorted by severity)
+oo security:check                    # Audit all dependencies against OSV.dev, report by module/package (sorted by severity)
 oo security:check --audit-level=high # Only report high/critical findings
 oo security:check --issues           # Create one YAML Security issue per vulnerability instead of printing
 ```
 
-`security:check` discovers bun modules (`bun.lock`), rust modules (`Cargo.toml`) and python modules (`requirements.txt`/`pyproject.toml`/`Pipfile`) and runs `bun audit`, `cargo audit` and `pip-audit` respectively — covering every installed dependency through each lockfile. With `--issues`, each finding is written into the owning module's `issues/` folder as a `Todo`, `Security`-labelled issue.
+`security:check` walks the whole workspace, parses every lockfile it finds (`bun.lock`, `package-lock.json`, `Cargo.lock`, `requirements.txt`, `Pipfile.lock`, `poetry.lock`, `go.sum`, `Gemfile.lock`, `composer.lock`) and checks each resolved package against the **[OSV.dev](https://osv.dev) online database** — covering npm (bun/node/react/typescript), PyPI, crates.io, Go, RubyGems and Packagist. No local audit binary is required (only network access). Findings are grouped by module/package folder name and sorted by severity (critical→low), each citing the OSV advisory id, CVE aliases, patched versions and advisory URL. With `--issues`, each finding is written into the owning module's `issues/` folder (root findings → `modules/shared/issues/`) as a `Todo`, `Security`-labelled issue.
 
 ### Release
 

@@ -1,20 +1,27 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 
 use clap::Args;
 use console::style;
-use serde_json::Value;
+use serde_json::{Value, json};
 
 use crate::utils::{
-    IssueYaml, Spinner, current_dir, error, generate_issue_id, issue_to_yaml, success, warn,
+    IssueYaml, Spinner, current_dir, error, generate_issue_id, issue_to_yaml, strip_jsonc, success,
+    warn,
 };
 
-/// Directories that are never descended into while discovering audit targets.
-/// Their contents are still covered by the ecosystem audit tools through the
-/// lockfiles at the target root (e.g. `bun audit` scans every installed
-/// dependency listed in `bun.lock`, including those under `node_modules`).
+/// Universal, always-online vulnerability database. A single API covers every
+/// ecosystem (npm/react/typescript/node, PyPI, crates.io, Go, RubyGems, …), so
+/// no per-language audit binary has to be installed locally.
+const OSV_QUERY_BATCH_URL: &str = "https://api.osv.dev/v1/querybatch";
+const OSV_VULN_URL: &str = "https://api.osv.dev/v1/vulns";
+const OSV_BATCH_SIZE: usize = 1000;
+const SOURCE: &str = "OSV.dev";
+
+/// Directories that are never descended into while collecting dependencies.
+/// Their contents are still covered because every installed dependency (even
+/// those under `node_modules`) is pinned in the lockfile at the module root.
 const EXCLUDED_DIRS: &[&str] = &[
     "node_modules",
     "dist",
@@ -116,35 +123,58 @@ impl Severity {
         match self {
             Severity::Critical | Severity::High => "Urgent",
             Severity::Moderate => "High",
-            Severity::Low => "Medium",
-            Severity::Unknown => "Medium",
+            Severity::Low | Severity::Unknown => "Medium",
         }
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 enum Ecosystem {
-    Bun,
-    Rust,
-    Python,
+    Npm,
+    PyPI,
+    Crates,
+    Go,
+    RubyGems,
+    Packagist,
 }
 
 impl Ecosystem {
-    fn label(&self) -> &'static str {
+    /// The exact ecosystem string OSV expects.
+    fn osv(&self) -> &'static str {
         match self {
-            Ecosystem::Bun => "bun",
-            Ecosystem::Rust => "rust",
-            Ecosystem::Python => "python",
+            Ecosystem::Npm => "npm",
+            Ecosystem::PyPI => "PyPI",
+            Ecosystem::Crates => "crates.io",
+            Ecosystem::Go => "Go",
+            Ecosystem::RubyGems => "RubyGems",
+            Ecosystem::Packagist => "Packagist",
         }
     }
 
-    fn tool(&self) -> &'static str {
+    /// Human-friendly label shown in the report.
+    fn label(&self) -> &'static str {
         match self {
-            Ecosystem::Bun => "bun",
-            Ecosystem::Rust => "cargo-audit",
-            Ecosystem::Python => "pip-audit",
+            Ecosystem::Npm => "npm",
+            Ecosystem::PyPI => "pypi",
+            Ecosystem::Crates => "crates.io",
+            Ecosystem::Go => "go",
+            Ecosystem::RubyGems => "rubygems",
+            Ecosystem::Packagist => "packagist",
         }
     }
+}
+
+#[derive(Clone, PartialEq, Eq, Hash)]
+struct PackageKey {
+    ecosystem: Ecosystem,
+    name: String,
+    version: String,
+}
+
+struct ModuleReport {
+    name: String,
+    dir: PathBuf,
+    packages: Vec<PackageKey>,
 }
 
 struct Finding {
@@ -157,16 +187,8 @@ struct Finding {
     id: String,
     title: String,
     url: String,
-    affected: String,
+    aliases: String,
     patched: String,
-}
-
-struct Target {
-    /// Display name of the audited module/package (the folder name under
-    /// `modules/` or `packages/`, or the root package name for the workspace root).
-    module: String,
-    dir: PathBuf,
-    ecosystem: Ecosystem,
 }
 
 pub fn run(args: &SecurityCheckArgs) {
@@ -183,42 +205,85 @@ pub fn run(args: &SecurityCheckArgs) {
         .map(Severity::from_label)
         .unwrap_or(Severity::Unknown);
 
-    let spinner = Spinner::start("Discovering audit targets");
-    let mut targets = discover_targets(&root);
+    let spinner = Spinner::start("Collecting dependencies");
+    let mut modules = collect_modules(&root);
     spinner.stop();
 
     if let Some(filter) = &filter {
-        targets.retain(|t| filter.contains(t.module.as_str()));
+        modules.retain(|m| filter.contains(m.name.as_str()));
     }
 
-    if targets.is_empty() {
-        warn("No bun, rust or python modules found to audit");
+    if modules.is_empty() {
+        warn("No npm, python, rust, go, ruby or php modules found to audit");
         return;
     }
 
-    let mut findings: Vec<Finding> = Vec::new();
-    let mut missing_tools: BTreeSet<&'static str> = BTreeSet::new();
-    let mut scanned = 0usize;
+    let total_deps: usize = modules.iter().map(|m| m.packages.len()).sum();
 
-    for target in &targets {
+    // De-duplicate every (ecosystem, name, version) tuple across all modules so
+    // a package shared by several modules is queried online only once.
+    let mut unique: Vec<PackageKey> = Vec::new();
+    let mut index: HashMap<PackageKey, usize> = HashMap::new();
+    for module in &modules {
+        for package in &module.packages {
+            index.entry(package.clone()).or_insert_with(|| {
+                unique.push(package.clone());
+                unique.len() - 1
+            });
+        }
+    }
+
+    let spinner = Spinner::start(format!(
+        "Querying {SOURCE} for {} package{}",
+        unique.len(),
+        if unique.len() == 1 { "" } else { "s" }
+    ));
+    let vuln_ids = match osv_query_batch(&unique) {
+        Some(ids) => ids,
+        None => {
+            spinner.stop();
+            error(format!(
+                "Could not reach {SOURCE} — check your network connection and try again"
+            ));
+            return;
+        }
+    };
+    spinner.stop();
+
+    // Resolve advisory details once per unique id.
+    let mut all_ids: BTreeSet<String> = BTreeSet::new();
+    for ids in &vuln_ids {
+        for id in ids {
+            all_ids.insert(id.clone());
+        }
+    }
+
+    let records = if all_ids.is_empty() {
+        HashMap::new()
+    } else {
         let spinner = Spinner::start(format!(
-            "Auditing {} ({})",
-            target.module,
-            target.ecosystem.label()
+            "Fetching {} advisor{} from {SOURCE}",
+            all_ids.len(),
+            if all_ids.len() == 1 { "y" } else { "ies" }
         ));
-        let outcome = audit_target(target);
+        let records = fetch_records(&all_ids);
         spinner.stop();
+        records
+    };
 
-        match outcome {
-            AuditOutcome::Ok(mut found) => {
-                scanned += 1;
-                findings.append(&mut found);
-            }
-            AuditOutcome::ToolMissing(tool) => {
-                missing_tools.insert(tool);
-            }
-            AuditOutcome::Skipped => {
-                scanned += 1;
+    let mut findings: Vec<Finding> = Vec::new();
+    for module in &modules {
+        let mut seen: HashSet<(String, String)> = HashSet::new();
+        for package in &module.packages {
+            let Some(&query_index) = index.get(package) else {
+                continue;
+            };
+            for id in &vuln_ids[query_index] {
+                if !seen.insert((package.name.clone(), id.clone())) {
+                    continue;
+                }
+                let record = records.get(id);
+                findings.push(build_finding(module, package, id, record));
             }
         }
     }
@@ -229,18 +294,13 @@ pub fn run(args: &SecurityCheckArgs) {
             .cmp(&b.module)
             .then_with(|| b.severity.cmp(&a.severity))
             .then_with(|| a.package.cmp(&b.package))
+            .then_with(|| a.id.cmp(&b.id))
     });
-
-    for tool in &missing_tools {
-        warn(format!(
-            "\"{tool}\" is not installed — related modules were skipped"
-        ));
-    }
 
     if args.issues {
         create_issues(&root, &findings);
     } else {
-        print_report(&findings, scanned);
+        print_report(&findings, modules.len(), total_deps);
     }
 }
 
@@ -254,45 +314,34 @@ fn build_filter(modules: Option<&str>, packages: Option<&str>) -> Option<BTreeSe
     if set.is_empty() { None } else { Some(set) }
 }
 
-fn discover_targets(root: &Path) -> Vec<Target> {
-    let mut targets = Vec::new();
-    walk(root, root, 0, &mut targets);
-    targets.sort_by(|a, b| a.module.cmp(&b.module));
-    targets
+// ---------------------------------------------------------------------------
+// Module + dependency discovery
+// ---------------------------------------------------------------------------
+
+fn collect_modules(root: &Path) -> Vec<ModuleReport> {
+    let mut modules = Vec::new();
+    walk(root, root, 0, &mut modules);
+    modules.sort_by(|a, b| a.name.cmp(&b.name));
+    modules
 }
 
-fn walk(root: &Path, dir: &Path, depth: usize, targets: &mut Vec<Target>) {
-    let module = target_name(root, dir);
-
-    if dir.join("bun.lock").is_file() || dir.join("bun.lockb").is_file() {
-        targets.push(Target {
-            module: module.clone(),
-            dir: dir.to_path_buf(),
-            ecosystem: Ecosystem::Bun,
+fn walk(root: &Path, dir: &Path, depth: usize, modules: &mut Vec<ModuleReport>) {
+    let mut packages = collect_packages(dir);
+    if !packages.is_empty() {
+        packages.sort_by(|a, b| a.name.cmp(&b.name).then_with(|| a.version.cmp(&b.version)));
+        packages.dedup_by(|a, b| {
+            a.ecosystem == b.ecosystem && a.name == b.name && a.version == b.version
         });
-    }
-    if dir.join("Cargo.toml").is_file() {
-        targets.push(Target {
-            module: module.clone(),
+        modules.push(ModuleReport {
+            name: target_name(root, dir),
             dir: dir.to_path_buf(),
-            ecosystem: Ecosystem::Rust,
-        });
-    }
-    if dir.join("requirements.txt").is_file()
-        || dir.join("pyproject.toml").is_file()
-        || dir.join("Pipfile").is_file()
-    {
-        targets.push(Target {
-            module,
-            dir: dir.to_path_buf(),
-            ecosystem: Ecosystem::Python,
+            packages,
         });
     }
 
     if depth >= MAX_DEPTH {
         return;
     }
-
     let Ok(entries) = fs::read_dir(dir) else {
         return;
     };
@@ -304,11 +353,25 @@ fn walk(root: &Path, dir: &Path, depth: usize, targets: &mut Vec<Target>) {
         let Some(name) = path.file_name().and_then(|n| n.to_str()) else {
             continue;
         };
-        if name.starts_with('.') && name != "." || EXCLUDED_DIRS.contains(&name) {
+        if name.starts_with('.') || EXCLUDED_DIRS.contains(&name) {
             continue;
         }
-        walk(root, &path, depth + 1, targets);
+        walk(root, &path, depth + 1, modules);
     }
+}
+
+fn collect_packages(dir: &Path) -> Vec<PackageKey> {
+    let mut packages = Vec::new();
+    packages.extend(parse_bun_lock(dir));
+    packages.extend(parse_package_lock(dir));
+    packages.extend(parse_cargo_lock(dir));
+    packages.extend(parse_requirements_txt(dir));
+    packages.extend(parse_pipfile_lock(dir));
+    packages.extend(parse_poetry_lock(dir));
+    packages.extend(parse_go_sum(dir));
+    packages.extend(parse_gemfile_lock(dir));
+    packages.extend(parse_composer_lock(dir));
+    packages
 }
 
 fn target_name(root: &Path, dir: &Path) -> String {
@@ -353,277 +416,573 @@ fn root_package_name(root: &Path) -> String {
         .unwrap_or_else(|| "root".to_string())
 }
 
-enum AuditOutcome {
-    Ok(Vec<Finding>),
-    ToolMissing(&'static str),
-    Skipped,
+// ---------------------------------------------------------------------------
+// Lockfile parsers — each returns the resolved (name, version) it can extract
+// ---------------------------------------------------------------------------
+
+fn read(dir: &Path, file: &str) -> Option<String> {
+    fs::read_to_string(dir.join(file)).ok()
 }
 
-fn audit_target(target: &Target) -> AuditOutcome {
-    match target.ecosystem {
-        Ecosystem::Bun => audit_bun(target),
-        Ecosystem::Rust => audit_rust(target),
-        Ecosystem::Python => audit_python(target),
+fn npm(name: &str, version: &str) -> PackageKey {
+    PackageKey {
+        ecosystem: Ecosystem::Npm,
+        name: name.to_string(),
+        version: version.to_string(),
     }
 }
 
-fn tool_available(program: &str, args: &[&str]) -> bool {
-    Command::new(program)
-        .args(args)
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .status()
-        .map(|status| status.success())
-        .unwrap_or(false)
-}
-
-fn run_json(dir: &Path, program: &str, args: &[&str]) -> Result<Option<Value>, std::io::Error> {
-    let output = Command::new(program).args(args).current_dir(dir).output()?;
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    let trimmed = stdout.trim();
-    if trimmed.is_empty() {
-        return Ok(None);
-    }
-    let start = trimmed.find(['{', '[']);
-    let Some(start) = start else {
-        return Ok(None);
+/// `bun.lock` (text lockfile). Its `packages` map holds one `name@version`
+/// string per resolved dependency, covering the full transitive npm tree.
+fn parse_bun_lock(dir: &Path) -> Vec<PackageKey> {
+    let Some(raw) = read(dir, "bun.lock") else {
+        return Vec::new();
     };
-    Ok(serde_json::from_str::<Value>(&trimmed[start..]).ok())
-}
-
-fn audit_bun(target: &Target) -> AuditOutcome {
-    let value = match run_json(&target.dir, "bun", &["audit", "--json"]) {
-        Ok(Some(value)) => value,
-        Ok(None) => return AuditOutcome::Skipped,
-        Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
-            return AuditOutcome::ToolMissing("bun");
+    let Ok(value) = serde_json::from_str::<Value>(&strip_jsonc(&raw)) else {
+        return Vec::new();
+    };
+    let Some(packages) = value.get("packages").and_then(Value::as_object) else {
+        return Vec::new();
+    };
+    let mut out = Vec::new();
+    for entry in packages.values() {
+        if let Some(descriptor) = entry.get(0).and_then(Value::as_str)
+            && let Some((name, version)) = split_name_version(descriptor)
+        {
+            out.push(npm(&name, &version));
         }
-        Err(_) => return AuditOutcome::Skipped,
-    };
+    }
+    out
+}
 
-    let Some(map) = value.as_object() else {
-        return AuditOutcome::Skipped;
+/// `package-lock.json` v2/v3 — the `packages` map keys are install paths
+/// (`node_modules/<name>`) and each value carries the resolved `version`.
+fn parse_package_lock(dir: &Path) -> Vec<PackageKey> {
+    let Some(raw) = read(dir, "package-lock.json") else {
+        return Vec::new();
     };
+    let Ok(value) = serde_json::from_str::<Value>(&raw) else {
+        return Vec::new();
+    };
+    let mut out = Vec::new();
+    if let Some(packages) = value.get("packages").and_then(Value::as_object) {
+        for (path, meta) in packages {
+            if path.is_empty() {
+                continue;
+            }
+            let Some(name) = path.rsplit("node_modules/").next() else {
+                continue;
+            };
+            if let Some(version) = meta.get("version").and_then(Value::as_str) {
+                out.push(npm(name, version));
+            }
+        }
+    }
+    out
+}
 
-    let mut findings = Vec::new();
-    for (package, advisories) in map {
-        let Some(list) = advisories.as_array() else {
-            continue;
-        };
-        for advisory in list {
-            let severity = advisory
-                .get("severity")
-                .and_then(Value::as_str)
-                .map(Severity::from_label)
-                .unwrap_or(Severity::Unknown);
-            let id = advisory.get("id").map(value_to_string).unwrap_or_default();
-            findings.push(Finding {
-                module: target.module.clone(),
-                module_dir: target.dir.clone(),
-                ecosystem: Ecosystem::Bun,
-                package: package.clone(),
-                version: String::new(),
-                severity,
-                id,
-                title: string_field(advisory, "title"),
-                url: string_field(advisory, "url"),
-                affected: string_field(advisory, "vulnerable_versions"),
-                patched: String::new(),
+/// `Cargo.lock` — TOML with `[[package]]` blocks, each carrying `name`/`version`.
+fn parse_cargo_lock(dir: &Path) -> Vec<PackageKey> {
+    let Some(raw) = read(dir, "Cargo.lock") else {
+        return Vec::new();
+    };
+    let mut out = Vec::new();
+    let mut name: Option<String> = None;
+    for line in raw.lines() {
+        let line = line.trim();
+        if line == "[[package]]" {
+            name = None;
+        } else if let Some(value) = line.strip_prefix("name = ") {
+            name = Some(unquote(value));
+        } else if let Some(value) = line.strip_prefix("version = ")
+            && let Some(name) = name.take()
+        {
+            out.push(PackageKey {
+                ecosystem: Ecosystem::Crates,
+                name,
+                version: unquote(value),
             });
         }
     }
-    AuditOutcome::Ok(findings)
+    out
 }
 
-fn audit_rust(target: &Target) -> AuditOutcome {
-    if !tool_available("cargo", &["audit", "--version"]) {
-        return AuditOutcome::ToolMissing("cargo-audit");
-    }
-    let value = match run_json(&target.dir, "cargo", &["audit", "--json"]) {
-        Ok(Some(value)) => value,
-        Ok(None) => return AuditOutcome::Skipped,
-        Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
-            return AuditOutcome::ToolMissing("cargo-audit");
-        }
-        Err(_) => return AuditOutcome::Skipped,
+/// `requirements.txt` — only fully pinned `name==version` lines are auditable.
+fn parse_requirements_txt(dir: &Path) -> Vec<PackageKey> {
+    let Some(raw) = read(dir, "requirements.txt") else {
+        return Vec::new();
     };
-
-    if is_cargo_audit_missing(&value) {
-        return AuditOutcome::ToolMissing("cargo-audit");
-    }
-
-    let list = value
-        .get("vulnerabilities")
-        .and_then(|v| v.get("list"))
-        .and_then(Value::as_array)
-        .cloned()
-        .unwrap_or_default();
-
-    let mut findings = Vec::new();
-    for item in &list {
-        let advisory = item.get("advisory").cloned().unwrap_or(Value::Null);
-        let package = item.get("package").cloned().unwrap_or(Value::Null);
-        let severity = advisory
-            .get("cvss")
-            .and_then(Value::as_str)
-            .and_then(parse_cvss_score)
-            .map(Severity::from_cvss)
-            .unwrap_or(Severity::Unknown);
-        let patched = item
-            .get("versions")
-            .and_then(|v| v.get("patched"))
-            .and_then(Value::as_array)
-            .map(|arr| {
-                arr.iter()
-                    .filter_map(Value::as_str)
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            })
-            .unwrap_or_default();
-        findings.push(Finding {
-            module: target.module.clone(),
-            module_dir: target.dir.clone(),
-            ecosystem: Ecosystem::Rust,
-            package: string_field(&package, "name"),
-            version: string_field(&package, "version"),
-            severity,
-            id: string_field(&advisory, "id"),
-            title: string_field(&advisory, "title"),
-            url: string_field(&advisory, "url"),
-            affected: String::new(),
-            patched,
-        });
-    }
-    AuditOutcome::Ok(findings)
-}
-
-fn audit_python(target: &Target) -> AuditOutcome {
-    if !tool_available("pip-audit", &["--version"]) {
-        return AuditOutcome::ToolMissing("pip-audit");
-    }
-    let mut args = vec!["--format", "json", "--progress-spinner", "off"];
-    let requirements = target.dir.join("requirements.txt");
-    if requirements.is_file() {
-        args.push("-r");
-        args.push("requirements.txt");
-    }
-
-    let value = match run_json(&target.dir, "pip-audit", &args) {
-        Ok(Some(value)) => value,
-        Ok(None) => return AuditOutcome::Skipped,
-        Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
-            return AuditOutcome::ToolMissing("pip-audit");
+    let mut out = Vec::new();
+    for line in raw.lines() {
+        let line = line.split('#').next().unwrap_or("").trim();
+        if line.is_empty() || line.starts_with('-') {
+            continue;
         }
-        Err(_) => return AuditOutcome::Skipped,
-    };
-
-    let dependencies = value
-        .get("dependencies")
-        .and_then(Value::as_array)
-        .cloned()
-        .unwrap_or_default();
-
-    let mut findings = Vec::new();
-    for dependency in &dependencies {
-        let name = string_field(dependency, "name");
-        let version = string_field(dependency, "version");
-        let Some(vulns) = dependency.get("vulns").and_then(Value::as_array) else {
+        let Some((name, rest)) = line.split_once("==") else {
             continue;
         };
-        for vuln in vulns {
-            let aliases = vuln
-                .get("aliases")
-                .and_then(Value::as_array)
-                .map(|arr| {
-                    arr.iter()
-                        .filter_map(Value::as_str)
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                })
-                .unwrap_or_default();
-            let id = string_field(vuln, "id");
-            let url = if id.starts_with("GHSA") {
-                format!("https://github.com/advisories/{id}")
-            } else if id.starts_with("CVE") {
-                format!("https://nvd.nist.gov/vuln/detail/{id}")
-            } else {
-                format!("https://osv.dev/vulnerability/{id}")
-            };
-            let patched = vuln
-                .get("fix_versions")
-                .and_then(Value::as_array)
-                .map(|arr| {
-                    arr.iter()
-                        .filter_map(Value::as_str)
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                })
-                .unwrap_or_default();
-            let severity = vuln
-                .get("severity")
-                .and_then(Value::as_str)
-                .map(Severity::from_label)
-                .unwrap_or(Severity::Unknown);
-            let title = string_field(vuln, "description");
-            let title = if title.is_empty() {
-                if aliases.is_empty() {
-                    format!("Known vulnerability in {name}")
-                } else {
-                    aliases.clone()
+        let version = rest
+            .split([';', ' ', '\t'])
+            .next()
+            .unwrap_or("")
+            .trim()
+            .trim_end_matches('\\');
+        let name = name.split('[').next().unwrap_or("").trim();
+        if !name.is_empty() && !version.is_empty() {
+            out.push(PackageKey {
+                ecosystem: Ecosystem::PyPI,
+                name: name.to_string(),
+                version: version.to_string(),
+            });
+        }
+    }
+    out
+}
+
+/// `Pipfile.lock` — JSON with `default`/`develop` maps of `name -> { version }`.
+fn parse_pipfile_lock(dir: &Path) -> Vec<PackageKey> {
+    let Some(raw) = read(dir, "Pipfile.lock") else {
+        return Vec::new();
+    };
+    let Ok(value) = serde_json::from_str::<Value>(&raw) else {
+        return Vec::new();
+    };
+    let mut out = Vec::new();
+    for section in ["default", "develop"] {
+        let Some(map) = value.get(section).and_then(Value::as_object) else {
+            continue;
+        };
+        for (name, meta) in map {
+            if let Some(version) = meta.get("version").and_then(Value::as_str) {
+                let version = version.trim_start_matches("==").trim();
+                if !version.is_empty() {
+                    out.push(PackageKey {
+                        ecosystem: Ecosystem::PyPI,
+                        name: name.clone(),
+                        version: version.to_string(),
+                    });
                 }
-            } else {
-                title
-            };
-            findings.push(Finding {
-                module: target.module.clone(),
-                module_dir: target.dir.clone(),
-                ecosystem: Ecosystem::Python,
-                package: name.clone(),
-                version: version.clone(),
-                severity,
-                id,
-                title,
-                url,
-                affected: String::new(),
-                patched,
+            }
+        }
+    }
+    out
+}
+
+/// `poetry.lock` — TOML with `[[package]]` blocks (`name`/`version`).
+fn parse_poetry_lock(dir: &Path) -> Vec<PackageKey> {
+    let Some(raw) = read(dir, "poetry.lock") else {
+        return Vec::new();
+    };
+    let mut out = Vec::new();
+    let mut name: Option<String> = None;
+    let mut in_package = false;
+    for line in raw.lines() {
+        let line = line.trim();
+        if line == "[[package]]" {
+            in_package = true;
+            name = None;
+        } else if line.starts_with('[') && line != "[[package]]" {
+            in_package = false;
+        } else if in_package {
+            if let Some(value) = line.strip_prefix("name = ") {
+                name = Some(unquote(value));
+            } else if let Some(value) = line.strip_prefix("version = ")
+                && let Some(name) = name.take()
+            {
+                out.push(PackageKey {
+                    ecosystem: Ecosystem::PyPI,
+                    name,
+                    version: unquote(value),
+                });
+            }
+        }
+    }
+    out
+}
+
+/// `go.sum` — lines `module version[/go.mod] hash`.
+fn parse_go_sum(dir: &Path) -> Vec<PackageKey> {
+    let Some(raw) = read(dir, "go.sum") else {
+        return Vec::new();
+    };
+    let mut seen = HashSet::new();
+    let mut out = Vec::new();
+    for line in raw.lines() {
+        let mut parts = line.split_whitespace();
+        let (Some(module), Some(version)) = (parts.next(), parts.next()) else {
+            continue;
+        };
+        let version = version.trim_end_matches("/go.mod");
+        if seen.insert((module.to_string(), version.to_string())) {
+            out.push(PackageKey {
+                ecosystem: Ecosystem::Go,
+                name: module.to_string(),
+                version: version.to_string(),
             });
         }
     }
-    AuditOutcome::Ok(findings)
+    out
 }
 
-fn is_cargo_audit_missing(value: &Value) -> bool {
-    value
-        .get("error")
-        .and_then(Value::as_str)
-        .map(|e| e.contains("no such subcommand"))
-        .unwrap_or(false)
+/// `Gemfile.lock` — the `GEM` section lists `  name (version)` specs.
+fn parse_gemfile_lock(dir: &Path) -> Vec<PackageKey> {
+    let Some(raw) = read(dir, "Gemfile.lock") else {
+        return Vec::new();
+    };
+    let mut out = Vec::new();
+    let mut in_specs = false;
+    for line in raw.lines() {
+        if line.trim_end() == "  specs:" {
+            in_specs = true;
+            continue;
+        }
+        if in_specs {
+            let indent = line.len() - line.trim_start().len();
+            let trimmed = line.trim();
+            if trimmed.is_empty() {
+                in_specs = false;
+                continue;
+            }
+            // Direct specs are indented by exactly 4 spaces; deeper indent is a
+            // transitive dependency constraint without a pinned version.
+            if indent != 4 {
+                continue;
+            }
+            if let Some((name, rest)) = trimmed.split_once(" (") {
+                let version = rest.trim_end_matches(')');
+                if !version.is_empty() && version.chars().next().is_some_and(|c| c.is_ascii_digit())
+                {
+                    out.push(PackageKey {
+                        ecosystem: Ecosystem::RubyGems,
+                        name: name.to_string(),
+                        version: version.to_string(),
+                    });
+                }
+            }
+        }
+    }
+    out
 }
 
-fn parse_cvss_score(vector: &str) -> Option<f64> {
-    vector.trim().parse::<f64>().ok()
+/// `composer.lock` — JSON with `packages`/`packages-dev` arrays of `{name,version}`.
+fn parse_composer_lock(dir: &Path) -> Vec<PackageKey> {
+    let Some(raw) = read(dir, "composer.lock") else {
+        return Vec::new();
+    };
+    let Ok(value) = serde_json::from_str::<Value>(&raw) else {
+        return Vec::new();
+    };
+    let mut out = Vec::new();
+    for section in ["packages", "packages-dev"] {
+        let Some(list) = value.get(section).and_then(Value::as_array) else {
+            continue;
+        };
+        for entry in list {
+            let name = entry.get("name").and_then(Value::as_str);
+            let version = entry.get("version").and_then(Value::as_str);
+            if let (Some(name), Some(version)) = (name, version) {
+                out.push(PackageKey {
+                    ecosystem: Ecosystem::Packagist,
+                    name: name.to_string(),
+                    version: version.trim_start_matches('v').to_string(),
+                });
+            }
+        }
+    }
+    out
 }
 
-fn string_field(value: &Value, key: &str) -> String {
-    value.get(key).map(value_to_string).unwrap_or_default()
+fn split_name_version(descriptor: &str) -> Option<(String, String)> {
+    let at = descriptor.rfind('@').filter(|&i| i > 0)?;
+    Some((
+        descriptor[..at].to_string(),
+        descriptor[at + 1..].to_string(),
+    ))
 }
 
-fn value_to_string(value: &Value) -> String {
-    match value {
-        Value::String(s) => s.clone(),
-        Value::Number(n) => n.to_string(),
-        Value::Null => String::new(),
-        other => other.to_string(),
+fn unquote(value: &str) -> String {
+    value.trim().trim_matches('"').to_string()
+}
+
+// ---------------------------------------------------------------------------
+// OSV.dev online client
+// ---------------------------------------------------------------------------
+
+fn osv_agent() -> ureq::Agent {
+    // Trust the operating-system certificate store (macOS keychain, Windows
+    // cert store, Linux CA bundle) rather than ureq's bundled Mozilla roots, so
+    // the client works behind corporate TLS-inspecting proxies too.
+    let config = ureq::Agent::config_builder()
+        .tls_config(
+            ureq::tls::TlsConfig::builder()
+                .root_certs(ureq::tls::RootCerts::PlatformVerifier)
+                .build(),
+        )
+        .build();
+    config.into()
+}
+
+fn osv_query_batch(packages: &[PackageKey]) -> Option<Vec<Vec<String>>> {
+    let agent = osv_agent();
+    let mut results: Vec<Vec<String>> = Vec::with_capacity(packages.len());
+    for chunk in packages.chunks(OSV_BATCH_SIZE) {
+        let queries: Vec<Value> = chunk
+            .iter()
+            .map(|package| {
+                json!({
+                    "package": { "name": package.name, "ecosystem": package.ecosystem.osv() },
+                    "version": package.version,
+                })
+            })
+            .collect();
+        let response: Value = agent
+            .post(OSV_QUERY_BATCH_URL)
+            .header("Content-Type", "application/json")
+            .send_json(json!({ "queries": queries }))
+            .ok()?
+            .into_body()
+            .read_json()
+            .ok()?;
+        let entries = response.get("results").and_then(Value::as_array)?;
+        for entry in entries {
+            let ids = entry
+                .get("vulns")
+                .and_then(Value::as_array)
+                .map(|vulns| {
+                    vulns
+                        .iter()
+                        .filter_map(|vuln| vuln.get("id").and_then(Value::as_str))
+                        .map(str::to_string)
+                        .collect()
+                })
+                .unwrap_or_default();
+            results.push(ids);
+        }
+    }
+    // Guard against a short/misaligned response.
+    while results.len() < packages.len() {
+        results.push(Vec::new());
+    }
+    Some(results)
+}
+
+fn fetch_records(ids: &BTreeSet<String>) -> HashMap<String, Value> {
+    let agent = osv_agent();
+    let mut records = HashMap::new();
+    for id in ids {
+        if let Some(record) = fetch_record(&agent, id) {
+            records.insert(id.clone(), record);
+        }
+    }
+    records
+}
+
+fn fetch_record(agent: &ureq::Agent, id: &str) -> Option<Value> {
+    agent
+        .get(format!("{OSV_VULN_URL}/{id}"))
+        .call()
+        .ok()?
+        .into_body()
+        .read_json()
+        .ok()
+}
+
+fn build_finding(
+    module: &ModuleReport,
+    package: &PackageKey,
+    id: &str,
+    record: Option<&Value>,
+) -> Finding {
+    let severity = record
+        .map(severity_from_record)
+        .unwrap_or(Severity::Unknown);
+    let title = record
+        .and_then(|r| {
+            r.get("summary")
+                .and_then(Value::as_str)
+                .or_else(|| r.get("details").and_then(Value::as_str))
+        })
+        .map(str::to_string)
+        .unwrap_or_else(|| format!("Known vulnerability in {}", package.name));
+    let aliases = record
+        .and_then(|r| r.get("aliases").and_then(Value::as_array))
+        .map(|arr| {
+            arr.iter()
+                .filter_map(Value::as_str)
+                .filter(|alias| alias.starts_with("CVE"))
+                .collect::<Vec<_>>()
+                .join(", ")
+        })
+        .unwrap_or_default();
+    let patched = record
+        .map(|r| fixed_versions(r, package))
+        .unwrap_or_default();
+
+    Finding {
+        module: module.name.clone(),
+        module_dir: module.dir.clone(),
+        ecosystem: package.ecosystem,
+        package: package.name.clone(),
+        version: package.version.clone(),
+        severity,
+        id: id.to_string(),
+        title,
+        url: format!("https://osv.dev/vulnerability/{id}"),
+        aliases,
+        patched,
     }
 }
 
-fn print_report(findings: &[Finding], scanned: usize) {
+fn severity_from_record(record: &Value) -> Severity {
+    if let Some(label) = record
+        .get("database_specific")
+        .and_then(|d| d.get("severity"))
+        .and_then(Value::as_str)
+    {
+        let severity = Severity::from_label(label);
+        if severity != Severity::Unknown {
+            return severity;
+        }
+    }
+
+    let mut best = Severity::Unknown;
+    if let Some(entries) = record.get("severity").and_then(Value::as_array) {
+        for entry in entries {
+            let Some(score) = entry.get("score").and_then(Value::as_str) else {
+                continue;
+            };
+            let severity = if let Ok(numeric) = score.parse::<f64>() {
+                Severity::from_cvss(numeric)
+            } else if let Some(numeric) = cvss3_base_score(score) {
+                Severity::from_cvss(numeric)
+            } else {
+                Severity::Unknown
+            };
+            if severity > best {
+                best = severity;
+            }
+        }
+    }
+    best
+}
+
+fn fixed_versions(record: &Value, package: &PackageKey) -> String {
+    let mut fixed: Vec<String> = Vec::new();
+    let Some(affected) = record.get("affected").and_then(Value::as_array) else {
+        return String::new();
+    };
+    for entry in affected {
+        let name = entry
+            .get("package")
+            .and_then(|p| p.get("name"))
+            .and_then(Value::as_str)
+            .unwrap_or_default();
+        let ecosystem = entry
+            .get("package")
+            .and_then(|p| p.get("ecosystem"))
+            .and_then(Value::as_str)
+            .unwrap_or_default();
+        if name != package.name || !ecosystem.starts_with(package.ecosystem.osv()) {
+            continue;
+        }
+        if let Some(ranges) = entry.get("ranges").and_then(Value::as_array) {
+            for range in ranges {
+                if let Some(events) = range.get("events").and_then(Value::as_array) {
+                    for event in events {
+                        if let Some(version) = event.get("fixed").and_then(Value::as_str) {
+                            fixed.push(version.to_string());
+                        }
+                    }
+                }
+            }
+        }
+    }
+    fixed.sort();
+    fixed.dedup();
+    fixed.join(", ")
+}
+
+/// Compute a CVSS v3.x base score from its vector string. Returns `None` for a
+/// malformed vector or a non-v3 (e.g. CVSS v2/v4) string.
+fn cvss3_base_score(vector: &str) -> Option<f64> {
+    if !vector.starts_with("CVSS:3") {
+        return None;
+    }
+    let mut metrics: HashMap<&str, &str> = HashMap::new();
+    for part in vector.split('/') {
+        if let Some((key, value)) = part.split_once(':') {
+            metrics.insert(key, value);
+        }
+    }
+    let scope_changed = metrics.get("S") == Some(&"C");
+
+    let av = match *metrics.get("AV")? {
+        "N" => 0.85,
+        "A" => 0.62,
+        "L" => 0.55,
+        "P" => 0.2,
+        _ => return None,
+    };
+    let ac = match *metrics.get("AC")? {
+        "L" => 0.77,
+        "H" => 0.44,
+        _ => return None,
+    };
+    let ui = match *metrics.get("UI")? {
+        "N" => 0.85,
+        "R" => 0.62,
+        _ => return None,
+    };
+    let pr = match *metrics.get("PR")? {
+        "N" => 0.85,
+        "L" if scope_changed => 0.68,
+        "L" => 0.62,
+        "H" if scope_changed => 0.5,
+        "H" => 0.27,
+        _ => return None,
+    };
+    let impact_of = |value: &str| -> f64 {
+        match value {
+            "N" => 0.0,
+            "L" => 0.22,
+            "H" => 0.56,
+            _ => 0.0,
+        }
+    };
+    let confidentiality = impact_of(metrics.get("C")?);
+    let integrity = impact_of(metrics.get("I")?);
+    let availability = impact_of(metrics.get("A")?);
+
+    let iss = 1.0 - ((1.0 - confidentiality) * (1.0 - integrity) * (1.0 - availability));
+    let impact = if scope_changed {
+        7.52 * (iss - 0.029) - 3.25 * (iss - 0.02).powf(15.0)
+    } else {
+        6.42 * iss
+    };
+    if impact <= 0.0 {
+        return Some(0.0);
+    }
+    let exploitability = 8.22 * av * ac * pr * ui;
+    let raw = if scope_changed {
+        (1.08 * (impact + exploitability)).min(10.0)
+    } else {
+        (impact + exploitability).min(10.0)
+    };
+    Some((raw * 10.0).ceil() / 10.0)
+}
+
+// ---------------------------------------------------------------------------
+// Report + issue output
+// ---------------------------------------------------------------------------
+
+fn print_report(findings: &[Finding], modules: usize, dependencies: usize) {
     println!(
         "{}{}",
         style("▸ Security audit").magenta().bold(),
         style(format!(
-            "  {scanned} module{} scanned",
-            if scanned == 1 { "" } else { "s" }
+            "  {modules} module{} · {dependencies} dependenc{} scanned via {SOURCE}",
+            if modules == 1 { "" } else { "s" },
+            if dependencies == 1 { "y" } else { "ies" },
         ))
         .dim()
     );
@@ -654,25 +1013,18 @@ fn print_report(findings: &[Finding], scanned: usize) {
             "  {} {}  {}",
             finding.severity.styled(),
             style(package).bold(),
-            truncate(&finding.title, 120)
+            truncate(&finding.title, 110)
         );
 
-        let mut meta: Vec<String> = Vec::new();
-        if !finding.id.is_empty() {
-            meta.push(finding.id.clone());
-        }
-        if !finding.affected.is_empty() {
-            meta.push(format!("affected {}", finding.affected));
+        let mut meta: Vec<String> = vec![finding.id.clone()];
+        if !finding.aliases.is_empty() {
+            meta.push(finding.aliases.clone());
         }
         if !finding.patched.is_empty() {
             meta.push(format!("patched {}", finding.patched));
         }
-        if !finding.url.is_empty() {
-            meta.push(finding.url.clone());
-        }
-        if !meta.is_empty() {
-            println!("      {}", style(meta.join("  ·  ")).dim());
-        }
+        meta.push(finding.url.clone());
+        println!("      {}", style(meta.join("  ·  ")).dim());
     }
 
     println!();
@@ -690,20 +1042,15 @@ fn truncate(text: &str, max: usize) -> String {
 
 fn print_summary(findings: &[Finding]) {
     let count = |severity: Severity| findings.iter().filter(|f| f.severity == severity).count();
-    let critical = count(Severity::Critical);
-    let high = count(Severity::High);
-    let moderate = count(Severity::Moderate);
-    let low = count(Severity::Low);
-    let unknown = count(Severity::Unknown);
-
     let mut parts = Vec::new();
-    for (n, label) in [
-        (critical, "critical"),
-        (high, "high"),
-        (moderate, "moderate"),
-        (low, "low"),
-        (unknown, "unknown"),
+    for (severity, label) in [
+        (Severity::Critical, "critical"),
+        (Severity::High, "high"),
+        (Severity::Moderate, "moderate"),
+        (Severity::Low, "low"),
+        (Severity::Unknown, "unknown"),
     ] {
+        let n = count(severity);
         if n > 0 {
             parts.push(format!("{n} {label}"));
         }
@@ -736,7 +1083,6 @@ fn create_issues(root: &Path, findings: &[Finding]) {
         } else {
             finding.module.clone()
         };
-
         let issues_dir = if is_root {
             root.join("modules").join("shared").join("issues")
         } else {
@@ -748,15 +1094,13 @@ fn create_issues(root: &Path, findings: &[Finding]) {
         }
 
         let id = generate_issue_id(Some(&issues_dir));
-        let title = build_issue_title(finding);
-        let description = build_issue_description(finding);
         let yaml = issue_to_yaml(&IssueYaml {
             id: Some(id.clone()),
             module: Some(module_name),
-            title: Some(title),
+            title: Some(build_issue_title(finding)),
             state: Some("Todo".to_string()),
             priority: Some(finding.severity.priority().to_string()),
-            description: Some(description),
+            description: Some(build_issue_description(finding)),
             labels: Some(vec!["Security".to_string()]),
         });
 
@@ -783,43 +1127,30 @@ fn build_issue_title(finding: &Finding) -> String {
         format!("{}@{}", finding.package, finding.version)
     };
     let severity = finding.severity.label().to_ascii_lowercase();
-    if finding.id.is_empty() {
-        format!(
-            "Fix {severity} {} vulnerability in {package}",
-            finding.ecosystem.label()
-        )
-    } else {
-        format!(
-            "Fix {severity} {} vulnerability in {package} ({})",
-            finding.ecosystem.label(),
-            finding.id
-        )
-    }
+    format!(
+        "Fix {severity} {} vulnerability in {package} ({})",
+        finding.ecosystem.label(),
+        finding.id
+    )
 }
 
 fn build_issue_description(finding: &Finding) -> String {
-    let mut lines = Vec::new();
-    lines.push(finding.title.clone());
-    lines.push(String::new());
+    let mut lines = vec![finding.title.clone(), String::new()];
     lines.push(format!("- Ecosystem: {}", finding.ecosystem.label()));
-    lines.push(format!("- Tool: {}", finding.ecosystem.tool()));
+    lines.push(format!("- Source: {SOURCE}"));
     lines.push(format!("- Module: {}", finding.module));
     lines.push(format!("- Package: {}", finding.package));
     if !finding.version.is_empty() {
         lines.push(format!("- Installed version: {}", finding.version));
     }
     lines.push(format!("- Severity: {}", finding.severity.label()));
-    if !finding.id.is_empty() {
-        lines.push(format!("- Advisory: {}", finding.id));
-    }
-    if !finding.affected.is_empty() {
-        lines.push(format!("- Affected versions: {}", finding.affected));
+    lines.push(format!("- Advisory: {}", finding.id));
+    if !finding.aliases.is_empty() {
+        lines.push(format!("- Aliases: {}", finding.aliases));
     }
     if !finding.patched.is_empty() {
         lines.push(format!("- Patched versions: {}", finding.patched));
     }
-    if !finding.url.is_empty() {
-        lines.push(format!("- Reference: {}", finding.url));
-    }
+    lines.push(format!("- Reference: {}", finding.url));
     lines.join("\n")
 }

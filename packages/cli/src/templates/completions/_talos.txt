@@ -174,7 +174,7 @@ _talos() {
     'run:Alias for monorepo:run — run package.json scripts across packages and modules with granular caching'
     'monorepo\:check:Run install, build, lint and test across packages and modules with granular caching'
     'check:Alias for monorepo:check — run install, build, fmt, lint and test across packages and modules with granular caching'
-    'security\:check:Audit bun, rust and python modules for known vulnerabilities'
+    'security\:check:Audit dependencies for known vulnerabilities via OSV.dev'
     'build:Alias for monorepo:run --commands=build — run the build script across packages and modules with granular caching'
     'fmt:Alias for monorepo:run --commands=fmt — run the fmt script across packages and modules with granular caching'
     'lint:Alias for monorepo:run --commands=lint — run the lint script across packages and modules with granular caching'

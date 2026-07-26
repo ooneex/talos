@@ -169,7 +169,7 @@ for cmd in oo talos
     complete -c $cmd -f -n __fish_use_subcommand -a run -d 'Alias for monorepo:run'
     complete -c $cmd -f -n __fish_use_subcommand -a monorepo:check -d 'Run install, build, lint and test across packages and modules with granular caching'
     complete -c $cmd -f -n __fish_use_subcommand -a check -d 'Alias for monorepo:check'
-    complete -c $cmd -f -n __fish_use_subcommand -a security:check -d 'Audit bun, rust and python modules for known vulnerabilities'
+    complete -c $cmd -f -n __fish_use_subcommand -a security:check -d 'Audit dependencies for known vulnerabilities via OSV.dev'
     complete -c $cmd -f -n __fish_use_subcommand -a build -d 'Alias for monorepo:run --commands=build'
     complete -c $cmd -f -n __fish_use_subcommand -a fmt -d 'Alias for monorepo:run --commands=fmt'
     complete -c $cmd -f -n __fish_use_subcommand -a lint -d 'Alias for monorepo:run --commands=lint'

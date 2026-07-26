@@ -151,7 +151,7 @@ const COMMANDS: &[(&str, &str)] = &[
     ),
     (
         "security:check",
-        "Audit bun, rust and python modules for known vulnerabilities",
+        "Audit dependencies for known vulnerabilities via OSV.dev",
     ),
     ("seed:create", "Generate a new seed file"),
     (
