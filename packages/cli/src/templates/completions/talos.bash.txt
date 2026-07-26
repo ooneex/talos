@@ -324,13 +324,19 @@ seed:create seed:run"
       opts="--name --destination"
       [[ $flag == --destination ]] && candidates="$(_talos_destination_modules)"
       ;;
-    spa:create | storybook:create)
+    spa:create)
+      opts="--name --design --target --no-cache"
+      [[ $flag == --design ]] && candidates="$(_talos_yaml_modules design)"
+      [[ $flag == --target ]] && candidates="$(_talos_destination_modules)"
+      ;;
+    storybook:create)
       opts="--name --design --no-cache"
       [[ $flag == --design ]] && candidates="$(_talos_yaml_modules design)"
       ;;
     admin:create)
-      opts="--name --design --no-cache"
+      opts="--name --design --target --no-cache"
       [[ $flag == --design ]] && candidates="$(_talos_yaml_modules design)"
+      [[ $flag == --target ]] && candidates="$(_talos_destination_modules)"
       ;;
     design:remove | spa:remove | storybook:remove | microservice:remove | module:remove | admin:remove)
       opts="--name"

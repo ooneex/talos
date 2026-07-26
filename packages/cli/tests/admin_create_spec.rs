@@ -10,12 +10,14 @@ struct TestCli {
 #[test]
 fn admin_create_parses_all_flags() {
     let cli = TestCli::try_parse_from([
-        "talos", "--name", "MyAdmin", "--design", "material", "--cwd", "./here", "--silent",
+        "talos", "--name", "MyAdmin", "--design", "material", "--target", "api", "--cwd", "./here",
+        "--silent",
     ])
     .expect("valid arguments should parse");
 
     assert_eq!(cli.args.name.as_deref(), Some("MyAdmin"));
     assert_eq!(cli.args.design.as_deref(), Some("material"));
+    assert_eq!(cli.args.target.as_deref(), Some("api"));
     assert_eq!(cli.args.cwd.as_deref(), Some("./here"));
     assert!(cli.args.silent);
 }
@@ -26,6 +28,7 @@ fn admin_create_defaults_are_empty() {
 
     assert!(cli.args.name.is_none());
     assert!(cli.args.design.is_none());
+    assert!(cli.args.target.is_none());
     assert!(cli.args.cwd.is_none());
     assert!(!cli.args.silent);
 }

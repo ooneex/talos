@@ -456,7 +456,14 @@ _talos() {
             '--name=[Name of the resource]:name' \
             '--destination=[Destination module]:destination:_talos_destination_modules'
           ;;
-        spa:create|storybook:create)
+        spa:create)
+          _arguments -s \
+            '--name=[Name of the resource]:name' \
+            '--design=[Design module name]:design:_talos_design_modules' \
+            '--target=[Target module name]:target:_talos_destination_modules' \
+            '--no-cache[Ignore the cached skeleton and re-download it]'
+          ;;
+        storybook:create)
           _arguments -s \
             '--name=[Name of the resource]:name' \
             '--design=[Design module name]:design:_talos_design_modules' \
@@ -466,6 +473,7 @@ _talos() {
           _arguments -s \
             '--name=[Name of the resource]:name' \
             '--design=[Design module name]:design:_talos_design_modules' \
+            '--target=[Target module name]:target:_talos_destination_modules' \
             '--no-cache[Ignore the cached skeleton and re-download it]'
           ;;
         design:remove|spa:remove|storybook:remove|microservice:remove|module:remove|admin:remove)

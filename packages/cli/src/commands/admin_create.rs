@@ -21,6 +21,9 @@ pub struct AdminCreateArgs {
     pub design: Option<String>,
 
     #[arg(long)]
+    pub target: Option<String>,
+
+    #[arg(long)]
     pub cwd: Option<String>,
 
     #[arg(long, default_value_t = false)]
@@ -32,6 +35,41 @@ pub struct AdminCreateArgs {
 
 const DEFAULT_PORT: u16 = 3030;
 const CREATE_NEW_DESIGN: &str = "Create a new design";
+const NO_TARGET: &str = "No target";
+
+fn with_target_field(yml_content: &str, target_kebab: Option<&str>) -> String {
+    let target_re = regex::Regex::new(r#"(?m)^target:\s*".*"$"#).ok();
+    match (target_re, target_kebab) {
+        (Some(re), Some(target)) if re.is_match(yml_content) => re
+            .replace(yml_content, format!("target: \"{target}\""))
+            .into_owned(),
+        (Some(re), None) if re.is_match(yml_content) => {
+            re.replace(yml_content, "").replace("\n\n\n", "\n\n")
+        }
+        (_, Some(target)) => format!("{}\ntarget: \"{target}\"\n", yml_content.trim_end()),
+        _ => yml_content.to_string(),
+    }
+}
+
+fn collect_target_modules(modules_dir: &Path) -> Vec<String> {
+    let Ok(entries) = fs::read_dir(modules_dir) else {
+        return Vec::new();
+    };
+    let mut targets = Vec::new();
+    for entry in entries.flatten() {
+        if !entry.path().is_dir() {
+            continue;
+        }
+        let name = entry.file_name().to_string_lossy().to_string();
+        let yml_path = entry.path().join(format!("{name}.yml"));
+        if let Ok(content) = fs::read_to_string(yml_path)
+            && (content.contains("type: \"api\"") || content.contains("type: \"microservice\""))
+        {
+            targets.push(name);
+        }
+    }
+    targets
+}
 
 fn with_design_field(yml_content: &str, design_kebab: Option<&str>) -> String {
     let design_re = regex::Regex::new(r#"(?m)^design:\s*".*"$"#).ok();
@@ -201,6 +239,29 @@ pub fn run(args: &AdminCreateArgs) {
         )
     });
 
+    let mut target = args.target.clone();
+    if target.is_none() && !silent {
+        let existing = collect_target_modules(&modules_dir);
+        if !existing.is_empty() {
+            let mut choices: Vec<String> = vec![NO_TARGET.to_string()];
+            choices.extend(existing.clone());
+            let refs: Vec<&str> = choices.iter().map(String::as_str).collect();
+            if let Some(index) = ask_select("Choose a target module", &refs) {
+                let selected = refs[index];
+                if selected != NO_TARGET {
+                    target = Some(selected.to_string());
+                }
+            }
+        }
+    }
+    let target_kebab = target.as_ref().map(|value| {
+        to_kebab_case(
+            to_pascal_case(value)
+                .strip_suffix("Module")
+                .unwrap_or(&to_pascal_case(value)),
+        )
+    });
+
     let clone_spinner = Spinner::start("Downloading admin template...");
     let cloned = clone_skeleton(true, !args.no_cache);
     clone_spinner.stop();
@@ -220,6 +281,7 @@ pub fn run(args: &AdminCreateArgs) {
     let yml_path = module_dir.join(format!("{kebab_name}.yml"));
     if let Ok(yml_content) = fs::read_to_string(&template_yml) {
         let updated = with_design_field(&yml_content, design_kebab.as_deref());
+        let updated = with_target_field(&updated, target_kebab.as_deref());
         let _ = fs::write(&yml_path, updated);
         if template_yml != yml_path {
             let _ = fs::remove_file(&template_yml);

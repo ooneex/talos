@@ -345,10 +345,12 @@ for cmd in oo talos
 
     complete -c $cmd -n '__fish_seen_subcommand_from spa:create' -l name -x -d 'Name of the resource'
     complete -c $cmd -n '__fish_seen_subcommand_from spa:create' -l design -x -a '(__talos_design_modules)' -d 'Design module name'
+    complete -c $cmd -n '__fish_seen_subcommand_from spa:create' -l target -x -a '(__talos_destination_modules)' -d 'Target module name'
     complete -c $cmd -n '__fish_seen_subcommand_from spa:create' -l no-cache -d 'Ignore the cached skeleton and re-download it'
 
     complete -c $cmd -n '__fish_seen_subcommand_from admin:create' -l name -x -d 'Name of the resource'
     complete -c $cmd -n '__fish_seen_subcommand_from admin:create' -l design -x -a '(__talos_design_modules)' -d 'Design module name'
+    complete -c $cmd -n '__fish_seen_subcommand_from admin:create' -l target -x -a '(__talos_destination_modules)' -d 'Target module name'
     complete -c $cmd -n '__fish_seen_subcommand_from admin:create' -l no-cache -d 'Ignore the cached skeleton and re-download it'
 
     complete -c $cmd -n '__fish_seen_subcommand_from storybook:create' -l name -x -d 'Name of the resource'
