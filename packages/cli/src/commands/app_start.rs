@@ -1,45 +1,16 @@
 use std::fs;
-use std::io::{BufRead, BufReader};
 use std::path::Path;
-use std::process::{Child, Command, Stdio};
-use std::sync::mpsc;
-use std::thread;
-use std::time::Duration;
+use std::process::Command;
 
 use clap::Args;
-use console::style;
+use portable_pty::CommandBuilder;
 use serde_json::Value;
 
 use crate::utils::{
-    RunnableModuleType, Spinner, collect_runnable_modules, current_dir, ensure_bin,
-    run_spinner_step, select_runnable_modules,
+    ConcurrentCommand, ConcurrentlyOptions, KillCondition, PrefixColor, PrefixStyle,
+    RunnableModule, RunnableModuleType, StartupNotice, SuccessCondition, collect_runnable_modules,
+    current_dir, ensure_bin, run_concurrently, run_spinner_step, select_runnable_modules,
 };
-
-enum LogEvent {
-    Line { module: String, text: String },
-}
-
-fn styled_prefix(module: &str, index: usize) -> String {
-    let prefix = style(format!("[{module}]")).bold();
-    let prefix = match index % 6 {
-        0 => prefix.cyan(),
-        1 => prefix.magenta(),
-        2 => prefix.green(),
-        3 => prefix.yellow(),
-        4 => prefix.blue(),
-        _ => prefix.red(),
-    };
-    prefix.to_string()
-}
-
-fn print_log_line(module: &str, text: &str, order: &[String], multiple: bool) {
-    if multiple {
-        let index = order.iter().position(|name| name == module).unwrap_or(0);
-        println!("{} {text}", styled_prefix(module, index));
-    } else {
-        println!("{text}");
-    }
-}
 
 #[derive(Args, Debug)]
 pub struct AppStartArgs {
@@ -66,48 +37,52 @@ fn load_app_module_name(app_dir: &Path, fallback: &str) -> Option<String> {
     )
 }
 
-fn spawn_module(
-    cwd: &Path,
-    module_dir: &Path,
-    module_type: RunnableModuleType,
-) -> std::io::Result<Child> {
-    let mut command = Command::new("bun");
+fn command_line(module_dir: &Path, module_type: RunnableModuleType) -> String {
     match module_type {
         RunnableModuleType::Spa | RunnableModuleType::Storybook | RunnableModuleType::Swagger => {
-            command.arg("run").arg("dev").current_dir(module_dir);
+            "bun run dev".to_string()
         }
         RunnableModuleType::Api | RunnableModuleType::Microservice => {
-            command
-                .args(["--hot", "run"])
-                .arg(module_dir.join("src").join("index.ts"))
-                .current_dir(cwd);
+            let entry = module_dir.join("src").join("index.ts");
+            format!("bun --hot run {}", entry.display())
         }
     }
-    command
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
 }
 
-fn forward_stream<R: std::io::Read + Send + 'static>(
-    module: String,
-    reader: R,
-    sender: mpsc::Sender<LogEvent>,
-) {
-    thread::spawn(move || {
-        let buffered = BufReader::new(reader);
-        for line in buffered.lines().map_while(Result::ok) {
-            if sender
-                .send(LogEvent::Line {
-                    module: module.clone(),
-                    text: line,
-                })
-                .is_err()
-            {
-                break;
-            }
+fn build_command(cwd: &Path, module_dir: &Path, module_type: RunnableModuleType) -> CommandBuilder {
+    let mut command = CommandBuilder::new("bun");
+    match module_type {
+        RunnableModuleType::Spa | RunnableModuleType::Storybook | RunnableModuleType::Swagger => {
+            command.arg("run");
+            command.arg("dev");
+            command.cwd(module_dir);
         }
-    });
+        RunnableModuleType::Api | RunnableModuleType::Microservice => {
+            command.arg("--hot");
+            command.arg("run");
+            command.arg(module_dir.join("src").join("index.ts"));
+            command.cwd(cwd);
+        }
+    }
+    for (key, value) in std::env::vars() {
+        command.env(key, value);
+    }
+    if std::env::var_os("TERM").is_none() {
+        command.env("TERM", "xterm-256color");
+    }
+    command
+}
+
+fn build_concurrent_command(cwd: &Path, module: &RunnableModule) -> ConcurrentCommand {
+    let cwd = cwd.to_path_buf();
+    let module_dir = module.dir.clone();
+    let module_type = module.r#type;
+    ConcurrentCommand::new(
+        module.name.clone(),
+        command_line(&module.dir, module.r#type),
+        move || build_command(&cwd, &module_dir, module_type),
+    )
+    .with_color(PrefixColor::Auto)
 }
 
 pub fn run(args: &AppStartArgs) {
@@ -160,97 +135,31 @@ pub fn run(args: &AppStartArgs) {
     let module_names = selected
         .iter()
         .map(|module| module.name.clone())
+        .collect::<Vec<_>>()
+        .join(", ");
+
+    let commands = selected
+        .iter()
+        .map(|module| build_concurrent_command(&cwd, module))
         .collect::<Vec<_>>();
-    let label = format!("Starting {}", module_names.join(", "));
 
-    let mut children = Vec::new();
-    for module in &selected {
-        match spawn_module(&cwd, &module.dir, module.r#type) {
-            Ok(child) => children.push((module.name.clone(), child)),
-            Err(error) => {
-                crate::utils::error(format!("Failed to start {}: {error}", module.name));
-                for (_, mut child) in children {
-                    let _ = child.kill();
-                }
-                return;
-            }
-        }
-    }
+    let options = ConcurrentlyOptions {
+        prefix: if commands.len() > 1 {
+            PrefixStyle::Name
+        } else {
+            PrefixStyle::None
+        },
+        kill_others_on: vec![KillCondition::Failure],
+        success_condition: SuccessCondition::All,
+        startup: Some(StartupNotice {
+            starting_label: format!("Starting {module_names}"),
+            started_message: format!("{module_names} started"),
+        }),
+        ..ConcurrentlyOptions::default()
+    };
 
-    let (sender, receiver) = mpsc::channel::<LogEvent>();
-    for (name, child) in &mut children {
-        if let Some(stdout) = child.stdout.take() {
-            forward_stream(name.clone(), stdout, sender.clone());
-        }
-        if let Some(stderr) = child.stderr.take() {
-            forward_stream(name.clone(), stderr, sender.clone());
-        }
-    }
-    drop(sender);
-
-    let multiple = children.len() > 1;
-    let mut spinner = Some(Spinner::start(format!("{label}...")));
-    let mut exit_code = 0;
-
-    loop {
-        while let Ok(LogEvent::Line { module, text }) = receiver.try_recv() {
-            if let Some(active) = spinner.take() {
-                active.stop();
-                crate::utils::success(format!("{} started", module_names.join(", ")));
-            }
-            print_log_line(&module, &text, &module_names, multiple);
-        }
-
-        let mut index = 0;
-        let mut failure: Option<(String, i32)> = None;
-        while index < children.len() {
-            match children[index].1.try_wait() {
-                Ok(Some(status)) if status.success() => {
-                    children.remove(index);
-                }
-                Ok(Some(status)) => {
-                    let (name, _) = children.remove(index);
-                    failure = Some((name, status.code().unwrap_or(1)));
-                    break;
-                }
-                Ok(None) => index += 1,
-                Err(error) => {
-                    let (name, _) = children.remove(index);
-                    crate::utils::error(format!("Failed while waiting for {name}: {error}"));
-                    failure = Some((name, 1));
-                    break;
-                }
-            }
-        }
-
-        if let Some((name, code)) = failure {
-            if let Some(active) = spinner.take() {
-                active.stop();
-            }
-            crate::utils::error(format!("{name} exited with code {code}"));
-            exit_code = code;
-            for (_, mut child) in children.drain(..) {
-                let _ = child.kill();
-            }
-            break;
-        }
-
-        if children.is_empty() {
-            break;
-        }
-
-        thread::sleep(Duration::from_millis(60));
-    }
-
-    while let Ok(LogEvent::Line { module, text }) = receiver.try_recv() {
-        print_log_line(&module, &text, &module_names, multiple);
-    }
-
-    if spinner.take().is_some() && exit_code == 0 {
-        crate::utils::success(format!("{} started", module_names.join(", ")));
-    }
-
-    if exit_code != 0 {
-        std::process::exit(exit_code);
+    let outcome = run_concurrently(commands, options);
+    if !outcome.success {
+        std::process::exit(outcome.exit_code);
     }
 }

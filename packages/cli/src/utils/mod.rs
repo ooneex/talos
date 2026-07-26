@@ -1,5 +1,6 @@
 mod case;
 mod commitlint;
+mod concurrently;
 mod credentials;
 mod git;
 mod index_exports;
@@ -27,6 +28,11 @@ pub use case::{pluralize, to_kebab_case, to_pascal_case, to_snake_case};
 pub use commitlint::{
     BODY_MAX_LINE_LENGTH, COMMIT_TYPES, COMMON_SCOPE, HEADER_MAX_LENGTH, check_commit_message_file,
     get_valid_scopes, lint_commit_message, strip_commit_comments,
+};
+pub use concurrently::{
+    CloseEvent, ConcurrentCommand, ConcurrentlyOptions, ConcurrentlyOutcome, KillCondition,
+    PrefixColor, PrefixStyle, StartupNotice, SuccessCondition, prefix_label,
+    run as run_concurrently, run_is_successful, should_kill_others,
 };
 pub use credentials::{read_credentials, save_credentials};
 pub use git::{
