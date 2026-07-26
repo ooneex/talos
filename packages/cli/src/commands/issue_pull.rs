@@ -1,23 +1,15 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use clap::Args;
-use serde_json::{Value, json};
 
-use crate::utils::{current_dir, ensure_module, generate_issue_id, read_credentials};
-
-#[derive(Default)]
-struct ParsedDescription {
-    module: Option<String>,
-    context: Option<String>,
-    goal: Option<String>,
-    dod: Option<String>,
-    dependencies: Vec<String>,
-}
+use crate::utils::linear::{LinearClient, LinearIssue};
+use crate::utils::{IssueYaml, current_dir, ensure_module, generate_issue_id, issue_to_yaml};
 
 #[derive(Args, Debug)]
 pub struct IssuePullArgs {
-    #[arg(long)]
-    pub id: Option<String>,
+    /// Comma-separated list of Linear issue ids, e.g. `--id=ABC-1,ABC-2`.
+    #[arg(long, value_delimiter = ',', num_args = 1..)]
+    pub id: Vec<String>,
 
     #[arg(long)]
     pub module: Option<String>,
@@ -26,269 +18,119 @@ pub struct IssuePullArgs {
     pub cwd: Option<String>,
 }
 
-fn read_linear_token() -> Option<String> {
-    let profile = read_credentials("linear.yml")?;
-    profile
-        .into_iter()
-        .find_map(|(key, value)| (key == "token").then_some(value))
-}
-
-fn linear_request(token: &str, query: &str, variables: Value) -> Option<Value> {
-    let body = json!({"query": query, "variables": variables});
-    let response: Value = ureq::post("https://api.linear.app/graphql")
-        .header("Authorization", token)
-        .header("Content-Type", "application/json")
-        .send_json(body)
-        .ok()?
-        .into_body()
-        .read_json()
-        .ok()?;
-    if response.get("errors").is_some() {
-        return None;
-    }
-    response.get("data").cloned()
-}
-
-fn priority_name(priority: Option<i64>) -> Option<String> {
-    match priority? {
-        0 => Some("No priority".to_string()),
-        1 => Some("Urgent".to_string()),
-        2 => Some("High".to_string()),
-        3 => Some("Medium".to_string()),
-        4 => Some("Low".to_string()),
-        value => Some(value.to_string()),
-    }
-}
-
-fn parse_description(description: Option<&str>) -> ParsedDescription {
-    let Some(description) = description else {
-        return ParsedDescription::default();
-    };
-    let mut result = ParsedDescription::default();
-    let mut current: Option<&str> = None;
-    let mut preamble = Vec::new();
-    let mut sections: std::collections::BTreeMap<String, Vec<String>> =
-        std::collections::BTreeMap::new();
-    for line in description.lines() {
-        if let Some(module) = line
-            .trim()
-            .strip_prefix("**Module:** `")
-            .and_then(|v| v.strip_suffix('`'))
-        {
-            if result.module.is_none() {
-                result.module = Some(module.to_string());
-            }
+/// Locate an already-pulled issue file by identifier across every module,
+/// returning its owning module and path so it can be updated in place.
+fn find_existing_issue(modules_dir: &Path, identifier: &str) -> Option<(String, PathBuf)> {
+    for entry in std::fs::read_dir(modules_dir).ok()?.flatten() {
+        let path = entry.path();
+        if !path.is_dir() {
             continue;
         }
-        if let Some(title) = line.trim().strip_prefix("## ") {
-            current = match title.trim().to_lowercase().as_str() {
-                "context" => Some("context"),
-                "goal" => Some("goal"),
-                "definition of done" => Some("dod"),
-                "dependencies" => Some("dependencies"),
-                _ => current,
-            };
-            if let Some(key) = current {
-                sections.entry(key.to_string()).or_default();
-            }
-            continue;
-        }
-        if let Some(key) = current {
-            sections
-                .entry(key.to_string())
-                .or_default()
-                .push(line.to_string());
-        } else {
-            preamble.push(line.to_string());
+        let candidate = path.join("issues").join(format!("{identifier}.yml"));
+        if candidate.exists() {
+            return Some((entry.file_name().to_string_lossy().to_string(), candidate));
         }
     }
-    let trim_block = |lines: Vec<String>| {
-        let text = lines.join("\n").trim().to_string();
-        (!text.is_empty()).then_some(text)
-    };
-    result.context = trim_block(sections.remove("context").unwrap_or(preamble));
-    result.goal = trim_block(sections.remove("goal").unwrap_or_default());
-    result.dod = trim_block(sections.remove("dod").unwrap_or_default());
-    result.dependencies = sections
-        .remove("dependencies")
-        .unwrap_or_default()
-        .into_iter()
-        .map(|line| line.trim().trim_start_matches('-').trim().to_string())
-        .filter(|v| !v.is_empty())
-        .collect();
-    result
+    None
 }
 
-fn yaml_quote(value: &str) -> String {
-    serde_json::to_string(value).unwrap_or_else(|_| "\"\"".to_string())
-}
-
-fn yaml_block(lines: &str) -> String {
-    format!(
-        "|\n{}",
-        lines
-            .split('\n')
-            .map(|line| if line.is_empty() {
-                String::new()
-            } else {
-                format!("  {line}")
-            })
-            .collect::<Vec<_>>()
-            .join("\n")
-    )
-}
-
-fn linear_issue_to_yaml(issue: &Value, module: &str, issues_dir: &std::path::Path) -> String {
-    let parsed = parse_description(issue.get("description").and_then(Value::as_str));
-    let mut lines = Vec::new();
-    let identifier = issue
-        .get("identifier")
-        .and_then(Value::as_str)
-        .map(str::to_string)
+fn issue_to_yaml_file(issue: &LinearIssue, module: &str, issues_dir: &Path) -> String {
+    let id = issue
+        .identifier
+        .clone()
         .unwrap_or_else(|| generate_issue_id(Some(issues_dir)));
-    lines.push(format!("id: {}", yaml_quote(&identifier)));
-    lines.push(format!(
-        "module: {}",
-        yaml_quote(parsed.module.as_deref().unwrap_or(module))
-    ));
-    lines.push(format!(
-        "title: {}",
-        yaml_quote(
+
+    issue_to_yaml(&IssueYaml {
+        id: Some(id),
+        module: Some(module.to_string()),
+        title: Some(issue.title.clone().unwrap_or_default().trim().to_string()),
+        state: issue.state.clone().or_else(|| Some("Todo".to_string())),
+        priority: issue.priority.clone(),
+        description: Some(
             issue
-                .get("title")
-                .and_then(Value::as_str)
+                .description
+                .clone()
                 .unwrap_or_default()
-        )
-    ));
-    if let Some(state) = issue
-        .get("state")
-        .and_then(|v| v.get("name"))
-        .and_then(Value::as_str)
-    {
-        lines.push(format!("state: {}", yaml_quote(state)));
-    }
-    if let Some(priority) = priority_name(issue.get("priority").and_then(Value::as_i64)) {
-        lines.push(format!("priority: {}", yaml_quote(&priority)));
-    }
-    let labels: Vec<String> = issue
-        .get("labels")
-        .and_then(|v| v.get("nodes"))
-        .and_then(Value::as_array)
-        .map(|values| {
-            values
-                .iter()
-                .filter_map(|v| v.get("name").and_then(Value::as_str).map(str::to_string))
-                .collect()
-        })
-        .unwrap_or_default();
-    if labels.is_empty() {
-        lines.push("labels: []".to_string());
-    } else {
-        lines.push("labels:".to_string());
-        for label in labels {
-            lines.push(format!("  - {}", yaml_quote(&label)));
-        }
-    }
-    for (key, value) in [
-        ("context", parsed.context),
-        ("goal", parsed.goal),
-        ("dod", parsed.dod),
-    ] {
-        if let Some(value) = value {
-            lines.push(format!("{key}: {}", yaml_block(&value)));
-        }
-    }
-    if parsed.dependencies.is_empty() {
-        lines.push("dependencies: []".to_string());
-    } else {
-        lines.push("dependencies:".to_string());
-        for dep in parsed.dependencies {
-            lines.push(format!("  - {}", yaml_quote(&dep)));
-        }
-    }
-    let comments: Vec<(Option<String>, String)> = issue
-        .get("comments")
-        .and_then(|v| v.get("nodes"))
-        .and_then(Value::as_array)
-        .map(|values| {
-            values
-                .iter()
-                .filter_map(|c| {
-                    Some((
-                        c.get("user")
-                            .and_then(|u| u.get("name"))
-                            .and_then(Value::as_str)
-                            .map(str::to_string),
-                        c.get("body")?.as_str()?.to_string(),
-                    ))
-                })
-                .collect()
-        })
-        .unwrap_or_default();
-    if comments.is_empty() {
-        lines.push("comments: []".to_string());
-    } else {
-        lines.push("comments:".to_string());
-        for (author, message) in comments {
-            lines.push("  -".to_string());
-            lines.push(format!(
-                "    author: {}",
-                author
-                    .as_deref()
-                    .map(yaml_quote)
-                    .unwrap_or_else(|| "null".to_string())
-            ));
-            lines.push(format!(
-                "    message: {}",
-                yaml_block(&message).replace('\n', "\n    ")
-            ));
-        }
-    }
-    format!("{}\n", lines.join("\n"))
+                .trim()
+                .to_string(),
+        ),
+        labels: Some(issue.labels.clone()),
+    })
 }
 
 pub fn run(args: &IssuePullArgs) {
+    let ids: Vec<String> = args
+        .id
+        .iter()
+        .map(|id| id.trim().to_string())
+        .filter(|id| !id.is_empty())
+        .collect();
+
+    if ids.is_empty() {
+        crate::utils::error(
+            "Provide at least one issue id, e.g. `talos issue:pull --id=ABC-1,ABC-2`",
+        );
+        std::process::exit(1);
+    }
+
     let cwd = args
         .cwd
         .clone()
         .map(PathBuf::from)
         .unwrap_or_else(current_dir);
     let module = args.module.clone().unwrap_or_else(|| "shared".to_string());
-    let id = match args.id.clone() {
-        Some(id) => id,
-        None => generate_issue_id(None),
+    let modules_dir = cwd.join("modules");
+
+    let Some(client) = LinearClient::from_credentials() else {
+        crate::utils::error("No Linear credentials found. Run `talos linear:credentials:create`");
+        std::process::exit(1);
     };
-    let token = match read_linear_token() {
-        Some(token) => token,
-        None => {
-            crate::utils::error(
-                "No Linear credentials found. Run `talos linear:credentials:create`",
-            );
-            std::process::exit(1);
+
+    let mut failures = 0;
+    for id in &ids {
+        let Some(issue) = client.get_issue(id) else {
+            crate::utils::error(format!("Failed to pull issue from Linear: {id}"));
+            failures += 1;
+            continue;
+        };
+
+        let identifier = issue.identifier.clone().unwrap_or_else(|| id.clone());
+
+        // Update the issue in place when it already exists locally (in any
+        // module); otherwise create it under the requested module.
+        let (target_module, issues_dir) = match find_existing_issue(&modules_dir, &identifier) {
+            Some((existing_module, existing_path)) => {
+                let issues_dir = existing_path
+                    .parent()
+                    .map(Path::to_path_buf)
+                    .unwrap_or_else(|| modules_dir.join(&existing_module).join("issues"));
+                (existing_module, issues_dir)
+            }
+            None => {
+                ensure_module(&module, &cwd);
+                let issues_dir = modules_dir.join(&module).join("issues");
+                let _ = std::fs::create_dir_all(&issues_dir);
+                (module.clone(), issues_dir)
+            }
+        };
+
+        let yaml = issue_to_yaml_file(&issue, &target_module, &issues_dir);
+        let file_path = issues_dir.join(format!("{identifier}.yml"));
+        let existed = file_path.exists();
+
+        if let Err(error) = std::fs::write(&file_path, yaml) {
+            crate::utils::error(format!("Failed to write {}: {error}", file_path.display()));
+            failures += 1;
+            continue;
         }
-    };
-    ensure_module(&module, &cwd);
-    let issues_dir = cwd.join("modules").join(&module).join("issues");
-    let _ = std::fs::create_dir_all(&issues_dir);
-    let query = r#"query($id: String!) { issue(id: $id) { identifier title description priority state { name } labels { nodes { name } } comments { nodes { body user { name } } } } }"#;
-    let Some(data) = linear_request(&token, query, json!({"id": id})) else {
-        crate::utils::error("Failed to pull issue from Linear");
+
+        crate::utils::success(format!(
+            "modules/{target_module}/issues/{identifier}.yml {} successfully",
+            if existed { "updated" } else { "created" }
+        ));
+    }
+
+    if failures > 0 {
         std::process::exit(1);
-    };
-    let Some(issue) = data.get("issue") else {
-        crate::utils::error("Issue not found in Linear");
-        std::process::exit(1);
-    };
-    let yaml = linear_issue_to_yaml(issue, &module, &issues_dir);
-    let identifier = issue
-        .get("identifier")
-        .and_then(Value::as_str)
-        .unwrap_or("issue");
-    let file_path = issues_dir.join(format!("{identifier}.yml"));
-    let existed = file_path.exists();
-    let _ = std::fs::write(&file_path, yaml);
-    crate::utils::success(format!(
-        "modules/{module}/issues/{identifier}.yml {} successfully",
-        if existed { "updated" } else { "created" }
-    ));
+    }
 }

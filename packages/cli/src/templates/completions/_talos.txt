@@ -144,7 +144,7 @@ _talos() {
     'version:Print the installed CLI version'
     'upgrade:Upgrade the CLI to its latest version'
     'issue\:create:Create a YAML skeleton file for a new issue'
-    'issue\:pull:Pull an issue from Linear or Jira and save it as a YAML file'
+    'issue\:pull:Pull one or more issues from Linear and save them as YAML files'
     'issue\:push:Push a local issue YAML to Linear (create or update)'
     'ai\:chat\:create:Generate a new AI chat class'
     'ai\:tool\:create:Generate a new AI tool class'
@@ -284,7 +284,7 @@ _talos() {
           ;;
         issue:pull)
           _arguments -s \
-            '--id=[Issue ID or identifier]:id' \
+            '*--id=[Comma-separated issue IDs or identifiers]:id' \
             '--module=[Module name]:module:_talos_modules'
           ;;
         issue:push)

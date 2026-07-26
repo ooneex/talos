@@ -5,6 +5,7 @@ mod credentials;
 mod git;
 mod index_exports;
 mod issue;
+pub mod linear;
 mod migration_version;
 mod module_registry;
 mod monorepo;
