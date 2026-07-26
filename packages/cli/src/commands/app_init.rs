@@ -186,9 +186,16 @@ pub fn scaffold_destination(
     let _ = fs::remove_dir_all(destination.join(".git"));
     let _ = fs::remove_file(destination.join("bun.lock"));
 
-    let env_example_path = destination.join(".env.example.yml");
+    let env_example_path = destination
+        .join("modules")
+        .join("app")
+        .join(".env.example.yml");
     if let Ok(content) = fs::read_to_string(&env_example_path) {
-        fs::write(destination.join(".env.yml"), content).map_err(|e| e.to_string())?;
+        fs::write(
+            destination.join("modules").join("app").join(".env.yml"),
+            content,
+        )
+        .map_err(|e| e.to_string())?;
         let _ = fs::remove_file(&env_example_path);
     }
 

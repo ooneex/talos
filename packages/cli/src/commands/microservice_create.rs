@@ -257,7 +257,13 @@ pub fn run(args: &MicroserviceCreateArgs) {
         }
     }
 
-    let env_example = fs::read_to_string(repo_dir.join(".env.example.yml")).unwrap_or_default();
+    let env_example = fs::read_to_string(
+        repo_dir
+            .join("modules")
+            .join("app")
+            .join(".env.example.yml"),
+    )
+    .unwrap_or_default();
     let port = next_available_port(&cwd);
     let env_content = regex::Regex::new(r"(?m)^(\s*port:\s*)\d+")
         .ok()
@@ -269,7 +275,7 @@ pub fn run(args: &MicroserviceCreateArgs) {
     let _ = fs::write(module_dir.join(".env.yml"), env_content);
 
     if kebab_name != "app" {
-        let env_yml_path = cwd.join(".env.yml");
+        let env_yml_path = cwd.join("modules").join("app").join(".env.yml");
         if env_yml_path.exists() {
             add_to_env_yml(&env_yml_path, &kebab_name, port);
         }

@@ -99,7 +99,7 @@ pub fn run(args: &MicroserviceRemoveArgs) {
         ),
     );
     remove_block(
-        &cwd.join(".env.yml"),
+        &cwd.join("modules").join("app").join(".env.yml"),
         &format!(r"(?m)^  {esc}:\n(?:^ {{4,}}[^\n]*\n)*"),
     );
     remove_block(
