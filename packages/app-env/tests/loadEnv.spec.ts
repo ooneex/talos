@@ -37,17 +37,17 @@ describe("loadEnv", () => {
     expect(Bun.env.APP_ENV).toBe("local");
   });
 
-  test("loads only the project root .env.yml, ignoring modules/shared/.env.yml", async () => {
-    mkdirSync(`${testDir}/modules/shared`, { recursive: true });
+  test("loads only the project root .env.yml, ignoring modules/app/.env.yml", async () => {
+    mkdirSync(`${testDir}/modules/app`, { recursive: true });
     await Bun.write(`${testDir}/.env.yml`, 'app:\n  env: "production"\n');
-    await Bun.write(`${testDir}/modules/shared/.env.yml`, 'app:\n  env: "local"\n');
+    await Bun.write(`${testDir}/modules/app/.env.yml`, 'app:\n  env: "local"\n');
     await loadEnv();
     expect(Bun.env.APP_ENV).toBe("production");
   });
 
-  test("does not fall back to modules/shared/.env.yml when root .env.yml is absent", async () => {
-    mkdirSync(`${testDir}/modules/shared`, { recursive: true });
-    await Bun.write(`${testDir}/modules/shared/.env.yml`, 'app:\n  env: "local"\n');
+  test("does not fall back to modules/app/.env.yml when root .env.yml is absent", async () => {
+    mkdirSync(`${testDir}/modules/app`, { recursive: true });
+    await Bun.write(`${testDir}/modules/app/.env.yml`, 'app:\n  env: "local"\n');
     await loadEnv();
     expect(Bun.env.APP_ENV).toBeUndefined();
   });
