@@ -73,6 +73,8 @@ pub mod spa_create;
 pub mod spa_feature_create;
 pub mod spa_remove;
 pub mod storage_create;
+pub mod storybook_create;
+pub mod storybook_remove;
 pub mod test;
 pub mod translation_create;
 pub mod upgrade;
@@ -316,6 +318,12 @@ pub enum Commands {
     #[command(name = "spa:remove")]
     SpaRemove(spa_remove::SpaRemoveArgs),
 
+    #[command(name = "storybook:create")]
+    StorybookCreate(storybook_create::StorybookCreateArgs),
+
+    #[command(name = "storybook:remove")]
+    StorybookRemove(storybook_remove::StorybookRemoveArgs),
+
     #[command(name = "monorepo:check")]
     MonorepoCheck(monorepo_check::MonorepoCheckArgs),
 
@@ -412,6 +420,8 @@ impl Commands {
             Commands::E2eRun(args) => e2e_run::run(args),
             Commands::SpaFeatureCreate(args) => spa_feature_create::run(args),
             Commands::SpaRemove(args) => spa_remove::run(args),
+            Commands::StorybookCreate(args) => storybook_create::run(args),
+            Commands::StorybookRemove(args) => storybook_remove::run(args),
             Commands::MonorepoCheck(args) => monorepo_check::run(args),
             Commands::Check(args) => check::run(args),
             Commands::MigrationUp(args) => migration_up::run(args),

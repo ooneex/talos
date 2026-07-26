@@ -197,6 +197,8 @@ _talos() {
     'spa\:feature\:create:Generate a new spa feature (route, layout, hooks and folders)'
     'react\:component\:create:Generate a new react component (with test) in a module or feature'
     'spa\:remove:Remove an existing spa module'
+    'storybook\:create:Generate a new storybook module'
+    'storybook\:remove:Remove an existing storybook module'
     'storage\:create:Generate a new storage class'
     'translation\:create:Generate a new translation class'
     'vector-database\:create:Generate a new vector database class'
@@ -443,13 +445,13 @@ _talos() {
             '--name=[Name of the resource]:name' \
             '--destination=[Destination module]:destination:_talos_destination_modules'
           ;;
-        spa:create)
+        spa:create|storybook:create)
           _arguments -s \
             '--name=[Name of the resource]:name' \
             '--design=[Design module name]:design:_talos_design_modules' \
             '--no-cache[Ignore the cached skeleton and re-download it]'
           ;;
-        design:remove|spa:remove|microservice:remove|module:remove)
+        design:remove|spa:remove|storybook:remove|microservice:remove|module:remove)
           _arguments -s \
             '--name=[Module name]:name:_talos_modules'
           ;;

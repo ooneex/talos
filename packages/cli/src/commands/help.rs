@@ -163,6 +163,8 @@ const COMMANDS: &[(&str, &str)] = &[
         "Generate a new spa feature (route, layout, hooks and folders)",
     ),
     ("spa:remove", "Remove an existing spa module"),
+    ("storybook:create", "Generate a new storybook module"),
+    ("storybook:remove", "Remove an existing storybook module"),
     ("test", "Alias for `monorepo:run --commands=test`"),
     ("translation:create", "Generate a new translation class"),
     ("upgrade", "Upgrade the CLI to its latest version"),

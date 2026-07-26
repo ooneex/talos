@@ -44,7 +44,6 @@ fn app_init_args_defaults_are_none_and_not_silent() {
 fn build_fake_skeleton(root: &Path) {
     fs::create_dir_all(root.join(".git")).unwrap();
     fs::write(root.join("bun.lock"), "{}").unwrap();
-    fs::write(root.join(".env.example.yml"), "KEY: value\n").unwrap();
     fs::write(root.join("README.md"), "# skeleton\n\nSome description.\n").unwrap();
     fs::write(root.join(".dockerignore"), "node_modules\n").unwrap();
 
@@ -52,6 +51,12 @@ fn build_fake_skeleton(root: &Path) {
         fs::create_dir_all(root.join("modules").join(module)).unwrap();
         fs::write(root.join("modules").join(module).join("marker.txt"), module).unwrap();
     }
+
+    fs::write(
+        root.join("modules").join("app").join(".env.example.yml"),
+        "KEY: value\n",
+    )
+    .unwrap();
 }
 
 #[test]
@@ -65,9 +70,15 @@ fn scaffold_destination_rewrites_env_and_readme() {
 
     assert!(!destination_path.join(".git").exists());
     assert!(!destination_path.join("bun.lock").exists());
-    assert!(!destination_path.join(".env.example.yml").exists());
+    assert!(
+        !destination_path
+            .join("modules")
+            .join("app")
+            .join(".env.example.yml")
+            .exists()
+    );
     assert_eq!(
-        fs::read_to_string(destination_path.join(".env.yml")).unwrap(),
+        fs::read_to_string(destination_path.join("modules").join("app").join(".env.yml")).unwrap(),
         "KEY: value\n"
     );
     assert_eq!(
