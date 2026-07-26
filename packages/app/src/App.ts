@@ -120,8 +120,10 @@ export class App {
       );
     }
 
-    // Prefer the project root roles.yml, falling back to the shared module's own roles.yml.
-    const rolesDirs = [process.cwd(), join(process.cwd(), "modules", "shared", "src")];
+    // Prefer the project root roles.yml, falling back to the running module's own roles.yml.
+    // Bun.main is modules/<module-name>/src/index.ts, so the module root is two levels up.
+    const moduleRoot = dirname(dirname(Bun.main));
+    const rolesDirs = [process.cwd(), moduleRoot];
     for (const rolesDir of rolesDirs) {
       const rolesFile = Bun.file(join(rolesDir, "roles.yml"));
       if (await rolesFile.exists()) {

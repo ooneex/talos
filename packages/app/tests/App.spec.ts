@@ -556,17 +556,18 @@ hierarchy:
         spy.mockRestore();
       });
 
-      test("prefers the project root roles.yml over the shared module", async () => {
+      test("prefers the project root roles.yml over the running module", async () => {
         const rootYml = validRolesYml.replace("description: Guest", "description: RootGuest");
-        const sharedYml = validRolesYml.replace("description: Guest", "description: SharedGuest");
+        const moduleYml = validRolesYml.replace("description: Guest", "description: ModuleGuest");
 
-        const spy = spyOn(Bun, "file").mockImplementation(
-          ((path: string) =>
-            ({
-              exists: () => Promise.resolve(true),
-              text: () => Promise.resolve(path.includes("modules") ? sharedYml : rootYml),
-            }) as unknown as ReturnType<typeof Bun.file>) as unknown as typeof Bun.file,
-        );
+        let call = 0;
+        const spy = spyOn(Bun, "file").mockImplementation((() => {
+          const current = call++;
+          return {
+            exists: () => Promise.resolve(true),
+            text: () => Promise.resolve(current === 0 ? rootYml : moduleYml),
+          } as unknown as ReturnType<typeof Bun.file>;
+        }) as unknown as typeof Bun.file);
 
         const config = createMockConfig();
         const app = new App(config);
@@ -577,23 +578,24 @@ hierarchy:
         spy.mockRestore();
       });
 
-      test("falls back to the shared module roles.yml when the root has none", async () => {
-        const sharedYml = validRolesYml.replace("description: Guest", "description: SharedGuest");
+      test("falls back to the running module roles.yml when the root has none", async () => {
+        const moduleYml = validRolesYml.replace("description: Guest", "description: ModuleGuest");
 
-        const spy = spyOn(Bun, "file").mockImplementation(
-          ((path: string) =>
-            ({
-              exists: () => Promise.resolve(path.includes("modules")),
-              text: () => Promise.resolve(sharedYml),
-            }) as unknown as ReturnType<typeof Bun.file>) as unknown as typeof Bun.file,
-        );
+        let call = 0;
+        const spy = spyOn(Bun, "file").mockImplementation((() => {
+          const current = call++;
+          return {
+            exists: () => Promise.resolve(current > 0),
+            text: () => Promise.resolve(moduleYml),
+          } as unknown as ReturnType<typeof Bun.file>;
+        }) as unknown as typeof Bun.file);
 
         const config = createMockConfig();
         const app = new App(config);
         await app.init();
 
         const roles = container.getConstant("app.roles") as { hierarchy: Record<string, { description: string }> };
-        expect(roles.hierarchy.ROLE_GUEST?.description).toBe("SharedGuest");
+        expect(roles.hierarchy.ROLE_GUEST?.description).toBe("ModuleGuest");
         spy.mockRestore();
       });
 
