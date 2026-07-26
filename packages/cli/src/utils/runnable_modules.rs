@@ -8,6 +8,7 @@ pub enum RunnableModuleType {
     Spa,
     Storybook,
     Swagger,
+    Admin,
 }
 
 #[derive(Debug, Clone)]
@@ -49,6 +50,7 @@ pub fn collect_runnable_modules(modules_dir: &Path) -> Vec<RunnableModule> {
             "spa" => RunnableModuleType::Spa,
             "storybook" => RunnableModuleType::Storybook,
             "swagger" => RunnableModuleType::Swagger,
+            "admin" => RunnableModuleType::Admin,
             _ => continue,
         };
         modules.push(RunnableModule {
@@ -109,6 +111,24 @@ mod tests {
         assert_eq!(modules.len(), 1);
         assert_eq!(modules[0].name, "storybook");
         assert_eq!(modules[0].r#type, RunnableModuleType::Storybook);
+    }
+
+    #[test]
+    fn collects_admin_module_as_runnable() {
+        let temp = tempfile::tempdir().expect("temp dir");
+        let modules_dir = temp.path();
+        let admin_dir = modules_dir.join("admin");
+        fs::create_dir_all(&admin_dir).expect("create module dir");
+        fs::write(
+            admin_dir.join("admin.yml"),
+            "type: \"admin\" # \"api\" | \"microservice\" | \"spa\" | \"admin\"\ndesign: \"design\"\n",
+        )
+        .expect("write yml");
+
+        let modules = collect_runnable_modules(modules_dir);
+        assert_eq!(modules.len(), 1);
+        assert_eq!(modules[0].name, "admin");
+        assert_eq!(modules[0].r#type, RunnableModuleType::Admin);
     }
 
     #[test]

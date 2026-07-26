@@ -104,7 +104,7 @@ _talos_sdk_names() {
 _talos_runnable_modules() {
   local -a modules
   if [[ -d modules ]]; then
-    modules=(${(@f)"$(command grep -rlE 'type: "(api|microservice|spa|storybook|swagger)"' modules/*/*.yml 2>/dev/null | sed -n 's|modules/\([^/]*\)/.*|\1|p' | sort -u)"})
+    modules=(${(@f)"$(command grep -rlE 'type: "(api|microservice|spa|storybook|swagger|admin)"' modules/*/*.yml 2>/dev/null | sed -n 's|modules/\([^/]*\)/.*|\1|p' | sort -u)"})
     _values -s , 'modules' $modules
   fi
 }
@@ -198,6 +198,8 @@ _talos() {
     'spa\:feature\:create:Generate a new spa feature (route, layout, hooks and folders)'
     'react\:component\:create:Generate a new react component (with test) in a module or feature'
     'spa\:remove:Remove an existing spa module'
+    'admin\:create:Generate a new admin module'
+    'admin\:remove:Remove an existing admin module'
     'storybook\:create:Generate a new storybook module'
     'storybook\:remove:Remove an existing storybook module'
     'storage\:create:Generate a new storage class'
@@ -460,7 +462,13 @@ _talos() {
             '--design=[Design module name]:design:_talos_design_modules' \
             '--no-cache[Ignore the cached skeleton and re-download it]'
           ;;
-        design:remove|spa:remove|storybook:remove|microservice:remove|module:remove)
+        admin:create)
+          _arguments -s \
+            '--name=[Name of the resource]:name' \
+            '--design=[Design module name]:design:_talos_design_modules' \
+            '--no-cache[Ignore the cached skeleton and re-download it]'
+          ;;
+        design:remove|spa:remove|storybook:remove|microservice:remove|module:remove|admin:remove)
           _arguments -s \
             '--name=[Module name]:name:_talos_modules'
           ;;

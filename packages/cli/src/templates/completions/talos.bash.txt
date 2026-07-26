@@ -58,7 +58,7 @@ _talos_destination_modules() {
 
 _talos_runnable_modules() {
   [[ -d modules ]] || return
-  command grep -rlE 'type: "(api|microservice|spa|storybook|swagger)"' modules/*/*.yml 2>/dev/null \
+  command grep -rlE 'type: "(api|microservice|spa|storybook|swagger|admin)"' modules/*/*.yml 2>/dev/null \
     | command sed -n 's|modules/\([^/]*\)/.*|\1|p' | command sort -u
 }
 
@@ -144,7 +144,7 @@ npm:credentials:create npm:publish monorepo:run run monorepo:check check build f
 security:check \
 entity:create flag:create logger:create mailer:create middleware:create permission:create \
 queue:create rate-limit:create event:create release:create repository:create sdk:create \
-service:create spa:create spa:feature:create spa:remove storybook:create storybook:remove storage:create translation:create \
+service:create spa:create spa:feature:create spa:remove admin:create admin:remove storybook:create storybook:remove storage:create translation:create \
 vector-database:create workflow:create workflow:transition:create microservice:create \
 microservice:remove migration:create migration:up migration:down module:create module:remove \
 seed:create seed:run"
@@ -328,7 +328,11 @@ seed:create seed:run"
       opts="--name --design --no-cache"
       [[ $flag == --design ]] && candidates="$(_talos_yaml_modules design)"
       ;;
-    design:remove | spa:remove | storybook:remove | microservice:remove | module:remove)
+    admin:create)
+      opts="--name --design --no-cache"
+      [[ $flag == --design ]] && candidates="$(_talos_yaml_modules design)"
+      ;;
+    design:remove | spa:remove | storybook:remove | microservice:remove | module:remove | admin:remove)
       opts="--name"
       [[ $flag == --name ]] && candidates="$(_talos_modules)"
       ;;

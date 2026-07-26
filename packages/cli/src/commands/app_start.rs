@@ -39,9 +39,10 @@ fn load_app_module_name(app_dir: &Path, fallback: &str) -> Option<String> {
 
 fn command_line(module_dir: &Path, module_type: RunnableModuleType) -> String {
     match module_type {
-        RunnableModuleType::Spa | RunnableModuleType::Storybook | RunnableModuleType::Swagger => {
-            "bun run dev".to_string()
-        }
+        RunnableModuleType::Spa
+        | RunnableModuleType::Storybook
+        | RunnableModuleType::Swagger
+        | RunnableModuleType::Admin => "bun run dev".to_string(),
         RunnableModuleType::Api | RunnableModuleType::Microservice => {
             let entry = module_dir.join("src").join("index.ts");
             format!("bun --hot run {}", entry.display())
@@ -52,7 +53,10 @@ fn command_line(module_dir: &Path, module_type: RunnableModuleType) -> String {
 fn build_command(cwd: &Path, module_dir: &Path, module_type: RunnableModuleType) -> CommandBuilder {
     let mut command = CommandBuilder::new("bun");
     match module_type {
-        RunnableModuleType::Spa | RunnableModuleType::Storybook | RunnableModuleType::Swagger => {
+        RunnableModuleType::Spa
+        | RunnableModuleType::Storybook
+        | RunnableModuleType::Swagger
+        | RunnableModuleType::Admin => {
             command.arg("run");
             command.arg("dev");
             command.cwd(module_dir);

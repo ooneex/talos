@@ -1,4 +1,6 @@
 pub mod agent_skills_create;
+pub mod admin_create;
+pub mod admin_remove;
 pub mod ai_chat_create;
 pub mod ai_middleware_create;
 pub mod ai_tool_create;
@@ -220,6 +222,9 @@ pub enum Commands {
     #[command(name = "spa:create")]
     SpaCreate(spa_create::SpaCreateArgs),
 
+    #[command(name = "admin:create")]
+    AdminCreate(admin_create::AdminCreateArgs),
+
     #[command(name = "vector-database:create")]
     VectorDatabaseCreate(vector_database_create::VectorDatabaseCreateArgs),
 
@@ -319,6 +324,9 @@ pub enum Commands {
     #[command(name = "spa:remove")]
     SpaRemove(spa_remove::SpaRemoveArgs),
 
+    #[command(name = "admin:remove")]
+    AdminRemove(admin_remove::AdminRemoveArgs),
+
     #[command(name = "storybook:create")]
     StorybookCreate(storybook_create::StorybookCreateArgs),
 
@@ -392,6 +400,7 @@ impl Commands {
             Commands::ServiceCreate(args) => service_create::run(args),
             Commands::StorageCreate(args) => storage_create::run(args),
             Commands::SpaCreate(args) => spa_create::run(args),
+            Commands::AdminCreate(args) => admin_create::run(args),
             Commands::VectorDatabaseCreate(args) => vector_database_create::run(args),
             Commands::WorkflowCreate(args) => workflow_create::run(args),
             Commands::WorkflowTransitionCreate(args) => workflow_transition_create::run(args),
@@ -425,6 +434,7 @@ impl Commands {
             Commands::E2eRun(args) => e2e_run::run(args),
             Commands::SpaFeatureCreate(args) => spa_feature_create::run(args),
             Commands::SpaRemove(args) => spa_remove::run(args),
+            Commands::AdminRemove(args) => admin_remove::run(args),
             Commands::StorybookCreate(args) => storybook_create::run(args),
             Commands::StorybookRemove(args) => storybook_remove::run(args),
             Commands::MonorepoCheck(args) => monorepo_check::run(args),
