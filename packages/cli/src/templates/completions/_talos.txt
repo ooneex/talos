@@ -174,6 +174,7 @@ _talos() {
     'run:Alias for monorepo:run — run package.json scripts across packages and modules with granular caching'
     'monorepo\:check:Run install, build, lint and test across packages and modules with granular caching'
     'check:Alias for monorepo:check — run install, build, fmt, lint and test across packages and modules with granular caching'
+    'security\:check:Audit bun, rust and python modules for known vulnerabilities'
     'build:Alias for monorepo:run --commands=build — run the build script across packages and modules with granular caching'
     'fmt:Alias for monorepo:run --commands=fmt — run the fmt script across packages and modules with granular caching'
     'lint:Alias for monorepo:run --commands=lint — run the lint script across packages and modules with granular caching'
@@ -390,6 +391,14 @@ _talos() {
             '--modules=-[Module name(s), comma-separated (default: all)]::modules:_talos_publish_modules' \
             '--logs[Stream plain logs instead of the interactive view]' \
             '--no-cache[Skip reading and writing the task cache]'
+          ;;
+        security:check)
+          _arguments -s \
+            '--issues[Create a YAML issue per vulnerability instead of printing the report]' \
+            '--modules=-[Module name(s), comma-separated (default: all)]::modules:_talos_publish_modules' \
+            '--packages=-[Alias for --modules, comma-separated (default: all)]::packages:_talos_publish_packages' \
+            '--audit-level=[Minimum severity to report]:level:(low moderate high critical)' \
+            '--cwd=[Working directory]:cwd:_files -/'
           ;;
         entity:create)
           _arguments -s \

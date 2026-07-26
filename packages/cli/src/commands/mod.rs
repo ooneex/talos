@@ -66,6 +66,7 @@ pub mod release_create;
 pub mod repository_create;
 pub mod run;
 pub mod sdk_create;
+pub mod security_check;
 pub mod seed_create;
 pub mod seed_run;
 pub mod service_create;
@@ -330,6 +331,9 @@ pub enum Commands {
     #[command(name = "check")]
     Check(check::CheckArgs),
 
+    #[command(name = "security:check")]
+    SecurityCheck(security_check::SecurityCheckArgs),
+
     #[command(name = "migration:up")]
     MigrationUp(migration_up::MigrationUpArgs),
 
@@ -424,6 +428,7 @@ impl Commands {
             Commands::StorybookRemove(args) => storybook_remove::run(args),
             Commands::MonorepoCheck(args) => monorepo_check::run(args),
             Commands::Check(args) => check::run(args),
+            Commands::SecurityCheck(args) => security_check::run(args),
             Commands::MigrationUp(args) => migration_up::run(args),
             Commands::MigrationDown(args) => migration_down::run(args),
             Commands::SeedRun(args) => seed_run::run(args),

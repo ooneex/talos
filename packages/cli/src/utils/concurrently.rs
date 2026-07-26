@@ -498,4 +498,3 @@ pub fn run(commands: Vec<ConcurrentCommand>, options: ConcurrentlyOptions) -> Co
         exit_code,
     }
 }
-

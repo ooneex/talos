@@ -78,7 +78,13 @@ fn scaffold_destination_rewrites_env_and_readme() {
             .exists()
     );
     assert_eq!(
-        fs::read_to_string(destination_path.join("modules").join("app").join(".env.yml")).unwrap(),
+        fs::read_to_string(
+            destination_path
+                .join("modules")
+                .join("app")
+                .join(".env.yml")
+        )
+        .unwrap(),
         "KEY: value\n"
     );
     assert_eq!(

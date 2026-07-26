@@ -149,6 +149,10 @@ const COMMANDS: &[(&str, &str)] = &[
         "run",
         "Alias for `monorepo:run`, forwarding every option untouched",
     ),
+    (
+        "security:check",
+        "Audit bun, rust and python modules for known vulnerabilities",
+    ),
     ("seed:create", "Generate a new seed file"),
     (
         "sdk:create",

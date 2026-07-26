@@ -141,6 +141,7 @@ design:create design:remove docker:create docker:credentials:create docker:publi
 github:credentials:create github:secret:push gitlab:credentials:create gitlab:secret:push \
 bitbucket:credentials:create bitbucket:secret:push jira:credentials:create linear:credentials:create \
 npm:credentials:create npm:publish monorepo:run run monorepo:check check build fmt lint test \
+security:check \
 entity:create flag:create logger:create mailer:create middleware:create permission:create \
 queue:create rate-limit:create event:create release:create repository:create sdk:create \
 service:create spa:create spa:feature:create spa:remove storybook:create storybook:remove storage:create translation:create \
@@ -279,6 +280,12 @@ seed:create seed:run"
       opts="--packages --modules --logs --no-cache"
       [[ $flag == --packages ]] && candidates="$(_talos_packages)"
       [[ $flag == --modules ]] && candidates="$(_talos_pkg_modules)"
+      ;;
+    security:check)
+      opts="--issues --modules --packages --audit-level --cwd"
+      [[ $flag == --modules ]] && candidates="$(_talos_pkg_modules)"
+      [[ $flag == --packages ]] && candidates="$(_talos_packages)"
+      [[ $flag == --audit-level ]] && candidates="low moderate high critical"
       ;;
     entity:create)
       opts="--name --module --table-name --override"
