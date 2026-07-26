@@ -149,6 +149,7 @@ impl Ecosystem {
 
 struct Finding {
     module: String,
+    module_dir: PathBuf,
     ecosystem: Ecosystem,
     package: String,
     version: String,
@@ -161,7 +162,8 @@ struct Finding {
 }
 
 struct Target {
-    /// Module name relative to the workspace root (root is rendered as ".").
+    /// Display name of the audited module/package (the folder name under
+    /// `modules/` or `packages/`, or the root package name for the workspace root).
     module: String,
     dir: PathBuf,
     ecosystem: Ecosystem,
@@ -186,7 +188,7 @@ pub fn run(args: &SecurityCheckArgs) {
     spinner.stop();
 
     if let Some(filter) = &filter {
-        targets.retain(|t| filter.contains(module_key(&t.module).as_str()));
+        targets.retain(|t| filter.contains(t.module.as_str()));
     }
 
     if targets.is_empty() {
@@ -242,14 +244,6 @@ pub fn run(args: &SecurityCheckArgs) {
     }
 }
 
-fn module_key(module: &str) -> String {
-    Path::new(module)
-        .file_name()
-        .and_then(|name| name.to_str())
-        .map(|name| name.to_string())
-        .unwrap_or_else(|| module.to_string())
-}
-
 fn build_filter(modules: Option<&str>, packages: Option<&str>) -> Option<BTreeSet<String>> {
     let mut set = BTreeSet::new();
     for value in [modules, packages].into_iter().flatten() {
@@ -268,7 +262,7 @@ fn discover_targets(root: &Path) -> Vec<Target> {
 }
 
 fn walk(root: &Path, dir: &Path, depth: usize, targets: &mut Vec<Target>) {
-    let module = relative_module(root, dir);
+    let module = target_name(root, dir);
 
     if dir.join("bun.lock").is_file() || dir.join("bun.lockb").is_file() {
         targets.push(Target {
@@ -317,12 +311,46 @@ fn walk(root: &Path, dir: &Path, depth: usize, targets: &mut Vec<Target>) {
     }
 }
 
-fn relative_module(root: &Path, dir: &Path) -> String {
-    match dir.strip_prefix(root) {
-        Ok(rel) if rel.as_os_str().is_empty() => ".".to_string(),
-        Ok(rel) => rel.to_string_lossy().replace('\\', "/"),
-        Err(_) => dir.to_string_lossy().to_string(),
+fn target_name(root: &Path, dir: &Path) -> String {
+    let Ok(rel) = dir.strip_prefix(root) else {
+        return dir
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("root")
+            .to_string();
+    };
+    let components: Vec<String> = rel
+        .components()
+        .filter_map(|c| c.as_os_str().to_str().map(str::to_string))
+        .collect();
+    if components.is_empty() {
+        return root_package_name(root);
     }
+    if components.len() >= 2 && (components[0] == "modules" || components[0] == "packages") {
+        return components[1].clone();
+    }
+    components
+        .last()
+        .cloned()
+        .unwrap_or_else(|| root_package_name(root))
+}
+
+fn root_package_name(root: &Path) -> String {
+    fs::read_to_string(root.join("package.json"))
+        .ok()
+        .and_then(|raw| serde_json::from_str::<Value>(&raw).ok())
+        .and_then(|value| {
+            value
+                .get("name")
+                .and_then(Value::as_str)
+                .map(str::to_string)
+        })
+        .or_else(|| {
+            root.file_name()
+                .and_then(|name| name.to_str())
+                .map(str::to_string)
+        })
+        .unwrap_or_else(|| "root".to_string())
 }
 
 enum AuditOutcome {
@@ -391,6 +419,7 @@ fn audit_bun(target: &Target) -> AuditOutcome {
             let id = advisory.get("id").map(value_to_string).unwrap_or_default();
             findings.push(Finding {
                 module: target.module.clone(),
+                module_dir: target.dir.clone(),
                 ecosystem: Ecosystem::Bun,
                 package: package.clone(),
                 version: String::new(),
@@ -453,6 +482,7 @@ fn audit_rust(target: &Target) -> AuditOutcome {
             .unwrap_or_default();
         findings.push(Finding {
             module: target.module.clone(),
+            module_dir: target.dir.clone(),
             ecosystem: Ecosystem::Rust,
             package: string_field(&package, "name"),
             version: string_field(&package, "version"),
@@ -546,6 +576,7 @@ fn audit_python(target: &Target) -> AuditOutcome {
             };
             findings.push(Finding {
                 module: target.module.clone(),
+                module_dir: target.dir.clone(),
                 ecosystem: Ecosystem::Python,
                 package: name.clone(),
                 version: version.clone(),
@@ -699,14 +730,18 @@ fn create_issues(root: &Path, findings: &[Finding]) {
 
     let mut created = 0usize;
     for finding in findings {
-        let module_name = module_key(&finding.module);
-        let module_name = if module_name == "." {
+        let is_root = finding.module_dir == root;
+        let module_name = if is_root {
             "shared".to_string()
         } else {
-            module_name
+            finding.module.clone()
         };
 
-        let issues_dir = issues_dir_for(root, &finding.module);
+        let issues_dir = if is_root {
+            root.join("modules").join("shared").join("issues")
+        } else {
+            finding.module_dir.join("issues")
+        };
         if let Err(err) = fs::create_dir_all(&issues_dir) {
             error(format!("Failed to create {}: {err}", issues_dir.display()));
             continue;
@@ -739,14 +774,6 @@ fn create_issues(root: &Path, findings: &[Finding]) {
         "{created} security issue{} created",
         if created == 1 { "" } else { "s" }
     ));
-}
-
-fn issues_dir_for(root: &Path, module: &str) -> PathBuf {
-    if module == "." {
-        root.join("modules").join("shared").join("issues")
-    } else {
-        root.join(module).join("issues")
-    }
 }
 
 fn build_issue_title(finding: &Finding) -> String {
