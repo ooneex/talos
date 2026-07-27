@@ -63,6 +63,7 @@ pub mod monorepo_run;
 pub mod npm_credentials_create;
 pub mod npm_publish;
 pub mod permission_create;
+pub mod project_check;
 pub mod queue_create;
 pub mod rate_limit_create;
 pub mod react_component_create;
@@ -352,6 +353,10 @@ pub enum Commands {
     #[command(name = "security:check")]
     SecurityCheck(security_check::SecurityCheckArgs),
 
+    /// Run every health check (workspace, accessibility, security, issues, commits, hygiene)
+    #[command(name = "project:check")]
+    ProjectCheck(project_check::ProjectCheckArgs),
+
     #[command(name = "migration:up")]
     MigrationUp(migration_up::MigrationUpArgs),
 
@@ -451,6 +456,7 @@ impl Commands {
             Commands::MonorepoCheck(args) => monorepo_check::run(args),
             Commands::Check(args) => check::run(args),
             Commands::SecurityCheck(args) => security_check::run(args),
+            Commands::ProjectCheck(args) => project_check::run(args),
             Commands::MigrationUp(args) => migration_up::run(args),
             Commands::MigrationDown(args) => migration_down::run(args),
             Commands::SeedRun(args) => seed_run::run(args),

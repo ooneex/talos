@@ -142,6 +142,7 @@ github:credentials:create github:secret:push gitlab:credentials:create gitlab:se
 bitbucket:credentials:create bitbucket:secret:push jira:credentials:create linear:credentials:create \
 npm:credentials:create npm:publish monorepo:run run monorepo:check check build fmt lint test \
 security:check \
+project:check \
 entity:create flag:create logger:create mailer:create middleware:create permission:create \
 queue:create rate-limit:create event:create release:create repository:create sdk:create \
 service:create spa:create spa:feature:create spa:remove admin:create admin:remove storybook:create storybook:remove storage:create translation:create \
@@ -293,6 +294,13 @@ seed:create seed:run"
       opts="--issues --modules --packages --audit-level --cwd"
       [[ $flag == --modules ]] && candidates="$(_talos_pkg_modules)"
       [[ $flag == --packages ]] && candidates="$(_talos_packages)"
+      [[ $flag == --audit-level ]] && candidates="low moderate high critical"
+      ;;
+    project:check)
+      opts="--only --skip --packages --modules --audit-level --logs --no-cache --strict --json --cwd"
+      [[ $flag == --only || $flag == --skip ]] && candidates="workspace accessibility security issues commits hygiene"
+      [[ $flag == --packages ]] && candidates="$(_talos_packages)"
+      [[ $flag == --modules ]] && candidates="$(_talos_pkg_modules)"
       [[ $flag == --audit-level ]] && candidates="low moderate high critical"
       ;;
     entity:create)

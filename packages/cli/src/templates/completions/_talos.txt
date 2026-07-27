@@ -44,6 +44,10 @@ _talos_docker_publish_modules() {
   fi
 }
 
+_talos_project_checks() {
+  _values -s , 'checks' workspace accessibility security issues commits hygiene
+}
+
 _talos_custom_commands() {
   local -a cmds
   if [[ -d modules ]]; then
@@ -177,6 +181,7 @@ _talos() {
     'monorepo\:check:Run install, build, lint and test across packages and modules with granular caching'
     'check:Alias for monorepo:check — run install, build, fmt, lint and test across packages and modules with granular caching'
     'security\:check:Audit dependencies for known vulnerabilities via OSV.dev'
+    'project\:check:Run every health check — workspace, accessibility, security, issues, commits and hygiene'
     'build:Alias for monorepo:run --commands=build — run the build script across packages and modules with granular caching'
     'fmt:Alias for monorepo:run --commands=fmt — run the fmt script across packages and modules with granular caching'
     'lint:Alias for monorepo:run --commands=lint — run the lint script across packages and modules with granular caching'
@@ -414,6 +419,19 @@ _talos() {
             '--modules=-[Module name(s), comma-separated (default: all)]::modules:_talos_publish_modules' \
             '--packages=-[Alias for --modules, comma-separated (default: all)]::packages:_talos_publish_packages' \
             '--audit-level=[Minimum severity to report]:level:(low moderate high critical)' \
+            '--cwd=[Working directory]:cwd:_files -/'
+          ;;
+        project:check)
+          _arguments -s \
+            '--only=[Only run these checks, comma-separated]:checks:_talos_project_checks' \
+            '--skip=[Skip these checks, comma-separated]:checks:_talos_project_checks' \
+            '--packages=-[Package name(s), comma-separated (default: all)]::packages:_talos_publish_packages' \
+            '--modules=-[Module name(s), comma-separated (default: all)]::modules:_talos_publish_modules' \
+            '--audit-level=[Minimum vulnerability severity to report]:level:(low moderate high critical)' \
+            '--logs[Stream plain workspace logs instead of the interactive view]' \
+            '--no-cache[Skip reading and writing the workspace task cache]' \
+            '--strict[Fail when a check only reports warnings]' \
+            '--json[Print the report as JSON]' \
             '--cwd=[Working directory]:cwd:_files -/'
           ;;
         entity:create)

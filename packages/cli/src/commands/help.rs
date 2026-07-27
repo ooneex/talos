@@ -141,6 +141,10 @@ const COMMANDS: &[(&str, &str)] = &[
     ),
     ("npm:publish", "Publish a package or module to npm"),
     ("permission:create", "Generate a new permission class"),
+    (
+        "project:check",
+        "Run every health check: workspace, accessibility, security, issues, commits, hygiene",
+    ),
     ("queue:create", "Generate a new queue class"),
     ("rate-limit:create", "Generate a new rate limiter class"),
     ("repository:create", "Generate a new repository class"),

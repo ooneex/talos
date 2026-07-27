@@ -31,6 +31,20 @@ fn app_create_subcommand_parses_its_name() {
 }
 
 #[test]
+fn project_check_subcommand_parses_its_flags() {
+    let cli = TestCli::try_parse_from(["talos", "project:check", "--only", "security", "--strict"])
+        .expect("project:check should parse");
+
+    match cli.command {
+        Some(Commands::ProjectCheck(args)) => {
+            assert_eq!(args.only.as_deref(), Some("security"));
+            assert!(args.strict);
+        }
+        other => panic!("expected Commands::ProjectCheck, got {other:?}"),
+    }
+}
+
+#[test]
 fn no_subcommand_is_valid() {
     let cli = TestCli::try_parse_from(["talos"]).expect("no subcommand should parse");
     assert!(cli.command.is_none());

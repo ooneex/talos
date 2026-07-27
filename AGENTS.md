@@ -185,6 +185,19 @@ oo monorepo:run --commands=lint  # Lint all modules with Biome and TypeScript
 oo monorepo:run --commands=test  # Run tests across all modules
 ```
 
+### Project Health
+
+```bash
+oo project:check                                # Run every check and print one aggregated report
+oo project:check --skip=workspace               # The fast checks only (no install/build/test)
+oo project:check --only=accessibility,security  # Only the named checks
+oo project:check --modules=billing,user         # Scope the checks to these modules (also --packages=a,b)
+oo project:check --strict                       # Exit 1 when a check only reports warnings
+oo project:check --json                         # Machine-readable report for CI
+```
+
+`project:check` is the whole-project gate. It runs six checks — `workspace` (`monorepo:run --commands=install,build,fmt,lint,test`), `accessibility` (Biome's `a11y` rules over every UI module's `src/`: design, spa, admin, storybook), `security` (the OSV.dev dependency audit), `issues` (the `issue:check` conventions), `commits` (conventional-commit rules over the unpushed commits) and `hygiene` (conflict markers, focused/skipped tests, bare `TODO`s) — and prints a status line per check, a detail block per non-passing check, and one verdict line. Each check reuses the code of its dedicated command, so it can never disagree with `monorepo:check`, `security:check` or `issue:check`. Check names accept aliases (`a11y`, `audit`/`deps`, `commit`, `monorepo`), a check with nothing to inspect is reported as **skipped** rather than passed, and violations of a11y rules the project disabled in `biome.jsonc` are reported separately as a non-failing "not enforced" note. Exit code is `1` on any failure (or any warning with `--strict`).
+
 ### Security
 
 ```bash

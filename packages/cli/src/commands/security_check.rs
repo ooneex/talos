@@ -191,6 +191,73 @@ struct Finding {
     patched: String,
 }
 
+/// A vulnerability exposed to other commands, free of the private types the
+/// audit uses internally.
+#[derive(Clone, Debug)]
+pub struct SecurityFinding {
+    pub module: String,
+    pub ecosystem: String,
+    pub package: String,
+    pub version: String,
+    pub severity: &'static str,
+    pub id: String,
+    pub title: String,
+    pub url: String,
+    pub patched: String,
+}
+
+/// Outcome of an audit, kept free of process exits and printing so it can be
+/// embedded in aggregated reports such as `project:check`.
+#[derive(Clone, Debug, Default)]
+pub struct SecurityAudit {
+    pub findings: Vec<SecurityFinding>,
+    pub modules: usize,
+    pub dependencies: usize,
+}
+
+impl SecurityAudit {
+    /// Number of findings carrying the given severity label (`CRITICAL`, …).
+    pub fn count(&self, severity: &str) -> usize {
+        self.findings
+            .iter()
+            .filter(|finding| finding.severity == severity)
+            .count()
+    }
+}
+
+/// Run the audit and return its findings instead of printing them.
+pub fn audit(
+    root: &Path,
+    modules: Option<&str>,
+    packages: Option<&str>,
+    audit_level: Option<&str>,
+) -> Result<SecurityAudit, String> {
+    let filter = build_filter(modules, packages);
+    let min_severity = audit_level
+        .map(Severity::from_label)
+        .unwrap_or(Severity::Unknown);
+    let (findings, modules, dependencies) = collect_findings(root, filter.as_ref(), min_severity)?;
+
+    Ok(SecurityAudit {
+        findings: findings
+            .into_iter()
+            .map(|finding| SecurityFinding {
+                module: finding.module,
+                ecosystem: finding.ecosystem.label().to_string(),
+                package: finding.package,
+                version: finding.version,
+                severity: finding.severity.label(),
+                id: finding.id,
+                title: finding.title,
+                url: finding.url,
+                patched: finding.patched,
+            })
+            .collect(),
+        modules,
+        dependencies,
+    })
+}
+
 pub fn run(args: &SecurityCheckArgs) {
     let root = args
         .cwd
@@ -205,17 +272,44 @@ pub fn run(args: &SecurityCheckArgs) {
         .map(Severity::from_label)
         .unwrap_or(Severity::Unknown);
 
+    let (findings, modules, total_deps) =
+        match collect_findings(&root, filter.as_ref(), min_severity) {
+            Ok(outcome) => outcome,
+            Err(message) => {
+                if message.is_empty() {
+                    warn("No npm, python, rust, go, ruby or php modules found to audit");
+                } else {
+                    error(message);
+                }
+                return;
+            }
+        };
+
+    if args.issues {
+        create_issues(&root, &findings);
+    } else {
+        print_report(&findings, modules, total_deps);
+    }
+}
+
+/// Resolve every vulnerability in the workspace. Returns the findings plus the
+/// number of audited modules and dependencies. An empty error message means
+/// "nothing to audit".
+fn collect_findings(
+    root: &Path,
+    filter: Option<&BTreeSet<String>>,
+    min_severity: Severity,
+) -> Result<(Vec<Finding>, usize, usize), String> {
     let spinner = Spinner::start("Collecting dependencies");
-    let mut modules = collect_modules(&root);
+    let mut modules = collect_modules(root);
     spinner.stop();
 
-    if let Some(filter) = &filter {
+    if let Some(filter) = filter {
         modules.retain(|m| filter.contains(m.name.as_str()));
     }
 
     if modules.is_empty() {
-        warn("No npm, python, rust, go, ruby or php modules found to audit");
-        return;
+        return Err(String::new());
     }
 
     let total_deps: usize = modules.iter().map(|m| m.packages.len()).sum();
@@ -242,10 +336,9 @@ pub fn run(args: &SecurityCheckArgs) {
         Some(ids) => ids,
         None => {
             spinner.stop();
-            error(format!(
+            return Err(format!(
                 "Could not reach {SOURCE} — check your network connection and try again"
             ));
-            return;
         }
     };
     spinner.stop();
@@ -297,11 +390,7 @@ pub fn run(args: &SecurityCheckArgs) {
             .then_with(|| a.id.cmp(&b.id))
     });
 
-    if args.issues {
-        create_issues(&root, &findings);
-    } else {
-        print_report(&findings, modules.len(), total_deps);
-    }
+    Ok((findings, modules.len(), total_deps))
 }
 
 fn build_filter(modules: Option<&str>, packages: Option<&str>) -> Option<BTreeSet<String>> {
