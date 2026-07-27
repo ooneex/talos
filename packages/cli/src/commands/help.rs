@@ -163,7 +163,7 @@ const COMMANDS: &[(&str, &str)] = &[
     ),
     (
         "security:check",
-        "Audit dependencies for known vulnerabilities via OSV.dev",
+        "Audit dependencies via OSV.dev and assistant agents/skills for LLM risks",
     ),
     ("seed:create", "Generate a new seed file"),
     (

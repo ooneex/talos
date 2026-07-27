@@ -349,7 +349,7 @@ pub enum Commands {
     #[command(name = "check")]
     Check(check::CheckArgs),
 
-    /// Audit dependencies for known vulnerabilities via OSV.dev
+    /// Audit dependencies via OSV.dev and assistant agents/skills for LLM risks
     #[command(name = "security:check")]
     SecurityCheck(security_check::SecurityCheckArgs),
 

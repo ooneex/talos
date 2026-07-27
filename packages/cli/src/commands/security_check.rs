@@ -11,6 +11,8 @@ use crate::utils::{
     warn,
 };
 
+pub mod llm;
+
 /// Universal, always-online vulnerability database. A single API covers every
 /// ecosystem (npm/react/typescript/node, PyPI, crates.io, Go, RubyGems, …), so
 /// no per-language audit binary has to be installed locally.
@@ -58,6 +60,10 @@ pub struct SecurityCheckArgs {
     /// Minimum severity to report (low, moderate, high, critical).
     #[arg(long = "audit-level")]
     pub audit_level: Option<String>,
+
+    /// Skip the assistant configuration audit (agents, skills, rules, MCP).
+    #[arg(long = "skip-llm", default_value_t = false)]
+    pub skip_llm: bool,
 
     /// Working directory (defaults to the current directory).
     #[arg(long)]
@@ -171,6 +177,32 @@ struct PackageKey {
     version: String,
 }
 
+/// Where a finding comes from: a resolved dependency, or the configuration a
+/// coding assistant executes as instructions.
+#[derive(Clone)]
+enum Origin {
+    Dependency(Ecosystem),
+    Assistant(String),
+}
+
+impl Origin {
+    /// Lower-case label shown in the report (`npm`, `claude`, …).
+    fn label(&self) -> String {
+        match self {
+            Origin::Dependency(ecosystem) => ecosystem.label().to_string(),
+            Origin::Assistant(assistant) => assistant.to_ascii_lowercase(),
+        }
+    }
+
+    /// The assistant display name, when the finding comes from one.
+    fn assistant(&self) -> Option<&str> {
+        match self {
+            Origin::Dependency(_) => None,
+            Origin::Assistant(assistant) => Some(assistant),
+        }
+    }
+}
+
 struct ModuleReport {
     name: String,
     dir: PathBuf,
@@ -180,15 +212,19 @@ struct ModuleReport {
 struct Finding {
     module: String,
     module_dir: PathBuf,
-    ecosystem: Ecosystem,
-    package: String,
+    origin: Origin,
+    /// The vulnerable package, or the `file:line` holding the risky instruction.
+    subject: String,
     version: String,
     severity: Severity,
     id: String,
     title: String,
     url: String,
     aliases: String,
-    patched: String,
+    /// Patched versions for a dependency, remediation advice for an assistant.
+    remediation: String,
+    /// The offending line, for assistant findings.
+    evidence: String,
 }
 
 /// A vulnerability exposed to other commands, free of the private types the
@@ -196,14 +232,18 @@ struct Finding {
 #[derive(Clone, Debug)]
 pub struct SecurityFinding {
     pub module: String,
-    pub ecosystem: String,
-    pub package: String,
+    /// `npm`, `pypi`, … for a dependency, or the assistant name for an
+    /// instruction finding.
+    pub source: String,
+    /// The package name, or the `file:line` holding the risky instruction.
+    pub subject: String,
     pub version: String,
     pub severity: &'static str,
     pub id: String,
     pub title: String,
     pub url: String,
-    pub patched: String,
+    /// Patched versions for a dependency, remediation advice for an assistant.
+    pub remediation: String,
 }
 
 /// Outcome of an audit, kept free of process exits and printing so it can be
@@ -213,6 +253,8 @@ pub struct SecurityAudit {
     pub findings: Vec<SecurityFinding>,
     pub modules: usize,
     pub dependencies: usize,
+    /// Assistant agent, skill, rule and MCP files scanned.
+    pub llm_files: usize,
 }
 
 impl SecurityAudit {
@@ -236,25 +278,36 @@ pub fn audit(
     let min_severity = audit_level
         .map(Severity::from_label)
         .unwrap_or(Severity::Unknown);
-    let (findings, modules, dependencies) = collect_findings(root, filter.as_ref(), min_severity)?;
+    let (llm_findings, llm_files) = collect_llm_findings(root, filter.as_ref(), min_severity);
+    let (mut findings, modules, dependencies) =
+        match collect_findings(root, filter.as_ref(), min_severity) {
+            Ok(outcome) => outcome,
+            // A missing lockfile must not hide the assistant configuration
+            // findings, which need neither a lockfile nor the network.
+            Err(message) if message.is_empty() && llm_files > 0 => (Vec::new(), 0, 0),
+            Err(message) => return Err(message),
+        };
+    findings.extend(llm_findings);
+    sort_findings(&mut findings);
 
     Ok(SecurityAudit {
         findings: findings
             .into_iter()
             .map(|finding| SecurityFinding {
                 module: finding.module,
-                ecosystem: finding.ecosystem.label().to_string(),
-                package: finding.package,
+                source: finding.origin.label(),
+                subject: finding.subject,
                 version: finding.version,
                 severity: finding.severity.label(),
                 id: finding.id,
                 title: finding.title,
                 url: finding.url,
-                patched: finding.patched,
+                remediation: finding.remediation,
             })
             .collect(),
         modules,
         dependencies,
+        llm_files,
     })
 }
 
@@ -272,24 +325,98 @@ pub fn run(args: &SecurityCheckArgs) {
         .map(Severity::from_label)
         .unwrap_or(Severity::Unknown);
 
-    let (findings, modules, total_deps) =
+    let (llm_findings, llm_files) = if args.skip_llm {
+        (Vec::new(), 0)
+    } else {
+        let spinner = Spinner::start("Scanning assistant agents and skills");
+        let outcome = collect_llm_findings(&root, filter.as_ref(), min_severity);
+        spinner.stop();
+        outcome
+    };
+
+    let (mut findings, modules, total_deps) =
         match collect_findings(&root, filter.as_ref(), min_severity) {
             Ok(outcome) => outcome,
             Err(message) => {
-                if message.is_empty() {
-                    warn("No npm, python, rust, go, ruby or php modules found to audit");
-                } else {
-                    error(message);
+                if llm_files == 0 {
+                    if message.is_empty() {
+                        warn("No npm, python, rust, go, ruby or php modules found to audit");
+                    } else {
+                        error(message);
+                    }
+                    return;
                 }
-                return;
+                if message.is_empty() {
+                    warn("No lockfile found — auditing assistant configuration only");
+                } else {
+                    warn(format!("{message} — auditing assistant configuration only"));
+                }
+                (Vec::new(), 0, 0)
             }
         };
+
+    findings.extend(llm_findings);
+    sort_findings(&mut findings);
 
     if args.issues {
         create_issues(&root, &findings);
     } else {
-        print_report(&findings, modules, total_deps);
+        print_report(&findings, modules, total_deps, llm_files);
     }
+}
+
+/// Audit every coding assistant's agent, skill, rule and MCP files. Returns the
+/// findings plus the number of scanned files.
+fn collect_llm_findings(
+    root: &Path,
+    filter: Option<&BTreeSet<String>>,
+    min_severity: Severity,
+) -> (Vec<Finding>, usize) {
+    let (hits, scanned) = llm::collect(root);
+    let mut findings: Vec<Finding> = hits
+        .into_iter()
+        .map(|hit| build_llm_finding(root, hit))
+        .collect();
+
+    if let Some(filter) = filter {
+        findings.retain(|finding| filter.contains(finding.module.as_str()));
+    }
+    findings.retain(|finding| finding.severity >= min_severity);
+    (findings, scanned)
+}
+
+fn build_llm_finding(root: &Path, finding: llm::LlmFinding) -> Finding {
+    let hit = finding.hit;
+    let aliases = if hit.occurrences > 1 {
+        format!("{} matches", hit.occurrences)
+    } else {
+        String::new()
+    };
+
+    Finding {
+        module: target_name(root, &finding.dir),
+        module_dir: finding.dir,
+        origin: Origin::Assistant(finding.assistant),
+        subject: format!("{}:{}", finding.file, hit.line),
+        version: String::new(),
+        severity: Severity::from_label(hit.severity),
+        id: hit.id.to_string(),
+        title: hit.title.to_string(),
+        url: hit.reference.to_string(),
+        aliases,
+        remediation: hit.remediation,
+        evidence: hit.excerpt,
+    }
+}
+
+fn sort_findings(findings: &mut [Finding]) {
+    findings.sort_by(|a, b| {
+        a.module
+            .cmp(&b.module)
+            .then_with(|| b.severity.cmp(&a.severity))
+            .then_with(|| a.subject.cmp(&b.subject))
+            .then_with(|| a.id.cmp(&b.id))
+    });
 }
 
 /// Resolve every vulnerability in the workspace. Returns the findings plus the
@@ -382,13 +509,7 @@ fn collect_findings(
     }
 
     findings.retain(|f| f.severity >= min_severity);
-    findings.sort_by(|a, b| {
-        a.module
-            .cmp(&b.module)
-            .then_with(|| b.severity.cmp(&a.severity))
-            .then_with(|| a.package.cmp(&b.package))
-            .then_with(|| a.id.cmp(&b.id))
-    });
+    sort_findings(&mut findings);
 
     Ok((findings, modules.len(), total_deps))
 }
@@ -910,15 +1031,16 @@ fn build_finding(
     Finding {
         module: module.name.clone(),
         module_dir: module.dir.clone(),
-        ecosystem: package.ecosystem,
-        package: package.name.clone(),
+        origin: Origin::Dependency(package.ecosystem),
+        subject: package.name.clone(),
         version: package.version.clone(),
         severity,
         id: id.to_string(),
         title,
         url: format!("https://osv.dev/vulnerability/{id}"),
         aliases,
-        patched,
+        remediation: patched,
+        evidence: String::new(),
     }
 }
 
@@ -1064,16 +1186,29 @@ fn cvss3_base_score(vector: &str) -> Option<f64> {
 // Report + issue output
 // ---------------------------------------------------------------------------
 
-fn print_report(findings: &[Finding], modules: usize, dependencies: usize) {
+fn print_report(findings: &[Finding], modules: usize, dependencies: usize, llm_files: usize) {
+    let mut scope: Vec<String> = Vec::new();
+    if modules > 0 || dependencies > 0 {
+        scope.push(format!(
+            "{modules} module{}",
+            if modules == 1 { "" } else { "s" }
+        ));
+        scope.push(format!(
+            "{dependencies} dependenc{} scanned via {SOURCE}",
+            if dependencies == 1 { "y" } else { "ies" }
+        ));
+    }
+    if llm_files > 0 {
+        scope.push(format!(
+            "{llm_files} assistant file{} scanned",
+            if llm_files == 1 { "" } else { "s" }
+        ));
+    }
+
     println!(
         "{}{}",
         style("▸ Security audit").magenta().bold(),
-        style(format!(
-            "  {modules} module{} · {dependencies} dependenc{} scanned via {SOURCE}",
-            if modules == 1 { "" } else { "s" },
-            if dependencies == 1 { "y" } else { "ies" },
-        ))
-        .dim()
+        style(format!("  {}", scope.join(" · "))).dim()
     );
 
     if findings.is_empty() {
@@ -1085,32 +1220,39 @@ fn print_report(findings: &[Finding], modules: usize, dependencies: usize) {
     for finding in findings {
         if current_module != Some(finding.module.as_str()) {
             println!();
-            println!(
-                "{}  {}",
-                style(&finding.module).bold().underlined(),
-                style(format!("({})", finding.ecosystem.label())).dim()
-            );
+            println!("{}", style(&finding.module).bold().underlined());
             current_module = Some(finding.module.as_str());
         }
 
-        let package = if finding.version.is_empty() {
-            finding.package.clone()
+        let subject = if finding.version.is_empty() {
+            finding.subject.clone()
         } else {
-            format!("{}@{}", finding.package, finding.version)
+            format!("{}@{}", finding.subject, finding.version)
         };
         println!(
             "  {} {}  {}",
             finding.severity.styled(),
-            style(package).bold(),
+            style(subject).bold(),
             truncate(&finding.title, 110)
         );
 
-        let mut meta: Vec<String> = vec![finding.id.clone()];
+        if !finding.evidence.is_empty() {
+            println!(
+                "      {}",
+                style(format!("↳ {}", truncate(&finding.evidence, 110))).dim()
+            );
+        }
+
+        let mut meta: Vec<String> = vec![finding.origin.label(), finding.id.clone()];
         if !finding.aliases.is_empty() {
             meta.push(finding.aliases.clone());
         }
-        if !finding.patched.is_empty() {
-            meta.push(format!("patched {}", finding.patched));
+        if !finding.remediation.is_empty() {
+            meta.push(if finding.origin.assistant().is_some() {
+                truncate(&finding.remediation, 90)
+            } else {
+                format!("patched {}", finding.remediation)
+            });
         }
         meta.push(finding.url.clone());
         println!("      {}", style(meta.join("  ·  ")).dim());
@@ -1210,25 +1352,56 @@ fn create_issues(root: &Path, findings: &[Finding]) {
 }
 
 fn build_issue_title(finding: &Finding) -> String {
-    let package = if finding.version.is_empty() {
-        finding.package.clone()
-    } else {
-        format!("{}@{}", finding.package, finding.version)
-    };
     let severity = finding.severity.label().to_ascii_lowercase();
+
+    if let Some(assistant) = finding.origin.assistant() {
+        return format!(
+            "Fix {severity} {} instruction risk in {} ({})",
+            assistant.to_ascii_lowercase(),
+            finding.subject,
+            finding.id
+        );
+    }
+
+    let package = if finding.version.is_empty() {
+        finding.subject.clone()
+    } else {
+        format!("{}@{}", finding.subject, finding.version)
+    };
     format!(
         "Fix {severity} {} vulnerability in {package} ({})",
-        finding.ecosystem.label(),
+        finding.origin.label(),
         finding.id
     )
 }
 
 fn build_issue_description(finding: &Finding) -> String {
     let mut lines = vec![finding.title.clone(), String::new()];
-    lines.push(format!("- Ecosystem: {}", finding.ecosystem.label()));
+
+    if let Some(assistant) = finding.origin.assistant() {
+        lines.push("- Source: LLM configuration audit".to_string());
+        lines.push(format!("- Assistant: {assistant}"));
+        lines.push(format!("- Module: {}", finding.module));
+        lines.push(format!("- File: {}", finding.subject));
+        lines.push(format!("- Severity: {}", finding.severity.label()));
+        lines.push(format!("- Rule: {}", finding.id));
+        if !finding.aliases.is_empty() {
+            lines.push(format!("- Occurrences: {}", finding.aliases));
+        }
+        if !finding.evidence.is_empty() {
+            lines.push(format!("- Evidence: `{}`", finding.evidence));
+        }
+        if !finding.remediation.is_empty() {
+            lines.push(format!("- Fix: {}", finding.remediation));
+        }
+        lines.push(format!("- Reference: {}", finding.url));
+        return lines.join("\n");
+    }
+
+    lines.push(format!("- Ecosystem: {}", finding.origin.label()));
     lines.push(format!("- Source: {SOURCE}"));
     lines.push(format!("- Module: {}", finding.module));
-    lines.push(format!("- Package: {}", finding.package));
+    lines.push(format!("- Package: {}", finding.subject));
     if !finding.version.is_empty() {
         lines.push(format!("- Installed version: {}", finding.version));
     }
@@ -1237,8 +1410,8 @@ fn build_issue_description(finding: &Finding) -> String {
     if !finding.aliases.is_empty() {
         lines.push(format!("- Aliases: {}", finding.aliases));
     }
-    if !finding.patched.is_empty() {
-        lines.push(format!("- Patched versions: {}", finding.patched));
+    if !finding.remediation.is_empty() {
+        lines.push(format!("- Patched versions: {}", finding.remediation));
     }
     lines.push(format!("- Reference: {}", finding.url));
     lines.join("\n")

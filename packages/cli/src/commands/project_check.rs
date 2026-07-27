@@ -999,11 +999,18 @@ fn check_security(args: &ProjectCheckArgs, root: &Path) -> CheckOutcome {
         }
     };
 
-    let scope = format!(
+    let mut scope = format!(
         "{} dependenc{} scanned",
         audit.dependencies,
         if audit.dependencies == 1 { "y" } else { "ies" }
     );
+    if audit.llm_files > 0 {
+        scope.push_str(&format!(
+            " · {} assistant file{} scanned",
+            audit.llm_files,
+            if audit.llm_files == 1 { "" } else { "s" }
+        ));
+    }
 
     if audit.findings.is_empty() {
         return CheckOutcome::new(
@@ -1032,19 +1039,21 @@ fn check_security(args: &ProjectCheckArgs, root: &Path) -> CheckOutcome {
         .findings
         .iter()
         .map(|finding| {
-            let patched = if finding.patched.is_empty() {
-                "no patch published".to_string()
+            let subject = if finding.version.is_empty() {
+                finding.subject.clone()
             } else {
-                format!("patched {}", finding.patched)
+                format!("{}@{}", finding.subject, finding.version)
+            };
+            let remediation = if finding.remediation.is_empty() {
+                "no patch published".to_string()
+            } else if finding.version.is_empty() {
+                finding.remediation.clone()
+            } else {
+                format!("patched {}", finding.remediation)
             };
             format!(
-                "{}  {} · {}@{}  {}  {}",
-                finding.severity,
-                finding.module,
-                finding.package,
-                finding.version,
-                finding.id,
-                patched
+                "{}  {} · {}  {}  {}",
+                finding.severity, finding.module, subject, finding.id, remediation
             )
         })
         .collect();
