@@ -142,6 +142,7 @@ for cmd in oo talos
     complete -c $cmd -f -n __fish_use_subcommand -a issue:pull -d 'Pull one or more issues from Linear and save them as YAML files'
     complete -c $cmd -f -n __fish_use_subcommand -a issue:push -d 'Push one or more local issue YAML files to Linear (create or update)'
     complete -c $cmd -f -n __fish_use_subcommand -a issue:convert -d 'Convert a module or package issue YAML files into a single issues.json'
+    complete -c $cmd -f -n __fish_use_subcommand -a issue:check -d 'Validate every issue YAML file against the issue conventions'
     complete -c $cmd -f -n __fish_use_subcommand -a analytics:create -d 'Generate a new analytics class'
     complete -c $cmd -f -n __fish_use_subcommand -a cache:create -d 'Generate a new cache class'
     complete -c $cmd -f -n __fish_use_subcommand -a command:create -d 'Generate a new command class'
@@ -249,6 +250,12 @@ for cmd in oo talos
     complete -c $cmd -n '__fish_seen_subcommand_from issue:push' -l module -x -a '(__talos_modules)' -d 'Module name'
 
     complete -c $cmd -n '__fish_seen_subcommand_from issue:convert' -l destination -x -a '(__talos_modules)' -d 'Comma-separated destination modules or packages'
+
+    complete -c $cmd -n '__fish_seen_subcommand_from issue:check' -l module -x -a '(__talos_modules)' -d 'Only check these modules, comma-separated'
+    complete -c $cmd -n '__fish_seen_subcommand_from issue:check' -l id -x -d 'Only check these issue IDs, comma-separated'
+    complete -c $cmd -n '__fish_seen_subcommand_from issue:check' -l strict -d 'Fail on warnings as well as errors'
+    complete -c $cmd -n '__fish_seen_subcommand_from issue:check' -l json -d 'Print the diagnostics as JSON instead of a human report'
+    complete -c $cmd -n '__fish_seen_subcommand_from issue:check' -l cwd -d 'Working directory'
 
     complete -c $cmd -n "__fish_seen_subcommand_from $__talos_resource_cmds" -l name -x -d 'Name of the resource'
     complete -c $cmd -n "__fish_seen_subcommand_from $__talos_resource_cmds" -l module -x -a '(__talos_modules)' -d 'Module name'

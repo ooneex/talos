@@ -147,6 +147,7 @@ _talos() {
     'issue\:pull:Pull one or more issues from Linear and save them as YAML files'
     'issue\:push:Push one or more local issue YAML files to Linear (create or update)'
     'issue\:convert:Convert a module or package'\''s issue YAML files into a single issues.json'
+    'issue\:check:Validate every issue YAML file against the issue conventions'
     'ai\:chat\:create:Generate a new AI chat class'
     'ai\:tool\:create:Generate a new AI tool class'
     'ai\:middleware\:create:Generate a new AI middleware class'
@@ -296,6 +297,14 @@ _talos() {
         issue:convert)
           _arguments -s \
             '*--destination=[Comma-separated destination modules or packages]:destination:_talos_modules'
+          ;;
+        issue:check)
+          _arguments -s \
+            '*--module=[Only check these modules, comma-separated (default: all)]:module:_talos_modules' \
+            '*--id=[Only check these issue IDs, comma-separated (default: all)]:id' \
+            '--strict[Fail on warnings as well as errors]' \
+            '--json[Print the diagnostics as JSON instead of a human report]' \
+            '--cwd=[Working directory]:cwd:_files -/'
           ;;
         react:component:create)
           _arguments -s \

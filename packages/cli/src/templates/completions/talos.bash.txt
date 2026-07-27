@@ -135,7 +135,7 @@ _talos() {
 
   local commands="app:create app:init app:start app:stop agent:skills:create \
 command:run completion:zsh completion:bash completion:fish help version upgrade \
-issue:create issue:pull issue:push issue:convert ai:chat:create ai:tool:create ai:middleware:create \
+issue:create issue:pull issue:push issue:convert issue:check ai:chat:create ai:tool:create ai:middleware:create \
 analytics:create cache:create command:create controller:create cron:create database:create \
 design:create design:remove docker:create docker:credentials:create docker:publish \
 github:credentials:create github:secret:push gitlab:credentials:create gitlab:secret:push \
@@ -218,6 +218,10 @@ seed:create seed:run"
     issue:convert)
       opts="--destination"
       [[ $flag == --destination ]] && candidates="$(_talos_modules)"
+      ;;
+    issue:check)
+      opts="--module --id --strict --json --cwd"
+      [[ $flag == --module ]] && candidates="$(_talos_modules)"
       ;;
     ai:chat:create | ai:tool:create | ai:middleware:create | analytics:create | cache:create | \
       command:create | cron:create | database:create | flag:create | logger:create | \

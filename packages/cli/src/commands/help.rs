@@ -84,6 +84,14 @@ const COMMANDS: &[(&str, &str)] = &[
     ),
     ("help", "Show available commands"),
     (
+        "issue:check",
+        "Validate every issue YAML file against the issue conventions",
+    ),
+    (
+        "issue:convert",
+        "Bundle a module's issue YAML files into a single issues.json",
+    ),
+    (
         "issue:create",
         "Create a YAML skeleton file for a new issue",
     ),

@@ -40,6 +40,7 @@ pub mod github_secret_push;
 pub mod gitlab_credentials_create;
 pub mod gitlab_secret_push;
 pub mod help;
+pub mod issue_check;
 pub mod issue_convert;
 pub mod issue_create;
 pub mod issue_pull;
@@ -183,6 +184,10 @@ pub enum Commands {
 
     #[command(name = "issue:convert")]
     IssueConvert(issue_convert::IssueConvertArgs),
+
+    /// Validate every issue YAML file against the issue conventions
+    #[command(name = "issue:check")]
+    IssueCheck(issue_check::IssueCheckArgs),
 
     #[command(name = "microservice:create")]
     MicroserviceCreate(microservice_create::MicroserviceCreateArgs),
@@ -391,6 +396,7 @@ impl Commands {
             Commands::IssuePull(args) => issue_pull::run(args),
             Commands::IssuePush(args) => issue_push::run(args),
             Commands::IssueConvert(args) => issue_convert::run(args),
+            Commands::IssueCheck(args) => issue_check::run(args),
             Commands::MicroserviceCreate(args) => microservice_create::run(args),
             Commands::MicroserviceRemove(args) => microservice_remove::run(args),
             Commands::CommandCreate(args) => command_create::run(args),
