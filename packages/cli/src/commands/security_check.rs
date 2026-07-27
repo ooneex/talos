@@ -31,12 +31,19 @@ const EXCLUDED_DIRS: &[&str] = &[
     "target",
     "var",
     "coverage",
+    "__pycache__",
+    "site-packages",
+    "venv",
     ".git",
     ".temp",
     ".turbo",
     ".cache",
     "vendor",
     ".venv",
+    ".tox",
+    ".pytest_cache",
+    ".mypy_cache",
+    ".ruff_cache",
     "venv",
     "__pycache__",
 ];
@@ -578,6 +585,7 @@ fn collect_packages(dir: &Path) -> Vec<PackageKey> {
     packages.extend(parse_requirements_txt(dir));
     packages.extend(parse_pipfile_lock(dir));
     packages.extend(parse_poetry_lock(dir));
+    packages.extend(parse_uv_lock(dir));
     packages.extend(parse_go_sum(dir));
     packages.extend(parse_gemfile_lock(dir));
     packages.extend(parse_composer_lock(dir));
@@ -780,7 +788,16 @@ fn parse_pipfile_lock(dir: &Path) -> Vec<PackageKey> {
 
 /// `poetry.lock` — TOML with `[[package]]` blocks (`name`/`version`).
 fn parse_poetry_lock(dir: &Path) -> Vec<PackageKey> {
-    let Some(raw) = read(dir, "poetry.lock") else {
+    parse_pep_lock(dir, "poetry.lock")
+}
+
+/// `uv.lock` — the same `[[package]]` layout as Poetry's lockfile.
+fn parse_uv_lock(dir: &Path) -> Vec<PackageKey> {
+    parse_pep_lock(dir, "uv.lock")
+}
+
+fn parse_pep_lock(dir: &Path, file: &str) -> Vec<PackageKey> {
+    let Some(raw) = read(dir, file) else {
         return Vec::new();
     };
     let mut out = Vec::new();

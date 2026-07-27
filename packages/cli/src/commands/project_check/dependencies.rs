@@ -13,7 +13,9 @@ use regex::Regex;
 use serde_json::Value;
 
 use super::modules::{
-    WorkspaceModule, collect_files, discover_modules, filter_modules, read_json, wanted_names,
+    CargoManifest, PYTHON_EXTENSIONS, PythonManifest, RUST_EXTENSIONS, WorkspaceModule,
+    collect_files, discover_modules, filter_modules, normalize_distribution, python_source_dirs,
+    read_cargo_manifest, read_json, read_python_manifest, wanted_names,
 };
 use crate::commands::project_check::{
     CheckId, CheckOutcome, CheckStatus, ProjectCheckArgs, static_outcome,
@@ -54,6 +56,132 @@ const BUILTINS: [&str; 24] = [
     "url",
     "util",
     "zlib",
+];
+
+/// Modules the compiler always provides, plus the path keywords `use` accepts.
+const RUST_BUILTIN_ROOTS: [&str; 6] = ["std", "core", "alloc", "crate", "self", "super"];
+
+/// The Python standard library, which is never declared as a dependency. Kept
+/// to the modules a backend actually imports rather than the full list.
+const PYTHON_STDLIB: [&str; 79] = [
+    "abc",
+    "argparse",
+    "ast",
+    "asyncio",
+    "base64",
+    "binascii",
+    "bisect",
+    "builtins",
+    "calendar",
+    "collections",
+    "concurrent",
+    "configparser",
+    "contextlib",
+    "copy",
+    "csv",
+    "ctypes",
+    "dataclasses",
+    "datetime",
+    "decimal",
+    "difflib",
+    "dis",
+    "email",
+    "enum",
+    "errno",
+    "faulthandler",
+    "filecmp",
+    "fileinput",
+    "fnmatch",
+    "fractions",
+    "functools",
+    "gc",
+    "getpass",
+    "glob",
+    "gzip",
+    "hashlib",
+    "heapq",
+    "hmac",
+    "html",
+    "http",
+    "importlib",
+    "inspect",
+    "io",
+    "ipaddress",
+    "itertools",
+    "json",
+    "logging",
+    "math",
+    "mimetypes",
+    "multiprocessing",
+    "operator",
+    "os",
+    "pathlib",
+    "pickle",
+    "platform",
+    "pprint",
+    "queue",
+    "random",
+    "re",
+    "secrets",
+    "shlex",
+    "shutil",
+    "signal",
+    "socket",
+    "sqlite3",
+    "statistics",
+    "string",
+    "struct",
+    "subprocess",
+    "sys",
+    "tempfile",
+    "textwrap",
+    "threading",
+    "time",
+    "traceback",
+    "typing",
+    "unittest",
+    "urllib",
+    "uuid",
+    "warnings",
+];
+
+/// Tooling that is run rather than imported, and is therefore never reported as
+/// an unused dependency — the Python equivalent of npm's `@types/*`.
+const PYTHON_TOOL_DISTRIBUTIONS: [&str; 17] = [
+    "ruff",
+    "black",
+    "mypy",
+    "isort",
+    "flake8",
+    "pylint",
+    "tox",
+    "build",
+    "hatchling",
+    "hatch",
+    "setuptools",
+    "wheel",
+    "twine",
+    "coverage",
+    "pre-commit",
+    "uv",
+    "poetry",
+];
+
+/// Distributions whose import name differs from the name they are declared
+/// under, which no amount of normalisation can bridge.
+const PYTHON_IMPORT_ALIASES: [(&str, &str); 12] = [
+    ("yaml", "pyyaml"),
+    ("dateutil", "python-dateutil"),
+    ("dotenv", "python-dotenv"),
+    ("jwt", "pyjwt"),
+    ("pil", "pillow"),
+    ("bs4", "beautifulsoup4"),
+    ("cv2", "opencv-python"),
+    ("sklearn", "scikit-learn"),
+    ("attr", "attrs"),
+    ("redis", "redis"),
+    ("psycopg", "psycopg-binary"),
+    ("google", "google-api-python-client"),
 ];
 
 /// A parsed `package.json`, reduced to what the check needs.
@@ -206,6 +334,287 @@ pub fn package_of(specifier: &str) -> Option<String> {
     Some(name)
 }
 
+/// Turn a `Cargo.toml` into the same shape the npm side is checked in, so the
+/// version rules apply to both without being written twice.
+pub fn read_cargo_entry(label: &str, manifest: &CargoManifest) -> Manifest {
+    Manifest {
+        label: label.to_string(),
+        name: manifest.name.clone(),
+        dependencies: manifest.dependencies.clone(),
+    }
+}
+
+/// Cargo requirements that resolve differently over time. An empty requirement
+/// is not loose: it means the dependency is sourced from a path, a git revision
+/// or the workspace, all of which are pinned elsewhere.
+pub fn cargo_loose_requirements(manifests: &[Manifest]) -> Vec<String> {
+    let mut findings = Vec::new();
+    for manifest in manifests {
+        for (name, requirement) in &manifest.dependencies {
+            let trimmed = requirement.trim();
+            if trimmed == "*" || trimmed == "x" {
+                findings.push(format!(
+                    "{}: `{name}` is pinned to \"{requirement}\" — pin a real requirement",
+                    manifest.label
+                ));
+            }
+        }
+    }
+    findings
+}
+
+fn use_pattern() -> &'static Regex {
+    static PATTERN: OnceLock<Regex> = OnceLock::new();
+    PATTERN.get_or_init(|| {
+        Regex::new(r"^\s*(?:pub\s+)?(?:use|extern\s+crate)\s+(?:::)?([a-zA-Z0-9_]+)")
+            .expect("the use pattern is valid")
+    })
+}
+
+/// Every external crate a Rust file reaches for through `use`.
+pub fn used_crates(content: &str) -> BTreeSet<String> {
+    content
+        .lines()
+        .filter_map(|line| use_pattern().captures(line))
+        .filter_map(|captured| captured.get(1))
+        .map(|group| group.as_str().to_string())
+        .filter(|root| !RUST_BUILTIN_ROOTS.contains(&root.as_str()))
+        .collect()
+}
+
+/// Cargo lets a crate be declared as `serde_json` or `serde-json` and used the
+/// other way round, so both spellings have to compare equal.
+fn crate_key(name: &str) -> String {
+    name.replace('-', "_")
+}
+
+/// Crates a module uses without declaring, and crates it declares without
+/// using. Both sides are matched on the normalised crate name.
+pub fn compare_crates(
+    used: &BTreeSet<String>,
+    corpus: &[String],
+    declared: &BTreeMap<String, String>,
+    local_modules: &BTreeSet<String>,
+) -> (Vec<String>, Vec<String>) {
+    let declared_keys: BTreeSet<String> = declared.keys().map(|name| crate_key(name)).collect();
+
+    let undeclared: Vec<String> = used
+        .iter()
+        .filter(|name| !declared_keys.contains(&crate_key(name)))
+        // A `use foo::…` of a sibling module inside the same crate — or of the
+        // crate itself, which is how its own integration tests address it — is
+        // not an external dependency.
+        .filter(|name| !local_modules.contains(crate_key(name).as_str()))
+        .cloned()
+        .collect();
+
+    let unused: Vec<String> = declared
+        .keys()
+        .filter(|name| {
+            let key = crate_key(name);
+            !used.contains(&key) && !used.contains(name.as_str())
+        })
+        // A crate can be reached through a fully qualified path or enabled only
+        // through a feature, so any mention in the sources counts as used.
+        .filter(|name| {
+            let key = crate_key(name);
+            !corpus
+                .iter()
+                .any(|content| content.contains(name.as_str()) || content.contains(key.as_str()))
+        })
+        .cloned()
+        .collect();
+
+    (undeclared, unused)
+}
+
+/// The `mod` declarations of a crate: the names `use` can address without them
+/// being dependencies.
+fn local_module_names(corpus: &[String]) -> BTreeSet<String> {
+    let pattern = mod_pattern();
+    corpus
+        .iter()
+        .flat_map(|content| content.lines())
+        .filter_map(|line| pattern.captures(line))
+        .filter_map(|captured| captured.get(1))
+        .map(|group| crate_key(group.as_str()))
+        .collect()
+}
+
+fn mod_pattern() -> &'static Regex {
+    static PATTERN: OnceLock<Regex> = OnceLock::new();
+    PATTERN.get_or_init(|| {
+        Regex::new(r"^\s*(?:pub(?:\([a-z]+\))?\s+)?mod\s+([a-zA-Z0-9_]+)")
+            .expect("the mod pattern is valid")
+    })
+}
+
+/// Every crate one Rust module uses, and every file body, read once.
+fn read_rust_sources(module: &WorkspaceModule) -> ModuleSources {
+    let mut imports = BTreeSet::new();
+    let mut corpus = Vec::new();
+
+    for path in collect_files(&module.dir, RUST_EXTENSIONS, 8) {
+        let Ok(content) = fs::read_to_string(&path) else {
+            continue;
+        };
+        imports.extend(used_crates(&content));
+        corpus.push(content);
+    }
+
+    ModuleSources { imports, corpus }
+}
+
+/// Turn a `pyproject.toml` into the shape the version rules read.
+pub fn read_python_entry(label: &str, manifest: &PythonManifest) -> Manifest {
+    Manifest {
+        label: label.to_string(),
+        name: manifest.name.clone(),
+        dependencies: manifest.dependencies.clone(),
+    }
+}
+
+/// Requirements declared without any version specifier: the next release of the
+/// dependency decides what the package installs.
+pub fn unpinned_requirements(manifests: &[Manifest]) -> Vec<String> {
+    let mut findings = Vec::new();
+    for manifest in manifests {
+        for (name, specifier) in &manifest.dependencies {
+            if specifier.trim().is_empty() {
+                findings.push(format!(
+                    "{}: `{name}` is declared without a version specifier",
+                    manifest.label
+                ));
+            }
+        }
+    }
+    findings
+}
+
+fn python_import_pattern() -> &'static Regex {
+    static PATTERN: OnceLock<Regex> = OnceLock::new();
+    PATTERN.get_or_init(|| {
+        // Only absolute imports name a distribution: `from .models import User`
+        // stays inside the package.
+        Regex::new(r"^\s*(?:import|from)\s+([A-Za-z_][A-Za-z0-9_]*)")
+            .expect("the python import pattern is valid")
+    })
+}
+
+/// Every top-level package a Python file imports.
+pub fn imported_packages(content: &str) -> BTreeSet<String> {
+    content
+        .lines()
+        .filter(|line| !line.trim_start().starts_with("from ."))
+        .filter_map(|line| python_import_pattern().captures(line))
+        .filter_map(|captured| captured.get(1))
+        .map(|group| group.as_str().to_string())
+        .filter(|root| !PYTHON_STDLIB.contains(&root.as_str()))
+        .collect()
+}
+
+/// The distribution an import name belongs to, normalised for comparison.
+fn distribution_of(import: &str) -> String {
+    let normalized = normalize_distribution(import);
+    PYTHON_IMPORT_ALIASES
+        .iter()
+        .find(|(name, _)| *name == normalized)
+        .map(|(_, distribution)| (*distribution).to_string())
+        .unwrap_or(normalized)
+}
+
+/// Packages a module imports without declaring, and declarations nothing
+/// imports. Both sides are compared after PEP 503 normalisation.
+pub fn compare_python_packages(
+    imported: &BTreeSet<String>,
+    corpus: &[String],
+    declared: &BTreeMap<String, String>,
+    local: &BTreeSet<String>,
+) -> (Vec<String>, Vec<String>) {
+    let declared_keys: BTreeSet<String> = declared
+        .keys()
+        .map(|name| normalize_distribution(name))
+        .collect();
+    let imported_keys: BTreeSet<String> =
+        imported.iter().map(|name| distribution_of(name)).collect();
+
+    let undeclared: Vec<String> = imported
+        .iter()
+        .filter(|name| !declared_keys.contains(&distribution_of(name)))
+        .filter(|name| !local.contains(normalize_distribution(name).as_str()))
+        .cloned()
+        .collect();
+
+    let unused: Vec<String> = declared
+        .keys()
+        .filter(|name| !imported_keys.contains(&normalize_distribution(name)))
+        .filter(|name| !is_python_tool(name))
+        // A dependency can be a plugin or a fixture that no source imports by
+        // name, so any mention in the package counts as used.
+        .filter(|name| {
+            let normalized = normalize_distribution(name);
+            !corpus.iter().any(|content| {
+                content.contains(name.as_str()) || content.contains(normalized.as_str())
+            })
+        })
+        .cloned()
+        .collect();
+
+    (undeclared, unused)
+}
+
+/// Whether a distribution is a tool the package runs instead of imports.
+fn is_python_tool(name: &str) -> bool {
+    let normalized = normalize_distribution(name);
+    PYTHON_TOOL_DISTRIBUTIONS.contains(&normalized.as_str())
+        || normalized == "pytest"
+        || normalized.starts_with("pytest-")
+        || normalized.starts_with("types-")
+}
+
+/// The names a Python package can import from itself: its own top-level
+/// packages and modules.
+fn local_python_names(module: &WorkspaceModule) -> BTreeSet<String> {
+    let mut names = BTreeSet::new();
+    for root in python_source_dirs(module) {
+        if let Some(name) = root.file_name().and_then(|name| name.to_str())
+            && name != "src"
+        {
+            names.insert(normalize_distribution(name));
+        }
+        let Ok(entries) = fs::read_dir(&root) else {
+            continue;
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            let is_package = path.is_dir() && path.join("__init__.py").is_file();
+            let is_module = path.extension().and_then(|extension| extension.to_str()) == Some("py");
+            if !is_package && !is_module {
+                continue;
+            }
+            if let Some(name) = path.file_stem().and_then(|name| name.to_str()) {
+                names.insert(normalize_distribution(name));
+            }
+        }
+    }
+    names
+}
+
+/// Every package one Python module imports, and every file body, read once.
+fn read_python_sources(module: &WorkspaceModule) -> ModuleSources {
+    let mut imports = BTreeSet::new();
+    let mut corpus = Vec::new();
+
+    for path in collect_files(&module.dir, PYTHON_EXTENSIONS, 8) {
+        let Ok(content) = fs::read_to_string(&path) else {
+            continue;
+        };
+        imports.extend(imported_packages(&content));
+        corpus.push(content);
+    }
+    ModuleSources { imports, corpus }
+}
+
 /// Path alias prefixes declared in a `tsconfig.json`.
 pub fn alias_prefixes(dir: &Path) -> Vec<String> {
     let Some(paths) = read_json(&dir.join("tsconfig.json"))
@@ -297,16 +706,43 @@ pub fn run(args: &ProjectCheckArgs, root: &Path) -> CheckOutcome {
         }
     }
 
-    if manifests.is_empty() {
+    // Cargo manifests are kept apart: a crate and an npm package can share a
+    // name without sharing a version, and comparing them would invent drift.
+    let mut cargo_manifests = Vec::new();
+    if let Some(manifest) = read_cargo_manifest(&root.join("Cargo.toml")) {
+        cargo_manifests.push(read_cargo_entry("root", &manifest));
+    }
+    for module in &modules {
+        if let Some(manifest) = module.cargo_toml() {
+            cargo_manifests.push(read_cargo_entry(&module.label(), &manifest));
+        }
+    }
+
+    // Python manifests are kept apart for the same reason.
+    let mut python_manifests = Vec::new();
+    if let Some(manifest) = read_python_manifest(&root.join("pyproject.toml")) {
+        python_manifests.push(read_python_entry("root", &manifest));
+    }
+    for module in &modules {
+        if let Some(manifest) = module.pyproject() {
+            python_manifests.push(read_python_entry(&module.label(), &manifest));
+        }
+    }
+
+    if manifests.is_empty() && cargo_manifests.is_empty() && python_manifests.is_empty() {
         return CheckOutcome::new(
             CheckId::Dependencies,
             CheckStatus::Skipped,
-            "no package.json to inspect",
+            "no package.json, Cargo.toml or pyproject.toml to inspect",
         );
     }
 
     let mut warnings = version_mismatches(&manifests);
     warnings.extend(loose_ranges(&manifests));
+    warnings.extend(version_mismatches(&cargo_manifests));
+    warnings.extend(cargo_loose_requirements(&cargo_manifests));
+    warnings.extend(version_mismatches(&python_manifests));
+    warnings.extend(unpinned_requirements(&python_manifests));
 
     // Anything the root declares, plus every workspace package name, is
     // resolvable from a module without being declared again.
@@ -353,11 +789,69 @@ pub fn run(args: &ProjectCheckArgs, root: &Path) -> CheckOutcome {
         }
     }
 
-    let scope = format!(
-        "{} manifest{}",
-        manifests.len(),
-        if manifests.len() == 1 { "" } else { "s" }
-    );
+    for module in &modules {
+        let Some(manifest) = module.cargo_toml() else {
+            continue;
+        };
+        // A virtual workspace manifest declares no crate of its own.
+        if manifest.name.is_none() {
+            continue;
+        }
+        let sources = read_rust_sources(module);
+        let mut local = local_module_names(&sources.corpus);
+        if let Some(name) = &manifest.name {
+            local.insert(crate_key(name));
+        }
+        let (undeclared, unused) = compare_crates(
+            &sources.imports,
+            &sources.corpus,
+            &manifest.dependencies,
+            &local,
+        );
+
+        for name in undeclared {
+            warnings.push(format!(
+                "{}: uses crate `{name}` without declaring it in Cargo.toml",
+                module.label()
+            ));
+        }
+        for name in unused {
+            warnings.push(format!(
+                "{}: Cargo.toml declares `{name}` but never uses it",
+                module.label()
+            ));
+        }
+    }
+
+    for module in &modules {
+        let Some(manifest) = module.pyproject() else {
+            continue;
+        };
+        let sources = read_python_sources(module);
+        let local = local_python_names(module);
+        let (undeclared, unused) = compare_python_packages(
+            &sources.imports,
+            &sources.corpus,
+            &manifest.dependencies,
+            &local,
+        );
+
+        for name in undeclared {
+            warnings.push(format!(
+                "{}: imports `{name}` without declaring it in pyproject.toml",
+                module.label()
+            ));
+        }
+        for name in unused {
+            warnings.push(format!(
+                "{}: pyproject.toml declares `{name}` but nothing imports it",
+                module.label()
+            ));
+        }
+    }
+
+    let count = manifests.len() + cargo_manifests.len() + python_manifests.len();
+    let scope = format!("{count} manifest{}", if count == 1 { "" } else { "s" });
 
     static_outcome(
         CheckId::Dependencies,
@@ -366,5 +860,5 @@ pub fn run(args: &ProjectCheckArgs, root: &Path) -> CheckOutcome {
         Vec::new(),
         warnings,
     )
-    .with_hint("Align the ranges in the root package.json, then re-run `bun install`")
+    .with_hint("Align the ranges in the manifest that owns them, then reinstall the workspace")
 }

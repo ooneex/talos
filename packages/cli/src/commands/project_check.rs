@@ -57,17 +57,24 @@ const EXCLUDED_DIRS: &[&str] = &[
     "var",
     "vendor",
     "storybook-static",
+    "__pycache__",
+    "site-packages",
+    "venv",
     ".git",
     ".turbo",
     ".cache",
     ".temp",
     ".venv",
+    ".tox",
+    ".pytest_cache",
+    ".mypy_cache",
+    ".ruff_cache",
 ];
 
 /// Extensions scanned by the hygiene check.
 const SCANNED_EXTENSIONS: &[&str] = &[
-    "ts", "tsx", "js", "jsx", "mjs", "cjs", "rs", "css", "scss", "json", "jsonc", "yml", "yaml",
-    "md", "sql",
+    "ts", "tsx", "js", "jsx", "mjs", "cjs", "rs", "py", "css", "scss", "json", "jsonc", "yml",
+    "yaml", "md", "sql", "toml",
 ];
 
 /// Commits inspected by the commit check when no upstream branch is configured.
@@ -1299,9 +1306,13 @@ pub fn scan_source(path: &str, content: &str) -> Vec<HygieneFinding> {
     // The needles are assembled at runtime so this very file never matches.
     let conflict_start = "<".repeat(7);
     let conflict_end = ">".repeat(7);
+    // Assembled for the same reason: this file describes the rule.
+    let debug_macro = format!("{}!(", "dbg");
     let test_keywords = ["describe", "it", "test"];
     let extension = path.rsplit('.').next().unwrap_or_default();
     let is_source = matches!(extension, "ts" | "tsx" | "js" | "jsx" | "mjs" | "cjs");
+    let is_rust = extension == "rs";
+    let is_python = extension == "py";
     // Prose legitimately quotes markers such as `// TODO`, so documentation is
     // only scanned for conflict markers.
     let is_prose = matches!(extension, "md" | "mdx");
@@ -1342,6 +1353,55 @@ pub fn scan_source(path: &str, content: &str) -> Vec<HygieneFinding> {
                         message: format!("`{keyword}.skip` silently disables a test"),
                     });
                 }
+            }
+        }
+
+        if is_rust {
+            // `#[ignore]` is the Rust way of skipping a test, and a `dbg!` is a
+            // print statement that survived a debugging session.
+            if trimmed.starts_with("#[ignore") {
+                findings.push(HygieneFinding {
+                    file: path.to_string(),
+                    line: number,
+                    rule: "hygiene.skipped-test",
+                    severity: HygieneSeverity::Warning,
+                    message: "`#[ignore]` silently disables a test".to_string(),
+                });
+            }
+            if line.contains(&debug_macro) && !trimmed.starts_with("//") {
+                findings.push(HygieneFinding {
+                    file: path.to_string(),
+                    line: number,
+                    rule: "hygiene.debug-print",
+                    severity: HygieneSeverity::Warning,
+                    message: "`dbg!` left behind — remove it or use the logger".to_string(),
+                });
+            }
+        }
+
+        if is_python {
+            // `skip`/`skipif` markers and a debugger call that outlived the
+            // session it was added for.
+            if trimmed.starts_with("@pytest.mark.skip")
+                || trimmed.starts_with("@unittest.skip")
+                || trimmed.starts_with("pytest.skip(")
+            {
+                findings.push(HygieneFinding {
+                    file: path.to_string(),
+                    line: number,
+                    rule: "hygiene.skipped-test",
+                    severity: HygieneSeverity::Warning,
+                    message: "skip marker silently disables a test".to_string(),
+                });
+            }
+            if trimmed.starts_with("breakpoint()") || line.contains("pdb.set_trace()") {
+                findings.push(HygieneFinding {
+                    file: path.to_string(),
+                    line: number,
+                    rule: "hygiene.debug-print",
+                    severity: HygieneSeverity::Warning,
+                    message: "debugger call left behind — remove it".to_string(),
+                });
             }
         }
 

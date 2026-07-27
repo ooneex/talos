@@ -19,12 +19,56 @@ const EXCLUDED_DIRS: &[&str] = &[
     "dist",
     "var",
     "coverage",
+    "__pycache__",
+    "venv",
     ".git",
     ".temp",
     ".turbo",
+    ".venv",
+    ".tox",
+    ".pytest_cache",
+    ".mypy_cache",
+    ".ruff_cache",
 ];
 
 const ROOT_INPUT_FILES: &[&str] = &["package.json", "bun.lock", "tsconfig.json", "biome.jsonc"];
+
+/// The workspace commands a Rust crate answers to. A crate carrying no
+/// `package.json` — or one that only wires up some of the commands — still has
+/// to build, lint and test with the rest of the workspace.
+const CARGO_SCRIPTS: &[(&str, &str)] = &[
+    ("install", "cargo fetch"),
+    ("build", "cargo build"),
+    ("fmt", "cargo fmt"),
+    ("lint", "cargo clippy --all-targets --quiet"),
+    ("test", "cargo test"),
+];
+
+/// The same commands for a Python package, in the flavour of the tool the
+/// package is actually managed with.
+const UV_SCRIPTS: &[(&str, &str)] = &[
+    ("install", "uv sync"),
+    ("build", "uv build"),
+    ("fmt", "uv run ruff format"),
+    ("lint", "uv run ruff check"),
+    ("test", "uv run pytest"),
+];
+
+const POETRY_SCRIPTS: &[(&str, &str)] = &[
+    ("install", "poetry install"),
+    ("build", "poetry build"),
+    ("fmt", "poetry run ruff format"),
+    ("lint", "poetry run ruff check"),
+    ("test", "poetry run pytest"),
+];
+
+const PIP_SCRIPTS: &[(&str, &str)] = &[
+    ("install", "python -m pip install -e ."),
+    ("build", "python -m compileall -q ."),
+    ("fmt", "python -m ruff format"),
+    ("lint", "python -m ruff check"),
+    ("test", "python -m pytest"),
+];
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TargetType {
@@ -51,7 +95,7 @@ pub struct MonorepoTarget {
     pub workspace_deps: Vec<String>,
 }
 
-#[derive(Deserialize)]
+#[derive(Default, Deserialize)]
 struct PackageJson {
     #[serde(default)]
     name: Option<String>,
@@ -85,12 +129,18 @@ pub fn discover_targets(root_dir: &Path) -> Vec<MonorepoTarget> {
 
         for name in names {
             let dir = root_dir.join(dir_name).join(&name);
-            let package_json_path = dir.join("package.json");
-            let Ok(raw) = fs::read_to_string(&package_json_path) else {
-                continue;
-            };
-            let Ok(package_json) = serde_json::from_str::<PackageJson>(&raw) else {
-                continue;
+            let is_rust = dir.join("Cargo.toml").is_file();
+            let python_scripts = python_scripts(&dir);
+            let package_json = fs::read_to_string(dir.join("package.json"))
+                .ok()
+                .and_then(|raw| serde_json::from_str::<PackageJson>(&raw).ok());
+
+            let package_json = match package_json {
+                Some(package_json) => package_json,
+                // A crate or a Python package needs no `package.json` to be
+                // part of the workspace.
+                None if is_rust || python_scripts.is_some() => PackageJson::default(),
+                None => continue,
             };
 
             let key = format!("{dir_name}/{name}");
@@ -102,12 +152,25 @@ pub fn discover_targets(root_dir: &Path) -> Vec<MonorepoTarget> {
             deps.extend(package_json.peer_dependencies.keys().cloned());
             declared_deps.insert(key.clone(), deps);
 
+            let mut scripts = package_json.scripts;
+            // Only the commands the module does not define itself, so a
+            // hand-written script always wins.
+            let defaults = is_rust
+                .then_some(CARGO_SCRIPTS)
+                .into_iter()
+                .chain(python_scripts);
+            for (command, script) in defaults.flatten() {
+                scripts
+                    .entry((*command).to_string())
+                    .or_insert_with(|| (*script).to_string());
+            }
+
             targets.push(MonorepoTarget {
                 key,
                 name,
                 target_type: *target_type,
                 dir,
-                scripts: package_json.scripts,
+                scripts,
                 workspace_deps: Vec::new(),
             });
         }
@@ -177,13 +240,45 @@ fn walk_files(dir: &Path, base: &str, files: &mut Vec<String>) {
             format!("{base}/{name_str}")
         };
         if path.is_dir() {
-            if !EXCLUDED_DIRS.contains(&name_str.as_ref()) {
+            if !EXCLUDED_DIRS.contains(&name_str.as_ref()) && !is_build_cache_dir(&path) {
                 walk_files(&path, &rel_path, files);
             }
         } else if path.is_file() {
             files.push(rel_path);
         }
     }
+}
+
+/// The workspace commands a Python package answers to, or `None` when the
+/// directory holds no Python package. The lockfile decides the flavour: it is
+/// the only reliable statement of how the package is meant to be installed.
+fn python_scripts(dir: &Path) -> Option<&'static [(&'static str, &'static str)]> {
+    let has_manifest = [
+        "pyproject.toml",
+        "setup.py",
+        "setup.cfg",
+        "requirements.txt",
+    ]
+    .iter()
+    .any(|manifest| dir.join(manifest).is_file());
+    if !has_manifest {
+        return None;
+    }
+    if dir.join("uv.lock").is_file() {
+        return Some(UV_SCRIPTS);
+    }
+    if dir.join("poetry.lock").is_file() {
+        return Some(POETRY_SCRIPTS);
+    }
+    Some(PIP_SCRIPTS)
+}
+
+/// Whether a directory is a build cache. Cargo drops a `CACHEDIR.TAG` into
+/// `target/`, which is both the standard marker and the only reliable way to
+/// tell a 14 GB build directory from a source directory that happens to be
+/// called `target`.
+fn is_build_cache_dir(path: &Path) -> bool {
+    path.join("CACHEDIR.TAG").is_file()
 }
 
 fn collect_files(dir: &Path) -> Vec<String> {
