@@ -146,6 +146,7 @@ _talos() {
     'issue\:create:Create a YAML skeleton file for a new issue'
     'issue\:pull:Pull one or more issues from Linear and save them as YAML files'
     'issue\:push:Push one or more local issue YAML files to Linear (create or update)'
+    'issue\:convert:Convert a module or package'\''s issue YAML files into a single issues.json'
     'ai\:chat\:create:Generate a new AI chat class'
     'ai\:tool\:create:Generate a new AI tool class'
     'ai\:middleware\:create:Generate a new AI middleware class'
@@ -291,6 +292,10 @@ _talos() {
           _arguments -s \
             '*--id=[Comma-separated local issue IDs to push]:id' \
             '--module=[Module name]:module:_talos_modules'
+          ;;
+        issue:convert)
+          _arguments -s \
+            '*--destination=[Comma-separated destination modules or packages]:destination:_talos_modules'
           ;;
         react:component:create)
           _arguments -s \

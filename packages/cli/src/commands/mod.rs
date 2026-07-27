@@ -40,6 +40,7 @@ pub mod github_secret_push;
 pub mod gitlab_credentials_create;
 pub mod gitlab_secret_push;
 pub mod help;
+pub mod issue_convert;
 pub mod issue_create;
 pub mod issue_pull;
 pub mod issue_push;
@@ -179,6 +180,9 @@ pub enum Commands {
 
     #[command(name = "issue:push")]
     IssuePush(issue_push::IssuePushArgs),
+
+    #[command(name = "issue:convert")]
+    IssueConvert(issue_convert::IssueConvertArgs),
 
     #[command(name = "microservice:create")]
     MicroserviceCreate(microservice_create::MicroserviceCreateArgs),
@@ -386,6 +390,7 @@ impl Commands {
             Commands::IssueCreate(args) => issue_create::run(args),
             Commands::IssuePull(args) => issue_pull::run(args),
             Commands::IssuePush(args) => issue_push::run(args),
+            Commands::IssueConvert(args) => issue_convert::run(args),
             Commands::MicroserviceCreate(args) => microservice_create::run(args),
             Commands::MicroserviceRemove(args) => microservice_remove::run(args),
             Commands::CommandCreate(args) => command_create::run(args),
