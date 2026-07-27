@@ -353,7 +353,7 @@ pub enum Commands {
     #[command(name = "security:check")]
     SecurityCheck(security_check::SecurityCheckArgs),
 
-    /// Run every health check (workspace, accessibility, security, issues, commits, hygiene)
+    /// Run every health check (workspace, structure, conventions, env, dependencies, docker, migrations, accessibility, translations, tests, docs, security, secrets, git, issues, commits, hygiene)
     #[command(name = "project:check")]
     ProjectCheck(project_check::ProjectCheckArgs),
 

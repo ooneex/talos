@@ -143,7 +143,7 @@ const COMMANDS: &[(&str, &str)] = &[
     ("permission:create", "Generate a new permission class"),
     (
         "project:check",
-        "Run every health check: workspace, accessibility, security, issues, commits, hygiene",
+        "Run every health check: workspace, structure, conventions, env, dependencies, docker, migrations, a11y, translations, tests, docs, security, secrets, git, issues, commits, hygiene",
     ),
     ("queue:create", "Generate a new queue class"),
     ("rate-limit:create", "Generate a new rate limiter class"),

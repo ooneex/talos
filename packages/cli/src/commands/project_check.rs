@@ -4,7 +4,21 @@
 //! The command is a thin orchestrator: each check reuses the very same code the
 //! dedicated command uses (`monorepo:run`, `security:check`, `issue:check`,
 //! `commitlint:check`), so a project can never drift between `project:check`
-//! and the individual commands.
+//! and the individual commands. The checks that only read the repository live
+//! in the submodules next to this file.
+
+pub mod conventions;
+pub mod dependencies;
+pub mod docker;
+pub mod docs;
+pub mod env;
+pub mod git;
+pub mod migrations;
+pub mod modules;
+pub mod secrets;
+pub mod structure;
+pub mod tests;
+pub mod translations;
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
@@ -26,6 +40,9 @@ use crate::utils::{
 
 /// Commands the workspace check runs, in order.
 const WORKSPACE_COMMANDS: &str = "install,build,fmt,lint,test";
+
+/// Command the end-to-end check runs.
+const E2E_COMMANDS: &str = "e2e";
 
 /// Module types that ship a user interface and therefore need an a11y audit.
 const UI_MODULE_TYPES: &[&str] = &["design", "spa", "admin", "storybook"];
@@ -63,13 +80,17 @@ const MAX_SCANNED_FILE_BYTES: u64 = 512 * 1024;
 
 #[derive(Args, Debug, Default, Clone)]
 pub struct ProjectCheckArgs {
-    /// Only run these checks (comma-separated: workspace, accessibility, security, issues, commits, hygiene).
+    /// Only run these checks (comma-separated: workspace, structure, env, dependencies, accessibility, translations, security, secrets, issues, commits, hygiene, e2e).
     #[arg(long)]
     pub only: Option<String>,
 
     /// Skip these checks (comma-separated).
     #[arg(long)]
     pub skip: Option<String>,
+
+    /// Also run the end-to-end suite, which is opt-in because it boots the app.
+    #[arg(long, default_value_t = false)]
+    pub e2e: bool,
 
     /// Restrict the workspace, accessibility, security and issue checks to these packages.
     #[arg(long)]
@@ -111,20 +132,67 @@ pub struct ProjectCheckArgs {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum CheckId {
     Workspace,
+    Structure,
+    Conventions,
+    Env,
+    Dependencies,
+    Docker,
+    Migrations,
     Accessibility,
+    Translations,
+    Tests,
+    Docs,
     Security,
+    Secrets,
+    Git,
     Issues,
     Commits,
     Hygiene,
+    E2e,
 }
 
 impl CheckId {
     /// Every check, in execution order. The workspace runs first because the
-    /// install it performs is what makes the other tools available.
-    pub const ALL: [CheckId; 6] = [
+    /// install it performs is what makes the other tools available, and the
+    /// end-to-end suite runs last because it needs the build they produce.
+    pub const ALL: [CheckId; 18] = [
         CheckId::Workspace,
+        CheckId::Structure,
+        CheckId::Conventions,
+        CheckId::Env,
+        CheckId::Dependencies,
+        CheckId::Docker,
+        CheckId::Migrations,
         CheckId::Accessibility,
+        CheckId::Translations,
+        CheckId::Tests,
+        CheckId::Docs,
         CheckId::Security,
+        CheckId::Secrets,
+        CheckId::Git,
+        CheckId::Issues,
+        CheckId::Commits,
+        CheckId::Hygiene,
+        CheckId::E2e,
+    ];
+
+    /// Checks that run when nothing is requested explicitly. The end-to-end
+    /// suite is opt-in because it boots the application.
+    pub const DEFAULT: [CheckId; 17] = [
+        CheckId::Workspace,
+        CheckId::Structure,
+        CheckId::Conventions,
+        CheckId::Env,
+        CheckId::Dependencies,
+        CheckId::Docker,
+        CheckId::Migrations,
+        CheckId::Accessibility,
+        CheckId::Translations,
+        CheckId::Tests,
+        CheckId::Docs,
+        CheckId::Security,
+        CheckId::Secrets,
+        CheckId::Git,
         CheckId::Issues,
         CheckId::Commits,
         CheckId::Hygiene,
@@ -133,22 +201,46 @@ impl CheckId {
     pub fn key(self) -> &'static str {
         match self {
             CheckId::Workspace => "workspace",
+            CheckId::Structure => "structure",
+            CheckId::Conventions => "conventions",
+            CheckId::Env => "env",
+            CheckId::Dependencies => "dependencies",
+            CheckId::Docker => "docker",
+            CheckId::Migrations => "migrations",
             CheckId::Accessibility => "accessibility",
+            CheckId::Translations => "translations",
+            CheckId::Tests => "tests",
+            CheckId::Docs => "docs",
             CheckId::Security => "security",
+            CheckId::Secrets => "secrets",
+            CheckId::Git => "git",
             CheckId::Issues => "issues",
             CheckId::Commits => "commits",
             CheckId::Hygiene => "hygiene",
+            CheckId::E2e => "e2e",
         }
     }
 
     pub fn title(self) -> &'static str {
         match self {
             CheckId::Workspace => "Workspace",
+            CheckId::Structure => "Structure",
+            CheckId::Conventions => "Conventions",
+            CheckId::Env => "Env",
+            CheckId::Dependencies => "Dependencies",
+            CheckId::Docker => "Docker",
+            CheckId::Migrations => "Migrations",
             CheckId::Accessibility => "Accessibility",
+            CheckId::Translations => "Translations",
+            CheckId::Tests => "Tests",
+            CheckId::Docs => "Docs",
             CheckId::Security => "Security",
+            CheckId::Secrets => "Secrets",
+            CheckId::Git => "Git",
             CheckId::Issues => "Issues",
             CheckId::Commits => "Commits",
             CheckId::Hygiene => "Hygiene",
+            CheckId::E2e => "End-to-end",
         }
     }
 
@@ -156,23 +248,52 @@ impl CheckId {
     pub fn description(self) -> &'static str {
         match self {
             CheckId::Workspace => "install, build, fmt, lint and test every package and module",
+            CheckId::Structure => "module manifests, package names and path aliases",
+            CheckId::Conventions => "DI naming, typed env access and type conventions",
+            CheckId::Env => "local .env.yml files against their examples",
+            CheckId::Dependencies => "one version per dependency, declared where used",
+            CheckId::Docker => "compose services, pinned images and free host ports",
+            CheckId::Migrations => "migration ordering, reversibility and seed data",
             CheckId::Accessibility => "a11y lint of every UI module",
+            CheckId::Translations => "locale parity of every dictionary",
+            CheckId::Tests => "a spec for every source file that holds behaviour",
+            CheckId::Docs => "relative links in every markdown document",
             CheckId::Security => "dependency audit against OSV.dev",
+            CheckId::Secrets => "credentials in the working tree",
+            CheckId::Git => "build output and large files in the index",
             CheckId::Issues => "issue YAML conventions",
             CheckId::Commits => "conventional commit messages",
             CheckId::Hygiene => "conflict markers, focused tests and bare TODOs",
+            CheckId::E2e => "the end-to-end suite of every module",
         }
+    }
+
+    /// Whether the check only runs when it is asked for explicitly.
+    pub fn opt_in(self) -> bool {
+        !Self::DEFAULT.contains(&self)
     }
 
     /// Resolve a user-provided name, accepting the obvious aliases.
     pub fn from_key(value: &str) -> Option<Self> {
         match value.trim().to_ascii_lowercase().as_str() {
-            "workspace" | "monorepo" | "build" | "lint" | "test" => Some(CheckId::Workspace),
+            "workspace" | "monorepo" | "build" | "lint" => Some(CheckId::Workspace),
+            "structure" | "layout" | "modules" => Some(CheckId::Structure),
+            "conventions" | "convention" | "naming" => Some(CheckId::Conventions),
+            "env" | "environment" | "dotenv" => Some(CheckId::Env),
+            "dependencies" | "deps" | "packages" => Some(CheckId::Dependencies),
+            "docker" | "compose" | "services" => Some(CheckId::Docker),
+            "migrations" | "migration" | "seeds" => Some(CheckId::Migrations),
             "accessibility" | "a11y" => Some(CheckId::Accessibility),
-            "security" | "audit" | "deps" => Some(CheckId::Security),
+            "translations" | "translation" | "i18n" => Some(CheckId::Translations),
+            "tests" | "test" | "specs" | "coverage" => Some(CheckId::Tests),
+            "docs" | "doc" | "documentation" | "markdown" => Some(CheckId::Docs),
+            "security" | "audit" | "vulnerabilities" => Some(CheckId::Security),
+            "secrets" | "credentials" => Some(CheckId::Secrets),
+            "git" | "repository" | "gitignore" => Some(CheckId::Git),
             "issues" | "issue" => Some(CheckId::Issues),
             "commits" | "commit" | "commitlint" => Some(CheckId::Commits),
             "hygiene" | "cleanliness" => Some(CheckId::Hygiene),
+            "e2e" | "end-to-end" | "endtoend" => Some(CheckId::E2e),
             _ => None,
         }
     }
@@ -278,14 +399,22 @@ impl ProjectReport {
     }
 }
 
-/// Resolve which checks to run from `--only` / `--skip`.
-pub fn select_checks(only: Option<&str>, skip: Option<&str>) -> Result<Vec<CheckId>, String> {
+/// Resolve which checks to run from `--only` / `--skip`, plus any opt-in check
+/// that was requested through its own flag.
+pub fn select_checks(
+    only: Option<&str>,
+    skip: Option<&str>,
+    extra: &[CheckId],
+) -> Result<Vec<CheckId>, String> {
     let mut selected: Vec<CheckId> = match parse_ids(only)? {
         Some(ids) if !ids.is_empty() => CheckId::ALL
             .into_iter()
             .filter(|id| ids.contains(id))
             .collect(),
-        _ => CheckId::ALL.to_vec(),
+        _ => CheckId::ALL
+            .into_iter()
+            .filter(|id| CheckId::DEFAULT.contains(id) || extra.contains(id))
+            .collect(),
     };
 
     if let Some(skipped) = parse_ids(skip)? {
@@ -343,6 +472,55 @@ fn split_csv(value: Option<&str>) -> Vec<String> {
         .unwrap_or_default()
 }
 
+/// Build the outcome of a check that only reads the repository.
+///
+/// Errors fail the check, warnings only warn, and the details keep the errors
+/// first so the most important line is never the one that gets capped.
+fn static_outcome(
+    id: CheckId,
+    scope: &str,
+    clean: &str,
+    errors: Vec<String>,
+    warnings: Vec<String>,
+) -> CheckOutcome {
+    if errors.is_empty() && warnings.is_empty() {
+        return CheckOutcome::new(id, CheckStatus::Passed, format!("{scope} · {clean}"));
+    }
+
+    let status = if errors.is_empty() {
+        CheckStatus::Warned
+    } else {
+        CheckStatus::Failed
+    };
+    let summary = match (errors.len(), warnings.len()) {
+        (0, warned) => format!(
+            "{scope} · {warned} warning{}",
+            if warned == 1 { "" } else { "s" }
+        ),
+        (failed, 0) => format!(
+            "{scope} · {failed} error{}",
+            if failed == 1 { "" } else { "s" }
+        ),
+        (failed, warned) => format!(
+            "{scope} · {failed} error{} · {warned} warning{}",
+            if failed == 1 { "" } else { "s" },
+            if warned == 1 { "" } else { "s" }
+        ),
+    };
+
+    let details = errors
+        .into_iter()
+        .map(|message| format!("error  {message}"))
+        .chain(
+            warnings
+                .into_iter()
+                .map(|message| format!("warn   {message}")),
+        )
+        .collect();
+
+    CheckOutcome::new(id, status, summary).with_details(details)
+}
+
 // ---------------------------------------------------------------------------
 // Workspace — install, build, fmt, lint, test
 // ---------------------------------------------------------------------------
@@ -350,22 +528,7 @@ fn split_csv(value: Option<&str>) -> Vec<String> {
 fn check_workspace(args: &ProjectCheckArgs, root: &Path) -> CheckOutcome {
     let summary = WORKSPACE_COMMANDS.replace(',', ", ");
 
-    // In JSON mode the interactive runner would pollute stdout, so the very
-    // same command runs as a child process and its logs are captured instead.
-    let succeeded: Result<bool, String> = if args.json {
-        run_workspace_detached(args, root)
-    } else {
-        Ok(monorepo_run::execute(&MonorepoRunArgs {
-            commands: Some(WORKSPACE_COMMANDS.to_string()),
-            packages: args.packages.clone(),
-            modules: args.modules.clone(),
-            logs: args.logs,
-            no_cache: args.no_cache,
-            cwd: Some(root.to_string_lossy().to_string()),
-        }))
-    };
-
-    match succeeded {
+    match run_tasks(args, root, WORKSPACE_COMMANDS) {
         Ok(true) => CheckOutcome::new(CheckId::Workspace, CheckStatus::Passed, summary),
         Ok(false) => CheckOutcome::new(CheckId::Workspace, CheckStatus::Failed, summary)
             .with_details(vec![
@@ -377,7 +540,29 @@ fn check_workspace(args: &ProjectCheckArgs, root: &Path) -> CheckOutcome {
     }
 }
 
-fn run_workspace_detached(args: &ProjectCheckArgs, root: &Path) -> Result<bool, String> {
+/// Run workspace tasks, keeping stdout clean when the report is JSON.
+fn run_tasks(args: &ProjectCheckArgs, root: &Path, commands: &str) -> Result<bool, String> {
+    // In JSON mode the interactive runner would pollute stdout, so the very
+    // same command runs as a child process and its logs are captured instead.
+    if args.json {
+        return run_tasks_detached(args, root, commands);
+    }
+
+    Ok(monorepo_run::execute(&MonorepoRunArgs {
+        commands: Some(commands.to_string()),
+        packages: args.packages.clone(),
+        modules: args.modules.clone(),
+        logs: args.logs,
+        no_cache: args.no_cache,
+        cwd: Some(root.to_string_lossy().to_string()),
+    }))
+}
+
+fn run_tasks_detached(
+    args: &ProjectCheckArgs,
+    root: &Path,
+    commands: &str,
+) -> Result<bool, String> {
     let Ok(exe) = std::env::current_exe() else {
         return Err("Could not locate the talos executable to run the workspace tasks".to_string());
     };
@@ -385,7 +570,7 @@ fn run_workspace_detached(args: &ProjectCheckArgs, root: &Path) -> Result<bool, 
     let mut command = Command::new(exe);
     command
         .arg("monorepo:run")
-        .arg(format!("--commands={WORKSPACE_COMMANDS}"))
+        .arg(format!("--commands={commands}"))
         .arg("--logs")
         .current_dir(root);
     if let Some(packages) = &args.packages {
@@ -401,6 +586,51 @@ fn run_workspace_detached(args: &ProjectCheckArgs, root: &Path) -> Result<bool, 
     match command.output() {
         Ok(output) => Ok(output.status.success()),
         Err(err) => Err(format!("Could not run the workspace tasks: {err}")),
+    }
+}
+
+// ---------------------------------------------------------------------------
+// End-to-end — the browser suite, opt-in because it boots the application
+// ---------------------------------------------------------------------------
+
+/// Modules declaring an `e2e` script, which is what `monorepo:run` would run.
+pub fn modules_with_e2e(root: &Path) -> Vec<String> {
+    modules::discover_modules(root)
+        .into_iter()
+        .filter(|module| {
+            module
+                .package_json()
+                .and_then(|manifest| manifest.pointer("/scripts/e2e").cloned())
+                .is_some()
+        })
+        .map(|module| module.label())
+        .collect()
+}
+
+fn check_e2e(args: &ProjectCheckArgs, root: &Path) -> CheckOutcome {
+    let runners = modules_with_e2e(root);
+    if runners.is_empty() {
+        return CheckOutcome::new(
+            CheckId::E2e,
+            CheckStatus::Skipped,
+            "no module declares an `e2e` script",
+        )
+        .with_hint("Scaffold one with `talos e2e:create --module=<name>`");
+    }
+
+    let summary = format!(
+        "{} suite{}",
+        runners.len(),
+        if runners.len() == 1 { "" } else { "s" }
+    );
+
+    match run_tasks(args, root, E2E_COMMANDS) {
+        Ok(true) => CheckOutcome::new(CheckId::E2e, CheckStatus::Passed, summary),
+        Ok(false) => CheckOutcome::new(CheckId::E2e, CheckStatus::Failed, summary)
+            .with_details(runners)
+            .with_hint("Re-run alone with `talos e2e:run --modules=<name> --logs`"),
+        Err(message) => CheckOutcome::new(CheckId::E2e, CheckStatus::Failed, summary)
+            .with_details(vec![message]),
     }
 }
 
@@ -596,12 +826,7 @@ pub fn discover_ui_modules(root: &Path) -> Vec<UiModule> {
 }
 
 fn read_module_type(dir: &Path, name: &str) -> Option<String> {
-    let content = fs::read_to_string(dir.join(format!("{name}.yml"))).ok()?;
-    content.lines().find_map(|line| {
-        let value = line.trim().strip_prefix("type:")?;
-        let value = value.split('#').next().unwrap_or(value);
-        Some(value.trim().trim_matches(['"', '\'']).to_string())
-    })
+    modules::read_module_type(dir, name)
 }
 
 fn check_accessibility(args: &ProjectCheckArgs, root: &Path) -> CheckOutcome {
@@ -1412,11 +1637,23 @@ pub fn execute(args: &ProjectCheckArgs, checks: &[CheckId]) -> ProjectReport {
             .then(|| crate::utils::Spinner::start(format!("Running the {} check", id.key())));
         let mut outcome = match id {
             CheckId::Workspace => check_workspace(args, &root),
+            CheckId::Structure => structure::run(args, &root),
+            CheckId::Conventions => conventions::run(args, &root),
+            CheckId::Env => env::run(args, &root),
+            CheckId::Dependencies => dependencies::run(args, &root),
+            CheckId::Docker => docker::run(args, &root),
+            CheckId::Migrations => migrations::run(args, &root),
             CheckId::Accessibility => check_accessibility(args, &root),
+            CheckId::Translations => translations::run(args, &root),
+            CheckId::Tests => tests::run(args, &root),
+            CheckId::Docs => docs::run(args, &root),
             CheckId::Security => check_security(args, &root),
+            CheckId::Secrets => secrets::run(args, &root),
+            CheckId::Git => git::run(args, &root),
             CheckId::Issues => check_issues(args, &root),
             CheckId::Commits => check_commits(&root),
             CheckId::Hygiene => check_hygiene(&root),
+            CheckId::E2e => check_e2e(args, &root),
         };
         drop(spinner);
         outcome.duration_ms = check_started_at.elapsed().as_millis() as u64;
@@ -1439,7 +1676,8 @@ pub fn execute(args: &ProjectCheckArgs, checks: &[CheckId]) -> ProjectReport {
 }
 
 pub fn run(args: &ProjectCheckArgs) {
-    let checks = match select_checks(args.only.as_deref(), args.skip.as_deref()) {
+    let extra: Vec<CheckId> = args.e2e.then_some(CheckId::E2e).into_iter().collect();
+    let checks = match select_checks(args.only.as_deref(), args.skip.as_deref(), &extra) {
         Ok(checks) => checks,
         Err(message) => {
             error(message);

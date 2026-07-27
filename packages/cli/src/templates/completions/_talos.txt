@@ -45,7 +45,7 @@ _talos_docker_publish_modules() {
 }
 
 _talos_project_checks() {
-  _values -s , 'checks' workspace accessibility security issues commits hygiene
+  _values -s , 'checks' workspace structure conventions env dependencies docker migrations accessibility translations tests docs security secrets git issues commits hygiene e2e
 }
 
 _talos_custom_commands() {
@@ -181,7 +181,7 @@ _talos() {
     'monorepo\:check:Run install, build, lint and test across packages and modules with granular caching'
     'check:Alias for monorepo:check — run install, build, fmt, lint and test across packages and modules with granular caching'
     'security\:check:Audit dependencies for known vulnerabilities via OSV.dev'
-    'project\:check:Run every health check — workspace, accessibility, security, issues, commits and hygiene'
+    'project\:check:Run every health check — workspace, structure, conventions, env, deps, docker, migrations, a11y, translations, tests, docs, security, secrets, git, issues, commits, hygiene'
     'build:Alias for monorepo:run --commands=build — run the build script across packages and modules with granular caching'
     'fmt:Alias for monorepo:run --commands=fmt — run the fmt script across packages and modules with granular caching'
     'lint:Alias for monorepo:run --commands=lint — run the lint script across packages and modules with granular caching'
@@ -428,6 +428,7 @@ _talos() {
             '--packages=-[Package name(s), comma-separated (default: all)]::packages:_talos_publish_packages' \
             '--modules=-[Module name(s), comma-separated (default: all)]::modules:_talos_publish_modules' \
             '--audit-level=[Minimum vulnerability severity to report]:level:(low moderate high critical)' \
+            '--e2e[Also run the end-to-end suite]' \
             '--logs[Stream plain workspace logs instead of the interactive view]' \
             '--no-cache[Skip reading and writing the workspace task cache]' \
             '--strict[Fail when a check only reports warnings]' \

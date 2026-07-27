@@ -3,10 +3,20 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use clap::Parser;
+use cli::commands::project_check::conventions::{
+    inspect as inspect_conventions, is_generated, may_read_process_env,
+};
+use cli::commands::project_check::dependencies::{import_specifiers, package_of};
+use cli::commands::project_check::docker::{host_port, inspect as inspect_docker};
+use cli::commands::project_check::docs::is_relative_target;
+use cli::commands::project_check::git::{forbidden, human_size, ignores};
+use cli::commands::project_check::migrations::timestamp;
+use cli::commands::project_check::tests::{self as tests_check, needs_test};
 use cli::commands::project_check::{
     A11yDiagnostic, CheckId, CheckOutcome, CheckStatus, HygieneSeverity, ProjectCheckArgs,
-    ProjectReport, classify_a11y, disabled_a11y_rules, discover_ui_modules, lint_commits,
-    parse_biome_a11y, render_json, render_report, scan_source, select_checks,
+    ProjectReport, classify_a11y, dependencies, disabled_a11y_rules, discover_ui_modules, docker,
+    docs, env, lint_commits, migrations, modules_with_e2e, parse_biome_a11y, render_json,
+    render_report, scan_source, secrets, select_checks, structure, translations,
 };
 
 #[derive(Parser)]
@@ -61,6 +71,7 @@ fn project_check_parses_all_flags() {
         "--no-cache",
         "--strict",
         "--json",
+        "--e2e",
         "--cwd",
         "./here",
     ])
@@ -75,6 +86,7 @@ fn project_check_parses_all_flags() {
     assert!(cli.args.no_cache);
     assert!(cli.args.strict);
     assert!(cli.args.json);
+    assert!(cli.args.e2e);
     assert_eq!(cli.args.cwd.as_deref(), Some("./here"));
 }
 
@@ -98,49 +110,71 @@ fn project_check_rejects_unknown_flag() {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn every_check_runs_by_default() {
+fn every_default_check_runs_by_default() {
     assert_eq!(
-        select_checks(None, None).expect("default selection"),
-        CheckId::ALL.to_vec()
+        select_checks(None, None, &[]).expect("default selection"),
+        CheckId::DEFAULT.to_vec()
     );
 }
 
 #[test]
+fn the_end_to_end_suite_is_opt_in() {
+    let default = select_checks(None, None, &[]).expect("default selection");
+    assert!(!default.contains(&CheckId::E2e));
+    assert!(CheckId::E2e.opt_in());
+
+    let requested = select_checks(None, None, &[CheckId::E2e]).expect("e2e requested");
+    assert_eq!(requested.last(), Some(&CheckId::E2e));
+
+    let only = select_checks(Some("e2e"), None, &[]).expect("only e2e");
+    assert_eq!(only, vec![CheckId::E2e]);
+}
+
+#[test]
 fn only_keeps_the_execution_order() {
-    let checks = select_checks(Some("hygiene,workspace"), None).expect("only selection");
+    let checks = select_checks(Some("hygiene,workspace"), None, &[]).expect("only selection");
 
     assert_eq!(checks, vec![CheckId::Workspace, CheckId::Hygiene]);
 }
 
 #[test]
 fn aliases_resolve_to_their_check() {
-    let checks = select_checks(Some("a11y,audit,commit"), None).expect("aliases");
+    let checks =
+        select_checks(Some("a11y,audit,commit,deps,i18n,layout"), None, &[]).expect("aliases");
 
     assert_eq!(
         checks,
-        vec![CheckId::Accessibility, CheckId::Security, CheckId::Commits]
+        vec![
+            CheckId::Structure,
+            CheckId::Dependencies,
+            CheckId::Accessibility,
+            CheckId::Translations,
+            CheckId::Security,
+            CheckId::Commits,
+        ]
     );
 }
 
 #[test]
 fn skip_removes_a_check() {
-    let checks = select_checks(None, Some("workspace,security")).expect("skip selection");
+    let checks = select_checks(None, Some("workspace,security"), &[]).expect("skip selection");
 
     assert!(!checks.contains(&CheckId::Workspace));
     assert!(!checks.contains(&CheckId::Security));
-    assert_eq!(checks.len(), CheckId::ALL.len() - 2);
+    assert_eq!(checks.len(), CheckId::DEFAULT.len() - 2);
 }
 
 #[test]
 fn skip_wins_over_only() {
-    let error = select_checks(Some("hygiene"), Some("hygiene")).expect_err("nothing left to run");
+    let error =
+        select_checks(Some("hygiene"), Some("hygiene"), &[]).expect_err("nothing left to run");
 
     assert!(error.contains("No check left to run"));
 }
 
 #[test]
 fn unknown_check_is_rejected_with_the_valid_names() {
-    let error = select_checks(Some("typo"), None).expect_err("unknown check");
+    let error = select_checks(Some("typo"), None, &[]).expect_err("unknown check");
 
     assert!(error.contains("typo"));
     assert!(error.contains("workspace"));
@@ -505,4 +539,909 @@ fn every_check_has_a_stable_key_and_title() {
         assert!(!id.description().is_empty());
         assert_eq!(CheckId::from_key(id.key()), Some(id));
     }
+}
+
+// ---------------------------------------------------------------------------
+// Structure
+// ---------------------------------------------------------------------------
+
+/// Write a workspace member with the files a real module carries.
+fn scaffold_module(
+    root: &Path,
+    group: &str,
+    name: &str,
+    kind: Option<&str>,
+    package: Option<&str>,
+) {
+    let dir = root.join(group).join(name);
+    fs::create_dir_all(dir.join("src")).expect("create src");
+    fs::create_dir_all(dir.join("tests")).expect("create tests");
+    write(&dir.join("src/index.ts"), "export const noop = () => {};\n");
+    write(&dir.join("tsconfig.json"), "{}\n");
+    if let Some(kind) = kind {
+        write(
+            &dir.join(format!("{name}.yml")),
+            &format!("type: \"{kind}\"\n"),
+        );
+    }
+    if let Some(package) = package {
+        write(
+            &dir.join("package.json"),
+            &format!("{{ \"name\": \"{package}\" }}\n"),
+        );
+    }
+}
+
+fn scaffold_root(root: &Path) {
+    write(
+        &root.join("package.json"),
+        "{ \"name\": \"fixture\", \"workspaces\": [\"modules/*\"] }\n",
+    );
+}
+
+#[test]
+fn a_module_without_a_manifest_fails_the_structure_check() {
+    let (_guard, root) = root();
+    scaffold_root(&root);
+    scaffold_module(&root, "modules", "user", None, Some("@module/user"));
+
+    let outcome = structure::run(&ProjectCheckArgs::default(), &root);
+
+    assert_eq!(outcome.status, CheckStatus::Failed);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("user.yml is missing"))
+    );
+}
+
+#[test]
+fn a_package_without_a_manifest_is_accepted() {
+    let (_guard, root) = root();
+    write(
+        &root.join("package.json"),
+        "{ \"name\": \"fixture\", \"workspaces\": [\"packages/*\"] }\n",
+    );
+    scaffold_module(&root, "packages", "utils", None, Some("@fixture/utils"));
+
+    let outcome = structure::run(&ProjectCheckArgs::default(), &root);
+
+    assert_eq!(outcome.status, CheckStatus::Passed, "{:?}", outcome.details);
+}
+
+#[test]
+fn an_unknown_module_type_is_reported() {
+    let (_guard, root) = root();
+    scaffold_root(&root);
+    scaffold_module(
+        &root,
+        "modules",
+        "user",
+        Some("banana"),
+        Some("@module/user"),
+    );
+
+    let outcome = structure::run(&ProjectCheckArgs::default(), &root);
+
+    assert_eq!(outcome.status, CheckStatus::Failed);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("unknown type \"banana\""))
+    );
+}
+
+#[test]
+fn two_modules_cannot_share_a_package_name() {
+    let (_guard, root) = root();
+    scaffold_root(&root);
+    scaffold_module(
+        &root,
+        "modules",
+        "user",
+        Some("module"),
+        Some("@module/user"),
+    );
+    scaffold_module(
+        &root,
+        "modules",
+        "admin",
+        Some("admin"),
+        Some("@module/user"),
+    );
+
+    let outcome = structure::run(&ProjectCheckArgs::default(), &root);
+
+    assert_eq!(outcome.status, CheckStatus::Failed);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("is already used by"))
+    );
+}
+
+#[test]
+fn a_group_outside_the_workspace_globs_is_reported() {
+    let (_guard, root) = root();
+    write(&root.join("package.json"), "{ \"name\": \"fixture\" }\n");
+    scaffold_module(
+        &root,
+        "modules",
+        "user",
+        Some("module"),
+        Some("@module/user"),
+    );
+
+    let outcome = structure::run(&ProjectCheckArgs::default(), &root);
+
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("does not cover \"modules/*\""))
+    );
+}
+
+#[test]
+fn a_dangling_path_alias_is_reported() {
+    let (_guard, root) = root();
+    scaffold_root(&root);
+    scaffold_module(
+        &root,
+        "modules",
+        "user",
+        Some("module"),
+        Some("@module/user"),
+    );
+    write(
+        &root.join("tsconfig.json"),
+        "{ \"compilerOptions\": { \"paths\": { \"@module/gone/*\": [\"./modules/gone/src/*\"] } } }\n",
+    );
+
+    let outcome = structure::run(&ProjectCheckArgs::default(), &root);
+
+    assert_eq!(outcome.status, CheckStatus::Failed);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("@module/gone/*"))
+    );
+}
+
+#[test]
+fn a_module_without_tests_only_warns() {
+    let (_guard, root) = root();
+    scaffold_root(&root);
+    scaffold_module(
+        &root,
+        "modules",
+        "user",
+        Some("module"),
+        Some("@module/user"),
+    );
+    fs::remove_dir_all(root.join("modules/user/tests")).expect("drop the tests directory");
+
+    let outcome = structure::run(&ProjectCheckArgs::default(), &root);
+
+    assert_eq!(outcome.status, CheckStatus::Warned);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("no tests/ directory"))
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Env
+// ---------------------------------------------------------------------------
+
+#[test]
+fn env_keys_are_flattened_with_dots() {
+    let keys = env::read_keys("app:\n  host: \"\"\n  port: 8030\nlogs:\n  level: info\n")
+        .expect("valid YAML");
+
+    assert_eq!(keys, vec!["app.host", "app.port", "logs.level"]);
+}
+
+#[test]
+fn env_key_diff_reports_both_directions() {
+    let example = vec!["app.host".to_string(), "app.port".to_string()];
+    let actual = vec!["app.host".to_string(), "app.debug".to_string()];
+
+    let (missing, extra) = env::diff_keys(&example, &actual);
+
+    assert_eq!(missing, vec!["app.port".to_string()]);
+    assert_eq!(extra, vec!["app.debug".to_string()]);
+}
+
+#[test]
+fn a_missing_env_file_fails_the_env_check() {
+    let (_guard, root) = root();
+    write(&root.join(".env.example.yml"), "app:\n  host: \"\"\n");
+
+    let outcome = env::run(&ProjectCheckArgs::default(), &root);
+
+    assert_eq!(outcome.status, CheckStatus::Failed);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains(".env.yml is missing"))
+    );
+}
+
+#[test]
+fn an_undocumented_env_key_only_warns() {
+    let (_guard, root) = root();
+    write(&root.join(".env.example.yml"), "app:\n  host: \"\"\n");
+    write(
+        &root.join(".env.yml"),
+        "app:\n  host: \"0.0.0.0\"\n  debug: true\n",
+    );
+
+    let outcome = env::run(&ProjectCheckArgs::default(), &root);
+
+    assert_eq!(outcome.status, CheckStatus::Warned);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("`app.debug` is not documented"))
+    );
+}
+
+#[test]
+fn a_complete_env_file_passes() {
+    let (_guard, root) = root();
+    write(&root.join(".env.example.yml"), "app:\n  host: \"\"\n");
+    write(&root.join(".env.yml"), "app:\n  host: \"0.0.0.0\"\n");
+
+    assert_eq!(
+        env::run(&ProjectCheckArgs::default(), &root).status,
+        CheckStatus::Passed
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Secrets
+// ---------------------------------------------------------------------------
+
+#[test]
+fn known_credential_formats_are_confident_findings() {
+    let findings = secrets::scan_content("const key = \"AKIAIOSFODNN7EXAMPLE\";", false);
+
+    assert_eq!(findings.len(), 1);
+    assert_eq!(findings[0].rule, "aws-access-key");
+    assert!(findings[0].confident);
+}
+
+#[test]
+fn a_fixture_downgrades_a_credential_to_a_warning() {
+    let findings = secrets::scan_content("const key = \"AKIAIOSFODNN7EXAMPLE\";", true);
+
+    assert_eq!(findings.len(), 1);
+    assert!(!findings[0].confident);
+    assert!(secrets::is_fixture_path("modules/user/tests/user.spec.ts"));
+    assert!(!secrets::is_fixture_path("modules/user/src/UserService.ts"));
+}
+
+#[test]
+fn placeholders_are_not_reported_as_secrets() {
+    assert!(!secrets::looks_like_secret("your-api-key-here"));
+    assert!(!secrets::looks_like_secret("${STRIPE_SECRET}"));
+    assert!(!secrets::looks_like_secret("changeme"));
+    assert!(secrets::looks_like_secret("s3cr3t-value-98213"));
+
+    let findings = secrets::scan_content("password = \"process.env.PASSWORD\"", false);
+    assert!(findings.is_empty());
+}
+
+#[test]
+fn a_literal_password_warns_without_failing() {
+    let findings = secrets::scan_content("const password = \"Tr0ub4dor&3xyz\";", false);
+
+    assert_eq!(findings.len(), 1);
+    assert_eq!(findings[0].rule, "hardcoded-assignment");
+    assert!(!findings[0].confident);
+}
+
+#[test]
+fn only_real_secret_files_are_flagged_in_the_index() {
+    assert!(secrets::is_secret_file(".env"));
+    assert!(secrets::is_secret_file(".env.production.yml"));
+    assert!(secrets::is_secret_file("server.pem"));
+    assert!(!secrets::is_secret_file(".env.example.yml"));
+    assert!(!secrets::is_secret_file("package.json"));
+}
+
+// ---------------------------------------------------------------------------
+// Dependencies
+// ---------------------------------------------------------------------------
+
+#[test]
+fn import_specifiers_ignore_prose_and_regex_literals() {
+    let content = r#"
+import { User } from "@module/user";
+import "./styles.css";
+const lazy = await import("nanoid");
+const legacy = require("path");
+const pattern = /from\s+["']\.\./;
+// copied from "the docs"
+"#;
+
+    let specifiers = import_specifiers(content);
+
+    assert!(specifiers.contains(&"@module/user".to_string()));
+    assert!(specifiers.contains(&"./styles.css".to_string()));
+    assert!(specifiers.contains(&"nanoid".to_string()));
+    assert!(specifiers.contains(&"path".to_string()));
+    assert!(
+        specifiers.iter().all(|specifier| !specifier.contains('\\')),
+        "regex literals must not be read as imports: {specifiers:?}"
+    );
+}
+
+#[test]
+fn package_names_resolve_from_their_specifier() {
+    assert_eq!(package_of("nanoid"), Some("nanoid".to_string()));
+    assert_eq!(
+        package_of("@talosjs/service/dist/index.js"),
+        Some("@talosjs/service".to_string())
+    );
+    assert_eq!(package_of("./local"), None);
+    assert_eq!(package_of("node:fs"), None);
+    assert_eq!(package_of("path"), None);
+    assert_eq!(package_of("@/utils"), None);
+}
+
+#[test]
+fn a_dependency_pinned_twice_is_reported_once() {
+    let manifests = vec![
+        dependencies::Manifest {
+            label: "modules/spa".to_string(),
+            name: Some("@module/spa".to_string()),
+            dependencies: [("react".to_string(), "^19.2.0".to_string())]
+                .into_iter()
+                .collect(),
+        },
+        dependencies::Manifest {
+            label: "modules/design".to_string(),
+            name: Some("@module/design".to_string()),
+            dependencies: [("react".to_string(), "^19.1.0".to_string())]
+                .into_iter()
+                .collect(),
+        },
+        dependencies::Manifest {
+            label: "modules/admin".to_string(),
+            name: Some("@module/admin".to_string()),
+            dependencies: [("react".to_string(), "^19.1.0".to_string())]
+                .into_iter()
+                .collect(),
+        },
+    ];
+
+    let mismatches = dependencies::version_mismatches(&manifests);
+
+    assert_eq!(mismatches.len(), 1);
+    assert!(mismatches[0].starts_with("react: "));
+    assert!(mismatches[0].contains("+1"), "{}", mismatches[0]);
+}
+
+#[test]
+fn unpinned_ranges_are_reported() {
+    let manifests = vec![dependencies::Manifest {
+        label: "modules/user".to_string(),
+        name: None,
+        dependencies: [
+            ("nanoid".to_string(), "latest".to_string()),
+            ("zod".to_string(), "^4.0.0".to_string()),
+        ]
+        .into_iter()
+        .collect(),
+    }];
+
+    let findings = dependencies::loose_ranges(&manifests);
+
+    assert_eq!(findings.len(), 1);
+    assert!(findings[0].contains("nanoid"));
+}
+
+#[test]
+fn undeclared_and_unused_dependencies_are_separated() {
+    let imports: BTreeSet<String> = ["nanoid", "@module/shared", "zod"]
+        .into_iter()
+        .map(str::to_string)
+        .collect();
+    let declared: std::collections::BTreeMap<String, String> = [
+        ("zod".to_string(), "^4.0.0".to_string()),
+        ("dayjs".to_string(), "^1.0.0".to_string()),
+        ("@types/bun".to_string(), "^1.0.0".to_string()),
+    ]
+    .into_iter()
+    .collect();
+    let known: BTreeSet<String> = ["nanoid".to_string()].into_iter().collect();
+
+    let (undeclared, unused) = dependencies::compare(
+        &imports,
+        &["const noop = 1;".to_string()],
+        &declared,
+        &known,
+        &["@module/".to_string()],
+    );
+
+    assert_eq!(undeclared, Vec::<String>::new());
+    assert_eq!(unused, vec!["dayjs".to_string()]);
+}
+
+// ---------------------------------------------------------------------------
+// Translations
+// ---------------------------------------------------------------------------
+
+fn dictionary(root: &Path, content: &str) {
+    write(
+        &root.join("package.json"),
+        "{ \"workspaces\": [\"modules/*\"] }\n",
+    );
+    let dir = root.join("modules/user");
+    fs::create_dir_all(dir.join("src")).expect("create src");
+    write(&dir.join("user.yml"), "type: \"module\"\n");
+    write(&dir.join("src/translations.yml"), content);
+}
+
+#[test]
+fn a_dictionary_is_flattened_to_its_locale_maps() {
+    let document = translations::parse_dictionary(
+        "cart:\n  items:\n    en: \"{{ count }} item\"\n    fr: \"{{ count }} article\"\n",
+        false,
+    )
+    .expect("valid YAML");
+
+    let flattened = translations::flatten(&document);
+
+    assert_eq!(flattened.len(), 1);
+    assert_eq!(
+        flattened["cart.items"]["fr"],
+        "{{ count }} article".to_string()
+    );
+    assert_eq!(
+        translations::locales(&flattened),
+        ["en", "fr"].into_iter().map(str::to_string).collect()
+    );
+}
+
+#[test]
+fn a_missing_fallback_locale_fails_the_translations_check() {
+    let (_guard, root) = root();
+    dictionary(&root, "welcome:\n  fr: \"Bienvenue\"\n");
+
+    let outcome = translations::run(&ProjectCheckArgs::default(), &root);
+
+    assert_eq!(outcome.status, CheckStatus::Failed);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("has no `en` value"))
+    );
+}
+
+#[test]
+fn a_missing_locale_and_a_dropped_placeholder_warn() {
+    let (_guard, root) = root();
+    dictionary(
+        &root,
+        "welcome:\n  en: \"Welcome, {{ name }}!\"\n  fr: \"Bienvenue !\"\ncart:\n  en: \"Cart\"\n",
+    );
+
+    let outcome = translations::run(&ProjectCheckArgs::default(), &root);
+
+    assert_eq!(outcome.status, CheckStatus::Warned);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("drops the placeholder"))
+    );
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("missing the `fr` translation"))
+    );
+}
+
+#[test]
+fn a_complete_dictionary_passes() {
+    let (_guard, root) = root();
+    dictionary(
+        &root,
+        "welcome:\n  en: \"Welcome, {{ name }}!\"\n  fr: \"Bienvenue, {{ name }} !\"\n",
+    );
+
+    assert_eq!(
+        translations::run(&ProjectCheckArgs::default(), &root).status,
+        CheckStatus::Passed
+    );
+}
+
+// ---------------------------------------------------------------------------
+// End-to-end
+// ---------------------------------------------------------------------------
+
+#[test]
+fn only_modules_declaring_an_e2e_script_are_run() {
+    let (_guard, root) = root();
+    scaffold_root(&root);
+    scaffold_module(
+        &root,
+        "modules",
+        "user",
+        Some("module"),
+        Some("@module/user"),
+    );
+    scaffold_module(&root, "modules", "spa", Some("spa"), Some("@module/spa"));
+    write(
+        &root.join("modules/spa/package.json"),
+        "{ \"name\": \"@module/spa\", \"scripts\": { \"e2e\": \"playwright test\" } }\n",
+    );
+
+    assert_eq!(modules_with_e2e(&root), vec!["modules/spa".to_string()]);
+}
+
+// ---------------------------------------------------------------------------
+// Conventions
+// ---------------------------------------------------------------------------
+
+#[test]
+fn a_decorated_class_must_carry_the_decorator_suffix() {
+    let findings = inspect_conventions(
+        "modules/user/src/services/UserCreate.ts",
+        "@decorator.service()\nexport class UserCreate {}\n",
+    );
+
+    assert_eq!(findings.len(), 1);
+    assert_eq!(findings[0].rule, "conventions.di-name");
+    assert!(findings[0].blocking);
+    assert!(findings[0].message.contains("does not end with `Service`"));
+}
+
+#[test]
+fn a_correctly_named_injected_class_is_accepted() {
+    assert!(
+        inspect_conventions(
+            "modules/user/src/services/UserCreateService.ts",
+            "@decorator.service()\nexport class UserCreateService {}\n",
+        )
+        .is_empty()
+    );
+}
+
+#[test]
+fn reading_process_env_outside_the_typed_config_is_blocking() {
+    let findings = inspect_conventions(
+        "modules/user/src/services/StripeService.ts",
+        "const key = process.env.STRIPE_SECRET_KEY;\n",
+    );
+
+    assert_eq!(findings.len(), 1);
+    assert_eq!(findings[0].rule, "conventions.process-env");
+    assert!(findings[0].blocking);
+}
+
+#[test]
+fn the_files_that_build_the_typed_config_may_read_process_env() {
+    assert!(may_read_process_env("packages/app-env/src/AppEnv.ts"));
+    assert!(may_read_process_env("modules/user/tests/user.spec.ts"));
+    assert!(!may_read_process_env("modules/user/src/services/A.ts"));
+}
+
+#[test]
+fn only_exported_type_names_are_held_to_the_convention() {
+    let findings = inspect_conventions(
+        "modules/user/src/types.ts",
+        "type Local = string;\nexport type Payload = string;\nexport interface Options {}\n",
+    );
+
+    let rules: Vec<&str> = findings.iter().map(|finding| finding.rule).collect();
+    assert_eq!(
+        rules,
+        vec!["conventions.type-name", "conventions.interface-name"]
+    );
+    assert!(findings.iter().all(|finding| !finding.blocking));
+}
+
+#[test]
+fn a_generated_file_is_left_alone() {
+    assert!(is_generated("/* eslint-disable */\n// @generated\n"));
+    assert!(is_generated(
+        "// This file is auto-generated. Do not edit.\n"
+    ));
+    assert!(!is_generated("export const value = 1;\n"));
+}
+
+#[test]
+fn a_non_null_assertion_is_reported_but_a_comparison_is_not() {
+    let findings = inspect_conventions(
+        "modules/user/src/services/AService.ts",
+        "if (a !== b) { return user!.name; }\n",
+    );
+
+    assert_eq!(findings.len(), 1);
+    assert_eq!(findings[0].rule, "conventions.non-null");
+}
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
+#[test]
+fn barrel_and_type_files_need_no_spec() {
+    assert!(!needs_test("index", "export * from './a';\n"));
+    assert!(!needs_test("types", "export type AType = string;\n"));
+    assert!(needs_test("UserService", "export class UserService {}\n"));
+    assert!(!needs_test("UserService", "// nothing here\n"));
+}
+
+#[test]
+fn a_source_file_without_a_spec_is_reported() {
+    let (_guard, root) = root();
+    scaffold_root(&root);
+    scaffold_module(
+        &root,
+        "modules",
+        "user",
+        Some("module"),
+        Some("@module/user"),
+    );
+    write(
+        &root.join("modules/user/src/UserService.ts"),
+        "export class UserService {}\n",
+    );
+    write(&root.join("modules/user/tests/index.spec.ts"), "// ok\n");
+
+    let outcome = tests_check::run(&ProjectCheckArgs::default(), &root);
+
+    assert_eq!(outcome.status, CheckStatus::Warned);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("`UserService` has no test"))
+    );
+}
+
+#[test]
+fn a_mirrored_spec_satisfies_the_check() {
+    let (_guard, root) = root();
+    scaffold_root(&root);
+    scaffold_module(
+        &root,
+        "modules",
+        "user",
+        Some("module"),
+        Some("@module/user"),
+    );
+    write(
+        &root.join("modules/user/src/UserService.ts"),
+        "export class UserService {}\n",
+    );
+    write(
+        &root.join("modules/user/tests/UserService.spec.ts"),
+        "// ok\n",
+    );
+
+    assert_eq!(
+        tests_check::run(&ProjectCheckArgs::default(), &root).status,
+        CheckStatus::Passed
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Docker
+// ---------------------------------------------------------------------------
+
+#[test]
+fn the_host_side_of_a_port_mapping_is_extracted() {
+    assert_eq!(host_port("\"8080:80\""), Some("8080".to_string()));
+    assert_eq!(host_port("127.0.0.1:5432:5432"), Some("5432".to_string()));
+    assert_eq!(host_port("3000:3000/tcp"), Some("3000".to_string()));
+    assert_eq!(host_port("80"), None);
+}
+
+#[test]
+fn duplicate_host_ports_and_unpinned_images_are_reported() {
+    let document: serde_yaml::Value = serde_yaml::from_str(
+        "services:\n  db:\n    image: postgres:latest\n    ports: [\"5432:5432\"]\n  cache:\n    image: redis:7.2\n    restart: always\n    ports: [\"5432:6379\"]\n",
+    )
+    .expect("parse compose");
+
+    let findings = inspect_docker(&document);
+
+    assert!(
+        findings
+            .iter()
+            .any(|finding| finding.blocking && finding.message.contains("host port 5432"))
+    );
+    assert!(
+        findings
+            .iter()
+            .any(|finding| !finding.blocking && finding.message.contains("is unpinned"))
+    );
+}
+
+#[test]
+fn a_pinned_compose_file_passes() {
+    let document: serde_yaml::Value = serde_yaml::from_str(
+        "services:\n  db:\n    image: postgres:16.2\n    restart: always\n    ports: [\"5432:5432\"]\n",
+    )
+    .expect("parse compose");
+
+    assert!(inspect_docker(&document).is_empty());
+}
+
+#[test]
+fn a_module_owned_compose_file_is_discovered() {
+    let (_guard, root) = root();
+    scaffold_root(&root);
+    scaffold_module(&root, "modules", "app", Some("api"), Some("@module/app"));
+    write(
+        &root.join("modules/app/docker-compose.yml"),
+        "services:\n  db:\n    image: postgres:16.2\n    restart: always\n",
+    );
+
+    let outcome = docker::run(&ProjectCheckArgs::default(), &root);
+
+    assert_eq!(outcome.status, CheckStatus::Passed);
+    assert!(outcome.summary.contains("1 compose file"));
+}
+
+// ---------------------------------------------------------------------------
+// Migrations
+// ---------------------------------------------------------------------------
+
+#[test]
+fn only_a_leading_epoch_counts_as_a_migration_timestamp() {
+    assert_eq!(timestamp("1700000000000-create-user"), Some(1700000000000));
+    assert_eq!(timestamp("CreateUser"), None);
+    assert_eq!(timestamp("20240101-user"), Some(20240101));
+}
+
+#[test]
+fn two_migrations_sharing_a_timestamp_fail() {
+    let (_guard, root) = root();
+    scaffold_root(&root);
+    scaffold_module(
+        &root,
+        "modules",
+        "user",
+        Some("module"),
+        Some("@module/user"),
+    );
+    let dir = root.join("modules/user/src/migrations");
+    write(
+        &dir.join("1700000000000-a.ts"),
+        "export class A { public async up() {} public async down() {} }\n",
+    );
+    write(
+        &dir.join("1700000000000-b.ts"),
+        "export class B { public async up() {} public async down() {} }\n",
+    );
+
+    let outcome = migrations::run(&ProjectCheckArgs::default(), &root);
+
+    assert_eq!(outcome.status, CheckStatus::Failed);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("shares its timestamp"))
+    );
+}
+
+#[test]
+fn a_migration_without_a_down_is_a_warning_and_broken_seed_yaml_fails() {
+    let (_guard, root) = root();
+    scaffold_root(&root);
+    scaffold_module(
+        &root,
+        "modules",
+        "user",
+        Some("module"),
+        Some("@module/user"),
+    );
+    write(
+        &root.join("modules/user/src/migrations/1700000000001-a.ts"),
+        "export class A { public async up() {} }\n",
+    );
+    write(
+        &root.join("modules/user/src/seeds/users.yml"),
+        "users:\n  - name: a\n   - broken\n",
+    );
+
+    let outcome = migrations::run(&ProjectCheckArgs::default(), &root);
+
+    assert_eq!(outcome.status, CheckStatus::Failed);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("is not valid YAML"))
+    );
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("no `down` method"))
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Docs
+// ---------------------------------------------------------------------------
+
+#[test]
+fn only_on_disk_link_targets_are_resolved() {
+    assert!(is_relative_target("./docs/guide.md"));
+    assert!(!is_relative_target("https://example.com"));
+    assert!(!is_relative_target("#section"));
+    assert!(!is_relative_target("mailto:a@b.c"));
+    assert!(!is_relative_target("{{ NAME }}"));
+}
+
+#[test]
+fn a_link_to_a_missing_file_is_reported_and_an_anchor_is_stripped() {
+    let (_guard, root) = root();
+    write(&root.join("guide.md"), "# guide\n");
+    write(
+        &root.join("README.md"),
+        "[here](guide.md#intro) and [gone](missing.md)\n",
+    );
+
+    let outcome = docs::run(&ProjectCheckArgs::default(), &root);
+
+    assert_eq!(outcome.status, CheckStatus::Failed);
+    assert_eq!(outcome.details.len(), 1);
+    assert!(outcome.details[0].contains("missing.md"));
+}
+
+// ---------------------------------------------------------------------------
+// Git
+// ---------------------------------------------------------------------------
+
+#[test]
+fn gitignore_patterns_are_matched_through_their_decorations() {
+    let gitignore = "/node_modules\n**/dist\n.env*\n# comment\n";
+
+    assert!(ignores(gitignore, "node_modules"));
+    assert!(ignores(gitignore, "dist"));
+    assert!(ignores(gitignore, ".env"));
+    assert!(!ignores(gitignore, ".DS_Store"));
+}
+
+#[test]
+fn tracked_build_output_is_reported() {
+    let tracked = vec![
+        "modules/user/src/index.ts".to_string(),
+        "node_modules/left-pad/index.js".to_string(),
+        "modules/spa/dist/app.js".to_string(),
+    ];
+
+    assert_eq!(
+        forbidden(&tracked),
+        vec![
+            "node_modules/left-pad/index.js".to_string(),
+            "modules/spa/dist/app.js".to_string()
+        ]
+    );
+}
+
+#[test]
+fn sizes_are_rendered_for_a_human() {
+    assert_eq!(human_size(3 * 1024 * 1024), "3.0 MB".to_string());
+    assert_eq!(human_size(512 * 1024), "512 KB".to_string());
 }
