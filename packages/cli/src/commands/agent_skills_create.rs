@@ -25,7 +25,11 @@ pub struct AgentSkillsCreateArgs {
     #[arg(long)]
     pub cwd: Option<String>,
 
-    #[arg(long, default_value_t = false)]
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Bypass the skeleton cache and re-download templates (the cache otherwise auto-refreshes after 24h)"
+    )]
     pub no_cache: bool,
 }
 

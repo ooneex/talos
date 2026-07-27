@@ -78,7 +78,8 @@ pub use scaffold::{
     scaffold_resource,
 };
 pub use skeleton::{
-    SKELETON_REPO_URL, TEMPLATES_DIR_ENV, clone_skeleton, read_template, skeleton_templates_dir,
+    SKELETON_CACHE_MAX_AGE, SKELETON_REPO_URL, TEMPLATES_DIR_ENV, clone_skeleton, is_cache_stale,
+    read_template, skeleton_templates_dir,
 };
 
 pub use style::{Spinner, error, info, step, success, warn};

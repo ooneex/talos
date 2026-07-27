@@ -1,6 +1,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::time::Duration;
 
 use flate2::read::GzDecoder;
 use tar::Archive;
@@ -12,6 +13,8 @@ pub const SKELETON_REPO_URL: &str = "https://github.com/ooneex/skeleton.git";
 pub const TEMPLATES_DIR_ENV: &str = "TALOS_TEMPLATES_DIR";
 
 const SKELETON_REPO_BRANCH: &str = "main";
+
+pub const SKELETON_CACHE_MAX_AGE: Duration = Duration::from_secs(24 * 60 * 60);
 
 fn skeleton_archive_url() -> String {
     format!("https://codeload.github.com/ooneex/skeleton/tar.gz/refs/heads/{SKELETON_REPO_BRANCH}")
@@ -29,6 +32,19 @@ fn is_populated(dir: &Path) -> bool {
     fs::read_dir(dir)
         .map(|mut entries| entries.next().is_some())
         .unwrap_or(false)
+}
+
+pub fn is_cache_stale(dir: &Path) -> bool {
+    let Ok(metadata) = fs::metadata(dir) else {
+        return true;
+    };
+    let Ok(modified) = metadata.modified() else {
+        return true;
+    };
+    match modified.elapsed() {
+        Ok(age) => age > SKELETON_CACHE_MAX_AGE,
+        Err(_) => false,
+    }
 }
 
 fn download_skeleton_archive(destination: &Path, silent: bool) -> bool {
@@ -115,7 +131,7 @@ pub fn read_template(dir: &Path, name: &str) -> Option<String> {
 pub fn clone_skeleton(silent: bool, use_cache: bool) -> Option<PathBuf> {
     let cache_dir = skeleton_cache_dir()?;
 
-    if use_cache && is_populated(&cache_dir) {
+    if use_cache && is_populated(&cache_dir) && !is_cache_stale(&cache_dir) {
         return Some(cache_dir);
     }
 

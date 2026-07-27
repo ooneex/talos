@@ -1,4 +1,8 @@
-use cli::utils::{SKELETON_REPO_URL, clone_skeleton, read_template};
+use cli::utils::{
+    SKELETON_CACHE_MAX_AGE, SKELETON_REPO_URL, clone_skeleton, is_cache_stale, read_template,
+};
+use filetime::{FileTime, set_file_mtime};
+use std::time::{Duration, SystemTime};
 
 #[test]
 fn skeleton_repo_url_points_at_the_ooneex_skeleton_repo() {
@@ -34,4 +38,37 @@ fn clone_skeleton_clones_into_the_user_cache() {
     let cloned = clone_skeleton(true, true).expect("clone should succeed");
     assert!(cloned.ends_with(".talos/skeleton"));
     assert!(cloned.join("package.json").is_file());
+}
+
+#[test]
+fn is_cache_stale_is_true_when_the_directory_is_missing() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let missing = tmp.path().join("does-not-exist");
+
+    assert!(is_cache_stale(&missing));
+}
+
+#[test]
+fn is_cache_stale_is_false_for_a_freshly_created_directory() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+
+    assert!(!is_cache_stale(tmp.path()));
+}
+
+#[test]
+fn is_cache_stale_is_true_when_older_than_the_max_age() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let stale = SystemTime::now() - SKELETON_CACHE_MAX_AGE - Duration::from_secs(60);
+    set_file_mtime(tmp.path(), FileTime::from_system_time(stale)).expect("set mtime");
+
+    assert!(is_cache_stale(tmp.path()));
+}
+
+#[test]
+fn is_cache_stale_is_false_when_within_the_max_age() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let recent = SystemTime::now() - SKELETON_CACHE_MAX_AGE + Duration::from_secs(60 * 60);
+    set_file_mtime(tmp.path(), FileTime::from_system_time(recent)).expect("set mtime");
+
+    assert!(!is_cache_stale(tmp.path()));
 }

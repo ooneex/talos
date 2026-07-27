@@ -24,7 +24,11 @@ pub struct AppInitArgs {
     #[arg(long, default_value_t = false)]
     pub silent: bool,
 
-    #[arg(long, default_value_t = false)]
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Bypass the skeleton cache and re-download templates (the cache otherwise auto-refreshes after 24h)"
+    )]
     pub no_cache: bool,
 }
 
