@@ -37,12 +37,7 @@ pub fn priority_name(priority: Option<i64>) -> Option<String> {
 
 impl LinearIssue {
     fn from_json(issue: &Value) -> Self {
-        let string_field = |key: &str| {
-            issue
-                .get(key)
-                .and_then(Value::as_str)
-                .map(str::to_string)
-        };
+        let string_field = |key: &str| issue.get(key).and_then(Value::as_str).map(str::to_string);
 
         let state = issue
             .get("state")
@@ -57,9 +52,7 @@ impl LinearIssue {
             .map(|nodes| {
                 nodes
                     .iter()
-                    .filter_map(|node| {
-                        node.get("name").and_then(Value::as_str).map(str::to_string)
-                    })
+                    .filter_map(|node| node.get("name").and_then(Value::as_str).map(str::to_string))
                     .collect()
             })
             .unwrap_or_default();

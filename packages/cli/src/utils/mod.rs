@@ -3,6 +3,7 @@ mod commitlint;
 mod concurrently;
 mod credentials;
 mod git;
+pub mod github;
 mod index_exports;
 mod issue;
 pub mod linear;
@@ -17,6 +18,7 @@ mod monorepo_task;
 mod parallel;
 mod process;
 mod prompts;
+mod provider;
 mod run_module_scripts;
 mod runnable_modules;
 mod rust_module;
@@ -65,6 +67,7 @@ pub use prompts::{
     ask_route_path, ask_select, resolve_name_and_destination, validate_destination, validate_name,
     validate_route_method, validate_route_name, validate_route_path,
 };
+pub use provider::Provider;
 pub use run_module_scripts::{RunModuleScriptsOptions, run_module_scripts};
 pub use runnable_modules::{
     RunnableModule, RunnableModuleType, collect_runnable_modules, select_runnable_modules,

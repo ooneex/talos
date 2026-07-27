@@ -1,5 +1,6 @@
 use clap::Parser;
 use cli::commands::issue_pull::IssuePullArgs;
+use cli::utils::Provider;
 
 #[derive(Parser)]
 struct TestCli {
@@ -10,12 +11,21 @@ struct TestCli {
 #[test]
 fn issue_pull_parses_all_flags() {
     let cli = TestCli::try_parse_from([
-        "talos", "--id", "ABC-123", "--module", "user", "--cwd", "./here",
+        "talos",
+        "--id",
+        "ABC-123",
+        "--module",
+        "user",
+        "--provider",
+        "github",
+        "--cwd",
+        "./here",
     ])
     .expect("valid arguments should parse");
 
     assert_eq!(cli.args.id, vec!["ABC-123".to_string()]);
     assert_eq!(cli.args.module.as_deref(), Some("user"));
+    assert_eq!(cli.args.provider, Provider::Github);
     assert_eq!(cli.args.cwd.as_deref(), Some("./here"));
 }
 
@@ -49,6 +59,20 @@ fn issue_pull_defaults_are_empty() {
     assert!(cli.args.id.is_empty());
     assert!(cli.args.module.is_none());
     assert!(cli.args.cwd.is_none());
+    assert_eq!(cli.args.provider, Provider::Linear);
+}
+
+#[test]
+fn issue_pull_parses_github_provider() {
+    let cli = TestCli::try_parse_from(["talos", "--id", "123", "--provider", "github"])
+        .expect("github provider should parse");
+
+    assert_eq!(cli.args.provider, Provider::Github);
+}
+
+#[test]
+fn issue_pull_rejects_unknown_provider() {
+    assert!(TestCli::try_parse_from(["talos", "--id", "1", "--provider", "gitlab"]).is_err());
 }
 
 #[test]

@@ -9,8 +9,9 @@ struct TestCli {
 
 #[test]
 fn admin_remove_parses_all_flags() {
-    let cli = TestCli::try_parse_from(["talos", "--name", "MyAdmin", "--cwd", "./here", "--silent"])
-        .expect("valid arguments should parse");
+    let cli =
+        TestCli::try_parse_from(["talos", "--name", "MyAdmin", "--cwd", "./here", "--silent"])
+            .expect("valid arguments should parse");
 
     assert_eq!(cli.args.name.as_deref(), Some("MyAdmin"));
     assert_eq!(cli.args.cwd.as_deref(), Some("./here"));

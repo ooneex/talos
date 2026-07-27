@@ -4,7 +4,8 @@ use clap::Args;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
-use crate::utils::{current_dir, read_credentials};
+use crate::utils::github;
+use crate::utils::{Provider, current_dir, read_credentials};
 
 #[derive(Default, Deserialize, Serialize, Clone)]
 struct IssueComment {
@@ -39,6 +40,10 @@ pub struct IssuePushArgs {
 
     #[arg(long)]
     pub module: Option<String>,
+
+    /// Issue tracker to push to.
+    #[arg(long, value_enum, default_value_t = Provider::Linear)]
+    pub provider: Provider,
 
     #[arg(long)]
     pub cwd: Option<String>,
@@ -350,6 +355,76 @@ fn push_issue(token: &str, module: &str, issues_dir: &Path, file_path: &Path, id
     true
 }
 
+/// Push a single local issue file to GitHub via the `gh` CLI, creating it when
+/// it does not yet exist there and updating it in place when it does. Returns
+/// `true` on success.
+fn push_issue_github(module: &str, issues_dir: &Path, file_path: &Path, id: &str) -> bool {
+    let Ok(content) = std::fs::read_to_string(file_path) else {
+        crate::utils::error(format!("Failed to read {}", file_path.display()));
+        return false;
+    };
+    let parsed: ParsedIssue = serde_yaml::from_str(&content).unwrap_or_default();
+    let module = parsed.module.as_deref().unwrap_or(module);
+    let description = build_description(&parsed, module);
+    let labels = parsed.labels.clone();
+
+    let existing_number = parsed
+        .id
+        .as_deref()
+        .or(Some(id))
+        .map(|value| value.trim().trim_start_matches('#').to_string())
+        .filter(|value| !value.is_empty() && value.chars().all(|c| c.is_ascii_digit()))
+        .filter(|value| github::issue_state(value).is_some());
+
+    if let Some(number) = existing_number {
+        if !github::update_issue(&number, parsed.title.as_deref(), &description, &labels) {
+            crate::utils::error(format!("Failed to update issue #{number} in GitHub"));
+            return false;
+        }
+        github::set_state(&number, parsed.state.as_deref());
+        let existing = github::comment_bodies(&number);
+        for comment in parsed.comments.iter().filter(|comment| {
+            !comment.message.trim().is_empty() && !existing.contains(&comment.message)
+        }) {
+            github::add_comment(&number, &comment.message);
+        }
+        crate::utils::success(format!("Issue #{number} updated in GitHub"));
+        return true;
+    }
+
+    let Some(title) = parsed.title.as_deref() else {
+        crate::utils::error(format!("Issue {id} has no title; cannot create in GitHub"));
+        return false;
+    };
+    let Some(number) = github::create_issue(title, &description, &labels) else {
+        crate::utils::error(format!("Failed to create issue {id} in GitHub"));
+        return false;
+    };
+    github::set_state(&number, parsed.state.as_deref());
+    for comment in parsed
+        .comments
+        .iter()
+        .filter(|comment| !comment.message.trim().is_empty())
+    {
+        github::add_comment(&number, &comment.message);
+    }
+
+    if number != id {
+        let new_file_path = issues_dir.join(format!("{number}.yml"));
+        let mut updated = parsed.clone();
+        updated.id = Some(number.clone());
+        if let Ok(yaml) = serde_yaml::to_string(&updated) {
+            let _ = std::fs::write(&new_file_path, yaml);
+            let _ = std::fs::remove_file(file_path);
+            crate::utils::success(format!(
+                "modules/{module}/issues/{id}.yml renamed to {number}.yml"
+            ));
+        }
+    }
+    crate::utils::success(format!("Issue #{number} created in GitHub"));
+    true
+}
+
 pub fn run(args: &IssuePushArgs) {
     let ids: Vec<String> = args
         .id
@@ -372,13 +447,24 @@ pub fn run(args: &IssuePushArgs) {
         .unwrap_or_else(current_dir);
     let modules_dir = cwd.join("modules");
 
-    let token = match read_linear_token() {
-        Some(token) => token,
-        None => {
-            crate::utils::error(
-                "No Linear credentials found. Run `talos linear:credentials:create`",
-            );
-            std::process::exit(1);
+    let token = match args.provider {
+        Provider::Linear => match read_linear_token() {
+            Some(token) => Some(token),
+            None => {
+                crate::utils::error(
+                    "No Linear credentials found. Run `talos linear:credentials:create`",
+                );
+                std::process::exit(1);
+            }
+        },
+        Provider::Github => {
+            if !github::is_available() {
+                crate::utils::error(
+                    "GitHub CLI (`gh`) not found. Install it and run `gh auth login`",
+                );
+                std::process::exit(1);
+            }
+            None
         }
     };
 
@@ -394,7 +480,17 @@ pub fn run(args: &IssuePushArgs) {
             .parent()
             .map(Path::to_path_buf)
             .unwrap_or_else(|| modules_dir.join(&module).join("issues"));
-        if !push_issue(&token, &module, &issues_dir, &file_path, id) {
+        let pushed = match args.provider {
+            Provider::Linear => push_issue(
+                token.as_deref().unwrap_or_default(),
+                &module,
+                &issues_dir,
+                &file_path,
+                id,
+            ),
+            Provider::Github => push_issue_github(&module, &issues_dir, &file_path, id),
+        };
+        if !pushed {
             failures += 1;
         }
     }
