@@ -50,6 +50,7 @@ fn outcome(id: CheckId, status: CheckStatus, summary: &str) -> CheckOutcome {
         details: Vec::new(),
         hints: Vec::new(),
         duration_ms: 10,
+        cached: false,
     }
 }
 

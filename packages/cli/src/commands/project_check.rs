@@ -7,31 +7,50 @@
 //! and the individual commands. The checks that only read the repository live
 //! in the submodules next to this file.
 
+pub mod artifacts;
+pub mod assets;
 pub mod asynchrony;
 pub mod boundaries;
 pub mod branches;
 pub mod bundle;
+pub mod cache;
 pub mod complexity;
 pub mod container;
 pub mod contrast;
 pub mod conventions;
+pub mod crons;
 pub mod dependencies;
 pub mod docker;
 pub mod docs;
 pub mod e2e_coverage;
 pub mod entities;
 pub mod env;
+pub mod events;
+pub mod exceptions;
+pub mod flags;
+pub mod folders;
 pub mod git;
 pub mod graph;
 pub mod imports;
+pub mod indexes;
 pub mod lockfile;
+pub mod logging;
+pub mod mailers;
+pub mod middlewares;
 pub mod migrations;
 pub mod modules;
+pub mod openapi;
 pub mod orphans;
 pub mod outdated;
+pub mod pagination;
+pub mod permissions;
+pub mod queries;
+pub mod queues;
 pub mod registration;
+pub mod repositories;
 pub mod restricted;
 pub mod roles;
+pub mod router;
 pub mod routes;
 pub mod sdk;
 pub mod secrets;
@@ -39,18 +58,27 @@ pub mod sql;
 pub mod stories;
 pub mod structure;
 pub mod tests;
+pub mod todos;
+pub mod tokens;
+pub mod transactions;
 pub mod translations;
 pub mod tsconfig;
 pub mod validation;
+pub mod workflows;
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::time::Instant;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
+use std::thread::JoinHandle;
+use std::time::{Duration, Instant};
 
 use clap::Args;
 use console::style;
+use rayon::prelude::*;
 use serde_json::{Value, json};
 
 use crate::commands::issue_check::{self, CheckOptions};
@@ -110,11 +138,11 @@ const MAX_SCANNED_FILE_BYTES: u64 = 512 * 1024;
 
 #[derive(Args, Debug, Default, Clone)]
 pub struct ProjectCheckArgs {
-    /// Only run these checks (comma-separated: workspace, structure, tsconfig, lockfile, conventions, imports, boundaries, restricted, container, registration, routes, validation, roles, entities, sql, async, complexity, orphans, env, dependencies, outdated, docker, migrations, accessibility, contrast, translations, stories, sdk, tests, e2e-coverage, docs, bundle, security, secrets, git, issues, branches, commits, hygiene, e2e).
+    /// Only run these checks (comma-separated). Accepts a category — foundation, architecture, api, data, runtime, frontend, quality, supply-chain, process — or a check: workspace, structure, folders, tsconfig, lockfile, conventions, imports, boundaries, restricted, container, registration, middlewares, routes, openapi, pagination, validation, roles, permissions, entities, indexes, repositories, transactions, sql, async, exceptions, logging, complexity, orphans, events, queues, crons, workflows, mailers, flags, env, dependencies, outdated, docker, migrations, accessibility, contrast, tokens, assets, translations, stories, router, queries, sdk, tests, e2e-coverage, docs, bundle, security, secrets, git, issues, todos, branches, commits, hygiene, e2e.
     #[arg(long)]
     pub only: Option<String>,
 
-    /// Skip these checks (comma-separated).
+    /// Skip these checks or categories (comma-separated).
     #[arg(long)]
     pub skip: Option<String>,
 
@@ -167,6 +195,7 @@ pub struct ProjectCheckArgs {
 pub enum CheckId {
     Workspace,
     Structure,
+    Folders,
     Tsconfig,
     Lockfile,
     Conventions,
@@ -175,14 +204,29 @@ pub enum CheckId {
     Restricted,
     Container,
     Registration,
+    Middlewares,
     Routes,
+    Openapi,
+    Pagination,
     Validation,
     Roles,
+    Permissions,
     Entities,
+    Indexes,
+    Repositories,
+    Transactions,
     Sql,
     Async,
+    Exceptions,
+    Logging,
     Complexity,
     Orphans,
+    Events,
+    Queues,
+    Crons,
+    Workflows,
+    Mailers,
+    Flags,
     Env,
     Dependencies,
     Outdated,
@@ -190,8 +234,12 @@ pub enum CheckId {
     Migrations,
     Accessibility,
     Contrast,
+    Tokens,
+    Assets,
     Translations,
     Stories,
+    Router,
+    Queries,
     Sdk,
     Tests,
     E2eCoverage,
@@ -201,19 +249,133 @@ pub enum CheckId {
     Secrets,
     Git,
     Issues,
+    Todos,
     Branches,
     Commits,
     Hygiene,
     E2e,
 }
 
+/// How far into the workspace a check reaches.
+///
+/// This is what gives the cache its granularity: an entry only records the
+/// fingerprints of the members its check could have read, so editing a design
+/// system does not invalidate `entities`, and writing a migration does not
+/// invalidate `tokens`.
+///
+/// **The reach must be a superset of what the check actually reads.** Narrowing
+/// it wrongly is the one way this cache can serve a stale answer, which is why
+/// `Workspace` is the default and why a check only earns a narrower one by
+/// visibly filtering its module list down to that set.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Reads {
+    /// Every module and package, plus the root.
+    Workspace,
+    /// Only the modules the container loads — `module`, `api`, `microservice`,
+    /// `swagger`.
+    Backend,
+    /// Only the modules that ship a browser bundle — `design`, `spa`, `admin`,
+    /// `storybook`.
+    Frontend,
+}
+
+/// The dimension a check belongs to.
+///
+/// At sixty checks a flat list is no longer something anyone reads, and
+/// `--only` is no longer something anyone types in full. A category is both the
+/// heading the report groups under and a name `--only` and `--skip` accept in
+/// place of the checks it holds.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Category {
+    Foundation,
+    Architecture,
+    Api,
+    Data,
+    Runtime,
+    Frontend,
+    Quality,
+    SupplyChain,
+    Process,
+}
+
+impl Category {
+    pub const ALL: [Category; 9] = [
+        Category::Foundation,
+        Category::Architecture,
+        Category::Api,
+        Category::Data,
+        Category::Runtime,
+        Category::Frontend,
+        Category::Quality,
+        Category::SupplyChain,
+        Category::Process,
+    ];
+
+    pub fn key(self) -> &'static str {
+        match self {
+            Category::Foundation => "foundation",
+            Category::Architecture => "architecture",
+            Category::Api => "api",
+            Category::Data => "data",
+            Category::Runtime => "runtime",
+            Category::Frontend => "frontend",
+            Category::Quality => "quality",
+            Category::SupplyChain => "supply-chain",
+            Category::Process => "process",
+        }
+    }
+
+    pub fn title(self) -> &'static str {
+        match self {
+            Category::Foundation => "Foundation",
+            Category::Architecture => "Architecture",
+            Category::Api => "API",
+            Category::Data => "Data",
+            Category::Runtime => "Runtime",
+            Category::Frontend => "Front-end",
+            Category::Quality => "Quality",
+            Category::SupplyChain => "Supply chain",
+            Category::Process => "Process",
+        }
+    }
+
+    /// Resolve a category name, accepting the obvious aliases.
+    ///
+    /// No category is spelled the way a check is: `workspace` and `security`
+    /// already name one check each, so the groups holding them are `foundation`
+    /// and `supply-chain` and the bare words keep meaning what they always did.
+    pub fn from_key(value: &str) -> Option<Self> {
+        match value.trim().to_ascii_lowercase().as_str() {
+            "foundation" | "workspace-group" | "monorepo-group" => Some(Category::Foundation),
+            "architecture" | "arch" | "layers" => Some(Category::Architecture),
+            "api" | "http" | "endpoints-group" => Some(Category::Api),
+            "data" | "database" | "persistence" => Some(Category::Data),
+            "runtime" | "framework" | "wiring" => Some(Category::Runtime),
+            "frontend" | "front-end" | "ui" => Some(Category::Frontend),
+            "quality" | "coverage-group" => Some(Category::Quality),
+            "supply-chain" | "security-group" | "dependencies-group" => Some(Category::SupplyChain),
+            "process" | "workflow-group" => Some(Category::Process),
+            _ => None,
+        }
+    }
+
+    /// The checks the category holds, in execution order.
+    pub fn checks(self) -> Vec<CheckId> {
+        CheckId::ALL
+            .into_iter()
+            .filter(|id| id.category() == self)
+            .collect()
+    }
+}
+
 impl CheckId {
     /// Every check, in execution order. The workspace runs first because the
     /// install it performs is what makes the other tools available, and the
     /// end-to-end suite runs last because it needs the build they produce.
-    pub const ALL: [CheckId; 40] = [
+    pub const ALL: [CheckId; 61] = [
         CheckId::Workspace,
         CheckId::Structure,
+        CheckId::Folders,
         CheckId::Tsconfig,
         CheckId::Lockfile,
         CheckId::Conventions,
@@ -222,14 +384,29 @@ impl CheckId {
         CheckId::Restricted,
         CheckId::Container,
         CheckId::Registration,
+        CheckId::Middlewares,
         CheckId::Routes,
+        CheckId::Openapi,
+        CheckId::Pagination,
         CheckId::Validation,
         CheckId::Roles,
+        CheckId::Permissions,
         CheckId::Entities,
+        CheckId::Indexes,
+        CheckId::Repositories,
+        CheckId::Transactions,
         CheckId::Sql,
         CheckId::Async,
+        CheckId::Exceptions,
+        CheckId::Logging,
         CheckId::Complexity,
         CheckId::Orphans,
+        CheckId::Events,
+        CheckId::Queues,
+        CheckId::Crons,
+        CheckId::Workflows,
+        CheckId::Mailers,
+        CheckId::Flags,
         CheckId::Env,
         CheckId::Dependencies,
         CheckId::Outdated,
@@ -237,8 +414,12 @@ impl CheckId {
         CheckId::Migrations,
         CheckId::Accessibility,
         CheckId::Contrast,
+        CheckId::Tokens,
+        CheckId::Assets,
         CheckId::Translations,
         CheckId::Stories,
+        CheckId::Router,
+        CheckId::Queries,
         CheckId::Sdk,
         CheckId::Tests,
         CheckId::E2eCoverage,
@@ -248,6 +429,7 @@ impl CheckId {
         CheckId::Secrets,
         CheckId::Git,
         CheckId::Issues,
+        CheckId::Todos,
         CheckId::Branches,
         CheckId::Commits,
         CheckId::Hygiene,
@@ -257,9 +439,10 @@ impl CheckId {
     /// Checks that run when nothing is requested explicitly. The end-to-end
     /// suite is opt-in because it boots the application, and the outdated check
     /// because it queries the public registries for every dependency.
-    pub const DEFAULT: [CheckId; 38] = [
+    pub const DEFAULT: [CheckId; 59] = [
         CheckId::Workspace,
         CheckId::Structure,
+        CheckId::Folders,
         CheckId::Tsconfig,
         CheckId::Lockfile,
         CheckId::Conventions,
@@ -268,22 +451,41 @@ impl CheckId {
         CheckId::Restricted,
         CheckId::Container,
         CheckId::Registration,
+        CheckId::Middlewares,
         CheckId::Routes,
+        CheckId::Openapi,
+        CheckId::Pagination,
         CheckId::Validation,
         CheckId::Roles,
+        CheckId::Permissions,
         CheckId::Entities,
+        CheckId::Indexes,
+        CheckId::Repositories,
+        CheckId::Transactions,
         CheckId::Sql,
         CheckId::Async,
+        CheckId::Exceptions,
+        CheckId::Logging,
         CheckId::Complexity,
         CheckId::Orphans,
+        CheckId::Events,
+        CheckId::Queues,
+        CheckId::Crons,
+        CheckId::Workflows,
+        CheckId::Mailers,
+        CheckId::Flags,
         CheckId::Env,
         CheckId::Dependencies,
         CheckId::Docker,
         CheckId::Migrations,
         CheckId::Accessibility,
         CheckId::Contrast,
+        CheckId::Tokens,
+        CheckId::Assets,
         CheckId::Translations,
         CheckId::Stories,
+        CheckId::Router,
+        CheckId::Queries,
         CheckId::Sdk,
         CheckId::Tests,
         CheckId::E2eCoverage,
@@ -293,15 +495,89 @@ impl CheckId {
         CheckId::Secrets,
         CheckId::Git,
         CheckId::Issues,
+        CheckId::Todos,
         CheckId::Branches,
         CheckId::Commits,
         CheckId::Hygiene,
     ];
 
+    /// The dimension the check belongs to.
+    pub fn category(self) -> Category {
+        match self {
+            CheckId::Workspace
+            | CheckId::Structure
+            | CheckId::Tsconfig
+            | CheckId::Lockfile
+            | CheckId::Dependencies
+            | CheckId::Outdated
+            | CheckId::Docker
+            | CheckId::Git
+            | CheckId::Bundle => Category::Foundation,
+
+            CheckId::Folders
+            | CheckId::Conventions
+            | CheckId::Imports
+            | CheckId::Boundaries
+            | CheckId::Restricted
+            | CheckId::Container
+            | CheckId::Registration
+            | CheckId::Complexity
+            | CheckId::Orphans => Category::Architecture,
+
+            CheckId::Middlewares
+            | CheckId::Routes
+            | CheckId::Openapi
+            | CheckId::Pagination
+            | CheckId::Validation
+            | CheckId::Roles
+            | CheckId::Permissions
+            | CheckId::Sdk => Category::Api,
+
+            CheckId::Entities
+            | CheckId::Indexes
+            | CheckId::Repositories
+            | CheckId::Transactions
+            | CheckId::Sql
+            | CheckId::Migrations => Category::Data,
+
+            CheckId::Events
+            | CheckId::Queues
+            | CheckId::Crons
+            | CheckId::Workflows
+            | CheckId::Mailers
+            | CheckId::Flags
+            | CheckId::Async
+            | CheckId::Exceptions
+            | CheckId::Logging
+            | CheckId::Env => Category::Runtime,
+
+            CheckId::Accessibility
+            | CheckId::Contrast
+            | CheckId::Tokens
+            | CheckId::Assets
+            | CheckId::Translations
+            | CheckId::Stories
+            | CheckId::Router
+            | CheckId::Queries => Category::Frontend,
+
+            CheckId::Tests
+            | CheckId::E2eCoverage
+            | CheckId::Docs
+            | CheckId::Hygiene
+            | CheckId::Todos
+            | CheckId::E2e => Category::Quality,
+
+            CheckId::Security | CheckId::Secrets => Category::SupplyChain,
+
+            CheckId::Issues | CheckId::Branches | CheckId::Commits => Category::Process,
+        }
+    }
+
     pub fn key(self) -> &'static str {
         match self {
             CheckId::Workspace => "workspace",
             CheckId::Structure => "structure",
+            CheckId::Folders => "folders",
             CheckId::Tsconfig => "tsconfig",
             CheckId::Lockfile => "lockfile",
             CheckId::Conventions => "conventions",
@@ -310,14 +586,29 @@ impl CheckId {
             CheckId::Restricted => "restricted",
             CheckId::Container => "container",
             CheckId::Registration => "registration",
+            CheckId::Middlewares => "middlewares",
             CheckId::Routes => "routes",
+            CheckId::Openapi => "openapi",
+            CheckId::Pagination => "pagination",
             CheckId::Validation => "validation",
             CheckId::Roles => "roles",
+            CheckId::Permissions => "permissions",
             CheckId::Entities => "entities",
+            CheckId::Indexes => "indexes",
+            CheckId::Repositories => "repositories",
+            CheckId::Transactions => "transactions",
             CheckId::Sql => "sql",
             CheckId::Async => "async",
+            CheckId::Exceptions => "exceptions",
+            CheckId::Logging => "logging",
             CheckId::Complexity => "complexity",
             CheckId::Orphans => "orphans",
+            CheckId::Events => "events",
+            CheckId::Queues => "queues",
+            CheckId::Crons => "crons",
+            CheckId::Workflows => "workflows",
+            CheckId::Mailers => "mailers",
+            CheckId::Flags => "flags",
             CheckId::Env => "env",
             CheckId::Dependencies => "dependencies",
             CheckId::Outdated => "outdated",
@@ -325,8 +616,12 @@ impl CheckId {
             CheckId::Migrations => "migrations",
             CheckId::Accessibility => "accessibility",
             CheckId::Contrast => "contrast",
+            CheckId::Tokens => "tokens",
+            CheckId::Assets => "assets",
             CheckId::Translations => "translations",
             CheckId::Stories => "stories",
+            CheckId::Router => "router",
+            CheckId::Queries => "queries",
             CheckId::Sdk => "sdk",
             CheckId::Tests => "tests",
             CheckId::E2eCoverage => "e2e-coverage",
@@ -336,6 +631,7 @@ impl CheckId {
             CheckId::Secrets => "secrets",
             CheckId::Git => "git",
             CheckId::Issues => "issues",
+            CheckId::Todos => "todos",
             CheckId::Branches => "branches",
             CheckId::Commits => "commits",
             CheckId::Hygiene => "hygiene",
@@ -347,6 +643,7 @@ impl CheckId {
         match self {
             CheckId::Workspace => "Workspace",
             CheckId::Structure => "Structure",
+            CheckId::Folders => "Folders",
             CheckId::Tsconfig => "Tsconfig",
             CheckId::Lockfile => "Lockfile",
             CheckId::Conventions => "Conventions",
@@ -355,14 +652,29 @@ impl CheckId {
             CheckId::Restricted => "Restricted",
             CheckId::Container => "Container",
             CheckId::Registration => "Registration",
+            CheckId::Middlewares => "Middlewares",
             CheckId::Routes => "Routes",
+            CheckId::Openapi => "OpenAPI",
+            CheckId::Pagination => "Pagination",
             CheckId::Validation => "Validation",
             CheckId::Roles => "Roles",
+            CheckId::Permissions => "Permissions",
             CheckId::Entities => "Entities",
+            CheckId::Indexes => "Indexes",
+            CheckId::Repositories => "Repositories",
+            CheckId::Transactions => "Transactions",
             CheckId::Sql => "SQL",
             CheckId::Async => "Async",
+            CheckId::Exceptions => "Exceptions",
+            CheckId::Logging => "Logging",
             CheckId::Complexity => "Complexity",
             CheckId::Orphans => "Orphans",
+            CheckId::Events => "Events",
+            CheckId::Queues => "Queues",
+            CheckId::Crons => "Crons",
+            CheckId::Workflows => "Workflows",
+            CheckId::Mailers => "Mailers",
+            CheckId::Flags => "Feature flags",
             CheckId::Env => "Env",
             CheckId::Dependencies => "Dependencies",
             CheckId::Outdated => "Outdated",
@@ -370,8 +682,12 @@ impl CheckId {
             CheckId::Migrations => "Migrations",
             CheckId::Accessibility => "Accessibility",
             CheckId::Contrast => "Contrast",
+            CheckId::Tokens => "Tokens",
+            CheckId::Assets => "Assets",
             CheckId::Translations => "Translations",
             CheckId::Stories => "Stories",
+            CheckId::Router => "Router",
+            CheckId::Queries => "Queries",
             CheckId::Sdk => "SDK",
             CheckId::Tests => "Tests",
             CheckId::E2eCoverage => "E2E coverage",
@@ -381,6 +697,7 @@ impl CheckId {
             CheckId::Secrets => "Secrets",
             CheckId::Git => "Git",
             CheckId::Issues => "Issues",
+            CheckId::Todos => "Todos",
             CheckId::Branches => "Branches",
             CheckId::Commits => "Commits",
             CheckId::Hygiene => "Hygiene",
@@ -393,6 +710,7 @@ impl CheckId {
         match self {
             CheckId::Workspace => "install, build, fmt, lint and test every package and module",
             CheckId::Structure => "module manifests, package names and path aliases",
+            CheckId::Folders => "every folder against the layout its module type allows",
             CheckId::Tsconfig => "compiler settings inherited from the root config",
             CheckId::Lockfile => "one lockfile, covering every manifest",
             CheckId::Conventions => "DI naming, typed env access and type conventions",
@@ -401,14 +719,29 @@ impl CheckId {
             CheckId::Restricted => "packages imported where they do not belong",
             CheckId::Container => "every injected class bound into the container",
             CheckId::Registration => "classes listed in the module that loads them",
+            CheckId::Middlewares => "middlewares that hand their context back",
             CheckId::Routes => "unique endpoints, named, versioned and guarded",
+            CheckId::Openapi => "the published specification against the controllers",
+            CheckId::Pagination => "collection routes that bound what they return",
             CheckId::Validation => "route types against the schemas that guard them",
             CheckId::Roles => "route guards against the declared role hierarchy",
+            CheckId::Permissions => "permissions that decide something",
             CheckId::Entities => "entity tables and columns against the migrations",
+            CheckId::Indexes => "key columns against the indexes the migrations create",
+            CheckId::Repositories => "queries kept behind the repository layer",
+            CheckId::Transactions => "methods writing more than once, atomically",
             CheckId::Sql => "values interpolated into a raw query",
             CheckId::Async => "awaits inside a loop and unawaited promises",
+            CheckId::Exceptions => "failures thrown with a code, and none swallowed",
+            CheckId::Logging => "console calls and secrets written to a log",
             CheckId::Complexity => "file, function, parameter and nesting budgets",
             CheckId::Orphans => "files and exports nothing reaches",
+            CheckId::Events => "channels with one subscriber and a producer",
+            CheckId::Queues => "queues that are named, served and monitored",
+            CheckId::Crons => "schedules that convert to a crontab expression",
+            CheckId::Workflows => "transitions belonging to a workflow that runs them",
+            CheckId::Mailers => "senders against the templates they render",
+            CheckId::Flags => "flag keys, and whether anything still reads them",
             CheckId::Env => "local .env.yml files against their examples",
             CheckId::Dependencies => "one version per dependency, declared where used",
             CheckId::Outdated => "declared versions against the public registries",
@@ -416,8 +749,12 @@ impl CheckId {
             CheckId::Migrations => "migration ordering, reversibility and seed data",
             CheckId::Accessibility => "a11y lint of every UI module",
             CheckId::Contrast => "WCAG contrast of every design token pair",
+            CheckId::Tokens => "colours and sizes written outside the design system",
+            CheckId::Assets => "shipped files nothing references, and their weight",
             CheckId::Translations => "locale parity and key usage of every dictionary",
             CheckId::Stories => "a story for every design-system component",
+            CheckId::Router => "route files against the tree the router builds",
+            CheckId::Queries => "cache keys read from a factory, and invalidated",
             CheckId::Sdk => "generated clients against the controllers they wrap",
             CheckId::Tests => "a spec for every source file that holds behaviour",
             CheckId::E2eCoverage => "an end-to-end suite for every module that serves",
@@ -427,6 +764,7 @@ impl CheckId {
             CheckId::Secrets => "credentials in the working tree",
             CheckId::Git => "build output and large files in the index",
             CheckId::Issues => "issue YAML conventions",
+            CheckId::Todos => "markers against the issues they name",
             CheckId::Branches => "issue branches against the branches that exist",
             CheckId::Commits => "conventional commit messages",
             CheckId::Hygiene => "conflict markers, focused tests and bare TODOs",
@@ -439,11 +777,125 @@ impl CheckId {
         !Self::DEFAULT.contains(&self)
     }
 
+    /// Whether the check's result is a pure function of the working tree, and
+    /// therefore worth caching.
+    ///
+    /// Four kinds are not. The workspace and end-to-end checks *do* something —
+    /// install, build, lint, test, boot the app — so replaying a stored verdict
+    /// would skip the work rather than repeat it, and both already cache
+    /// themselves at the task level. The security and outdated checks ask the
+    /// network, and an advisory published this morning changes their answer
+    /// with no file having moved. The git, commits and branches checks read the
+    /// repository rather than the files in it: staging a file, amending a
+    /// commit or deleting a branch changes what they report while every
+    /// fingerprint stays exactly where it was.
+    pub fn cacheable(self) -> bool {
+        !matches!(
+            self,
+            CheckId::Workspace
+                | CheckId::E2e
+                | CheckId::Security
+                | CheckId::Outdated
+                | CheckId::Git
+                | CheckId::Commits
+                | CheckId::Branches
+        )
+    }
+
+    /// The members the check reads, which is what its cache entry is keyed on.
+    ///
+    /// Every check is listed, so adding one is a deliberate decision rather
+    /// than an omission that silently gets the safe answer.
+    pub fn reads(self) -> Reads {
+        match self {
+            // Filter their module list down to the backend with `is_backend`,
+            // and read nothing outside it.
+            CheckId::Middlewares
+            | CheckId::Pagination
+            | CheckId::Permissions
+            | CheckId::Indexes
+            | CheckId::Repositories
+            | CheckId::Transactions
+            | CheckId::Exceptions
+            | CheckId::Events
+            | CheckId::Queues
+            | CheckId::Crons
+            | CheckId::Workflows
+            | CheckId::Mailers
+            | CheckId::Registration => Reads::Backend,
+
+            // Filter down to the modules that ship a browser bundle.
+            CheckId::Accessibility
+            | CheckId::Contrast
+            | CheckId::Tokens
+            | CheckId::Assets
+            | CheckId::Stories
+            | CheckId::Router
+            | CheckId::Queries => Reads::Frontend,
+
+            // Everything else reads whatever the workspace holds — either
+            // because it genuinely walks every member, or because it reads a
+            // manifest of one before deciding it is not interested.
+            CheckId::Workspace
+            | CheckId::Structure
+            | CheckId::Folders
+            | CheckId::Tsconfig
+            | CheckId::Lockfile
+            | CheckId::Conventions
+            | CheckId::Imports
+            | CheckId::Boundaries
+            | CheckId::Restricted
+            | CheckId::Container
+            | CheckId::Routes
+            | CheckId::Openapi
+            | CheckId::Validation
+            | CheckId::Roles
+            | CheckId::Entities
+            | CheckId::Sql
+            | CheckId::Async
+            | CheckId::Logging
+            | CheckId::Complexity
+            | CheckId::Orphans
+            | CheckId::Flags
+            | CheckId::Env
+            | CheckId::Dependencies
+            | CheckId::Outdated
+            | CheckId::Docker
+            | CheckId::Migrations
+            | CheckId::Translations
+            | CheckId::Sdk
+            | CheckId::Tests
+            | CheckId::E2eCoverage
+            | CheckId::Docs
+            | CheckId::Bundle
+            | CheckId::Security
+            | CheckId::Secrets
+            | CheckId::Git
+            | CheckId::Issues
+            | CheckId::Todos
+            | CheckId::Branches
+            | CheckId::Commits
+            | CheckId::Hygiene
+            | CheckId::E2e => Reads::Workspace,
+        }
+    }
+
+    /// Whether the check has to run on its own.
+    ///
+    /// The workspace check owns the terminal while it streams a task view, and
+    /// its install is what puts the tools the other checks shell out to on
+    /// disk. The end-to-end suite boots the application and binds its ports.
+    /// Everything else is a read, and reads can all happen at once.
+    pub fn is_serial(self) -> bool {
+        matches!(self, CheckId::Workspace | CheckId::E2e)
+    }
+
     /// Resolve a user-provided name, accepting the obvious aliases.
     pub fn from_key(value: &str) -> Option<Self> {
         match value.trim().to_ascii_lowercase().as_str() {
             "workspace" | "monorepo" | "build" | "lint" => Some(CheckId::Workspace),
             "structure" | "layout" | "modules" => Some(CheckId::Structure),
+            "folders" | "folder" | "tree" | "directories" => Some(CheckId::Folders),
             "tsconfig" | "typescript" | "compiler" => Some(CheckId::Tsconfig),
             "lockfile" | "lock" | "lockfiles" => Some(CheckId::Lockfile),
             "conventions" | "convention" | "naming" => Some(CheckId::Conventions),
@@ -452,14 +904,29 @@ impl CheckId {
             "restricted" | "banned" | "forbidden" => Some(CheckId::Restricted),
             "container" | "di" | "injection" => Some(CheckId::Container),
             "registration" | "registry" | "wiring" => Some(CheckId::Registration),
+            "middlewares" | "middleware" => Some(CheckId::Middlewares),
             "routes" | "route" | "endpoints" | "controllers" => Some(CheckId::Routes),
+            "openapi" | "swagger" | "spec" => Some(CheckId::Openapi),
+            "pagination" | "paging" | "limits" => Some(CheckId::Pagination),
             "validation" | "validate" | "assert" | "dto" => Some(CheckId::Validation),
-            "roles" | "role" | "permissions" => Some(CheckId::Roles),
+            "roles" | "role" => Some(CheckId::Roles),
+            "permissions" | "permission" | "abilities" => Some(CheckId::Permissions),
             "entities" | "entity" | "schema" => Some(CheckId::Entities),
-            "sql" | "queries" | "injection-sql" => Some(CheckId::Sql),
+            "indexes" | "index" | "indices" => Some(CheckId::Indexes),
+            "repositories" | "repository" | "repos" => Some(CheckId::Repositories),
+            "transactions" | "transaction" | "atomicity" => Some(CheckId::Transactions),
+            "sql" | "injection-sql" => Some(CheckId::Sql),
             "async" | "await" | "concurrency" => Some(CheckId::Async),
+            "exceptions" | "exception" | "errors" | "throw" => Some(CheckId::Exceptions),
+            "logging" | "logs" | "logger" | "console" => Some(CheckId::Logging),
             "complexity" | "size" | "budgets" => Some(CheckId::Complexity),
             "orphans" | "orphan" | "dead-code" | "unused" => Some(CheckId::Orphans),
+            "events" | "event" | "pubsub" => Some(CheckId::Events),
+            "queues" | "queue" | "jobs" => Some(CheckId::Queues),
+            "crons" | "cron" | "schedules" | "cron-jobs" => Some(CheckId::Crons),
+            "workflows" | "workflow" | "transitions" => Some(CheckId::Workflows),
+            "mailers" | "mailer" | "emails" => Some(CheckId::Mailers),
+            "flags" | "flag" | "feature-flags" => Some(CheckId::Flags),
             "env" | "environment" | "dotenv" => Some(CheckId::Env),
             "dependencies" | "deps" | "packages" => Some(CheckId::Dependencies),
             "outdated" | "updates" | "upgrades" => Some(CheckId::Outdated),
@@ -467,17 +934,22 @@ impl CheckId {
             "migrations" | "migration" | "seeds" => Some(CheckId::Migrations),
             "accessibility" | "a11y" => Some(CheckId::Accessibility),
             "contrast" | "colors" | "colours" | "wcag" => Some(CheckId::Contrast),
+            "tokens" | "token" | "design-tokens" => Some(CheckId::Tokens),
+            "assets" | "asset" | "images" | "public" => Some(CheckId::Assets),
             "translations" | "translation" | "i18n" => Some(CheckId::Translations),
             "stories" | "story" | "storybook" => Some(CheckId::Stories),
+            "router" | "routing" | "route-tree" => Some(CheckId::Router),
+            "queries" | "query" | "tanstack" | "cache-keys" => Some(CheckId::Queries),
             "sdk" | "client" => Some(CheckId::Sdk),
             "tests" | "test" | "specs" | "coverage" => Some(CheckId::Tests),
             "e2e-coverage" | "e2e-specs" | "browser-coverage" => Some(CheckId::E2eCoverage),
             "docs" | "doc" | "documentation" | "markdown" => Some(CheckId::Docs),
-            "bundle" | "bundles" | "dist" | "assets" => Some(CheckId::Bundle),
+            "bundle" | "bundles" | "dist" => Some(CheckId::Bundle),
             "security" | "audit" | "vulnerabilities" => Some(CheckId::Security),
             "secrets" | "credentials" => Some(CheckId::Secrets),
-            "git" | "repository" | "gitignore" => Some(CheckId::Git),
+            "git" | "gitignore" => Some(CheckId::Git),
             "issues" | "issue" => Some(CheckId::Issues),
+            "todos" | "todo" | "todos-issues" | "markers" => Some(CheckId::Todos),
             "branches" | "branch" | "worktree" => Some(CheckId::Branches),
             "commits" | "commit" | "commitlint" => Some(CheckId::Commits),
             "hygiene" | "cleanliness" => Some(CheckId::Hygiene),
@@ -502,6 +974,17 @@ impl CheckStatus {
             CheckStatus::Skipped => "skipped",
             CheckStatus::Warned => "warning",
             CheckStatus::Failed => "failed",
+        }
+    }
+
+    /// Read a status back out of a cache entry.
+    pub fn from_label(label: &str) -> Option<Self> {
+        match label {
+            "passed" => Some(CheckStatus::Passed),
+            "skipped" => Some(CheckStatus::Skipped),
+            "warning" => Some(CheckStatus::Warned),
+            "failed" => Some(CheckStatus::Failed),
+            _ => None,
         }
     }
 
@@ -533,6 +1016,9 @@ pub struct CheckOutcome {
     pub details: Vec<String>,
     pub hints: Vec<String>,
     pub duration_ms: u64,
+    /// Whether the outcome was replayed from `var/cache/project` rather than
+    /// computed. It is the duration column that says so in the report.
+    pub cached: bool,
 }
 
 impl CheckOutcome {
@@ -544,6 +1030,7 @@ impl CheckOutcome {
             details: Vec::new(),
             hints: Vec::new(),
             duration_ms: 0,
+            cached: false,
         }
     }
 
@@ -622,9 +1109,20 @@ fn parse_ids(value: Option<&str>) -> Result<Option<BTreeSet<CheckId>>, String> {
 
     let mut ids = BTreeSet::new();
     for name in value.split(',').map(str::trim).filter(|s| !s.is_empty()) {
+        // A category stands for every check it holds, so `--only=frontend` is
+        // the eight front-end checks without naming any of them.
+        if let Some(category) = Category::from_key(name) {
+            ids.extend(category.checks());
+            continue;
+        }
         let Some(id) = CheckId::from_key(name) else {
             return Err(format!(
-                "Unknown check \"{name}\" — expected one of: {}",
+                "Unknown check \"{name}\" — expected a category ({}) or one of: {}",
+                Category::ALL
+                    .iter()
+                    .map(|category| category.key())
+                    .collect::<Vec<_>>()
+                    .join(", "),
                 CheckId::ALL
                     .iter()
                     .map(|id| id.key())
@@ -1760,16 +2258,49 @@ pub fn render_report(report: &ProjectReport) -> String {
     ));
     out.push('\n');
 
-    for outcome in &report.outcomes {
-        out.push_str(&format!(
-            "  {}  {}  {}  {}\n",
-            outcome.status.icon(),
-            style(format!("{:<width$}", outcome.id.title())).bold(),
-            outcome
-                .status
-                .paint(&format!("{:<summary_width$}", outcome.summary)),
-            style(format_duration(outcome.duration_ms)).dim(),
-        ));
+    // Sixty rows in one block is a wall. Grouping them under the dimension they
+    // belong to is what makes the table skimmable again, and a run narrowed to
+    // a single category reads exactly as it did before.
+    let grouped = report
+        .outcomes
+        .iter()
+        .map(|outcome| outcome.id.category())
+        .collect::<BTreeSet<_>>()
+        .len()
+        > 1;
+
+    for category in Category::ALL {
+        let outcomes: Vec<&CheckOutcome> = report
+            .outcomes
+            .iter()
+            .filter(|outcome| outcome.id.category() == category)
+            .collect();
+        if outcomes.is_empty() {
+            continue;
+        }
+
+        if grouped {
+            out.push_str(&format!("  {}\n", style(category.title()).dim().bold()));
+        }
+        for outcome in outcomes {
+            out.push_str(&format!(
+                "  {}  {}  {}  {}\n",
+                outcome.status.icon(),
+                style(format!("{:<width$}", outcome.id.title())).bold(),
+                outcome
+                    .status
+                    .paint(&format!("{:<summary_width$}", outcome.summary)),
+                style(if outcome.cached {
+                    "cached".to_string()
+                } else {
+                    format_duration(outcome.duration_ms)
+                })
+                .dim(),
+            ));
+        }
+        if grouped {
+            out.push('\n');
+        }
     }
 
     for outcome in &report.outcomes {
@@ -1804,6 +2335,14 @@ pub fn render_report(report: &ProjectReport) -> String {
     ];
     if skipped > 0 {
         parts.push(format!("{skipped} skipped"));
+    }
+    let cached = report
+        .outcomes
+        .iter()
+        .filter(|outcome| outcome.cached)
+        .count();
+    if cached > 0 {
+        parts.push(format!("{cached} cached"));
     }
 
     let (icon, summary) = if failed > 0 {
@@ -1846,7 +2385,9 @@ pub fn render_json(report: &ProjectReport) -> String {
             .map(|outcome| json!({
                 "id": outcome.id.key(),
                 "title": outcome.id.title(),
+                "category": outcome.id.category().key(),
                 "status": outcome.status.label(),
+                "cached": outcome.cached,
                 "summary": outcome.summary,
                 "details": outcome.details,
                 "hints": outcome.hints,
@@ -1861,7 +2402,259 @@ pub fn render_json(report: &ProjectReport) -> String {
 // Execution
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Progress
+// ---------------------------------------------------------------------------
+
+/// Frames borrowed from the shared spinner so the two look like one tool.
+const PROGRESS_FRAMES: [&str; 10] = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+const PROGRESS_INTERVAL: Duration = Duration::from_millis(80);
+
+/// How many running checks are named on the progress line before it gives up
+/// and counts the rest.
+const PROGRESS_NAMES: usize = 3;
+
+#[derive(Default)]
+struct ProgressState {
+    done: usize,
+    running: BTreeSet<&'static str>,
+}
+
+/// One line that says how far along the run is.
+///
+/// With the checks running at once there is no longer a place to print a header
+/// before each and a verdict after it — they would interleave into noise. A
+/// single line that counts finished checks and names the ones still going says
+/// the same thing, and the report underneath says the rest.
+struct Progress {
+    state: Option<Arc<(Mutex<ProgressState>, AtomicBool)>>,
+    handle: Option<JoinHandle<()>>,
+    total: usize,
+}
+
+impl Progress {
+    fn start(total: usize, quiet: bool) -> Self {
+        if quiet || !console::Term::stdout().features().is_attended() {
+            return Self {
+                state: None,
+                handle: None,
+                total,
+            };
+        }
+
+        let state = Arc::new((Mutex::new(ProgressState::default()), AtomicBool::new(false)));
+        let rendered = state.clone();
+        print!("\u{1b}[?25l");
+        let handle = std::thread::spawn(move || {
+            let mut frame = 0usize;
+            while !rendered.1.load(Ordering::Relaxed) {
+                let snapshot = rendered
+                    .0
+                    .lock()
+                    .expect("the progress state is not poisoned");
+                let names: Vec<&str> = snapshot
+                    .running
+                    .iter()
+                    .copied()
+                    .take(PROGRESS_NAMES)
+                    .collect();
+                let hidden = snapshot.running.len().saturating_sub(names.len());
+                let mut line = names.join(", ");
+                if hidden > 0 {
+                    line.push_str(&format!(" +{hidden}"));
+                }
+                print!(
+                    "\r\u{1b}[2K{} {}{}",
+                    style(PROGRESS_FRAMES[frame % PROGRESS_FRAMES.len()]).cyan(),
+                    style(format!("{}/{total} checks", snapshot.done)).bold(),
+                    style(if line.is_empty() {
+                        String::new()
+                    } else {
+                        format!("  {line}")
+                    })
+                    .dim()
+                );
+                drop(snapshot);
+                let _ = std::io::stdout().flush();
+                frame += 1;
+                std::thread::sleep(PROGRESS_INTERVAL);
+            }
+        });
+
+        Self {
+            state: Some(state),
+            handle: Some(handle),
+            total,
+        }
+    }
+
+    /// A check that owns the terminal announces itself the old way.
+    fn announce(&self, id: CheckId) {
+        self.clear();
+        println!(
+            "{}{}",
+            style(format!("▸ {}", id.title())).cyan().bold(),
+            style(format!("  {}", id.description())).dim()
+        );
+    }
+
+    fn entered(&self, id: CheckId) {
+        if let Some(state) = &self.state {
+            state
+                .0
+                .lock()
+                .expect("not poisoned")
+                .running
+                .insert(id.key());
+        }
+    }
+
+    fn left(&self, id: CheckId) {
+        if let Some(state) = &self.state {
+            let mut state = state.0.lock().expect("not poisoned");
+            state.running.remove(id.key());
+            state.done += 1;
+        }
+    }
+
+    fn completed(&self) {
+        if let Some(state) = &self.state {
+            state.0.lock().expect("not poisoned").done += 1;
+        }
+    }
+
+    fn clear(&self) {
+        if self.state.is_some() {
+            print!("\r\u{1b}[2K");
+            let _ = std::io::stdout().flush();
+        }
+    }
+
+    /// Consume the progress line. `Drop` is what actually tears it down, so a
+    /// panic mid-run still restores the cursor.
+    fn stop(self) {
+        let _ = self.total;
+    }
+}
+
+impl Drop for Progress {
+    fn drop(&mut self) {
+        let Some(state) = self.state.take() else {
+            // Nothing was ever rendered — in `--json` mode especially, stdout
+            // holds the report and nothing may be written beside it.
+            return;
+        };
+        state.1.store(true, Ordering::Relaxed);
+        if let Some(handle) = self.handle.take() {
+            let _ = handle.join();
+        }
+        print!("\r\u{1b}[2K\u{1b}[?25h");
+        let _ = std::io::stdout().flush();
+    }
+}
+
+/// Run one check, whatever it takes to run it.
+fn dispatch(args: &ProjectCheckArgs, root: &Path, id: CheckId) -> CheckOutcome {
+    match id {
+        CheckId::Workspace => check_workspace(args, root),
+        CheckId::Structure => structure::run(args, root),
+        CheckId::Folders => folders::run(args, root),
+        CheckId::Tsconfig => tsconfig::run(args, root),
+        CheckId::Lockfile => lockfile::run(args, root),
+        CheckId::Conventions => conventions::run(args, root),
+        CheckId::Imports => imports::run(args, root),
+        CheckId::Boundaries => boundaries::run(args, root),
+        CheckId::Restricted => restricted::run(args, root),
+        CheckId::Container => container::run(args, root),
+        CheckId::Registration => registration::run(args, root),
+        CheckId::Middlewares => middlewares::run(args, root),
+        CheckId::Routes => routes::run(args, root),
+        CheckId::Openapi => openapi::run(args, root),
+        CheckId::Pagination => pagination::run(args, root),
+        CheckId::Validation => validation::run(args, root),
+        CheckId::Roles => roles::run(args, root),
+        CheckId::Permissions => permissions::run(args, root),
+        CheckId::Entities => entities::run(args, root),
+        CheckId::Indexes => indexes::run(args, root),
+        CheckId::Repositories => repositories::run(args, root),
+        CheckId::Transactions => transactions::run(args, root),
+        CheckId::Sql => sql::run(args, root),
+        CheckId::Async => asynchrony::run(args, root),
+        CheckId::Exceptions => exceptions::run(args, root),
+        CheckId::Logging => logging::run(args, root),
+        CheckId::Complexity => complexity::run(args, root),
+        CheckId::Orphans => orphans::run(args, root),
+        CheckId::Events => events::run(args, root),
+        CheckId::Queues => queues::run(args, root),
+        CheckId::Crons => crons::run(args, root),
+        CheckId::Workflows => workflows::run(args, root),
+        CheckId::Mailers => mailers::run(args, root),
+        CheckId::Flags => flags::run(args, root),
+        CheckId::Env => env::run(args, root),
+        CheckId::Dependencies => dependencies::run(args, root),
+        CheckId::Outdated => outdated::run(args, root),
+        CheckId::Docker => docker::run(args, root),
+        CheckId::Migrations => migrations::run(args, root),
+        CheckId::Accessibility => check_accessibility(args, root),
+        CheckId::Contrast => contrast::run(args, root),
+        CheckId::Tokens => tokens::run(args, root),
+        CheckId::Assets => assets::run(args, root),
+        CheckId::Translations => translations::run(args, root),
+        CheckId::Stories => stories::run(args, root),
+        CheckId::Router => router::run(args, root),
+        CheckId::Queries => queries::run(args, root),
+        CheckId::Sdk => sdk::run(args, root),
+        CheckId::Tests => tests::run(args, root),
+        CheckId::E2eCoverage => e2e_coverage::run(args, root),
+        CheckId::Docs => docs::run(args, root),
+        CheckId::Bundle => bundle::run(args, root),
+        CheckId::Security => check_security(args, root),
+        CheckId::Secrets => secrets::run(args, root),
+        CheckId::Git => git::run(args, root),
+        CheckId::Issues => check_issues(args, root),
+        CheckId::Todos => todos::run(args, root),
+        CheckId::Branches => branches::run(args, root),
+        CheckId::Commits => check_commits(root),
+        CheckId::Hygiene => check_hygiene(root),
+        CheckId::E2e => check_e2e(args, root),
+    }
+}
+
+/// Run a check, timing it, and reuse the cached outcome when the tree it was
+/// produced from has not moved.
+fn run_check(
+    args: &ProjectCheckArgs,
+    root: &Path,
+    id: CheckId,
+    cache: Option<&(String, cache::Fingerprints)>,
+) -> CheckOutcome {
+    let cache = cache.filter(|_| id.cacheable());
+
+    if let Some((options, fingerprints)) = cache
+        && let Some(entry) = cache::read(root, id)
+        && entry.matches(options, id.reads(), fingerprints)
+        && let Some(outcome) = entry.outcome(id)
+    {
+        return outcome;
+    }
+
+    let started_at = Instant::now();
+    let mut outcome = dispatch(args, root, id);
+    outcome.duration_ms = started_at.elapsed().as_millis() as u64;
+
+    if let Some((options, fingerprints)) = cache {
+        cache::write(root, id, options, fingerprints, &outcome);
+    }
+    outcome
+}
+
 /// Run every selected check and collect the report. Never exits the process.
+///
+/// The reads all happen at once: every check but the workspace gate and the
+/// end-to-end suite only looks at files, so there is nothing to serialise them
+/// for. Those two do run alone — the first because its install is what puts the
+/// tools the others shell out to on disk, the last because it boots the
+/// application — which is also the order they were already in.
 pub fn execute(args: &ProjectCheckArgs, checks: &[CheckId]) -> ProjectReport {
     let root = args
         .cwd
@@ -1869,80 +2662,75 @@ pub fn execute(args: &ProjectCheckArgs, checks: &[CheckId]) -> ProjectReport {
         .map(PathBuf::from)
         .unwrap_or_else(current_dir);
     let started_at = Instant::now();
-    let mut outcomes = Vec::new();
 
-    for (index, id) in checks.iter().enumerate() {
-        if !args.json {
-            println!(
-                "{}{}",
-                style(format!("▸ {}/{}  {}", index + 1, checks.len(), id.title()))
-                    .cyan()
-                    .bold(),
-                style(format!("  {}", id.description())).dim()
-            );
-        }
+    // Fingerprinting is only worth its own walk when something in the run can
+    // actually be served from a cache entry.
+    let hashes = (!args.no_cache && checks.iter().any(|id| id.cacheable()))
+        .then(|| cache::FileHashes::load(&root));
+    let cache = hashes.as_ref().map(|hashes| {
+        let modules = modules::filter_modules(
+            modules::discover_modules(&root),
+            &modules::wanted_names(args.modules.as_deref(), args.packages.as_deref()),
+        );
+        (
+            cache::options_key(args),
+            cache::Fingerprints::build(&root, &modules, hashes),
+        )
+    });
 
-        let check_started_at = Instant::now();
-        let spinner = (!args.json && *id != CheckId::Workspace)
-            .then(|| crate::utils::Spinner::start(format!("Running the {} check", id.key())));
-        let mut outcome = match id {
-            CheckId::Workspace => check_workspace(args, &root),
-            CheckId::Structure => structure::run(args, &root),
-            CheckId::Tsconfig => tsconfig::run(args, &root),
-            CheckId::Lockfile => lockfile::run(args, &root),
-            CheckId::Conventions => conventions::run(args, &root),
-            CheckId::Imports => imports::run(args, &root),
-            CheckId::Boundaries => boundaries::run(args, &root),
-            CheckId::Restricted => restricted::run(args, &root),
-            CheckId::Container => container::run(args, &root),
-            CheckId::Registration => registration::run(args, &root),
-            CheckId::Routes => routes::run(args, &root),
-            CheckId::Validation => validation::run(args, &root),
-            CheckId::Roles => roles::run(args, &root),
-            CheckId::Entities => entities::run(args, &root),
-            CheckId::Sql => sql::run(args, &root),
-            CheckId::Async => asynchrony::run(args, &root),
-            CheckId::Complexity => complexity::run(args, &root),
-            CheckId::Orphans => orphans::run(args, &root),
-            CheckId::Env => env::run(args, &root),
-            CheckId::Dependencies => dependencies::run(args, &root),
-            CheckId::Outdated => outdated::run(args, &root),
-            CheckId::Docker => docker::run(args, &root),
-            CheckId::Migrations => migrations::run(args, &root),
-            CheckId::Accessibility => check_accessibility(args, &root),
-            CheckId::Contrast => contrast::run(args, &root),
-            CheckId::Translations => translations::run(args, &root),
-            CheckId::Stories => stories::run(args, &root),
-            CheckId::Sdk => sdk::run(args, &root),
-            CheckId::Tests => tests::run(args, &root),
-            CheckId::E2eCoverage => e2e_coverage::run(args, &root),
-            CheckId::Docs => docs::run(args, &root),
-            CheckId::Bundle => bundle::run(args, &root),
-            CheckId::Security => check_security(args, &root),
-            CheckId::Secrets => secrets::run(args, &root),
-            CheckId::Git => git::run(args, &root),
-            CheckId::Issues => check_issues(args, &root),
-            CheckId::Branches => branches::run(args, &root),
-            CheckId::Commits => check_commits(&root),
-            CheckId::Hygiene => check_hygiene(&root),
-            CheckId::E2e => check_e2e(args, &root),
-        };
-        drop(spinner);
-        outcome.duration_ms = check_started_at.elapsed().as_millis() as u64;
+    let mut outcomes: Vec<Option<CheckOutcome>> = vec![None; checks.len()];
+    let progress = Progress::start(checks.len(), args.json);
 
-        if !args.json {
-            println!(
-                "  {} {}",
-                outcome.status.icon(),
-                outcome.status.paint(&outcome.summary)
-            );
-        }
-        outcomes.push(outcome);
+    // The workspace gate first, on its own and with the terminal to itself.
+    for (index, id) in checks
+        .iter()
+        .enumerate()
+        .filter(|(_, id)| **id == CheckId::Workspace)
+    {
+        progress.announce(*id);
+        outcomes[index] = Some(run_check(args, &root, *id, cache.as_ref()));
+        progress.completed();
+    }
+
+    let concurrent: Vec<(usize, CheckId)> = checks
+        .iter()
+        .enumerate()
+        .filter(|(_, id)| !id.is_serial())
+        .map(|(index, id)| (index, *id))
+        .collect();
+
+    let done: Vec<(usize, CheckOutcome)> = concurrent
+        .par_iter()
+        .map(|(index, id)| {
+            progress.entered(*id);
+            let outcome = run_check(args, &root, *id, cache.as_ref());
+            progress.left(*id);
+            (*index, outcome)
+        })
+        .collect();
+    for (index, outcome) in done {
+        outcomes[index] = Some(outcome);
+    }
+
+    // The end-to-end suite last: it needs the build the workspace produced.
+    for (index, id) in checks
+        .iter()
+        .enumerate()
+        .filter(|(_, id)| **id == CheckId::E2e)
+    {
+        progress.announce(*id);
+        outcomes[index] = Some(run_check(args, &root, *id, cache.as_ref()));
+        progress.completed();
+    }
+
+    progress.stop();
+    if let Some(hashes) = hashes.as_ref() {
+        hashes.save();
     }
 
     ProjectReport {
         root: root.to_string_lossy().to_string(),
-        outcomes,
+        outcomes: outcomes.into_iter().flatten().collect(),
         duration_ms: started_at.elapsed().as_millis() as u64,
     }
 }
