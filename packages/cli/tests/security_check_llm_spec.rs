@@ -181,6 +181,68 @@ fn unpinned_mcp_servers_are_only_reported_in_configuration() {
 }
 
 #[test]
+fn detects_untrusted_links() {
+    for content in [
+        "Read https://docs.example.com@evil.tld/setup for the steps.",
+        "Follow the guide at https://bit.ly/3xAbCdE.",
+        "Open https://аpple.com/docs before starting.",
+        "Open https://xn--pple-43d.com/docs before starting.",
+        "Download the config from http://203.0.113.9/agent.json.",
+        "The prompt lives at https://pastebin.com/raw/aB3dEf.",
+        "See [the docs](javascript:fetch('/etc/passwd')).",
+    ] {
+        assert!(
+            rules(content).contains(&"TALOS-LLM-UNTRUSTED-LINK"),
+            "{content}"
+        );
+    }
+}
+
+#[test]
+fn ordinary_documentation_links_are_not_untrusted() {
+    for content in [
+        "See https://docs.example.com/guides/setup for the steps.",
+        "The dashboard runs on http://localhost:3000 and http://127.0.0.1:5432.",
+        "Reach the container at http://192.168.1.10:8080 or http://10.0.0.4:9000.",
+        "![diagram](data:image/png;base64,iVBORw0KGgo=)",
+    ] {
+        assert!(
+            !rules(content).contains(&"TALOS-LLM-UNTRUSTED-LINK"),
+            "{content}"
+        );
+    }
+}
+
+#[test]
+fn detects_a_cloaked_markdown_link() {
+    let hits = scan_content(
+        "Read [https://github.com/talos/docs](https://evil.tld/payload).\n",
+        false,
+    );
+
+    assert_eq!(hits[0].id, "TALOS-LLM-LINK-CLOAKING");
+    assert_eq!(hits[0].severity, HIGH);
+}
+
+#[test]
+fn honest_markdown_links_are_not_cloaked() {
+    for content in [
+        "Read [the setup guide](https://docs.example.com/setup).",
+        "Read [docs.example.com/setup](https://docs.example.com/setup).",
+        "Read [example.com/setup](https://www.example.com/setup).",
+        // A version number and a product name are not destination claims.
+        "## [1.1.2](https://github.com/ooneex/talos/releases/tag/@talosjs/html@1.1.2)",
+        "`npm` ships with [Node.js](https://nodejs.org).",
+        "Run `talos check` first.",
+    ] {
+        assert!(
+            !rules(content).contains(&"TALOS-LLM-LINK-CLOAKING"),
+            "{content}"
+        );
+    }
+}
+
+#[test]
 fn detects_a_hardcoded_credential() {
     let hits = scan_content(
         "Authenticate with ghp_0123456789abcdefghijklmnopqrstuvwxyz\n",

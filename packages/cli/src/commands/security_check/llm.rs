@@ -7,7 +7,8 @@
 //! chain as any dependency (skeletons, marketplaces, shared repositories, pull
 //! requests), so they are scanned for the risks of the OWASP LLM Top 10:
 //! injected instructions, hidden text, exfiltration, credential access, remote
-//! execution, destructive commands and permission bypasses.
+//! execution, destructive commands, permission bypasses and links that hide
+//! where the assistant is being sent.
 //!
 //! Which files belong to which assistant is derived from the provider registry
 //! in `templates::llm::assistants::ASSISTANTS`, so a newly supported assistant
@@ -243,6 +244,33 @@ const RULES: &[Rule] = &[
         ],
     },
     Rule {
+        id: "TALOS-LLM-UNTRUSTED-LINK",
+        title: "Link hiding or spoofing where the assistant is sent",
+        severity: HIGH,
+        remediation: "Replace it with the plain final https URL of a host the project already trusts, so a reviewer sees the same destination the agent fetches",
+        reference: LLM03,
+        config_only: false,
+        patterns: &[
+            // Credentials, or a cloaking `@`, inside the authority: everything
+            // before the `@` is ignored by the client, so the visible host is
+            // not the host that answers.
+            r"(?i)\bhttps?://[^\s/?#@]*@",
+            // Shortened links keep the destination unknown until it is fetched.
+            r"(?i)\bhttps?://(www\.)?(bit\.ly|t\.co|tinyurl\.com|goo\.gl|is\.gd|cutt\.ly|rebrand\.ly|shorturl\.at|ow\.ly|buff\.ly|rb\.gy|tiny\.cc|shorte\.st|s\.id|t\.ly|surl\.li|lnkd\.in|1drv\.ms)/",
+            // Punycode or a non-ASCII authority: a homograph of a trusted host.
+            r"(?i)\bhttps?://[^\s/?#]*xn--",
+            r"https?://[^\s/?#]*[^\x00-\x7F]",
+            // A bare address bypasses any domain the reviewer would recognise.
+            // Loopback and the private ranges stay allowed for local tooling.
+            r"(?i)\bhttps?://(?:[1-9]|1[1-9]|[2-9][0-9]|1(?:[01][0-9]|2[0-689]|[3-6][0-9]|7[013-9]|8[0-9]|9[013-9])|2(?:[0-4][0-9]|5[0-5]))\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}",
+            // Anonymous drop hosts: content there is unversioned and unreviewed.
+            r"(?i)\bhttps?://[^\s)]*\b(pastebin\.com|paste\.ee|hastebin\.com|dpaste\.(com|org)|ghostbin\.[a-z]+|rentry\.co|controlc\.com|anonfiles\.com|gofile\.io|tmpfiles\.org|bashupload\.com|filebin\.net|catbox\.moe|uguu\.se|transfer\.sh|file\.io|0x0\.st|cdn\.discordapp\.com/attachments)",
+            // Executable URI schemes behind a markdown link.
+            r"(?i)\]\(\s*(javascript|vbscript|file):",
+            r"(?i)\]\(\s*data:text/(html|javascript)",
+        ],
+    },
+    Rule {
         id: "TALOS-LLM-MCP-UNPINNED",
         title: "MCP server started from an unpinned or remote command",
         severity: MODERATE,
@@ -276,6 +304,71 @@ fn compiled() -> &'static [(&'static Rule, Vec<Regex>)] {
                 .collect()
         })
         .as_slice()
+}
+
+/// A markdown link with an absolute target, plus the shape of a label that is
+/// unambiguously a link itself: a scheme, a `www.` host or a path. A bare
+/// `Node.js` or a `1.1.2` release number is not a destination claim. Compiled
+/// once; a failure disables the check rather than crashing the audit.
+fn link_patterns() -> Option<&'static (Regex, Regex)> {
+    static PATTERNS: OnceLock<Option<(Regex, Regex)>> = OnceLock::new();
+    PATTERNS
+        .get_or_init(|| {
+            Some((
+                Regex::new(r"\[([^\]\n]{1,200})\]\(\s*(https?://[^\s)]+)").ok()?,
+                Regex::new(
+                    r"(?i)^(https?://\S+|www\.[a-z0-9-]+(\.[a-z0-9-]+)+(/\S*)?|[a-z0-9-]+(\.[a-z0-9-]+)+/\S*)$",
+                )
+                .ok()?,
+            ))
+        })
+        .as_ref()
+}
+
+/// Reduce a host to its registrable domain, so `docs.example.com` and
+/// `example.com` are read as the same destination.
+fn registrable(host: &str) -> String {
+    let host = host.trim_end_matches('.').to_ascii_lowercase();
+    let labels: Vec<&str> = host.split('.').collect();
+    match labels.len() {
+        0..=2 => host,
+        length => labels[length - 2..].join("."),
+    }
+}
+
+/// The registrable domain a URL points at, with any userinfo and port dropped.
+fn host_of(url: &str) -> Option<String> {
+    let authority = url.split_once("://").map_or(url, |(_, rest)| rest);
+    let authority = authority.split(['/', '?', '#']).next()?;
+    let authority = authority.rsplit('@').next()?;
+    let host = authority.split(':').next()?;
+    (!host.is_empty()).then(|| registrable(host))
+}
+
+/// Whether the line holds a markdown link whose visible label names one domain
+/// while the target points at another. The reviewer reads the label, the agent
+/// fetches the target.
+fn is_cloaked_link(line: &str) -> bool {
+    let Some((link, label_shape)) = link_patterns() else {
+        return false;
+    };
+    link.captures_iter(line).any(|capture| {
+        let (Some(label), Some(target)) = (capture.get(1), capture.get(2)) else {
+            return false;
+        };
+        let label = label
+            .as_str()
+            .trim()
+            .trim_matches(['`', '*', '<', '>'])
+            .trim();
+        if !label_shape.is_match(label) {
+            return false;
+        }
+        match (host_of(label), host_of(target.as_str())) {
+            (Some(claimed), Some(actual)) => claimed != actual,
+            _ => false,
+        }
+    })
 }
 
 /// One rule triggered inside one file.
@@ -362,6 +455,23 @@ pub fn scan_content(content: &str, config: bool) -> Vec<RuleHit> {
                     severity: rule.severity,
                     remediation: rule.remediation.to_string(),
                     reference: rule.reference,
+                    line: number + 1,
+                    excerpt: sanitize(line),
+                    occurrences: 1,
+                });
+        }
+
+        if is_cloaked_link(line) {
+            hits.entry("TALOS-LLM-LINK-CLOAKING")
+                .and_modify(|hit| hit.occurrences += 1)
+                .or_insert_with(|| RuleHit {
+                    id: "TALOS-LLM-LINK-CLOAKING",
+                    title: "Markdown link whose label names a different host than its target",
+                    severity: HIGH,
+                    remediation:
+                        "Make the label match the target, or drop the label and keep the bare URL, so the destination the agent opens is the one under review"
+                            .to_string(),
+                    reference: LLM01,
                     line: number + 1,
                     excerpt: sanitize(line),
                     occurrences: 1,
