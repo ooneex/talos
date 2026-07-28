@@ -1702,7 +1702,7 @@ fn controller(dir: &Path, name: &str, method: &str, path: &str, extra: &str) {
     write(
         &dir.join(format!("src/controllers/{name}Controller.ts")),
         &format!(
-            "export type {name}RouteType = {{ params: {{}} }};\n\n@Route.{method}(\"{path}\", {{\n  name: \"user.{name}\",\n  version: 1,\n  payload: Assert({{}}),\n{extra}}})\nexport class {name}Controller {{}}\n"
+            "export type {name}RouteType = {{ params: {{}} }};\n\n@Route.{method}(\"{path}\", {{\n  name: \"user.{name}.handle\",\n  description: \"The {name} route\",\n  version: 1,\n  payload: Assert({{}}),\n{extra}}})\nexport class {name}Controller {{}}\n"
         ),
     );
 }
@@ -1725,7 +1725,7 @@ fn a_route_config_is_parsed_past_its_nested_validators() {
     assert_eq!(routes.len(), 1);
     assert_eq!(routes[0].method, "get".to_string());
     assert_eq!(routes[0].path, "/users/:id".to_string());
-    assert_eq!(routes[0].name.as_deref(), Some("user.Read"));
+    assert_eq!(routes[0].name.as_deref(), Some("user.Read.handle"));
     assert_eq!(routes[0].version, Some(1));
     assert!(!routes[0].is_public());
 }

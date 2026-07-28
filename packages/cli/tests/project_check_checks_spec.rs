@@ -15,7 +15,7 @@ use cli::commands::project_check::modules::WorkspaceModule;
 use cli::commands::project_check::{
     Category, CheckId, ProjectCheckArgs, assets, cache, crons, events, exceptions, flags, folders,
     indexes, logging, mailers, middlewares, openapi, pagination, permissions, queries, queues,
-    repositories, router, todos, tokens, transactions, workflows,
+    repositories, router, routes, todos, tokens, transactions, workflows,
 };
 
 // ---------------------------------------------------------------------------
@@ -989,6 +989,163 @@ fn a_command_may_write_to_the_console() {
     assert!(!logging::is_checked(
         "modules/user/src/commands/SyncCommand.ts"
     ));
+}
+
+// ---------------------------------------------------------------------------
+// Routes
+// ---------------------------------------------------------------------------
+
+/// The findings a single route source produces.
+fn route_findings(source: &str) -> (Vec<String>, Vec<String>) {
+    let route = routes::parse(source, "modules/user/src/controllers/ReadUserController.ts")
+        .expect("the route parses");
+    let (mut errors, mut warnings) = (Vec::new(), Vec::new());
+    routes::inspect(&route, &mut errors, &mut warnings);
+    (errors, warnings)
+}
+
+#[test]
+fn a_fully_declared_route_reads_clean() {
+    let (errors, warnings) = route_findings(
+        r#"
+@Route.get("/users/:id", {
+  name: "user.profile.read",
+  description: "Read a user profile",
+  version: 1,
+  roles: ["ROLE_USER"],
+})
+export class ReadUserController {}
+"#,
+    );
+    assert!(errors.is_empty(), "{errors:?}");
+    assert!(warnings.is_empty(), "{warnings:?}");
+}
+
+#[test]
+fn a_route_name_outside_the_namespace_resource_action_format_is_rejected() {
+    for name in [
+        "read",
+        "user.read",
+        "user.profile.read.again",
+        "user.profile.read-one",
+    ] {
+        let source = format!(
+            r#"
+@Route.get("/users/:id", {{
+  name: "{name}",
+  description: "Read a user profile",
+  version: 1,
+  roles: ["ROLE_USER"],
+}})
+export class ReadUserController {{}}
+"#
+        );
+        let (errors, _) = route_findings(&source);
+        assert!(
+            errors
+                .iter()
+                .any(|finding| finding.contains("namespace.resource.action")),
+            "{name} was accepted"
+        );
+    }
+}
+
+#[test]
+fn two_controllers_may_not_claim_the_same_route_name() {
+    let first = routes::parse(
+        r#"@Route.get("/users", { name: "user.profile.read", description: "a", version: 1 })"#,
+        "modules/user/src/controllers/ReadUserController.ts",
+    )
+    .expect("the route parses");
+    let second = routes::parse(
+        r#"@Route.get("/accounts", { name: "user.profile.read", description: "a", version: 1 })"#,
+        "modules/user/src/controllers/ReadAccountController.ts",
+    )
+    .expect("the route parses");
+
+    let findings = routes::collisions(&[first, second]);
+    assert_eq!(findings.len(), 1);
+    assert!(findings[0].contains("already used by"));
+}
+
+#[test]
+fn a_route_without_a_description_is_rejected() {
+    let (errors, _) = route_findings(
+        r#"
+@Route.get("/users/:id", {
+  name: "user.profile.read",
+  version: 1,
+  roles: ["ROLE_USER"],
+})
+export class ReadUserController {}
+"#,
+    );
+    assert!(
+        errors
+            .iter()
+            .any(|finding| finding.contains("no `description`"))
+    );
+}
+
+#[test]
+fn an_empty_description_counts_as_none() {
+    let (errors, _) = route_findings(
+        r#"
+@Route.get("/users/:id", {
+  name: "user.profile.read",
+  description: "   ",
+  version: 1,
+  roles: ["ROLE_USER"],
+})
+export class ReadUserController {}
+"#,
+    );
+    assert!(
+        errors
+            .iter()
+            .any(|finding| finding.contains("`description` is empty"))
+    );
+}
+
+#[test]
+fn a_version_that_is_not_a_number_is_rejected() {
+    let (errors, warnings) = route_findings(
+        r#"
+@Route.get("/users/:id", {
+  name: "user.profile.read",
+  description: "Read a user profile",
+  version: "1",
+  roles: ["ROLE_USER"],
+})
+export class ReadUserController {}
+"#,
+    );
+    assert!(
+        errors
+            .iter()
+            .any(|finding| finding.contains("is not a number"))
+    );
+    assert!(warnings.is_empty(), "{warnings:?}");
+}
+
+#[test]
+fn a_missing_version_is_only_a_warning() {
+    let (errors, warnings) = route_findings(
+        r#"
+@Route.get("/users/:id", {
+  name: "user.profile.read",
+  description: "Read a user profile",
+  roles: ["ROLE_USER"],
+})
+export class ReadUserController {}
+"#,
+    );
+    assert!(errors.is_empty(), "{errors:?}");
+    assert!(
+        warnings
+            .iter()
+            .any(|finding| finding.contains("no `version`"))
+    );
 }
 
 // ---------------------------------------------------------------------------

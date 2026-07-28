@@ -4,7 +4,8 @@
 //! them claiming the same method and path: the router keeps one, and which one
 //! depends on registration order. The same blindness lets a route ship with no
 //! `roles`, which makes it public — the most expensive kind of typo in the
-//! codebase.
+//! codebase — or with a name the SDK cannot address it by, no description for
+//! the OpenAPI document, and a version that is not a number.
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -28,7 +29,12 @@ pub struct Route {
     pub path: String,
     /// The `name:` the SDK and the client address the route by.
     pub name: Option<String>,
+    /// What the route does, surfaced by the OpenAPI document.
+    pub description: Option<String>,
     pub version: Option<u32>,
+    /// The `version:` exactly as written, so a value that is not a number can
+    /// be told apart from no value at all.
+    pub version_raw: Option<String>,
     pub roles: Vec<String>,
     /// Whether the config declares a `roles` key at all — an empty list is a
     /// deliberate public route, a missing key is an oversight.
@@ -60,7 +66,25 @@ fn route_pattern() -> &'static Regex {
 }
 
 fn field_pattern(field: &str) -> Option<Regex> {
-    Regex::new(&format!(r#"{field}\s*:\s*"([^"]*)""#)).ok()
+    Regex::new(&format!(r#"\b{field}\s*:\s*["']([^"']*)["']"#)).ok()
+}
+
+/// A string field of the route config, as written.
+fn string_field(body: &str, field: &str) -> Option<String> {
+    field_pattern(field)
+        .and_then(|pattern| pattern.captures(body))
+        .and_then(|captured| captured.get(1))
+        .map(|group| group.as_str().to_string())
+}
+
+/// The name the SDK and the client address a route by: three alphanumeric
+/// segments, `namespace.resource.action`.
+fn name_pattern() -> &'static Regex {
+    static PATTERN: OnceLock<Regex> = OnceLock::new();
+    PATTERN.get_or_init(|| {
+        Regex::new(r"^[a-zA-Z0-9]+\.[a-zA-Z0-9]+\.[a-zA-Z0-9]+$")
+            .expect("the name pattern is valid")
+    })
 }
 
 /// The body of the config object a route decorator opens, read by balancing
@@ -94,18 +118,23 @@ pub fn parse(content: &str, file: &str) -> Option<Route> {
         .and_then(|captured| captured.get(1))
         .map(|group| group.as_str().to_string());
 
+    // Read whatever `version:` holds — a bare number, a quoted one, anything —
+    // so the check can tell a malformed value from a missing key.
+    let version_raw = Regex::new(r"\bversion\s*:\s*([^,\n}]+)")
+        .ok()
+        .and_then(|pattern| pattern.captures(body))
+        .and_then(|captured| captured.get(1))
+        .map(|group| group.as_str().trim().to_string());
+
     Some(Route {
         method: captured.get(1)?.as_str().to_lowercase(),
         path: captured.get(2)?.as_str().to_string(),
-        name: field_pattern("name")
-            .and_then(|pattern| pattern.captures(body))
-            .and_then(|captured| captured.get(1))
-            .map(|group| group.as_str().to_string()),
-        version: Regex::new(r"version\s*:\s*(\d+)")
-            .ok()
-            .and_then(|pattern| pattern.captures(body))
-            .and_then(|captured| captured.get(1))
-            .and_then(|group| group.as_str().parse().ok()),
+        name: string_field(body, "name"),
+        description: string_field(body, "description"),
+        version: version_raw
+            .as_deref()
+            .and_then(|raw| raw.parse::<u32>().ok()),
+        version_raw,
         roles: roles_raw
             .iter()
             .flat_map(|raw| raw.split(','))
@@ -177,18 +206,30 @@ pub fn inspect(route: &Route, errors: &mut Vec<String>, warnings: &mut Vec<Strin
         None => errors.push(format!(
             "{file}: the route declares no `name` — the SDK addresses routes by name"
         )),
-        // The generator names a route `<module>.<resource>.<action>`, which is
-        // what keeps the generated SDK method names readable.
-        Some(name) if !name.contains('.') => warnings.push(format!(
-            "{file}: the route name \"{name}\" is not namespaced, e.g. `user.profile.read`"
+        // The generator names a route `<namespace>.<resource>.<action>`, which
+        // is what keeps the generated SDK method names readable.
+        Some(name) if !name_pattern().is_match(name) => errors.push(format!(
+            "{file}: the route name \"{name}\" is not `namespace.resource.action`, e.g. `user.profile.read`"
         )),
         Some(_) => {}
     }
 
-    if route.version.is_none() {
-        warnings.push(format!(
+    match route.description.as_deref().map(str::trim) {
+        None => errors.push(format!(
+            "{file}: the route declares no `description` — it is what the OpenAPI document shows"
+        )),
+        Some("") => errors.push(format!("{file}: the route `description` is empty")),
+        Some(_) => {}
+    }
+
+    match (&route.version, &route.version_raw) {
+        (Some(_), _) => {}
+        (None, Some(raw)) => {
+            errors.push(format!("{file}: the route version `{raw}` is not a number"))
+        }
+        (None, None) => warnings.push(format!(
             "{file}: the route declares no `version` — it will be mounted under v1 forever"
-        ));
+        )),
     }
 
     if !route.path.starts_with('/') {
@@ -240,7 +281,7 @@ pub fn run(args: &ProjectCheckArgs, root: &Path) -> CheckOutcome {
     static_outcome(
         CheckId::Routes,
         &scope,
-        "every route is unique and guarded",
+        "every route is named, described, versioned and guarded",
         errors,
         warnings,
     )

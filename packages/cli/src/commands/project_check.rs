@@ -716,7 +716,7 @@ impl CheckId {
             CheckId::Container => "every injected class bound into the container",
             CheckId::Registration => "classes listed in the module that loads them",
             CheckId::Middlewares => "middlewares that hand their context back",
-            CheckId::Routes => "unique endpoints, named, versioned and guarded",
+            CheckId::Routes => "unique endpoints, named, described, versioned and guarded",
             CheckId::Openapi => "the published specification against the controllers",
             CheckId::Pagination => "collection routes that bound what they return",
             CheckId::Validation => "route types against the schemas that guard them",
