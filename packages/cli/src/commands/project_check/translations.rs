@@ -153,6 +153,69 @@ pub fn inspect_dictionary(label: &str, dictionary: &Dictionary) -> (Vec<String>,
     (errors, warnings)
 }
 
+/// The suffixes `trans()` appends itself when it pluralizes, so a key that is
+/// only ever reached through a `count` still counts as used.
+const PLURAL_SUFFIXES: [&str; 6] = ["_plural", "_zero", "_one", "_two", "_few", "_many"];
+
+fn usage_pattern() -> &'static Regex {
+    static PATTERN: OnceLock<Regex> = OnceLock::new();
+    PATTERN.get_or_init(|| {
+        // Both shapes go through the same two functions: the `trans()` helper a
+        // hook wraps, and the `trans()` method the injected Translation class
+        // exposes. `has()` looks a key up just as much as `trans()` does.
+        Regex::new(r#"\b(?:trans|has)\(\s*["'`]([A-Za-z0-9_.\-]+)["'`]"#)
+            .expect("the translation usage pattern is valid")
+    })
+}
+
+/// The translation keys a source file looks up.
+pub fn used_keys(content: &str) -> BTreeSet<String> {
+    usage_pattern()
+        .captures_iter(content)
+        .filter_map(|captured| captured.get(1))
+        .map(|group| group.as_str().to_string())
+        // A single segment is almost always a variable name caught by accident;
+        // every generated key is namespaced.
+        .filter(|key| key.contains('.') || key.len() > 3)
+        .collect()
+}
+
+/// The base key a pluralized entry belongs to.
+pub fn plural_base(key: &str) -> Option<&str> {
+    PLURAL_SUFFIXES
+        .iter()
+        .find_map(|suffix| key.strip_suffix(suffix))
+}
+
+/// Every key looked up under a directory, which is the scope a dictionary
+/// serves: the generators put `translations.json` next to the hook that reads
+/// it, and the module dictionary next to the class that injects it.
+pub fn keys_used_under(dir: &Path) -> BTreeSet<String> {
+    collect_files(dir, &["ts", "tsx"], 8)
+        .into_iter()
+        .filter_map(|path| fs::read_to_string(path).ok())
+        .flat_map(|content| used_keys(&content))
+        .collect()
+}
+
+/// Keys the code looks up that nothing defines. `trans()` falls back to
+/// printing the key itself, so these ship as raw `user.profile.title` text.
+pub fn missing_keys(used: &BTreeSet<String>, defined: &BTreeSet<String>) -> Vec<String> {
+    used.difference(defined).cloned().collect()
+}
+
+/// Keys a dictionary defines that nothing looks up.
+pub fn unused_keys(dictionary: &Dictionary, used: &BTreeSet<String>) -> Vec<String> {
+    dictionary
+        .keys()
+        .filter(|key| {
+            let base = plural_base(key).unwrap_or(key);
+            !used.contains(*key) && !used.contains(base)
+        })
+        .cloned()
+        .collect()
+}
+
 /// Every dictionary file inside the selected modules.
 pub fn discover_dictionaries(modules: &[WorkspaceModule]) -> Vec<PathBuf> {
     let mut files: Vec<PathBuf> = modules
@@ -188,6 +251,8 @@ pub fn run(args: &ProjectCheckArgs, root: &Path) -> CheckOutcome {
     let mut errors = Vec::new();
     let mut warnings = Vec::new();
     let mut keys = 0;
+    let mut defined: BTreeSet<String> = BTreeSet::new();
+    let mut parsed = Vec::new();
 
     for path in &files {
         let label = relative(root, path);
@@ -202,9 +267,35 @@ pub fn run(args: &ProjectCheckArgs, root: &Path) -> CheckOutcome {
 
         let dictionary = flatten(&document);
         keys += dictionary.len();
+        defined.extend(dictionary.keys().cloned());
         let (file_errors, file_warnings) = inspect_dictionary(&label, &dictionary);
         errors.extend(file_errors);
         warnings.extend(file_warnings);
+        parsed.push((label, dictionary));
+    }
+
+    // Usage is resolved across the whole selection rather than per dictionary: a
+    // hook in one feature legitimately looks up a key the dictionary next door
+    // defines, and only a key nothing anywhere defines is really missing.
+    let mut used: BTreeSet<String> = BTreeSet::new();
+    let mut sources = 0;
+    for module in &modules {
+        let src = module.dir.join("src");
+        sources += collect_files(&src, &["ts", "tsx"], 8).len();
+        used.extend(keys_used_under(&src));
+    }
+
+    // With nothing to read the dictionaries from — a translations-only package,
+    // or a module whose UI is not written yet — every key would look unused.
+    if sources > 0 {
+        for key in missing_keys(&used, &defined) {
+            errors.push(format!("`{key}` is looked up but no dictionary defines it"));
+        }
+        for (label, dictionary) in &parsed {
+            for key in unused_keys(dictionary, &used) {
+                warnings.push(format!("{label}: `{key}` is defined but never looked up"));
+            }
+        }
     }
 
     let scope = format!(

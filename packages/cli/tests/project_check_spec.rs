@@ -1,4 +1,4 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -10,13 +10,16 @@ use cli::commands::project_check::dependencies::{import_specifiers, package_of};
 use cli::commands::project_check::docker::{host_port, inspect as inspect_docker};
 use cli::commands::project_check::docs::is_relative_target;
 use cli::commands::project_check::git::{forbidden, human_size, ignores};
+use cli::commands::project_check::graph::Layer;
 use cli::commands::project_check::migrations::timestamp;
 use cli::commands::project_check::tests::{self as tests_check, needs_test};
 use cli::commands::project_check::{
     A11yDiagnostic, CheckId, CheckOutcome, CheckStatus, HygieneSeverity, ProjectCheckArgs,
-    ProjectReport, classify_a11y, dependencies, disabled_a11y_rules, discover_ui_modules, docker,
-    docs, env, lint_commits, migrations, modules_with_e2e, parse_biome_a11y, render_json,
-    render_report, scan_source, secrets, select_checks, structure, translations,
+    ProjectReport, bundle, classify_a11y, complexity, dependencies, disabled_a11y_rules,
+    discover_ui_modules, docker, docs, entities, env, graph, imports, lint_commits, lockfile,
+    migrations, modules_with_e2e, orphans, outdated, parse_biome_a11y, registration, render_json,
+    render_report, routes, scan_source, sdk, secrets, select_checks, stories, structure,
+    translations, tsconfig,
 };
 
 #[derive(Parser)]
@@ -1444,4 +1447,806 @@ fn tracked_build_output_is_reported() {
 fn sizes_are_rendered_for_a_human() {
     assert_eq!(human_size(3 * 1024 * 1024), "3.0 MB".to_string());
     assert_eq!(human_size(512 * 1024), "512 KB".to_string());
+}
+
+// ---------------------------------------------------------------------------
+// Graph — the import index the imports, orphans and stories checks share
+// ---------------------------------------------------------------------------
+
+/// A workspace holding one module, ready for the graph-backed checks.
+fn workspace(root: &Path, name: &str, kind: &str) -> PathBuf {
+    write(
+        &root.join("package.json"),
+        "{ \"workspaces\": [\"modules/*\"] }\n",
+    );
+    write(
+        &root.join("tsconfig.json"),
+        &format!(
+            "{{ \"compilerOptions\": {{ \"strict\": true, \"paths\": {{ \"@module/{name}/*\": [\"./modules/{name}/src/*\"] }} }} }}\n"
+        ),
+    );
+    let dir = root.join("modules").join(name);
+    write(
+        &dir.join(format!("{name}.yml")),
+        &format!("type: \"{kind}\"\n"),
+    );
+    write(
+        &dir.join("package.json"),
+        &format!("{{ \"name\": \"{name}\" }}\n"),
+    );
+    dir
+}
+
+#[test]
+fn a_relative_specifier_is_resolved_through_its_parent_segments() {
+    let known: BTreeSet<PathBuf> = [PathBuf::from("/w/src/routes/index.tsx")]
+        .into_iter()
+        .collect();
+    let base = graph::normalize(Path::new("/w/src/bootstrap/./../routes/index"));
+
+    assert_eq!(base, PathBuf::from("/w/src/routes/index"));
+    assert_eq!(
+        graph::resolve_file(&base, &known),
+        Some(PathBuf::from("/w/src/routes/index.tsx"))
+    );
+}
+
+#[test]
+fn a_directory_specifier_resolves_to_its_index() {
+    let known: BTreeSet<PathBuf> = [PathBuf::from("/w/src/shared/story/index.ts")]
+        .into_iter()
+        .collect();
+
+    assert_eq!(
+        graph::resolve_file(Path::new("/w/src/shared/story"), &known),
+        Some(PathBuf::from("/w/src/shared/story/index.ts"))
+    );
+}
+
+#[test]
+fn a_stylesheet_import_is_an_asset_rather_than_a_missing_module() {
+    assert!(graph::is_asset("@module/design/styles/app.css"));
+    assert!(graph::is_asset("./translations.json"));
+    assert!(!graph::is_asset("./Button"));
+    assert!(!graph::is_asset("@talosjs/container"));
+}
+
+#[test]
+fn re_exports_and_type_imports_are_told_apart() {
+    let imports = graph::parse_imports(
+        "import type { Config } from \"./types\";\nimport { Button } from \"./Button\";\nexport * from \"./Card\";\n",
+    );
+
+    assert_eq!(imports.len(), 3);
+    assert!(imports[0].type_only);
+    assert!(!imports[1].type_only);
+    assert_eq!(
+        imports[1].names,
+        ["Button".to_string()].into_iter().collect()
+    );
+    // A barrel reaches the file it re-exports just as an import does.
+    assert_eq!(imports[2].specifier, "./Card".to_string());
+}
+
+#[test]
+fn exported_names_cover_every_declaration_form() {
+    let names = graph::exported_names(
+        "export const a = 1;\nexport type B = string;\nexport class C {}\nexport { d, e as f };\nexport default g;\n",
+    );
+
+    assert!(names.contains("a"));
+    assert!(names.contains("B"));
+    assert!(names.contains("C"));
+    assert!(names.contains("d"));
+    // `e as f` publishes `f`, which is the name an importer writes.
+    assert!(names.contains("f"));
+    assert!(names.contains("default"));
+}
+
+// ---------------------------------------------------------------------------
+// Imports
+// ---------------------------------------------------------------------------
+
+#[test]
+fn a_specifier_pointing_at_no_file_fails_the_imports_check() {
+    let (_guard, root) = root();
+    let dir = workspace(&root, "user", "module");
+    write(
+        &dir.join("src/services/UserService.ts"),
+        "import { Missing } from \"./Missing\";\nexport class UserService {}\n",
+    );
+
+    let outcome = imports::run(&ProjectCheckArgs::default(), &root);
+
+    assert_eq!(outcome.status, CheckStatus::Failed);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("`./Missing` resolves to no file"))
+    );
+}
+
+#[test]
+fn an_entity_importing_a_service_inverts_the_dependency_rule() {
+    let (_guard, root) = root();
+    let dir = workspace(&root, "user", "module");
+    write(
+        &dir.join("src/services/UserService.ts"),
+        "export class UserService {}\n",
+    );
+    write(
+        &dir.join("src/entities/UserEntity.ts"),
+        "import { UserService } from \"../services/UserService\";\nexport class UserEntity {}\n",
+    );
+
+    let outcome = imports::run(&ProjectCheckArgs::default(), &root);
+    assert_eq!(outcome.status, CheckStatus::Failed);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("entity imports service"))
+    );
+}
+
+#[test]
+fn the_layers_below_a_controller_may_be_imported_freely() {
+    assert!(imports::allows(Layer::Controller, Layer::Service));
+    assert!(imports::allows(Layer::Service, Layer::Repository));
+    assert!(imports::allows(Layer::Repository, Layer::Entity));
+    assert!(!imports::allows(Layer::Service, Layer::Controller));
+    assert!(!imports::allows(Layer::Entity, Layer::Repository));
+}
+
+#[test]
+fn a_cycle_is_reported_once_from_its_lowest_node() {
+    let mut edges: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
+    edges.insert("b".to_string(), ["c".to_string()].into_iter().collect());
+    edges.insert("c".to_string(), ["a".to_string()].into_iter().collect());
+    edges.insert("a".to_string(), ["b".to_string()].into_iter().collect());
+
+    let cycles = imports::cycles(&edges);
+
+    assert_eq!(cycles.len(), 1);
+    assert_eq!(
+        imports::render_cycle(&cycles[0]),
+        "a → b → c → a".to_string()
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Registration
+// ---------------------------------------------------------------------------
+
+#[test]
+fn a_controller_missing_from_its_module_is_never_loaded() {
+    let (_guard, root) = root();
+    let dir = workspace(&root, "user", "module");
+    write(
+        &dir.join("src/UserModule.ts"),
+        "export const UserModule = {\n  controllers: [],\n  entities: [],\n};\n",
+    );
+    write(
+        &dir.join("src/controllers/ProfileController.ts"),
+        "@Route.get(\"/profile\", { name: \"user.profile.read\" })\nexport class ProfileController {}\n",
+    );
+
+    let outcome = registration::run(&ProjectCheckArgs::default(), &root);
+
+    assert_eq!(outcome.status, CheckStatus::Failed);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("`ProfileController`") && detail.contains("controllers"))
+    );
+}
+
+#[test]
+fn a_registered_class_that_no_longer_exists_is_reported() {
+    let (_guard, root) = root();
+    let dir = workspace(&root, "user", "module");
+    write(
+        &dir.join("src/UserModule.ts"),
+        "export const UserModule = {\n  controllers: [ProfileController],\n  entities: [],\n};\n",
+    );
+
+    let outcome = registration::run(&ProjectCheckArgs::default(), &root);
+
+    assert_eq!(outcome.status, CheckStatus::Failed);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("no class declares any more"))
+    );
+}
+
+#[test]
+fn a_spread_of_another_module_registers_nothing_of_its_own() {
+    let listed = registration::registered(
+        "controllers: [...SharedModule.controllers, UserController],",
+        "controllers",
+    );
+
+    assert_eq!(listed, ["UserController".to_string()].into_iter().collect());
+}
+
+#[test]
+fn each_decorator_names_the_registry_it_belongs_to() {
+    assert_eq!(
+        registration::registry_of("@Route.post(\"/\", {"),
+        Some("controllers")
+    );
+    assert_eq!(
+        registration::registry_of("@Entity({ name: \"users\" })"),
+        Some("entities")
+    );
+    assert_eq!(
+        registration::registry_of("@decorator.cron()"),
+        Some("cronJobs")
+    );
+    // A service is resolved by the container, not listed in the module.
+    assert_eq!(registration::registry_of("@decorator.service()"), None);
+}
+
+// ---------------------------------------------------------------------------
+// Routes
+// ---------------------------------------------------------------------------
+
+/// A controller file, with the config the generator writes.
+fn controller(dir: &Path, name: &str, method: &str, path: &str, extra: &str) {
+    write(
+        &dir.join(format!("src/controllers/{name}Controller.ts")),
+        &format!(
+            "export type {name}RouteType = {{ params: {{}} }};\n\n@Route.{method}(\"{path}\", {{\n  name: \"user.{name}\",\n  version: 1,\n  payload: Assert({{}}),\n{extra}}})\nexport class {name}Controller {{}}\n"
+        ),
+    );
+}
+
+#[test]
+fn a_route_config_is_parsed_past_its_nested_validators() {
+    let (_guard, root) = root();
+    let dir = workspace(&root, "user", "module");
+    controller(
+        &dir,
+        "Read",
+        "get",
+        "/users/:id",
+        "  roles: [\"ROLE_USER\"],\n",
+    );
+
+    let modules = cli::commands::project_check::modules::discover_modules(&root);
+    let routes = routes::collect(&root, &modules);
+
+    assert_eq!(routes.len(), 1);
+    assert_eq!(routes[0].method, "get".to_string());
+    assert_eq!(routes[0].path, "/users/:id".to_string());
+    assert_eq!(routes[0].name.as_deref(), Some("user.Read"));
+    assert_eq!(routes[0].version, Some(1));
+    assert!(!routes[0].is_public());
+}
+
+#[test]
+fn two_controllers_cannot_claim_one_endpoint() {
+    let (_guard, root) = root();
+    let dir = workspace(&root, "user", "module");
+    controller(&dir, "Read", "get", "/users", "  roles: [\"ROLE_USER\"],\n");
+    controller(&dir, "List", "get", "/users", "  roles: [\"ROLE_USER\"],\n");
+
+    let outcome = routes::run(&ProjectCheckArgs::default(), &root);
+
+    assert_eq!(outcome.status, CheckStatus::Failed);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("`GET /v1/users` is already declared"))
+    );
+}
+
+#[test]
+fn a_route_without_roles_is_reported_as_open() {
+    let (_guard, root) = root();
+    let dir = workspace(&root, "user", "module");
+    controller(&dir, "Read", "get", "/users", "");
+
+    let outcome = routes::run(&ProjectCheckArgs::default(), &root);
+
+    assert_eq!(outcome.status, CheckStatus::Warned);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("it is open to anyone"))
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Entities
+// ---------------------------------------------------------------------------
+
+#[test]
+fn a_column_no_migration_builds_is_reported() {
+    let (_guard, root) = root();
+    let dir = workspace(&root, "user", "module");
+    write(
+        &dir.join("src/entities/UserEntity.ts"),
+        "@Entity({ name: \"users\" })\nexport class UserEntity {\n  @PrimaryColumn({ name: \"id\", type: \"varchar\" })\n  id!: string;\n\n  @Column({ name: \"nickname\", type: \"varchar\" })\n  nickname?: string | null;\n}\n",
+    );
+    write(
+        &dir.join("src/migrations/1700000000000-users.ts"),
+        "export class Users {\n  public async up(runner) {\n    await runner.query(`CREATE TABLE \"users\" (\"id\" varchar)`);\n  }\n  public async down() {}\n}\n",
+    );
+
+    let outcome = entities::run(&ProjectCheckArgs::default(), &root);
+
+    assert_eq!(outcome.status, CheckStatus::Warned);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("\"users\".\"nickname\""))
+    );
+}
+
+#[test]
+fn an_entity_with_no_migration_at_all_fails() {
+    let (_guard, root) = root();
+    let dir = workspace(&root, "user", "module");
+    write(
+        &dir.join("src/entities/UserEntity.ts"),
+        "@Entity({ name: \"users\" })\nexport class UserEntity {}\n",
+    );
+
+    let outcome = entities::run(&ProjectCheckArgs::default(), &root);
+
+    assert_eq!(outcome.status, CheckStatus::Failed);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("no migration builds their tables"))
+    );
+}
+
+#[test]
+fn an_entity_is_parsed_into_its_table_and_columns() {
+    let entity = entities::parse(
+        "@Entity({\n  name: \"users\",\n})\nexport class UserEntity {\n  @CreateDateColumn({ name: \"created_at\" })\n  createdAt?: Date | null;\n}\n",
+        "modules/user/src/entities/UserEntity.ts",
+    )
+    .expect("an entity");
+
+    assert_eq!(entity.class, "UserEntity".to_string());
+    assert_eq!(entity.table.as_deref(), Some("users"));
+    assert_eq!(entity.columns, vec!["created_at".to_string()]);
+}
+
+// ---------------------------------------------------------------------------
+// Tsconfig
+// ---------------------------------------------------------------------------
+
+#[test]
+fn a_module_relaxing_a_root_strictness_flag_fails() {
+    let (_guard, root) = root();
+    let dir = workspace(&root, "user", "module");
+    write(&dir.join("src/index.ts"), "export const value = 1;\n");
+    write(
+        &dir.join("tsconfig.json"),
+        "{ \"extends\": \"../../tsconfig.json\", \"compilerOptions\": { \"strict\": false } }\n",
+    );
+
+    let outcome = tsconfig::run(&ProjectCheckArgs::default(), &root);
+
+    assert_eq!(outcome.status, CheckStatus::Failed);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("turns `strict` off"))
+    );
+}
+
+#[test]
+fn a_module_extending_nothing_inherits_nothing() {
+    let (_guard, root) = root();
+    let dir = workspace(&root, "user", "module");
+    write(&dir.join("src/index.ts"), "export const value = 1;\n");
+    write(&dir.join("tsconfig.json"), "{ \"compilerOptions\": {} }\n");
+
+    let outcome = tsconfig::run(&ProjectCheckArgs::default(), &root);
+
+    assert_eq!(outcome.status, CheckStatus::Failed);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("extends nothing"))
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Lockfile
+// ---------------------------------------------------------------------------
+
+#[test]
+fn two_package_managers_cannot_both_own_the_tree() {
+    let (_guard, root) = root();
+    write(
+        &root.join("package.json"),
+        "{ \"workspaces\": [\"modules/*\"] }\n",
+    );
+    write(&root.join("bun.lock"), "{}\n");
+    write(&root.join("package-lock.json"), "{}\n");
+
+    let outcome = lockfile::run(&ProjectCheckArgs::default(), &root);
+
+    assert_eq!(outcome.status, CheckStatus::Failed);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("bun and npm"))
+    );
+}
+
+#[test]
+fn a_dependency_absent_from_the_lockfile_is_reported() {
+    let (_guard, root) = root();
+    write(
+        &root.join("package.json"),
+        "{ \"workspaces\": [\"modules/*\"], \"dependencies\": { \"left-pad\": \"^1.0.0\" } }\n",
+    );
+    write(
+        &root.join("bun.lock"),
+        "{ \"packages\": { \"right-pad\": [] } }\n",
+    );
+
+    let outcome = lockfile::run(&ProjectCheckArgs::default(), &root);
+
+    assert_eq!(outcome.status, CheckStatus::Failed);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("`left-pad` is declared but absent"))
+    );
+}
+
+#[test]
+fn a_nested_npm_lockfile_shadows_the_workspace_one() {
+    let (_guard, root) = root();
+    let dir = workspace(&root, "user", "module");
+    write(&root.join("bun.lock"), "{}\n");
+    write(&dir.join("bun.lock"), "{}\n");
+
+    let outcome = lockfile::run(&ProjectCheckArgs::default(), &root);
+
+    assert_eq!(outcome.status, CheckStatus::Failed);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("shadows the workspace lockfile"))
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Orphans
+// ---------------------------------------------------------------------------
+
+#[test]
+fn a_file_nothing_imports_is_reported_but_an_entry_is_not() {
+    let (_guard, root) = root();
+    let dir = workspace(&root, "user", "module");
+    write(&dir.join("src/index.ts"), "export const value = 1;\n");
+    write(
+        &dir.join("src/helpers/format.ts"),
+        "export const format = () => 1;\n",
+    );
+
+    let outcome = orphans::run(&ProjectCheckArgs::default(), &root);
+
+    assert_eq!(outcome.status, CheckStatus::Warned);
+    assert!(outcome.details.iter().any(
+        |detail| detail.contains("src/helpers/format.ts") && detail.contains("nothing imports")
+    ));
+    assert!(
+        !outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("src/index.ts"))
+    );
+}
+
+#[test]
+fn a_design_module_publishes_its_components_rather_than_orphaning_them() {
+    let (_guard, root) = root();
+    let dir = workspace(&root, "design", "design");
+    write(
+        &dir.join("src/components/button/Button.tsx"),
+        "export const Button = () => null;\n",
+    );
+
+    assert_eq!(
+        orphans::run(&ProjectCheckArgs::default(), &root).status,
+        CheckStatus::Passed
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Complexity
+// ---------------------------------------------------------------------------
+
+#[test]
+fn a_long_parameter_list_is_over_budget() {
+    let overruns = complexity::inspect(
+        "export const send = (a: string, b: Map<string, number>, c: number, d: number, e: number, f: number) => {\n  return a;\n};\n",
+        false,
+    );
+
+    assert_eq!(overruns.len(), 1);
+    assert_eq!(overruns[0].rule, "complexity.parameters");
+    assert!(overruns[0].message.contains("`send` takes 6 parameters"));
+}
+
+#[test]
+fn a_generic_parameter_is_not_two_parameters() {
+    assert_eq!(
+        complexity::parameter_count("a: Map<string, number>, b: number"),
+        2
+    );
+    assert_eq!(complexity::parameter_count(""), 0);
+}
+
+#[test]
+fn markup_is_measured_on_its_length_rather_than_its_shape() {
+    let deep = format!(
+        "export const Icon = () => {{\n{}\n{}\n}};\n",
+        "  <svg>{".repeat(8),
+        "  }</svg>".repeat(8)
+    );
+
+    // The same body is over the nesting budget as logic and within it as markup.
+    assert!(
+        complexity::inspect(&deep, false)
+            .iter()
+            .any(|overrun| overrun.rule == "complexity.nesting")
+    );
+    assert!(
+        !complexity::inspect(&deep, true)
+            .iter()
+            .any(|overrun| overrun.rule == "complexity.nesting")
+    );
+}
+
+#[test]
+fn a_declaration_keyword_is_never_read_as_the_function_name() {
+    let (name, parameters) =
+        complexity::function_signature("export const load = async (id: string) => {")
+            .expect("a signature");
+
+    assert_eq!(name, "load".to_string());
+    assert_eq!(parameters, "id: string".to_string());
+}
+
+// ---------------------------------------------------------------------------
+// Stories
+// ---------------------------------------------------------------------------
+
+#[test]
+fn a_component_without_a_story_is_reported() {
+    let (_guard, root) = root();
+    let design = workspace(&root, "design", "design");
+    write(
+        &design.join("src/components/button/Button.tsx"),
+        "export const Button = () => null;\n",
+    );
+    write(
+        &design.join("src/components/card/Card.tsx"),
+        "export const Card = () => null;\n",
+    );
+
+    let storybook = root.join("modules/storybook");
+    write(&storybook.join("storybook.yml"), "type: \"storybook\"\n");
+    write(
+        &storybook.join("package.json"),
+        "{ \"name\": \"storybook\" }\n",
+    );
+    write(
+        &storybook.join("src/features/button/Button.stories.tsx"),
+        "import { Button } from \"@module/design/components/button/Button\";\nexport const meta = { title: \"Button\", component: Button };\n",
+    );
+
+    let outcome = stories::run(&ProjectCheckArgs::default(), &root);
+
+    assert_eq!(outcome.status, CheckStatus::Warned);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("`Card`") && detail.contains("has no story"))
+    );
+    assert!(
+        !outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("`Button`"))
+    );
+}
+
+#[test]
+fn a_part_of_a_compound_component_is_documented_by_its_whole() {
+    let told: BTreeSet<String> = ["Accordion".to_string()].into_iter().collect();
+
+    assert!(stories::is_documented("Accordion", &told));
+    assert!(stories::is_documented("AccordionTrigger", &told));
+    assert!(!stories::is_documented("Card", &told));
+}
+
+// ---------------------------------------------------------------------------
+// SDK
+// ---------------------------------------------------------------------------
+
+#[test]
+fn a_route_the_sdk_does_not_wrap_is_reported() {
+    let (_guard, root) = root();
+    let app = workspace(&root, "app", "api");
+    controller(&app, "Read", "get", "/users", "  roles: [\"ROLE_USER\"],\n");
+
+    let sdk = root.join("modules/sdk");
+    write(&sdk.join("sdk.yml"), "type: \"sdk\"\ntarget: \"app\"\n");
+    write(&sdk.join("package.json"), "{ \"name\": \"sdk\" }\n");
+    write(&sdk.join("src/index.ts"), "export const sdk = {};\n");
+
+    let outcome = sdk::run(&ProjectCheckArgs::default(), &root);
+
+    assert_eq!(outcome.status, CheckStatus::Failed);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("the SDK has no method for it"))
+    );
+}
+
+#[test]
+fn an_sdk_targeting_a_deleted_module_fails() {
+    let (_guard, root) = root();
+    write(
+        &root.join("package.json"),
+        "{ \"workspaces\": [\"modules/*\"] }\n",
+    );
+    let sdk = root.join("modules/sdk");
+    write(&sdk.join("sdk.yml"), "type: \"sdk\"\ntarget: \"gone\"\n");
+    write(&sdk.join("package.json"), "{ \"name\": \"sdk\" }\n");
+
+    let outcome = sdk::run(&ProjectCheckArgs::default(), &root);
+
+    assert_eq!(outcome.status, CheckStatus::Failed);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("not a module any more"))
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Bundle
+// ---------------------------------------------------------------------------
+
+#[test]
+fn a_shipped_source_map_fails_the_bundle_check() {
+    let (_guard, root) = root();
+    let dir = workspace(&root, "spa", "spa");
+    write(&dir.join("dist/assets/index.js"), "console.log(1);\n");
+    write(&dir.join("dist/assets/index.js.map"), "{}\n");
+
+    let outcome = bundle::run(&ProjectCheckArgs::default(), &root);
+
+    assert_eq!(outcome.status, CheckStatus::Failed);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("a source map is shipped"))
+    );
+}
+
+#[test]
+fn a_module_that_was_never_built_is_skipped() {
+    let (_guard, root) = root();
+    workspace(&root, "spa", "spa");
+
+    assert_eq!(
+        bundle::run(&ProjectCheckArgs::default(), &root).status,
+        CheckStatus::Skipped
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Outdated
+// ---------------------------------------------------------------------------
+
+#[test]
+fn a_range_is_reduced_to_the_version_it_starts_at() {
+    assert_eq!(outdated::floor("^1.2.3"), Some("1.2.3".to_string()));
+    assert_eq!(outdated::floor(">=2.0 <3"), Some("2.0".to_string()));
+    assert_eq!(outdated::floor("~0.4"), Some("0.4".to_string()));
+    // Nothing to compare a workspace or path dependency against.
+    assert_eq!(outdated::floor("workspace:*"), None);
+    assert_eq!(outdated::floor("*"), None);
+}
+
+#[test]
+fn only_a_major_gap_counts_as_behind() {
+    assert_eq!(outdated::majors_behind("1.9.0", "3.0.1"), 2);
+    assert_eq!(outdated::majors_behind("2.1.0", "2.9.9"), 0);
+    assert!(outdated::is_behind("2.1.0", "2.9.9"));
+    assert!(!outdated::is_behind("3.0.0", "3.0.0"));
+}
+
+#[test]
+fn each_registry_reads_its_own_response_shape() {
+    let npm = serde_json::json!({ "version": "1.2.3" });
+    let crates = serde_json::json!({ "crate": { "max_stable_version": "4.5.6" } });
+    let pypi = serde_json::json!({ "info": { "version": "7.8.9" } });
+
+    assert_eq!(
+        outdated::Registry::Npm.latest(&npm),
+        Some("1.2.3".to_string())
+    );
+    assert_eq!(
+        outdated::Registry::Crates.latest(&crates),
+        Some("4.5.6".to_string())
+    );
+    assert_eq!(
+        outdated::Registry::PyPI.latest(&pypi),
+        Some("7.8.9".to_string())
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Translations — key usage
+// ---------------------------------------------------------------------------
+
+#[test]
+fn a_key_looked_up_but_never_defined_fails_the_translations_check() {
+    let (_guard, root) = root();
+    let dir = workspace(&root, "user", "module");
+    write(
+        &dir.join("src/translations.yml"),
+        "welcome:\n  en: \"Welcome\"\n",
+    );
+    write(
+        &dir.join("src/features/Profile.tsx"),
+        "export const Profile = () => trans(\"welcome\") + trans(\"user.missing\");\n",
+    );
+
+    let outcome = translations::run(&ProjectCheckArgs::default(), &root);
+
+    assert_eq!(outcome.status, CheckStatus::Failed);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("`user.missing` is looked up"))
+    );
+}
+
+#[test]
+fn a_pluralized_entry_is_used_through_its_base_key() {
+    let used: BTreeSet<String> = ["cart.items".to_string()].into_iter().collect();
+    let mut dictionary = translations::Dictionary::new();
+    dictionary.insert("cart.items".to_string(), BTreeMap::new());
+    dictionary.insert("cart.items_plural".to_string(), BTreeMap::new());
+    dictionary.insert("cart.empty".to_string(), BTreeMap::new());
+
+    assert_eq!(
+        translations::unused_keys(&dictionary, &used),
+        vec!["cart.empty".to_string()]
+    );
 }

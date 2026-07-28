@@ -1,0 +1,227 @@
+//! Lockfile check — whether an install here reproduces the install in CI.
+//!
+//! The lockfile is the only file that decides which versions a teammate, a CI
+//! runner and a production image actually get. A second lockfile from another
+//! package manager, one nested inside a module, or one that predates the
+//! manifest next to it all mean the same thing: two machines resolve the same
+//! ranges differently.
+
+use std::collections::BTreeSet;
+use std::fs;
+use std::path::Path;
+use std::time::SystemTime;
+
+use super::modules::{WorkspaceModule, discover_modules, filter_modules, relative, wanted_names};
+use crate::commands::project_check::{
+    CheckId, CheckOutcome, CheckStatus, ProjectCheckArgs, static_outcome,
+};
+
+/// The npm-side lockfiles, and the package manager each one belongs to. `bun`
+/// comes first because it is the one the generators install with.
+const NPM_LOCKFILES: [(&str, &str); 5] = [
+    ("bun.lock", "bun"),
+    ("bun.lockb", "bun"),
+    ("package-lock.json", "npm"),
+    ("yarn.lock", "yarn"),
+    ("pnpm-lock.yaml", "pnpm"),
+];
+
+/// Lockfiles belonging to the other ecosystems a workspace can hold.
+const FOREIGN_LOCKFILES: [&str; 5] = [
+    "Cargo.lock",
+    "uv.lock",
+    "poetry.lock",
+    "Pipfile.lock",
+    "pdm.lock",
+];
+
+/// The lockfiles present in a directory.
+pub fn lockfiles_in(dir: &Path) -> Vec<String> {
+    NPM_LOCKFILES
+        .iter()
+        .map(|(file, _)| *file)
+        .chain(FOREIGN_LOCKFILES)
+        .filter(|file| dir.join(file).is_file())
+        .map(str::to_string)
+        .collect()
+}
+
+/// The package managers the root lockfiles imply.
+pub fn managers(lockfiles: &[String]) -> BTreeSet<&'static str> {
+    NPM_LOCKFILES
+        .iter()
+        .filter(|(file, _)| lockfiles.iter().any(|present| present == file))
+        .map(|(_, manager)| *manager)
+        .collect()
+}
+
+fn modified_at(path: &Path) -> Option<SystemTime> {
+    fs::metadata(path).ok()?.modified().ok()
+}
+
+/// Whether a manifest has been edited since the lockfile was last written,
+/// which means the install that produced the lockfile no longer covers it.
+pub fn is_stale(manifest: &Path, lockfile: &Path) -> bool {
+    let (Some(manifest_time), Some(lock_time)) = (modified_at(manifest), modified_at(lockfile))
+    else {
+        return false;
+    };
+    manifest_time > lock_time
+}
+
+/// Dependency names declared by a manifest that the lockfile never mentions.
+///
+/// The lockfile is searched as text rather than parsed: every format writes the
+/// dependency name in it, and the check only needs to know that it is there at
+/// all.
+pub fn missing_from_lock(manifest: &serde_json::Value, lockfile: &str) -> Vec<String> {
+    ["dependencies", "devDependencies", "peerDependencies"]
+        .iter()
+        .filter_map(|field| manifest.get(*field)?.as_object())
+        .flat_map(|entries| entries.keys())
+        .filter(|name| !lockfile.contains(&format!("\"{name}\"")))
+        .filter(|name| !lockfile.contains(&format!("\"{name}@")))
+        .filter(|name| !lockfile.contains(&format!("node_modules/{name}")))
+        .cloned()
+        .collect()
+}
+
+/// Lockfiles inside a workspace member, which install a second dependency tree
+/// beside the hoisted one.
+pub fn nested(root: &Path, modules: &[WorkspaceModule]) -> Vec<String> {
+    modules
+        .iter()
+        .flat_map(|module| {
+            let label = module.label();
+            lockfiles_in(&module.dir)
+                .into_iter()
+                // A crate and a Python distribution genuinely lock themselves;
+                // only the hoisted npm tree must have a single lockfile.
+                .filter(|file| NPM_LOCKFILES.iter().any(|(npm, _)| npm == file))
+                .map(move |file| {
+                    format!("{label}: {file} shadows the workspace lockfile — remove it and reinstall from the root")
+                })
+        })
+        .chain(
+            // A nested `Cargo.lock` is only wrong when the root manifest
+            // already locks the crate as a workspace member.
+            modules
+                .iter()
+                .filter(|module| module.is_rust())
+                .filter(|_| root.join("Cargo.lock").is_file())
+                .filter(|module| module.dir.join("Cargo.lock").is_file())
+                .map(|module| {
+                    format!(
+                        "{}: Cargo.lock is nested inside a workspace member",
+                        module.label()
+                    )
+                }),
+        )
+        .collect()
+}
+
+pub fn run(args: &ProjectCheckArgs, root: &Path) -> CheckOutcome {
+    let modules = filter_modules(
+        discover_modules(root),
+        &wanted_names(args.modules.as_deref(), args.packages.as_deref()),
+    );
+
+    let present = lockfiles_in(root);
+    let manifest_path = root.join("package.json");
+
+    if present.is_empty() && !manifest_path.is_file() {
+        return CheckOutcome::new(
+            CheckId::Lockfile,
+            CheckStatus::Skipped,
+            "no lockfile and no root manifest",
+        );
+    }
+
+    let mut errors = Vec::new();
+    let mut warnings = Vec::new();
+
+    let managers = managers(&present);
+    if managers.len() > 1 {
+        errors.push(format!(
+            "the root holds lockfiles from {} — keep the one belonging to the package manager the project installs with",
+            managers.into_iter().collect::<Vec<_>>().join(" and ")
+        ));
+    } else if managers.is_empty() && manifest_path.is_file() {
+        errors.push(
+            "no npm lockfile at the root — an install resolves the ranges afresh every time"
+                .to_string(),
+        );
+    }
+
+    errors.extend(nested(root, &modules));
+
+    // Every manifest is compared against the lockfile, because in a workspace
+    // it is the module manifests that hold the dependencies.
+    if let Some(name) = present
+        .iter()
+        .find(|file| NPM_LOCKFILES.iter().any(|(npm, _)| npm == *file))
+    {
+        let path = root.join(name);
+        // `bun.lockb` is binary; only the text lockfiles can be searched.
+        let content = fs::read_to_string(&path).unwrap_or_default();
+
+        for manifest_path in std::iter::once(manifest_path.clone())
+            .chain(modules.iter().map(WorkspaceModule::package_json_path))
+            .filter(|path| path.is_file())
+        {
+            if is_stale(&manifest_path, &path) {
+                warnings.push(format!(
+                    "{} is newer than {name} — reinstall so the lockfile covers it",
+                    relative(root, &manifest_path)
+                ));
+            }
+
+            if content.is_empty() {
+                continue;
+            }
+            let Some(manifest) = super::modules::read_json(&manifest_path) else {
+                continue;
+            };
+            for missing in missing_from_lock(&manifest, &content) {
+                errors.push(format!(
+                    "{}: `{missing}` is declared but absent from {name}",
+                    relative(root, &manifest_path)
+                ));
+            }
+        }
+    }
+
+    for lockfile in FOREIGN_LOCKFILES {
+        let path = root.join(lockfile);
+        let manifest = match lockfile {
+            "Cargo.lock" => root.join("Cargo.toml"),
+            _ => root.join("pyproject.toml"),
+        };
+        if path.is_file() && manifest.is_file() && is_stale(&manifest, &path) {
+            warnings.push(format!(
+                "{} is newer than {lockfile} — re-lock so the resolution matches",
+                relative(root, &manifest)
+            ));
+        }
+    }
+
+    let scope = if present.is_empty() {
+        "no lockfile".to_string()
+    } else {
+        format!(
+            "{} lockfile{} · {}",
+            present.len(),
+            if present.len() == 1 { "" } else { "s" },
+            present.join(", ")
+        )
+    };
+
+    static_outcome(
+        CheckId::Lockfile,
+        &scope,
+        "one lockfile, covering every manifest",
+        errors,
+        warnings,
+    )
+    .with_hint("Commit the lockfile — CI installs from it, not from the ranges")
+}

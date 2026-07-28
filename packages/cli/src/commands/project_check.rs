@@ -7,18 +7,31 @@
 //! and the individual commands. The checks that only read the repository live
 //! in the submodules next to this file.
 
+pub mod bundle;
+pub mod complexity;
 pub mod conventions;
 pub mod dependencies;
 pub mod docker;
 pub mod docs;
+pub mod entities;
 pub mod env;
 pub mod git;
+pub mod graph;
+pub mod imports;
+pub mod lockfile;
 pub mod migrations;
 pub mod modules;
+pub mod orphans;
+pub mod outdated;
+pub mod registration;
+pub mod routes;
+pub mod sdk;
 pub mod secrets;
+pub mod stories;
 pub mod structure;
 pub mod tests;
 pub mod translations;
+pub mod tsconfig;
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
@@ -87,7 +100,7 @@ const MAX_SCANNED_FILE_BYTES: u64 = 512 * 1024;
 
 #[derive(Args, Debug, Default, Clone)]
 pub struct ProjectCheckArgs {
-    /// Only run these checks (comma-separated: workspace, structure, env, dependencies, accessibility, translations, security, secrets, issues, commits, hygiene, e2e).
+    /// Only run these checks (comma-separated: workspace, structure, tsconfig, lockfile, conventions, imports, registration, routes, entities, complexity, orphans, env, dependencies, outdated, docker, migrations, accessibility, translations, stories, sdk, tests, docs, bundle, security, secrets, git, issues, commits, hygiene, e2e).
     #[arg(long)]
     pub only: Option<String>,
 
@@ -98,6 +111,10 @@ pub struct ProjectCheckArgs {
     /// Also run the end-to-end suite, which is opt-in because it boots the app.
     #[arg(long, default_value_t = false)]
     pub e2e: bool,
+
+    /// Also compare every dependency against the public registries.
+    #[arg(long, default_value_t = false)]
+    pub outdated: bool,
 
     /// Restrict the workspace, accessibility, security and issue checks to these packages.
     #[arg(long)]
@@ -140,15 +157,27 @@ pub struct ProjectCheckArgs {
 pub enum CheckId {
     Workspace,
     Structure,
+    Tsconfig,
+    Lockfile,
     Conventions,
+    Imports,
+    Registration,
+    Routes,
+    Entities,
+    Complexity,
+    Orphans,
     Env,
     Dependencies,
+    Outdated,
     Docker,
     Migrations,
     Accessibility,
     Translations,
+    Stories,
+    Sdk,
     Tests,
     Docs,
+    Bundle,
     Security,
     Secrets,
     Git,
@@ -162,18 +191,30 @@ impl CheckId {
     /// Every check, in execution order. The workspace runs first because the
     /// install it performs is what makes the other tools available, and the
     /// end-to-end suite runs last because it needs the build they produce.
-    pub const ALL: [CheckId; 18] = [
+    pub const ALL: [CheckId; 30] = [
         CheckId::Workspace,
         CheckId::Structure,
+        CheckId::Tsconfig,
+        CheckId::Lockfile,
         CheckId::Conventions,
+        CheckId::Imports,
+        CheckId::Registration,
+        CheckId::Routes,
+        CheckId::Entities,
+        CheckId::Complexity,
+        CheckId::Orphans,
         CheckId::Env,
         CheckId::Dependencies,
+        CheckId::Outdated,
         CheckId::Docker,
         CheckId::Migrations,
         CheckId::Accessibility,
         CheckId::Translations,
+        CheckId::Stories,
+        CheckId::Sdk,
         CheckId::Tests,
         CheckId::Docs,
+        CheckId::Bundle,
         CheckId::Security,
         CheckId::Secrets,
         CheckId::Git,
@@ -184,19 +225,31 @@ impl CheckId {
     ];
 
     /// Checks that run when nothing is requested explicitly. The end-to-end
-    /// suite is opt-in because it boots the application.
-    pub const DEFAULT: [CheckId; 17] = [
+    /// suite is opt-in because it boots the application, and the outdated check
+    /// because it queries the public registries for every dependency.
+    pub const DEFAULT: [CheckId; 28] = [
         CheckId::Workspace,
         CheckId::Structure,
+        CheckId::Tsconfig,
+        CheckId::Lockfile,
         CheckId::Conventions,
+        CheckId::Imports,
+        CheckId::Registration,
+        CheckId::Routes,
+        CheckId::Entities,
+        CheckId::Complexity,
+        CheckId::Orphans,
         CheckId::Env,
         CheckId::Dependencies,
         CheckId::Docker,
         CheckId::Migrations,
         CheckId::Accessibility,
         CheckId::Translations,
+        CheckId::Stories,
+        CheckId::Sdk,
         CheckId::Tests,
         CheckId::Docs,
+        CheckId::Bundle,
         CheckId::Security,
         CheckId::Secrets,
         CheckId::Git,
@@ -209,15 +262,27 @@ impl CheckId {
         match self {
             CheckId::Workspace => "workspace",
             CheckId::Structure => "structure",
+            CheckId::Tsconfig => "tsconfig",
+            CheckId::Lockfile => "lockfile",
             CheckId::Conventions => "conventions",
+            CheckId::Imports => "imports",
+            CheckId::Registration => "registration",
+            CheckId::Routes => "routes",
+            CheckId::Entities => "entities",
+            CheckId::Complexity => "complexity",
+            CheckId::Orphans => "orphans",
             CheckId::Env => "env",
             CheckId::Dependencies => "dependencies",
+            CheckId::Outdated => "outdated",
             CheckId::Docker => "docker",
             CheckId::Migrations => "migrations",
             CheckId::Accessibility => "accessibility",
             CheckId::Translations => "translations",
+            CheckId::Stories => "stories",
+            CheckId::Sdk => "sdk",
             CheckId::Tests => "tests",
             CheckId::Docs => "docs",
+            CheckId::Bundle => "bundle",
             CheckId::Security => "security",
             CheckId::Secrets => "secrets",
             CheckId::Git => "git",
@@ -232,15 +297,27 @@ impl CheckId {
         match self {
             CheckId::Workspace => "Workspace",
             CheckId::Structure => "Structure",
+            CheckId::Tsconfig => "Tsconfig",
+            CheckId::Lockfile => "Lockfile",
             CheckId::Conventions => "Conventions",
+            CheckId::Imports => "Imports",
+            CheckId::Registration => "Registration",
+            CheckId::Routes => "Routes",
+            CheckId::Entities => "Entities",
+            CheckId::Complexity => "Complexity",
+            CheckId::Orphans => "Orphans",
             CheckId::Env => "Env",
             CheckId::Dependencies => "Dependencies",
+            CheckId::Outdated => "Outdated",
             CheckId::Docker => "Docker",
             CheckId::Migrations => "Migrations",
             CheckId::Accessibility => "Accessibility",
             CheckId::Translations => "Translations",
+            CheckId::Stories => "Stories",
+            CheckId::Sdk => "SDK",
             CheckId::Tests => "Tests",
             CheckId::Docs => "Docs",
+            CheckId::Bundle => "Bundle",
             CheckId::Security => "Security",
             CheckId::Secrets => "Secrets",
             CheckId::Git => "Git",
@@ -256,15 +333,27 @@ impl CheckId {
         match self {
             CheckId::Workspace => "install, build, fmt, lint and test every package and module",
             CheckId::Structure => "module manifests, package names and path aliases",
+            CheckId::Tsconfig => "compiler settings inherited from the root config",
+            CheckId::Lockfile => "one lockfile, covering every manifest",
             CheckId::Conventions => "DI naming, typed env access and type conventions",
+            CheckId::Imports => "resolvable imports, no cycles, no inverted layers",
+            CheckId::Registration => "classes listed in the module that loads them",
+            CheckId::Routes => "unique endpoints, named, versioned and guarded",
+            CheckId::Entities => "entity tables and columns against the migrations",
+            CheckId::Complexity => "file, function, parameter and nesting budgets",
+            CheckId::Orphans => "files and exports nothing reaches",
             CheckId::Env => "local .env.yml files against their examples",
             CheckId::Dependencies => "one version per dependency, declared where used",
+            CheckId::Outdated => "declared versions against the public registries",
             CheckId::Docker => "compose services, pinned images and free host ports",
             CheckId::Migrations => "migration ordering, reversibility and seed data",
             CheckId::Accessibility => "a11y lint of every UI module",
-            CheckId::Translations => "locale parity of every dictionary",
+            CheckId::Translations => "locale parity and key usage of every dictionary",
+            CheckId::Stories => "a story for every design-system component",
+            CheckId::Sdk => "generated clients against the controllers they wrap",
             CheckId::Tests => "a spec for every source file that holds behaviour",
             CheckId::Docs => "relative links in every markdown document",
+            CheckId::Bundle => "build size, chunk weight and shipped assets",
             CheckId::Security => "dependency audit against OSV.dev",
             CheckId::Secrets => "credentials in the working tree",
             CheckId::Git => "build output and large files in the index",
@@ -285,15 +374,27 @@ impl CheckId {
         match value.trim().to_ascii_lowercase().as_str() {
             "workspace" | "monorepo" | "build" | "lint" => Some(CheckId::Workspace),
             "structure" | "layout" | "modules" => Some(CheckId::Structure),
+            "tsconfig" | "typescript" | "compiler" => Some(CheckId::Tsconfig),
+            "lockfile" | "lock" | "lockfiles" => Some(CheckId::Lockfile),
             "conventions" | "convention" | "naming" => Some(CheckId::Conventions),
+            "imports" | "import" | "cycles" | "layers" => Some(CheckId::Imports),
+            "registration" | "registry" | "wiring" => Some(CheckId::Registration),
+            "routes" | "route" | "endpoints" | "controllers" => Some(CheckId::Routes),
+            "entities" | "entity" | "schema" => Some(CheckId::Entities),
+            "complexity" | "size" | "budgets" => Some(CheckId::Complexity),
+            "orphans" | "orphan" | "dead-code" | "unused" => Some(CheckId::Orphans),
             "env" | "environment" | "dotenv" => Some(CheckId::Env),
             "dependencies" | "deps" | "packages" => Some(CheckId::Dependencies),
+            "outdated" | "updates" | "upgrades" => Some(CheckId::Outdated),
             "docker" | "compose" | "services" => Some(CheckId::Docker),
             "migrations" | "migration" | "seeds" => Some(CheckId::Migrations),
             "accessibility" | "a11y" => Some(CheckId::Accessibility),
             "translations" | "translation" | "i18n" => Some(CheckId::Translations),
+            "stories" | "story" | "storybook" => Some(CheckId::Stories),
+            "sdk" | "client" => Some(CheckId::Sdk),
             "tests" | "test" | "specs" | "coverage" => Some(CheckId::Tests),
             "docs" | "doc" | "documentation" | "markdown" => Some(CheckId::Docs),
+            "bundle" | "bundles" | "dist" | "assets" => Some(CheckId::Bundle),
             "security" | "audit" | "vulnerabilities" => Some(CheckId::Security),
             "secrets" | "credentials" => Some(CheckId::Secrets),
             "git" | "repository" | "gitignore" => Some(CheckId::Git),
@@ -1707,15 +1808,27 @@ pub fn execute(args: &ProjectCheckArgs, checks: &[CheckId]) -> ProjectReport {
         let mut outcome = match id {
             CheckId::Workspace => check_workspace(args, &root),
             CheckId::Structure => structure::run(args, &root),
+            CheckId::Tsconfig => tsconfig::run(args, &root),
+            CheckId::Lockfile => lockfile::run(args, &root),
             CheckId::Conventions => conventions::run(args, &root),
+            CheckId::Imports => imports::run(args, &root),
+            CheckId::Registration => registration::run(args, &root),
+            CheckId::Routes => routes::run(args, &root),
+            CheckId::Entities => entities::run(args, &root),
+            CheckId::Complexity => complexity::run(args, &root),
+            CheckId::Orphans => orphans::run(args, &root),
             CheckId::Env => env::run(args, &root),
             CheckId::Dependencies => dependencies::run(args, &root),
+            CheckId::Outdated => outdated::run(args, &root),
             CheckId::Docker => docker::run(args, &root),
             CheckId::Migrations => migrations::run(args, &root),
             CheckId::Accessibility => check_accessibility(args, &root),
             CheckId::Translations => translations::run(args, &root),
+            CheckId::Stories => stories::run(args, &root),
+            CheckId::Sdk => sdk::run(args, &root),
             CheckId::Tests => tests::run(args, &root),
             CheckId::Docs => docs::run(args, &root),
+            CheckId::Bundle => bundle::run(args, &root),
             CheckId::Security => check_security(args, &root),
             CheckId::Secrets => secrets::run(args, &root),
             CheckId::Git => git::run(args, &root),
@@ -1745,7 +1858,12 @@ pub fn execute(args: &ProjectCheckArgs, checks: &[CheckId]) -> ProjectReport {
 }
 
 pub fn run(args: &ProjectCheckArgs) {
-    let extra: Vec<CheckId> = args.e2e.then_some(CheckId::E2e).into_iter().collect();
+    let extra: Vec<CheckId> = args
+        .e2e
+        .then_some(CheckId::E2e)
+        .into_iter()
+        .chain(args.outdated.then_some(CheckId::Outdated))
+        .collect();
     let checks = match select_checks(args.only.as_deref(), args.skip.as_deref(), &extra) {
         Ok(checks) => checks,
         Err(message) => {

@@ -45,7 +45,7 @@ _talos_docker_publish_modules() {
 }
 
 _talos_project_checks() {
-  _values -s , 'checks' workspace structure conventions env dependencies docker migrations accessibility translations tests docs security secrets git issues commits hygiene e2e
+  _values -s , 'checks' workspace structure tsconfig lockfile conventions imports registration routes entities complexity orphans env dependencies outdated docker migrations accessibility translations stories sdk tests docs bundle security secrets git issues commits hygiene e2e
 }
 
 _talos_custom_commands() {
@@ -429,6 +429,7 @@ _talos() {
             '--modules=-[Module name(s), comma-separated (default: all)]::modules:_talos_publish_modules' \
             '--audit-level=[Minimum vulnerability severity to report]:level:(low moderate high critical)' \
             '--e2e[Also run the end-to-end suite]' \
+            '--outdated[Also compare every dependency against the public registries]' \
             '--logs[Stream plain workspace logs instead of the interactive view]' \
             '--no-cache[Skip reading and writing the workspace task cache]' \
             '--strict[Fail when a check only reports warnings]' \

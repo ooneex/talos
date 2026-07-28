@@ -297,8 +297,8 @@ seed:create seed:run"
       [[ $flag == --audit-level ]] && candidates="low moderate high critical"
       ;;
     project:check)
-      opts="--only --skip --packages --modules --audit-level --e2e --logs --no-cache --strict --json --cwd"
-      [[ $flag == --only || $flag == --skip ]] && candidates="workspace structure conventions env dependencies docker migrations accessibility translations tests docs security secrets git issues commits hygiene e2e"
+      opts="--only --skip --packages --modules --audit-level --e2e --outdated --logs --no-cache --strict --json --cwd"
+      [[ $flag == --only || $flag == --skip ]] && candidates="workspace structure tsconfig lockfile conventions imports registration routes entities complexity orphans env dependencies outdated docker migrations accessibility translations stories sdk tests docs bundle security secrets git issues commits hygiene e2e"
       [[ $flag == --packages ]] && candidates="$(_talos_packages)"
       [[ $flag == --modules ]] && candidates="$(_talos_pkg_modules)"
       [[ $flag == --audit-level ]] && candidates="low moderate high critical"
