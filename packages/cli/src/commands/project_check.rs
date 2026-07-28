@@ -68,13 +68,10 @@ pub mod workflows;
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
-use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
-use std::thread::JoinHandle;
-use std::time::{Duration, Instant};
+use std::sync::Mutex;
+use std::time::Instant;
 
 use clap::Args;
 use console::style;
@@ -85,7 +82,7 @@ use crate::commands::issue_check::{self, CheckOptions};
 use crate::commands::monorepo_run::{self, MonorepoRunArgs};
 use crate::commands::security_check;
 use crate::utils::{
-    current_dir, error, format_duration, get_valid_scopes, lint_commit_message,
+    Loader, Spinner, current_dir, error, format_duration, get_valid_scopes, lint_commit_message,
     resolve_biome_command, strip_jsonc,
 };
 
@@ -2406,91 +2403,38 @@ pub fn render_json(report: &ProjectReport) -> String {
 // Progress
 // ---------------------------------------------------------------------------
 
-/// Frames borrowed from the shared spinner so the two look like one tool.
-const PROGRESS_FRAMES: [&str; 10] = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
-const PROGRESS_INTERVAL: Duration = Duration::from_millis(80);
-
 /// How many running checks are named on the progress line before it gives up
 /// and counts the rest.
 const PROGRESS_NAMES: usize = 3;
 
-#[derive(Default)]
-struct ProgressState {
-    done: usize,
-    running: BTreeSet<&'static str>,
-}
-
 /// One line that says how far along the run is.
 ///
 /// With the checks running at once there is no longer a place to print a header
-/// before each and a verdict after it — they would interleave into noise. A
-/// single line that counts finished checks and names the ones still going says
-/// the same thing, and the report underneath says the rest.
+/// before each and a verdict after it — they would interleave into noise. The
+/// shared [`Loader`] counts finished checks and this names the ones still
+/// going; the report underneath says the rest.
 struct Progress {
-    state: Option<Arc<(Mutex<ProgressState>, AtomicBool)>>,
-    handle: Option<JoinHandle<()>>,
-    total: usize,
+    loader: Loader,
+    running: Mutex<BTreeSet<&'static str>>,
 }
 
 impl Progress {
     fn start(total: usize, quiet: bool) -> Self {
-        if quiet || !console::Term::stdout().features().is_attended() {
-            return Self {
-                state: None,
-                handle: None,
-                total,
-            };
-        }
-
-        let state = Arc::new((Mutex::new(ProgressState::default()), AtomicBool::new(false)));
-        let rendered = state.clone();
-        print!("\u{1b}[?25l");
-        let handle = std::thread::spawn(move || {
-            let mut frame = 0usize;
-            while !rendered.1.load(Ordering::Relaxed) {
-                let snapshot = rendered
-                    .0
-                    .lock()
-                    .expect("the progress state is not poisoned");
-                let names: Vec<&str> = snapshot
-                    .running
-                    .iter()
-                    .copied()
-                    .take(PROGRESS_NAMES)
-                    .collect();
-                let hidden = snapshot.running.len().saturating_sub(names.len());
-                let mut line = names.join(", ");
-                if hidden > 0 {
-                    line.push_str(&format!(" +{hidden}"));
-                }
-                print!(
-                    "\r\u{1b}[2K{} {}{}",
-                    style(PROGRESS_FRAMES[frame % PROGRESS_FRAMES.len()]).cyan(),
-                    style(format!("{}/{total} checks", snapshot.done)).bold(),
-                    style(if line.is_empty() {
-                        String::new()
-                    } else {
-                        format!("  {line}")
-                    })
-                    .dim()
-                );
-                drop(snapshot);
-                let _ = std::io::stdout().flush();
-                frame += 1;
-                std::thread::sleep(PROGRESS_INTERVAL);
-            }
-        });
-
         Self {
-            state: Some(state),
-            handle: Some(handle),
-            total,
+            // In `--json` mode stdout holds the report and nothing may be
+            // written beside it.
+            loader: if quiet {
+                Loader::hidden()
+            } else {
+                Loader::start(total, "checks")
+            },
+            running: Mutex::new(BTreeSet::new()),
         }
     }
 
     /// A check that owns the terminal announces itself the old way.
     fn announce(&self, id: CheckId) {
-        self.clear();
+        self.loader.clear();
         println!(
             "{}{}",
             style(format!("▸ {}", id.title())).cyan().bold(),
@@ -2499,58 +2443,35 @@ impl Progress {
     }
 
     fn entered(&self, id: CheckId) {
-        if let Some(state) = &self.state {
-            state
-                .0
-                .lock()
-                .expect("not poisoned")
-                .running
-                .insert(id.key());
-        }
+        self.running.lock().expect("not poisoned").insert(id.key());
+        self.publish();
     }
 
     fn left(&self, id: CheckId) {
-        if let Some(state) = &self.state {
-            let mut state = state.0.lock().expect("not poisoned");
-            state.running.remove(id.key());
-            state.done += 1;
-        }
+        self.running.lock().expect("not poisoned").remove(id.key());
+        self.publish();
+        self.loader.advance();
     }
 
     fn completed(&self) {
-        if let Some(state) = &self.state {
-            state.0.lock().expect("not poisoned").done += 1;
-        }
+        self.loader.advance();
     }
 
-    fn clear(&self) {
-        if self.state.is_some() {
-            print!("\r\u{1b}[2K");
-            let _ = std::io::stdout().flush();
+    /// Hand the loader the checks currently in flight.
+    fn publish(&self) {
+        let running = self.running.lock().expect("not poisoned");
+        let names: Vec<&str> = running.iter().copied().take(PROGRESS_NAMES).collect();
+        let hidden = running.len().saturating_sub(names.len());
+        let mut line = names.join(", ");
+        if hidden > 0 {
+            line.push_str(&format!(" +{hidden}"));
         }
+        self.loader.set_message(line);
     }
 
-    /// Consume the progress line. `Drop` is what actually tears it down, so a
-    /// panic mid-run still restores the cursor.
-    fn stop(self) {
-        let _ = self.total;
-    }
-}
-
-impl Drop for Progress {
-    fn drop(&mut self) {
-        let Some(state) = self.state.take() else {
-            // Nothing was ever rendered — in `--json` mode especially, stdout
-            // holds the report and nothing may be written beside it.
-            return;
-        };
-        state.1.store(true, Ordering::Relaxed);
-        if let Some(handle) = self.handle.take() {
-            let _ = handle.join();
-        }
-        print!("\r\u{1b}[2K\u{1b}[?25h");
-        let _ = std::io::stdout().flush();
-    }
+    /// Consume the progress line. The loader's `Drop` is what actually tears it
+    /// down, so a panic mid-run still restores the cursor.
+    fn stop(self) {}
 }
 
 /// Run one check, whatever it takes to run it.
@@ -2667,6 +2588,10 @@ pub fn execute(args: &ProjectCheckArgs, checks: &[CheckId]) -> ProjectReport {
     // actually be served from a cache entry.
     let hashes = (!args.no_cache && checks.iter().any(|id| id.cacheable()))
         .then(|| cache::FileHashes::load(&root));
+    // The walk is the one stretch before the loader where nothing is printed,
+    // so it gets a spinner of its own.
+    let spinner =
+        (hashes.is_some() && !args.json).then(|| Spinner::start("Fingerprinting the workspace..."));
     let cache = hashes.as_ref().map(|hashes| {
         let modules = modules::filter_modules(
             modules::discover_modules(&root),
@@ -2677,6 +2602,7 @@ pub fn execute(args: &ProjectCheckArgs, checks: &[CheckId]) -> ProjectReport {
             cache::Fingerprints::build(&root, &modules, hashes),
         )
     });
+    drop(spinner);
 
     let mut outcomes: Vec<Option<CheckOutcome>> = vec![None; checks.len()];
     let progress = Progress::start(checks.len(), args.json);

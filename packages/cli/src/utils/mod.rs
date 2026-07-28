@@ -82,4 +82,4 @@ pub use skeleton::{
     read_template, skeleton_templates_dir,
 };
 
-pub use style::{Spinner, error, info, step, success, warn};
+pub use style::{Loader, Spinner, error, info, step, success, warn};
