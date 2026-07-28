@@ -12,9 +12,9 @@ mod module_registry;
 mod monorepo;
 mod monorepo_batch;
 mod monorepo_footer;
-mod monorepo_group;
+pub mod monorepo_group;
 mod monorepo_scheduler;
-mod monorepo_task;
+pub mod monorepo_task;
 mod parallel;
 mod process;
 mod prompts;
@@ -56,9 +56,9 @@ pub use monorepo::{
     save_file_hash_cache, sort_targets_by_dependencies, write_cache_entry,
 };
 pub(crate) use monorepo_footer::Footer;
-pub(crate) use monorepo_group::{INSTALL_COMMAND, build_group, build_install_group};
+pub use monorepo_group::{INSTALL_COMMAND, build_group, build_install_group};
 pub(crate) use monorepo_scheduler::run_group;
-pub(crate) use monorepo_task::{Task, TaskStatus, format_duration};
+pub use monorepo_task::{Task, TaskStatus, format_duration};
 pub use parallel::{Action, run_actions, run_actions_rendered};
 pub use process::{ensure_bin, run_spinner_step, run_step};
 pub use prompts::{

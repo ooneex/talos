@@ -125,6 +125,9 @@ pub fn execute(args: &MonorepoRunArgs) -> bool {
         if stopped {
             break;
         }
+        if group.is_empty() {
+            continue;
+        }
         let group_failed = run_group(
             group,
             &all_targets,

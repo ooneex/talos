@@ -15,11 +15,12 @@ use cli::commands::project_check::migrations::timestamp;
 use cli::commands::project_check::tests::{self as tests_check, needs_test};
 use cli::commands::project_check::{
     A11yDiagnostic, CheckId, CheckOutcome, CheckStatus, HygieneSeverity, ProjectCheckArgs,
-    ProjectReport, bundle, classify_a11y, complexity, dependencies, disabled_a11y_rules,
-    discover_ui_modules, docker, docs, entities, env, graph, imports, lint_commits, lockfile,
-    migrations, modules_with_e2e, orphans, outdated, parse_biome_a11y, registration, render_json,
-    render_report, routes, scan_source, sdk, secrets, select_checks, stories, structure,
-    translations, tsconfig,
+    ProjectReport, asynchrony, boundaries, branches, bundle, classify_a11y, complexity, container,
+    contrast, dependencies, disabled_a11y_rules, discover_ui_modules, docker, docs, e2e_coverage,
+    entities, env, graph, imports, lint_commits, lockfile, migrations, modules_with_e2e, orphans,
+    outdated, parse_biome_a11y, registration, render_json, render_report, restricted, roles,
+    routes, scan_source, sdk, secrets, select_checks, sql, stories, structure, translations,
+    tsconfig, validation,
 };
 
 #[derive(Parser)]
@@ -2248,5 +2249,542 @@ fn a_pluralized_entry_is_used_through_its_base_key() {
     assert_eq!(
         translations::unused_keys(&dictionary, &used),
         vec!["cart.empty".to_string()]
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Container
+// ---------------------------------------------------------------------------
+
+#[test]
+fn an_injected_class_that_nothing_binds_fails_the_container_check() {
+    let (_guard, root) = root();
+    let dir = workspace(&root, "user", "module");
+    write(
+        &dir.join("src/services/MailerService.ts"),
+        "export class MailerService {}\n",
+    );
+    write(
+        &dir.join("src/services/UserService.ts"),
+        "import { MailerService } from \"./MailerService\";\n\n@decorator.service()\nexport class UserService {\n  public constructor(@inject(MailerService) private readonly mailer: MailerService) {}\n}\n",
+    );
+
+    let outcome = container::run(&ProjectCheckArgs::default(), &root);
+
+    assert_eq!(outcome.status, CheckStatus::Failed);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("`MailerService` is injected but no decorator binds it"))
+    );
+}
+
+#[test]
+fn a_decorated_class_satisfies_the_injection() {
+    let (_guard, root) = root();
+    let dir = workspace(&root, "user", "module");
+    write(
+        &dir.join("src/services/MailerService.ts"),
+        "@decorator.service()\nexport class MailerService {}\n",
+    );
+    write(
+        &dir.join("src/services/UserService.ts"),
+        "import { MailerService } from \"./MailerService\";\n\n@decorator.service()\nexport class UserService {\n  public constructor(@inject(MailerService) private readonly mailer: MailerService) {}\n}\n",
+    );
+
+    assert_eq!(
+        container::run(&ProjectCheckArgs::default(), &root).status,
+        CheckStatus::Passed
+    );
+}
+
+#[test]
+fn a_framework_token_is_left_to_the_framework() {
+    // A string token and a class imported from a package are both bound
+    // somewhere the workspace cannot see.
+    let injected = container::injected(
+        "@inject(\"database\") private readonly database: ITypeormDatabase,\n@inject(AppEnv) private readonly env: AppEnv,\n",
+    );
+
+    assert_eq!(injected.len(), 1);
+    assert_eq!(injected[0].1, "AppEnv".to_string());
+}
+
+// ---------------------------------------------------------------------------
+// Boundaries
+// ---------------------------------------------------------------------------
+
+#[test]
+fn a_browser_module_importing_a_server_one_fails() {
+    let (_guard, root) = root();
+    let spa = workspace(&root, "spa", "spa");
+    let api = root.join("modules/api");
+    write(&api.join("api.yml"), "type: \"api\"\n");
+    write(&api.join("package.json"), "{ \"name\": \"api\" }\n");
+    write(
+        &api.join("src/services/UserService.ts"),
+        "export class UserService {}\n",
+    );
+    write(
+        &root.join("tsconfig.json"),
+        "{ \"compilerOptions\": { \"paths\": { \"@module/api/*\": [\"./modules/api/src/*\"] } } }\n",
+    );
+    write(
+        &spa.join("src/features/Profile.tsx"),
+        "import { UserService } from \"@module/api/services/UserService\";\nexport const Profile = () => UserService;\n",
+    );
+
+    let outcome = boundaries::run(&ProjectCheckArgs::default(), &root);
+
+    assert_eq!(outcome.status, CheckStatus::Failed);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("server code would ship to the browser"))
+    );
+}
+
+#[test]
+fn the_runtime_of_a_module_decides_how_bad_a_crossing_is() {
+    // Crossing the runtime is an error; the architectural rules only warn.
+    assert!(matches!(
+        boundaries::verdict(Some("spa"), Some("microservice")),
+        Some((true, _))
+    ));
+    assert!(matches!(
+        boundaries::verdict(Some("api"), Some("design")),
+        Some((true, _))
+    ));
+    assert!(matches!(
+        boundaries::verdict(Some("design"), Some("spa")),
+        Some((false, _))
+    ));
+    // A browser module reaching the server through the sdk is the way it works.
+    assert_eq!(boundaries::verdict(Some("spa"), Some("sdk")), None);
+    assert_eq!(boundaries::verdict(Some("spa"), Some("design")), None);
+}
+
+// ---------------------------------------------------------------------------
+// Restricted
+// ---------------------------------------------------------------------------
+
+#[test]
+fn a_server_runtime_in_a_browser_module_fails() {
+    let (_guard, root) = root();
+    let dir = workspace(&root, "spa", "spa");
+    write(
+        &dir.join("src/features/Config.ts"),
+        "import { readFile } from \"node:fs/promises\";\nexport const load = () => readFile;\n",
+    );
+
+    let outcome = restricted::run(&ProjectCheckArgs::default(), &root);
+
+    assert_eq!(outcome.status, CheckStatus::Failed);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("does not exist in a browser"))
+    );
+}
+
+#[test]
+fn a_replaced_package_is_reported_with_what_answers_it() {
+    let (_guard, root) = root();
+    let dir = workspace(&root, "user", "module");
+    write(
+        &dir.join("src/services/DateService.ts"),
+        "import moment from \"moment\";\nexport class DateService {}\n",
+    );
+
+    let outcome = restricted::run(&ProjectCheckArgs::default(), &root);
+
+    assert_eq!(outcome.status, CheckStatus::Warned);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("@talosjs/hour-utils"))
+    );
+}
+
+#[test]
+fn a_server_runtime_prefix_is_recognised_but_a_package_is_not() {
+    assert_eq!(restricted::server_runtime("node:fs"), Some("node:"));
+    assert_eq!(restricted::server_runtime("bun:sqlite"), Some("bun:"));
+    assert_eq!(restricted::server_runtime("react"), None);
+}
+
+// ---------------------------------------------------------------------------
+// Validation
+// ---------------------------------------------------------------------------
+
+#[test]
+fn a_typed_field_with_no_assertion_is_unvalidated() {
+    let contract = validation::parse(
+        "export type ReadRouteType = {\n  params: {\n    id: string,\n  },\n  payload: {\n    email: string,\n  },\n  queries: {},\n};\n\n@Route.post(\"/users/:id\", {\n  name: \"user.read\",\n  params: {\n    id: Assert(\"string\"),\n  },\n  payload: Assert({\n  }),\n  queries: Assert({}),\n})\nexport class ReadController {}\n",
+    )
+    .expect("a contract");
+
+    let mut errors = Vec::new();
+    let mut warnings = Vec::new();
+    validation::inspect("controller.ts", &contract, &mut errors, &mut warnings);
+
+    assert_eq!(
+        errors,
+        vec!["controller.ts: `payload.email` is typed but never validated".to_string()]
+    );
+    assert!(warnings.is_empty());
+}
+
+#[test]
+fn a_commented_out_assertion_does_not_count_as_one() {
+    let keys = validation::keys(&validation::strip_comments(
+        "\n  // id: Assert(\"string\"),\n  email: Assert(\"string\"),\n",
+    ));
+
+    assert_eq!(keys, ["email".to_string()].into_iter().collect());
+}
+
+#[test]
+fn a_nested_shape_is_one_field_rather_than_its_parts() {
+    let keys = validation::keys("address: { street: string, city: string }, email: string");
+
+    assert_eq!(
+        keys,
+        ["address".to_string(), "email".to_string()]
+            .into_iter()
+            .collect()
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Roles
+// ---------------------------------------------------------------------------
+
+#[test]
+fn a_route_guarding_on_an_undeclared_role_fails() {
+    let (_guard, root) = root();
+    let dir = workspace(&root, "app", "api");
+    write(
+        &dir.join("roles.yml"),
+        "roles:\n  USER: ROLE_USER\nhierarchy:\n  ROLE_USER:\n    description: Standard user\n",
+    );
+    controller(
+        &dir,
+        "Read",
+        "get",
+        "/users",
+        "  roles: [\"ROLE_ADMIN\"],\n",
+    );
+
+    let outcome = roles::run(&ProjectCheckArgs::default(), &root);
+
+    assert_eq!(outcome.status, CheckStatus::Failed);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("guards on `ROLE_ADMIN`"))
+    );
+}
+
+#[test]
+fn a_hierarchy_inheriting_an_unknown_role_fails() {
+    let roles = roles::parse(
+        "roles:\n  USER: ROLE_USER\nhierarchy:\n  ROLE_USER:\n    inherits:\n      - ROLE_GHOST\n",
+    )
+    .expect("a roles file");
+
+    let mut errors = Vec::new();
+    let mut warnings = Vec::new();
+    roles::inspect("roles.yml", &roles, &mut errors, &mut warnings);
+
+    assert!(
+        errors
+            .iter()
+            .any(|error| error.contains("inherits `ROLE_GHOST`"))
+    );
+    assert!(warnings.is_empty());
+}
+
+#[test]
+fn an_inheritance_loop_is_reported() {
+    let roles = roles::parse(
+        "roles:\n  A: ROLE_A\n  B: ROLE_B\nhierarchy:\n  ROLE_A:\n    inherits:\n      - ROLE_B\n  ROLE_B:\n    inherits:\n      - ROLE_A\n",
+    )
+    .expect("a roles file");
+
+    let mut errors = Vec::new();
+    let mut warnings = Vec::new();
+    roles::inspect("roles.yml", &roles, &mut errors, &mut warnings);
+
+    assert!(errors.iter().any(|error| error.contains("hierarchy loops")));
+}
+
+// ---------------------------------------------------------------------------
+// SQL
+// ---------------------------------------------------------------------------
+
+#[test]
+fn a_value_interpolated_into_a_query_fails() {
+    let (_guard, root) = root();
+    let dir = workspace(&root, "user", "module");
+    write(
+        &dir.join("src/repositories/UserRepository.ts"),
+        "export class UserRepository {\n  public async find(email: string) {\n    return this.database.query(`SELECT * FROM users WHERE email = '${email}'`);\n  }\n}\n",
+    );
+
+    let outcome = sql::run(&ProjectCheckArgs::default(), &root);
+
+    assert_eq!(outcome.status, CheckStatus::Failed);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("`${email}` is interpolated into a query"))
+    );
+}
+
+#[test]
+fn a_constant_table_name_is_not_an_injection() {
+    assert!(sql::is_value("email"));
+    assert!(sql::is_value("criteria.id"));
+    // A name the code owns, written as a constant.
+    assert!(!sql::is_value("TABLE_NAME"));
+    assert!(!sql::is_value("SCHEMA_2"));
+}
+
+#[test]
+fn only_a_line_that_reads_as_sql_is_scanned() {
+    assert!(sql::is_query("await runner.query(`ALTER TABLE users`)"));
+    assert!(!sql::is_query("logger.info(`user ${id} created`)"));
+}
+
+// ---------------------------------------------------------------------------
+// Async
+// ---------------------------------------------------------------------------
+
+#[test]
+fn an_await_inside_a_loop_is_reported_once() {
+    let findings = asynchrony::scan(
+        "export const load = async (ids: string[]) => {\n  for (const id of ids) {\n    await repository.findOne(id);\n  }\n};\n",
+    );
+
+    assert_eq!(findings.len(), 1);
+    assert_eq!(findings[0].rule, "async.serial");
+}
+
+#[test]
+fn an_async_iterator_is_serial_by_design() {
+    let findings = asynchrony::scan(
+        "export const read = async (stream) => {\n  for await (const chunk of stream) {\n    await sink.write(chunk);\n  }\n};\n",
+    );
+
+    assert!(findings.is_empty());
+}
+
+#[test]
+fn a_promise_nobody_awaits_is_reported() {
+    let floating = asynchrony::scan("items.forEach(async (item) => { await save(item); });\n");
+    assert!(
+        floating
+            .iter()
+            .any(|serial| serial.rule == "async.floating")
+    );
+
+    let awaited = asynchrony::scan(
+        "const saved = await Promise.all(\n  items.map(async (item) => await save(item)),\n);\n",
+    );
+    assert!(
+        !awaited
+            .iter()
+            .any(|serial| serial.rule == "async.unawaited")
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Contrast
+// ---------------------------------------------------------------------------
+
+#[test]
+fn black_on_white_is_the_maximum_ratio() {
+    let white = contrast::parse_color("oklch(1 0 0)").expect("white");
+    let black = contrast::parse_color("#000000").expect("black");
+
+    assert!((contrast::ratio(black, white) - 21.0).abs() < 0.1);
+    assert!((contrast::ratio(white, white) - 1.0).abs() < 0.001);
+}
+
+#[test]
+fn a_token_pair_under_the_floor_is_reported() {
+    let tokens = contrast::declarations(
+        ":root {\n  --card: oklch(1 0 0);\n  --card-foreground: oklch(0.6 0 0);\n  --muted: oklch(0.95 0 0);\n  --muted-foreground: oklch(0.75 0 0);\n  --background: oklch(1 0 0);\n  --foreground: oklch(0.2 0 0);\n}\n",
+    );
+
+    let (errors, warnings) = contrast::inspect("light.css", &tokens);
+
+    // Grey on grey lands under the large-text floor: nothing on that surface
+    // is legible, so it fails rather than warns.
+    assert!(
+        errors
+            .iter()
+            .any(|error| error.contains("`--muted-foreground` on `--muted`"))
+    );
+    // This one still carries headings and icons, so it only warns.
+    assert!(
+        warnings
+            .iter()
+            .any(|warning| warning.contains("`--card-foreground` on `--card`"))
+    );
+    // The body pair is far above the floor and is not reported at all.
+    assert!(
+        !errors
+            .iter()
+            .chain(warnings.iter())
+            .any(|line| line.contains("`--foreground` on `--background`"))
+    );
+}
+
+#[test]
+fn an_aliased_token_is_followed_to_the_colour_it_paints() {
+    let tokens = contrast::declarations(
+        ":root {\n  --light: oklch(1 0 0);\n  --primary: oklch(0.5 0 0);\n  --primary-foreground: var(--light);\n}\n",
+    );
+
+    assert_eq!(
+        contrast::resolve(&tokens, "--primary-foreground"),
+        Some("oklch(1 0 0)")
+    );
+    assert_eq!(
+        contrast::surface_of("--primary-foreground"),
+        Some("--primary".to_string())
+    );
+    assert_eq!(contrast::surface_of("--primary"), None);
+}
+
+// ---------------------------------------------------------------------------
+// E2E coverage
+// ---------------------------------------------------------------------------
+
+#[test]
+fn an_application_without_a_spec_is_reported() {
+    let (_guard, root) = root();
+    workspace(&root, "spa", "spa");
+
+    let outcome = e2e_coverage::run(&ProjectCheckArgs::default(), &root);
+
+    assert_eq!(outcome.status, CheckStatus::Warned);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("serves an application and has no end-to-end spec"))
+    );
+}
+
+#[test]
+fn a_spec_that_no_script_runs_fails() {
+    let (_guard, root) = root();
+    let dir = workspace(&root, "spa", "spa");
+    write(
+        &dir.join("e2e/home.spec.ts"),
+        "test(\"home\", async () => {});\n",
+    );
+    write(&dir.join("playwright.config.ts"), "export default {};\n");
+
+    let outcome = e2e_coverage::run(&ProjectCheckArgs::default(), &root);
+
+    assert_eq!(outcome.status, CheckStatus::Failed);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("no `e2e` script runs"))
+    );
+}
+
+#[test]
+fn a_server_module_with_no_route_serves_nothing_yet() {
+    assert_eq!(e2e_coverage::serves(Some("api"), 0), None);
+    assert_eq!(
+        e2e_coverage::serves(Some("api"), 2),
+        Some("2 routes".to_string())
+    );
+    assert_eq!(
+        e2e_coverage::serves(Some("spa"), 0),
+        Some("an application".to_string())
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Branches
+// ---------------------------------------------------------------------------
+
+#[test]
+fn an_issue_id_is_read_out_of_a_branch_name() {
+    assert_eq!(
+        branches::issue_of("feat/OON-123456-add-billing"),
+        Some("OON-123456".to_string())
+    );
+    assert_eq!(branches::issue_of("main"), None);
+    assert_eq!(branches::issue_of("feat/no-id-here"), None);
+}
+
+#[test]
+fn an_issue_in_review_whose_branch_is_gone_fails() {
+    let issues = vec![branches::Issue {
+        id: "OON-123456".to_string(),
+        state: "In Review".to_string(),
+        branch: Some("feat/OON-123456-billing".to_string()),
+        file: "modules/user/issues/OON-123456.yml".to_string(),
+    }];
+    let existing: BTreeSet<String> = ["main".to_string()].into_iter().collect();
+
+    let mut errors = Vec::new();
+    let mut warnings = Vec::new();
+    branches::inspect(&issues, &existing, &mut errors, &mut warnings);
+
+    assert!(
+        errors
+            .iter()
+            .any(|error| error.contains("exists neither locally nor on a remote"))
+    );
+}
+
+#[test]
+fn a_branch_no_issue_declares_is_reported() {
+    let issues = vec![branches::Issue {
+        id: "OON-123456".to_string(),
+        state: "Done".to_string(),
+        branch: Some("feat/OON-123456-billing".to_string()),
+        file: "modules/user/issues/OON-123456.yml".to_string(),
+    }];
+    let existing: BTreeSet<String> = [
+        "main".to_string(),
+        "feat/OON-123456-billing".to_string(),
+        "fix/OON-999999-orphan".to_string(),
+    ]
+    .into_iter()
+    .collect();
+
+    let mut errors = Vec::new();
+    let mut warnings = Vec::new();
+    branches::inspect(&issues, &existing, &mut errors, &mut warnings);
+
+    assert!(errors.is_empty());
+    // The finished issue still carries its branch, and the stray one names an
+    // issue that does not exist.
+    assert!(
+        warnings
+            .iter()
+            .any(|warning| warning.contains("still exists"))
+    );
+    assert!(
+        warnings
+            .iter()
+            .any(|warning| warning.contains("OON-999999, which no issue file declares"))
     );
 }

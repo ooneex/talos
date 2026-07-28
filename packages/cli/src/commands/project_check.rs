@@ -7,12 +7,18 @@
 //! and the individual commands. The checks that only read the repository live
 //! in the submodules next to this file.
 
+pub mod asynchrony;
+pub mod boundaries;
+pub mod branches;
 pub mod bundle;
 pub mod complexity;
+pub mod container;
+pub mod contrast;
 pub mod conventions;
 pub mod dependencies;
 pub mod docker;
 pub mod docs;
+pub mod e2e_coverage;
 pub mod entities;
 pub mod env;
 pub mod git;
@@ -24,14 +30,18 @@ pub mod modules;
 pub mod orphans;
 pub mod outdated;
 pub mod registration;
+pub mod restricted;
+pub mod roles;
 pub mod routes;
 pub mod sdk;
 pub mod secrets;
+pub mod sql;
 pub mod stories;
 pub mod structure;
 pub mod tests;
 pub mod translations;
 pub mod tsconfig;
+pub mod validation;
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
@@ -100,7 +110,7 @@ const MAX_SCANNED_FILE_BYTES: u64 = 512 * 1024;
 
 #[derive(Args, Debug, Default, Clone)]
 pub struct ProjectCheckArgs {
-    /// Only run these checks (comma-separated: workspace, structure, tsconfig, lockfile, conventions, imports, registration, routes, entities, complexity, orphans, env, dependencies, outdated, docker, migrations, accessibility, translations, stories, sdk, tests, docs, bundle, security, secrets, git, issues, commits, hygiene, e2e).
+    /// Only run these checks (comma-separated: workspace, structure, tsconfig, lockfile, conventions, imports, boundaries, restricted, container, registration, routes, validation, roles, entities, sql, async, complexity, orphans, env, dependencies, outdated, docker, migrations, accessibility, contrast, translations, stories, sdk, tests, e2e-coverage, docs, bundle, security, secrets, git, issues, branches, commits, hygiene, e2e).
     #[arg(long)]
     pub only: Option<String>,
 
@@ -161,9 +171,16 @@ pub enum CheckId {
     Lockfile,
     Conventions,
     Imports,
+    Boundaries,
+    Restricted,
+    Container,
     Registration,
     Routes,
+    Validation,
+    Roles,
     Entities,
+    Sql,
+    Async,
     Complexity,
     Orphans,
     Env,
@@ -172,16 +189,19 @@ pub enum CheckId {
     Docker,
     Migrations,
     Accessibility,
+    Contrast,
     Translations,
     Stories,
     Sdk,
     Tests,
+    E2eCoverage,
     Docs,
     Bundle,
     Security,
     Secrets,
     Git,
     Issues,
+    Branches,
     Commits,
     Hygiene,
     E2e,
@@ -191,16 +211,23 @@ impl CheckId {
     /// Every check, in execution order. The workspace runs first because the
     /// install it performs is what makes the other tools available, and the
     /// end-to-end suite runs last because it needs the build they produce.
-    pub const ALL: [CheckId; 30] = [
+    pub const ALL: [CheckId; 40] = [
         CheckId::Workspace,
         CheckId::Structure,
         CheckId::Tsconfig,
         CheckId::Lockfile,
         CheckId::Conventions,
         CheckId::Imports,
+        CheckId::Boundaries,
+        CheckId::Restricted,
+        CheckId::Container,
         CheckId::Registration,
         CheckId::Routes,
+        CheckId::Validation,
+        CheckId::Roles,
         CheckId::Entities,
+        CheckId::Sql,
+        CheckId::Async,
         CheckId::Complexity,
         CheckId::Orphans,
         CheckId::Env,
@@ -209,16 +236,19 @@ impl CheckId {
         CheckId::Docker,
         CheckId::Migrations,
         CheckId::Accessibility,
+        CheckId::Contrast,
         CheckId::Translations,
         CheckId::Stories,
         CheckId::Sdk,
         CheckId::Tests,
+        CheckId::E2eCoverage,
         CheckId::Docs,
         CheckId::Bundle,
         CheckId::Security,
         CheckId::Secrets,
         CheckId::Git,
         CheckId::Issues,
+        CheckId::Branches,
         CheckId::Commits,
         CheckId::Hygiene,
         CheckId::E2e,
@@ -227,16 +257,23 @@ impl CheckId {
     /// Checks that run when nothing is requested explicitly. The end-to-end
     /// suite is opt-in because it boots the application, and the outdated check
     /// because it queries the public registries for every dependency.
-    pub const DEFAULT: [CheckId; 28] = [
+    pub const DEFAULT: [CheckId; 38] = [
         CheckId::Workspace,
         CheckId::Structure,
         CheckId::Tsconfig,
         CheckId::Lockfile,
         CheckId::Conventions,
         CheckId::Imports,
+        CheckId::Boundaries,
+        CheckId::Restricted,
+        CheckId::Container,
         CheckId::Registration,
         CheckId::Routes,
+        CheckId::Validation,
+        CheckId::Roles,
         CheckId::Entities,
+        CheckId::Sql,
+        CheckId::Async,
         CheckId::Complexity,
         CheckId::Orphans,
         CheckId::Env,
@@ -244,16 +281,19 @@ impl CheckId {
         CheckId::Docker,
         CheckId::Migrations,
         CheckId::Accessibility,
+        CheckId::Contrast,
         CheckId::Translations,
         CheckId::Stories,
         CheckId::Sdk,
         CheckId::Tests,
+        CheckId::E2eCoverage,
         CheckId::Docs,
         CheckId::Bundle,
         CheckId::Security,
         CheckId::Secrets,
         CheckId::Git,
         CheckId::Issues,
+        CheckId::Branches,
         CheckId::Commits,
         CheckId::Hygiene,
     ];
@@ -266,9 +306,16 @@ impl CheckId {
             CheckId::Lockfile => "lockfile",
             CheckId::Conventions => "conventions",
             CheckId::Imports => "imports",
+            CheckId::Boundaries => "boundaries",
+            CheckId::Restricted => "restricted",
+            CheckId::Container => "container",
             CheckId::Registration => "registration",
             CheckId::Routes => "routes",
+            CheckId::Validation => "validation",
+            CheckId::Roles => "roles",
             CheckId::Entities => "entities",
+            CheckId::Sql => "sql",
+            CheckId::Async => "async",
             CheckId::Complexity => "complexity",
             CheckId::Orphans => "orphans",
             CheckId::Env => "env",
@@ -277,16 +324,19 @@ impl CheckId {
             CheckId::Docker => "docker",
             CheckId::Migrations => "migrations",
             CheckId::Accessibility => "accessibility",
+            CheckId::Contrast => "contrast",
             CheckId::Translations => "translations",
             CheckId::Stories => "stories",
             CheckId::Sdk => "sdk",
             CheckId::Tests => "tests",
+            CheckId::E2eCoverage => "e2e-coverage",
             CheckId::Docs => "docs",
             CheckId::Bundle => "bundle",
             CheckId::Security => "security",
             CheckId::Secrets => "secrets",
             CheckId::Git => "git",
             CheckId::Issues => "issues",
+            CheckId::Branches => "branches",
             CheckId::Commits => "commits",
             CheckId::Hygiene => "hygiene",
             CheckId::E2e => "e2e",
@@ -301,9 +351,16 @@ impl CheckId {
             CheckId::Lockfile => "Lockfile",
             CheckId::Conventions => "Conventions",
             CheckId::Imports => "Imports",
+            CheckId::Boundaries => "Boundaries",
+            CheckId::Restricted => "Restricted",
+            CheckId::Container => "Container",
             CheckId::Registration => "Registration",
             CheckId::Routes => "Routes",
+            CheckId::Validation => "Validation",
+            CheckId::Roles => "Roles",
             CheckId::Entities => "Entities",
+            CheckId::Sql => "SQL",
+            CheckId::Async => "Async",
             CheckId::Complexity => "Complexity",
             CheckId::Orphans => "Orphans",
             CheckId::Env => "Env",
@@ -312,16 +369,19 @@ impl CheckId {
             CheckId::Docker => "Docker",
             CheckId::Migrations => "Migrations",
             CheckId::Accessibility => "Accessibility",
+            CheckId::Contrast => "Contrast",
             CheckId::Translations => "Translations",
             CheckId::Stories => "Stories",
             CheckId::Sdk => "SDK",
             CheckId::Tests => "Tests",
+            CheckId::E2eCoverage => "E2E coverage",
             CheckId::Docs => "Docs",
             CheckId::Bundle => "Bundle",
             CheckId::Security => "Security",
             CheckId::Secrets => "Secrets",
             CheckId::Git => "Git",
             CheckId::Issues => "Issues",
+            CheckId::Branches => "Branches",
             CheckId::Commits => "Commits",
             CheckId::Hygiene => "Hygiene",
             CheckId::E2e => "End-to-end",
@@ -337,9 +397,16 @@ impl CheckId {
             CheckId::Lockfile => "one lockfile, covering every manifest",
             CheckId::Conventions => "DI naming, typed env access and type conventions",
             CheckId::Imports => "resolvable imports, no cycles, no inverted layers",
+            CheckId::Boundaries => "which module may know about which, by runtime",
+            CheckId::Restricted => "packages imported where they do not belong",
+            CheckId::Container => "every injected class bound into the container",
             CheckId::Registration => "classes listed in the module that loads them",
             CheckId::Routes => "unique endpoints, named, versioned and guarded",
+            CheckId::Validation => "route types against the schemas that guard them",
+            CheckId::Roles => "route guards against the declared role hierarchy",
             CheckId::Entities => "entity tables and columns against the migrations",
+            CheckId::Sql => "values interpolated into a raw query",
+            CheckId::Async => "awaits inside a loop and unawaited promises",
             CheckId::Complexity => "file, function, parameter and nesting budgets",
             CheckId::Orphans => "files and exports nothing reaches",
             CheckId::Env => "local .env.yml files against their examples",
@@ -348,16 +415,19 @@ impl CheckId {
             CheckId::Docker => "compose services, pinned images and free host ports",
             CheckId::Migrations => "migration ordering, reversibility and seed data",
             CheckId::Accessibility => "a11y lint of every UI module",
+            CheckId::Contrast => "WCAG contrast of every design token pair",
             CheckId::Translations => "locale parity and key usage of every dictionary",
             CheckId::Stories => "a story for every design-system component",
             CheckId::Sdk => "generated clients against the controllers they wrap",
             CheckId::Tests => "a spec for every source file that holds behaviour",
+            CheckId::E2eCoverage => "an end-to-end suite for every module that serves",
             CheckId::Docs => "relative links in every markdown document",
             CheckId::Bundle => "build size, chunk weight and shipped assets",
             CheckId::Security => "dependency audit against OSV.dev",
             CheckId::Secrets => "credentials in the working tree",
             CheckId::Git => "build output and large files in the index",
             CheckId::Issues => "issue YAML conventions",
+            CheckId::Branches => "issue branches against the branches that exist",
             CheckId::Commits => "conventional commit messages",
             CheckId::Hygiene => "conflict markers, focused tests and bare TODOs",
             CheckId::E2e => "the end-to-end suite of every module",
@@ -378,9 +448,16 @@ impl CheckId {
             "lockfile" | "lock" | "lockfiles" => Some(CheckId::Lockfile),
             "conventions" | "convention" | "naming" => Some(CheckId::Conventions),
             "imports" | "import" | "cycles" | "layers" => Some(CheckId::Imports),
+            "boundaries" | "boundary" | "coupling" => Some(CheckId::Boundaries),
+            "restricted" | "banned" | "forbidden" => Some(CheckId::Restricted),
+            "container" | "di" | "injection" => Some(CheckId::Container),
             "registration" | "registry" | "wiring" => Some(CheckId::Registration),
             "routes" | "route" | "endpoints" | "controllers" => Some(CheckId::Routes),
+            "validation" | "validate" | "assert" | "dto" => Some(CheckId::Validation),
+            "roles" | "role" | "permissions" => Some(CheckId::Roles),
             "entities" | "entity" | "schema" => Some(CheckId::Entities),
+            "sql" | "queries" | "injection-sql" => Some(CheckId::Sql),
+            "async" | "await" | "concurrency" => Some(CheckId::Async),
             "complexity" | "size" | "budgets" => Some(CheckId::Complexity),
             "orphans" | "orphan" | "dead-code" | "unused" => Some(CheckId::Orphans),
             "env" | "environment" | "dotenv" => Some(CheckId::Env),
@@ -389,16 +466,19 @@ impl CheckId {
             "docker" | "compose" | "services" => Some(CheckId::Docker),
             "migrations" | "migration" | "seeds" => Some(CheckId::Migrations),
             "accessibility" | "a11y" => Some(CheckId::Accessibility),
+            "contrast" | "colors" | "colours" | "wcag" => Some(CheckId::Contrast),
             "translations" | "translation" | "i18n" => Some(CheckId::Translations),
             "stories" | "story" | "storybook" => Some(CheckId::Stories),
             "sdk" | "client" => Some(CheckId::Sdk),
             "tests" | "test" | "specs" | "coverage" => Some(CheckId::Tests),
+            "e2e-coverage" | "e2e-specs" | "browser-coverage" => Some(CheckId::E2eCoverage),
             "docs" | "doc" | "documentation" | "markdown" => Some(CheckId::Docs),
             "bundle" | "bundles" | "dist" | "assets" => Some(CheckId::Bundle),
             "security" | "audit" | "vulnerabilities" => Some(CheckId::Security),
             "secrets" | "credentials" => Some(CheckId::Secrets),
             "git" | "repository" | "gitignore" => Some(CheckId::Git),
             "issues" | "issue" => Some(CheckId::Issues),
+            "branches" | "branch" | "worktree" => Some(CheckId::Branches),
             "commits" | "commit" | "commitlint" => Some(CheckId::Commits),
             "hygiene" | "cleanliness" => Some(CheckId::Hygiene),
             "e2e" | "end-to-end" | "endtoend" => Some(CheckId::E2e),
@@ -1812,9 +1892,16 @@ pub fn execute(args: &ProjectCheckArgs, checks: &[CheckId]) -> ProjectReport {
             CheckId::Lockfile => lockfile::run(args, &root),
             CheckId::Conventions => conventions::run(args, &root),
             CheckId::Imports => imports::run(args, &root),
+            CheckId::Boundaries => boundaries::run(args, &root),
+            CheckId::Restricted => restricted::run(args, &root),
+            CheckId::Container => container::run(args, &root),
             CheckId::Registration => registration::run(args, &root),
             CheckId::Routes => routes::run(args, &root),
+            CheckId::Validation => validation::run(args, &root),
+            CheckId::Roles => roles::run(args, &root),
             CheckId::Entities => entities::run(args, &root),
+            CheckId::Sql => sql::run(args, &root),
+            CheckId::Async => asynchrony::run(args, &root),
             CheckId::Complexity => complexity::run(args, &root),
             CheckId::Orphans => orphans::run(args, &root),
             CheckId::Env => env::run(args, &root),
@@ -1823,16 +1910,19 @@ pub fn execute(args: &ProjectCheckArgs, checks: &[CheckId]) -> ProjectReport {
             CheckId::Docker => docker::run(args, &root),
             CheckId::Migrations => migrations::run(args, &root),
             CheckId::Accessibility => check_accessibility(args, &root),
+            CheckId::Contrast => contrast::run(args, &root),
             CheckId::Translations => translations::run(args, &root),
             CheckId::Stories => stories::run(args, &root),
             CheckId::Sdk => sdk::run(args, &root),
             CheckId::Tests => tests::run(args, &root),
+            CheckId::E2eCoverage => e2e_coverage::run(args, &root),
             CheckId::Docs => docs::run(args, &root),
             CheckId::Bundle => bundle::run(args, &root),
             CheckId::Security => check_security(args, &root),
             CheckId::Secrets => secrets::run(args, &root),
             CheckId::Git => git::run(args, &root),
             CheckId::Issues => check_issues(args, &root),
+            CheckId::Branches => branches::run(args, &root),
             CheckId::Commits => check_commits(&root),
             CheckId::Hygiene => check_hygiene(&root),
             CheckId::E2e => check_e2e(args, &root),
