@@ -70,7 +70,6 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::sync::Mutex;
 use std::time::Instant;
 
 use clap::Args;
@@ -82,8 +81,8 @@ use crate::commands::issue_check::{self, CheckOptions};
 use crate::commands::monorepo_run::{self, MonorepoRunArgs};
 use crate::commands::security_check;
 use crate::utils::{
-    Loader, Spinner, current_dir, error, format_duration, get_valid_scopes, lint_commit_message,
-    resolve_biome_command, strip_jsonc,
+    Loader, LoaderGroup, Spinner, current_dir, error, format_duration, get_valid_scopes,
+    lint_commit_message, resolve_biome_command, strip_jsonc,
 };
 
 /// Commands the workspace check runs, in order.
@@ -2403,38 +2402,56 @@ pub fn render_json(report: &ProjectReport) -> String {
 // Progress
 // ---------------------------------------------------------------------------
 
-/// How many running checks are named on the progress line before it gives up
-/// and counts the rest.
-const PROGRESS_NAMES: usize = 3;
-
-/// One line that says how far along the run is.
+/// How far along the run is, one row per category.
 ///
 /// With the checks running at once there is no longer a place to print a header
 /// before each and a verdict after it — they would interleave into noise. The
-/// shared [`Loader`] counts finished checks and this names the ones still
-/// going; the report underneath says the rest.
+/// shared [`Loader`] draws the categories the report is grouped under, in the
+/// same order, so the wait is read the same way the result will be.
 struct Progress {
     loader: Loader,
-    running: Mutex<BTreeSet<&'static str>>,
+    /// Where each category sits in the loader — only the categories the run
+    /// actually selected get a row.
+    rows: BTreeMap<Category, usize>,
 }
 
 impl Progress {
-    fn start(total: usize, quiet: bool) -> Self {
+    fn start(checks: &[CheckId], quiet: bool) -> Self {
+        let mut rows = BTreeMap::new();
+        let mut groups = Vec::new();
+        for category in Category::ALL {
+            let total = checks.iter().filter(|id| id.category() == category).count();
+            if total == 0 {
+                continue;
+            }
+            rows.insert(category, groups.len());
+            groups.push(LoaderGroup::new(category.title(), total));
+        }
+
         Self {
             // In `--json` mode stdout holds the report and nothing may be
             // written beside it.
             loader: if quiet {
                 Loader::hidden()
             } else {
-                Loader::start(total, "checks")
+                Loader::start(groups)
             },
-            running: Mutex::new(BTreeSet::new()),
+            rows,
         }
     }
 
+    /// The row a check reports into.
+    fn row(&self, id: CheckId) -> usize {
+        self.rows.get(&id.category()).copied().unwrap_or_default()
+    }
+
     /// A check that owns the terminal announces itself the old way.
+    ///
+    /// It keeps the terminal until [`released`](Self::released): the workspace
+    /// and end-to-end checks hand off to `monorepo:run`, which draws a live
+    /// display of its own that the loader would otherwise overwrite.
     fn announce(&self, id: CheckId) {
-        self.loader.clear();
+        self.loader.pause();
         println!(
             "{}{}",
             style(format!("▸ {}", id.title())).cyan().bold(),
@@ -2442,35 +2459,27 @@ impl Progress {
         );
     }
 
+    /// The announced check is done — take the line back.
+    fn released(&self) {
+        self.loader.resume();
+    }
+
     fn entered(&self, id: CheckId) {
-        self.running.lock().expect("not poisoned").insert(id.key());
-        self.publish();
+        self.loader.entered(self.row(id), id.key());
     }
 
     fn left(&self, id: CheckId) {
-        self.running.lock().expect("not poisoned").remove(id.key());
-        self.publish();
-        self.loader.advance();
+        self.loader.left(self.row(id), id.key());
     }
 
-    fn completed(&self) {
-        self.loader.advance();
+    /// A check that ran with the terminal to itself, so it was never drawn as
+    /// running — only counted.
+    fn completed(&self, id: CheckId) {
+        self.loader.advance(self.row(id));
     }
 
-    /// Hand the loader the checks currently in flight.
-    fn publish(&self) {
-        let running = self.running.lock().expect("not poisoned");
-        let names: Vec<&str> = running.iter().copied().take(PROGRESS_NAMES).collect();
-        let hidden = running.len().saturating_sub(names.len());
-        let mut line = names.join(", ");
-        if hidden > 0 {
-            line.push_str(&format!(" +{hidden}"));
-        }
-        self.loader.set_message(line);
-    }
-
-    /// Consume the progress line. The loader's `Drop` is what actually tears it
-    /// down, so a panic mid-run still restores the cursor.
+    /// Consume the progress rows. The loader's `Drop` is what actually tears
+    /// them down, so a panic mid-run still restores the cursor.
     fn stop(self) {}
 }
 
@@ -2605,7 +2614,7 @@ pub fn execute(args: &ProjectCheckArgs, checks: &[CheckId]) -> ProjectReport {
     drop(spinner);
 
     let mut outcomes: Vec<Option<CheckOutcome>> = vec![None; checks.len()];
-    let progress = Progress::start(checks.len(), args.json);
+    let progress = Progress::start(checks, args.json);
 
     // The workspace gate first, on its own and with the terminal to itself.
     for (index, id) in checks
@@ -2615,7 +2624,8 @@ pub fn execute(args: &ProjectCheckArgs, checks: &[CheckId]) -> ProjectReport {
     {
         progress.announce(*id);
         outcomes[index] = Some(run_check(args, &root, *id, cache.as_ref()));
-        progress.completed();
+        progress.completed(*id);
+        progress.released();
     }
 
     let concurrent: Vec<(usize, CheckId)> = checks
@@ -2646,7 +2656,8 @@ pub fn execute(args: &ProjectCheckArgs, checks: &[CheckId]) -> ProjectReport {
     {
         progress.announce(*id);
         outcomes[index] = Some(run_check(args, &root, *id, cache.as_ref()));
-        progress.completed();
+        progress.completed(*id);
+        progress.released();
     }
 
     progress.stop();

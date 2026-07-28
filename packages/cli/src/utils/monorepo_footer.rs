@@ -8,6 +8,7 @@ use std::time::{Duration, Instant};
 use console::{Term, style};
 
 use super::monorepo_task::format_duration;
+use super::style::{BAR_EMPTY, BAR_FILLED};
 
 const FRAMES: [&str; 10] = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 const TICK: Duration = Duration::from_millis(80);
@@ -154,7 +155,7 @@ fn build_footer_lines(state: &FooterState, cols: usize, elapsed_ms: u64) -> Vec<
         state.finished as f64 / state.total as f64
     };
     let filled = ((ratio * BAR_WIDTH as f64).round() as usize).min(BAR_WIDTH);
-    let filled_glyphs = "█".repeat(filled);
+    let filled_glyphs = BAR_FILLED.repeat(filled);
     let bar = format!(
         "{}{}",
         if state.failed > 0 {
@@ -162,7 +163,7 @@ fn build_footer_lines(state: &FooterState, cols: usize, elapsed_ms: u64) -> Vec<
         } else {
             style(filled_glyphs).green()
         },
-        style("░".repeat(BAR_WIDTH - filled)).dim()
+        style(BAR_EMPTY.repeat(BAR_WIDTH - filled)).dim()
     );
 
     let mut summary = vec![format!("{}/{}", state.finished, state.total)];
