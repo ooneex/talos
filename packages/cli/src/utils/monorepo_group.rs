@@ -30,6 +30,19 @@ fn tests_dir_is_empty(dir: &Path) -> bool {
     !has_file(&dir.join("tests"))
 }
 
+/// `bun run <command>` only works for a script `package.json` actually
+/// declares; a language default has no such entry, so it is invoked directly.
+fn script_argv(target: &MonorepoTarget, command: &str) -> Vec<String> {
+    if !target.direct_scripts {
+        return vec!["bun".to_string(), "run".to_string(), command.to_string()];
+    }
+    target
+        .scripts
+        .get(command)
+        .map(|script| script.split_whitespace().map(str::to_string).collect())
+        .unwrap_or_default()
+}
+
 pub fn build_group(
     targets: &[MonorepoTarget],
     included_keys: &HashSet<String>,
@@ -54,7 +67,7 @@ pub fn build_group(
                 target_key: Some(target.key.clone()),
                 command: command.to_string(),
                 cwd: target.dir.clone(),
-                argv: vec!["bun".to_string(), "run".to_string(), command.to_string()],
+                argv: script_argv(target, command),
                 cacheable: true,
                 deps: if ordered {
                     target

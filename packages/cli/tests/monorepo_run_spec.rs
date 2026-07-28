@@ -1,10 +1,23 @@
+use std::fs;
+use std::path::Path;
+
 use clap::Parser;
-use cli::commands::monorepo_run::MonorepoRunArgs;
+use cli::commands::monorepo_run::{MonorepoRunArgs, execute};
 
 #[derive(Parser)]
 struct TestCli {
     #[command(flatten)]
     args: MonorepoRunArgs,
+}
+
+fn write_module(root: &Path, name: &str, scripts: &str) {
+    let dir = root.join("modules").join(name);
+    fs::create_dir_all(&dir).expect("module dir");
+    fs::write(
+        dir.join("package.json"),
+        format!("{{\"name\":\"{name}\",\"scripts\":{scripts}}}"),
+    )
+    .expect("package.json");
 }
 
 #[test]
@@ -47,4 +60,44 @@ fn monorepo_run_defaults_are_empty() {
 #[test]
 fn monorepo_run_rejects_unknown_flag() {
     assert!(TestCli::try_parse_from(["talos", "--definitely-not-a-flag"]).is_err());
+}
+
+#[test]
+fn execute_skips_commands_missing_from_every_package_json() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    write_module(tmp.path(), "alpha", "{\"build\":\"exit 0\"}");
+
+    assert!(execute(&MonorepoRunArgs {
+        commands: Some("nope,build".to_string()),
+        no_cache: true,
+        cwd: Some(tmp.path().display().to_string()),
+        ..Default::default()
+    }));
+}
+
+#[test]
+fn execute_succeeds_when_no_command_matches_any_script() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    write_module(tmp.path(), "alpha", "{\"build\":\"exit 0\"}");
+
+    assert!(execute(&MonorepoRunArgs {
+        commands: Some("nope".to_string()),
+        no_cache: true,
+        cwd: Some(tmp.path().display().to_string()),
+        ..Default::default()
+    }));
+}
+
+#[test]
+fn execute_runs_only_the_targets_that_declare_the_script() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    write_module(tmp.path(), "alpha", "{\"build\":\"exit 0\"}");
+    write_module(tmp.path(), "beta", "{\"lint\":\"exit 0\"}");
+
+    assert!(execute(&MonorepoRunArgs {
+        commands: Some("build".to_string()),
+        no_cache: true,
+        cwd: Some(tmp.path().display().to_string()),
+        ..Default::default()
+    }));
 }

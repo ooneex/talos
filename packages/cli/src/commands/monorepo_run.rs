@@ -88,22 +88,46 @@ pub fn execute(args: &MonorepoRunArgs) -> bool {
     let sorted = sort_targets_by_dependencies(&targets);
     let included_keys: HashSet<String> = sorted.iter().map(|t| t.key.clone()).collect();
 
-    let mut groups: Vec<Vec<Task>> = commands
+    // A command no target declares in its `package.json` scripts is skipped
+    // instead of failing, so a shared command list stays usable across
+    // workspaces where only some modules define every script.
+    let mut planned: Vec<(String, Vec<Task>)> = commands
         .iter()
         .map(|command| {
-            if command == INSTALL_COMMAND {
+            let group = if command == INSTALL_COMMAND {
                 build_install_group(&root_dir)
             } else {
                 build_group(&sorted, &included_keys, command)
-            }
+            };
+            (command.clone(), group)
         })
         .collect();
+
+    let missing: Vec<String> = planned
+        .iter()
+        .filter(|(_, group)| group.is_empty())
+        .map(|(command, _)| command.clone())
+        .collect();
+    planned.retain(|(_, group)| !group.is_empty());
+
+    if !missing.is_empty() {
+        println!(
+            "{}{}",
+            style("↷ ").yellow(),
+            style(format!("Skipped {} (no such script)", missing.join(", "))).dim()
+        );
+    }
+
+    let (ran_commands, mut groups): (Vec<String>, Vec<Vec<Task>>) = planned.into_iter().unzip();
+    if groups.is_empty() {
+        return true;
+    }
 
     let total_tasks: usize = groups.iter().map(|g| g.len()).sum();
     println!(
         "{}{}{}",
         style("▸ ").magenta(),
-        style(commands.join(", ")).magenta().bold(),
+        style(ran_commands.join(", ")).magenta().bold(),
         style(format!(
             "  {} task{} across {} target{}",
             total_tasks,
@@ -124,9 +148,6 @@ pub fn execute(args: &MonorepoRunArgs) -> bool {
     for group in &mut groups {
         if stopped {
             break;
-        }
-        if group.is_empty() {
-            continue;
         }
         let group_failed = run_group(
             group,
@@ -176,7 +197,7 @@ pub fn execute(args: &MonorepoRunArgs) -> bool {
     }
     println!(
         "{}{}",
-        style(format!("✔ Ran {}", commands.join(", "))).green(),
+        style(format!("✔ Ran {}", ran_commands.join(", "))).green(),
         style(format!(
             "  {}  in {}",
             parts.join(" · "),

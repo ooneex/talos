@@ -618,7 +618,7 @@ fn the_workspace_falls_back_to_poetry_and_pip() {
 }
 
 #[test]
-fn a_hand_written_script_wins_over_the_python_default() {
+fn a_package_json_replaces_the_python_defaults_entirely() {
     let (_guard, path) = root();
     let dir = package_at(&path, "worker", "[project]\nname = \"worker\"\n");
     write(&dir.join("uv.lock"), "version = 1\n");
@@ -638,7 +638,8 @@ fn a_hand_written_script_wins_over_the_python_default() {
         Some("uv run pytest -x")
     );
     assert_eq!(
-        target.scripts.get("lint").map(String::as_str),
-        Some("uv run ruff check")
+        target.scripts.get("lint"),
+        None,
+        "a command the package.json does not declare is skipped, not guessed at"
     );
 }

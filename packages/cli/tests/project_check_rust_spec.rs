@@ -526,7 +526,7 @@ fn the_workspace_runs_cargo_for_a_crate() {
 }
 
 #[test]
-fn a_hand_written_script_wins_over_the_cargo_default() {
+fn a_package_json_replaces_the_cargo_defaults_entirely() {
     let (_guard, path) = root();
     let dir = crate_at(&path, "cli", "[package]\nname = \"cli\"\n");
     write(
@@ -545,11 +545,8 @@ fn a_hand_written_script_wins_over_the_cargo_default() {
         target.scripts.get("test").map(String::as_str),
         Some("cargo nextest run")
     );
-    // The commands it does not define are still filled in.
-    assert_eq!(
-        target.scripts.get("lint").map(String::as_str),
-        Some("cargo clippy --all-targets --quiet")
-    );
+    // The commands it does not define are skipped, not filled in.
+    assert_eq!(target.scripts.get("lint"), None);
 }
 
 #[test]

@@ -1,5 +1,5 @@
 use clap::Parser;
-use cli::commands::monorepo_check::MonorepoCheckArgs;
+use cli::commands::monorepo_check::{CHECK_COMMANDS, MonorepoCheckArgs};
 
 #[derive(Parser)]
 struct TestCli {
@@ -38,6 +38,11 @@ fn monorepo_check_defaults_are_empty() {
     assert!(!cli.args.logs);
     assert!(!cli.args.no_cache);
     assert!(cli.args.cwd.is_none());
+}
+
+#[test]
+fn monorepo_check_runs_the_full_workspace_gate_in_order() {
+    assert_eq!(CHECK_COMMANDS, "install,build,fmt,lint,test");
 }
 
 #[test]

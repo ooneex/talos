@@ -13,6 +13,7 @@ fn target(name: &str, scripts: &[&str], workspace_deps: &[&str]) -> MonorepoTarg
             .iter()
             .map(|s| (s.to_string(), format!("run-{s}")))
             .collect::<HashMap<_, _>>(),
+        direct_scripts: false,
         workspace_deps: workspace_deps.iter().map(|s| s.to_string()).collect(),
     }
 }
@@ -42,6 +43,20 @@ fn build_group_runs_package_json_script_once_per_target() {
     assert_eq!(task.command, "test");
     assert_eq!(task.key, "packages/core#test");
     assert_eq!(task.status, TaskStatus::Pending);
+}
+
+#[test]
+fn build_group_invokes_language_defaults_without_bun_run() {
+    let mut target = target("crate", &["build"], &[]);
+    target.direct_scripts = true;
+    target
+        .scripts
+        .insert("build".to_string(), "cargo build".to_string());
+    let targets = vec![target];
+
+    let tasks = build_group(&targets, &included(&targets), "build");
+
+    assert_eq!(tasks[0].argv, vec!["cargo", "build"]);
 }
 
 #[test]

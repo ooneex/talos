@@ -92,6 +92,10 @@ pub struct MonorepoTarget {
     pub target_type: TargetType,
     pub dir: PathBuf,
     pub scripts: HashMap<String, String>,
+    /// A target without a `package.json` gets its language defaults (cargo, uv)
+    /// and runs them as-is; anything with a `package.json` goes through
+    /// `bun run <script>` and owns exactly the scripts it declares.
+    pub direct_scripts: bool,
     pub workspace_deps: Vec<String>,
 }
 
@@ -135,6 +139,7 @@ pub fn discover_targets(root_dir: &Path) -> Vec<MonorepoTarget> {
                 .ok()
                 .and_then(|raw| serde_json::from_str::<PackageJson>(&raw).ok());
 
+            let has_package_json = package_json.is_some();
             let package_json = match package_json {
                 Some(package_json) => package_json,
                 // A crate or a Python package needs no `package.json` to be
@@ -153,16 +158,18 @@ pub fn discover_targets(root_dir: &Path) -> Vec<MonorepoTarget> {
             declared_deps.insert(key.clone(), deps);
 
             let mut scripts = package_json.scripts;
-            // Only the commands the module does not define itself, so a
-            // hand-written script always wins.
-            let defaults = is_rust
-                .then_some(CARGO_SCRIPTS)
-                .into_iter()
-                .chain(python_scripts);
-            for (command, script) in defaults.flatten() {
-                scripts
-                    .entry((*command).to_string())
-                    .or_insert_with(|| (*script).to_string());
+            // A `package.json` is the single source of truth for the module it
+            // sits in: a command it does not declare is skipped rather than
+            // guessed at. Only a target without one falls back to the defaults
+            // of the language it is written in.
+            if !has_package_json {
+                let defaults = is_rust
+                    .then_some(CARGO_SCRIPTS)
+                    .into_iter()
+                    .chain(python_scripts);
+                for (command, script) in defaults.flatten() {
+                    scripts.insert((*command).to_string(), (*script).to_string());
+                }
             }
 
             targets.push(MonorepoTarget {
@@ -171,6 +178,7 @@ pub fn discover_targets(root_dir: &Path) -> Vec<MonorepoTarget> {
                 target_type: *target_type,
                 dir,
                 scripts,
+                direct_scripts: !has_package_json,
                 workspace_deps: Vec::new(),
             });
         }
