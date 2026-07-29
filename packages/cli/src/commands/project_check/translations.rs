@@ -153,31 +153,100 @@ pub fn inspect_dictionary(label: &str, dictionary: &Dictionary) -> (Vec<String>,
     (errors, warnings)
 }
 
-/// The suffixes `trans()` appends itself when it pluralizes, so a key that is
-/// only ever reached through a `count` still counts as used.
-const PLURAL_SUFFIXES: [&str; 6] = ["_plural", "_zero", "_one", "_two", "_few", "_many"];
+/// The sibling keys `trans()` selects itself from a `count`, so an entry that
+/// is only ever reached through its base key still counts as used. These are
+/// the only two suffixes `select()` resolves — any other is dead weight.
+const PLURAL_SUFFIXES: [&str; 2] = ["_plural", "_zero"];
+
+/// The module that owns the raw `trans(dict, key)` / `has(dict, key)` helpers.
+/// A file importing them is the plumbing a hook or a `Translation` class is
+/// built from, not a consumer, and its calls name a dictionary rather than a
+/// key — so scanning it would only ever produce noise.
+const PLUMBING_IMPORT: &str = "@talosjs/utils/trans";
 
 fn usage_pattern() -> &'static Regex {
     static PATTERN: OnceLock<Regex> = OnceLock::new();
     PATTERN.get_or_init(|| {
         // Both shapes go through the same two functions: the `trans()` helper a
         // hook wraps, and the `trans()` method the injected Translation class
-        // exposes. `has()` looks a key up just as much as `trans()` does.
-        Regex::new(r#"\b(?:trans|has)\(\s*["'`]([A-Za-z0-9_.\-]+)["'`]"#)
+        // exposes. Which of the two was called decides the severity, so the
+        // name is captured alongside the key.
+        Regex::new(r#"\b(trans|has)\(\s*["'`]([A-Za-z0-9_.\-]+)["'`]\s*[,)]"#)
             .expect("the translation usage pattern is valid")
     })
 }
 
-/// The translation keys a source file looks up.
+fn dynamic_pattern() -> &'static Regex {
+    static PATTERN: OnceLock<Regex> = OnceLock::new();
+    PATTERN.get_or_init(|| {
+        // A key assembled at runtime — `trans(key)`, `trans(`nav.${id}`)`. No
+        // static pass can tell which entries it reaches.
+        Regex::new(r#"\b(?:trans|has)\(\s*(?:[A-Za-z_$][A-Za-z0-9_$.\[\]]*\s*[,)]|`[^`]*\$\{)"#)
+            .expect("the dynamic translation usage pattern is valid")
+    })
+}
+
+/// What a body of source asks of the dictionary that serves it.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Usage {
+    /// Keys resolved through `trans()`. A miss throws, or ships the raw key.
+    pub lookups: BTreeSet<String>,
+    /// Keys probed through `has()`. A miss is the answer, not a defect, so
+    /// these only ever prove a key is reachable.
+    pub probes: BTreeSet<String>,
+    /// Whether a key is built at runtime, which makes "never looked up"
+    /// unprovable for every dictionary the code can reach.
+    pub dynamic: bool,
+}
+
+impl Usage {
+    /// Every key named literally, whichever function named it.
+    pub fn reached(&self) -> BTreeSet<String> {
+        self.lookups.union(&self.probes).cloned().collect()
+    }
+
+    fn absorb(&mut self, other: &Usage) {
+        self.lookups.extend(other.lookups.iter().cloned());
+        self.probes.extend(other.probes.iter().cloned());
+        self.dynamic |= other.dynamic;
+    }
+}
+
+/// The keys a source file names, split by the call that named them.
+pub fn scan_usage(content: &str) -> Usage {
+    if content.contains(PLUMBING_IMPORT) {
+        return Usage::default();
+    }
+
+    let mut usage = Usage {
+        dynamic: dynamic_pattern().is_match(content),
+        ..Usage::default()
+    };
+
+    for captured in usage_pattern().captures_iter(content) {
+        let (Some(function), Some(key)) = (captured.get(1), captured.get(2)) else {
+            continue;
+        };
+        let key = key.as_str();
+        // A single short segment is almost always a variable name caught by
+        // accident; every generated key is namespaced.
+        if !key.contains('.') && key.len() <= 3 {
+            continue;
+        }
+        let bucket = if function.as_str() == "trans" {
+            &mut usage.lookups
+        } else {
+            &mut usage.probes
+        };
+        bucket.insert(key.to_string());
+    }
+
+    usage
+}
+
+/// The translation keys a source file names.
 pub fn used_keys(content: &str) -> BTreeSet<String> {
-    usage_pattern()
-        .captures_iter(content)
-        .filter_map(|captured| captured.get(1))
-        .map(|group| group.as_str().to_string())
-        // A single segment is almost always a variable name caught by accident;
-        // every generated key is namespaced.
-        .filter(|key| key.contains('.') || key.len() > 3)
-        .collect()
+    scan_usage(content).reached()
 }
 
 /// The base key a pluralized entry belongs to.
@@ -187,19 +256,38 @@ pub fn plural_base(key: &str) -> Option<&str> {
         .find_map(|suffix| key.strip_suffix(suffix))
 }
 
-/// Every key looked up under a directory, which is the scope a dictionary
-/// serves: the generators put `translations.json` next to the hook that reads
-/// it, and the module dictionary next to the class that injects it.
-pub fn keys_used_under(dir: &Path) -> BTreeSet<String> {
-    collect_files(dir, &["ts", "tsx"], 8)
-        .into_iter()
-        .filter_map(|path| fs::read_to_string(path).ok())
-        .flat_map(|content| used_keys(&content))
-        .collect()
+/// The directory a dictionary serves. The generators put the module dictionary
+/// at `src/translations.yml`, next to the class that injects it, and a spa
+/// feature's `translations/translations.json` next to the hook that reads it —
+/// so the folder holding the dictionary is the scope, unless that folder is the
+/// `translations/` box itself, in which case the feature around it is.
+pub fn dictionary_scope(path: &Path) -> Option<PathBuf> {
+    let parent = path.parent()?;
+    if parent.file_name().and_then(|name| name.to_str()) == Some("translations") {
+        return parent.parent().map(Path::to_path_buf);
+    }
+    Some(parent.to_path_buf())
 }
 
-/// Keys the code looks up that nothing defines. `trans()` falls back to
-/// printing the key itself, so these ship as raw `user.profile.title` text.
+/// Everything named under a directory, which is how a scope is read as a whole.
+pub fn usage_under(dir: &Path) -> Usage {
+    let mut usage = Usage::default();
+    for path in collect_files(dir, &["ts", "tsx"], 8) {
+        let Ok(content) = fs::read_to_string(path) else {
+            continue;
+        };
+        usage.absorb(&scan_usage(&content));
+    }
+    usage
+}
+
+/// Every key looked up under a directory.
+pub fn keys_used_under(dir: &Path) -> BTreeSet<String> {
+    usage_under(dir).reached()
+}
+
+/// Keys the code looks up that nothing defines. `trans()` throws on those, and
+/// the spa hook ships them as raw `user.profile.title` text.
 pub fn missing_keys(used: &BTreeSet<String>, defined: &BTreeSet<String>) -> Vec<String> {
     used.difference(defined).cloned().collect()
 }
@@ -214,6 +302,22 @@ pub fn unused_keys(dictionary: &Dictionary, used: &BTreeSet<String>) -> Vec<Stri
         })
         .cloned()
         .collect()
+}
+
+/// The dictionary serving a source file: the deepest scope enclosing it, so a
+/// spa feature's own `translations.json` wins over the module dictionary above
+/// it. `None` when no dictionary covers the file at all.
+fn owning_scope(parsed: &[(String, Option<PathBuf>, Dictionary)], path: &Path) -> Option<usize> {
+    parsed
+        .iter()
+        .enumerate()
+        .filter_map(|(index, (_, scope, _))| {
+            let scope = scope.as_ref()?;
+            path.starts_with(scope)
+                .then(|| (scope.components().count(), index))
+        })
+        .max()
+        .map(|(_, index)| index)
 }
 
 /// Every dictionary file inside the selected modules.
@@ -252,7 +356,7 @@ pub fn run(args: &ProjectCheckArgs, root: &Path) -> CheckOutcome {
     let mut warnings = Vec::new();
     let mut keys = 0;
     let mut defined: BTreeSet<String> = BTreeSet::new();
-    let mut parsed = Vec::new();
+    let mut parsed: Vec<(String, Option<PathBuf>, Dictionary)> = Vec::new();
 
     for path in &files {
         let label = relative(root, path);
@@ -271,28 +375,64 @@ pub fn run(args: &ProjectCheckArgs, root: &Path) -> CheckOutcome {
         let (file_errors, file_warnings) = inspect_dictionary(&label, &dictionary);
         errors.extend(file_errors);
         warnings.extend(file_warnings);
-        parsed.push((label, dictionary));
+        parsed.push((label, dictionary_scope(path), dictionary));
     }
 
-    // Usage is resolved across the whole selection rather than per dictionary: a
-    // hook in one feature legitimately looks up a key the dictionary next door
-    // defines, and only a key nothing anywhere defines is really missing.
-    let mut used: BTreeSet<String> = BTreeSet::new();
+    // Each file is read against the dictionary that actually serves it — the
+    // nearest scope enclosing it — because that is the only dictionary the hook
+    // or the injected class it calls has bound. Resolving against the union
+    // instead would let a key defined in one feature excuse a lookup in the
+    // next, which is exactly the case that throws at runtime.
+    let mut selection = Usage::default();
+    let mut scoped: Vec<Usage> = vec![Usage::default(); parsed.len()];
     let mut sources = 0;
     for module in &modules {
         let src = module.dir.join("src");
-        sources += collect_files(&src, &["ts", "tsx"], 8).len();
-        used.extend(keys_used_under(&src));
+        for path in collect_files(&src, &["ts", "tsx"], 8) {
+            sources += 1;
+            let Ok(content) = fs::read_to_string(&path) else {
+                continue;
+            };
+            let usage = scan_usage(&content);
+            selection.absorb(&usage);
+            if let Some(index) = owning_scope(&parsed, &path) {
+                scoped[index].absorb(&usage);
+            }
+        }
     }
 
     // With nothing to read the dictionaries from — a translations-only package,
     // or a module whose UI is not written yet — every key would look unused.
     if sources > 0 {
-        for key in missing_keys(&used, &defined) {
+        let reached = selection.reached();
+        for key in missing_keys(&selection.lookups, &defined) {
             errors.push(format!("`{key}` is looked up but no dictionary defines it"));
         }
-        for (label, dictionary) in &parsed {
-            for key in unused_keys(dictionary, &used) {
+
+        for (index, (label, _, dictionary)) in parsed.iter().enumerate() {
+            let usage = &scoped[index];
+            let own: BTreeSet<String> = dictionary.keys().cloned().collect();
+
+            // Defined somewhere, but not here: the lookup resolves only if the
+            // file imported another feature's hook, so it warns rather than
+            // fails.
+            for key in missing_keys(&usage.lookups, &own)
+                .into_iter()
+                .filter(|key| reached.contains(key) && defined.contains(key))
+            {
+                warnings.push(format!(
+                    "{label}: `{key}` is looked up in its scope but only another dictionary defines it"
+                ));
+            }
+
+            if usage.dynamic {
+                warnings.push(format!(
+                    "{label}: unused keys not checked — a `trans()` call in its scope builds the key at runtime"
+                ));
+                continue;
+            }
+
+            for key in unused_keys(dictionary, &reached) {
                 warnings.push(format!("{label}: `{key}` is defined but never looked up"));
             }
         }

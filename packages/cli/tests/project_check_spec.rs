@@ -17,9 +17,9 @@ use cli::commands::project_check::{
     A11yDiagnostic, CheckId, CheckOutcome, CheckStatus, HygieneSeverity, ProjectCheckArgs,
     ProjectReport, asynchrony, boundaries, branches, bundle, classify_a11y, complexity, container,
     contrast, dependencies, disabled_a11y_rules, discover_ui_modules, docker, docs, e2e_coverage,
-    entities, env, graph, imports, lint_commits, lockfile, migrations, modules_with_e2e, orphans,
-    outdated, parse_biome_a11y, registration, render_json, render_report, restricted, roles,
-    routes, scan_source, sdk, secrets, select_checks, sql, stories, structure, translations,
+    entities, env, graph, health, imports, lint_commits, lockfile, migrations, modules_with_e2e,
+    orphans, outdated, parse_biome_a11y, registration, render_json, render_report, restricted,
+    roles, routes, scan_source, sdk, secrets, select_checks, sql, stories, structure, translations,
     tsconfig, validation,
 };
 
@@ -2240,6 +2240,119 @@ fn a_key_looked_up_but_never_defined_fails_the_translations_check() {
 }
 
 #[test]
+fn a_key_defined_by_another_features_dictionary_does_not_excuse_the_lookup() {
+    let (_guard, root) = root();
+    let dir = workspace(&root, "app", "spa");
+    write(
+        &dir.join("src/features/cart/translations/translations.json"),
+        "{ \"title\": { \"en\": \"Cart\" } }\n",
+    );
+    write(
+        &dir.join("src/features/user/translations/translations.json"),
+        "{ \"name\": { \"en\": \"Name\" } }\n",
+    );
+    write(
+        &dir.join("src/features/user/Profile.tsx"),
+        "export const Profile = () => trans(\"name\") + trans(\"title\");\n",
+    );
+
+    let outcome = translations::run(&ProjectCheckArgs::default(), &root);
+
+    assert_eq!(outcome.status, CheckStatus::Warned);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("`title` is looked up in its scope")),
+        "{:?}",
+        outcome.details
+    );
+}
+
+#[test]
+fn a_key_built_at_runtime_suspends_the_unused_check() {
+    let (_guard, root) = root();
+    let dir = workspace(&root, "user", "module");
+    write(
+        &dir.join("src/translations.yml"),
+        "welcome:\n  en: \"Welcome\"\n",
+    );
+    write(
+        &dir.join("src/Menu.tsx"),
+        "export const Menu = (id: string) => trans(`nav.${id}`);\n",
+    );
+
+    let outcome = translations::run(&ProjectCheckArgs::default(), &root);
+
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("unused keys not checked")),
+        "{:?}",
+        outcome.details
+    );
+    assert!(
+        !outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("never looked up")),
+        "{:?}",
+        outcome.details
+    );
+}
+
+#[test]
+fn a_has_probe_proves_a_key_is_reached_without_demanding_it_exists() {
+    let usage = translations::scan_usage(
+        "cache.has(\"user.cached\"); t.trans(\"user.name\"); t.has(\"user.subtitle\");",
+    );
+
+    assert_eq!(
+        usage.lookups,
+        ["user.name".to_string()].into_iter().collect()
+    );
+    assert!(usage.probes.contains("user.subtitle"));
+    assert!(!usage.dynamic);
+}
+
+#[test]
+fn the_plumbing_that_binds_a_dictionary_is_not_read_as_usage() {
+    let usage = translations::scan_usage(
+        "import { has, trans } from \"@talosjs/utils/trans\";\nexport const useTranslate = () => trans(dict as TransDictType, key, { lang });\n",
+    );
+
+    assert_eq!(usage, translations::Usage::default());
+}
+
+#[test]
+fn a_dictionary_scopes_to_its_feature_rather_than_its_translations_folder() {
+    assert_eq!(
+        translations::dictionary_scope(Path::new(
+            "/repo/modules/app/src/features/user/translations/translations.json"
+        )),
+        Some(PathBuf::from("/repo/modules/app/src/features/user"))
+    );
+    assert_eq!(
+        translations::dictionary_scope(Path::new("/repo/modules/user/src/translations.yml")),
+        Some(PathBuf::from("/repo/modules/user/src"))
+    );
+}
+
+#[test]
+fn only_the_plural_siblings_trans_selects_are_excused_as_used() {
+    assert_eq!(
+        translations::plural_base("cart.items_plural"),
+        Some("cart.items")
+    );
+    assert_eq!(
+        translations::plural_base("cart.items_zero"),
+        Some("cart.items")
+    );
+    assert_eq!(translations::plural_base("cart.items_many"), None);
+}
+
+#[test]
 fn a_pluralized_entry_is_used_through_its_base_key() {
     let used: BTreeSet<String> = ["cart.items".to_string()].into_iter().collect();
     let mut dictionary = translations::Dictionary::new();
@@ -2251,6 +2364,220 @@ fn a_pluralized_entry_is_used_through_its_base_key() {
         translations::unused_keys(&dictionary, &used),
         vec!["cart.empty".to_string()]
     );
+}
+
+// ---------------------------------------------------------------------------
+// Health
+// ---------------------------------------------------------------------------
+
+/// A deployed service: the module, its `App` config, and the probe its image
+/// declares. `probe` of `None` writes a Dockerfile with no HEALTHCHECK.
+fn service(
+    root: &Path,
+    name: &str,
+    kind: &str,
+    prefix: Option<&str>,
+    probe: Option<&str>,
+) -> PathBuf {
+    let dir = workspace(root, name, kind);
+    write(
+        &dir.join("src/index.ts"),
+        &format!(
+            "const app = new App({{\n  routing: {{\n    prefix: \"{}\",\n  }},\n}});\n",
+            prefix.unwrap_or("")
+        ),
+    );
+    let healthcheck = probe.map_or_else(String::new, |path| {
+        format!(
+            "HEALTHCHECK --interval=30s \\\n  CMD [\"bun\", \"-e\", \"fetch(`http://127.0.0.1:${{process.env.PORT||3500}}{path}`)\"]\n"
+        )
+    });
+    write(
+        &dir.join("Dockerfile"),
+        &format!("FROM oven/bun:1\n\n{healthcheck}"),
+    );
+    dir
+}
+
+fn health_controller(dir: &Path, method: &str, path: &str, roles: &str) {
+    write(
+        &dir.join("src/controllers/HealthcheckController.ts"),
+        &format!(
+            "@Route.{method}(\"{path}\", {{\n  name: \"app.health.read\",\n  description: \"Liveness probe\",\n  version: 1,\n  roles: [{roles}],\n}})\nexport class HealthcheckController {{}}\n"
+        ),
+    );
+}
+
+#[test]
+fn a_service_with_no_health_controller_fails_the_health_check() {
+    let (_guard, root) = root();
+    service(&root, "app", "api", Some("api"), Some("/healthcheck"));
+
+    let outcome = health::run(&ProjectCheckArgs::default(), &root);
+
+    assert_eq!(outcome.status, CheckStatus::Failed);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("no controller declares a health route")),
+        "{:?}",
+        outcome.details
+    );
+}
+
+#[test]
+fn a_probe_that_misses_the_mounted_path_fails_the_health_check() {
+    let (_guard, root) = root();
+    let dir = service(&root, "app", "api", Some("api"), Some("/healthcheck"));
+    health_controller(&dir, "get", "/healthcheck", "");
+
+    let outcome = health::run(&ProjectCheckArgs::default(), &root);
+
+    assert_eq!(outcome.status, CheckStatus::Failed);
+    assert!(
+        outcome.details.iter().any(|detail| detail.contains(
+            "probes `/healthcheck` but the health route is served at `/api/v1/healthcheck`"
+        )),
+        "{:?}",
+        outcome.details
+    );
+}
+
+#[test]
+fn a_probe_reaching_the_mounted_path_passes_the_health_check() {
+    let (_guard, root) = root();
+    let dir = service(
+        &root,
+        "service",
+        "microservice",
+        None,
+        Some("/v1/healthcheck"),
+    );
+    health_controller(&dir, "get", "/healthcheck", "");
+
+    assert_eq!(
+        health::run(&ProjectCheckArgs::default(), &root).status,
+        CheckStatus::Passed
+    );
+}
+
+#[test]
+fn a_guarded_or_non_get_health_route_fails_the_health_check() {
+    let (_guard, root) = root();
+    let dir = service(&root, "app", "api", None, Some("/v1/health"));
+    health_controller(&dir, "post", "/health", "\"ADMIN\"");
+
+    let outcome = health::run(&ProjectCheckArgs::default(), &root);
+
+    assert_eq!(outcome.status, CheckStatus::Failed);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("a probe issues a GET")),
+        "{:?}",
+        outcome.details
+    );
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("guards on `ADMIN`")),
+        "{:?}",
+        outcome.details
+    );
+}
+
+#[test]
+fn an_image_declaring_no_healthcheck_warns() {
+    let (_guard, root) = root();
+    let dir = service(&root, "app", "api", None, None);
+    health_controller(&dir, "get", "/healthcheck", "");
+
+    let outcome = health::run(&ProjectCheckArgs::default(), &root);
+
+    assert_eq!(outcome.status, CheckStatus::Warned);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("declares no HEALTHCHECK")),
+        "{:?}",
+        outcome.details
+    );
+}
+
+#[test]
+fn a_service_with_no_image_is_reported_once() {
+    let (_guard, root) = root();
+    let dir = workspace(&root, "app", "api");
+    health_controller(&dir, "get", "/healthcheck", "");
+
+    let outcome = health::run(&ProjectCheckArgs::default(), &root);
+
+    assert_eq!(outcome.status, CheckStatus::Warned);
+    assert_eq!(
+        outcome
+            .details
+            .iter()
+            .filter(|detail| detail.contains("Dockerfile"))
+            .count(),
+        1,
+        "{:?}",
+        outcome.details
+    );
+}
+
+#[test]
+fn only_services_are_probed() {
+    let (_guard, root) = root();
+    workspace(&root, "shared", "module");
+    workspace(&root, "spa", "spa");
+
+    assert_eq!(
+        health::run(&ProjectCheckArgs::default(), &root).status,
+        CheckStatus::Skipped
+    );
+}
+
+#[test]
+fn the_generated_dockerfile_probe_is_read_out_of_its_fetch() {
+    let dockerfile = "FROM oven/bun:1\nHEALTHCHECK --interval=30s --timeout=5s --retries=3 \\\n  CMD [\"bun\", \"-e\", \"fetch(`http://127.0.0.1:${process.env.PORT||3500}/healthcheck`).then(()=>process.exit(0))\"]\n";
+
+    assert_eq!(
+        health::probed_path(dockerfile),
+        Some("/healthcheck".to_string())
+    );
+    assert_eq!(
+        health::probed_path("FROM oven/bun:1\nCMD [\"bun\"]\n"),
+        None
+    );
+}
+
+#[test]
+fn the_routing_prefix_decides_where_a_route_is_mounted() {
+    assert_eq!(
+        health::routing_prefix("new App({ routing: { prefix: \"/api/\" }, loggers: [] })"),
+        Some("api".to_string())
+    );
+    assert_eq!(
+        health::routing_prefix("new App({ routing: { prefix: \"\" } })"),
+        None
+    );
+    assert_eq!(
+        health::mounted_path(Some("api"), 2, "/healthcheck"),
+        "/api/v2/healthcheck"
+    );
+    assert_eq!(health::mounted_path(None, 1, "/health"), "/v1/health");
+}
+
+#[test]
+fn the_conventional_probe_paths_are_recognised() {
+    assert!(health::is_health_path("/healthcheck"));
+    assert!(health::is_health_path("/healthz"));
+    assert!(health::is_health_path("/readyz"));
+    assert!(!health::is_health_path("/users"));
 }
 
 // ---------------------------------------------------------------------------

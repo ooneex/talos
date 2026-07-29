@@ -31,6 +31,7 @@ pub mod flags;
 pub mod folders;
 pub mod git;
 pub mod graph;
+pub mod health;
 pub mod imports;
 pub mod indexes;
 pub mod lockfile;
@@ -203,6 +204,7 @@ pub enum CheckId {
     Middlewares,
     Routes,
     Openapi,
+    Health,
     Pagination,
     Validation,
     Roles,
@@ -368,7 +370,7 @@ impl CheckId {
     /// Every check, in execution order. The workspace runs first because the
     /// install it performs is what makes the other tools available, and the
     /// end-to-end suite runs last because it needs the build they produce.
-    pub const ALL: [CheckId; 61] = [
+    pub const ALL: [CheckId; 62] = [
         CheckId::Workspace,
         CheckId::Structure,
         CheckId::Folders,
@@ -383,6 +385,7 @@ impl CheckId {
         CheckId::Middlewares,
         CheckId::Routes,
         CheckId::Openapi,
+        CheckId::Health,
         CheckId::Pagination,
         CheckId::Validation,
         CheckId::Roles,
@@ -435,7 +438,7 @@ impl CheckId {
     /// Checks that run when nothing is requested explicitly. The end-to-end
     /// suite is opt-in because it boots the application, and the outdated check
     /// because it queries the public registries for every dependency.
-    pub const DEFAULT: [CheckId; 59] = [
+    pub const DEFAULT: [CheckId; 60] = [
         CheckId::Workspace,
         CheckId::Structure,
         CheckId::Folders,
@@ -450,6 +453,7 @@ impl CheckId {
         CheckId::Middlewares,
         CheckId::Routes,
         CheckId::Openapi,
+        CheckId::Health,
         CheckId::Pagination,
         CheckId::Validation,
         CheckId::Roles,
@@ -523,6 +527,7 @@ impl CheckId {
             CheckId::Middlewares
             | CheckId::Routes
             | CheckId::Openapi
+            | CheckId::Health
             | CheckId::Pagination
             | CheckId::Validation
             | CheckId::Roles
@@ -584,6 +589,7 @@ impl CheckId {
             CheckId::Registration => "registration",
             CheckId::Middlewares => "middlewares",
             CheckId::Routes => "routes",
+            CheckId::Health => "health",
             CheckId::Openapi => "openapi",
             CheckId::Pagination => "pagination",
             CheckId::Validation => "validation",
@@ -650,6 +656,7 @@ impl CheckId {
             CheckId::Registration => "Registration",
             CheckId::Middlewares => "Middlewares",
             CheckId::Routes => "Routes",
+            CheckId::Health => "Health",
             CheckId::Openapi => "OpenAPI",
             CheckId::Pagination => "Pagination",
             CheckId::Validation => "Validation",
@@ -718,6 +725,7 @@ impl CheckId {
             CheckId::Middlewares => "middlewares that hand their context back",
             CheckId::Routes => "unique endpoints, named, described, versioned and guarded",
             CheckId::Openapi => "the published specification against the controllers",
+            CheckId::Health => "a liveness route every deployed service answers",
             CheckId::Pagination => "collection routes that bound what they return",
             CheckId::Validation => "route types against the schemas that guard them",
             CheckId::Roles => "route guards against the declared role hierarchy",
@@ -844,6 +852,7 @@ impl CheckId {
             | CheckId::Container
             | CheckId::Routes
             | CheckId::Openapi
+            | CheckId::Health
             | CheckId::Validation
             | CheckId::Roles
             | CheckId::Entities
@@ -903,6 +912,7 @@ impl CheckId {
             "middlewares" | "middleware" => Some(CheckId::Middlewares),
             "routes" | "route" | "endpoints" | "controllers" => Some(CheckId::Routes),
             "openapi" | "swagger" | "spec" => Some(CheckId::Openapi),
+            "health" | "healthcheck" | "liveness" | "probe" => Some(CheckId::Health),
             "pagination" | "paging" | "limits" => Some(CheckId::Pagination),
             "validation" | "validate" | "assert" | "dto" => Some(CheckId::Validation),
             "roles" | "role" => Some(CheckId::Roles),
@@ -2500,6 +2510,7 @@ fn dispatch(args: &ProjectCheckArgs, root: &Path, id: CheckId) -> CheckOutcome {
         CheckId::Middlewares => middlewares::run(args, root),
         CheckId::Routes => routes::run(args, root),
         CheckId::Openapi => openapi::run(args, root),
+        CheckId::Health => health::run(args, root),
         CheckId::Pagination => pagination::run(args, root),
         CheckId::Validation => validation::run(args, root),
         CheckId::Roles => roles::run(args, root),
