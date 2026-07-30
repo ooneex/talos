@@ -1,17 +1,13 @@
 //! Git check — what the repository is carrying that it should not.
 //!
 //! Build output and dependency trees that slip past `.gitignore` bloat every
-//! clone permanently, and a large binary committed once can never really be
-//! removed.
+//! clone permanently, and once committed they can never really be removed.
 
 use std::path::Path;
 
 use crate::commands::project_check::{
     CheckId, CheckOutcome, CheckStatus, ProjectCheckArgs, static_outcome,
 };
-
-/// A tracked file above this size is almost always a mistake.
-const LARGE_FILE_BYTES: u64 = 2 * 1024 * 1024;
 
 /// Patterns that must be ignored, with the reason they matter.
 const REQUIRED_IGNORES: [(&str, &str); 4] = [
@@ -56,30 +52,14 @@ pub fn forbidden(paths: &[String]) -> Vec<String> {
         .collect()
 }
 
-/// Human-readable size, for report lines.
-pub fn human_size(bytes: u64) -> String {
-    if bytes >= 1024 * 1024 {
-        format!("{:.1} MB", bytes as f64 / (1024.0 * 1024.0))
-    } else {
-        format!("{} KB", bytes / 1024)
-    }
-}
-
-/// Every path in the index, with the blob size when it can be read.
-fn tracked_files(repo: &git2::Repository) -> Vec<(String, u64)> {
+/// Every path in the index.
+fn tracked_files(repo: &git2::Repository) -> Vec<String> {
     let Ok(index) = repo.index() else {
         return Vec::new();
     };
     index
         .iter()
-        .filter_map(|entry| {
-            let path = String::from_utf8(entry.path.clone()).ok()?;
-            let size = repo
-                .find_blob(entry.id)
-                .map(|blob| blob.size() as u64)
-                .unwrap_or(0);
-            Some((path, size))
-        })
+        .filter_map(|entry| String::from_utf8(entry.path.clone()).ok())
         .collect()
 }
 
@@ -96,20 +76,10 @@ pub fn run(_args: &ProjectCheckArgs, root: &Path) -> CheckOutcome {
     let mut errors = Vec::new();
     let mut warnings = Vec::new();
 
-    let paths: Vec<String> = tracked.iter().map(|(path, _)| path.clone()).collect();
-    for path in forbidden(&paths) {
+    for path in forbidden(&tracked) {
         errors.push(format!(
             "{path} is tracked but is build or dependency output"
         ));
-    }
-
-    for (path, size) in &tracked {
-        if *size > LARGE_FILE_BYTES {
-            warnings.push(format!(
-                "{path} is {} — consider Git LFS",
-                human_size(*size)
-            ));
-        }
     }
 
     let gitignore = std::fs::read_to_string(root.join(".gitignore")).unwrap_or_default();

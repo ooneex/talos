@@ -13,7 +13,7 @@ use cli::commands::project_check::dependencies::{
     cargo_loose_requirements, compare_crates, read_cargo_entry, used_crates,
 };
 use cli::commands::project_check::modules::{discover_modules, parse_cargo_manifest};
-use cli::commands::project_check::tests::{missing_specs, rust_needs_test, rust_spec_names};
+use cli::commands::project_check::tests::{missing_specs, rust_needs_test};
 use cli::commands::project_check::{
     CheckStatus, ProjectCheckArgs, conventions, dependencies, scan_source, structure, tests,
 };
@@ -251,23 +251,12 @@ fn a_rust_file_with_inline_tests_needs_no_spec() {
 }
 
 #[test]
-fn rust_specs_may_carry_either_suffix() {
-    let names = rust_spec_names("parser");
-    assert!(names.contains(&"parser_spec".to_string()));
-    assert!(names.contains(&"parser_test".to_string()));
-    assert!(names.contains(&"parser".to_string()));
-}
-
-#[test]
-fn a_directory_spec_covers_the_files_it_groups() {
+fn any_spec_covers_a_rust_crate() {
     let (_guard, path) = root();
     let dir = crate_at(&path, "cli", "[package]\nname = \"cli\"\n");
-    write(&dir.join("src/checks/parser.rs"), "pub fn parse() {}\n");
-    write(&dir.join("src/checks/writer.rs"), "pub fn write() {}\n");
-    write(
-        &dir.join("tests/checks_spec.rs"),
-        "#[test]\nfn works() {}\n",
-    );
+    write(&dir.join("src/parser.rs"), "pub fn parse() {}\n");
+    write(&dir.join("src/writer.rs"), "pub fn write() {}\n");
+    write(&dir.join("tests/other_spec.rs"), "#[test]\nfn works() {}\n");
 
     let modules = discover_modules(&path);
     let module = modules
@@ -276,49 +265,24 @@ fn a_directory_spec_covers_the_files_it_groups() {
         .expect("the crate is discovered");
     assert!(
         missing_specs(module).is_empty(),
-        "one spec covers the module directory: {:?}",
+        "one spec covers the crate: {:?}",
         missing_specs(module)
     );
 }
 
 #[test]
-fn reports_a_rust_source_without_a_spec() {
+fn a_rust_crate_testing_nothing_inline_needs_a_spec() {
     let (_guard, path) = root();
     let dir = crate_at(&path, "cli", "[package]\nname = \"cli\"\n");
     write(&dir.join("src/parser.rs"), "pub fn parse() {}\n");
-    write(&dir.join("src/writer.rs"), "pub fn write() {}\n");
-    write(
-        &dir.join("tests/parser_spec.rs"),
-        "#[test]\nfn works() {}\n",
-    );
-
-    let modules = discover_modules(&path);
-    let module = modules
-        .iter()
-        .find(|module| module.name == "cli")
-        .expect("the crate is discovered");
-    let missing = missing_specs(module);
-    assert_eq!(
-        missing.len(),
-        1,
-        "only the untested file is reported: {missing:?}"
-    );
-    assert!(missing[0].contains("writer"));
-}
-
-#[test]
-fn tests_check_covers_a_rust_module() {
-    let (_guard, path) = root();
-    let dir = crate_at(&path, "cli", "[package]\nname = \"cli\"\n");
-    write(&dir.join("src/parser.rs"), "pub fn parse() {}\n");
-    write(&dir.join("tests/other_spec.rs"), "#[test]\nfn works() {}\n");
+    fs::create_dir_all(dir.join("tests")).expect("create tests");
 
     let outcome = tests::run(&args(), &path);
     assert_eq!(outcome.status, CheckStatus::Warned, "{:?}", outcome.details);
     assert!(
         detailed(&outcome, "warn")
             .iter()
-            .any(|warning| warning.contains("parser")),
+            .any(|warning| warning.contains("tests/ exists but holds no spec file")),
         "{:?}",
         outcome.details
     );

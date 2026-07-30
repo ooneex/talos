@@ -9,7 +9,7 @@ use cli::commands::project_check::conventions::{
 use cli::commands::project_check::dependencies::{import_specifiers, package_of};
 use cli::commands::project_check::docker::{host_port, inspect as inspect_docker};
 use cli::commands::project_check::docs::is_relative_target;
-use cli::commands::project_check::git::{forbidden, human_size, ignores};
+use cli::commands::project_check::git::{forbidden, ignores};
 use cli::commands::project_check::graph::Layer;
 use cli::commands::project_check::migrations::timestamp;
 use cli::commands::project_check::tests::{self as tests_check, needs_test};
@@ -1321,7 +1321,7 @@ fn barrel_and_type_files_need_no_spec() {
 }
 
 #[test]
-fn a_source_file_without_a_spec_is_reported() {
+fn a_tests_directory_holding_no_spec_is_reported() {
     let (_guard, root) = root();
     scaffold_root(&root);
     scaffold_module(
@@ -1335,7 +1335,7 @@ fn a_source_file_without_a_spec_is_reported() {
         &root.join("modules/user/src/UserService.ts"),
         "export class UserService {}\n",
     );
-    write(&root.join("modules/user/tests/index.spec.ts"), "// ok\n");
+    write(&root.join("modules/user/tests/README.md"), "// ok\n");
 
     let outcome = tests_check::run(&ProjectCheckArgs::default(), &root);
 
@@ -1344,12 +1344,12 @@ fn a_source_file_without_a_spec_is_reported() {
         outcome
             .details
             .iter()
-            .any(|detail| detail.contains("`UserService` has no test"))
+            .any(|detail| detail.contains("tests/ exists but holds no spec file"))
     );
 }
 
 #[test]
-fn a_mirrored_spec_satisfies_the_check() {
+fn any_spec_in_tests_satisfies_the_check() {
     let (_guard, root) = root();
     scaffold_root(&root);
     scaffold_module(
@@ -1571,12 +1571,6 @@ fn tracked_build_output_is_reported() {
             "modules/spa/dist/app.js".to_string()
         ]
     );
-}
-
-#[test]
-fn sizes_are_rendered_for_a_human() {
-    assert_eq!(human_size(3 * 1024 * 1024), "3.0 MB".to_string());
-    assert_eq!(human_size(512 * 1024), "512 KB".to_string());
 }
 
 // ---------------------------------------------------------------------------

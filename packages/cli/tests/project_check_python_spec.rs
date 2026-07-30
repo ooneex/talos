@@ -16,7 +16,7 @@ use cli::commands::project_check::modules::{
     discover_modules, normalize_distribution, parse_python_manifest, parse_requirement,
     parse_requirements,
 };
-use cli::commands::project_check::tests::{missing_specs, python_needs_test, python_spec_names};
+use cli::commands::project_check::tests::{missing_specs, python_needs_test};
 use cli::commands::project_check::{
     CheckOutcome, CheckStatus, ProjectCheckArgs, conventions, dependencies, scan_source, structure,
     tests,
@@ -281,49 +281,14 @@ fn a_python_module_of_private_helpers_needs_no_spec() {
 }
 
 #[test]
-fn python_specs_may_carry_either_convention() {
-    let names = python_spec_names("parser");
-    assert!(names.contains(&"test_parser".to_string()));
-    assert!(names.contains(&"parser_test".to_string()));
-    assert!(names.contains(&"parser_spec".to_string()));
-}
-
-#[test]
-fn reports_a_python_source_without_a_spec() {
+fn any_spec_covers_a_python_package() {
     let (_guard, path) = root();
     let dir = package_at(&path, "worker", "[project]\nname = \"worker\"\n");
     write(&dir.join("src/parser.py"), "def parse():\n    pass\n");
     write(&dir.join("src/writer.py"), "def write():\n    pass\n");
     write(
-        &dir.join("tests/test_parser.py"),
-        "def test_parse():\n    assert True\n",
-    );
-
-    let modules = discover_modules(&path);
-    let module = modules
-        .iter()
-        .find(|module| module.name == "worker")
-        .expect("the package is discovered");
-    let missing = missing_specs(module);
-    assert_eq!(missing.len(), 1, "{missing:?}");
-    assert!(missing[0].contains("writer"));
-}
-
-#[test]
-fn a_directory_spec_covers_the_python_modules_it_groups() {
-    let (_guard, path) = root();
-    let dir = package_at(&path, "worker", "[project]\nname = \"worker\"\n");
-    write(
-        &dir.join("src/handlers/parser.py"),
-        "def parse():\n    pass\n",
-    );
-    write(
-        &dir.join("src/handlers/writer.py"),
-        "def write():\n    pass\n",
-    );
-    write(
-        &dir.join("tests/test_handlers.py"),
-        "def test_all():\n    assert True\n",
+        &dir.join("tests/test_other.py"),
+        "def test_other():\n    assert True\n",
     );
 
     let modules = discover_modules(&path);
@@ -339,21 +304,18 @@ fn a_directory_spec_covers_the_python_modules_it_groups() {
 }
 
 #[test]
-fn tests_check_covers_a_python_module() {
+fn a_python_package_with_an_empty_tests_directory_is_reported() {
     let (_guard, path) = root();
     let dir = package_at(&path, "worker", "[project]\nname = \"worker\"\n");
     write(&dir.join("src/parser.py"), "def parse():\n    pass\n");
-    write(
-        &dir.join("tests/test_other.py"),
-        "def test_other():\n    assert True\n",
-    );
+    fs::create_dir_all(dir.join("tests")).expect("create tests");
 
     let outcome = tests::run(&args(), &path);
     assert_eq!(outcome.status, CheckStatus::Warned, "{:?}", outcome.details);
     assert!(
         detailed(&outcome, "warn")
             .iter()
-            .any(|warning| warning.contains("parser")),
+            .any(|warning| warning.contains("tests/ exists but holds no spec file")),
         "{:?}",
         outcome.details
     );

@@ -1,9 +1,9 @@
 //! Bundle check — what the front-end modules actually ship.
 //!
-//! Nothing in a build fails because it produced a four-megabyte chunk, an image
-//! straight off a designer's desktop, or a source map that hands the whole
-//! codebase to anyone who opens dev tools. The numbers only exist in `dist/`,
-//! which is why they are read from there rather than guessed at from the source.
+//! Nothing in a build fails because it shipped a source map that hands the whole
+//! codebase to anyone who opens dev tools, or because it is older than the source
+//! it came from. Both only show up in `dist/`, which is why it is read from there
+//! rather than guessed at from the source.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -19,18 +19,6 @@ use crate::commands::project_check::{
 
 /// Module types that build a browser bundle.
 const BUNDLED_TYPES: [&str; 4] = ["spa", "admin", "storybook", "design"];
-
-/// Total a module's build output may weigh.
-const MAX_BUNDLE_BYTES: u64 = 5 * 1024 * 1024;
-
-/// Weight of a single script a browser has to parse before it can render.
-const MAX_CHUNK_BYTES: u64 = 1024 * 1024;
-
-/// Weight of an image that has clearly never been through an optimiser.
-const MAX_IMAGE_BYTES: u64 = 500 * 1024;
-
-/// Extensions treated as an image asset.
-const IMAGE_EXTENSIONS: [&str; 6] = ["png", "jpg", "jpeg", "gif", "bmp", "tiff"];
 
 /// One file inside a build.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -98,37 +86,15 @@ pub fn inspect(
     warnings: &mut Vec<String>,
 ) {
     let label = module.label();
-    let total: u64 = assets.iter().map(|asset| asset.bytes).sum();
 
-    if total > MAX_BUNDLE_BYTES {
-        warnings.push(format!(
-            "{label}: the build weighs {}, over the {} budget",
-            human_size(total),
-            human_size(MAX_BUNDLE_BYTES)
-        ));
-    }
-
+    // A published source map is the whole codebase, readable, in the browser of
+    // anyone who opens the network tab.
     for asset in assets {
-        let file = relative(root, &asset.path);
-        match extension(&asset.path).as_str() {
-            // A published source map is the whole codebase, readable, in the
-            // browser of anyone who opens the network tab.
-            "map" => errors.push(format!(
+        if extension(&asset.path) == "map" {
+            let file = relative(root, &asset.path);
+            errors.push(format!(
                 "{file}: a source map is shipped in the build output"
-            )),
-            "js" | "mjs" | "cjs" | "css" if asset.bytes > MAX_CHUNK_BYTES => {
-                warnings.push(format!(
-                    "{file}: {} in a single chunk — split the route or lazy-load it",
-                    human_size(asset.bytes)
-                ));
-            }
-            image if IMAGE_EXTENSIONS.contains(&image) && asset.bytes > MAX_IMAGE_BYTES => {
-                warnings.push(format!(
-                    "{file}: {} — compress it or serve it as WebP/AVIF",
-                    human_size(asset.bytes)
-                ));
-            }
-            _ => {}
+            ));
         }
     }
 
@@ -188,9 +154,9 @@ pub fn run(args: &ProjectCheckArgs, root: &Path) -> CheckOutcome {
     static_outcome(
         CheckId::Bundle,
         &scope,
-        "every bundle is within budget",
+        "every bundle is clean and up to date",
         errors,
         warnings,
     )
-    .with_hint("The budgets are per build: 5 MB total, 1 MB per chunk, 500 KB per image")
+    .with_hint("A build must ship no source map and be newer than the source it came from")
 }

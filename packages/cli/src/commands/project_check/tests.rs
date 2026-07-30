@@ -1,10 +1,8 @@
-//! Tests check — the mirror between `src/` and `tests/`.
+//! Tests check — that a module carrying a `tests/` directory actually tests
+//! something.
 //!
-//! The convention is one `.spec.ts` per TypeScript source file that holds
-//! behaviour, one `<name>_spec.rs` per Rust source file that does — or an
-//! inline `#[cfg(test)]` module, which is the Rust way of keeping a unit test
-//! next to the code — and one `test_<name>.py` per Python module. A file that
-//! never grew a test is the one that breaks silently.
+//! How thoroughly a module is covered is a judgement call the check does not
+//! make; a `tests/` directory holding no spec file at all is not.
 
 use std::collections::BTreeSet;
 use std::fs;
@@ -116,67 +114,7 @@ pub fn rust_needs_test(stem: &str, content: &str) -> bool {
         .any(|line| line.trim_start().starts_with("pub fn "))
 }
 
-/// The spec file names that count as covering `stem`.
-pub fn spec_names(stem: &str) -> [String; 2] {
-    [format!("{stem}.spec"), format!("{stem}.test")]
-}
-
-/// The Rust spec file names that count as covering `stem`. Integration tests
-/// live in `tests/`, where the file name carries the suffix instead of the
-/// extension.
-pub fn rust_spec_names(stem: &str) -> [String; 3] {
-    [
-        format!("{stem}_spec"),
-        format!("{stem}_test"),
-        stem.to_string(),
-    ]
-}
-
-/// The Python spec file names that count as covering `stem`. `pytest` collects
-/// `test_*.py` and `*_test.py`; the project's own `_spec` suffix is accepted
-/// too so one convention reads the same in every language.
-pub fn python_spec_names(stem: &str) -> [String; 4] {
-    [
-        format!("test_{stem}"),
-        format!("{stem}_test"),
-        format!("{stem}_spec"),
-        stem.to_string(),
-    ]
-}
-
-/// Every spec name that may cover a source file: its own stem, and the name of
-/// any directory it sits in — one `project_check_spec.rs` legitimately covers
-/// the whole `project_check/` module.
-fn covering_names(language: Language, roots: &[PathBuf], path: &Path) -> Vec<String> {
-    let names_of = |stem: &str| -> Vec<String> {
-        match language {
-            Language::Python => python_spec_names(stem).to_vec(),
-            _ => rust_spec_names(stem).to_vec(),
-        }
-    };
-
-    let mut names: Vec<String> = path
-        .file_stem()
-        .and_then(|stem| stem.to_str())
-        .map(names_of)
-        .unwrap_or_default();
-
-    let mut parent = path.parent();
-    while let Some(directory) = parent {
-        if roots.iter().any(|root| root == directory)
-            || !roots.iter().any(|root| directory.starts_with(root))
-        {
-            break;
-        }
-        if let Some(name) = directory.file_name().and_then(|name| name.to_str()) {
-            names.extend(names_of(name));
-        }
-        parent = directory.parent();
-    }
-    names
-}
-
-/// Source stems with no matching spec, for one module.
+/// A module carrying a `tests/` directory that holds no spec file at all.
 pub fn missing_specs(module: &WorkspaceModule) -> Vec<String> {
     let language = Language::of(module);
     let extensions = language.extensions();
@@ -198,60 +136,24 @@ pub fn missing_specs(module: &WorkspaceModule) -> Vec<String> {
         .flat_map(|root| collect_files(root, extensions, 8))
         .collect();
 
-    if specs.is_empty() {
-        // A crate testing everything inline, or a package holding nothing worth
-        // testing, needs no file in `tests/`.
-        if language != Language::TypeScript
-            && sources
-                .iter()
-                .all(|path| !source_needs_test(language, path))
-        {
-            return Vec::new();
-        }
-        return vec![format!(
-            "{}: tests/ exists but holds no spec file",
-            module.label()
-        )];
+    if !specs.is_empty() {
+        return Vec::new();
     }
 
-    let mut missing = Vec::new();
-    for path in sources {
-        let Some(stem) = path.file_stem().and_then(|stem| stem.to_str()) else {
-            continue;
-        };
-        match language {
-            Language::TypeScript => {
-                if path.to_string_lossy().ends_with(".d.ts") {
-                    continue;
-                }
-                let Ok(content) = fs::read_to_string(&path) else {
-                    continue;
-                };
-                if !needs_test(stem, &content) {
-                    continue;
-                }
-                if spec_names(stem).iter().any(|name| specs.contains(name)) {
-                    continue;
-                }
-            }
-            _ => {
-                if !source_needs_test(language, &path) {
-                    continue;
-                }
-                if covering_names(language, &roots, &path)
-                    .iter()
-                    .any(|name| specs.contains(name))
-                {
-                    continue;
-                }
-            }
-        }
-        missing.push(format!(
-            "{}: `{stem}` has no test in tests/",
-            module.label()
-        ));
+    // A crate testing everything inline, or a package holding nothing worth
+    // testing, needs no file in `tests/`.
+    if language != Language::TypeScript
+        && sources
+            .iter()
+            .all(|path| !source_needs_test(language, path))
+    {
+        return Vec::new();
     }
-    missing
+
+    vec![format!(
+        "{}: tests/ exists but holds no spec file",
+        module.label()
+    )]
 }
 
 /// Whether a file on disk declares behaviour worth a test of its own.
@@ -301,7 +203,7 @@ pub fn run(args: &ProjectCheckArgs, root: &Path) -> CheckOutcome {
     static_outcome(
         CheckId::Tests,
         &scope,
-        "every source file has a spec",
+        "every tests/ directory holds a spec",
         Vec::new(),
         warnings,
     )
