@@ -17,10 +17,10 @@ use cli::commands::project_check::{
     A11yDiagnostic, CheckId, CheckOutcome, CheckStatus, HygieneSeverity, ProjectCheckArgs,
     ProjectReport, asynchrony, boundaries, branches, bundle, classify_a11y, complexity, container,
     contrast, dependencies, disabled_a11y_rules, discover_ui_modules, docker, docs, e2e_coverage,
-    entities, env, graph, health, imports, lint_commits, lockfile, migrations, modules_with_e2e,
-    orphans, outdated, parse_biome_a11y, registration, render_json, render_report, restricted,
-    roles, routes, scan_source, sdk, secrets, select_checks, sql, stories, structure, translations,
-    tsconfig, validation,
+    entities, env, execute, graph, health, imports, lint_commits, lockfile, migrations,
+    modules_with_e2e, orphans, outdated, parse_biome_a11y, registration, render_json,
+    render_report, restricted, roles, routes, scan_source, sdk, secrets, select_checks, sql,
+    stories, structure, translations, tsconfig, validation,
 };
 
 #[derive(Parser)]
@@ -519,6 +519,134 @@ fn counts_and_failure_follow_the_strict_flag() {
 
     assert!(!warned_only.is_failure(false));
     assert!(warned_only.is_failure(true));
+}
+
+#[test]
+fn strict_turns_a_warning_into_a_failure() {
+    let (_guard, root) = root();
+    let dir = workspace(&root, "app", "api");
+    // A role with no place in the hierarchy: a warning, and nothing else.
+    write(
+        &dir.join("roles.yml"),
+        "roles:\n  USER: ROLE_USER\n  ADMIN: ROLE_ADMIN\nhierarchy:\n  ROLE_USER:\n    description: Standard user\n",
+    );
+
+    let args = |strict: bool| ProjectCheckArgs {
+        cwd: Some(root.to_string_lossy().to_string()),
+        no_cache: true,
+        json: true,
+        strict,
+        ..ProjectCheckArgs::default()
+    };
+
+    let lenient = execute(&args(false), &[CheckId::Roles]);
+    assert_eq!(lenient.outcomes[0].status, CheckStatus::Warned);
+    assert!(!lenient.is_failure(false));
+
+    let strict = execute(&args(true), &[CheckId::Roles]);
+    assert_eq!(strict.outcomes[0].status, CheckStatus::Failed);
+    assert_eq!(strict.count(CheckStatus::Warned), 0);
+    assert!(strict.is_failure(true));
+    // The detail that earned the warning survives the promotion, relabelled:
+    // a failing check may not report a line as a warning.
+    assert!(
+        strict.outcomes[0]
+            .details
+            .iter()
+            .any(|detail| detail.starts_with("error  ") && detail.contains("`ROLE_ADMIN`"))
+    );
+    assert!(
+        !strict.outcomes[0]
+            .details
+            .iter()
+            .any(|detail| detail.starts_with("warn"))
+    );
+
+    let rendered = render_report(&strict);
+    assert!(rendered.contains("1 failed · 0 warnings"));
+    assert!(!rendered.contains("warn "));
+}
+
+#[test]
+fn strict_reports_the_promoted_warning_as_a_failure_in_json() {
+    let (_guard, root) = root();
+    let dir = workspace(&root, "app", "api");
+    write(
+        &dir.join("roles.yml"),
+        "roles:\n  USER: ROLE_USER\n  ADMIN: ROLE_ADMIN\nhierarchy:\n  ROLE_USER:\n    description: Standard user\n",
+    );
+
+    let report = execute(
+        &ProjectCheckArgs {
+            cwd: Some(root.to_string_lossy().to_string()),
+            no_cache: true,
+            json: true,
+            strict: true,
+            ..ProjectCheckArgs::default()
+        },
+        &[CheckId::Roles],
+    );
+    let json: serde_json::Value =
+        serde_json::from_str(&render_json(&report)).expect("valid JSON report");
+
+    assert_eq!(json["failed"], 1);
+    assert_eq!(json["warnings"], 0);
+    assert_eq!(json["checks"][0]["status"], "failed");
+}
+
+#[test]
+fn strict_leaves_every_other_status_alone() {
+    let (_guard, clean) = root();
+    let dir = workspace(&clean, "app", "api");
+    // Every declared role sits in the hierarchy and guards the one route.
+    write(
+        &dir.join("roles.yml"),
+        "roles:\n  USER: ROLE_USER\nhierarchy:\n  ROLE_USER:\n    description: Standard user\n",
+    );
+    controller(&dir, "Read", "get", "/users", "  roles: [\"ROLE_USER\"],\n");
+
+    let strict = |root: &Path| ProjectCheckArgs {
+        cwd: Some(root.to_string_lossy().to_string()),
+        no_cache: true,
+        json: true,
+        strict: true,
+        ..ProjectCheckArgs::default()
+    };
+
+    let passed = execute(&strict(&clean), &[CheckId::Roles]);
+    assert_eq!(passed.outcomes[0].status, CheckStatus::Passed);
+    assert!(!passed.is_failure(true));
+
+    // No roles.yml anywhere: the check has nothing to say, and `--strict` does
+    // not turn silence into a finding.
+    let (_empty_guard, empty) = root();
+    workspace(&empty, "app", "api");
+    let skipped = execute(&strict(&empty), &[CheckId::Roles]);
+    assert_eq!(skipped.outcomes[0].status, CheckStatus::Skipped);
+    assert!(!skipped.is_failure(true));
+
+    // An error was already a failure and stays one, details intact.
+    let (_broken_guard, broken) = root();
+    let broken_dir = workspace(&broken, "app", "api");
+    write(
+        &broken_dir.join("roles.yml"),
+        "roles:\n  USER: ROLE_USER\nhierarchy:\n  ROLE_USER:\n    description: Standard user\n",
+    );
+    controller(
+        &broken_dir,
+        "Read",
+        "get",
+        "/users",
+        "  roles: [\"ROLE_ADMIN\"],\n",
+    );
+    let failed = execute(&strict(&broken), &[CheckId::Roles]);
+    assert_eq!(failed.outcomes[0].status, CheckStatus::Failed);
+    assert!(
+        failed.outcomes[0]
+            .details
+            .iter()
+            .any(|detail| detail.contains("guards on `ROLE_ADMIN`"))
+    );
 }
 
 #[test]
@@ -2816,6 +2944,27 @@ fn a_route_guarding_on_an_undeclared_role_fails() {
             .details
             .iter()
             .any(|detail| detail.contains("guards on `ROLE_ADMIN`"))
+    );
+}
+
+#[test]
+fn a_declared_role_no_route_guards_passes() {
+    let (_guard, root) = root();
+    let dir = workspace(&root, "app", "api");
+    write(
+        &dir.join("roles.yml"),
+        "roles:\n  USER: ROLE_USER\n  ADMIN: ROLE_ADMIN\nhierarchy:\n  ROLE_USER:\n    description: Standard user\n  ROLE_ADMIN:\n    description: Administrator\n",
+    );
+    controller(&dir, "Read", "get", "/users", "  roles: [\"ROLE_USER\"],\n");
+
+    let outcome = roles::run(&ProjectCheckArgs::default(), &root);
+
+    assert_eq!(outcome.status, CheckStatus::Passed);
+    assert!(
+        !outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("ROLE_ADMIN"))
     );
 }
 

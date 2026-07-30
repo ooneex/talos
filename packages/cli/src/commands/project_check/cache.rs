@@ -20,6 +20,7 @@
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
 use std::time::UNIX_EPOCH;
 
 use dashmap::DashMap;
@@ -37,7 +38,29 @@ pub const CACHE_DIR: &str = "var/cache/project";
 
 /// Bumped whenever the shape of an entry changes, so an old one is ignored
 /// rather than misread.
-const VERSION: u32 = 1;
+pub const VERSION: u32 = 2;
+
+/// The identity of the checker that produced an entry.
+///
+/// An entry is only an answer for the code that wrote it. The tree can be
+/// untouched and the finding still change — a rule gets stricter, a warning
+/// stops being one — and replaying the old entry then reports a problem the
+/// current checker does not have, with no way for anyone to tell that is what
+/// happened. The crate version covers an upgrade; the executable's own mtime
+/// covers a rebuild, where the version has not moved but the rules have.
+pub fn checker() -> &'static str {
+    static CHECKER: OnceLock<String> = OnceLock::new();
+    CHECKER.get_or_init(|| {
+        let built = std::env::current_exe()
+            .and_then(|path| path.metadata())
+            .and_then(|meta| meta.modified())
+            .ok()
+            .and_then(|time| time.duration_since(UNIX_EPOCH).ok())
+            .map(|since| since.as_secs())
+            .unwrap_or_default();
+        format!("{}+{built}", env!("CARGO_PKG_VERSION"))
+    })
+}
 
 /// The memo of file hashes, shared by every fingerprint in the run.
 const FILE_HASHES: &str = "filehashes.json";
@@ -248,6 +271,9 @@ impl Fingerprints {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Entry {
     pub version: u32,
+    /// The build that produced the entry — see [`checker`].
+    #[serde(default)]
+    pub checker: String,
     pub check: String,
     /// The options that change what a check reports, so a run scoped with
     /// `--modules` cannot be served from a full run's entry.
@@ -270,6 +296,7 @@ impl Entry {
     /// as an edit does.
     pub fn matches(&self, options: &str, reads: Reads, fingerprints: &Fingerprints) -> bool {
         self.version == VERSION
+            && self.checker == checker()
             && self.options == options
             && self.root == fingerprints.root
             && self.modules == fingerprints.scoped(reads)
@@ -310,6 +337,7 @@ pub fn write(
 ) {
     let entry = Entry {
         version: VERSION,
+        checker: checker().to_string(),
         check: id.key().to_string(),
         options: options.to_string(),
         root: fingerprints.root.clone(),

@@ -4,6 +4,11 @@
 //! `roles.yml` guards nothing: the route either rejects everyone or, worse,
 //! matches nothing and lets the request through. A typo here reads exactly like
 //! a working guard in review.
+//!
+//! The direction only runs one way. A role a route names has to be declared, so
+//! an undeclared one fails the check. A declared role no route names yet is
+//! fine — `roles.yml` is the vocabulary, and a word waiting for its first use is
+//! not a defect.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
@@ -152,7 +157,9 @@ pub fn run(args: &ProjectCheckArgs, root: &Path) -> CheckOutcome {
     }
 
     // A route is guarded by a name, so every name it uses has to exist
-    // somewhere — which `roles.yml` it comes from is the runtime's business.
+    // somewhere — which `roles.yml` it comes from is the runtime's business. A
+    // declared name no route uses is not the same problem in reverse: it is a
+    // role the app knows and no endpoint has needed yet, so it passes.
     let declared: BTreeSet<&String> = files.iter().flat_map(|(_, roles)| &roles.names).collect();
     let routes = routes::collect(root, &modules);
     let mut guarded = 0;
@@ -166,17 +173,6 @@ pub fn run(args: &ProjectCheckArgs, root: &Path) -> CheckOutcome {
                     route.file
                 ));
             }
-        }
-    }
-
-    // A workspace with no route yet has no unused roles, only roles waiting for
-    // one; saying otherwise would flag the whole hierarchy on a fresh project.
-    if !routes.is_empty() {
-        for role in declared
-            .iter()
-            .filter(|role| !routes.iter().any(|route| route.roles.contains(role)))
-        {
-            warnings.push(format!("`{role}` guards no route"));
         }
     }
 

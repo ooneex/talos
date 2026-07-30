@@ -1326,7 +1326,8 @@ fn workspace() -> cache::Fingerprints {
 
 fn entry(id: CheckId, fingerprints: &cache::Fingerprints) -> cache::Entry {
     cache::Entry {
-        version: 1,
+        version: cache::VERSION,
+        checker: cache::checker().to_string(),
         check: id.key().to_string(),
         options: String::new(),
         root: fingerprints.root.clone(),
@@ -1428,6 +1429,22 @@ fn a_change_outside_every_module_invalidates_everything() {
     let mut moved = fingerprints.clone();
     moved.root = "root-2".to_string();
     assert!(!stored.matches("", CheckId::Indexes.reads(), &moved));
+}
+
+#[test]
+fn an_entry_from_another_build_is_never_served() {
+    let fingerprints = workspace();
+    let mut stored = entry(CheckId::Indexes, &fingerprints);
+    assert!(stored.matches("", CheckId::Indexes.reads(), &fingerprints));
+
+    // The tree has not moved, but the checker that wrote the entry has: its
+    // rules may have changed, so its answer is not this build's answer.
+    stored.checker = "0.0.1+0".to_string();
+    assert!(!stored.matches("", CheckId::Indexes.reads(), &fingerprints));
+
+    // An entry written before entries carried a build at all.
+    stored.checker = String::new();
+    assert!(!stored.matches("", CheckId::Indexes.reads(), &fingerprints));
 }
 
 #[test]

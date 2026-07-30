@@ -171,7 +171,7 @@ pub struct ProjectCheckArgs {
     #[arg(long, default_value_t = false)]
     pub no_cache: bool,
 
-    /// Exit with a non-zero status when a check only reports warnings.
+    /// Report every warning as a failure, and exit with a non-zero status.
     #[arg(long, default_value_t = false)]
     pub strict: bool,
 
@@ -1075,8 +1075,36 @@ impl ProjectReport {
     }
 
     /// Whether the run should fail the process, honouring `--strict`.
+    ///
+    /// `execute` has already turned every warning into a failure under
+    /// `--strict`, so the second arm only matters to a report built by hand.
     pub fn is_failure(&self, strict: bool) -> bool {
         self.failed() || (strict && self.warned())
+    }
+}
+
+/// Under `--strict` a warning is a failure — not just at the exit code, but
+/// everywhere the run is read: the icon in the terminal, the counts in the
+/// summary, the status in the JSON, and the word in front of the line that
+/// earned it. A check that reports `warn` under a red cross is the run
+/// contradicting itself, so the details are relabelled with the status.
+fn harden(outcome: CheckOutcome) -> CheckOutcome {
+    let details = outcome
+        .details
+        .into_iter()
+        .map(|detail| match detail.strip_prefix(WARN_DETAIL) {
+            Some(message) => format!("{ERROR_DETAIL}{message}"),
+            None => detail,
+        })
+        .collect();
+
+    CheckOutcome {
+        status: match outcome.status {
+            CheckStatus::Warned => CheckStatus::Failed,
+            status => status,
+        },
+        details,
+        ..outcome
     }
 }
 
@@ -1164,6 +1192,11 @@ fn split_csv(value: Option<&str>) -> Vec<String> {
         .unwrap_or_default()
 }
 
+/// How a detail line says which of the two it is. Both are the same width, so
+/// the messages line up under each other.
+const ERROR_DETAIL: &str = "error  ";
+const WARN_DETAIL: &str = "warn   ";
+
 /// Build the outcome of a check that only reads the repository.
 ///
 /// Errors fail the check, warnings only warn, and the details keep the errors
@@ -1202,11 +1235,11 @@ fn static_outcome(
 
     let details = errors
         .into_iter()
-        .map(|message| format!("error  {message}"))
+        .map(|message| format!("{ERROR_DETAIL}{message}"))
         .chain(
             warnings
                 .into_iter()
-                .map(|message| format!("warn   {message}")),
+                .map(|message| format!("{WARN_DETAIL}{message}")),
         )
         .collect();
 
@@ -2676,9 +2709,17 @@ pub fn execute(args: &ProjectCheckArgs, checks: &[CheckId]) -> ProjectReport {
         hashes.save();
     }
 
+    // After the cache write, never before: an entry records what a check found,
+    // and `--strict` only decides how loudly this run reports it.
+    let outcomes = outcomes.into_iter().flatten();
+
     ProjectReport {
         root: root.to_string_lossy().to_string(),
-        outcomes: outcomes.into_iter().flatten().collect(),
+        outcomes: if args.strict {
+            outcomes.map(harden).collect()
+        } else {
+            outcomes.collect()
+        },
         duration_ms: started_at.elapsed().as_millis() as u64,
     }
 }
