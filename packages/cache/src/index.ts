@@ -1,4 +1,5 @@
 export { AbstractCache } from "./AbstractCache";
+export { Cache } from "./Cache";
 export { CacheException } from "./CacheException";
 export { decorator } from "./decorators";
 export { FilesystemCache } from "./FilesystemCache";

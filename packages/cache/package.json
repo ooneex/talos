@@ -31,7 +31,8 @@
     "@talosjs/app-env": "workspace:^",
     "@talosjs/container": "workspace:^",
     "@talosjs/exception": "workspace:^",
-    "@talosjs/http-status": "workspace:^"
+    "@talosjs/http-status": "workspace:^",
+    "@talosjs/types": "workspace:^"
   },
   "devDependencies": {},
   "keywords": [

@@ -125,6 +125,7 @@
         "@talosjs/container": "workspace:^",
         "@talosjs/exception": "workspace:^",
         "@talosjs/http-status": "workspace:^",
+        "@talosjs/types": "workspace:^",
       },
     },
     "packages/cli": {
