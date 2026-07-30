@@ -1,5 +1,6 @@
 import { describe, expect, mock, spyOn, test } from "bun:test";
 import { AppEnv, Environment } from "@talosjs/app-env";
+import { Cache } from "@talosjs/cache";
 import { container } from "@talosjs/container";
 import { Exception } from "@talosjs/exception";
 import type { FeatureFlagClassType } from "@talosjs/feature-flag";
@@ -8,7 +9,7 @@ import { HttpStatus } from "@talosjs/http-status";
 import type { PermissionClassType } from "@talosjs/permission";
 import type { RouteConfigType } from "@talosjs/routing";
 import type { ContextType } from "@talosjs/socket";
-import { formatSocketRoutes, getSocketCacheKey, socketRouteHandler } from "@/socketRouteUtils";
+import { formatSocketRoutes, socketRouteHandler } from "@/socketRouteUtils";
 
 class DefaultSocketController {
   index(context: ContextType): IResponse {
@@ -1064,7 +1065,7 @@ describe("socketRouteUtils", () => {
         server: mockServer as unknown as import("bun").Server<{ id: string }>,
       });
 
-      const expectedKey = getSocketCacheKey(
+      const expectedKey = Cache.keyFromSocketRoute(
         "ws",
         "api.socket.cachekey",
         undefined,
@@ -1718,7 +1719,7 @@ describe("socketRouteHandler cache after access checks", () => {
       middlewares: [SocketAuthMiddleware as unknown as import("@talosjs/middleware").SocketMiddlewareClassType],
     });
 
-    const expectedKey = getSocketCacheKey("ws", "api.socket.authedcache", "user-1", {}, {}, {});
+    const expectedKey = Cache.keyFromSocketRoute("ws", "api.socket.authedcache", "user-1", {}, {}, {});
     expect(cacheGetMock).toHaveBeenCalledWith(expectedKey);
     expect((cacheSetMock.mock.calls as unknown[][])[0]?.[0]).toBe(expectedKey);
   });

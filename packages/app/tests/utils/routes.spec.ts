@@ -8,45 +8,8 @@ import type { PermissionClassType } from "@talosjs/permission";
 import type { IRateLimiter, RateLimitResultType } from "@talosjs/rate-limit";
 import type { RouteConfigType } from "@talosjs/routing";
 import type { BunRequest, Server } from "bun";
-import { formatHttpRoutes, getCacheKey } from "@/utils/routes";
+import { formatHttpRoutes } from "@/utils/routes";
 import { createMockLogger, createMockRoute } from "./helpers";
-
-describe("getCacheKey", () => {
-  test("returns a string with the given prefix", () => {
-    const key = getCacheKey("http", "GET", "http://localhost/v1/users", undefined);
-    expect(key.startsWith("http:")).toBe(true);
-  });
-
-  test("is deterministic for the same inputs", () => {
-    const key1 = getCacheKey("http", "GET", "http://localhost/v1/users", "user-123");
-    const key2 = getCacheKey("http", "GET", "http://localhost/v1/users", "user-123");
-    expect(key1).toBe(key2);
-  });
-
-  test("differs by HTTP method", () => {
-    const getKey = getCacheKey("http", "GET", "http://localhost/v1/users", undefined);
-    const postKey = getCacheKey("http", "POST", "http://localhost/v1/users", undefined);
-    expect(getKey).not.toBe(postKey);
-  });
-
-  test("differs by URL path", () => {
-    const key1 = getCacheKey("http", "GET", "http://localhost/v1/users", undefined);
-    const key2 = getCacheKey("http", "GET", "http://localhost/v1/posts", undefined);
-    expect(key1).not.toBe(key2);
-  });
-
-  test("differs by URL search params", () => {
-    const key1 = getCacheKey("http", "GET", "http://localhost/v1/users?page=1", undefined);
-    const key2 = getCacheKey("http", "GET", "http://localhost/v1/users?page=2", undefined);
-    expect(key1).not.toBe(key2);
-  });
-
-  test("differs by userId", () => {
-    const anonKey = getCacheKey("http", "GET", "http://localhost/v1/users", undefined);
-    const userKey = getCacheKey("http", "GET", "http://localhost/v1/users", "user-123");
-    expect(anonKey).not.toBe(userKey);
-  });
-});
 
 describe("formatHttpRoutes", () => {
   test("returns empty object for empty routes map", () => {

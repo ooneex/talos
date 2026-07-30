@@ -1,4 +1,5 @@
 import type { EnvironmentNameType } from "@talosjs/app-env";
+import { Cache } from "@talosjs/cache";
 import { container } from "@talosjs/container";
 import { HttpStatus } from "@talosjs/http-status";
 import type { MiddlewareClassType } from "@talosjs/middleware";
@@ -10,12 +11,6 @@ import { buildHttpContext } from "./context";
 import { buildExceptionResponse, httpRouteHandler, toControllerError } from "./controller";
 import { logException, logRequest, logSwallowedError } from "./logging";
 import { runMiddlewares } from "./middleware";
-
-export const getCacheKey = (prefix: string, method: string, url: string, userId?: string): string => {
-  const { pathname, search } = new URL(url);
-  const keySource = `${method}:${pathname}:${search}:${userId ?? "anon"}`;
-  return `${prefix}:${Bun.CryptoHasher.hash("sha256", keySource, "hex")}`;
-};
 
 export type HttpRouteHandlerType = (req: BunRequest, server: Server<unknown>) => Promise<Response>;
 export type HttpMethodHandlersType = Partial<Record<string, HttpRouteHandlerType | Response>>;
@@ -139,7 +134,9 @@ export const formatHttpRoutes = (
         // the authenticated user; httpRouteHandler reads/writes the cache with it only
         // once route access validation has also passed
         const cacheKey =
-          route.cache && context.cache ? getCacheKey(route.cache, route.method, req.url, context.user?.id) : null;
+          route.cache && context.cache
+            ? Cache.keyFromRoute(route.cache, route.method, req.url, context.user?.id)
+            : null;
 
         return httpRouteHandler({ context, route, cacheKey });
       };

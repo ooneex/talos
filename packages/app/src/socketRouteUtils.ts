@@ -1,4 +1,5 @@
 import type { EnvironmentNameType } from "@talosjs/app-env";
+import { Cache } from "@talosjs/cache";
 import { container } from "@talosjs/container";
 import type { IResponse } from "@talosjs/http-response";
 import { HttpStatus, type StatusCodeType } from "@talosjs/http-status";
@@ -17,18 +18,6 @@ import { buildException, toControllerError } from "./utils/controller";
 import { logRequest } from "./utils/logging";
 import { runMiddlewares } from "./utils/middleware";
 import { validateResponse, validateRouteAccess } from "./utils/validation";
-
-export const getSocketCacheKey = (
-  prefix: string,
-  routeName: string,
-  userId?: string,
-  params?: Record<string, ScalarType>,
-  queries?: Record<string, ScalarType>,
-  payload?: Record<string, ScalarType>,
-): string => {
-  const keySource = `${routeName}:${userId ?? "anon"}:${JSON.stringify(params ?? {})}:${JSON.stringify(queries ?? {})}:${JSON.stringify(payload ?? {})}`;
-  return `${prefix}:${Bun.CryptoHasher.hash("sha256", keySource, "hex")}`;
-};
 
 type SocketRouteHandlerType = (req: BunRequest, server: Server<unknown>) => Promise<Response | undefined>;
 type SocketRoutesMapType = Record<string, SocketRouteHandlerType>;
@@ -181,7 +170,7 @@ export const socketRouteHandler = async ({
   // key reflects the authenticated user and a cached response can never bypass the checks
   let cacheKey: string | null = null;
   if (route.cache && context.cache) {
-    cacheKey = getSocketCacheKey(
+    cacheKey = Cache.keyFromSocketRoute(
       route.cache,
       route.name,
       context.user?.id,
