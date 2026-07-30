@@ -336,7 +336,7 @@ _talos() {
           ;;
         docker:create)
           _arguments -s \
-            '--name=[Docker service name]:name:(clickhouse elasticsearch grafana jaeger keycloak libretranslate maildev memcached minio mongodb mysql nats postgres prometheus rabbitmq redis temporal vault)'
+            '--name=[Docker service name]:name:(clickhouse dragonfly elasticsearch grafana jaeger keycloak libretranslate maildev memcached minio mongodb mysql nats postgres prometheus rabbitmq redis temporal vault)'
           ;;
         docker:credentials:create)
           _arguments -s \

@@ -239,7 +239,7 @@ seed:create seed:run"
       ;;
     docker:create)
       opts="--name"
-      [[ $flag == --name ]] && candidates="clickhouse elasticsearch grafana jaeger keycloak libretranslate maildev memcached minio mongodb mysql nats postgres prometheus rabbitmq redis temporal vault"
+      [[ $flag == --name ]] && candidates="clickhouse dragonfly elasticsearch grafana jaeger keycloak libretranslate maildev memcached minio mongodb mysql nats postgres prometheus rabbitmq redis temporal vault"
       ;;
     docker:credentials:create)
       opts="--registry --username --token"

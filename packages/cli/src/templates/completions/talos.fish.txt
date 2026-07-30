@@ -270,7 +270,7 @@ for cmd in oo talos
     complete -c $cmd -n '__fish_seen_subcommand_from controller:create' -l is-socket -d 'Socket mode'
     complete -c $cmd -n '__fish_seen_subcommand_from controller:create' -l override -d 'Override existing file'
 
-    complete -c $cmd -n '__fish_seen_subcommand_from docker:create' -l name -x -a 'clickhouse elasticsearch grafana jaeger keycloak libretranslate maildev memcached minio mongodb mysql nats postgres prometheus rabbitmq redis temporal vault' -d 'Docker service name'
+    complete -c $cmd -n '__fish_seen_subcommand_from docker:create' -l name -x -a 'clickhouse dragonfly elasticsearch grafana jaeger keycloak libretranslate maildev memcached minio mongodb mysql nats postgres prometheus rabbitmq redis temporal vault' -d 'Docker service name'
 
     complete -c $cmd -n '__fish_seen_subcommand_from docker:credentials:create' -l registry -x -d 'Docker registry'
     complete -c $cmd -n '__fish_seen_subcommand_from docker:credentials:create' -l username -x -d 'Docker username'

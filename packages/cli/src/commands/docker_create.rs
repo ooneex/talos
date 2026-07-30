@@ -5,6 +5,7 @@ use crate::utils::{ask_select, current_dir, read_template, skeleton_templates_di
 
 const DOCKER_SERVICES: &[&str] = &[
     "clickhouse",
+    "dragonfly",
     "elasticsearch",
     "grafana",
     "jaeger",
