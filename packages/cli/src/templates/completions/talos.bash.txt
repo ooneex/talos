@@ -136,10 +136,9 @@ _talos() {
   local commands="app:create app:init app:start app:stop agent:skills:create \
 command:run completion:zsh completion:bash completion:fish help version upgrade \
 issue:create issue:pull issue:push issue:convert issue:check ai:chat:create ai:tool:create ai:middleware:create \
-analytics:create cache:create command:create controller:create cron:create database:create \
+analytics:create cache:create command:create controller:create credentials:create cron:create database:create \
 design:create design:remove docker:create docker:credentials:create docker:publish \
-github:credentials:create github:secret:push gitlab:credentials:create gitlab:secret:push \
-bitbucket:credentials:create bitbucket:secret:push jira:credentials:create linear:credentials:create \
+bitbucket:credentials:create bitbucket:secret:push \
 npm:credentials:create npm:publish monorepo:run run monorepo:check check build fmt lint test \
 security:check \
 project:check \
@@ -249,28 +248,20 @@ seed:create seed:run"
       [[ $flag == --packages ]] && candidates="$(_talos_docker_packages)"
       [[ $flag == --modules ]] && candidates="$(_talos_docker_modules)"
       ;;
-    github:credentials:create)
-      opts="--token"
-      ;;
-    github:secret:push)
-      opts="--name --value"
-      ;;
-    gitlab:credentials:create)
-      opts="--token"
-      ;;
-    gitlab:secret:push)
-      opts="--name --value"
-      ;;
     bitbucket:credentials:create)
       opts="--username --token"
       ;;
     bitbucket:secret:push)
       opts="--name --value"
       ;;
-    jira:credentials:create)
-      opts="--base-url --email --token"
+    credentials:create)
+      opts="--provider --base-url --email --token --client-id --client-secret --client-key \
+--access-token --app-id --app-secret --page-id --phone-number-id --application-id --bot-token \
+--username --password"
+      [[ $flag == --provider ]] && candidates="jira linear x instagram facebook linkedin tiktok \
+threads whatsapp telegram messenger discord reddit medium"
       ;;
-    linear:credentials:create | npm:credentials:create)
+    npm:credentials:create)
       opts="--token"
       ;;
     npm:publish)

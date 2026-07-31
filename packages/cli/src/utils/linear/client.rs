@@ -21,7 +21,7 @@ impl LinearClient {
     }
 
     /// Build a client from the `linear.yml` credentials saved by
-    /// `talos linear:credentials:create`.
+    /// `talos credentials:create --provider=linear`.
     pub fn from_credentials() -> Option<Self> {
         let profile = read_credentials("linear.yml")?;
         let token = profile

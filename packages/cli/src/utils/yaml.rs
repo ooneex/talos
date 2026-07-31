@@ -56,6 +56,11 @@ pub fn parse_default_profile(content: &str) -> Vec<(String, String)> {
             in_default = true;
             continue;
         }
+        // Any other profile header ends the default profile's entries.
+        if indent < 4 && trimmed.ends_with(':') {
+            in_default = false;
+            continue;
+        }
         if !in_default || indent < 4 {
             continue;
         }

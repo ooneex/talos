@@ -159,6 +159,7 @@ _talos() {
     'cache\:create:Generate a new cache class'
     'command\:create:Generate a new command class'
     'controller\:create:Generate a new controller class'
+    'credentials\:create:Save API credentials for a provider under the user config'
     'cron\:create:Generate a new cron class'
     'database\:create:Generate a new database class'
     'design\:create:Generate a new design module'
@@ -166,14 +167,8 @@ _talos() {
     'docker\:create:Add a docker service to docker-compose.yml'
     'docker\:credentials\:create:Save a Docker registry access token under the user config'
     'docker\:publish:Build and push a package or module Docker image to Docker Hub'
-    'github\:credentials\:create:Save a GitHub Personal Access Token under the user config'
-    'github\:secret\:push:Create or update a GitHub Actions secret on a repository'
-    'gitlab\:credentials\:create:Save a GitLab Personal Access Token under the user config'
-    'gitlab\:secret\:push:Create or update a GitLab CI/CD variable on a project'
     'bitbucket\:credentials\:create:Save a Bitbucket app password under the user config'
     'bitbucket\:secret\:push:Create or update a Bitbucket Pipelines repository variable'
-    'jira\:credentials\:create:Save a Jira API token under the user config'
-    'linear\:credentials\:create:Save a Linear Personal API key under the user config'
     'npm\:credentials\:create:Save an npm Granular Access Token under the user config'
     'npm\:publish:Publish a package or module to npm'
     'monorepo\:run:Run package.json scripts across packages and modules with granular caching'
@@ -350,24 +345,6 @@ _talos() {
             '--modules=-[Module name(s), comma-separated (default: all)]::modules:_talos_docker_publish_modules' \
             '--tag=[Image tag (default: package.json version or latest)]:tag'
           ;;
-        github:credentials:create)
-          _arguments -s \
-            '--token=[GitHub Personal Access Token]:token'
-          ;;
-        github:secret:push)
-          _arguments -s \
-            '--name=[Secret name]:name' \
-            '--value=[Secret value]:value'
-          ;;
-        gitlab:credentials:create)
-          _arguments -s \
-            '--token=[GitLab Personal Access Token]:token'
-          ;;
-        gitlab:secret:push)
-          _arguments -s \
-            '--name=[Variable name]:name' \
-            '--value=[Variable value]:value'
-          ;;
         bitbucket:credentials:create)
           _arguments -s \
             '--username=[Bitbucket username]:username' \
@@ -378,15 +355,24 @@ _talos() {
             '--name=[Variable name]:name' \
             '--value=[Variable value]:value'
           ;;
-        jira:credentials:create)
+        credentials:create)
           _arguments -s \
-            '--base-url=[Jira base URL]:baseUrl' \
-            '--email=[Jira account email]:email' \
-            '--token=[Jira API token]:token'
-          ;;
-        linear:credentials:create)
-          _arguments -s \
-            '--token=[Linear Personal API key]:token'
+            '--provider=[Credentials provider]:provider:(jira linear x instagram facebook linkedin tiktok threads whatsapp telegram messenger discord reddit medium)' \
+            '--base-url=[Base URL]:baseUrl' \
+            '--email=[Account email]:email' \
+            '--token=[API token]:token' \
+            '--client-id=[Client ID]:clientId' \
+            '--client-secret=[Client secret]:clientSecret' \
+            '--client-key=[Client key]:clientKey' \
+            '--access-token=[Access token]:accessToken' \
+            '--app-id=[App ID]:appId' \
+            '--app-secret=[App secret]:appSecret' \
+            '--page-id=[Page ID]:pageId' \
+            '--phone-number-id=[Phone number ID]:phoneNumberId' \
+            '--application-id=[Application ID]:applicationId' \
+            '--bot-token=[Bot token]:botToken' \
+            '--username=[Username]:username' \
+            '--password=[Password]:password'
           ;;
         npm:credentials:create)
           _arguments -s \

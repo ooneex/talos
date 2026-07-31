@@ -452,7 +452,7 @@ pub fn run(args: &IssuePushArgs) {
             Some(token) => Some(token),
             None => {
                 crate::utils::error(
-                    "No Linear credentials found. Run `talos linear:credentials:create`",
+                    "No Linear credentials found. Run `talos credentials:create --provider=linear`",
                 );
                 std::process::exit(1);
             }

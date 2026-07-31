@@ -22,6 +22,7 @@ pub mod completion_bash;
 pub mod completion_fish;
 pub mod completion_zsh;
 pub mod controller_create;
+pub mod credentials_create;
 pub mod cron_create;
 pub mod database_create;
 pub mod design_create;
@@ -41,8 +42,6 @@ pub mod issue_convert;
 pub mod issue_create;
 pub mod issue_pull;
 pub mod issue_push;
-pub mod jira_credentials_create;
-pub mod linear_credentials_create;
 pub mod lint;
 pub mod logger_create;
 pub mod mailer_create;
@@ -88,6 +87,10 @@ pub mod workflow_transition_create;
 use clap::Subcommand;
 
 #[derive(Subcommand, Debug)]
+#[allow(
+    clippy::large_enum_variant,
+    reason = "clap parses each subcommand into its own inline Args struct"
+)]
 pub enum Commands {
     #[command(name = "app:init")]
     AppInit(app_init::AppInitArgs),
@@ -249,11 +252,8 @@ pub enum Commands {
     #[command(name = "docker:credentials:create")]
     DockerCredentialsCreate(docker_credentials_create::DockerCredentialsCreateArgs),
 
-    #[command(name = "jira:credentials:create")]
-    JiraCredentialsCreate(jira_credentials_create::JiraCredentialsCreateArgs),
-
-    #[command(name = "linear:credentials:create")]
-    LinearCredentialsCreate(linear_credentials_create::LinearCredentialsCreateArgs),
+    #[command(name = "credentials:create")]
+    CredentialsCreate(credentials_create::CredentialsCreateArgs),
 
     #[command(name = "npm:credentials:create")]
     NpmCredentialsCreate(npm_credentials_create::NpmCredentialsCreateArgs),
@@ -407,8 +407,7 @@ impl Commands {
             Commands::BitbucketCredentialsCreate(args) => bitbucket_credentials_create::run(args),
             Commands::BitbucketSecretPush(args) => bitbucket_secret_push::run(args),
             Commands::DockerCredentialsCreate(args) => docker_credentials_create::run(args),
-            Commands::JiraCredentialsCreate(args) => jira_credentials_create::run(args),
-            Commands::LinearCredentialsCreate(args) => linear_credentials_create::run(args),
+            Commands::CredentialsCreate(args) => credentials_create::run(args),
             Commands::NpmCredentialsCreate(args) => npm_credentials_create::run(args),
             Commands::NpmPublish(args) => npm_publish::run(args),
             Commands::Upgrade(args) => upgrade::run(args),

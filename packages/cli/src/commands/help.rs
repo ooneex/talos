@@ -45,6 +45,10 @@ const COMMANDS: &[(&str, &str)] = &[
         "commitlint:init",
         "Install the git commit-msg hook that lints commit messages",
     ),
+    (
+        "credentials:create",
+        "Save API credentials for a provider under the user config",
+    ),
     ("cron:create", "Generate a new cron class"),
     ("database:create", "Generate a new database class"),
     ("design:create", "Generate a new design module"),
@@ -86,14 +90,6 @@ const COMMANDS: &[(&str, &str)] = &[
     (
         "issue:push",
         "Push one or more local issue YAML files to Linear (create or update)",
-    ),
-    (
-        "jira:credentials:create",
-        "Save a Jira API token under the user config",
-    ),
-    (
-        "linear:credentials:create",
-        "Save a Linear Personal API key under the user config",
     ),
     ("lint", "Alias for `monorepo:run --commands=lint`"),
     ("logger:create", "Generate a new logger class"),
