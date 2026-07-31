@@ -27,6 +27,30 @@ fn scalar_to_yaml(value: &str) -> String {
     }
 }
 
+/// Render a value as a double-quoted YAML scalar, or `null` when absent.
+pub(crate) fn quote_scalar(value: Option<&str>) -> String {
+    match value {
+        None => "null".to_string(),
+        Some(value) => serde_json::to_string(value).unwrap_or_else(|_| "\"\"".to_string()),
+    }
+}
+
+/// Render multi-line text as a YAML literal block (`|`).
+pub(crate) fn yaml_literal(text: &str) -> String {
+    let indented = text
+        .split('\n')
+        .map(|line| {
+            if line.is_empty() {
+                String::new()
+            } else {
+                format!("  {line}")
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    format!("|\n{indented}")
+}
+
 pub fn map_to_yaml(map: &[(String, String)], indent: usize) -> String {
     let pad = "  ".repeat(indent);
     map.iter()

@@ -7,6 +7,7 @@ pub mod github;
 mod index_exports;
 mod issue;
 pub mod linear;
+mod marketing;
 mod migration_version;
 mod module_registry;
 mod monorepo;
@@ -19,6 +20,7 @@ mod parallel;
 mod process;
 mod prompts;
 mod provider;
+mod rng;
 mod run_module_scripts;
 mod runnable_modules;
 mod rust_module;
@@ -43,6 +45,11 @@ pub use git::{
 };
 pub use index_exports::write_export_index;
 pub use issue::{IssueYaml, generate_issue_id, issue_to_yaml};
+pub use marketing::{
+    IMAGE_EXTENSION, MARKETING_PLATFORMS, MARKETING_STATES, MarketingYaml, VIDEO_EXTENSION,
+    generate_marketing_id, generate_media_name, marketing_to_yaml, normalize_platform,
+    normalize_state,
+};
 pub use migration_version::generate_migration_version;
 pub use module_registry::{
     add_path_alias, add_to_app_module, add_to_microservice_module, add_to_shared_module,

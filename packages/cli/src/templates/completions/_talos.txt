@@ -187,6 +187,7 @@ _talos() {
     'flag\:create:Generate a new feature flag class'
     'logger\:create:Generate a new logger class'
     'mailer\:create:Generate a new mailer class'
+    'marketing\:create:Create a marketing post resource inside a module'
     'middleware\:create:Generate a new middleware class'
     'permission\:create:Generate a new permission class'
     'queue\:create:Generate a new queue class'
@@ -304,6 +305,18 @@ _talos() {
             '*--id=[Only check these issue IDs, comma-separated (default: all)]:id' \
             '--strict[Fail on warnings as well as errors]' \
             '--json[Print the diagnostics as JSON instead of a human report]' \
+            '--cwd=[Working directory]:cwd:_files -/'
+          ;;
+        marketing:create)
+          _arguments -s \
+            '--title=[Post title]:title' \
+            '--content=[Post content]:content' \
+            '*--hashtag=[Hashtag (repeatable)]:hashtag' \
+            '*--platform=[Target platform (repeatable)]:platform:(X Instagram Facebook LinkedIn TikTok Threads WhatsApp Telegram Messenger Discord Reddit Medium)' \
+            '*--image=[Path to a .png image (repeatable)]:image:_files -g "*.png"' \
+            '*--video=[Path to a .mp4 video (repeatable)]:video:_files -g "*.mp4"' \
+            '--state=[Post state]:state:(Todo in-review Published)' \
+            '--module=[Module name]:module:_talos_modules' \
             '--cwd=[Working directory]:cwd:_files -/'
           ;;
         react:component:create)

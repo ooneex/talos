@@ -142,7 +142,7 @@ bitbucket:credentials:create bitbucket:secret:push \
 npm:credentials:create npm:publish monorepo:run run monorepo:check check build fmt lint test \
 security:check \
 project:check \
-entity:create flag:create logger:create mailer:create middleware:create permission:create \
+entity:create flag:create logger:create mailer:create marketing:create middleware:create permission:create \
 queue:create rate-limit:create event:create release:create repository:create sdk:create \
 service:create spa:create spa:feature:create spa:remove admin:create admin:remove storybook:create storybook:remove storage:create translation:create \
 vector-database:create workflow:create workflow:transition:create microservice:create \
@@ -221,6 +221,12 @@ seed:create seed:run"
       ;;
     issue:check)
       opts="--module --id --strict --json --cwd"
+      [[ $flag == --module ]] && candidates="$(_talos_modules)"
+      ;;
+    marketing:create)
+      opts="--title --content --hashtag --platform --image --video --state --module --cwd"
+      [[ $flag == --platform ]] && candidates="X Instagram Facebook LinkedIn TikTok Threads WhatsApp Telegram Messenger Discord Reddit Medium"
+      [[ $flag == --state ]] && candidates="Todo in-review Published"
       [[ $flag == --module ]] && candidates="$(_talos_modules)"
       ;;
     ai:chat:create | ai:tool:create | ai:middleware:create | analytics:create | cache:create | \

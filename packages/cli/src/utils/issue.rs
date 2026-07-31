@@ -1,32 +1,9 @@
 use std::path::Path;
-use std::time::{SystemTime, UNIX_EPOCH};
+
+use super::rng::Rng;
+use super::yaml::{quote_scalar, yaml_literal};
 
 const LETTERS: &[u8] = b"ABCDEF";
-
-struct Rng(u64);
-
-impl Rng {
-    fn new() -> Self {
-        let nanos = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map(|d| d.as_nanos() as u64)
-            .unwrap_or(0x2545F4914F6CDD1D);
-        Self(nanos | 1)
-    }
-
-    fn next_u64(&mut self) -> u64 {
-        let mut x = self.0;
-        x ^= x << 13;
-        x ^= x >> 7;
-        x ^= x << 17;
-        self.0 = x;
-        x
-    }
-
-    fn gen_range(&mut self, max: u64) -> u64 {
-        self.next_u64() % max
-    }
-}
 
 pub fn generate_issue_id(issues_dir: Option<&Path>) -> String {
     let mut rng = Rng::new();
@@ -53,28 +30,6 @@ pub struct IssueYaml {
     pub priority: Option<String>,
     pub description: Option<String>,
     pub labels: Option<Vec<String>>,
-}
-
-fn quote_scalar(value: Option<&str>) -> String {
-    match value {
-        None => "null".to_string(),
-        Some(value) => serde_json::to_string(value).unwrap_or_else(|_| "\"\"".to_string()),
-    }
-}
-
-fn yaml_literal(text: &str) -> String {
-    let indented = text
-        .split('\n')
-        .map(|line| {
-            if line.is_empty() {
-                String::new()
-            } else {
-                format!("  {line}")
-            }
-        })
-        .collect::<Vec<_>>()
-        .join("\n");
-    format!("|\n{indented}")
 }
 
 pub fn issue_to_yaml(issue: &IssueYaml) -> String {

@@ -45,6 +45,7 @@ pub mod issue_push;
 pub mod lint;
 pub mod logger_create;
 pub mod mailer_create;
+pub mod marketing_create;
 pub mod microservice_create;
 pub mod microservice_remove;
 pub mod middleware_create;
@@ -188,6 +189,10 @@ pub enum Commands {
     /// Validate every issue YAML file against the issue conventions
     #[command(name = "issue:check")]
     IssueCheck(issue_check::IssueCheckArgs),
+
+    /// Create a marketing post resource inside a module
+    #[command(name = "marketing:create")]
+    MarketingCreate(marketing_create::MarketingCreateArgs),
 
     #[command(name = "microservice:create")]
     MicroserviceCreate(microservice_create::MicroserviceCreateArgs),
@@ -386,6 +391,7 @@ impl Commands {
             Commands::IssuePush(args) => issue_push::run(args),
             Commands::IssueConvert(args) => issue_convert::run(args),
             Commands::IssueCheck(args) => issue_check::run(args),
+            Commands::MarketingCreate(args) => marketing_create::run(args),
             Commands::MicroserviceCreate(args) => microservice_create::run(args),
             Commands::MicroserviceRemove(args) => microservice_remove::run(args),
             Commands::CommandCreate(args) => command_create::run(args),

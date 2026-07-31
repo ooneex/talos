@@ -94,6 +94,10 @@ const COMMANDS: &[(&str, &str)] = &[
     ("lint", "Alias for `monorepo:run --commands=lint`"),
     ("logger:create", "Generate a new logger class"),
     ("mailer:create", "Generate a new mailer class"),
+    (
+        "marketing:create",
+        "Create a marketing post resource inside a module",
+    ),
     ("microservice:create", "Generate a new microservice"),
     ("microservice:remove", "Remove an existing microservice"),
     ("middleware:create", "Generate a new middleware class"),
