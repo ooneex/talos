@@ -12,14 +12,17 @@ use super::style::{BAR_EMPTY, BAR_FILLED};
 
 const FRAMES: [&str; 10] = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 const TICK: Duration = Duration::from_millis(80);
-const BAR_WIDTH: usize = 22;
+pub const BAR_WIDTH: usize = 22;
 
-struct FooterState {
-    total: usize,
-    finished: usize,
-    failed: usize,
-    running: Vec<String>,
-    frame: usize,
+/// How far along the run is. Public alongside [`build_footer_lines`], which
+/// draws it: the two together are the whole display, and neither needs a
+/// terminal to be exercised.
+pub struct FooterState {
+    pub total: usize,
+    pub finished: usize,
+    pub failed: usize,
+    pub running: Vec<String>,
+    pub frame: usize,
 }
 
 struct FooterInner {
@@ -148,7 +151,9 @@ fn paint_footer(state: &FooterState, cols: usize, elapsed_ms: u64, buf: &mut Str
     buf.push('\r');
 }
 
-fn build_footer_lines(state: &FooterState, cols: usize, elapsed_ms: u64) -> Vec<String> {
+/// A blank line, the bar with its counts, then one spinning line per task that
+/// is still running.
+pub fn build_footer_lines(state: &FooterState, cols: usize, elapsed_ms: u64) -> Vec<String> {
     let ratio = if state.total == 0 {
         1.0
     } else {

@@ -56,6 +56,7 @@ pub use monorepo::{
     save_file_hash_cache, sort_targets_by_dependencies, write_cache_entry,
 };
 pub(crate) use monorepo_footer::Footer;
+pub use monorepo_footer::{BAR_WIDTH, FooterState, build_footer_lines};
 pub use monorepo_group::{INSTALL_COMMAND, build_group, build_install_group};
 pub(crate) use monorepo_scheduler::run_group;
 pub use monorepo_task::{Task, TaskStatus, format_duration};
@@ -82,4 +83,7 @@ pub use skeleton::{
     read_template, skeleton_templates_dir,
 };
 
-pub use style::{Loader, LoaderGroup, Spinner, error, info, step, success, warn};
+pub use style::{
+    BAR_EMPTY, BAR_FILLED, LOADER_WIDTH, Loader, LoaderGroup, LoaderRow, Spinner, error, info,
+    step, success, warn,
+};

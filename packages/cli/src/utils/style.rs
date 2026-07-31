@@ -11,15 +11,16 @@ const SPINNER_FRAMES: [&str; 10] = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "�
 const SPINNER_INTERVAL: Duration = Duration::from_millis(80);
 
 /// How wide a loader bar is drawn, in cells.
-const LOADER_WIDTH: usize = 16;
+pub const LOADER_WIDTH: usize = 16;
 
-/// The bar is drawn a rule high rather than a full block: nine of them stacked
-/// under each other read as a table with a measure beside every row, where nine
-/// full blocks read as a wall.
+/// The bar is drawn as a run of slanted segments rather than a solid rule: the
+/// gaps between them keep nine bars stacked under each other reading as a
+/// measure beside every row instead of a wall, and the empty half stays legible
+/// as track rather than disappearing into a hairline.
 ///
 /// Shared so every bar the CLI draws is the same bar.
-pub(crate) const BAR_FILLED: &str = "━";
-pub(crate) const BAR_EMPTY: &str = "─";
+pub const BAR_FILLED: &str = "▰";
+pub const BAR_EMPTY: &str = "▱";
 
 /// How many running labels a group names before it gives up and counts the
 /// rest.
@@ -91,16 +92,20 @@ impl LoaderGroup {
     }
 }
 
-struct GroupState {
-    title: String,
-    total: usize,
-    done: usize,
-    running: BTreeSet<String>,
+/// What one loader row knows about itself, and how it draws.
+///
+/// The drawing is a pure function of the row and the widths around it, so it is
+/// public — the render can be exercised without a terminal or a render thread.
+pub struct LoaderRow {
+    pub title: String,
+    pub total: usize,
+    pub done: usize,
+    pub running: BTreeSet<String>,
 }
 
-impl GroupState {
-    /// `  ⠹ Architecture  ━━━━━━━━────────   5/8  imports, restricted +2`
-    fn line(&self, frame: &str, title_width: usize, count_width: usize, cols: usize) -> String {
+impl LoaderRow {
+    /// `  ⠹ Architecture  ▰▰▰▰▰▰▰▰▱▱▱▱▱▱▱▱   5/8  imports, restricted +2`
+    pub fn line(&self, frame: &str, title_width: usize, count_width: usize, cols: usize) -> String {
         let done = self.done.min(self.total);
         let filled = (done * LOADER_WIDTH)
             .checked_div(self.total)
@@ -132,7 +137,7 @@ impl GroupState {
         let head = format!(
             "  {icon} {}  {}{}  {}",
             style(format!("{:<title_width$}", self.title)).bold(),
-            style(BAR_FILLED.repeat(filled)).cyan(),
+            style(BAR_FILLED.repeat(filled)).green(),
             style(BAR_EMPTY.repeat(LOADER_WIDTH - filled)).dim(),
             style(format!("{counts:>count_width$}")).dim(),
         );
@@ -147,7 +152,7 @@ impl GroupState {
 }
 
 struct LoaderState {
-    groups: Vec<GroupState>,
+    groups: Vec<LoaderRow>,
     title_width: usize,
     count_width: usize,
     frame: usize,
@@ -239,7 +244,7 @@ impl Loader {
                     .unwrap_or(0),
                 groups: groups
                     .into_iter()
-                    .map(|group| GroupState {
+                    .map(|group| LoaderRow {
                         title: group.title,
                         total: group.total,
                         done: 0,
@@ -290,7 +295,7 @@ impl Loader {
         self.with_group(group, |state| state.done += 1);
     }
 
-    fn with_group(&self, group: usize, edit: impl FnOnce(&mut GroupState)) {
+    fn with_group(&self, group: usize, edit: impl FnOnce(&mut LoaderRow)) {
         let Some(inner) = &self.inner else {
             return;
         };
