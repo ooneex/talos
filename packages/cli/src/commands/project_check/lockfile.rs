@@ -5,6 +5,10 @@
 //! package manager, one nested inside a module, or one that predates the
 //! manifest next to it all mean the same thing: two machines resolve the same
 //! ranges differently.
+//!
+//! `is_stale` is kept for the foreign ecosystems only — a `package.json` newer
+//! than `bun.lock` is not reported, since an mtime says nothing about whether
+//! the edit actually touched a dependency.
 
 use std::collections::BTreeSet;
 use std::fs;
@@ -168,17 +172,8 @@ pub fn run(args: &ProjectCheckArgs, root: &Path) -> CheckOutcome {
         for manifest_path in std::iter::once(manifest_path.clone())
             .chain(modules.iter().map(WorkspaceModule::package_json_path))
             .filter(|path| path.is_file())
+            .filter(|_| !content.is_empty())
         {
-            if is_stale(&manifest_path, &path) {
-                warnings.push(format!(
-                    "{} is newer than {name} — reinstall so the lockfile covers it",
-                    relative(root, &manifest_path)
-                ));
-            }
-
-            if content.is_empty() {
-                continue;
-            }
             let Some(manifest) = super::modules::read_json(&manifest_path) else {
                 continue;
             };
