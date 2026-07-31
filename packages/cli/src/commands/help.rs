@@ -66,22 +66,6 @@ const COMMANDS: &[(&str, &str)] = &[
     ("event:create", "Generate a new event class"),
     ("flag:create", "Generate a new feature flag class"),
     ("fmt", "Alias for `monorepo:run --commands=fmt`"),
-    (
-        "github:credentials:create",
-        "Save a GitHub Personal Access Token under the user config",
-    ),
-    (
-        "github:secret:push",
-        "Create or update a GitHub Actions secret on a repository",
-    ),
-    (
-        "gitlab:credentials:create",
-        "Save a GitLab Personal Access Token under the user config",
-    ),
-    (
-        "gitlab:secret:push",
-        "Create or update a GitLab CI/CD variable on a project",
-    ),
     ("help", "Show available commands"),
     (
         "issue:check",

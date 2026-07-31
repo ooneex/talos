@@ -35,10 +35,6 @@ pub mod entity_create;
 pub mod event_create;
 pub mod feature_flag_create;
 pub mod fmt;
-pub mod github_credentials_create;
-pub mod github_secret_push;
-pub mod gitlab_credentials_create;
-pub mod gitlab_secret_push;
 pub mod help;
 pub mod issue_check;
 pub mod issue_convert;
@@ -244,18 +240,6 @@ pub enum Commands {
     #[command(name = "workflow:transition:create")]
     WorkflowTransitionCreate(workflow_transition_create::WorkflowTransitionCreateArgs),
 
-    #[command(name = "github:credentials:create")]
-    GithubCredentialsCreate(github_credentials_create::GithubCredentialsCreateArgs),
-
-    #[command(name = "github:secret:push")]
-    GithubSecretPush(github_secret_push::GithubSecretPushArgs),
-
-    #[command(name = "gitlab:credentials:create")]
-    GitlabCredentialsCreate(gitlab_credentials_create::GitlabCredentialsCreateArgs),
-
-    #[command(name = "gitlab:secret:push")]
-    GitlabSecretPush(gitlab_secret_push::GitlabSecretPushArgs),
-
     #[command(name = "bitbucket:credentials:create")]
     BitbucketCredentialsCreate(bitbucket_credentials_create::BitbucketCredentialsCreateArgs),
 
@@ -420,10 +404,6 @@ impl Commands {
             Commands::VectorDatabaseCreate(args) => vector_database_create::run(args),
             Commands::WorkflowCreate(args) => workflow_create::run(args),
             Commands::WorkflowTransitionCreate(args) => workflow_transition_create::run(args),
-            Commands::GithubCredentialsCreate(args) => github_credentials_create::run(args),
-            Commands::GithubSecretPush(args) => github_secret_push::run(args),
-            Commands::GitlabCredentialsCreate(args) => gitlab_credentials_create::run(args),
-            Commands::GitlabSecretPush(args) => gitlab_secret_push::run(args),
             Commands::BitbucketCredentialsCreate(args) => bitbucket_credentials_create::run(args),
             Commands::BitbucketSecretPush(args) => bitbucket_secret_push::run(args),
             Commands::DockerCredentialsCreate(args) => docker_credentials_create::run(args),
