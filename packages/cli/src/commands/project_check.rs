@@ -22,6 +22,7 @@ pub mod crons;
 pub mod dependencies;
 pub mod docker;
 pub mod docs;
+pub mod duplication;
 pub mod e2e_coverage;
 pub mod entities;
 pub mod env;
@@ -135,7 +136,7 @@ const MAX_SCANNED_FILE_BYTES: u64 = 512 * 1024;
 
 #[derive(Args, Debug, Default, Clone)]
 pub struct ProjectCheckArgs {
-    /// Only run these checks (comma-separated). Accepts a category — foundation, architecture, api, data, runtime, frontend, quality, supply-chain, process — or a check: workspace, structure, folders, tsconfig, lockfile, conventions, imports, boundaries, restricted, container, registration, middlewares, routes, openapi, pagination, validation, roles, permissions, entities, indexes, repositories, transactions, sql, async, exceptions, logging, complexity, orphans, events, queues, crons, workflows, mailers, flags, env, dependencies, outdated, docker, migrations, accessibility, contrast, tokens, assets, translations, stories, router, queries, sdk, tests, e2e-coverage, docs, bundle, security, secrets, git, issues, todos, branches, commits, hygiene, e2e.
+    /// Only run these checks (comma-separated). Accepts a category — foundation, architecture, api, data, runtime, frontend, quality, supply-chain, process — or a check: workspace, structure, folders, tsconfig, lockfile, conventions, imports, boundaries, restricted, container, registration, middlewares, routes, openapi, pagination, validation, roles, permissions, entities, indexes, repositories, transactions, sql, async, exceptions, logging, complexity, duplication, orphans, events, queues, crons, workflows, mailers, flags, env, dependencies, outdated, docker, migrations, accessibility, contrast, tokens, assets, translations, stories, router, queries, sdk, tests, e2e-coverage, docs, bundle, security, secrets, git, issues, todos, branches, commits, hygiene, e2e.
     #[arg(long)]
     pub only: Option<String>,
 
@@ -218,6 +219,7 @@ pub enum CheckId {
     Exceptions,
     Logging,
     Complexity,
+    Duplication,
     Orphans,
     Events,
     Queues,
@@ -370,7 +372,7 @@ impl CheckId {
     /// Every check, in execution order. The workspace runs first because the
     /// install it performs is what makes the other tools available, and the
     /// end-to-end suite runs last because it needs the build they produce.
-    pub const ALL: [CheckId; 62] = [
+    pub const ALL: [CheckId; 63] = [
         CheckId::Workspace,
         CheckId::Structure,
         CheckId::Folders,
@@ -399,6 +401,7 @@ impl CheckId {
         CheckId::Exceptions,
         CheckId::Logging,
         CheckId::Complexity,
+        CheckId::Duplication,
         CheckId::Orphans,
         CheckId::Events,
         CheckId::Queues,
@@ -438,7 +441,7 @@ impl CheckId {
     /// Checks that run when nothing is requested explicitly. The end-to-end
     /// suite is opt-in because it boots the application, and the outdated check
     /// because it queries the public registries for every dependency.
-    pub const DEFAULT: [CheckId; 60] = [
+    pub const DEFAULT: [CheckId; 61] = [
         CheckId::Workspace,
         CheckId::Structure,
         CheckId::Folders,
@@ -467,6 +470,7 @@ impl CheckId {
         CheckId::Exceptions,
         CheckId::Logging,
         CheckId::Complexity,
+        CheckId::Duplication,
         CheckId::Orphans,
         CheckId::Events,
         CheckId::Queues,
@@ -522,6 +526,7 @@ impl CheckId {
             | CheckId::Container
             | CheckId::Registration
             | CheckId::Complexity
+            | CheckId::Duplication
             | CheckId::Orphans => Category::Architecture,
 
             CheckId::Middlewares
@@ -604,6 +609,7 @@ impl CheckId {
             CheckId::Exceptions => "exceptions",
             CheckId::Logging => "logging",
             CheckId::Complexity => "complexity",
+            CheckId::Duplication => "duplication",
             CheckId::Orphans => "orphans",
             CheckId::Events => "events",
             CheckId::Queues => "queues",
@@ -671,6 +677,7 @@ impl CheckId {
             CheckId::Exceptions => "Exceptions",
             CheckId::Logging => "Logging",
             CheckId::Complexity => "Complexity",
+            CheckId::Duplication => "Duplication",
             CheckId::Orphans => "Orphans",
             CheckId::Events => "Events",
             CheckId::Queues => "Queues",
@@ -739,6 +746,7 @@ impl CheckId {
             CheckId::Exceptions => "failures thrown with a code, and none swallowed",
             CheckId::Logging => "console calls and secrets written to a log",
             CheckId::Complexity => "file, function, parameter and nesting budgets",
+            CheckId::Duplication => "blocks of code written more than once",
             CheckId::Orphans => "files and exports nothing reaches",
             CheckId::Events => "channels with one subscriber and a producer",
             CheckId::Queues => "queues that are named, served and monitored",
@@ -860,6 +868,7 @@ impl CheckId {
             | CheckId::Async
             | CheckId::Logging
             | CheckId::Complexity
+            | CheckId::Duplication
             | CheckId::Orphans
             | CheckId::Flags
             | CheckId::Env
@@ -926,6 +935,7 @@ impl CheckId {
             "exceptions" | "exception" | "errors" | "throw" => Some(CheckId::Exceptions),
             "logging" | "logs" | "logger" | "console" => Some(CheckId::Logging),
             "complexity" | "size" | "budgets" => Some(CheckId::Complexity),
+            "duplication" | "duplicates" | "clones" | "copy-paste" => Some(CheckId::Duplication),
             "orphans" | "orphan" | "dead-code" | "unused" => Some(CheckId::Orphans),
             "events" | "event" | "pubsub" => Some(CheckId::Events),
             "queues" | "queue" | "jobs" => Some(CheckId::Queues),
@@ -2557,6 +2567,7 @@ fn dispatch(args: &ProjectCheckArgs, root: &Path, id: CheckId) -> CheckOutcome {
         CheckId::Exceptions => exceptions::run(args, root),
         CheckId::Logging => logging::run(args, root),
         CheckId::Complexity => complexity::run(args, root),
+        CheckId::Duplication => duplication::run(args, root),
         CheckId::Orphans => orphans::run(args, root),
         CheckId::Events => events::run(args, root),
         CheckId::Queues => queues::run(args, root),

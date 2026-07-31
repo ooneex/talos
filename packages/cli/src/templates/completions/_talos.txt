@@ -45,7 +45,7 @@ _talos_docker_publish_modules() {
 }
 
 _talos_project_checks() {
-  _values -s , 'checks' workspace structure tsconfig lockfile conventions imports boundaries restricted container registration routes validation roles entities sql async complexity orphans env dependencies outdated docker migrations accessibility contrast translations stories sdk tests e2e-coverage docs bundle security secrets git issues branches commits hygiene e2e
+  _values -s , 'checks' workspace structure tsconfig lockfile conventions imports boundaries restricted container registration routes validation roles entities sql async complexity duplication orphans env dependencies outdated docker migrations accessibility contrast translations stories sdk tests e2e-coverage docs bundle security secrets git issues branches commits hygiene e2e
 }
 
 _talos_custom_commands() {
