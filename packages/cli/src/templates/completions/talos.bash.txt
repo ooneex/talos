@@ -144,7 +144,7 @@ security:check \
 project:check \
 entity:create flag:create logger:create mailer:create marketing:create middleware:create permission:create \
 queue:create rate-limit:create event:create release:create repository:create sdk:create \
-service:create spa:create spa:feature:create spa:remove admin:create admin:remove storybook:create storybook:remove storage:create translation:create \
+service:create spa:create spa:feature:create spa:remove admin:create admin:remove storybook:create storybook:remove swagger:create swagger:remove storage:create translation:create \
 vector-database:create workflow:create workflow:transition:create microservice:create \
 microservice:remove migration:create migration:up migration:down module:create module:remove \
 seed:create seed:run"
@@ -346,12 +346,17 @@ threads whatsapp telegram messenger discord reddit medium"
       opts="--name --design --no-cache"
       [[ $flag == --design ]] && candidates="$(_talos_yaml_modules design)"
       ;;
+    swagger:create)
+      opts="--name --module --design --prefix --no-cache"
+      [[ $flag == --design ]] && candidates="$(_talos_yaml_modules design)"
+      [[ $flag == --module ]] && candidates="$(_talos_modules)"
+      ;;
     admin:create)
       opts="--name --design --target --no-cache"
       [[ $flag == --design ]] && candidates="$(_talos_yaml_modules design)"
       [[ $flag == --target ]] && candidates="$(_talos_destination_modules)"
       ;;
-    design:remove | spa:remove | storybook:remove | microservice:remove | module:remove | admin:remove)
+    design:remove | spa:remove | storybook:remove | swagger:remove | microservice:remove | module:remove | admin:remove)
       opts="--name"
       [[ $flag == --name ]] && candidates="$(_talos_modules)"
       ;;

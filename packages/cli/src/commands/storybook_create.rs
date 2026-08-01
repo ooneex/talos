@@ -4,9 +4,13 @@ use std::process::Command;
 
 use clap::Args;
 use fs_extra::dir::{CopyOptions, copy as copy_dir};
-use serde_json::Value;
 
 use crate::commands::design_create::{self, DesignCreateArgs};
+use crate::utils::frontend_module::{
+    collect_design_modules, collect_used_ports, find_free_port, read_dependency_names,
+    rewrite_design_alias, rewrite_package_json, rewrite_playwright_port, rewrite_self_imports,
+    with_design_field,
+};
 use crate::utils::{
     Spinner, add_path_alias, ask_input, ask_select, clone_skeleton, current_dir, run_spinner_step,
     to_kebab_case, to_pascal_case,
@@ -37,95 +41,7 @@ pub struct StorybookCreateArgs {
 const DEFAULT_PORT: u16 = 3031;
 const CREATE_NEW_DESIGN: &str = "Create a new design";
 
-fn with_design_field(yml_content: &str, design_kebab: Option<&str>) -> String {
-    let design_re = regex::Regex::new(r#"(?m)^design:\s*".*"$"#).ok();
-    match (design_re, design_kebab) {
-        (Some(re), Some(design)) if re.is_match(yml_content) => re
-            .replace(yml_content, format!("design: \"{design}\""))
-            .into_owned(),
-        (Some(re), None) if re.is_match(yml_content) => {
-            re.replace(yml_content, "").replace("\n\n\n", "\n\n")
-        }
-        (_, Some(design)) => format!("{}\ndesign: \"{design}\"\n", yml_content.trim_end()),
-        _ => yml_content.to_string(),
-    }
-}
-
-fn collect_used_ports(modules_dir: &Path) -> std::collections::BTreeSet<u16> {
-    let mut used = std::collections::BTreeSet::new();
-    let Ok(entries) = fs::read_dir(modules_dir) else {
-        return used;
-    };
-    let re = regex::Regex::new(r"--port\s+(\d+)").ok();
-    for entry in entries.flatten() {
-        let package_path = entry.path().join("package.json");
-        if let Ok(raw) = fs::read_to_string(package_path)
-            && let Ok(package_json) = serde_json::from_str::<Value>(&raw)
-            && let Some(scripts) = package_json.get("scripts").and_then(Value::as_object)
-        {
-            for script in scripts.values().filter_map(Value::as_str) {
-                if let Some(re) = &re {
-                    for caps in re.captures_iter(script) {
-                        if let Some(port) = caps.get(1).and_then(|m| m.as_str().parse::<u16>().ok())
-                        {
-                            used.insert(port);
-                        }
-                    }
-                }
-            }
-        }
-    }
-    used
-}
-
-fn find_free_port(used_ports: &std::collections::BTreeSet<u16>) -> u16 {
-    let mut port = DEFAULT_PORT;
-    while used_ports.contains(&port) {
-        port += 1;
-    }
-    port
-}
-
-fn collect_design_modules(modules_dir: &Path) -> Vec<String> {
-    let Ok(entries) = fs::read_dir(modules_dir) else {
-        return Vec::new();
-    };
-    let mut designs = Vec::new();
-    for entry in entries.flatten() {
-        if !entry.path().is_dir() {
-            continue;
-        }
-        let name = entry.file_name().to_string_lossy().to_string();
-        let yml_path = entry.path().join(format!("{name}.yml"));
-        if let Ok(content) = fs::read_to_string(yml_path)
-            && content.contains("type: \"design\"")
-        {
-            designs.push(name);
-        }
-    }
-    designs
-}
-
-fn visit_files_recursive(dir: &Path, callback: &mut impl FnMut(&Path)) {
-    let Ok(entries) = fs::read_dir(dir) else {
-        return;
-    };
-    for entry in entries.flatten() {
-        let path = entry.path();
-        if path.is_dir() {
-            visit_files_recursive(&path, callback);
-        } else if path.is_file() {
-            callback(&path);
-        }
-    }
-}
-
-fn install_root_dependencies(
-    cwd: &Path,
-    deps: &[String],
-    dev_deps: &[String],
-    silent: bool,
-) -> bool {
+fn install_root_dependencies(cwd: &Path, deps: &[String], dev_deps: &[String]) -> bool {
     if !deps.is_empty()
         && !run_spinner_step(
             false,
@@ -150,7 +66,6 @@ fn install_root_dependencies(
     {
         return false;
     }
-    let _ = silent;
     true
 }
 
@@ -230,92 +145,18 @@ pub fn run(args: &StorybookCreateArgs) {
         }
     }
 
-    let port = find_free_port(&collect_used_ports(&modules_dir));
+    let port = find_free_port(&collect_used_ports(&modules_dir, &kebab_name), DEFAULT_PORT);
     let package_path = module_dir.join("package.json");
-    let mut deps = Vec::new();
-    let mut dev_deps = Vec::new();
-    if let Ok(raw) = fs::read_to_string(&package_path)
-        && let Ok(mut package_json) = serde_json::from_str::<Value>(&raw)
-    {
-        deps = package_json
-            .get("dependencies")
-            .and_then(Value::as_object)
-            .map(|deps| deps.keys().cloned().collect())
-            .unwrap_or_default();
-        dev_deps = package_json
-            .get("devDependencies")
-            .and_then(Value::as_object)
-            .map(|deps| deps.keys().cloned().collect())
-            .unwrap_or_default();
-        if let Some(root) = package_json.as_object_mut() {
-            root.insert(
-                "name".to_string(),
-                Value::String(format!("@module/{kebab_name}")),
-            );
-            root.insert("type".to_string(), Value::String("module".to_string()));
-            let scripts = root
-                .entry("scripts")
-                .or_insert_with(|| Value::Object(Default::default()));
-            if let Some(scripts_map) = scripts.as_object_mut() {
-                scripts_map.insert(
-                    "dev".to_string(),
-                    Value::String(format!("bun --bun run vite --port {port}")),
-                );
-                scripts_map.insert(
-                    "build".to_string(),
-                    Value::String("bun --bun run vite build".to_string()),
-                );
-                scripts_map.insert(
-                    "preview".to_string(),
-                    Value::String("bun --bun run vite preview".to_string()),
-                );
-            }
-            if let Ok(json) = serde_json::to_string_pretty(&package_json) {
-                let _ = fs::write(&package_path, format!("{json}\n"));
-            }
-        }
-    }
-
-    visit_files_recursive(&src_dir, &mut |file_path| {
-        if let Ok(content) = fs::read_to_string(file_path) {
-            let rewritten = regex::Regex::new(r#"from \"@module/storybook(["/])"#)
-                .ok()
-                .map(|re| {
-                    re.replace_all(&content, format!("from \"@module/{kebab_name}$1"))
-                        .into_owned()
-                })
-                .unwrap_or(content.clone());
-            if rewritten != content {
-                let _ = fs::write(file_path, rewritten);
-            }
-        }
-    });
-
-    let vite_path = module_dir.join("vite.config.ts");
-    if let Ok(vite_content) = fs::read_to_string(&vite_path) {
-        let without_alias = regex::Regex::new(r#"\n\s*\"@module/[\w-]+\":\s*fileURLToPath\(\s*\n?\s*new URL\("\.\./[\w-]+/src",\s*import\.meta\.url\),?\s*\n?\s*\),"#)
-            .ok()
-            .map(|re| re.replace_all(&vite_content, "").into_owned())
-            .unwrap_or(vite_content.clone());
-        let with_alias = if let Some(design_kebab) = design_kebab.as_deref() {
-            without_alias.replace(
-                r#"      \"@\": fileURLToPath(new URL(\"./src\", import.meta.url)),"#,
-                &format!(
-                    "      \"@\": fileURLToPath(new URL(\"./src\", import.meta.url)),\n      \"@module/{design_kebab}\": fileURLToPath(\n        new URL(\"../{design_kebab}/src\", import.meta.url),\n      ),"
-                ),
-            )
-        } else {
-            without_alias
-        };
-        if with_alias != vite_content {
-            let _ = fs::write(&vite_path, with_alias);
-        }
-    }
+    let (deps, dev_deps) = read_dependency_names(&package_path);
+    rewrite_package_json(&package_path, &kebab_name, port);
+    rewrite_playwright_port(&module_dir.join("playwright.config.ts"), port);
+    rewrite_self_imports(&src_dir, "storybook", &kebab_name);
+    rewrite_design_alias(&module_dir.join("vite.config.ts"), design_kebab.as_deref());
 
     let _ = fs::create_dir_all(src_dir.join("shared"));
     let _ = fs::write(src_dir.join("shared").join(".gitkeep"), "");
 
-    if !install_root_dependencies(&cwd, &deps, &dev_deps, silent) {
+    if !install_root_dependencies(&cwd, &deps, &dev_deps) {
         return;
     }
 
