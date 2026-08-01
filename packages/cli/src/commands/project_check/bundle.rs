@@ -18,7 +18,7 @@ use crate::commands::project_check::{
 };
 
 /// Module types that build a browser bundle.
-const BUNDLED_TYPES: [&str; 4] = ["spa", "admin", "storybook", "design"];
+const BUNDLED_TYPES: [&str; 5] = ["spa", "admin", "storybook", "swagger", "design"];
 
 /// One file inside a build.
 #[derive(Clone, Debug, PartialEq, Eq)]

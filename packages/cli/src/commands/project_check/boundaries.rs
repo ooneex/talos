@@ -17,10 +17,10 @@ use crate::commands::project_check::{
 };
 
 /// Module types that run in a browser.
-const BROWSER_TYPES: [&str; 4] = ["spa", "admin", "design", "storybook"];
+const BROWSER_TYPES: [&str; 5] = ["spa", "admin", "design", "storybook", "swagger"];
 
 /// Module types that run on a server.
-const SERVER_TYPES: [&str; 4] = ["api", "microservice", "module", "swagger"];
+const SERVER_TYPES: [&str; 3] = ["api", "microservice", "module"];
 
 /// Where a module runs, which is what makes a crossing dangerous rather than
 /// merely untidy.
@@ -74,6 +74,15 @@ pub fn verdict(from: Option<&str>, to: Option<&str>) -> Option<(bool, String)> {
             ("storybook", to) if to != "design" => Some((
                 false,
                 format!("a storybook documents a design module, not a {to}"),
+            )),
+            // A swagger documents its target's routes through generated route
+            // metas, which copy the contract rather than import it. The design
+            // module it is styled from is the one thing it may reach for.
+            ("swagger", to) if to != "design" => Some((
+                false,
+                format!(
+                    "a swagger is generated from its target's routes and should not import a {to}"
+                ),
             )),
             ("sdk", _) => Some((
                 false,

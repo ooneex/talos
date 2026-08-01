@@ -15,7 +15,7 @@ use crate::commands::project_check::{
 };
 
 /// Module types whose code ends up in a browser bundle.
-const BROWSER_TYPES: [&str; 4] = ["spa", "admin", "design", "storybook"];
+const BROWSER_TYPES: [&str; 5] = ["spa", "admin", "design", "storybook", "swagger"];
 
 /// Runtime prefixes that only exist on a server.
 const SERVER_RUNTIMES: [&str; 3] = ["node:", "bun:", "bun/"];
