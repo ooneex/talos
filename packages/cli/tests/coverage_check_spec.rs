@@ -1,10 +1,14 @@
-use std::path::PathBuf;
+use std::fs;
+use std::path::{Path, PathBuf};
 
 use clap::Parser;
+use cli::commands::coverage_check::cache::{Fingerprints, read, write};
 use cli::commands::coverage_check::{
     CoverageAudit, CoverageCheckArgs, FileCoverage, ModuleCoverage, RunStatus, audit, parse_counts,
     parse_lcov, parse_table,
 };
+use cli::commands::project_check::cache::FileHashes;
+use cli::commands::project_check::modules::discover_modules;
 
 #[derive(Parser)]
 struct TestCli {
@@ -41,6 +45,7 @@ fn module(label: &str, status: RunStatus, lines: f64, functions: f64) -> ModuleC
         files: Vec::new(),
         duration_ms: 0,
         output: String::new(),
+        cached: false,
     }
 }
 
@@ -53,6 +58,8 @@ fn parses_with_no_arguments() {
     let cli = TestCli::try_parse_from(["talos"]).expect("no argument is valid");
     assert!(!cli.args.issues);
     assert!(!cli.args.logs);
+    assert!(!cli.args.no_cache);
+    assert!(!cli.args.strict);
     assert!(cli.args.threshold.is_none());
 }
 
@@ -66,12 +73,16 @@ fn parses_every_flag() {
         "--packages=color",
         "--threshold=75.5",
         "--concurrency=2",
+        "--no-cache",
+        "--strict",
         "--cwd=/tmp/app",
     ])
     .expect("every flag parses");
 
     assert!(cli.args.issues);
     assert!(cli.args.logs);
+    assert!(cli.args.no_cache);
+    assert!(cli.args.strict);
     assert_eq!(cli.args.modules.as_deref(), Some("user,billing"));
     assert_eq!(cli.args.packages.as_deref(), Some("color"));
     assert_eq!(cli.args.threshold, Some(75.5));
@@ -245,6 +256,152 @@ fn a_module_with_no_code_to_measure_never_moves_the_average() {
     // Nothing measured is nothing to raise, so it is never reported as thin.
     assert_eq!(audit.under().len(), 1);
     assert_eq!(audit.under()[0].label, "modules/user");
+}
+
+#[test]
+fn a_run_fails_on_a_broken_suite_and_only_under_strict_on_a_thin_one() {
+    let broken = CoverageAudit {
+        modules: vec![module("modules/order", RunStatus::Failed, 0.0, 0.0)],
+        threshold: 90.0,
+    };
+    let thin = CoverageAudit {
+        modules: vec![module("modules/billing", RunStatus::Passed, 60.0, 70.0)],
+        threshold: 90.0,
+    };
+    let clean = CoverageAudit {
+        modules: vec![module("modules/user", RunStatus::Passed, 95.0, 95.0)],
+        threshold: 90.0,
+    };
+
+    assert!(broken.is_failure(false));
+    assert!(broken.is_failure(true));
+    assert!(!thin.is_failure(false));
+    assert!(thin.is_failure(true));
+    assert!(!clean.is_failure(true));
+}
+
+// ---------------------------------------------------------------------------
+// Cache
+// ---------------------------------------------------------------------------
+
+/// A workspace of two modules, the second depending on the first.
+fn workspace() -> tempfile::TempDir {
+    let temp = tempfile::tempdir().expect("create temp dir");
+    let root = temp.path();
+
+    fs::write(root.join("package.json"), "{\"name\":\"app\"}").expect("write the root manifest");
+    for (group, name, deps) in [
+        ("packages", "color", "{}"),
+        ("modules", "user", "{\"@app/color\":\"workspace:*\"}"),
+    ] {
+        let dir = root.join(group).join(name);
+        fs::create_dir_all(dir.join("src")).expect("create the module");
+        fs::write(
+            dir.join("package.json"),
+            format!("{{\"name\":\"@app/{name}\",\"dependencies\":{deps}}}"),
+        )
+        .expect("write the manifest");
+        fs::write(dir.join("src").join("index.ts"), "export const a = 1;\n")
+            .expect("write a source file");
+    }
+
+    temp
+}
+
+fn fingerprints(root: &Path) -> Fingerprints {
+    Fingerprints::build(root, &discover_modules(root), &FileHashes::load(root))
+}
+
+#[test]
+fn an_entry_is_reused_only_for_the_tree_it_was_measured_from() {
+    let temp = workspace();
+    let root = temp.path();
+    let before = fingerprints(root);
+
+    let mut coverage = module("modules/user", RunStatus::Passed, 95.0, 91.0);
+    coverage.files = vec![FileCoverage {
+        path: "src/index.ts".to_string(),
+        lines: 95.0,
+        functions: 91.0,
+        uncovered: vec!["12-14".to_string()],
+    }];
+    write(root, &coverage, &before.inputs("modules/user"));
+
+    let entry = read(root, "modules/user").expect("the entry was written");
+    assert!(entry.matches(&before.inputs("modules/user")));
+
+    let restored = entry
+        .coverage("user", "modules/user", &root.join("modules/user"))
+        .expect("a stored status restores");
+    assert_eq!(restored.status, RunStatus::Passed);
+    assert_eq!(restored.lines, 95.0);
+    assert_eq!(restored.files.len(), 1);
+    assert_eq!(restored.files[0].uncovered, vec!["12-14"]);
+    // A replayed suite is never counted as one that ran.
+    assert!(restored.cached);
+
+    fs::write(
+        root.join("modules/user/src/index.ts"),
+        "export const a = 2;\n",
+    )
+    .expect("edit the module");
+    assert!(!entry.matches(&fingerprints(root).inputs("modules/user")));
+}
+
+#[test]
+fn an_entry_is_dropped_when_a_workspace_dependency_changes() {
+    let temp = workspace();
+    let root = temp.path();
+    let before = fingerprints(root);
+    let inputs = before.inputs("modules/user");
+
+    // The module reads its dependency, so the dependency is one of its inputs.
+    assert!(inputs.contains_key("packages/color"));
+
+    fs::write(
+        root.join("packages/color/src/index.ts"),
+        "export const a = 2;\n",
+    )
+    .expect("edit the dependency");
+    let after = fingerprints(root);
+
+    assert_ne!(inputs, after.inputs("modules/user"));
+    // Nothing the dependency does moves what a module it never imports reads.
+    assert_eq!(
+        before.inputs("packages/color").get("modules/user"),
+        after.inputs("packages/color").get("modules/user")
+    );
+}
+
+#[test]
+fn an_entry_is_dropped_when_a_root_file_a_suite_loads_changes() {
+    let temp = workspace();
+    let root = temp.path();
+    let before = fingerprints(root).inputs("modules/user");
+
+    fs::write(root.join("README.md"), "# app\n").expect("write a document");
+    assert_eq!(before, fingerprints(root).inputs("modules/user"));
+
+    fs::write(root.join("tsconfig.json"), "{\"compilerOptions\":{}}")
+        .expect("write the typescript configuration");
+    assert_ne!(before, fingerprints(root).inputs("modules/user"));
+}
+
+#[test]
+fn a_suite_that_never_reported_is_never_stored() {
+    let temp = workspace();
+    let root = temp.path();
+    let inputs = fingerprints(root).inputs("modules/user");
+
+    let errored = module(
+        "modules/user",
+        RunStatus::Errored("could not run bun".to_string()),
+        0.0,
+        0.0,
+    );
+    write(root, &errored, &inputs);
+
+    assert!(read(root, "modules/user").is_none());
 }
 
 #[test]

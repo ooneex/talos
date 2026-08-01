@@ -338,6 +338,8 @@ for cmd in oo talos
     complete -c $cmd -n '__fish_seen_subcommand_from coverage:check' -l threshold -d 'Minimum line and function coverage, in percent'
     complete -c $cmd -n '__fish_seen_subcommand_from coverage:check' -l logs -d 'Print the output of every suite that fails'
     complete -c $cmd -n '__fish_seen_subcommand_from coverage:check' -l concurrency -d 'How many suites run at once'
+    complete -c $cmd -n '__fish_seen_subcommand_from coverage:check' -l no-cache -d 'Skip reading and writing the coverage cache'
+    complete -c $cmd -n '__fish_seen_subcommand_from coverage:check' -l strict -d 'Fail when a module stays under the threshold'
     complete -c $cmd -n '__fish_seen_subcommand_from coverage:check' -l cwd -d 'Working directory'
 
     complete -c $cmd -n '__fish_seen_subcommand_from project:check' -l only -x -a 'workspace structure tsconfig lockfile conventions imports boundaries restricted container registration routes validation roles entities sql async complexity duplication orphans env dependencies outdated docker migrations accessibility contrast translations stories sdk tests e2e-coverage docs bundle security secrets git issues branches commits hygiene e2e' -d 'Only run these checks, comma-separated'

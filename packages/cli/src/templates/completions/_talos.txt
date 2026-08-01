@@ -429,6 +429,8 @@ _talos() {
             '--threshold=[Minimum line and function coverage, in percent]:threshold:(70 75 80 85 90 95 100)' \
             '--logs[Print the output of every suite that fails]' \
             '--concurrency=[How many suites run at once]:concurrency:(1 2 4 8)' \
+            '--no-cache[Skip reading and writing the coverage cache]' \
+            '--strict[Fail when a module stays under the threshold]' \
             '--cwd=[Working directory]:cwd:_files -/'
           ;;
         project:check)

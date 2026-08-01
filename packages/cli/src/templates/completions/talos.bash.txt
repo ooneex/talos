@@ -295,7 +295,7 @@ threads whatsapp telegram messenger discord reddit medium"
       [[ $flag == --audit-level ]] && candidates="low moderate high critical"
       ;;
     coverage:check)
-      opts="--issues --modules --packages --threshold --logs --concurrency --cwd"
+      opts="--issues --modules --packages --threshold --logs --concurrency --no-cache --strict --cwd"
       [[ $flag == --modules ]] && candidates="$(_talos_pkg_modules)"
       [[ $flag == --packages ]] && candidates="$(_talos_packages)"
       ;;

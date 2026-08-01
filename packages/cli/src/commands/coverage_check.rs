@@ -8,6 +8,14 @@
 //! configures), and renders one report — modules ranked worst first, the files
 //! under the threshold named with their uncovered lines, and the failing suites
 //! called out separately from the merely under-covered ones.
+//!
+//! Running suites is expensive, so a report a module's sources have not moved
+//! since is replayed from [`cache`] rather than measured again, and `--no-cache`
+//! turns that off. A failing suite always ends the run in a non-zero status;
+//! `--strict` extends that to the modules that merely stayed under the
+//! threshold, which is what makes the command usable as a gate.
+
+pub mod cache;
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -19,12 +27,13 @@ use std::time::Instant;
 use clap::Args;
 use console::style;
 
+use crate::commands::project_check::cache::FileHashes;
 use crate::commands::project_check::modules::{
     WorkspaceModule, discover_modules, filter_modules, wanted_names,
 };
 use crate::utils::{
-    BAR_EMPTY, BAR_FILLED, IssueYaml, LOADER_WIDTH, Loader, LoaderGroup, error, format_duration,
-    generate_issue_id, issue_to_yaml, success, warn,
+    BAR_EMPTY, BAR_FILLED, IssueYaml, LOADER_WIDTH, Loader, LoaderGroup, Spinner, error,
+    format_duration, generate_issue_id, issue_to_yaml, success, warn,
 };
 
 /// Coverage a module is expected to reach, in percent, when `--threshold` says
@@ -69,6 +78,15 @@ pub struct CoverageCheckArgs {
     /// How many suites run at once (defaults to the core count, capped at 8).
     #[arg(long)]
     pub concurrency: Option<usize>,
+
+    /// Skip reading and writing the coverage cache.
+    #[arg(long, default_value_t = false)]
+    pub no_cache: bool,
+
+    /// Report every module under the threshold as a failure, and exit with a
+    /// non-zero status.
+    #[arg(long, default_value_t = false)]
+    pub strict: bool,
 
     /// Working directory (defaults to the current directory).
     #[arg(long)]
@@ -137,6 +155,8 @@ pub struct ModuleCoverage {
     pub duration_ms: u64,
     /// Combined stdout and stderr, kept for `--logs`.
     pub output: String,
+    /// Whether the suite was replayed from the cache rather than run.
+    pub cached: bool,
 }
 
 impl ModuleCoverage {
@@ -222,9 +242,24 @@ impl CoverageAudit {
     pub fn functions(&self) -> f64 {
         mean(self.measured().iter().map(|module| module.functions))
     }
+
+    /// The modules whose report was replayed from the cache.
+    pub fn cached(&self) -> usize {
+        self.modules.iter().filter(|module| module.cached).count()
+    }
+
+    /// Whether the run should end in a non-zero status: a suite that failed or
+    /// could not run always, a module that stayed under the threshold only
+    /// under `--strict`.
+    pub fn is_failure(&self, strict: bool) -> bool {
+        !self.broken().is_empty() || (strict && !self.under().is_empty())
+    }
 }
 
 /// Run every selected suite and return the coverage instead of printing it.
+///
+/// Nothing is read from or written to the cache here: an embedded report is
+/// asked for by a caller that wants the suites run, not replayed.
 pub fn audit(
     root: &Path,
     modules: Option<&str>,
@@ -232,13 +267,13 @@ pub fn audit(
     threshold: Option<f64>,
     concurrency: Option<usize>,
 ) -> Result<CoverageAudit, String> {
-    let targets = collect_targets(root, modules, packages);
+    let targets = collect_targets(&workspace(root, modules, packages));
     if targets.is_empty() {
         return Err(String::new());
     }
 
     Ok(CoverageAudit {
-        modules: run_suites(targets, concurrency, &Loader::hidden()),
+        modules: run_suites(targets, concurrency, &Loader::hidden(), None),
         threshold: threshold.unwrap_or(DEFAULT_THRESHOLD),
     })
 }
@@ -251,7 +286,8 @@ pub fn run(args: &CoverageCheckArgs) {
         .unwrap_or_else(crate::utils::current_dir);
 
     let threshold = args.threshold.unwrap_or(DEFAULT_THRESHOLD);
-    let targets = collect_targets(&root, args.modules.as_deref(), args.packages.as_deref());
+    let modules = workspace(&root, args.modules.as_deref(), args.packages.as_deref());
+    let targets = collect_targets(&modules);
     if targets.is_empty() {
         warn("No module found to run — a module needs a package.json and a tests/ directory");
         return;
@@ -262,19 +298,46 @@ pub fn run(args: &CoverageCheckArgs) {
         .filter(|target| target.skip.is_none())
         .count();
     let started = Instant::now();
+
+    // Fingerprinting only earns its own walk when there is a suite it could
+    // spare, and it is the one stretch before the loader where nothing is
+    // printed, so it gets a spinner of its own.
+    let hashes = (!args.no_cache && runnable > 0).then(|| FileHashes::load(&root));
+    let spinner = hashes
+        .is_some()
+        .then(|| Spinner::start("Fingerprinting the workspace..."));
+    let cache = hashes.as_ref().map(|hashes| Cache {
+        root: &root,
+        fingerprints: cache::Fingerprints::build(&root, &modules, hashes),
+    });
+    drop(spinner);
+
     let loader = if runnable > 0 {
         Loader::start(vec![LoaderGroup::new("Suites", runnable)])
     } else {
         Loader::hidden()
     };
-    let modules = run_suites(targets, args.concurrency, &loader);
+    let modules = run_suites(targets, args.concurrency, &loader, cache.as_ref());
     loader.stop();
+
+    if let Some(hashes) = hashes.as_ref() {
+        hashes.save();
+    }
 
     let audit = CoverageAudit { modules, threshold };
     if args.issues {
         create_issues(&audit);
-    } else {
-        print_report(&audit, args.logs, started.elapsed().as_millis() as u64);
+        return;
+    }
+
+    print_report(
+        &audit,
+        args.logs,
+        args.strict,
+        started.elapsed().as_millis() as u64,
+    );
+    if audit.is_failure(args.strict) {
+        std::process::exit(1);
     }
 }
 
@@ -292,18 +355,19 @@ struct Target {
     skip: Option<String>,
 }
 
-fn collect_targets(root: &Path, modules: Option<&str>, packages: Option<&str>) -> Vec<Target> {
-    let wanted = wanted_names(modules, packages);
-    filter_modules(discover_modules(root), &wanted)
-        .into_iter()
-        .map(|module| {
-            let skip = skip_reason(&module);
-            Target {
-                name: module.name.clone(),
-                label: module.label(),
-                dir: module.dir,
-                skip,
-            }
+/// The workspace members `--modules` / `--packages` selected.
+fn workspace(root: &Path, modules: Option<&str>, packages: Option<&str>) -> Vec<WorkspaceModule> {
+    filter_modules(discover_modules(root), &wanted_names(modules, packages))
+}
+
+fn collect_targets(modules: &[WorkspaceModule]) -> Vec<Target> {
+    modules
+        .iter()
+        .map(|module| Target {
+            name: module.name.clone(),
+            label: module.label(),
+            dir: module.dir.clone(),
+            skip: skip_reason(module),
         })
         .collect()
 }
@@ -333,12 +397,39 @@ fn skip_reason(module: &WorkspaceModule) -> Option<String> {
 // Suite execution
 // ---------------------------------------------------------------------------
 
+/// Where the entries live and what the tree they answer for looks like.
+struct Cache<'a> {
+    root: &'a Path,
+    fingerprints: cache::Fingerprints,
+}
+
+impl Cache<'_> {
+    /// The report stored for a target, when it was measured from the tree in
+    /// front of us.
+    fn reuse(&self, target: &Target) -> Option<ModuleCoverage> {
+        let entry = cache::read(self.root, &target.label)?;
+        entry
+            .matches(&self.fingerprints.inputs(&target.label))
+            .then(|| entry.coverage(&target.name, &target.label, &target.dir))?
+    }
+
+    fn store(&self, coverage: &ModuleCoverage) {
+        cache::write(
+            self.root,
+            coverage,
+            &self.fingerprints.inputs(&coverage.label),
+        );
+    }
+}
+
 /// Run every runnable target, at most `concurrency` at a time, and report the
-/// modules sorted worst first.
+/// modules sorted worst first. A target the cache still answers for is never
+/// run at all.
 fn run_suites(
     targets: Vec<Target>,
     concurrency: Option<usize>,
     loader: &Loader,
+    cache: Option<&Cache>,
 ) -> Vec<ModuleCoverage> {
     let workers = resolve_concurrency(concurrency).min(targets.len().max(1));
     let queue = Mutex::new(targets.into_iter().enumerate().collect::<Vec<_>>());
@@ -355,12 +446,23 @@ fn run_suites(
                     };
                     let coverage = match &target.skip {
                         Some(reason) => skipped_module(&target, reason.clone()),
-                        None => {
-                            loader.entered(0, target.label.clone());
-                            let coverage = run_suite(&target);
-                            loader.left(0, &target.label);
-                            coverage
-                        }
+                        // A cache hit is not work in flight, so it is counted
+                        // rather than named as running.
+                        None => match cache.and_then(|cache| cache.reuse(&target)) {
+                            Some(coverage) => {
+                                loader.advance(0);
+                                coverage
+                            }
+                            None => {
+                                loader.entered(0, target.label.clone());
+                                let coverage = run_suite(&target);
+                                loader.left(0, &target.label);
+                                if let Some(cache) = cache {
+                                    cache.store(&coverage);
+                                }
+                                coverage
+                            }
+                        },
                     };
                     results
                         .lock()
@@ -426,6 +528,7 @@ fn skipped_module(target: &Target, reason: String) -> ModuleCoverage {
         files: Vec::new(),
         duration_ms: 0,
         output: String::new(),
+        cached: false,
     }
 }
 
@@ -498,6 +601,7 @@ fn run_suite(target: &Target) -> ModuleCoverage {
         files: report.files,
         duration_ms,
         output: text,
+        cached: false,
     }
 }
 
@@ -514,6 +618,7 @@ fn unmeasured(target: &Target, passed: usize, output: String, duration_ms: u64) 
         files: Vec::new(),
         duration_ms,
         output,
+        cached: false,
     }
 }
 
@@ -530,6 +635,7 @@ fn errored(target: &Target, reason: String, output: String, duration_ms: u64) ->
         files: Vec::new(),
         duration_ms,
         output,
+        cached: false,
     }
 }
 
@@ -750,7 +856,7 @@ fn mean(values: impl Iterator<Item = f64>) -> f64 {
 // Report output
 // ---------------------------------------------------------------------------
 
-fn print_report(audit: &CoverageAudit, logs: bool, elapsed_ms: u64) {
+fn print_report(audit: &CoverageAudit, logs: bool, strict: bool, elapsed_ms: u64) {
     let ran = audit.ran();
     let skipped = audit
         .modules
@@ -783,15 +889,19 @@ fn print_report(audit: &CoverageAudit, logs: bool, elapsed_ms: u64) {
         return;
     }
 
-    print_rows(audit, &ran);
-    print_low_files(audit);
+    print_rows(audit, &ran, strict);
+    print_low_files(audit, strict);
     print_failures(audit, logs);
     println!();
     print_summary(audit, skipped);
 }
 
 /// One row per module: status, a line-coverage bar, both rates, and its tests.
-fn print_rows(audit: &CoverageAudit, ran: &[&ModuleCoverage]) {
+///
+/// Under `--strict` a module under the threshold is a failure, and is drawn as
+/// one: a red cross where the warning sign was, so the report never contradicts
+/// the status the run exits with.
+fn print_rows(audit: &CoverageAudit, ran: &[&ModuleCoverage], strict: bool) {
     let width = ran
         .iter()
         .map(|module| module.label.chars().count())
@@ -819,6 +929,7 @@ fn print_rows(audit: &CoverageAudit, ran: &[&ModuleCoverage]) {
             _ if module.is_covered(audit.threshold) => {
                 (style("✔").green().bold().to_string(), passed)
             }
+            _ if strict => (style("✖").red().bold().to_string(), passed),
             _ => (style("⚠").yellow().bold().to_string(), passed),
         };
 
@@ -859,18 +970,21 @@ fn print_rows(audit: &CoverageAudit, ran: &[&ModuleCoverage]) {
 }
 
 /// Under every module that misses the threshold, the files that put it there.
-fn print_low_files(audit: &CoverageAudit) {
+fn print_low_files(audit: &CoverageAudit, strict: bool) {
     let under = audit.under();
     if under.is_empty() {
         return;
     }
 
+    let heading = style(format!("Under {}%", trim_percent(audit.threshold))).bold();
     println!();
     println!(
         "{}",
-        style(format!("Under {}%", trim_percent(audit.threshold)))
-            .yellow()
-            .bold()
+        if strict {
+            heading.red()
+        } else {
+            heading.yellow()
+        }
     );
 
     for module in under {
@@ -989,6 +1103,10 @@ fn print_summary(audit: &CoverageAudit, skipped: usize) {
     }
     if skipped > 0 {
         parts.push(format!("{skipped} skipped"));
+    }
+    let cached = audit.cached();
+    if cached > 0 {
+        parts.push(format!("{cached} cached"));
     }
     let detail = parts.join(" · ");
 

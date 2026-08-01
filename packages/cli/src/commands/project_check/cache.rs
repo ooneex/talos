@@ -105,7 +105,9 @@ impl FileHashes {
         }
     }
 
-    fn hash(&self, path: &Path) -> Option<String> {
+    /// The content hash of one file, memoised by its size and modification
+    /// time. `None` when the file cannot be read.
+    pub fn hash(&self, path: &Path) -> Option<String> {
         let metadata = fs::metadata(path).ok()?;
         let size = metadata.len();
         let mtime_ms = metadata
@@ -140,7 +142,7 @@ impl FileHashes {
 
 /// The fingerprint of one directory tree: every file it holds, by path and
 /// content, in a stable order.
-fn fingerprint(dir: &Path, hashes: &FileHashes, skip: &[&str]) -> String {
+pub fn fingerprint(dir: &Path, hashes: &FileHashes, skip: &[&str]) -> String {
     let mut files = Vec::new();
     walk(dir, dir, 0, skip, &mut files);
     files.sort();
