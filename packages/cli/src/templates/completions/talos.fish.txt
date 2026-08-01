@@ -167,6 +167,7 @@ for cmd in oo talos
     complete -c $cmd -f -n __fish_use_subcommand -a monorepo:check -d 'Run install, build, lint and test across packages and modules with granular caching'
     complete -c $cmd -f -n __fish_use_subcommand -a check -d 'Alias for monorepo:check'
     complete -c $cmd -f -n __fish_use_subcommand -a security:check -d 'Audit dependencies for known vulnerabilities via OSV.dev'
+    complete -c $cmd -f -n __fish_use_subcommand -a coverage:check -d 'Run tests per module with coverage and report what is left uncovered'
     complete -c $cmd -f -n __fish_use_subcommand -a project:check -d 'Run every health check: structure, conventions, imports, boundaries, container, routes, validation, roles, entities, sql, async, complexity, duplication, orphans, deps, docker, migrations, a11y, contrast, translations, stories, sdk, tests, e2e, docs, bundle, security, secrets, git, issues, branches, commits, hygiene'
     complete -c $cmd -f -n __fish_use_subcommand -a build -d 'Alias for monorepo:run --commands=build'
     complete -c $cmd -f -n __fish_use_subcommand -a fmt -d 'Alias for monorepo:run --commands=fmt'
@@ -330,6 +331,14 @@ for cmd in oo talos
     complete -c $cmd -n '__fish_seen_subcommand_from security:check' -l packages -a '(__talos_packages)' -d 'Alias for --modules, comma-separated'
     complete -c $cmd -n '__fish_seen_subcommand_from security:check' -l audit-level -a 'low moderate high critical' -d 'Minimum severity to report'
     complete -c $cmd -n '__fish_seen_subcommand_from security:check' -l cwd -d 'Working directory'
+
+    complete -c $cmd -n '__fish_seen_subcommand_from coverage:check' -l issues -d 'Create a YAML issue per under-covered module instead of printing the report'
+    complete -c $cmd -n '__fish_seen_subcommand_from coverage:check' -l modules -a '(__talos_pkg_modules)' -d 'Module name(s), comma-separated'
+    complete -c $cmd -n '__fish_seen_subcommand_from coverage:check' -l packages -a '(__talos_packages)' -d 'Alias for --modules, comma-separated'
+    complete -c $cmd -n '__fish_seen_subcommand_from coverage:check' -l threshold -d 'Minimum line and function coverage, in percent'
+    complete -c $cmd -n '__fish_seen_subcommand_from coverage:check' -l logs -d 'Print the output of every suite that fails'
+    complete -c $cmd -n '__fish_seen_subcommand_from coverage:check' -l concurrency -d 'How many suites run at once'
+    complete -c $cmd -n '__fish_seen_subcommand_from coverage:check' -l cwd -d 'Working directory'
 
     complete -c $cmd -n '__fish_seen_subcommand_from project:check' -l only -x -a 'workspace structure tsconfig lockfile conventions imports boundaries restricted container registration routes validation roles entities sql async complexity duplication orphans env dependencies outdated docker migrations accessibility contrast translations stories sdk tests e2e-coverage docs bundle security secrets git issues branches commits hygiene e2e' -d 'Only run these checks, comma-separated'
     complete -c $cmd -n '__fish_seen_subcommand_from project:check' -l skip -x -a 'workspace structure tsconfig lockfile conventions imports boundaries restricted container registration routes validation roles entities sql async complexity duplication orphans env dependencies outdated docker migrations accessibility contrast translations stories sdk tests e2e-coverage docs bundle security secrets git issues branches commits hygiene e2e' -d 'Skip these checks, comma-separated'

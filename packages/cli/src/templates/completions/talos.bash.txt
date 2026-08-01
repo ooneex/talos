@@ -141,6 +141,7 @@ design:create design:remove docker:create docker:credentials:create docker:publi
 bitbucket:credentials:create bitbucket:secret:push \
 npm:credentials:create npm:publish monorepo:run run monorepo:check check build fmt lint test \
 security:check \
+coverage:check \
 project:check \
 entity:create flag:create logger:create mailer:create marketing:create middleware:create permission:create \
 queue:create rate-limit:create event:create release:create repository:create sdk:create \
@@ -292,6 +293,11 @@ threads whatsapp telegram messenger discord reddit medium"
       [[ $flag == --modules ]] && candidates="$(_talos_pkg_modules)"
       [[ $flag == --packages ]] && candidates="$(_talos_packages)"
       [[ $flag == --audit-level ]] && candidates="low moderate high critical"
+      ;;
+    coverage:check)
+      opts="--issues --modules --packages --threshold --logs --concurrency --cwd"
+      [[ $flag == --modules ]] && candidates="$(_talos_pkg_modules)"
+      [[ $flag == --packages ]] && candidates="$(_talos_packages)"
       ;;
     project:check)
       opts="--only --skip --packages --modules --audit-level --e2e --outdated --logs --no-cache --strict --json --cwd"

@@ -107,6 +107,9 @@ pub fn execute(options: ModuleCreateOptions) {
     let Some(test_template) = read_template(&templates_dir, "module/test.txt") else {
         return;
     };
+    let Some(bunfig_template) = read_template(&templates_dir, "module/bunfig.txt") else {
+        return;
+    };
 
     let module_content = module_template.replace("{{NAME}}", &pascal_name);
     let package_content = package_template.replace("{{NAME}}", &kebab_name);
@@ -115,13 +118,14 @@ pub fn execute(options: ModuleCreateOptions) {
         .replace("{{name}}", &kebab_name);
     let yml_content = yml_template.replace("{{name}}", &kebab_name);
 
-    let writes: [(PathBuf, &str); 5] = [
+    let writes: [(PathBuf, &str); 6] = [
         (
             src_dir.join(format!("{pascal_name}Module.ts")),
             module_content.as_str(),
         ),
         (module_dir.join("package.json"), package_content.as_str()),
         (module_dir.join("tsconfig.json"), tsconfig_template.as_str()),
+        (module_dir.join("bunfig.toml"), bunfig_template.as_str()),
         (
             module_dir.join(format!("{kebab_name}.yml")),
             yml_content.as_str(),

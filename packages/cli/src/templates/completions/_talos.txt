@@ -176,6 +176,7 @@ _talos() {
     'monorepo\:check:Run install, build, lint and test across packages and modules with granular caching'
     'check:Alias for monorepo:check — run install, build, fmt, lint and test across packages and modules with granular caching'
     'security\:check:Audit dependencies for known vulnerabilities via OSV.dev'
+    'coverage\:check:Run tests per module with coverage and report what is left uncovered'
     'project\:check:Run every health check — workspace, structure, conventions, env, deps, docker, migrations, a11y, translations, tests, docs, security, secrets, git, issues, commits, hygiene'
     'build:Alias for monorepo:run --commands=build — run the build script across packages and modules with granular caching'
     'fmt:Alias for monorepo:run --commands=fmt — run the fmt script across packages and modules with granular caching'
@@ -418,6 +419,16 @@ _talos() {
             '--modules=-[Module name(s), comma-separated (default: all)]::modules:_talos_publish_modules' \
             '--packages=-[Alias for --modules, comma-separated (default: all)]::packages:_talos_publish_packages' \
             '--audit-level=[Minimum severity to report]:level:(low moderate high critical)' \
+            '--cwd=[Working directory]:cwd:_files -/'
+          ;;
+        coverage:check)
+          _arguments -s \
+            '--issues[Create a YAML issue per under-covered module instead of printing the report]' \
+            '--modules=-[Module name(s), comma-separated (default: all)]::modules:_talos_publish_modules' \
+            '--packages=-[Alias for --modules, comma-separated (default: all)]::packages:_talos_publish_packages' \
+            '--threshold=[Minimum line and function coverage, in percent]:threshold:(70 75 80 85 90 95 100)' \
+            '--logs[Print the output of every suite that fails]' \
+            '--concurrency=[How many suites run at once]:concurrency:(1 2 4 8)' \
             '--cwd=[Working directory]:cwd:_files -/'
           ;;
         project:check)

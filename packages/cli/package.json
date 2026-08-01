@@ -5,7 +5,7 @@
   "type": "module",
   "license": "MIT",
   "scripts": {
-    "test": "cargo test",
+    "test": "sh scripts/coverage.sh",
     "fmt": "cargo fmt",
     "lint": "cargo clippy --all-targets --quiet"
   },

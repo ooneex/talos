@@ -41,6 +41,7 @@ fn execute_scaffolds_a_module_and_registers_it_into_app_module() {
     assert!(module_dir.join("package.json").exists());
     assert!(module_dir.join("tsconfig.json").exists());
     assert!(module_dir.join("billing.yml").exists());
+    assert!(module_dir.join("bunfig.toml").exists());
     assert!(module_dir.join("tests/BillingModule.spec.ts").exists());
 
     let module_content = fs::read_to_string(module_dir.join("src/BillingModule.ts")).unwrap();

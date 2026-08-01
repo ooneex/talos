@@ -34,6 +34,10 @@ const COMMANDS: &[(&str, &str)] = &[
     ("command:create", "Generate a new command class"),
     ("command:run", "Run a custom command from a module"),
     ("controller:create", "Generate a new controller class"),
+    (
+        "coverage:check",
+        "Run every module's tests with coverage and report what is left uncovered",
+    ),
     ("completion:bash", "Install Bash completion for oo command"),
     ("completion:fish", "Install Fish completion for oo command"),
     ("completion:zsh", "Install Zsh completion for oo command"),
