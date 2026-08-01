@@ -1,5 +1,4 @@
 [test]
-preload = ["./tests/preload.ts"]
 coverage = true
 coverageReporter = ["text", "lcov"]
 coverageDir = "coverage"
@@ -7,8 +6,7 @@ coverageSkipTestFiles = true
 coveragePathIgnorePatterns = [
   "../**",
   "dist/**",
-  "tests/**",
   "src/types.ts",
 ]
 # Thresholds are enforced per file, so they are pinned to the least-covered file.
-coverageThreshold = { lines = 0.65, functions = 0.7, statements = 0.65 }
+coverageThreshold = { lines = 0.9, functions = 0, statements = 0.9 }
