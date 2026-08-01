@@ -95,6 +95,9 @@ export class AppEnv implements IAppEnv {
   // Payment
   public readonly POLAR_ACCESS_TOKEN: string | undefined;
   public readonly POLAR_ENVIRONMENT: string | undefined;
+  public readonly STRIPE_SECRET_KEY: string | undefined;
+  public readonly STRIPE_API_VERSION: string | undefined;
+  public readonly STRIPE_WEBHOOK_SECRET: string | undefined;
 
   // Authentication
   public readonly AUTH_TOKEN: string | undefined;
@@ -220,6 +223,9 @@ export class AppEnv implements IAppEnv {
     // Payment
     this.POLAR_ACCESS_TOKEN = Bun.env.POLAR_ACCESS_TOKEN?.trim();
     this.POLAR_ENVIRONMENT = Bun.env.POLAR_ENVIRONMENT?.trim();
+    this.STRIPE_SECRET_KEY = Bun.env.STRIPE_SECRET_KEY?.trim();
+    this.STRIPE_API_VERSION = Bun.env.STRIPE_API_VERSION?.trim();
+    this.STRIPE_WEBHOOK_SECRET = Bun.env.STRIPE_WEBHOOK_SECRET?.trim();
 
     // Authentication
     this.AUTH_TOKEN = Bun.env.AUTH_TOKEN?.trim();
