@@ -1,0 +1,229 @@
+//! The commands that run a script a module ships in its `bin/` folder.
+//!
+//! `migration:up`, `migration:down`, `seed:run` and `command:run` all resolve a
+//! `.ts` entry point inside each module and hand it to bun. The fixture's entry
+//! points print their arguments, so a run is a few milliseconds and the test can
+//! read back exactly what the command passed along.
+
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::process::{Command, Output, Stdio};
+
+fn write(path: &Path, content: &str) {
+    fs::create_dir_all(path.parent().expect("a parent")).expect("create parent");
+    fs::write(path, content).expect("write file");
+}
+
+/// A script that writes its arguments to a file beside the workspace, so the
+/// test can assert on what it was called with.
+fn recorder(log: &Path) -> String {
+    format!(
+        "await Bun.write({:?}, process.argv.slice(2).join(\" \") + \"\\n\");\nconsole.log(\"ran\");\n",
+        log.to_string_lossy()
+    )
+}
+
+/// A workspace with one module carrying every bin entry point.
+fn workspace() -> (tempfile::TempDir, PathBuf, PathBuf) {
+    let dir = tempfile::tempdir().expect("create temp dir");
+    let root = dir.path().to_path_buf();
+    let log = root.join("calls.log");
+
+    write(&root.join("package.json"), "{ \"name\": \"scratch\" }\n");
+    let user = root.join("modules/user");
+    write(&user.join("package.json"), "{ \"name\": \"@module/user\" }\n");
+    write(&user.join("bin/migration/up.ts"), &recorder(&log));
+    write(&user.join("bin/migration/down.ts"), &recorder(&log));
+    write(&user.join("bin/seed/run.ts"), &recorder(&log));
+    write(&user.join("bin/command/run.ts"), &recorder(&log));
+    write(
+        &user.join("src/commands/SyncCommand.ts"),
+        "export class SyncCommand {\n  getName(): string { return \"sync:users\"; }\n}\n",
+    );
+
+    (dir, root, log)
+}
+
+fn talos(root: &Path, args: &[&str]) -> Output {
+    Command::new(env!("CARGO_BIN_EXE_talos"))
+        .args(args)
+        .arg(format!("--cwd={}", root.display()))
+        .env("NO_COLOR", "1")
+        .stdin(Stdio::null())
+        .output()
+        .expect("the talos binary should run")
+}
+
+fn text(output: &Output) -> String {
+    format!(
+        "{}{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    )
+}
+
+fn calls(log: &Path) -> String {
+    fs::read_to_string(log).unwrap_or_default()
+}
+
+// ---------------------------------------------------------------------------
+// migrations and seeds
+// ---------------------------------------------------------------------------
+
+#[test]
+fn migration_up_runs_every_modules_entry_point_and_says_which_one_it_ran() {
+    let (_dir, root, log) = workspace();
+
+    let output = talos(&root, &["migration:up"]);
+
+    assert!(output.status.success(), "{}", text(&output));
+    assert!(
+        text(&output).contains("@module/user"),
+        "the module is named by its package: {}",
+        text(&output)
+    );
+    assert!(
+        calls(&log).contains("--cache-dir"),
+        "the run is given a cache directory: {}",
+        calls(&log)
+    );
+}
+
+#[test]
+fn drop_and_no_cache_are_passed_through_to_the_script() {
+    let (_dir, root, log) = workspace();
+
+    talos(&root, &["migration:up", "--drop", "--no-cache"]);
+
+    let recorded = calls(&log);
+    assert!(recorded.contains("--drop"), "{recorded}");
+    assert!(recorded.contains("--no-cache"), "{recorded}");
+}
+
+#[test]
+fn migration_down_runs_the_other_entry_point() {
+    let (_dir, root, _log) = workspace();
+    fs::remove_file(root.join("modules/user/bin/migration/up.ts")).expect("drop the up script");
+
+    let output = talos(&root, &["migration:down"]);
+
+    assert!(output.status.success(), "{}", text(&output));
+}
+
+#[test]
+fn seed_run_carries_the_environment_it_was_given() {
+    let (_dir, root, log) = workspace();
+    write(
+        &root.join("modules/user/bin/seed/run.ts"),
+        &format!(
+            "await Bun.write({:?}, `${{process.env.APP_ENV}} ${{process.argv.slice(2).join(\" \")}}\\n`);\n",
+            log.to_string_lossy()
+        ),
+    );
+
+    let output = talos(&root, &["seed:run", "--env=staging", "--drop"]);
+
+    assert!(output.status.success(), "{}", text(&output));
+    let recorded = calls(&log);
+    assert!(recorded.starts_with("staging"), "{recorded}");
+    assert!(recorded.contains("--drop"), "{recorded}");
+}
+
+#[test]
+fn a_workspace_with_no_module_carrying_the_script_says_so_rather_than_failing() {
+    let dir = tempfile::tempdir().expect("create temp dir");
+    write(&dir.path().join("package.json"), "{ \"name\": \"scratch\" }\n");
+
+    let output = talos(dir.path(), &["seed:run"]);
+
+    assert!(output.status.success(), "{}", text(&output));
+    assert!(text(&output).contains("No modules"), "{}", text(&output));
+}
+
+#[test]
+fn a_module_without_a_manifest_is_skipped() {
+    let (_dir, root, _log) = workspace();
+    fs::remove_file(root.join("modules/user/package.json")).expect("drop the manifest");
+
+    let output = talos(&root, &["seed:run"]);
+
+    assert!(text(&output).contains("No modules"), "{}", text(&output));
+}
+
+#[test]
+fn a_script_that_fails_ends_the_run_non_zero() {
+    let (_dir, root, _log) = workspace();
+    write(
+        &root.join("modules/user/bin/seed/run.ts"),
+        "console.error(\"the seed blew up\");\nprocess.exit(1);\n",
+    );
+
+    let output = talos(&root, &["seed:run"]);
+
+    assert!(!output.status.success());
+}
+
+// ---------------------------------------------------------------------------
+// command:run
+// ---------------------------------------------------------------------------
+
+#[test]
+fn a_command_is_run_by_the_module_that_declares_it() {
+    let (_dir, root, log) = workspace();
+
+    let output = talos(&root, &["command:run", "--id=sync:users"]);
+
+    assert!(output.status.success(), "{}", text(&output));
+    assert!(calls(&log).contains("sync:users"), "{}", calls(&log));
+}
+
+#[test]
+fn extra_arguments_are_handed_to_the_command_untouched() {
+    let (_dir, root, log) = workspace();
+
+    // The trailing arguments have to come last, so `--cwd` is placed by hand.
+    let cwd = format!("--cwd={}", root.display());
+    Command::new(env!("CARGO_BIN_EXE_talos"))
+        .args(["command:run", "--id=sync:users", &cwd, "--", "--force", "42"])
+        .env("NO_COLOR", "1")
+        .stdin(Stdio::null())
+        .output()
+        .expect("the talos binary should run");
+
+    let recorded = calls(&log);
+    assert!(recorded.contains("--force"), "{recorded}");
+    assert!(recorded.contains("42"), "{recorded}");
+}
+
+#[test]
+fn a_command_no_module_declares_is_reported() {
+    let (_dir, root, _log) = workspace();
+
+    let output = talos(&root, &["command:run", "--id=nope:nope"]);
+
+    assert!(!output.status.success());
+    assert!(text(&output).contains("nope:nope"), "{}", text(&output));
+}
+
+#[test]
+fn command_run_without_an_id_says_how_to_call_it() {
+    let (_dir, root, _log) = workspace();
+
+    let output = talos(&root, &["command:run"]);
+
+    assert!(!output.status.success());
+    assert!(
+        text(&output).contains("command:run --id"),
+        "{}",
+        text(&output)
+    );
+}
+
+#[test]
+fn command_run_in_a_workspace_with_no_modules_directory_says_so() {
+    let dir = tempfile::tempdir().expect("create temp dir");
+
+    let output = talos(dir.path(), &["command:run", "--id=sync:users"]);
+
+    assert!(text(&output).contains("sync:users"), "{}", text(&output));
+}
