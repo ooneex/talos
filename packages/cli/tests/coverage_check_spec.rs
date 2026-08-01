@@ -4,8 +4,8 @@ use std::path::{Path, PathBuf};
 use clap::Parser;
 use cli::commands::coverage_check::cache::{Fingerprints, read, write};
 use cli::commands::coverage_check::{
-    CoverageAudit, CoverageCheckArgs, FileCoverage, ModuleCoverage, RunStatus, audit, parse_counts,
-    parse_lcov, parse_table,
+    CoverageAudit, CoverageCheckArgs, FileCoverage, ModuleCoverage, RunStatus, Runner, audit,
+    parse_cargo_counts, parse_counts, parse_lcov, parse_table, relativize, runner, skip_reason,
 };
 use cli::commands::project_check::cache::FileHashes;
 use cli::commands::project_check::modules::discover_modules;
@@ -120,6 +120,42 @@ fn reads_no_tally_from_output_without_one() {
 }
 
 // ---------------------------------------------------------------------------
+// Cargo tally
+// ---------------------------------------------------------------------------
+
+/// One line per test binary, which is what a crate with unit tests, an
+/// integration file and doctests actually prints.
+const CARGO_RESULTS: &str = "\
+running 12 tests
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+running 5 tests
+test result: FAILED. 3 passed; 2 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.01s
+";
+
+#[test]
+fn sums_the_cargo_tally_across_test_binaries() {
+    assert_eq!(parse_cargo_counts(CARGO_RESULTS), (15, 2));
+}
+
+#[test]
+fn ignores_the_cargo_fields_that_count_no_test() {
+    // `0 ignored`, `0 measured` and `1 filtered out` are not passes or failures.
+    let (passed, failed) = parse_cargo_counts(
+        "test result: ok. 1 passed; 0 failed; 7 ignored; 9 measured; 3 filtered out\n",
+    );
+    assert_eq!((passed, failed), (1, 0));
+}
+
+#[test]
+fn reads_no_cargo_tally_from_output_without_one() {
+    assert_eq!(
+        parse_cargo_counts("error: no such command: `llvm-cov`\n"),
+        (0, 0)
+    );
+}
+
+// ---------------------------------------------------------------------------
 // Coverage table
 // ---------------------------------------------------------------------------
 
@@ -164,6 +200,106 @@ fn reads_an_lcov_report() {
 #[test]
 fn reads_no_lcov_report_from_an_empty_file() {
     assert!(parse_lcov("").is_none());
+}
+
+#[test]
+fn cuts_the_absolute_paths_cargo_writes_back_to_the_crate() {
+    // cargo-llvm-cov writes absolute `SF:` paths; bun writes relative ones, and
+    // a report mixing the two must come out relative either way.
+    let report = parse_lcov(
+        "SF:/repo/packages/cli/src/main.rs\nFNF:1\nFNH:1\nDA:1,1\nend_of_record\n\
+         SF:src/lib.rs\nFNF:1\nFNH:1\nDA:1,1\nend_of_record\n",
+    )
+    .expect("the lcov report parses");
+
+    let report = relativize(report, Path::new("/repo/packages/cli"));
+    assert_eq!(report.files[0].path, "src/main.rs");
+    assert_eq!(report.files[1].path, "src/lib.rs");
+}
+
+#[test]
+fn leaves_a_path_outside_the_crate_alone() {
+    let report = parse_lcov("SF:/elsewhere/src/main.rs\nFNF:1\nFNH:0\nDA:1,0\nend_of_record\n")
+        .expect("the lcov report parses");
+
+    let report = relativize(report, Path::new("/repo/packages/cli"));
+    assert_eq!(report.files[0].path, "/elsewhere/src/main.rs");
+}
+
+// ---------------------------------------------------------------------------
+// Runner selection
+// ---------------------------------------------------------------------------
+
+/// A workspace holding one bun package and one crate, both with tests.
+fn mixed_workspace() -> tempfile::TempDir {
+    let temp = tempfile::tempdir().expect("create temp dir");
+    let root = temp.path();
+    fs::write(root.join("package.json"), "{\"name\":\"app\"}").expect("write the root manifest");
+
+    let bun = root.join("packages").join("color");
+    fs::create_dir_all(bun.join("tests")).expect("create the bun package");
+    // A `src/` is enough to be discovered, so dropping the manifest in a test
+    // leaves a member behind rather than nothing at all.
+    fs::create_dir_all(bun.join("src")).expect("create the sources");
+    fs::write(bun.join("package.json"), "{\"name\":\"@app/color\"}").expect("write the manifest");
+
+    let crate_dir = root.join("packages").join("cli");
+    fs::create_dir_all(crate_dir.join("tests")).expect("create the crate");
+    fs::write(crate_dir.join("Cargo.toml"), "[package]\nname = \"cli\"\n")
+        .expect("write the crate manifest");
+
+    temp
+}
+
+fn member(root: &Path, name: &str) -> cli::commands::project_check::modules::WorkspaceModule {
+    discover_modules(root)
+        .into_iter()
+        .find(|module| module.name == name)
+        .unwrap_or_else(|| panic!("{name} is discovered"))
+}
+
+#[test]
+fn a_crate_is_measured_by_cargo_and_a_package_by_bun() {
+    let temp = mixed_workspace();
+    let root = temp.path();
+
+    assert_eq!(runner(&member(root, "cli")), Runner::Cargo);
+    assert_eq!(runner(&member(root, "color")), Runner::Bun);
+}
+
+#[test]
+fn a_crate_with_tests_is_run_rather_than_skipped() {
+    let temp = mixed_workspace();
+    let root = temp.path();
+
+    // The crate carries no `package.json`, which only the bun runner needs.
+    assert_eq!(skip_reason(&member(root, "cli")), None);
+    assert_eq!(skip_reason(&member(root, "color")), None);
+}
+
+#[test]
+fn a_crate_without_a_tests_directory_is_skipped() {
+    let temp = mixed_workspace();
+    let root = temp.path();
+    fs::remove_dir(root.join("packages").join("cli").join("tests")).expect("drop the tests dir");
+
+    assert_eq!(
+        skip_reason(&member(root, "cli")),
+        Some("no tests/ directory".to_string())
+    );
+}
+
+#[test]
+fn a_package_without_a_manifest_is_skipped() {
+    let temp = mixed_workspace();
+    let root = temp.path();
+    fs::remove_file(root.join("packages").join("color").join("package.json"))
+        .expect("drop the manifest");
+
+    assert_eq!(
+        skip_reason(&member(root, "color")),
+        Some("no package.json".to_string())
+    );
 }
 
 // ---------------------------------------------------------------------------
