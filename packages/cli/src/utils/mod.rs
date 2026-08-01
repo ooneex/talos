@@ -2,6 +2,7 @@ mod case;
 mod commitlint;
 mod concurrently;
 mod credentials;
+pub mod frontend_module;
 mod git;
 pub mod github;
 mod index_exports;

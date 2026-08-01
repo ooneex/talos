@@ -77,6 +77,8 @@ pub mod spa_remove;
 pub mod storage_create;
 pub mod storybook_create;
 pub mod storybook_remove;
+pub mod swagger_create;
+pub mod swagger_remove;
 pub mod test;
 pub mod translation_create;
 pub mod upgrade;
@@ -332,6 +334,12 @@ pub enum Commands {
     #[command(name = "storybook:remove")]
     StorybookRemove(storybook_remove::StorybookRemoveArgs),
 
+    #[command(name = "swagger:create")]
+    SwaggerCreate(swagger_create::SwaggerCreateArgs),
+
+    #[command(name = "swagger:remove")]
+    SwaggerRemove(swagger_remove::SwaggerRemoveArgs),
+
     #[command(name = "monorepo:check")]
     MonorepoCheck(monorepo_check::MonorepoCheckArgs),
 
@@ -438,6 +446,8 @@ impl Commands {
             Commands::AdminRemove(args) => admin_remove::run(args),
             Commands::StorybookCreate(args) => storybook_create::run(args),
             Commands::StorybookRemove(args) => storybook_remove::run(args),
+            Commands::SwaggerCreate(args) => swagger_create::run(args),
+            Commands::SwaggerRemove(args) => swagger_remove::run(args),
             Commands::MonorepoCheck(args) => monorepo_check::run(args),
             Commands::Check(args) => check::run(args),
             Commands::SecurityCheck(args) => security_check::run(args),

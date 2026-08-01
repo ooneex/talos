@@ -165,6 +165,11 @@ const COMMANDS: &[(&str, &str)] = &[
     ("spa:remove", "Remove an existing spa module"),
     ("storybook:create", "Generate a new storybook module"),
     ("storybook:remove", "Remove an existing storybook module"),
+    (
+        "swagger:create",
+        "Generate a new swagger module from a target module's controllers",
+    ),
+    ("swagger:remove", "Remove an existing swagger module"),
     ("test", "Alias for `monorepo:run --commands=test`"),
     ("translation:create", "Generate a new translation class"),
     ("upgrade", "Upgrade the CLI to its latest version"),
