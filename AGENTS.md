@@ -82,6 +82,7 @@ The application is built on the `@talosjs` ecosystem. Prefer these packages over
 | `@talosjs/linear` | Linear project management integration — create, update, and query issues, teams, and projects |
 | `@talosjs/mailer` | Transactional email via Nodemailer SMTP and Resend — templated emails with attachments |
 | `@talosjs/payment` | Payment and pricing type definitions with currency handling and billing metadata |
+| `@talosjs/payment-stripe` | Stripe integration — checkout sessions, webhooks, customers, billing portal, discounts, products, and revenue analytics |
 | `@talosjs/youtube` | YouTube video downloader and metadata extraction for video info, thumbnails, and streams |
 | `@talosjs/youtube-utils` | YouTube URL utilities for extracting video IDs and generating embed/watch URLs |
 
