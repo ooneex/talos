@@ -77,8 +77,8 @@ pub struct SecurityCheckArgs {
     pub cwd: Option<String>,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-enum Severity {
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Severity {
     Unknown,
     Low,
     Moderate,
@@ -87,7 +87,7 @@ enum Severity {
 }
 
 impl Severity {
-    fn from_label(value: &str) -> Self {
+    pub fn from_label(value: &str) -> Self {
         match value.trim().to_ascii_lowercase().as_str() {
             "critical" => Severity::Critical,
             "high" => Severity::High,
@@ -97,7 +97,7 @@ impl Severity {
         }
     }
 
-    fn from_cvss(score: f64) -> Self {
+    pub fn from_cvss(score: f64) -> Self {
         if score >= 9.0 {
             Severity::Critical
         } else if score >= 7.0 {
@@ -111,7 +111,7 @@ impl Severity {
         }
     }
 
-    fn label(&self) -> &'static str {
+    pub fn label(&self) -> &'static str {
         match self {
             Severity::Critical => "CRITICAL",
             Severity::High => "HIGH",
@@ -121,7 +121,7 @@ impl Severity {
         }
     }
 
-    fn styled(&self) -> String {
+    pub fn styled(&self) -> String {
         let label = format!(" {} ", self.label());
         match self {
             Severity::Critical => style(label).white().on_red().bold().to_string(),
@@ -132,7 +132,7 @@ impl Severity {
         }
     }
 
-    fn priority(&self) -> &'static str {
+    pub fn priority(&self) -> &'static str {
         match self {
             Severity::Critical | Severity::High => "Urgent",
             Severity::Moderate => "High",
@@ -141,8 +141,8 @@ impl Severity {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
-enum Ecosystem {
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Ecosystem {
     Npm,
     PyPI,
     Crates,
@@ -153,7 +153,7 @@ enum Ecosystem {
 
 impl Ecosystem {
     /// The exact ecosystem string OSV expects.
-    fn osv(&self) -> &'static str {
+    pub fn osv(&self) -> &'static str {
         match self {
             Ecosystem::Npm => "npm",
             Ecosystem::PyPI => "PyPI",
@@ -165,7 +165,7 @@ impl Ecosystem {
     }
 
     /// Human-friendly label shown in the report.
-    fn label(&self) -> &'static str {
+    pub fn label(&self) -> &'static str {
         match self {
             Ecosystem::Npm => "npm",
             Ecosystem::PyPI => "pypi",
@@ -177,24 +177,24 @@ impl Ecosystem {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, Hash)]
-struct PackageKey {
-    ecosystem: Ecosystem,
-    name: String,
-    version: String,
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct PackageKey {
+    pub ecosystem: Ecosystem,
+    pub name: String,
+    pub version: String,
 }
 
 /// Where a finding comes from: a resolved dependency, or the configuration a
 /// coding assistant executes as instructions.
-#[derive(Clone)]
-enum Origin {
+#[derive(Clone, Debug)]
+pub enum Origin {
     Dependency(Ecosystem),
     Assistant(String),
 }
 
 impl Origin {
     /// Lower-case label shown in the report (`npm`, `claude`, …).
-    fn label(&self) -> String {
+    pub fn label(&self) -> String {
         match self {
             Origin::Dependency(ecosystem) => ecosystem.label().to_string(),
             Origin::Assistant(assistant) => assistant.to_ascii_lowercase(),
@@ -202,7 +202,7 @@ impl Origin {
     }
 
     /// The assistant display name, when the finding comes from one.
-    fn assistant(&self) -> Option<&str> {
+    pub fn assistant(&self) -> Option<&str> {
         match self {
             Origin::Dependency(_) => None,
             Origin::Assistant(assistant) => Some(assistant),
@@ -210,28 +210,28 @@ impl Origin {
     }
 }
 
-struct ModuleReport {
-    name: String,
-    dir: PathBuf,
-    packages: Vec<PackageKey>,
+pub struct ModuleReport {
+    pub name: String,
+    pub dir: PathBuf,
+    pub packages: Vec<PackageKey>,
 }
 
-struct Finding {
-    module: String,
-    module_dir: PathBuf,
-    origin: Origin,
+pub struct Finding {
+    pub module: String,
+    pub module_dir: PathBuf,
+    pub origin: Origin,
     /// The vulnerable package, or the `file:line` holding the risky instruction.
-    subject: String,
-    version: String,
-    severity: Severity,
-    id: String,
-    title: String,
-    url: String,
-    aliases: String,
+    pub subject: String,
+    pub version: String,
+    pub severity: Severity,
+    pub id: String,
+    pub title: String,
+    pub url: String,
+    pub aliases: String,
     /// Patched versions for a dependency, remediation advice for an assistant.
-    remediation: String,
+    pub remediation: String,
     /// The offending line, for assistant findings.
-    evidence: String,
+    pub evidence: String,
 }
 
 /// A vulnerability exposed to other commands, free of the private types the
@@ -416,7 +416,7 @@ fn build_llm_finding(root: &Path, finding: llm::LlmFinding) -> Finding {
     }
 }
 
-fn sort_findings(findings: &mut [Finding]) {
+pub fn sort_findings(findings: &mut [Finding]) {
     findings.sort_by(|a, b| {
         a.module
             .cmp(&b.module)
@@ -521,7 +521,7 @@ fn collect_findings(
     Ok((findings, modules.len(), total_deps))
 }
 
-fn build_filter(modules: Option<&str>, packages: Option<&str>) -> Option<BTreeSet<String>> {
+pub fn build_filter(modules: Option<&str>, packages: Option<&str>) -> Option<BTreeSet<String>> {
     let mut set = BTreeSet::new();
     for value in [modules, packages].into_iter().flatten() {
         for name in value.split(',').map(str::trim).filter(|s| !s.is_empty()) {
@@ -535,14 +535,14 @@ fn build_filter(modules: Option<&str>, packages: Option<&str>) -> Option<BTreeSe
 // Module + dependency discovery
 // ---------------------------------------------------------------------------
 
-fn collect_modules(root: &Path) -> Vec<ModuleReport> {
+pub fn collect_modules(root: &Path) -> Vec<ModuleReport> {
     let mut modules = Vec::new();
     walk(root, root, 0, &mut modules);
     modules.sort_by(|a, b| a.name.cmp(&b.name));
     modules
 }
 
-fn walk(root: &Path, dir: &Path, depth: usize, modules: &mut Vec<ModuleReport>) {
+pub fn walk(root: &Path, dir: &Path, depth: usize, modules: &mut Vec<ModuleReport>) {
     let mut packages = collect_packages(dir);
     if !packages.is_empty() {
         packages.sort_by(|a, b| a.name.cmp(&b.name).then_with(|| a.version.cmp(&b.version)));
@@ -577,7 +577,7 @@ fn walk(root: &Path, dir: &Path, depth: usize, modules: &mut Vec<ModuleReport>) 
     }
 }
 
-fn collect_packages(dir: &Path) -> Vec<PackageKey> {
+pub fn collect_packages(dir: &Path) -> Vec<PackageKey> {
     let mut packages = Vec::new();
     packages.extend(parse_bun_lock(dir));
     packages.extend(parse_package_lock(dir));
@@ -592,7 +592,7 @@ fn collect_packages(dir: &Path) -> Vec<PackageKey> {
     packages
 }
 
-fn target_name(root: &Path, dir: &Path) -> String {
+pub fn target_name(root: &Path, dir: &Path) -> String {
     let Ok(rel) = dir.strip_prefix(root) else {
         return dir
             .file_name()
@@ -616,7 +616,7 @@ fn target_name(root: &Path, dir: &Path) -> String {
         .unwrap_or_else(|| root_package_name(root))
 }
 
-fn root_package_name(root: &Path) -> String {
+pub fn root_package_name(root: &Path) -> String {
     fs::read_to_string(root.join("package.json"))
         .ok()
         .and_then(|raw| serde_json::from_str::<Value>(&raw).ok())
@@ -642,7 +642,7 @@ fn read(dir: &Path, file: &str) -> Option<String> {
     fs::read_to_string(dir.join(file)).ok()
 }
 
-fn npm(name: &str, version: &str) -> PackageKey {
+pub fn npm(name: &str, version: &str) -> PackageKey {
     PackageKey {
         ecosystem: Ecosystem::Npm,
         name: name.to_string(),
@@ -652,7 +652,7 @@ fn npm(name: &str, version: &str) -> PackageKey {
 
 /// `bun.lock` (text lockfile). Its `packages` map holds one `name@version`
 /// string per resolved dependency, covering the full transitive npm tree.
-fn parse_bun_lock(dir: &Path) -> Vec<PackageKey> {
+pub fn parse_bun_lock(dir: &Path) -> Vec<PackageKey> {
     let Some(raw) = read(dir, "bun.lock") else {
         return Vec::new();
     };
@@ -675,7 +675,7 @@ fn parse_bun_lock(dir: &Path) -> Vec<PackageKey> {
 
 /// `package-lock.json` v2/v3 — the `packages` map keys are install paths
 /// (`node_modules/<name>`) and each value carries the resolved `version`.
-fn parse_package_lock(dir: &Path) -> Vec<PackageKey> {
+pub fn parse_package_lock(dir: &Path) -> Vec<PackageKey> {
     let Some(raw) = read(dir, "package-lock.json") else {
         return Vec::new();
     };
@@ -700,7 +700,7 @@ fn parse_package_lock(dir: &Path) -> Vec<PackageKey> {
 }
 
 /// `Cargo.lock` — TOML with `[[package]]` blocks, each carrying `name`/`version`.
-fn parse_cargo_lock(dir: &Path) -> Vec<PackageKey> {
+pub fn parse_cargo_lock(dir: &Path) -> Vec<PackageKey> {
     let Some(raw) = read(dir, "Cargo.lock") else {
         return Vec::new();
     };
@@ -726,7 +726,7 @@ fn parse_cargo_lock(dir: &Path) -> Vec<PackageKey> {
 }
 
 /// `requirements.txt` — only fully pinned `name==version` lines are auditable.
-fn parse_requirements_txt(dir: &Path) -> Vec<PackageKey> {
+pub fn parse_requirements_txt(dir: &Path) -> Vec<PackageKey> {
     let Some(raw) = read(dir, "requirements.txt") else {
         return Vec::new();
     };
@@ -758,7 +758,7 @@ fn parse_requirements_txt(dir: &Path) -> Vec<PackageKey> {
 }
 
 /// `Pipfile.lock` — JSON with `default`/`develop` maps of `name -> { version }`.
-fn parse_pipfile_lock(dir: &Path) -> Vec<PackageKey> {
+pub fn parse_pipfile_lock(dir: &Path) -> Vec<PackageKey> {
     let Some(raw) = read(dir, "Pipfile.lock") else {
         return Vec::new();
     };
@@ -787,16 +787,16 @@ fn parse_pipfile_lock(dir: &Path) -> Vec<PackageKey> {
 }
 
 /// `poetry.lock` — TOML with `[[package]]` blocks (`name`/`version`).
-fn parse_poetry_lock(dir: &Path) -> Vec<PackageKey> {
+pub fn parse_poetry_lock(dir: &Path) -> Vec<PackageKey> {
     parse_pep_lock(dir, "poetry.lock")
 }
 
 /// `uv.lock` — the same `[[package]]` layout as Poetry's lockfile.
-fn parse_uv_lock(dir: &Path) -> Vec<PackageKey> {
+pub fn parse_uv_lock(dir: &Path) -> Vec<PackageKey> {
     parse_pep_lock(dir, "uv.lock")
 }
 
-fn parse_pep_lock(dir: &Path, file: &str) -> Vec<PackageKey> {
+pub fn parse_pep_lock(dir: &Path, file: &str) -> Vec<PackageKey> {
     let Some(raw) = read(dir, file) else {
         return Vec::new();
     };
@@ -828,7 +828,7 @@ fn parse_pep_lock(dir: &Path, file: &str) -> Vec<PackageKey> {
 }
 
 /// `go.sum` — lines `module version[/go.mod] hash`.
-fn parse_go_sum(dir: &Path) -> Vec<PackageKey> {
+pub fn parse_go_sum(dir: &Path) -> Vec<PackageKey> {
     let Some(raw) = read(dir, "go.sum") else {
         return Vec::new();
     };
@@ -852,7 +852,7 @@ fn parse_go_sum(dir: &Path) -> Vec<PackageKey> {
 }
 
 /// `Gemfile.lock` — the `GEM` section lists `  name (version)` specs.
-fn parse_gemfile_lock(dir: &Path) -> Vec<PackageKey> {
+pub fn parse_gemfile_lock(dir: &Path) -> Vec<PackageKey> {
     let Some(raw) = read(dir, "Gemfile.lock") else {
         return Vec::new();
     };
@@ -892,7 +892,7 @@ fn parse_gemfile_lock(dir: &Path) -> Vec<PackageKey> {
 }
 
 /// `composer.lock` — JSON with `packages`/`packages-dev` arrays of `{name,version}`.
-fn parse_composer_lock(dir: &Path) -> Vec<PackageKey> {
+pub fn parse_composer_lock(dir: &Path) -> Vec<PackageKey> {
     let Some(raw) = read(dir, "composer.lock") else {
         return Vec::new();
     };
@@ -919,7 +919,7 @@ fn parse_composer_lock(dir: &Path) -> Vec<PackageKey> {
     out
 }
 
-fn split_name_version(descriptor: &str) -> Option<(String, String)> {
+pub fn split_name_version(descriptor: &str) -> Option<(String, String)> {
     let at = descriptor.rfind('@').filter(|&i| i > 0)?;
     Some((
         descriptor[..at].to_string(),
@@ -927,7 +927,7 @@ fn split_name_version(descriptor: &str) -> Option<(String, String)> {
     ))
 }
 
-fn unquote(value: &str) -> String {
+pub fn unquote(value: &str) -> String {
     value.trim().trim_matches('"').to_string()
 }
 
@@ -1014,7 +1014,7 @@ fn fetch_record(agent: &ureq::Agent, id: &str) -> Option<Value> {
         .ok()
 }
 
-fn build_finding(
+pub fn build_finding(
     module: &ModuleReport,
     package: &PackageKey,
     id: &str,
@@ -1061,7 +1061,7 @@ fn build_finding(
     }
 }
 
-fn severity_from_record(record: &Value) -> Severity {
+pub fn severity_from_record(record: &Value) -> Severity {
     if let Some(label) = record
         .get("database_specific")
         .and_then(|d| d.get("severity"))
@@ -1094,7 +1094,7 @@ fn severity_from_record(record: &Value) -> Severity {
     best
 }
 
-fn fixed_versions(record: &Value, package: &PackageKey) -> String {
+pub fn fixed_versions(record: &Value, package: &PackageKey) -> String {
     let mut fixed: Vec<String> = Vec::new();
     let Some(affected) = record.get("affected").and_then(Value::as_array) else {
         return String::new();
@@ -1132,7 +1132,7 @@ fn fixed_versions(record: &Value, package: &PackageKey) -> String {
 
 /// Compute a CVSS v3.x base score from its vector string. Returns `None` for a
 /// malformed vector or a non-v3 (e.g. CVSS v2/v4) string.
-fn cvss3_base_score(vector: &str) -> Option<f64> {
+pub fn cvss3_base_score(vector: &str) -> Option<f64> {
     if !vector.starts_with("CVSS:3") {
         return None;
     }
@@ -1279,7 +1279,7 @@ fn print_report(findings: &[Finding], modules: usize, dependencies: usize, llm_f
     print_summary(findings);
 }
 
-fn truncate(text: &str, max: usize) -> String {
+pub fn truncate(text: &str, max: usize) -> String {
     let text = text.replace('\n', " ");
     if text.chars().count() <= max {
         return text;
@@ -1368,7 +1368,7 @@ fn create_issues(root: &Path, findings: &[Finding]) {
     ));
 }
 
-fn build_issue_title(finding: &Finding) -> String {
+pub fn build_issue_title(finding: &Finding) -> String {
     let severity = finding.severity.label().to_ascii_lowercase();
 
     if let Some(assistant) = finding.origin.assistant() {
@@ -1392,7 +1392,7 @@ fn build_issue_title(finding: &Finding) -> String {
     )
 }
 
-fn build_issue_description(finding: &Finding) -> String {
+pub fn build_issue_description(finding: &Finding) -> String {
     let mut lines = vec![finding.title.clone(), String::new()];
 
     if let Some(assistant) = finding.origin.assistant() {

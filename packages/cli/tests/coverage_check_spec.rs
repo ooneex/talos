@@ -547,3 +547,265 @@ fn an_empty_workspace_reports_nothing_to_run() {
     let outcome = audit(temp.path(), None, None, None, Some(1));
     assert_eq!(outcome.err(), Some(String::new()));
 }
+
+// ---------------------------------------------------------------------------
+// formatting, ranking and issue-text helpers
+// ---------------------------------------------------------------------------
+
+use cli::commands::coverage_check::{
+    build_issue_description, build_issue_title, collapse_ranges, coverage_dir, label, mean,
+    percent, priority, rank, resolve_concurrency, sort_modules, tail, trim_percent, truncate,
+};
+
+fn file(path: &str, lines: f64, functions: f64, uncovered: &[&str]) -> FileCoverage {
+    FileCoverage {
+        path: path.to_string(),
+        lines,
+        functions,
+        uncovered: uncovered.iter().map(|s| s.to_string()).collect(),
+    }
+}
+
+#[test]
+fn resolve_concurrency_honours_an_explicit_request() {
+    assert_eq!(resolve_concurrency(Some(3)), 3);
+    // Never zero — that would run nothing at all.
+    assert_eq!(resolve_concurrency(Some(0)), 1);
+}
+
+#[test]
+fn resolve_concurrency_defaults_within_the_cap() {
+    let resolved = resolve_concurrency(None);
+
+    assert!(
+        (1..=8).contains(&resolved),
+        "{resolved} should be capped at 8"
+    );
+}
+
+#[test]
+fn rank_puts_broken_suites_before_thin_ones() {
+    assert!(rank(&RunStatus::Failed) < rank(&RunStatus::Errored("x".into())));
+    assert!(rank(&RunStatus::Errored("x".into())) < rank(&RunStatus::Passed));
+    assert!(rank(&RunStatus::Passed) < rank(&RunStatus::Unmeasured));
+    assert!(rank(&RunStatus::Unmeasured) < rank(&RunStatus::Skipped("x".into())));
+}
+
+#[test]
+fn sort_modules_orders_by_status_then_coverage_then_label() {
+    let mut modules = vec![
+        module("packages/z", RunStatus::Passed, 90.0, 90.0),
+        module("modules/a", RunStatus::Skipped("no tests".into()), 0.0, 0.0),
+        module("modules/b", RunStatus::Passed, 40.0, 40.0),
+        module("modules/c", RunStatus::Failed, 80.0, 80.0),
+        module("modules/d", RunStatus::Passed, 40.0, 20.0),
+    ];
+
+    sort_modules(&mut modules);
+
+    let order: Vec<&str> = modules.iter().map(|m| m.label.as_str()).collect();
+    assert_eq!(
+        order,
+        [
+            "modules/c",
+            "modules/d",
+            "modules/b",
+            "packages/z",
+            "modules/a"
+        ]
+    );
+}
+
+#[test]
+fn collapse_ranges_folds_consecutive_numbers() {
+    assert_eq!(collapse_ranges(&[41, 42, 43, 66]), ["41-43", "66"]);
+    assert_eq!(collapse_ranges(&[1]), ["1"]);
+    assert_eq!(collapse_ranges(&[1, 3, 5]), ["1", "3", "5"]);
+    assert!(collapse_ranges(&[]).is_empty());
+}
+
+#[test]
+fn percent_treats_nothing_to_cover_as_fully_covered() {
+    assert_eq!(percent(0, 0), 100.0);
+    assert_eq!(percent(1, 2), 50.0);
+    assert_eq!(percent(0, 4), 0.0);
+}
+
+#[test]
+fn mean_of_no_values_is_zero() {
+    assert_eq!(mean([].into_iter()), 0.0);
+    assert_eq!(mean([10.0, 20.0, 30.0].into_iter()), 20.0);
+}
+
+#[test]
+fn trim_percent_drops_a_pointless_decimal() {
+    assert_eq!(trim_percent(92.0), "92");
+    assert_eq!(trim_percent(92.02), "92");
+    assert_eq!(trim_percent(92.5), "92.5");
+    assert_eq!(trim_percent(0.0), "0");
+}
+
+#[test]
+fn truncate_cuts_long_text_by_characters() {
+    assert_eq!(truncate("short", 10), "short");
+    assert_eq!(truncate("abcdefghij", 5), "abcd…");
+    assert_eq!(truncate("ééééééé", 5), "éééé…");
+}
+
+#[test]
+fn tail_returns_the_last_non_empty_lines() {
+    let output = "one\n\ntwo\n   \nthree\nfour\n";
+
+    assert_eq!(tail(output, 2), ["three", "four"]);
+    // Asking for more than there is returns everything.
+    assert_eq!(tail(output, 99), ["one", "two", "three", "four"]);
+}
+
+#[test]
+fn coverage_dir_reads_the_bunfig_override() {
+    let dir = std::env::temp_dir().join(format!(
+        "talos-coverage-dir-{}-{:?}",
+        std::process::id(),
+        std::thread::current().id()
+    ));
+    let _ = fs::remove_dir_all(&dir);
+    fs::create_dir_all(&dir).expect("temp dir should be creatable");
+
+    // No bunfig at all falls back to the default.
+    assert_eq!(coverage_dir(&dir), "coverage");
+
+    fs::write(
+        dir.join("bunfig.toml"),
+        "[test]\ncoverageDir = \"var/cov\"\n",
+    )
+    .unwrap();
+    assert_eq!(coverage_dir(&dir), "var/cov");
+
+    // An empty value is no override.
+    fs::write(dir.join("bunfig.toml"), "[test]\ncoverageDir = \"\"\n").unwrap();
+    assert_eq!(coverage_dir(&dir), "coverage");
+
+    let _ = fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn label_calls_a_broken_suite_a_bug_and_a_thin_one_testing() {
+    assert_eq!(label(&module("m", RunStatus::Failed, 90.0, 90.0)), "Bug");
+    assert_eq!(
+        label(&module("m", RunStatus::Errored("boom".into()), 0.0, 0.0)),
+        "Bug"
+    );
+    assert_eq!(
+        label(&module("m", RunStatus::Passed, 40.0, 40.0)),
+        "Testing"
+    );
+}
+
+#[test]
+fn priority_scales_with_how_wide_the_gap_is() {
+    assert_eq!(
+        priority(&module("m", RunStatus::Failed, 90.0, 90.0), 90.0),
+        "Urgent"
+    );
+    // More than 25 points short of the threshold.
+    assert_eq!(
+        priority(&module("m", RunStatus::Passed, 60.0, 60.0), 90.0),
+        "High"
+    );
+    assert_eq!(
+        priority(&module("m", RunStatus::Passed, 80.0, 80.0), 90.0),
+        "Medium"
+    );
+}
+
+#[test]
+fn build_issue_title_counts_failing_tests() {
+    let mut one = module("modules/user", RunStatus::Failed, 0.0, 0.0);
+    one.failed = 1;
+    assert_eq!(build_issue_title(&one, 90.0), "Fix 1 failing test in user");
+
+    let mut many = module("modules/user", RunStatus::Failed, 0.0, 0.0);
+    many.failed = 3;
+    assert_eq!(
+        build_issue_title(&many, 90.0),
+        "Fix 3 failing tests in user"
+    );
+}
+
+#[test]
+fn build_issue_title_names_the_reason_a_suite_errored() {
+    let errored = module(
+        "modules/user",
+        RunStatus::Errored("no test ran".into()),
+        0.0,
+        0.0,
+    );
+
+    assert_eq!(
+        build_issue_title(&errored, 90.0),
+        "Fix the user test suite (no test ran)"
+    );
+}
+
+#[test]
+fn build_issue_title_states_the_coverage_gap() {
+    let thin = module("modules/user", RunStatus::Passed, 43.4, 54.25);
+
+    assert_eq!(
+        build_issue_title(&thin, 90.0),
+        "Raise user test coverage to 90% (currently 43.4% lines, 54.2% functions)"
+    );
+}
+
+#[test]
+fn build_issue_description_lists_the_least_covered_files() {
+    let mut thin = module("modules/user", RunStatus::Passed, 43.4, 54.3);
+    thin.files = vec![
+        file("src/a.rs", 10.0, 20.0, &["4-9", "12"]),
+        file("src/b.rs", 95.0, 95.0, &[]),
+        file("src/c.rs", 50.0, 50.0, &[]),
+    ];
+
+    let text = build_issue_description(&thin, 90.0);
+
+    assert!(text.contains("covers 43.4% of its lines and 54.3% of its functions"));
+    assert!(text.contains("- Module: modules/user"));
+    assert!(text.contains("- Threshold: 90%"));
+    assert!(text.contains("- Command: `talos coverage:check --modules=user`"));
+    assert!(text.contains("Least covered files:"));
+    // Worst first, and the file already over the threshold is not listed.
+    let a = text.find("`src/a.rs`").expect("worst file is listed");
+    let c = text
+        .find("`src/c.rs`")
+        .expect("second-worst file is listed");
+    assert!(a < c);
+    assert!(!text.contains("`src/b.rs`"));
+    assert!(text.contains("(uncovered 4-9, 12)"));
+}
+
+#[test]
+fn build_issue_description_describes_a_failing_suite() {
+    let mut failed = module("modules/user", RunStatus::Failed, 0.0, 0.0);
+    failed.failed = 2;
+
+    let text = build_issue_description(&failed, 90.0);
+
+    assert!(text.contains("`bun test` reports 2 failing tests in modules/user."));
+    assert!(text.contains("- Tests: 10 passed, 2 failed"));
+}
+
+#[test]
+fn build_issue_description_describes_an_errored_suite() {
+    let errored = module(
+        "modules/user",
+        RunStatus::Errored("no test ran".into()),
+        0.0,
+        0.0,
+    );
+
+    let text = build_issue_description(&errored, 90.0);
+
+    assert!(text.contains("could not report coverage for modules/user: no test ran."));
+    // With no measured files there is nothing to list.
+    assert!(!text.contains("Least covered files:"));
+}

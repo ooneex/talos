@@ -344,7 +344,7 @@ fn discover_owners(root: &Path) -> Vec<IssueOwner> {
 }
 
 /// Render a path relative to the project root, falling back to the full path.
-fn relative_to(root: &Path, path: &Path) -> String {
+pub fn relative_to(root: &Path, path: &Path) -> String {
     path.strip_prefix(root)
         .unwrap_or(path)
         .to_string_lossy()
@@ -602,7 +602,7 @@ fn load_issue(root: &Path, module: &str, path: &Path) -> LoadedIssue {
     loaded
 }
 
-fn value_kind(value: &Value) -> &'static str {
+pub fn value_kind(value: &Value) -> &'static str {
     match value {
         Value::Null => "null",
         Value::Bool(_) => "a boolean",
@@ -662,13 +662,14 @@ pub fn is_kebab_case(value: &str) -> bool {
 }
 
 /// A parsed `- [ ]` / `- [x]` checkbox line from a `dod` block.
-struct Checkbox {
-    indent: usize,
-    checked: bool,
-    uppercase: bool,
+#[derive(Debug)]
+pub struct Checkbox {
+    pub indent: usize,
+    pub checked: bool,
+    pub uppercase: bool,
 }
 
-fn parse_checkbox(line: &str) -> Option<Checkbox> {
+pub fn parse_checkbox(line: &str) -> Option<Checkbox> {
     let indent = line.len() - line.trim_start_matches(' ').len();
     let rest = &line[indent..];
     let rest = rest.strip_prefix("- [")?;
@@ -690,12 +691,13 @@ fn parse_checkbox(line: &str) -> Option<Checkbox> {
 }
 
 /// A parsed `1. [ ]` numbered checkbox line from a `testing` block.
-struct NumberedCheckbox {
-    number: usize,
-    checked: bool,
+#[derive(Debug)]
+pub struct NumberedCheckbox {
+    pub number: usize,
+    pub checked: bool,
 }
 
-fn parse_numbered_checkbox(line: &str) -> Option<NumberedCheckbox> {
+pub fn parse_numbered_checkbox(line: &str) -> Option<NumberedCheckbox> {
     if line.starts_with(' ') {
         return None;
     }
@@ -721,7 +723,7 @@ fn parse_numbered_checkbox(line: &str) -> Option<NumberedCheckbox> {
 }
 
 /// Read the `type` of a module from its `<name>.yml` descriptor.
-fn read_module_type(module_dir: &Path, name: &str) -> Option<String> {
+pub fn read_module_type(module_dir: &Path, name: &str) -> Option<String> {
     let content = fs::read_to_string(module_dir.join(format!("{name}.yml"))).ok()?;
     if let Ok(Value::Mapping(mapping)) = serde_yaml::from_str::<Value>(&content)
         && let Some(value) = mapping.get(Value::from("type")).and_then(as_str)
@@ -745,7 +747,7 @@ pub fn expected_goal_section(module_type: &str) -> Option<&'static str> {
     }
 }
 
-fn quote_list(values: &[&str]) -> String {
+pub fn quote_list(values: &[&str]) -> String {
     values
         .iter()
         .map(|value| format!("`{value}`"))
@@ -1173,7 +1175,7 @@ fn check_dod(dod: &str, state: &str, report: &mut FileReport) {
 }
 
 /// Find a `` `somethingId` `` reference, which `issue-plan` forbids in a `dod`.
-fn backticked_id_suffix(line: &str) -> Option<String> {
+pub fn backticked_id_suffix(line: &str) -> Option<String> {
     line.split('`').skip(1).step_by(2).find_map(|token| {
         let candidate = token.trim();
         (candidate.len() > 2
@@ -1968,7 +1970,7 @@ pub struct CheckOptions {
     pub ids: Vec<String>,
 }
 
-fn normalize(values: &[String]) -> Vec<String> {
+pub fn normalize(values: &[String]) -> Vec<String> {
     values
         .iter()
         .map(|value| value.trim().to_string())

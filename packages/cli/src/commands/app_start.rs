@@ -24,7 +24,7 @@ pub struct AppStartArgs {
     pub cwd: Option<String>,
 }
 
-fn load_app_module_name(app_dir: &Path, fallback: &str) -> Option<String> {
+pub fn load_app_module_name(app_dir: &Path, fallback: &str) -> Option<String> {
     let package_json_path = app_dir.join("package.json");
     let raw = fs::read_to_string(package_json_path).ok()?;
     let package_json = serde_json::from_str::<Value>(&raw).ok()?;
@@ -37,7 +37,7 @@ fn load_app_module_name(app_dir: &Path, fallback: &str) -> Option<String> {
     )
 }
 
-fn command_line(module_dir: &Path, module_type: RunnableModuleType) -> String {
+pub fn command_line(module_dir: &Path, module_type: RunnableModuleType) -> String {
     match module_type {
         RunnableModuleType::Spa
         | RunnableModuleType::Storybook

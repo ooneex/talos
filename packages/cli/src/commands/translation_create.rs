@@ -57,7 +57,7 @@ fn ensure_dependency(cwd: &std::path::Path, dependency: &str) {
     );
 }
 
-fn read_module_type(cwd: &std::path::Path, module_kebab: &str) -> String {
+pub fn read_module_type(cwd: &std::path::Path, module_kebab: &str) -> String {
     let yml_path = cwd
         .join("modules")
         .join(module_kebab)

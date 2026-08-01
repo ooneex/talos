@@ -130,7 +130,7 @@ const SCANNED_EXTENSIONS: &[&str] = &[
 const COMMIT_HISTORY_LIMIT: usize = 20;
 
 /// Detail lines kept per check so a broken project still prints a usable report.
-const MAX_DETAILS: usize = 12;
+pub const MAX_DETAILS: usize = 12;
 
 const MAX_SCANNED_FILE_BYTES: u64 = 512 * 1024;
 
@@ -1038,7 +1038,7 @@ pub struct CheckOutcome {
 }
 
 impl CheckOutcome {
-    fn new(id: CheckId, status: CheckStatus, summary: impl Into<String>) -> Self {
+    pub fn new(id: CheckId, status: CheckStatus, summary: impl Into<String>) -> Self {
         Self {
             id,
             status,
@@ -1098,7 +1098,7 @@ impl ProjectReport {
 /// summary, the status in the JSON, and the word in front of the line that
 /// earned it. A check that reports `warn` under a red cross is the run
 /// contradicting itself, so the details are relabelled with the status.
-fn harden(outcome: CheckOutcome) -> CheckOutcome {
+pub fn harden(outcome: CheckOutcome) -> CheckOutcome {
     let details = outcome
         .details
         .into_iter()
@@ -1146,7 +1146,7 @@ pub fn select_checks(
     Ok(selected)
 }
 
-fn parse_ids(value: Option<&str>) -> Result<Option<BTreeSet<CheckId>>, String> {
+pub fn parse_ids(value: Option<&str>) -> Result<Option<BTreeSet<CheckId>>, String> {
     let Some(value) = value else {
         return Ok(None);
     };
@@ -1179,7 +1179,7 @@ fn parse_ids(value: Option<&str>) -> Result<Option<BTreeSet<CheckId>>, String> {
     Ok(Some(ids))
 }
 
-fn cap_details(details: Vec<String>) -> Vec<String> {
+pub fn cap_details(details: Vec<String>) -> Vec<String> {
     if details.len() <= MAX_DETAILS {
         return details;
     }
@@ -1189,7 +1189,7 @@ fn cap_details(details: Vec<String>) -> Vec<String> {
     capped
 }
 
-fn split_csv(value: Option<&str>) -> Vec<String> {
+pub fn split_csv(value: Option<&str>) -> Vec<String> {
     value
         .map(|value| {
             value
@@ -1204,14 +1204,14 @@ fn split_csv(value: Option<&str>) -> Vec<String> {
 
 /// How a detail line says which of the two it is. Both are the same width, so
 /// the messages line up under each other.
-const ERROR_DETAIL: &str = "error  ";
-const WARN_DETAIL: &str = "warn   ";
+pub const ERROR_DETAIL: &str = "error  ";
+pub const WARN_DETAIL: &str = "warn   ";
 
 /// Build the outcome of a check that only reads the repository.
 ///
 /// Errors fail the check, warnings only warn, and the details keep the errors
 /// first so the most important line is never the one that gets capped.
-fn static_outcome(
+pub fn static_outcome(
     id: CheckId,
     scope: &str,
     clean: &str,
@@ -1455,7 +1455,7 @@ pub fn parse_biome_a11y(payload: &str) -> Option<Vec<A11yDiagnostic>> {
 }
 
 /// Biome writes the path either as a plain string or as `{ "file": "…" }`.
-fn json_path_to_string(value: &Value) -> Option<String> {
+pub fn json_path_to_string(value: &Value) -> Option<String> {
     match value {
         Value::String(path) => Some(path.clone()),
         Value::Object(map) => map
@@ -1468,7 +1468,7 @@ fn json_path_to_string(value: &Value) -> Option<String> {
 }
 
 /// Messages are either a string or an array of `{ "content": "…" }` chunks.
-fn json_message_to_string(value: &Value) -> Option<String> {
+pub fn json_message_to_string(value: &Value) -> Option<String> {
     match value {
         Value::String(message) => Some(message.clone()),
         Value::Array(chunks) => {
@@ -1641,7 +1641,7 @@ fn check_accessibility(args: &ProjectCheckArgs, root: &Path) -> CheckOutcome {
     build_a11y_outcome(&report)
 }
 
-fn build_a11y_outcome(report: &A11yReport) -> CheckOutcome {
+pub fn build_a11y_outcome(report: &A11yReport) -> CheckOutcome {
     let scope = format!(
         "{} UI module{}",
         report.modules.len(),
@@ -2150,7 +2150,7 @@ pub fn scan_source(path: &str, content: &str) -> Vec<HygieneFinding> {
 
 /// A `TODO`/`FIXME`/`HACK`/`XXX` comment that references neither an issue id
 /// nor a URL, which the conventions forbid.
-fn bare_marker(line: &str) -> Option<&'static str> {
+pub fn bare_marker(line: &str) -> Option<&'static str> {
     let comment = line
         .find("//")
         .map(|index| index + 2)

@@ -497,7 +497,7 @@ fn report_finish(task: &Task, footer: &Footer) {
     }
 }
 
-fn finish_lines(task: &Task) -> (Vec<String>, bool) {
+pub fn finish_lines(task: &Task) -> (Vec<String>, bool) {
     match task.status {
         TaskStatus::Success => (
             vec![format!(
@@ -530,7 +530,7 @@ fn finish_lines(task: &Task) -> (Vec<String>, bool) {
     }
 }
 
-fn failure_excerpt(output: &str) -> Vec<String> {
+pub fn failure_excerpt(output: &str) -> Vec<String> {
     let normalized = output.replace('\r', "");
     let lines: Vec<String> = normalized.lines().map(str::to_string).collect();
     let signal = Regex::new(

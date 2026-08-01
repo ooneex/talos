@@ -35,12 +35,12 @@ pub fn is_available() -> bool {
         .unwrap_or(false)
 }
 
-fn normalize_number(id: &str) -> String {
+pub fn normalize_number(id: &str) -> String {
     id.trim().trim_start_matches('#').to_string()
 }
 
 /// Map a GitHub issue state (`OPEN`/`CLOSED`) to a local workflow state name.
-fn map_state_to_yaml(state: &str) -> String {
+pub fn map_state_to_yaml(state: &str) -> String {
     if state.eq_ignore_ascii_case("closed") {
         "Done".to_string()
     } else {

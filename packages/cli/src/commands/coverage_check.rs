@@ -516,7 +516,7 @@ fn run_suites(
     modules
 }
 
-fn resolve_concurrency(requested: Option<usize>) -> usize {
+pub fn resolve_concurrency(requested: Option<usize>) -> usize {
     if let Some(requested) = requested {
         return requested.max(1);
     }
@@ -528,7 +528,7 @@ fn resolve_concurrency(requested: Option<usize>) -> usize {
 
 /// Broken suites first, then the least covered — the report is read from the
 /// top, so what needs work is what is read first.
-fn sort_modules(modules: &mut [ModuleCoverage]) {
+pub fn sort_modules(modules: &mut [ModuleCoverage]) {
     modules.sort_by(|a, b| {
         rank(&a.status)
             .cmp(&rank(&b.status))
@@ -538,7 +538,7 @@ fn sort_modules(modules: &mut [ModuleCoverage]) {
     });
 }
 
-fn rank(status: &RunStatus) -> u8 {
+pub fn rank(status: &RunStatus) -> u8 {
     match status {
         RunStatus::Failed => 0,
         RunStatus::Errored(_) => 1,
@@ -774,7 +774,7 @@ fn errored(target: &Target, reason: String, output: String, duration_ms: u64) ->
 
 /// The `coverageDir` a module's `bunfig.toml` declares, which wins over the
 /// command line flag, or bun's default.
-fn coverage_dir(dir: &Path) -> String {
+pub fn coverage_dir(dir: &Path) -> String {
     let Ok(content) = fs::read_to_string(dir.join("bunfig.toml")) else {
         return DEFAULT_COVERAGE_DIR.to_string();
     };
@@ -908,7 +908,7 @@ pub fn parse_table(text: &str) -> Option<CoverageReport> {
 }
 
 /// `152-154, 160` — bun's own ranges, kept as it wrote them.
-fn parse_uncovered(cell: &str) -> Vec<String> {
+pub fn parse_uncovered(cell: &str) -> Vec<String> {
     cell.split(',')
         .map(str::trim)
         .filter(|range| !range.is_empty())
@@ -980,7 +980,7 @@ pub fn parse_lcov(content: &str) -> Option<CoverageReport> {
 }
 
 /// `41 42 43 66` → `41-43`, `66`.
-fn collapse_ranges(numbers: &[usize]) -> Vec<String> {
+pub fn collapse_ranges(numbers: &[usize]) -> Vec<String> {
     let mut ranges: Vec<String> = Vec::new();
     let mut index = 0usize;
     while index < numbers.len() {
@@ -1001,14 +1001,14 @@ fn collapse_ranges(numbers: &[usize]) -> Vec<String> {
 }
 
 /// A ratio in percent. Nothing to cover is fully covered.
-fn percent(covered: usize, total: usize) -> f64 {
+pub fn percent(covered: usize, total: usize) -> f64 {
     if total == 0 {
         return 100.0;
     }
     covered as f64 * 100.0 / total as f64
 }
 
-fn mean(values: impl Iterator<Item = f64>) -> f64 {
+pub fn mean(values: impl Iterator<Item = f64>) -> f64 {
     let values: Vec<f64> = values.collect();
     if values.is_empty() {
         return 0.0;
@@ -1306,7 +1306,7 @@ fn print_summary(audit: &CoverageAudit, skipped: usize) {
 
 /// `▰▰▰▰▰▰▰▰▰▱▱▱` — the same bar the loaders draw, coloured by how far the rate
 /// is from the threshold.
-fn bar(value: f64, threshold: f64) -> String {
+pub fn bar(value: f64, threshold: f64) -> String {
     let filled = ((value / 100.0) * LOADER_WIDTH as f64).round() as usize;
     let filled = filled.min(LOADER_WIDTH);
     let drawn = BAR_FILLED.repeat(filled);
@@ -1321,7 +1321,7 @@ fn bar(value: f64, threshold: f64) -> String {
     format!("{drawn}{empty}")
 }
 
-fn rate(value: f64, threshold: f64) -> String {
+pub fn rate(value: f64, threshold: f64) -> String {
     let text = format!("{:>6}%", trim_percent(value));
     if value >= threshold {
         style(text).green().to_string()
@@ -1333,14 +1333,14 @@ fn rate(value: f64, threshold: f64) -> String {
 }
 
 /// `92.0` reads as noise next to `92`, so a whole percent is printed whole.
-fn trim_percent(value: f64) -> String {
+pub fn trim_percent(value: f64) -> String {
     if (value - value.round()).abs() < 0.05 {
         return format!("{}", value.round() as i64);
     }
     format!("{value:.1}")
 }
 
-fn truncate(text: &str, max: usize) -> String {
+pub fn truncate(text: &str, max: usize) -> String {
     if text.chars().count() <= max {
         return text.to_string();
     }
@@ -1348,7 +1348,7 @@ fn truncate(text: &str, max: usize) -> String {
     format!("{}…", truncated.trim_end())
 }
 
-fn tail(output: &str, lines: usize) -> Vec<&str> {
+pub fn tail(output: &str, lines: usize) -> Vec<&str> {
     let all: Vec<&str> = output
         .lines()
         .filter(|line| !line.trim().is_empty())
@@ -1410,7 +1410,7 @@ fn create_issues(audit: &CoverageAudit) {
 
 /// The change-type label the work carries: a red suite is a bug, a thin one is
 /// testing work.
-fn label(module: &ModuleCoverage) -> &'static str {
+pub fn label(module: &ModuleCoverage) -> &'static str {
     match &module.status {
         RunStatus::Failed | RunStatus::Errored(_) => "Bug",
         _ => "Testing",
@@ -1419,7 +1419,7 @@ fn label(module: &ModuleCoverage) -> &'static str {
 
 /// How urgent the gap is: a failing suite blocks every other fix, and the wider
 /// the gap the sooner it has to close.
-fn priority(module: &ModuleCoverage, threshold: f64) -> &'static str {
+pub fn priority(module: &ModuleCoverage, threshold: f64) -> &'static str {
     match &module.status {
         RunStatus::Failed | RunStatus::Errored(_) => "Urgent",
         _ if module.lines < threshold - 25.0 => "High",
@@ -1427,7 +1427,7 @@ fn priority(module: &ModuleCoverage, threshold: f64) -> &'static str {
     }
 }
 
-fn build_issue_title(module: &ModuleCoverage, threshold: f64) -> String {
+pub fn build_issue_title(module: &ModuleCoverage, threshold: f64) -> String {
     match &module.status {
         RunStatus::Failed => format!(
             "Fix {} failing test{} in {}",
@@ -1448,7 +1448,7 @@ fn build_issue_title(module: &ModuleCoverage, threshold: f64) -> String {
     }
 }
 
-fn build_issue_description(module: &ModuleCoverage, threshold: f64) -> String {
+pub fn build_issue_description(module: &ModuleCoverage, threshold: f64) -> String {
     let mut lines: Vec<String> = Vec::new();
 
     match &module.status {

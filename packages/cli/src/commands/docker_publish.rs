@@ -27,13 +27,13 @@ pub struct DockerPublishArgs {
     pub cwd: Option<String>,
 }
 
-#[derive(Clone)]
-struct Target {
-    base: String,
-    name: String,
+#[derive(Clone, Debug)]
+pub struct Target {
+    pub base: String,
+    pub name: String,
 }
 
-fn split_csv(value: Option<&str>) -> Vec<String> {
+pub fn split_csv(value: Option<&str>) -> Vec<String> {
     value
         .unwrap_or_default()
         .split(',')
@@ -43,7 +43,7 @@ fn split_csv(value: Option<&str>) -> Vec<String> {
         .collect()
 }
 
-fn discover(cwd: &std::path::Path, dir_name: &str, kind: &'static str) -> Vec<Target> {
+pub fn discover(cwd: &std::path::Path, dir_name: &str, kind: &'static str) -> Vec<Target> {
     fs::read_dir(cwd.join(dir_name))
         .ok()
         .into_iter()
@@ -61,7 +61,7 @@ fn discover(cwd: &std::path::Path, dir_name: &str, kind: &'static str) -> Vec<Ta
         .collect()
 }
 
-fn resolve_targets(
+pub fn resolve_targets(
     cwd: &std::path::Path,
     packages: Option<&str>,
     modules: Option<&str>,

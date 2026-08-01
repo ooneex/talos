@@ -7,29 +7,29 @@ use serde_json::{Value, json};
 use crate::utils::github;
 use crate::utils::{Provider, current_dir, read_credentials};
 
-#[derive(Default, Deserialize, Serialize, Clone)]
-struct IssueComment {
-    author: Option<String>,
-    message: String,
+#[derive(Default, Deserialize, Serialize, Clone, Debug)]
+pub struct IssueComment {
+    pub author: Option<String>,
+    pub message: String,
 }
 
-#[derive(Default, Deserialize, Serialize, Clone)]
-struct ParsedIssue {
-    id: Option<String>,
-    module: Option<String>,
-    title: Option<String>,
-    state: Option<String>,
-    priority: Option<String>,
-    context: Option<String>,
-    goal: Option<String>,
-    dod: Option<String>,
-    testing: Option<String>,
+#[derive(Default, Deserialize, Serialize, Clone, Debug)]
+pub struct ParsedIssue {
+    pub id: Option<String>,
+    pub module: Option<String>,
+    pub title: Option<String>,
+    pub state: Option<String>,
+    pub priority: Option<String>,
+    pub context: Option<String>,
+    pub goal: Option<String>,
+    pub dod: Option<String>,
+    pub testing: Option<String>,
     #[serde(default)]
-    dependencies: Vec<String>,
+    pub dependencies: Vec<String>,
     #[serde(default)]
-    labels: Vec<String>,
+    pub labels: Vec<String>,
     #[serde(default)]
-    comments: Vec<IssueComment>,
+    pub comments: Vec<IssueComment>,
 }
 
 #[derive(Args, Debug)]
@@ -74,7 +74,7 @@ fn linear_request(token: &str, query: &str, variables: Value) -> Option<Value> {
 
 /// Locate a local issue file by id across every module, preferring the
 /// requested module when provided, so the push can update it in place.
-fn find_issue_file(
+pub fn find_issue_file(
     modules_dir: &Path,
     module_hint: Option<&str>,
     id: &str,
@@ -101,7 +101,7 @@ fn find_issue_file(
     None
 }
 
-fn build_description(issue: &ParsedIssue, module: &str) -> String {
+pub fn build_description(issue: &ParsedIssue, module: &str) -> String {
     let mut sections = vec![format!("**Module:** `{module}`")];
     if let Some(context) = issue.context.as_deref() {
         sections.push(format!("## Context\n\n{context}"));
@@ -129,7 +129,7 @@ fn build_description(issue: &ParsedIssue, module: &str) -> String {
     sections.join("\n\n")
 }
 
-fn priority_value(priority: Option<&str>) -> Option<i64> {
+pub fn priority_value(priority: Option<&str>) -> Option<i64> {
     match priority?.to_lowercase().as_str() {
         "no priority" => Some(0),
         "urgent" => Some(1),

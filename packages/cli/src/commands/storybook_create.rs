@@ -34,10 +34,10 @@ pub struct StorybookCreateArgs {
     pub no_cache: bool,
 }
 
-const DEFAULT_PORT: u16 = 3031;
+pub const DEFAULT_PORT: u16 = 3031;
 const CREATE_NEW_DESIGN: &str = "Create a new design";
 
-fn with_design_field(yml_content: &str, design_kebab: Option<&str>) -> String {
+pub fn with_design_field(yml_content: &str, design_kebab: Option<&str>) -> String {
     let design_re = regex::Regex::new(r#"(?m)^design:\s*".*"$"#).ok();
     match (design_re, design_kebab) {
         (Some(re), Some(design)) if re.is_match(yml_content) => re
@@ -51,7 +51,7 @@ fn with_design_field(yml_content: &str, design_kebab: Option<&str>) -> String {
     }
 }
 
-fn collect_used_ports(modules_dir: &Path) -> std::collections::BTreeSet<u16> {
+pub fn collect_used_ports(modules_dir: &Path) -> std::collections::BTreeSet<u16> {
     let mut used = std::collections::BTreeSet::new();
     let Ok(entries) = fs::read_dir(modules_dir) else {
         return used;
@@ -78,7 +78,7 @@ fn collect_used_ports(modules_dir: &Path) -> std::collections::BTreeSet<u16> {
     used
 }
 
-fn find_free_port(used_ports: &std::collections::BTreeSet<u16>) -> u16 {
+pub fn find_free_port(used_ports: &std::collections::BTreeSet<u16>) -> u16 {
     let mut port = DEFAULT_PORT;
     while used_ports.contains(&port) {
         port += 1;
@@ -86,7 +86,7 @@ fn find_free_port(used_ports: &std::collections::BTreeSet<u16>) -> u16 {
     port
 }
 
-fn collect_design_modules(modules_dir: &Path) -> Vec<String> {
+pub fn collect_design_modules(modules_dir: &Path) -> Vec<String> {
     let Ok(entries) = fs::read_dir(modules_dir) else {
         return Vec::new();
     };
@@ -106,7 +106,7 @@ fn collect_design_modules(modules_dir: &Path) -> Vec<String> {
     designs
 }
 
-fn visit_files_recursive(dir: &Path, callback: &mut impl FnMut(&Path)) {
+pub fn visit_files_recursive(dir: &Path, callback: &mut impl FnMut(&Path)) {
     let Ok(entries) = fs::read_dir(dir) else {
         return;
     };

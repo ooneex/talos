@@ -20,7 +20,7 @@ pub struct CommandRunArgs {
     pub cwd: Option<String>,
 }
 
-fn package_name(module_dir: &Path, fallback: &str) -> String {
+pub fn package_name(module_dir: &Path, fallback: &str) -> String {
     fs::read_to_string(module_dir.join("package.json"))
         .ok()
         .and_then(|raw| serde_json::from_str::<Value>(&raw).ok())
@@ -33,7 +33,7 @@ fn package_name(module_dir: &Path, fallback: &str) -> String {
         .unwrap_or_else(|| fallback.to_string())
 }
 
-fn visit_command_files(dir: &Path, files: &mut Vec<PathBuf>) {
+pub fn visit_command_files(dir: &Path, files: &mut Vec<PathBuf>) {
     let Ok(entries) = fs::read_dir(dir) else {
         return;
     };

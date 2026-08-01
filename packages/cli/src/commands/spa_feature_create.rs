@@ -30,7 +30,7 @@ pub struct SpaFeatureCreateArgs {
     pub cwd: Option<String>,
 }
 
-fn render(template: &str, pascal_name: &str, camel_name: &str, kebab_name: &str) -> String {
+pub fn render(template: &str, pascal_name: &str, camel_name: &str, kebab_name: &str) -> String {
     template
         .replace("{{NAME}}", pascal_name)
         .replace("{{CAMEL}}", camel_name)

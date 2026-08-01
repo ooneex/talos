@@ -41,3 +41,30 @@ fn translation_create_defaults_are_empty() {
 fn translation_create_rejects_unknown_flag() {
     assert!(TestCli::try_parse_from(["talos", "--definitely-not-a-flag"]).is_err());
 }
+
+// ---------------------------------------------------------------------------
+// module type lookup
+// ---------------------------------------------------------------------------
+
+mod support;
+
+use cli::commands::translation_create::read_module_type;
+use support::TempDir;
+
+#[test]
+fn read_module_type_reads_the_declared_type() {
+    let dir = TempDir::new("translation-type");
+    dir.write("modules/web/web.yml", "name: \"web\"\ntype: \"spa\"\n");
+
+    assert_eq!(read_module_type(dir.path(), "web"), "spa");
+}
+
+#[test]
+fn read_module_type_defaults_to_module() {
+    let dir = TempDir::new("translation-type-default");
+
+    assert_eq!(read_module_type(dir.path(), "missing"), "module");
+
+    dir.write("modules/user/user.yml", "name: \"user\"\n");
+    assert_eq!(read_module_type(dir.path(), "user"), "module");
+}

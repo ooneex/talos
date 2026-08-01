@@ -41,3 +41,34 @@ fn spa_feature_create_defaults_are_empty() {
 fn spa_feature_create_rejects_unknown_flag() {
     assert!(TestCli::try_parse_from(["talos", "--definitely-not-a-flag"]).is_err());
 }
+
+// ---------------------------------------------------------------------------
+// template rendering
+// ---------------------------------------------------------------------------
+
+use cli::commands::spa_feature_create::render;
+
+#[test]
+fn render_substitutes_every_placeholder() {
+    let out = render(
+        "export const {{NAME}} = \"{{CAMEL}}\"; // {{KEBAB}}",
+        "UserProfile",
+        "userProfile",
+        "user-profile",
+    );
+
+    assert_eq!(
+        out,
+        "export const UserProfile = \"userProfile\"; // user-profile"
+    );
+}
+
+#[test]
+fn render_substitutes_repeated_placeholders() {
+    assert_eq!(render("{{NAME}}{{NAME}}", "A", "a", "a"), "AA");
+}
+
+#[test]
+fn render_leaves_a_template_without_placeholders_alone() {
+    assert_eq!(render("plain text", "A", "a", "a"), "plain text");
+}

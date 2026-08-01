@@ -29,17 +29,17 @@ export default defineConfig({
 });
 "#;
 
-#[derive(Clone)]
-struct ControllerDefinition {
-    method: String,
-    key: String,
-    version: i64,
-    description: String,
-    roles: Vec<String>,
-    path: String,
-    is_socket: bool,
-    type_name: String,
-    type_declaration: String,
+#[derive(Clone, Debug)]
+pub struct ControllerDefinition {
+    pub method: String,
+    pub key: String,
+    pub version: i64,
+    pub description: String,
+    pub roles: Vec<String>,
+    pub path: String,
+    pub is_socket: bool,
+    pub type_name: String,
+    pub type_declaration: String,
 }
 
 #[derive(Args, Debug)]
@@ -60,7 +60,7 @@ pub struct SdkCreateArgs {
     pub no_cache: bool,
 }
 
-fn to_camel_case(value: &str) -> String {
+pub fn to_camel_case(value: &str) -> String {
     let mut result = String::new();
     for (index, part) in value
         .split(['-', '.'])
@@ -76,7 +76,7 @@ fn to_camel_case(value: &str) -> String {
     result
 }
 
-fn match_balanced(text: &str, open_index: usize) -> Option<(String, usize)> {
+pub fn match_balanced(text: &str, open_index: usize) -> Option<(String, usize)> {
     let mut depth = 0;
     for (i, ch) in text.char_indices().skip(open_index) {
         if ch == '{' {
@@ -92,7 +92,7 @@ fn match_balanced(text: &str, open_index: usize) -> Option<(String, usize)> {
     None
 }
 
-fn read_module_type(modules_dir: &Path, module_kebab: &str) -> String {
+pub fn read_module_type(modules_dir: &Path, module_kebab: &str) -> String {
     let yml_file = modules_dir
         .join(module_kebab)
         .join(format!("{module_kebab}.yml"));
@@ -108,7 +108,7 @@ fn read_module_type(modules_dir: &Path, module_kebab: &str) -> String {
         .unwrap_or_else(|| "module".to_string())
 }
 
-fn collect_controller_files(dir: &Path, files: &mut Vec<PathBuf>) {
+pub fn collect_controller_files(dir: &Path, files: &mut Vec<PathBuf>) {
     let Ok(entries) = fs::read_dir(dir) else {
         return;
     };
@@ -127,7 +127,7 @@ fn collect_controller_files(dir: &Path, files: &mut Vec<PathBuf>) {
     }
 }
 
-fn parse_controller(content: &str, module_name: &str) -> Option<ControllerDefinition> {
+pub fn parse_controller(content: &str, module_name: &str) -> Option<ControllerDefinition> {
     let type_match = regex::Regex::new(r"export\s+type\s+(\w+RouteType)\s*=\s*\{")
         .ok()?
         .captures(content)?;
@@ -191,7 +191,7 @@ fn parse_controller(content: &str, module_name: &str) -> Option<ControllerDefini
     })
 }
 
-fn build_api_entry(def: &ControllerDefinition) -> String {
+pub fn build_api_entry(def: &ControllerDefinition) -> String {
     let bearer_token = if def.roles.is_empty() {
         String::new()
     } else {
@@ -212,7 +212,7 @@ fn build_api_entry(def: &ControllerDefinition) -> String {
     )
 }
 
-fn build_definition_entry(def: &ControllerDefinition) -> String {
+pub fn build_definition_entry(def: &ControllerDefinition) -> String {
     let roles = format!(
         "[{}]",
         def.roles
@@ -233,7 +233,7 @@ fn build_definition_entry(def: &ControllerDefinition) -> String {
     )
 }
 
-fn build_module_file(const_name: &str, definitions: &[ControllerDefinition]) -> String {
+pub fn build_module_file(const_name: &str, definitions: &[ControllerDefinition]) -> String {
     let types = definitions
         .iter()
         .map(|def| def.type_declaration.clone())
@@ -255,7 +255,7 @@ fn build_module_file(const_name: &str, definitions: &[ControllerDefinition]) -> 
     )
 }
 
-fn extract_existing_keys(content: &str) -> std::collections::BTreeSet<String> {
+pub fn extract_existing_keys(content: &str) -> std::collections::BTreeSet<String> {
     regex::Regex::new(r#"key:\s*\"([^\"]+)\""#)
         .ok()
         .map(|re| {
@@ -266,7 +266,7 @@ fn extract_existing_keys(content: &str) -> std::collections::BTreeSet<String> {
         .unwrap_or_default()
 }
 
-fn merge_module_file(existing: &str, new_defs: &[ControllerDefinition]) -> String {
+pub fn merge_module_file(existing: &str, new_defs: &[ControllerDefinition]) -> String {
     let types = new_defs
         .iter()
         .map(|def| def.type_declaration.clone())

@@ -29,7 +29,7 @@ pub struct MicroserviceCreateArgs {
     pub no_cache: bool,
 }
 
-fn detect_ci_provider(cwd: &Path) -> Option<&'static str> {
+pub fn detect_ci_provider(cwd: &Path) -> Option<&'static str> {
     if cwd.join(".github").exists() {
         Some("github")
     } else if cwd.join(".gitlab-ci.yml").exists() || cwd.join(".gitlab").exists() {
@@ -41,7 +41,7 @@ fn detect_ci_provider(cwd: &Path) -> Option<&'static str> {
     }
 }
 
-fn collect_used_ports(dir: &Path, used: &mut std::collections::BTreeSet<u16>) {
+pub fn collect_used_ports(dir: &Path, used: &mut std::collections::BTreeSet<u16>) {
     let Ok(entries) = fs::read_dir(dir) else {
         return;
     };
@@ -70,7 +70,7 @@ fn collect_used_ports(dir: &Path, used: &mut std::collections::BTreeSet<u16>) {
     }
 }
 
-fn next_available_port(cwd: &Path) -> u16 {
+pub fn next_available_port(cwd: &Path) -> u16 {
     let mut used = std::collections::BTreeSet::new();
     collect_used_ports(cwd, &mut used);
     let mut port = 8030;
@@ -80,7 +80,7 @@ fn next_available_port(cwd: &Path) -> u16 {
     port
 }
 
-fn add_to_env_yml(env_yml_path: &Path, kebab_name: &str, port: u16) {
+pub fn add_to_env_yml(env_yml_path: &Path, kebab_name: &str, port: u16) {
     let Ok(mut content) = fs::read_to_string(env_yml_path) else {
         return;
     };
@@ -96,7 +96,7 @@ fn add_to_env_yml(env_yml_path: &Path, kebab_name: &str, port: u16) {
     let _ = fs::write(env_yml_path, content);
 }
 
-fn add_gitlab_include(path: &Path, kebab_name: &str) {
+pub fn add_gitlab_include(path: &Path, kebab_name: &str) {
     let include_line = format!("  - local: .gitlab/ci/{kebab_name}.yml");
     let mut content = fs::read_to_string(path).unwrap_or_default();
     if content.contains(&include_line) {

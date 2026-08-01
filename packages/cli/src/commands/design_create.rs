@@ -30,7 +30,7 @@ pub struct DesignCreateArgs {
     pub no_cache: bool,
 }
 
-fn visit_files_recursive(dir: &Path, callback: &mut impl FnMut(&Path)) {
+pub fn visit_files_recursive(dir: &Path, callback: &mut impl FnMut(&Path)) {
     let Ok(entries) = fs::read_dir(dir) else {
         return;
     };

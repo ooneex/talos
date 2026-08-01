@@ -41,7 +41,7 @@ pub struct ControllerCreateArgs {
     pub cwd: Option<String>,
 }
 
-fn normalize_route_path(route_path: &str) -> String {
+pub fn normalize_route_path(route_path: &str) -> String {
     let trimmed = route_path.trim();
     if trimmed == "/" {
         return "/".to_string();
@@ -64,7 +64,7 @@ fn normalize_route_path(route_path: &str) -> String {
     format!("/{normalized}")
 }
 
-fn add_class_to_module(module_path: &std::path::Path, class_name: &str) -> Result<(), String> {
+pub fn add_class_to_module(module_path: &std::path::Path, class_name: &str) -> Result<(), String> {
     let mut content = std::fs::read_to_string(module_path).map_err(|error| error.to_string())?;
     let import_line = format!("import {{ {class_name} }} from \"./controllers/{class_name}\";\n");
 

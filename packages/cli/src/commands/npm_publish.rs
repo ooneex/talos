@@ -29,14 +29,14 @@ pub struct NpmPublishArgs {
     pub cwd: Option<String>,
 }
 
-#[derive(Clone)]
-struct Target {
-    base: String,
-    kind: &'static str,
-    name: String,
+#[derive(Clone, Debug)]
+pub struct Target {
+    pub base: String,
+    pub kind: &'static str,
+    pub name: String,
 }
 
-fn split_csv(value: Option<&str>) -> Vec<String> {
+pub fn split_csv(value: Option<&str>) -> Vec<String> {
     value
         .unwrap_or_default()
         .split(',')
@@ -46,7 +46,7 @@ fn split_csv(value: Option<&str>) -> Vec<String> {
         .collect()
 }
 
-fn discover(cwd: &std::path::Path, dir_name: &str, kind: &'static str) -> Vec<Target> {
+pub fn discover(cwd: &std::path::Path, dir_name: &str, kind: &'static str) -> Vec<Target> {
     fs::read_dir(cwd.join(dir_name))
         .ok()
         .into_iter()
@@ -64,7 +64,7 @@ fn discover(cwd: &std::path::Path, dir_name: &str, kind: &'static str) -> Vec<Ta
         .collect()
 }
 
-fn resolve_targets(
+pub fn resolve_targets(
     cwd: &std::path::Path,
     packages: Option<&str>,
     modules: Option<&str>,
@@ -92,7 +92,7 @@ fn resolve_targets(
     targets
 }
 
-fn percent_encode(input: &str) -> String {
+pub fn percent_encode(input: &str) -> String {
     input
         .bytes()
         .map(|byte| match byte {
@@ -125,7 +125,7 @@ fn version_exists(name: &str, version: &str, token: &str) -> bool {
     )
 }
 
-fn remove_tgz_files(dir: &Path) {
+pub fn remove_tgz_files(dir: &Path) {
     let Ok(entries) = fs::read_dir(dir) else {
         return;
     };

@@ -45,3 +45,61 @@ fn command_run_defaults_are_empty() {
     assert!(cli.args.cwd.is_none());
     assert!(cli.args.args.is_empty());
 }
+
+// ---------------------------------------------------------------------------
+// package name and command discovery
+// ---------------------------------------------------------------------------
+
+mod support;
+
+use cli::commands::command_run::{package_name, visit_command_files};
+use support::TempDir;
+
+#[test]
+fn package_name_reads_the_manifest() {
+    let dir = TempDir::new("command-run-name");
+    dir.write("package.json", r#"{"name": "@acme/user"}"#);
+
+    assert_eq!(package_name(dir.path(), "fallback"), "@acme/user");
+}
+
+#[test]
+fn package_name_falls_back_when_the_manifest_is_unusable() {
+    let dir = TempDir::new("command-run-name-fallback");
+
+    assert_eq!(package_name(dir.path(), "fallback"), "fallback");
+
+    dir.write("package.json", "not json");
+    assert_eq!(package_name(dir.path(), "fallback"), "fallback");
+
+    dir.write("package.json", r#"{"version": "1.0.0"}"#);
+    assert_eq!(package_name(dir.path(), "fallback"), "fallback");
+}
+
+#[test]
+fn visit_command_files_collects_nested_command_classes() {
+    let dir = TempDir::new("command-run-visit");
+    dir.write("commands/SeedCommand.ts", "");
+    dir.write("commands/nested/MigrateCommand.ts", "");
+    dir.write("commands/helper.ts", "");
+
+    let mut files = Vec::new();
+    visit_command_files(dir.path(), &mut files);
+    let mut names: Vec<String> = files
+        .iter()
+        .filter_map(|p| p.file_name().and_then(|n| n.to_str()).map(str::to_string))
+        .collect();
+    names.sort();
+
+    assert_eq!(names, ["MigrateCommand.ts", "SeedCommand.ts"]);
+}
+
+#[test]
+fn visit_command_files_is_empty_for_a_missing_directory() {
+    let dir = TempDir::new("command-run-visit-missing");
+
+    let mut files = Vec::new();
+    visit_command_files(&dir.path().join("nope"), &mut files);
+
+    assert!(files.is_empty());
+}

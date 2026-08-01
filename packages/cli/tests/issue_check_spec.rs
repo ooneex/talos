@@ -990,3 +990,140 @@ fn the_id_filter_narrows_the_report_but_keeps_dependencies_resolvable() {
     assert_eq!(report.files, 1);
     assert!(report.diagnostics.is_empty(), "{:?}", rules(&report));
 }
+
+// ---------------------------------------------------------------------------
+// checkbox grammar, module types and small formatters
+// ---------------------------------------------------------------------------
+
+use cli::commands::issue_check::{
+    backticked_id_suffix, parse_checkbox, parse_numbered_checkbox, quote_list, read_module_type,
+    relative_to, value_kind,
+};
+use serde_yaml::Value;
+
+#[test]
+fn value_kind_names_every_yaml_shape() {
+    assert_eq!(value_kind(&Value::Null), "null");
+    assert_eq!(value_kind(&Value::Bool(true)), "a boolean");
+    assert_eq!(value_kind(&Value::Number(1.into())), "a number");
+    assert_eq!(value_kind(&Value::String("x".into())), "a string");
+    assert_eq!(value_kind(&Value::Sequence(vec![])), "a sequence");
+    assert_eq!(value_kind(&Value::Mapping(Default::default())), "a mapping");
+}
+
+#[test]
+fn parse_checkbox_reads_state_and_indent() {
+    let unchecked = parse_checkbox("- [ ] Do the thing").expect("a checkbox line");
+    assert_eq!(unchecked.indent, 0);
+    assert!(!unchecked.checked);
+    assert!(!unchecked.uppercase);
+
+    let checked = parse_checkbox("    - [x] Done").expect("a checkbox line");
+    assert_eq!(checked.indent, 4);
+    assert!(checked.checked);
+    assert!(!checked.uppercase);
+
+    // `X` is accepted but flagged, so the writer can be told to lower-case it.
+    let upper = parse_checkbox("- [X] Done").expect("a checkbox line");
+    assert!(upper.checked);
+    assert!(upper.uppercase);
+}
+
+#[test]
+fn parse_checkbox_rejects_lines_that_are_not_checkboxes() {
+    assert!(parse_checkbox("- a plain bullet").is_none());
+    assert!(parse_checkbox("- [?] unknown marker").is_none());
+    // An empty label is not a step.
+    assert!(parse_checkbox("- [ ]   ").is_none());
+    // The `] ` separator is required.
+    assert!(parse_checkbox("- [ ]no space").is_none());
+}
+
+#[test]
+fn parse_numbered_checkbox_reads_the_number_and_state() {
+    let first = parse_numbered_checkbox("1. [ ] Open the app").expect("a numbered checkbox");
+    assert_eq!(first.number, 1);
+    assert!(!first.checked);
+
+    let tenth = parse_numbered_checkbox("10. [x] Close it").expect("a numbered checkbox");
+    assert_eq!(tenth.number, 10);
+    assert!(tenth.checked);
+}
+
+#[test]
+fn parse_numbered_checkbox_rejects_indented_or_malformed_lines() {
+    // A numbered step is always top level.
+    assert!(parse_numbered_checkbox(" 1. [ ] Indented").is_none());
+    assert!(parse_numbered_checkbox("- [ ] Not numbered").is_none());
+    assert!(parse_numbered_checkbox("1. [?] Unknown").is_none());
+    assert!(parse_numbered_checkbox("1. [ ]   ").is_none());
+}
+
+#[test]
+fn quote_list_backticks_every_value() {
+    assert_eq!(quote_list(&["Todo", "Done"]), "`Todo`, `Done`");
+    assert_eq!(quote_list(&["only"]), "`only`");
+    assert_eq!(quote_list(&[]), "");
+}
+
+#[test]
+fn backticked_id_suffix_finds_an_id_reference() {
+    assert_eq!(
+        backticked_id_suffix("The `userId` must be set").as_deref(),
+        Some("userId")
+    );
+    assert_eq!(
+        backticked_id_suffix("Use `order_Id` here").as_deref(),
+        Some("order_Id")
+    );
+}
+
+#[test]
+fn backticked_id_suffix_ignores_anything_else() {
+    assert!(backticked_id_suffix("No backticks at all").is_none());
+    assert!(backticked_id_suffix("The `user` is fine").is_none());
+    // Text outside the backticks is not inspected.
+    assert!(backticked_id_suffix("userId without backticks").is_none());
+    // Too short to be a real name.
+    assert!(backticked_id_suffix("The `Id` alone").is_none());
+}
+
+#[test]
+fn relative_to_cuts_the_root_off_a_path() {
+    let root = Path::new("/repo");
+
+    assert_eq!(
+        relative_to(root, &root.join("modules/user/issues/OON-1.yml")),
+        "modules/user/issues/OON-1.yml"
+    );
+}
+
+#[test]
+fn relative_to_leaves_a_path_outside_the_root_alone() {
+    let out = relative_to(Path::new("/repo"), Path::new("/elsewhere/file.yml"));
+
+    assert!(out.contains("file.yml"));
+}
+
+#[test]
+fn read_module_type_reads_the_yml_descriptor() {
+    let dir = std::env::temp_dir().join(format!(
+        "talos-issue-check-type-{}-{:?}",
+        std::process::id(),
+        std::thread::current().id()
+    ));
+    let _ = fs::remove_dir_all(&dir);
+    fs::create_dir_all(&dir).expect("temp dir should be creatable");
+
+    fs::write(dir.join("user.yml"), "name: \"user\"\ntype: \"api\"\n").unwrap();
+    assert_eq!(read_module_type(&dir, "user").as_deref(), Some("api"));
+
+    // A trailing comment is not part of the value.
+    fs::write(dir.join("web.yml"), "type: spa # the front end\n").unwrap();
+    assert_eq!(read_module_type(&dir, "web").as_deref(), Some("spa"));
+
+    // No descriptor at all.
+    assert!(read_module_type(&dir, "missing").is_none());
+
+    let _ = fs::remove_dir_all(&dir);
+}

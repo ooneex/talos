@@ -196,7 +196,7 @@ fn spawn_process(
 }
 
 /// Truncates a command line for the `command` prefix style.
-fn truncate_command(command_line: &str, prefix_length: usize) -> String {
+pub fn truncate_command(command_line: &str, prefix_length: usize) -> String {
     if prefix_length == 0 || command_line.chars().count() <= prefix_length {
         return command_line.to_string();
     }
@@ -227,7 +227,7 @@ pub fn prefix_label(
     }
 }
 
-fn colorize(color: PrefixColor, index: usize, text: &str) -> String {
+pub fn colorize(color: PrefixColor, index: usize, text: &str) -> String {
     let base = style(text).bold();
     let resolved = match color {
         PrefixColor::Auto => match index % 6 {

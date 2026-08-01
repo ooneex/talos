@@ -57,3 +57,57 @@ fn controller_create_defaults_are_empty() {
 fn controller_create_rejects_unknown_flag() {
     assert!(TestCli::try_parse_from(["talos", "--definitely-not-a-flag"]).is_err());
 }
+
+// ---------------------------------------------------------------------------
+// route normalization and module registration
+// ---------------------------------------------------------------------------
+
+mod support;
+
+use cli::commands::controller_create::{add_class_to_module, normalize_route_path};
+use support::TempDir;
+
+#[test]
+fn normalize_route_path_kebab_cases_each_segment() {
+    assert_eq!(
+        normalize_route_path("/myUsers/subPath"),
+        "/my-users/sub-path"
+    );
+    assert_eq!(normalize_route_path("users"), "/users");
+}
+
+#[test]
+fn normalize_route_path_keeps_parameters_marked() {
+    assert_eq!(normalize_route_path("/users/:userId"), "/users/:user-id");
+}
+
+#[test]
+fn normalize_route_path_collapses_slashes_and_keeps_root() {
+    assert_eq!(normalize_route_path("/"), "/");
+    assert_eq!(normalize_route_path("  /  "), "/");
+    assert_eq!(normalize_route_path("//users//list//"), "/users/list");
+}
+
+#[test]
+fn add_class_to_module_imports_and_registers_the_controller() {
+    let dir = TempDir::new("controller-module");
+    let path = dir.write(
+        "user.module.ts",
+        "import { Module } from \"@talosjs/module\";\n\nexport const UserModule = {\n  controllers: [],\n};\n",
+    );
+
+    add_class_to_module(&path, "UserFindController").expect("the class should be registered");
+
+    let out = dir.read("user.module.ts");
+    assert!(
+        out.contains(r#"import { UserFindController } from "./controllers/UserFindController";"#)
+    );
+    assert!(out.contains("UserFindController"));
+}
+
+#[test]
+fn add_class_to_module_reports_a_missing_module_file() {
+    let dir = TempDir::new("controller-module-missing");
+
+    assert!(add_class_to_module(&dir.path().join("nope.ts"), "XController").is_err());
+}

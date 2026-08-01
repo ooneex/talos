@@ -14,7 +14,7 @@ mod monorepo;
 mod monorepo_batch;
 mod monorepo_footer;
 pub mod monorepo_group;
-mod monorepo_scheduler;
+pub mod monorepo_scheduler;
 pub mod monorepo_task;
 mod parallel;
 mod process;
@@ -36,8 +36,8 @@ pub use commitlint::{
 };
 pub use concurrently::{
     CloseEvent, ConcurrentCommand, ConcurrentlyOptions, ConcurrentlyOutcome, KillCondition,
-    PrefixColor, PrefixStyle, StartupNotice, SuccessCondition, prefix_label,
-    run as run_concurrently, run_is_successful, should_kill_others,
+    PrefixColor, PrefixStyle, StartupNotice, SuccessCondition, colorize, prefix_label,
+    run as run_concurrently, run_is_successful, should_kill_others, truncate_command,
 };
 pub use credentials::{read_credentials, save_credentials};
 pub use git::{
@@ -72,8 +72,9 @@ pub use process::{ensure_bin, run_spinner_step, run_step};
 pub use prompts::{
     ask_confirm, ask_destination, ask_destination_module, ask_input, ask_input_with_default,
     ask_multiselect, ask_name, ask_password, ask_plain_input, ask_route_method, ask_route_name,
-    ask_route_path, ask_select, resolve_name_and_destination, validate_destination, validate_name,
-    validate_route_method, validate_route_name, validate_route_path,
+    ask_route_path, ask_select, find_destination_modules, resolve_name_and_destination,
+    validate_destination, validate_name, validate_route_method, validate_route_name,
+    validate_route_path,
 };
 pub use provider::Provider;
 pub use run_module_scripts::{RunModuleScriptsOptions, run_module_scripts};

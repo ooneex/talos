@@ -15,13 +15,13 @@ struct TargetDir {
     kind: String,
 }
 
-#[derive(Clone)]
-struct CommitInfo {
-    hash: String,
-    r#type: String,
-    subject: String,
-    author: String,
-    breaking: bool,
+#[derive(Clone, Debug)]
+pub struct CommitInfo {
+    pub hash: String,
+    pub r#type: String,
+    pub subject: String,
+    pub author: String,
+    pub breaking: bool,
 }
 
 #[derive(Clone)]
@@ -152,7 +152,7 @@ fn get_commits_since_tag(cwd: &Path, tag: Option<&str>, dir_path: &str) -> Vec<C
     commits
 }
 
-fn determine_bump_type(commits: &[CommitInfo]) -> &'static str {
+pub fn determine_bump_type(commits: &[CommitInfo]) -> &'static str {
     let mut bump = "patch";
     for commit in commits {
         if commit.breaking {
@@ -165,7 +165,7 @@ fn determine_bump_type(commits: &[CommitInfo]) -> &'static str {
     bump
 }
 
-fn bump_version(version: &str, kind: &str) -> String {
+pub fn bump_version(version: &str, kind: &str) -> String {
     let parts: Vec<u64> = version
         .split('.')
         .filter_map(|p| p.parse::<u64>().ok())
@@ -189,7 +189,7 @@ fn get_repo_url(cwd: &Path) -> Option<String> {
     })
 }
 
-fn update_changelog(
+pub fn update_changelog(
     dir: &Path,
     version: &str,
     tag: &str,
@@ -255,7 +255,7 @@ fn update_changelog(
     let _ = fs::write(changelog_path, new_content);
 }
 
-fn update_cargo_version(path: &Path, new_version: &str) {
+pub fn update_cargo_version(path: &Path, new_version: &str) {
     let Ok(content) = fs::read_to_string(path) else {
         return;
     };

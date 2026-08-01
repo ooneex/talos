@@ -41,7 +41,7 @@ pub struct DockerCreateArgs {
     pub cwd: Option<String>,
 }
 
-fn template_for(dir: &std::path::Path, name: &str) -> Option<String> {
+pub fn template_for(dir: &std::path::Path, name: &str) -> Option<String> {
     if DOCKER_SERVICES.contains(&name) {
         read_template(dir, &format!("docker/{name}.txt"))
     } else {
@@ -49,7 +49,7 @@ fn template_for(dir: &std::path::Path, name: &str) -> Option<String> {
     }
 }
 
-fn extract_service_block(template: &str) -> String {
+pub fn extract_service_block(template: &str) -> String {
     let mut result = Vec::new();
     let mut in_services = false;
 
@@ -69,7 +69,7 @@ fn extract_service_block(template: &str) -> String {
     result.join("\n")
 }
 
-fn extract_volume_names(template: &str) -> Vec<String> {
+pub fn extract_volume_names(template: &str) -> Vec<String> {
     let mut volumes = Vec::new();
     let mut in_volumes = false;
 
@@ -94,7 +94,7 @@ fn extract_volume_names(template: &str) -> Vec<String> {
     volumes
 }
 
-fn service_exists(content: &str, name: &str) -> bool {
+pub fn service_exists(content: &str, name: &str) -> bool {
     content
         .lines()
         .any(|line| line.trim_end() == format!("  {name}:"))
