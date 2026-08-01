@@ -59,13 +59,25 @@ fn workspace() -> (tempfile::TempDir, PathBuf) {
     // A module with a manifest but no tests/ directory carries nothing to run.
     let bare = root.join("modules/bare");
     write(&bare.join("bare.yml"), "type: \"module\"\n");
-    write(&bare.join("package.json"), "{ \"name\": \"@module/bare\" }\n");
-    write(&bare.join("src/index.ts"), "export const noop = (): void => {};\n");
+    write(
+        &bare.join("package.json"),
+        "{ \"name\": \"@module/bare\" }\n",
+    );
+    write(
+        &bare.join("src/index.ts"),
+        "export const noop = (): void => {};\n",
+    );
 
     // A Python distribution is measured by a toolchain this command never drives.
     let py = root.join("packages/analysis");
-    write(&py.join("pyproject.toml"), "[project]\nname = \"analysis\"\n");
-    write(&py.join("tests/test_it.py"), "def test_it():\n    assert True\n");
+    write(
+        &py.join("pyproject.toml"),
+        "[project]\nname = \"analysis\"\n",
+    );
+    write(
+        &py.join("tests/test_it.py"),
+        "def test_it():\n    assert True\n",
+    );
 
     (dir, root)
 }
@@ -248,7 +260,12 @@ fn a_workspace_that_clears_the_threshold_exits_zero() {
 
     let output = talos(
         &root,
-        &["coverage:check", "--no-cache", "--modules=covered", "--strict"],
+        &[
+            "coverage:check",
+            "--no-cache",
+            "--modules=covered",
+            "--strict",
+        ],
     );
 
     assert!(output.status.success(), "{}", text(&output));
@@ -300,7 +317,10 @@ fn a_workspace_with_no_suite_says_so_instead_of_drawing_an_empty_table() {
     write(&root.join("package.json"), "{ \"name\": \"scratch\" }\n");
     let bare = root.join("modules/bare");
     write(&bare.join("bare.yml"), "type: \"module\"\n");
-    write(&bare.join("package.json"), "{ \"name\": \"@module/bare\" }\n");
+    write(
+        &bare.join("package.json"),
+        "{ \"name\": \"@module/bare\" }\n",
+    );
 
     let output = talos(root, &["coverage:check", "--no-cache"]);
 
@@ -364,7 +384,11 @@ fn issues_says_so_when_every_module_clears_the_threshold() {
         ],
     );
 
-    assert!(text(&output).contains("no issues created"), "{}", text(&output));
+    assert!(
+        text(&output).contains("no issues created"),
+        "{}",
+        text(&output)
+    );
 }
 
 /// The single YAML file written into an `issues/` directory.
@@ -390,7 +414,9 @@ fn stub_cargo(tag: &str, lcov_body: Option<&str>) -> PathBuf {
     fs::create_dir_all(&dir).expect("create stub dir");
 
     let write_report = match lcov_body {
-        Some(body) => format!("mkdir -p \"$(dirname \"$4\")\"\ncat > \"$4\" <<'LCOV'\n{body}\nLCOV"),
+        Some(body) => {
+            format!("mkdir -p \"$(dirname \"$4\")\"\ncat > \"$4\" <<'LCOV'\n{body}\nLCOV")
+        }
         None => String::new(),
     };
     let script = format!(
@@ -426,7 +452,10 @@ fn rust_workspace() -> (tempfile::TempDir, PathBuf) {
         "[package]\nname = \"engine\"\nversion = \"0.1.0\"\nedition = \"2021\"\n",
     );
     write(&crate_dir.join("src/lib.rs"), "pub fn add() -> u8 { 1 }\n");
-    write(&crate_dir.join("tests/add_spec.rs"), "#[test]\nfn adds() {}\n");
+    write(
+        &crate_dir.join("tests/add_spec.rs"),
+        "#[test]\nfn adds() {}\n",
+    );
     (dir, root)
 }
 

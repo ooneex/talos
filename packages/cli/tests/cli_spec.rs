@@ -61,23 +61,38 @@ fn seed_home(home: &Path) {
         &skeleton.join("templates/module/tsconfig.txt"),
         "{ \"extends\": \"../../tsconfig.json\" }\n",
     );
-    write(&skeleton.join("templates/module/yml.txt"), "type: \"module\"\n");
+    write(
+        &skeleton.join("templates/module/yml.txt"),
+        "type: \"module\"\n",
+    );
     write(
         &skeleton.join("templates/module/test.txt"),
         "// {{NAME}}Module {{name}}\n",
     );
-    write(&skeleton.join("templates/module/bunfig.txt"), "[test]\ncoverage = true\n");
-    write(&skeleton.join("templates/service.txt"), "export class {{NAME}}Service {}\n");
+    write(
+        &skeleton.join("templates/module/bunfig.txt"),
+        "[test]\ncoverage = true\n",
+    );
+    write(
+        &skeleton.join("templates/service.txt"),
+        "export class {{NAME}}Service {}\n",
+    );
     write(
         &skeleton.join("templates/service.test.txt"),
         "// {{NAME}}Service in {{MODULE}}\n",
     );
-    write(&skeleton.join("templates/cache.txt"), "export class {{NAME}}Cache {}\n");
+    write(
+        &skeleton.join("templates/cache.txt"),
+        "export class {{NAME}}Cache {}\n",
+    );
     write(
         &skeleton.join("templates/cache.test.txt"),
         "// {{NAME}}Cache in {{MODULE}}\n",
     );
-    write(&skeleton.join("templates/e2e.spec.txt"), "// {{NAME}} e2e\n");
+    write(
+        &skeleton.join("templates/e2e.spec.txt"),
+        "// {{NAME}} e2e\n",
+    );
     write(
         &skeleton.join("templates/playwright.config.txt"),
         "export default { testDir: \"./e2e\" };\n",
@@ -293,7 +308,12 @@ fn project_check_prints_a_json_report_for_the_checks_it_was_asked_for() {
     let output = talos(
         root.path(),
         home.path(),
-        &["project:check", "--only=folders,git,docs", "--json", "--no-cache"],
+        &[
+            "project:check",
+            "--only=folders,git,docs",
+            "--json",
+            "--no-cache",
+        ],
     );
 
     let payload: serde_json::Value =
@@ -349,12 +369,19 @@ fn coverage_check_says_so_when_no_module_carries_a_suite() {
     let home = Scratch::new("coverage-home");
     let root = Scratch::new("coverage-root");
     seed_home(home.path());
-    write(&root.path().join("package.json"), "{ \"name\": \"empty\" }\n");
+    write(
+        &root.path().join("package.json"),
+        "{ \"name\": \"empty\" }\n",
+    );
 
     let output = talos(root.path(), home.path(), &["coverage:check", "--no-cache"]);
 
     assert!(output.status.success(), "{output:?}");
-    let text = format!("{}{}", stdout(&output), String::from_utf8_lossy(&output.stderr));
+    let text = format!(
+        "{}{}",
+        stdout(&output),
+        String::from_utf8_lossy(&output.stderr)
+    );
     assert!(text.contains("No module"), "{text}");
 }
 
@@ -380,7 +407,11 @@ fn issue_check_reports_a_malformed_issue() {
 
     let output = talos(root.path(), home.path(), &["issue:check"]);
 
-    let text = format!("{}{}", stdout(&output), String::from_utf8_lossy(&output.stderr));
+    let text = format!(
+        "{}{}",
+        stdout(&output),
+        String::from_utf8_lossy(&output.stderr)
+    );
     assert!(
         text.contains("OON-123456"),
         "the broken issue is named: {text}"
@@ -407,11 +438,7 @@ fn issue_convert_bundles_the_modules_issues_into_one_file() {
     let payload: serde_json::Value =
         serde_json::from_str(&fs::read_to_string(&bundle).expect("read bundle"))
             .expect("valid JSON");
-    assert!(
-        payload.to_string().contains("OON-123456"),
-        "{}",
-        payload
-    );
+    assert!(payload.to_string().contains("OON-123456"), "{}", payload);
 }
 
 #[test]
@@ -421,7 +448,12 @@ fn monorepo_run_over_a_workspace_with_no_matching_script_succeeds() {
     let output = talos(
         root.path(),
         home.path(),
-        &["monorepo:run", "--commands=definitely-not-a-script", "--logs", "--no-cache"],
+        &[
+            "monorepo:run",
+            "--commands=definitely-not-a-script",
+            "--logs",
+            "--no-cache",
+        ],
     );
 
     assert!(output.status.success(), "{output:?}");

@@ -160,12 +160,18 @@ fn only_a_directory_carrying_a_lockfile_counts_as_a_module_to_audit() {
     let dir = tempfile::tempdir().expect("create temp dir");
     let root = dir.path();
     write(&root.join("package.json"), "{ \"name\": \"scratch\" }\n");
-    write(&root.join("modules/user/package.json"), "{ \"name\": \"user\" }\n");
+    write(
+        &root.join("modules/user/package.json"),
+        "{ \"name\": \"user\" }\n",
+    );
     write(
         &root.join("modules/user/bun.lock"),
         "{ \"packages\": { \"left-pad\": [\"left-pad@1.3.0\", {}, \"sha\"] } }\n",
     );
-    write(&root.join("modules/bare/package.json"), "{ \"name\": \"bare\" }\n");
+    write(
+        &root.join("modules/bare/package.json"),
+        "{ \"name\": \"bare\" }\n",
+    );
 
     let modules = collect_modules(root);
 
@@ -189,7 +195,10 @@ fn the_root_takes_its_name_from_its_manifest_and_falls_back_to_its_directory() {
             .to_string()
     );
 
-    write(&dir.path().join("package.json"), "{ \"name\": \"scratch\" }\n");
+    write(
+        &dir.path().join("package.json"),
+        "{ \"name\": \"scratch\" }\n",
+    );
     assert_eq!(root_package_name(dir.path()), "scratch");
 }
 
@@ -272,7 +281,10 @@ fn a_clean_workspace_says_it_found_nothing() {
     let dir = tempfile::tempdir().expect("create temp dir");
     let root = dir.path();
     write(&root.join("package.json"), "{ \"name\": \"scratch\" }\n");
-    write(&root.join("CLAUDE.md"), "# Project\n\nRun the tests before committing.\n");
+    write(
+        &root.join("CLAUDE.md"),
+        "# Project\n\nRun the tests before committing.\n",
+    );
 
     let output = talos(root, &["security:check"]);
 
@@ -289,7 +301,11 @@ fn issues_writes_one_yaml_per_finding_carrying_the_rule_and_the_fix() {
 
     let output = talos(&root, &["security:check", "--issues"]);
 
-    assert!(text(&output).contains("security issue"), "{}", text(&output));
+    assert!(
+        text(&output).contains("security issue"),
+        "{}",
+        text(&output)
+    );
 
     let issues_dir = root.join("modules/shared/issues");
     let bodies: Vec<String> = fs::read_dir(&issues_dir)
@@ -300,7 +316,9 @@ fn issues_writes_one_yaml_per_finding_carrying_the_rule_and_the_fix() {
 
     assert!(!bodies.is_empty(), "at least one issue was written");
     assert!(
-        bodies.iter().any(|body| body.contains("TALOS-LLM-INJECTION")),
+        bodies
+            .iter()
+            .any(|body| body.contains("TALOS-LLM-INJECTION")),
         "{bodies:?}"
     );
     assert!(

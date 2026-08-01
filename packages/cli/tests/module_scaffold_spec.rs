@@ -34,7 +34,9 @@ fn ui_template(dir: &Path, kind: &str) {
     );
     write(
         &dir.join("package.json"),
-        &format!("{{\n  \"name\": \"@module/{kind}\",\n  \"scripts\": {{ \"test\": \"bun test\" }}\n}}\n"),
+        &format!(
+            "{{\n  \"name\": \"@module/{kind}\",\n  \"scripts\": {{ \"test\": \"bun test\" }}\n}}\n"
+        ),
     );
     write(
         &dir.join("vite.config.ts"),
@@ -42,7 +44,9 @@ fn ui_template(dir: &Path, kind: &str) {
     );
     write(
         &dir.join("src/main.ts"),
-        &format!("import {{ App }} from \"@module/{kind}/App\";\n\nexport const boot = () => App;\n"),
+        &format!(
+            "import {{ App }} from \"@module/{kind}/App\";\n\nexport const boot = () => App;\n"
+        ),
     );
     write(&dir.join("src/App.ts"), "export const App = () => null;\n");
 }
@@ -65,7 +69,10 @@ fn seed(home: &Path) {
     ui_template(&skeleton.join("modules/storybook"), "storybook");
 
     let microservice = skeleton.join("modules/microservice");
-    write(&microservice.join("microservice.yml"), "type: \"microservice\"\n");
+    write(
+        &microservice.join("microservice.yml"),
+        "type: \"microservice\"\n",
+    );
     write(
         &microservice.join("package.json"),
         "{\n  \"name\": \"@module/microservice\"\n}\n",
@@ -95,7 +102,10 @@ fn seed(home: &Path) {
         &skeleton.join("templates/module/test.txt"),
         "// {{NAME}}Module {{name}}\n",
     );
-    write(&skeleton.join("templates/module/yml.txt"), "type: \"module\"\n");
+    write(
+        &skeleton.join("templates/module/yml.txt"),
+        "type: \"module\"\n",
+    );
     write(
         &skeleton.join("templates/github/microservice-ci.yml.txt"),
         "name: {{name}} ci\nenv: {{NAME_UPPER}}\n",
@@ -115,10 +125,14 @@ fn seed(home: &Path) {
 }
 
 fn workspace() -> PathBuf {
-    let root = std::env::temp_dir().join(format!("talos-skeleton-workspace-{}", std::process::id()));
+    let root =
+        std::env::temp_dir().join(format!("talos-skeleton-workspace-{}", std::process::id()));
     let _ = fs::remove_dir_all(&root);
     fs::create_dir_all(root.join("modules")).expect("create workspace");
-    write(&root.join("tsconfig.json"), "{ \"compilerOptions\": { \"paths\": {} } }\n");
+    write(
+        &root.join("tsconfig.json"),
+        "{ \"compilerOptions\": { \"paths\": {} } }\n",
+    );
     write(&root.join("package.json"), "{ \"name\": \"scratch\" }\n");
     root
 }
@@ -302,7 +316,10 @@ fn scratch() -> (tempfile::TempDir, tempfile::TempDir) {
     let home = tempfile::tempdir().expect("create temp home");
     let root = tempfile::tempdir().expect("create temp dir");
     seed(home.path());
-    write(&root.path().join("package.json"), "{ \"name\": \"scratch\" }\n");
+    write(
+        &root.path().join("package.json"),
+        "{ \"name\": \"scratch\" }\n",
+    );
     write(
         &root.path().join("tsconfig.json"),
         "{ \"compilerOptions\": { \"paths\": {} } }\n",
@@ -333,17 +350,25 @@ fn a_microservice_in_a_github_repository_gets_its_workflows_written() {
     let (home, root) = scratch();
     write(&root.path().join(".github/workflows/.gitkeep"), "");
 
-    let output = talos(root.path(), home.path(), &["microservice:create", "--name=billing"]);
+    let output = talos(
+        root.path(),
+        home.path(),
+        &["microservice:create", "--name=billing"],
+    );
 
     assert!(output.status.success(), "{output:?}");
     let ci = read(&root.path().join(".github/workflows/billing-ci.yml"));
     assert!(ci.contains("billing ci"), "{ci}");
-    assert!(ci.contains("BILLING"), "the upper-cased name is substituted: {ci}");
     assert!(
-        root.path().join(".github/workflows/billing-production.yml").is_file(),
+        ci.contains("BILLING"),
+        "the upper-cased name is substituted: {ci}"
+    );
+    assert!(
+        root.path()
+            .join(".github/workflows/billing-production.yml")
+            .is_file(),
         "the production workflow is written too"
     );
-
 }
 
 #[test]
@@ -351,7 +376,11 @@ fn a_microservice_in_a_gitlab_repository_gets_a_job_and_an_include() {
     let (home, root) = scratch();
     write(&root.path().join(".gitlab-ci.yml"), "stages:\n  - build\n");
 
-    let output = talos(root.path(), home.path(), &["microservice:create", "--name=billing"]);
+    let output = talos(
+        root.path(),
+        home.path(),
+        &["microservice:create", "--name=billing"],
+    );
 
     assert!(output.status.success(), "{output:?}");
     assert!(read(&root.path().join(".gitlab/ci/billing.yml")).contains("billing-job"));
@@ -359,22 +388,27 @@ fn a_microservice_in_a_gitlab_repository_gets_a_job_and_an_include() {
         read(&root.path().join(".gitlab-ci.yml")).contains("billing"),
         "the root pipeline includes the new job"
     );
-
 }
 
 #[test]
 fn a_microservice_in_a_bitbucket_repository_gets_a_pipelines_file_to_merge() {
     let (home, root) = scratch();
-    write(&root.path().join("bitbucket-pipelines.yml"), "pipelines:\n  default: []\n");
+    write(
+        &root.path().join("bitbucket-pipelines.yml"),
+        "pipelines:\n  default: []\n",
+    );
 
-    let output = talos(root.path(), home.path(), &["microservice:create", "--name=billing"]);
+    let output = talos(
+        root.path(),
+        home.path(),
+        &["microservice:create", "--name=billing"],
+    );
 
     assert!(output.status.success(), "{output:?}");
     assert!(
         read(&root.path().join(".bitbucket/billing-pipelines.yml")).contains("billing"),
         "the pipeline is written beside the root one rather than into it"
     );
-
 }
 
 #[test]
@@ -389,7 +423,6 @@ fn a_front_end_generator_asked_for_nothing_gives_up_rather_than_guessing() {
         !root.path().join("modules/spa").exists(),
         "nothing is scaffolded from an unanswered prompt"
     );
-
 }
 
 #[test]
@@ -408,5 +441,4 @@ fn a_spa_naming_a_design_that_is_not_there_yet_scaffolds_it_too() {
         root.path().join("modules/brand").is_dir(),
         "the design module the spa points at is created alongside it"
     );
-
 }

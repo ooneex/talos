@@ -10,7 +10,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 
-use cli::commands::npm_publish::{discover, percent_encode, remove_tgz_files, resolve_targets, split_csv};
+use cli::commands::npm_publish::{
+    discover, percent_encode, remove_tgz_files, resolve_targets, split_csv,
+};
 
 fn write(path: &Path, content: &str) {
     fs::create_dir_all(path.parent().expect("a parent")).expect("create parent");
@@ -113,9 +115,12 @@ fn a_provider_asking_for_several_fields_writes_all_of_them() {
         ],
     );
 
-    let profile =
-        fs::read_to_string(home.path().join(".talos/credentials/jira.yml")).expect("the profile was written");
-    assert!(profile.contains("https://example.atlassian.net"), "{profile}");
+    let profile = fs::read_to_string(home.path().join(".talos/credentials/jira.yml"))
+        .expect("the profile was written");
+    assert!(
+        profile.contains("https://example.atlassian.net"),
+        "{profile}"
+    );
     assert!(profile.contains("me@example.com"), "{profile}");
     assert!(profile.contains("jira-token"), "{profile}");
 }
@@ -128,7 +133,12 @@ fn a_field_the_run_cannot_ask_for_leaves_no_profile_behind() {
     // closed, so the run gives up rather than writing half a profile.
     talos_bare(
         home.path(),
-        &["credentials:create", "--provider=x", "--client-id=abc", "--silent"],
+        &[
+            "credentials:create",
+            "--provider=x",
+            "--client-id=abc",
+            "--silent",
+        ],
     );
 
     assert!(
@@ -201,7 +211,12 @@ fn publishing_without_a_stored_token_says_which_command_creates_one() {
     let (_dir, root) = workspace();
     let home = home();
 
-    let output = talos(&root, home.path(), true, &["npm:publish", "--packages=core"]);
+    let output = talos(
+        &root,
+        home.path(),
+        true,
+        &["npm:publish", "--packages=core"],
+    );
 
     assert!(!output.status.success());
     assert!(
@@ -363,17 +378,33 @@ fn issue_create_writes_a_todo_issue_the_checker_accepts() {
     assert!(issue.contains("Add pagination"), "{issue}");
     assert!(issue.contains("High"), "{issue}");
     assert!(issue.contains("Feature"), "{issue}");
-    assert!(issue.contains("Todo"), "a new issue always starts in Todo: {issue}");
+    assert!(
+        issue.contains("Todo"),
+        "a new issue always starts in Todo: {issue}"
+    );
 }
 
 /// Every provider, with the flags that answer all of its fields and the file
 /// the profile lands in.
 const PROVIDERS: &[(&str, &[&str], &str)] = &[
-    ("jira", &["--base-url=https://x.atlassian.net", "--email=me@x.com", "--token=t"], "jira.yml"),
+    (
+        "jira",
+        &[
+            "--base-url=https://x.atlassian.net",
+            "--email=me@x.com",
+            "--token=t",
+        ],
+        "jira.yml",
+    ),
     ("linear", &["--token=t"], "linear.yml"),
     (
         "x",
-        &["--client-id=a", "--client-secret=b", "--access-token=c", "--client-key=d"],
+        &[
+            "--client-id=a",
+            "--client-secret=b",
+            "--access-token=c",
+            "--client-key=d",
+        ],
         "x.yml",
     ),
     (
@@ -383,7 +414,12 @@ const PROVIDERS: &[(&str, &[&str], &str)] = &[
     ),
     (
         "facebook",
-        &["--app-id=a", "--app-secret=b", "--access-token=c", "--page-id=d"],
+        &[
+            "--app-id=a",
+            "--app-secret=b",
+            "--access-token=c",
+            "--page-id=d",
+        ],
         "facebook.yml",
     ),
     (
@@ -419,7 +455,12 @@ const PROVIDERS: &[(&str, &[&str], &str)] = &[
     ),
     (
         "reddit",
-        &["--client-id=a", "--client-secret=b", "--username=c", "--password=d"],
+        &[
+            "--client-id=a",
+            "--client-secret=b",
+            "--username=c",
+            "--password=d",
+        ],
         "reddit.yml",
     ),
     ("medium", &["--token=t"], "medium.yml"),
@@ -439,9 +480,6 @@ fn every_provider_writes_the_profile_the_commands_that_use_it_read() {
         assert!(output.status.success(), "{provider}: {}", text(&output));
         let profile = fs::read_to_string(home.path().join(".talos/credentials").join(file))
             .unwrap_or_else(|_| panic!("{provider} wrote no profile"));
-        assert!(
-            profile.contains("default:"),
-            "{provider} wrote {profile}"
-        );
+        assert!(profile.contains("default:"), "{provider} wrote {profile}");
     }
 }

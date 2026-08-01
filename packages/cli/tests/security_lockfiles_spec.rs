@@ -8,9 +8,9 @@ use std::fs;
 use std::path::Path;
 
 use cli::commands::security_check::{
-    Ecosystem, PackageKey, collect_packages, parse_bun_lock, parse_cargo_lock,
-    parse_composer_lock, parse_gemfile_lock, parse_go_sum, parse_package_lock, parse_pipfile_lock,
-    parse_poetry_lock, parse_requirements_txt, parse_uv_lock, target_name, unquote,
+    Ecosystem, PackageKey, collect_packages, parse_bun_lock, parse_cargo_lock, parse_composer_lock,
+    parse_gemfile_lock, parse_go_sum, parse_package_lock, parse_pipfile_lock, parse_poetry_lock,
+    parse_requirements_txt, parse_uv_lock, target_name, unquote,
 };
 
 /// A directory holding one lockfile.
@@ -125,7 +125,11 @@ dependencies = ["memchr"]
         pairs(&packages),
         vec![("serde", "1.0.200"), ("regex", "1.13.1")]
     );
-    assert!(packages.iter().all(|key| key.ecosystem == Ecosystem::Crates));
+    assert!(
+        packages
+            .iter()
+            .all(|key| key.ecosystem == Ecosystem::Crates)
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -260,7 +264,10 @@ fn a_directory_holding_several_lockfiles_yields_every_ecosystem_in_it() {
         "bun.lock",
         "{ \"packages\": { \"left-pad\": [\"left-pad@1.3.0\", {}, \"sha\"] } }",
     );
-    write("Cargo.lock", "[[package]]\nname = \"serde\"\nversion = \"1.0.200\"\n");
+    write(
+        "Cargo.lock",
+        "[[package]]\nname = \"serde\"\nversion = \"1.0.200\"\n",
+    );
     write("requirements.txt", "django==5.0.1\n");
     write("go.sum", "golang.org/x/net v0.20.0 h1:abc=\n");
     write("Gemfile.lock", "GEM\n  specs:\n    rake (13.1.0)\n");

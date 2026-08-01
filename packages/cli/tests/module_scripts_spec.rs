@@ -31,7 +31,10 @@ fn workspace() -> (tempfile::TempDir, PathBuf, PathBuf) {
 
     write(&root.join("package.json"), "{ \"name\": \"scratch\" }\n");
     let user = root.join("modules/user");
-    write(&user.join("package.json"), "{ \"name\": \"@module/user\" }\n");
+    write(
+        &user.join("package.json"),
+        "{ \"name\": \"@module/user\" }\n",
+    );
     write(&user.join("bin/migration/up.ts"), &recorder(&log));
     write(&user.join("bin/migration/down.ts"), &recorder(&log));
     write(&user.join("bin/seed/run.ts"), &recorder(&log));
@@ -132,7 +135,10 @@ fn seed_run_carries_the_environment_it_was_given() {
 #[test]
 fn a_workspace_with_no_module_carrying_the_script_says_so_rather_than_failing() {
     let dir = tempfile::tempdir().expect("create temp dir");
-    write(&dir.path().join("package.json"), "{ \"name\": \"scratch\" }\n");
+    write(
+        &dir.path().join("package.json"),
+        "{ \"name\": \"scratch\" }\n",
+    );
 
     let output = talos(dir.path(), &["seed:run"]);
 
@@ -184,7 +190,14 @@ fn extra_arguments_are_handed_to_the_command_untouched() {
     // The trailing arguments have to come last, so `--cwd` is placed by hand.
     let cwd = format!("--cwd={}", root.display());
     Command::new(env!("CARGO_BIN_EXE_talos"))
-        .args(["command:run", "--id=sync:users", &cwd, "--", "--force", "42"])
+        .args([
+            "command:run",
+            "--id=sync:users",
+            &cwd,
+            "--",
+            "--force",
+            "42",
+        ])
         .env("NO_COLOR", "1")
         .stdin(Stdio::null())
         .output()

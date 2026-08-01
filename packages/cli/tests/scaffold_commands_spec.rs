@@ -29,14 +29,8 @@ const TEMPLATES: &[(&str, &str)] = &[
     ),
     ("ai-tool.txt", "export class {{NAME}}Tool {} // {{SNAKE}}\n"),
     ("ai-tool.test.txt", "// {{NAME}}Tool in {{MODULE}}\n"),
-    (
-        "analytics.txt",
-        "export class {{NAME}}Analytics {}\n",
-    ),
-    (
-        "analytics.test.txt",
-        "// {{NAME}}Analytics in {{MODULE}}\n",
-    ),
+    ("analytics.txt", "export class {{NAME}}Analytics {}\n"),
+    ("analytics.test.txt", "// {{NAME}}Analytics in {{MODULE}}\n"),
     ("cache.txt", "export class {{NAME}}Cache {}\n"),
     ("cache.test.txt", "// {{NAME}}Cache in {{MODULE}}\n"),
     ("cron.txt", "export class {{NAME}}Cron {}\n"),
@@ -46,7 +40,10 @@ const TEMPLATES: &[(&str, &str)] = &[
     ("event.txt", "export class {{NAME}}Event {}\n"),
     ("event.test.txt", "// {{NAME}}Event in {{MODULE}}\n"),
     ("feature-flag.txt", "export class {{NAME}}FeatureFlag {}\n"),
-    ("feature-flag.test.txt", "// {{NAME}}FeatureFlag in {{MODULE}}\n"),
+    (
+        "feature-flag.test.txt",
+        "// {{NAME}}FeatureFlag in {{MODULE}}\n",
+    ),
     ("logger.txt", "export class {{NAME}}Logger {}\n"),
     ("logger.test.txt", "// {{NAME}}Logger in {{MODULE}}\n"),
     ("permission.txt", "export class {{NAME}}Permission {}\n"),
@@ -109,7 +106,10 @@ const TEMPLATES: &[(&str, &str)] = &[
         "controller.test.txt",
         "// {{NAME}}Controller in {{MODULE}}\n",
     ),
-    ("database.pg.txt", "export class {{NAME}}Database {} // pg\n"),
+    (
+        "database.pg.txt",
+        "export class {{NAME}}Database {} // pg\n",
+    ),
     (
         "database.redis.txt",
         "export class {{NAME}}Database {} // redis\n",
@@ -124,8 +124,14 @@ const TEMPLATES: &[(&str, &str)] = &[
         "// {{NAME}}Database redis in {{MODULE}}\n",
     ),
     ("module/module.txt", "export const {{NAME}}Module = {};\n"),
-    ("module/package.txt", "{\n  \"name\": \"@module/{{NAME}}\"\n}\n"),
-    ("module/tsconfig.txt", "{ \"extends\": \"../../tsconfig.json\" }\n"),
+    (
+        "module/package.txt",
+        "{\n  \"name\": \"@module/{{NAME}}\"\n}\n",
+    ),
+    (
+        "module/tsconfig.txt",
+        "{ \"extends\": \"../../tsconfig.json\" }\n",
+    ),
     ("module/yml.txt", "type: \"module\"\n"),
     ("module/test.txt", "// {{NAME}}Module {{name}}\n"),
     ("module/bunfig.txt", "[test]\ncoverage = true\n"),
@@ -297,10 +303,7 @@ fn every_generator_writes_the_source_and_the_spec_its_template_describes() {
             r#override: false,
         },
     );
-    assert!(
-        source(&root, "databases", "QdrantVectorDatabase.ts")
-            .contains("QdrantVectorDatabase")
-    );
+    assert!(source(&root, "databases", "QdrantVectorDatabase.ts").contains("QdrantVectorDatabase"));
 
     commands::workflow_create::run(&commands::workflow_create::WorkflowCreateArgs {
         no_cache: false,
@@ -319,7 +322,8 @@ fn every_generator_writes_the_source_and_the_spec_its_template_describes() {
         },
     );
     assert!(
-        source(&root, "workflows/transitions", "ApproveTransition.ts").contains("ApproveTransition")
+        source(&root, "workflows/transitions", "ApproveTransition.ts")
+            .contains("ApproveTransition")
     );
 
     // --- The ones that scaffold into a named module -------------------------
@@ -432,7 +436,10 @@ fn every_generator_writes_the_source_and_the_spec_its_template_describes() {
     let controller = source(&root, "controllers", "UserController.ts");
     assert!(controller.contains("/users/:user-id"), "{controller}");
     assert!(controller.contains("get"), "the method is lower-cased");
-    assert!(controller.contains("UserList"), "the route type is pascal case");
+    assert!(
+        controller.contains("UserList"),
+        "the route type is pascal case"
+    );
 
     commands::controller_create::run(&commands::controller_create::ControllerCreateArgs {
         no_cache: false,
@@ -468,7 +475,10 @@ fn every_generator_writes_the_source_and_the_spec_its_template_describes() {
         module: None,
         r#override: false,
     });
-    assert!(root.join("modules/shared/src/cache/MemoryCache.ts").is_file());
+    assert!(
+        root.join("modules/shared/src/cache/MemoryCache.ts")
+            .is_file()
+    );
 
     let _ = fs::remove_dir_all(&root);
     let _ = fs::remove_dir_all(&templates);

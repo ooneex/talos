@@ -21,7 +21,10 @@ fn write(path: &Path, content: &str) {
 /// environment, a README to rename, and the `.claude` tree the assistant
 /// scaffolder reads.
 fn skeleton(dir: &Path) {
-    write(&dir.join("package.json"), "{\n  \"name\": \"skeleton\"\n}\n");
+    write(
+        &dir.join("package.json"),
+        "{\n  \"name\": \"skeleton\"\n}\n",
+    );
     write(&dir.join("bun.lock"), "{}\n");
     write(&dir.join("README.md"), "# skeleton\n\nA starting point.\n");
     write(&dir.join("tsconfig.json"), "{ \"compilerOptions\": {} }\n");
@@ -189,7 +192,12 @@ fn app_init_refuses_to_run_without_git_on_the_path() {
     let workdir = tempfile::tempdir().expect("create temp dir");
 
     let output = Command::new(env!("CARGO_BIN_EXE_talos"))
-        .args(["app:init", "--name=my-app", "--destination=my-app", "--silent"])
+        .args([
+            "app:init",
+            "--name=my-app",
+            "--destination=my-app",
+            "--silent",
+        ])
         .current_dir(workdir.path())
         .env("HOME", home.path())
         .env("PATH", "/nonexistent")
@@ -234,7 +242,10 @@ fn the_claude_layout_is_rendered_verbatim_into_the_project() {
         "the agents come across"
     );
     assert!(
-        target.path().join(".claude/skills/deploy/SKILL.md").is_file(),
+        target
+            .path()
+            .join(".claude/skills/deploy/SKILL.md")
+            .is_file(),
         "so do the skills"
     );
     assert!(

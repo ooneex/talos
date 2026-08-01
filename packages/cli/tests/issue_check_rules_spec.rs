@@ -43,12 +43,18 @@ fn workspace() -> (tempfile::TempDir, PathBuf) {
 }
 
 fn write_issue(root: &Path, id: &str, content: &str) {
-    write(&root.join("modules/user/issues").join(format!("{id}.yml")), content);
+    write(
+        &root.join("modules/user/issues").join(format!("{id}.yml")),
+        content,
+    );
 }
 
 /// The base issue with `state` replaced and the given lines appended.
 fn issue(state: &str, extra: &str) -> String {
-    format!("{}{extra}", PLANNED.replace("state: \"Planned\"", &format!("state: \"{state}\"")))
+    format!(
+        "{}{extra}",
+        PLANNED.replace("state: \"Planned\"", &format!("state: \"{state}\""))
+    )
 }
 
 fn check(root: &Path) -> CheckReport {
@@ -205,7 +211,11 @@ fn a_pull_request_link_must_point_at_a_numbered_pull_request() {
         "https://github.com/org/repo/pull/",
         "https://github.com/org/repo/pull/abc",
     ] {
-        write_issue(&root, "ABC-100000", &issue("Planned", &format!("pr: \"{url}\"\n")));
+        write_issue(
+            &root,
+            "ABC-100000",
+            &issue("Planned", &format!("pr: \"{url}\"\n")),
+        );
         assert!(
             rules(&check(&root)).contains(&"issue.pr.format"),
             "{url} should be refused"
@@ -217,7 +227,11 @@ fn a_pull_request_link_must_point_at_a_numbered_pull_request() {
         "https://gitlab.com/org/repo/-/merge_requests/7",
         "https://bitbucket.org/org/repo/pull-requests/3",
     ] {
-        write_issue(&root, "ABC-100000", &issue("Planned", &format!("pr: \"{url}\"\n")));
+        write_issue(
+            &root,
+            "ABC-100000",
+            &issue("Planned", &format!("pr: \"{url}\"\n")),
+        );
         assert!(
             !rules(&check(&root)).contains(&"issue.pr.format"),
             "{url} should be accepted"
@@ -274,7 +288,11 @@ fn a_dependency_must_name_another_issue_that_exists_exactly_once() {
 #[test]
 fn listing_the_same_dependency_twice_is_rejected() {
     let (_dir, root) = workspace();
-    write_issue(&root, "ABC-100001", &PLANNED.replace("ABC-100000", "ABC-100001"));
+    write_issue(
+        &root,
+        "ABC-100001",
+        &PLANNED.replace("ABC-100000", "ABC-100001"),
+    );
     write_issue(
         &root,
         "ABC-100000",
@@ -291,7 +309,11 @@ fn listing_the_same_dependency_twice_is_rejected() {
 fn a_planned_issue_with_no_dependencies_field_is_asked_to_say_so() {
     let (_dir, root) = workspace();
 
-    write_issue(&root, "ABC-100000", &PLANNED.replace("dependencies: []\n", ""));
+    write_issue(
+        &root,
+        "ABC-100000",
+        &PLANNED.replace("dependencies: []\n", ""),
+    );
 
     assert_eq!(
         severity_of(&check(&root), "issue.dependencies.missing"),
@@ -308,9 +330,10 @@ fn a_cycle_across_three_issues_is_reported_once_with_the_path_it_follows() {
         write_issue(
             &root,
             id,
-            &PLANNED
-                .replace("ABC-100000", id)
-                .replace("dependencies: []\n", &format!("dependencies:\n  - \"{next}\"\n")),
+            &PLANNED.replace("ABC-100000", id).replace(
+                "dependencies: []\n",
+                &format!("dependencies:\n  - \"{next}\"\n"),
+            ),
         );
     }
 
@@ -328,7 +351,8 @@ fn a_cycle_across_three_issues_is_reported_once_with_the_path_it_follows() {
     assert!(
         cycles
             .iter()
-            .all(|d| d.message == "Dependency cycle: ABC-100000 → ABC-100001 → ABC-100002 → ABC-100000"),
+            .all(|d| d.message
+                == "Dependency cycle: ABC-100000 → ABC-100001 → ABC-100002 → ABC-100000"),
         "they all name the same path: {cycles:?}"
     );
 }
@@ -372,7 +396,10 @@ fn every_comment_needs_a_message_and_may_only_carry_an_author_beside_it() {
     write_issue(
         &root,
         "ABC-100000",
-        &issue("Planned", "comments:\n  - author: \"me\"\n    message: \"hi\"\n"),
+        &issue(
+            "Planned",
+            "comments:\n  - author: \"me\"\n    message: \"hi\"\n",
+        ),
     );
     assert!(
         !rules(&check(&root))
@@ -495,7 +522,6 @@ fn testing_steps_must_be_numbered_checkboxes_in_order() {
         ),
     );
     assert!(rules(&check(&root)).contains(&"issue.testing.numbering"));
-
 }
 
 #[test]
@@ -580,9 +606,8 @@ fn the_json_report_carries_every_diagnostic_as_data() {
 
     let output = talos(&root, &["issue:check", "--json"]);
 
-    let payload: serde_json::Value =
-        serde_json::from_str(&String::from_utf8_lossy(&output.stdout))
-            .expect("the report is valid JSON");
+    let payload: serde_json::Value = serde_json::from_str(&String::from_utf8_lossy(&output.stdout))
+        .expect("the report is valid JSON");
     let diagnostics = payload["diagnostics"]
         .as_array()
         .expect("diagnostics is an array");
@@ -663,14 +688,26 @@ fn the_id_and_the_module_must_both_be_strings_that_match_where_the_file_lives() 
     let (_dir, root) = workspace();
 
     let cases = [
-        (PLANNED.replace("id: \"ABC-100000\"\n", ""), "issue.id.missing"),
-        (PLANNED.replace("id: \"ABC-100000\"", "id: 42"), "issue.id.type"),
+        (
+            PLANNED.replace("id: \"ABC-100000\"\n", ""),
+            "issue.id.missing",
+        ),
+        (
+            PLANNED.replace("id: \"ABC-100000\"", "id: 42"),
+            "issue.id.type",
+        ),
         (
             PLANNED.replace("id: \"ABC-100000\"", "id: \"not an id\""),
             "issue.id.format",
         ),
-        (PLANNED.replace("module: \"user\"\n", ""), "issue.module.missing"),
-        (PLANNED.replace("module: \"user\"", "module: 42"), "issue.module.type"),
+        (
+            PLANNED.replace("module: \"user\"\n", ""),
+            "issue.module.missing",
+        ),
+        (
+            PLANNED.replace("module: \"user\"", "module: 42"),
+            "issue.module.type",
+        ),
         (
             PLANNED.replace("module: \"user\"", "module: \"order\""),
             "issue.module.mismatch",
@@ -700,7 +737,10 @@ fn the_title_must_be_a_single_capitalised_line_without_a_full_stop() {
     let (_dir, root) = workspace();
 
     let cases = [
-        (PLANNED.replace("title: \"Add user create endpoint\"\n", ""), "issue.title.missing"),
+        (
+            PLANNED.replace("title: \"Add user create endpoint\"\n", ""),
+            "issue.title.missing",
+        ),
         (
             PLANNED.replace("title: \"Add user create endpoint\"", "title: 42"),
             "issue.title.type",
@@ -745,13 +785,22 @@ fn the_state_and_the_priority_must_come_from_their_vocabularies() {
     let (_dir, root) = workspace();
 
     let cases = [
-        (PLANNED.replace("state: \"Planned\"\n", ""), "issue.state.missing"),
-        (PLANNED.replace("state: \"Planned\"", "state: 42"), "issue.state.type"),
+        (
+            PLANNED.replace("state: \"Planned\"\n", ""),
+            "issue.state.missing",
+        ),
+        (
+            PLANNED.replace("state: \"Planned\"", "state: 42"),
+            "issue.state.type",
+        ),
         (
             PLANNED.replace("state: \"Planned\"", "state: \"Nowhere\""),
             "issue.state.invalid",
         ),
-        (PLANNED.replace("priority: \"High\"\n", ""), "issue.priority.missing"),
+        (
+            PLANNED.replace("priority: \"High\"\n", ""),
+            "issue.priority.missing",
+        ),
         (
             PLANNED.replace("priority: \"High\"", "priority: 42"),
             "issue.priority.type",
@@ -775,7 +824,11 @@ fn the_state_and_the_priority_must_come_from_their_vocabularies() {
 #[test]
 fn a_state_or_priority_in_the_wrong_case_is_told_which_one_was_meant() {
     let (_dir, root) = workspace();
-    write_issue(&root, "ABC-100000", &PLANNED.replace("state: \"Planned\"", "state: \"planned\""));
+    write_issue(
+        &root,
+        "ABC-100000",
+        &PLANNED.replace("state: \"Planned\"", "state: \"planned\""),
+    );
 
     let report = check(&root);
     let message = report
@@ -798,7 +851,10 @@ fn the_labels_must_be_a_list_from_the_vocabulary_with_the_change_type_first() {
             "issue.labels.missing",
         ),
         (
-            PLANNED.replace("labels:\n  - \"Feature\"\n  - \"API\"\n", "labels: \"Feature\"\n"),
+            PLANNED.replace(
+                "labels:\n  - \"Feature\"\n  - \"API\"\n",
+                "labels: \"Feature\"\n",
+            ),
             "issue.labels.type",
         ),
         (
@@ -826,7 +882,10 @@ fn the_labels_must_be_a_list_from_the_vocabulary_with_the_change_type_first() {
             "issue.labels.change-type-missing",
         ),
         (
-            PLANNED.replace("  - \"Feature\"\n  - \"API\"\n", "  - \"API\"\n  - \"Feature\"\n"),
+            PLANNED.replace(
+                "  - \"Feature\"\n  - \"API\"\n",
+                "  - \"API\"\n  - \"Feature\"\n",
+            ),
             "issue.labels.change-type-first",
         ),
     ];
@@ -852,14 +911,20 @@ fn the_goal_only_carries_the_sections_the_convention_names() {
     write_issue(
         &root,
         "ABC-100000",
-        &PLANNED.replace("  Expose a create endpoint.\n", "  Expose it.\n\n  ## Musings\n"),
+        &PLANNED.replace(
+            "  Expose a create endpoint.\n",
+            "  Expose it.\n\n  ## Musings\n",
+        ),
     );
     assert!(rules(&check(&root)).contains(&"issue.goal.unknown-section"));
 
     write_issue(
         &root,
         "ABC-100000",
-        &PLANNED.replace("  Expose a create endpoint.\n", "  Expose it.\n\n  ### Wishlist\n"),
+        &PLANNED.replace(
+            "  Expose a create endpoint.\n",
+            "  Expose it.\n\n  ### Wishlist\n",
+        ),
     );
     assert!(rules(&check(&root)).contains(&"issue.goal.unknown-section"));
 }
@@ -885,10 +950,7 @@ fn every_dod_line_must_be_a_checkbox_indented_by_an_even_number_of_spaces() {
     let (_dir, root) = workspace();
 
     let cases = [
-        (
-            "  A sentence, not a checkbox\n",
-            "issue.dod.format",
-        ),
+        ("  A sentence, not a checkbox\n", "issue.dod.format"),
         (
             "  - [ ] The endpoint returns 201\n     - [ ] Oddly indented sub-item\n",
             "issue.dod.indentation",

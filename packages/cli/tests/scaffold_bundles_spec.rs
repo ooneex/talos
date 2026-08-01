@@ -54,7 +54,10 @@ const TEMPLATES: &[(&str, &str)] = &[
     ),
     ("module/seed.run.txt", "// seeds of {{name}}\n"),
     ("mailer/mailer.txt", "export class {{NAME}}Mailer {}\n"),
-    ("mailer/mailer.test.txt", "// {{NAME}}Mailer in {{MODULE}}\n"),
+    (
+        "mailer/mailer.test.txt",
+        "// {{NAME}}Mailer in {{MODULE}}\n",
+    ),
     (
         "mailer/mailer-template.txt",
         "export const {{NAME}}MailerTemplate = () => null;\n",
@@ -69,7 +72,10 @@ const TEMPLATES: &[(&str, &str)] = &[
     ),
     ("module/migration.up.txt", "// migrate up\n"),
     ("module/migration.down.txt", "// migrate down\n"),
-    ("e2e.spec.txt", "import { test } from \"@playwright/test\";\n"),
+    (
+        "e2e.spec.txt",
+        "import { test } from \"@playwright/test\";\n",
+    ),
     (
         "playwright.config.txt",
         "export default { testDir: \"./e2e\" };\n",
@@ -83,7 +89,10 @@ const TEMPLATES: &[(&str, &str)] = &[
         "import { {{NAME}} } from \"{{IMPORT}}\";\n",
     ),
     ("react-component.happydom.txt", "// happy dom\n"),
-    ("react-component.bunfig.txt", "[test]\npreload = \"./happydom.ts\"\n"),
+    (
+        "react-component.bunfig.txt",
+        "[test]\npreload = \"./happydom.ts\"\n",
+    ),
     (
         "spa/spa-feature.route.txt",
         "// route {{KEBAB}} {{CAMEL}}\nexport const {{NAME}}Route = {};\n",
@@ -116,8 +125,14 @@ const TEMPLATES: &[(&str, &str)] = &[
         "spa/spa.use-translate.txt",
         "export const use{{NAME}}Translate = () => null;\n",
     ),
-    ("spa/spa.use-lang.txt", "export const useLang = () => null;\n"),
-    ("translation.json.txt", "{ \"hello\": { \"en\": \"Hello\" } }\n"),
+    (
+        "spa/spa.use-lang.txt",
+        "export const useLang = () => null;\n",
+    ),
+    (
+        "translation.json.txt",
+        "{ \"hello\": { \"en\": \"Hello\" } }\n",
+    ),
     (
         "translation.txt",
         "// {{SNAKE}}\nexport class {{NAME}}Translation {}\n",
@@ -185,7 +200,9 @@ fn workspace() -> (tempfile::TempDir, PathBuf) {
         .join(",\n");
     write(
         &root.join("package.json"),
-        &format!("{{\n  \"name\": \"scratch\",\n  \"dependencies\": {{\n{dependencies}\n  }}\n}}\n"),
+        &format!(
+            "{{\n  \"name\": \"scratch\",\n  \"dependencies\": {{\n{dependencies}\n  }}\n}}\n"
+        ),
     );
 
     write(&root.join("modules/user/user.yml"), "type: \"module\"\n");
@@ -417,7 +434,8 @@ fn react_component_create_puts_the_component_at_the_module_root_by_default() {
     let base = root.join("modules/web");
     assert!(base.join("src/components/UserCard.tsx").is_file());
     assert!(
-        read(&base.join("tests/components/UserCard.spec.tsx")).contains("../../src/components/UserCard"),
+        read(&base.join("tests/components/UserCard.spec.tsx"))
+            .contains("../../src/components/UserCard"),
         "the spec import climbs back out of tests/"
     );
     assert!(base.join("happydom.ts").is_file());
@@ -439,7 +457,8 @@ fn react_component_create_nests_the_component_under_the_feature_it_belongs_to() 
 
     let base = root.join("modules/web");
     assert!(
-        base.join("src/features/checkout/components/Row.tsx").is_file(),
+        base.join("src/features/checkout/components/Row.tsx")
+            .is_file(),
         "the Feature suffix is stripped from the folder name"
     );
     assert!(
@@ -495,9 +514,7 @@ fn translation_create_scaffolds_a_class_and_a_yaml_dictionary_for_a_backend_modu
         read(&base.join("src/translations/EmailTranslation.ts")).contains("email"),
         "the snake-cased name is substituted"
     );
-    assert!(
-        read(&base.join("tests/translations/EmailTranslation.spec.ts")).contains("in user")
-    );
+    assert!(read(&base.join("tests/translations/EmailTranslation.spec.ts")).contains("in user"));
     assert!(
         base.join("src/translations.yml").is_file(),
         "the dictionary is created beside the sources"

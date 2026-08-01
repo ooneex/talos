@@ -223,7 +223,11 @@ fn the_sdk_module_is_scaffolded_and_typed_as_an_sdk_pointing_at_its_target() {
     let (_dir, root) = workspace();
     let templates = templates();
 
-    talos(&root, &templates, &["sdk:create", "--name=sdk", "--module=app", "--silent"]);
+    talos(
+        &root,
+        &templates,
+        &["sdk:create", "--name=sdk", "--module=app", "--silent"],
+    );
 
     let sdk = root.join("modules/sdk");
     let manifest = read(&sdk.join("sdk.yml"));
@@ -244,7 +248,11 @@ fn one_file_per_module_is_generated_and_re_exported_from_the_index() {
     let (_dir, root) = workspace();
     let templates = templates();
 
-    talos(&root, &templates, &["sdk:create", "--name=sdk", "--module=app", "--silent"]);
+    talos(
+        &root,
+        &templates,
+        &["sdk:create", "--name=sdk", "--module=app", "--silent"],
+    );
 
     let generated = read(&root.join("modules/sdk/src/app.ts"));
     assert!(generated.contains("user.list"), "{generated}");
@@ -259,13 +267,21 @@ fn one_file_per_module_is_generated_and_re_exported_from_the_index() {
 fn a_second_run_leaves_the_routes_it_already_generated_alone() {
     let (_dir, root) = workspace();
     let templates = templates();
-    talos(&root, &templates, &["sdk:create", "--name=sdk", "--module=app", "--silent"]);
+    talos(
+        &root,
+        &templates,
+        &["sdk:create", "--name=sdk", "--module=app", "--silent"],
+    );
 
     write(
         &root.join("modules/app/src/controllers/PingController.ts"),
         "export type PingRouteType = { response: string };\n\n@Route.get(\"/ping\", {\n  name: \"app.ping\",\n})\nexport class PingController {}\n",
     );
-    talos(&root, &templates, &["sdk:create", "--name=sdk", "--module=app", "--silent"]);
+    talos(
+        &root,
+        &templates,
+        &["sdk:create", "--name=sdk", "--module=app", "--silent"],
+    );
 
     let generated = read(&root.join("modules/sdk/src/app.ts"));
     assert_eq!(
@@ -288,7 +304,11 @@ fn a_target_module_with_no_controller_generates_an_empty_sdk() {
         "{ \"name\": \"@module/app\" }\n",
     );
 
-    talos(root, &templates, &["sdk:create", "--name=sdk", "--module=app", "--silent"]);
+    talos(
+        root,
+        &templates,
+        &["sdk:create", "--name=sdk", "--module=app", "--silent"],
+    );
 
     let index = read(&root.join("modules/sdk/src/index.ts"));
     assert_eq!(index, "export const sdk = {\n\n};\n", "{index}");

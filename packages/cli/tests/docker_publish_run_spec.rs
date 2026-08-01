@@ -147,7 +147,12 @@ fn a_module_with_a_dockerfile_is_built_and_pushed_under_its_package_version() {
     let home = home_with_credentials("docker.io");
     let stub = stub_docker("publish", 0);
 
-    let output = talos(&root, home.path(), &stub, &["docker:publish", "--modules=api"]);
+    let output = talos(
+        &root,
+        home.path(),
+        &stub,
+        &["docker:publish", "--modules=api"],
+    );
 
     let log = calls(&stub);
     assert!(log.contains("login"), "{log}");
@@ -162,7 +167,12 @@ fn a_registry_other_than_the_default_is_written_into_the_image_name() {
     let home = home_with_credentials("ghcr.io");
     let stub = stub_docker("registry", 0);
 
-    talos(&root, home.path(), &stub, &["docker:publish", "--modules=api"]);
+    talos(
+        &root,
+        home.path(),
+        &stub,
+        &["docker:publish", "--modules=api"],
+    );
 
     assert!(
         calls(&stub).contains("ghcr.io/me/api:1.2.3"),
@@ -193,7 +203,12 @@ fn a_module_with_no_dockerfile_is_counted_as_ignored() {
     let home = home_with_credentials("docker.io");
     let stub = stub_docker("ignored", 0);
 
-    let output = talos(&root, home.path(), &stub, &["docker:publish", "--modules=web"]);
+    let output = talos(
+        &root,
+        home.path(),
+        &stub,
+        &["docker:publish", "--modules=web"],
+    );
 
     assert!(text(&output).contains("1 ignored"), "{}", text(&output));
     assert!(!calls(&stub).contains("build"), "{}", calls(&stub));
@@ -205,7 +220,12 @@ fn a_build_that_fails_is_reported_rather_than_counted_as_published() {
     let home = home_with_credentials("docker.io");
     let stub = stub_docker("failing", 1);
 
-    let output = talos(&root, home.path(), &stub, &["docker:publish", "--modules=api"]);
+    let output = talos(
+        &root,
+        home.path(),
+        &stub,
+        &["docker:publish", "--modules=api"],
+    );
 
     assert!(text(&output).contains("0 published"), "{}", text(&output));
 }

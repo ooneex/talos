@@ -28,7 +28,10 @@ fn member(root: &Path, group: &str, name: &str, scripts: &str, dependencies: &st
             "{{\n  \"name\": \"@scratch/{name}\",\n  \"version\": \"1.0.0\",\n  \"scripts\": {{{scripts}}},\n  \"dependencies\": {{{dependencies}}}\n}}\n"
         ),
     );
-    write(&dir.join("src/index.ts"), &format!("export const {name} = 1;\n"));
+    write(
+        &dir.join("src/index.ts"),
+        &format!("export const {name} = 1;\n"),
+    );
     // `test` is skipped for a member whose tests/ directory is empty.
     write(
         &dir.join("tests/index.spec.ts"),
@@ -156,7 +159,10 @@ fn the_biome_command_falls_back_to_the_package_runner_without_a_local_binary() {
 fn running_a_script_every_member_declares_succeeds_and_names_them_all() {
     let (_dir, root) = workspace();
 
-    let output = talos(&root, &["monorepo:run", "--commands=build", "--logs", "--no-cache"]);
+    let output = talos(
+        &root,
+        &["monorepo:run", "--commands=build", "--logs", "--no-cache"],
+    );
 
     let report = text(&output);
     assert!(output.status.success(), "{report}");
@@ -169,10 +175,17 @@ fn running_a_script_every_member_declares_succeeds_and_names_them_all() {
 fn a_failing_script_ends_the_run_non_zero_and_prints_what_it_printed() {
     let (_dir, root) = workspace();
 
-    let output = talos(&root, &["monorepo:run", "--commands=test", "--logs", "--no-cache"]);
+    let output = talos(
+        &root,
+        &["monorepo:run", "--commands=test", "--logs", "--no-cache"],
+    );
 
     assert!(!output.status.success());
-    assert!(text(&output).contains("the suite is red"), "{}", text(&output));
+    assert!(
+        text(&output).contains("the suite is red"),
+        "{}",
+        text(&output)
+    );
 }
 
 #[test]
@@ -181,7 +194,13 @@ fn restricting_the_run_to_one_member_leaves_the_failing_one_out() {
 
     let output = talos(
         &root,
-        &["monorepo:run", "--commands=test", "--packages=core", "--logs", "--no-cache"],
+        &[
+            "monorepo:run",
+            "--commands=test",
+            "--packages=core",
+            "--logs",
+            "--no-cache",
+        ],
     );
 
     let report = text(&output);
@@ -196,7 +215,12 @@ fn asking_for_a_member_that_is_not_there_is_an_error() {
 
     let output = talos(
         &root,
-        &["monorepo:run", "--commands=build", "--packages=nowhere", "--no-cache"],
+        &[
+            "monorepo:run",
+            "--commands=build",
+            "--packages=nowhere",
+            "--no-cache",
+        ],
     );
 
     assert!(!output.status.success());
@@ -219,7 +243,13 @@ fn several_commands_run_in_the_order_they_were_given() {
 
     let output = talos(
         &root,
-        &["monorepo:run", "--commands=build,test", "--packages=core,app", "--logs", "--no-cache"],
+        &[
+            "monorepo:run",
+            "--commands=build,test",
+            "--packages=core,app",
+            "--logs",
+            "--no-cache",
+        ],
     );
 
     let report = text(&output);
@@ -238,7 +268,10 @@ fn several_commands_run_in_the_order_they_were_given() {
 fn the_second_run_of_an_unchanged_member_is_served_from_the_cache() {
     let (_dir, root) = workspace();
 
-    talos(&root, &["monorepo:run", "--commands=build", "--packages=core"]);
+    talos(
+        &root,
+        &["monorepo:run", "--commands=build", "--packages=core"],
+    );
     let warm = text(&talos(
         &root,
         &["monorepo:run", "--commands=build", "--packages=core"],
@@ -250,10 +283,16 @@ fn the_second_run_of_an_unchanged_member_is_served_from_the_cache() {
 #[test]
 fn editing_a_source_file_retires_the_cached_result() {
     let (_dir, root) = workspace();
-    talos(&root, &["monorepo:run", "--commands=build", "--packages=core"]);
+    talos(
+        &root,
+        &["monorepo:run", "--commands=build", "--packages=core"],
+    );
     assert!(
-        text(&talos(&root, &["monorepo:run", "--commands=build", "--packages=core"]))
-            .contains("1 cached")
+        text(&talos(
+            &root,
+            &["monorepo:run", "--commands=build", "--packages=core"]
+        ))
+        .contains("1 cached")
     );
 
     write(
@@ -271,11 +310,20 @@ fn editing_a_source_file_retires_the_cached_result() {
 #[test]
 fn no_cache_runs_the_script_again_even_when_nothing_moved() {
     let (_dir, root) = workspace();
-    talos(&root, &["monorepo:run", "--commands=build", "--packages=core"]);
+    talos(
+        &root,
+        &["monorepo:run", "--commands=build", "--packages=core"],
+    );
 
     let again = text(&talos(
         &root,
-        &["monorepo:run", "--commands=build", "--packages=core", "--no-cache", "--logs"],
+        &[
+            "monorepo:run",
+            "--commands=build",
+            "--packages=core",
+            "--no-cache",
+            "--logs",
+        ],
     ));
 
     assert!(again.contains("0 cached"), "{again}");
@@ -300,7 +348,13 @@ fn build_test_and_run_are_the_same_runner_under_another_name() {
 
     let named = talos(
         &root,
-        &["run", "--commands=build", "--packages=core", "--logs", "--no-cache"],
+        &[
+            "run",
+            "--commands=build",
+            "--packages=core",
+            "--logs",
+            "--no-cache",
+        ],
     );
     assert!(named.status.success(), "{}", text(&named));
 }
@@ -308,9 +362,23 @@ fn build_test_and_run_are_the_same_runner_under_another_name() {
 #[test]
 fn a_member_without_the_script_being_asked_for_is_simply_not_run() {
     let (_dir, root) = workspace();
-    member(&root, "packages", "docs", "\n    \"build\": \"echo built docs\"\n  ", "");
+    member(
+        &root,
+        "packages",
+        "docs",
+        "\n    \"build\": \"echo built docs\"\n  ",
+        "",
+    );
 
-    let output = talos(&root, &["monorepo:run", "--commands=test", "--packages=docs", "--no-cache"]);
+    let output = talos(
+        &root,
+        &[
+            "monorepo:run",
+            "--commands=test",
+            "--packages=docs",
+            "--no-cache",
+        ],
+    );
 
     assert!(
         output.status.success(),
@@ -322,9 +390,15 @@ fn a_member_without_the_script_being_asked_for_is_simply_not_run() {
 #[test]
 fn a_workspace_with_no_member_at_all_is_an_error_rather_than_a_silent_success() {
     let dir = tempfile::tempdir().expect("create temp dir");
-    write(&dir.path().join("package.json"), "{ \"name\": \"empty\" }\n");
+    write(
+        &dir.path().join("package.json"),
+        "{ \"name\": \"empty\" }\n",
+    );
 
-    let output = talos(dir.path(), &["monorepo:run", "--commands=build", "--no-cache"]);
+    let output = talos(
+        dir.path(),
+        &["monorepo:run", "--commands=build", "--no-cache"],
+    );
 
     assert!(!output.status.success());
     assert!(

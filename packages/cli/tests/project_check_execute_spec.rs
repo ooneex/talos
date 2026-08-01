@@ -51,12 +51,18 @@ fn workspace() -> (tempfile::TempDir, PathBuf) {
     write(&root.join("bun.lock"), "{}\n");
     write(&root.join(".gitignore"), "node_modules\ndist\n.env\n");
     write(&root.join(".env.yml"), "APP_ENV: \"test\"\n");
-    write(&root.join("README.md"), "# Scratch\n\nA scratch workspace.\n");
+    write(
+        &root.join("README.md"),
+        "# Scratch\n\nA scratch workspace.\n",
+    );
     write(
         &root.join("docker-compose.yml"),
         "services:\n  db:\n    image: postgres:16\n    ports:\n      - \"5432:5432\"\n",
     );
-    write(&root.join("biome.json"), r#"{ "linter": { "enabled": true } }"#);
+    write(
+        &root.join("biome.json"),
+        r#"{ "linter": { "enabled": true } }"#,
+    );
 
     // A backend module.
     let user = root.join("modules/user");
@@ -219,7 +225,10 @@ fn busy_workspace() -> (tempfile::TempDir, PathBuf) {
 
     // A swagger module whose specification is the one the openapi check reads.
     let swagger = root.join("modules/docs");
-    write(&swagger.join("docs.yml"), "name: \"docs\"\ntype: \"swagger\"\n");
+    write(
+        &swagger.join("docs.yml"),
+        "name: \"docs\"\ntype: \"swagger\"\n",
+    );
     write(
         &swagger.join("package.json"),
         "{ \"name\": \"@module/docs\", \"scripts\": { \"test\": \"bun test\" } }\n",
@@ -252,7 +261,10 @@ fn busy_workspace() -> (tempfile::TempDir, PathBuf) {
 
     // A design module, so the front-end checks have tokens and colours to read.
     let design = root.join("modules/brand");
-    write(&design.join("brand.yml"), "name: \"brand\"\ntype: \"design\"\n");
+    write(
+        &design.join("brand.yml"),
+        "name: \"brand\"\ntype: \"design\"\n",
+    );
     write(
         &design.join("package.json"),
         "{ \"name\": \"@module/brand\", \"scripts\": { \"test\": \"bun test\" } }\n",
@@ -509,7 +521,10 @@ fn the_json_report_round_trips_every_outcome() {
     for id in &checks {
         assert!(keys.contains(id.key()), "{} is missing", id.key());
     }
-    assert_eq!(payload["root"].as_str(), Some(root.to_string_lossy().as_ref()));
+    assert_eq!(
+        payload["root"].as_str(),
+        Some(root.to_string_lossy().as_ref())
+    );
 }
 
 #[test]
@@ -583,7 +598,10 @@ fn a_queue_served_twice_and_a_schedule_that_does_not_parse_are_both_reported() {
     let crons = &report.outcomes[1];
     assert_eq!(crons.status, CheckStatus::Failed);
     assert!(
-        crons.details.iter().any(|detail| detail.contains("sometimes")),
+        crons
+            .details
+            .iter()
+            .any(|detail| detail.contains("sometimes")),
         "{:?}",
         crons.details
     );
@@ -631,11 +649,7 @@ fn the_front_end_checks_read_the_design_module_the_workspace_declares() {
     );
 
     for outcome in &report.outcomes {
-        assert!(
-            !outcome.summary.is_empty(),
-            "{:?} said nothing",
-            outcome.id
-        );
+        assert!(!outcome.summary.is_empty(), "{:?} said nothing", outcome.id);
     }
 }
 
@@ -664,11 +678,7 @@ fn the_module_typed_checks_read_the_swagger_and_storybook_modules() {
     );
 
     for outcome in &report.outcomes {
-        assert!(
-            !outcome.summary.is_empty(),
-            "{:?} said nothing",
-            outcome.id
-        );
+        assert!(!outcome.summary.is_empty(), "{:?} said nothing", outcome.id);
     }
     let openapi = &report.outcomes[0];
     assert_ne!(
@@ -728,7 +738,13 @@ fn inside_a_git_repository_the_branch_and_commit_checks_have_something_to_read()
     git(&["config", "user.email", "tester@example.com"]);
     git(&["add", "-A"]);
     git(&["commit", "--no-verify", "-m", "feat(user): Add the module"]);
-    git(&["commit", "--allow-empty", "--no-verify", "-m", "not a conventional subject"]);
+    git(&[
+        "commit",
+        "--allow-empty",
+        "--no-verify",
+        "-m",
+        "not a conventional subject",
+    ]);
 
     let report = execute(
         &args(&root),
@@ -761,4 +777,3 @@ fn inside_a_git_repository_the_branch_and_commit_checks_have_something_to_read()
         "the repository and the issue file are both there"
     );
 }
-

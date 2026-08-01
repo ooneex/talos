@@ -71,10 +71,7 @@ fn the_valid_scopes_are_common_plus_every_member_carrying_a_manifest() {
         !scopes.contains(&"scratchpad".to_string()),
         "a directory with no manifest is not a scope: {scopes:?}"
     );
-    assert!(
-        !scopes.contains(&".hidden".to_string()),
-        "{scopes:?}"
-    );
+    assert!(!scopes.contains(&".hidden".to_string()), "{scopes:?}");
 }
 
 #[test]
@@ -92,9 +89,7 @@ fn a_directory_that_is_not_a_workspace_still_offers_the_common_scope() {
 fn a_well_formed_message_reports_nothing() {
     let (_dir, root) = workspace();
 
-    assert!(
-        lint_commit_message("feat(user): Add the create endpoint", &scopes(&root)).is_empty()
-    );
+    assert!(lint_commit_message("feat(user): Add the create endpoint", &scopes(&root)).is_empty());
     assert!(
         lint_commit_message(
             "fix(common)!: Repair the loader\n\nThe loader hung on an empty group.",
@@ -138,13 +133,17 @@ fn the_scope_must_be_present_lower_case_and_a_member_of_the_workspace() {
 
     let errors = lint_commit_message("feat: Add the endpoint", &scopes(&root));
     assert!(
-        errors.iter().any(|error| error.contains("Scope must not be empty")),
+        errors
+            .iter()
+            .any(|error| error.contains("Scope must not be empty")),
         "{errors:?}"
     );
 
     let errors = lint_commit_message("feat(User): Add the endpoint", &scopes(&root));
     assert!(
-        errors.iter().any(|error| error.contains("must be lower-case")),
+        errors
+            .iter()
+            .any(|error| error.contains("must be lower-case")),
         "{errors:?}"
     );
 
@@ -335,7 +334,7 @@ fn commitlint_init_writes_the_hook_that_calls_the_check() {
     let output = talos(&root, &["commitlint:init"]);
 
     assert!(output.status.success(), "{}", text(&output));
-    let hook = fs::read_to_string(root.join(".git/hooks/commit-msg"))
-        .expect("the hook was written");
+    let hook =
+        fs::read_to_string(root.join(".git/hooks/commit-msg")).expect("the hook was written");
     assert!(hook.contains("commitlint:check"), "{hook}");
 }

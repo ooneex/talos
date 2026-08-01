@@ -112,12 +112,17 @@ fn pulling_an_issue_writes_the_yaml_the_local_tools_read() {
     let output = talos(
         &root,
         Some(&stub),
-        &["issue:pull", "--provider=github", "--id=42", "--module=user"],
+        &[
+            "issue:pull",
+            "--provider=github",
+            "--id=42",
+            "--module=user",
+        ],
     );
 
     assert!(output.status.success(), "{}", text(&output));
-    let issue = fs::read_to_string(root.join("modules/user/issues/42.yml"))
-        .expect("the issue was written");
+    let issue =
+        fs::read_to_string(root.join("modules/user/issues/42.yml")).expect("the issue was written");
     assert!(issue.contains("Add pagination"), "{issue}");
     assert!(issue.contains("Page the list"), "{issue}");
     assert!(issue.contains("Feature"), "{issue}");
@@ -160,7 +165,12 @@ fn an_issue_the_cli_cannot_read_is_reported_rather_than_written() {
     let output = talos(
         &root,
         Some(&stub),
-        &["issue:pull", "--provider=github", "--id=42", "--module=user"],
+        &[
+            "issue:pull",
+            "--provider=github",
+            "--id=42",
+            "--module=user",
+        ],
     );
 
     assert!(!output.status.success());
@@ -186,7 +196,12 @@ fn pushing_an_existing_issue_edits_it_in_place_and_syncs_its_state() {
     let output = talos(
         &root,
         Some(&stub),
-        &["issue:push", "--provider=github", "--id=42", "--module=user"],
+        &[
+            "issue:push",
+            "--provider=github",
+            "--id=42",
+            "--module=user",
+        ],
     );
 
     assert!(output.status.success(), "{}", text(&output));
@@ -211,7 +226,12 @@ fn pushing_a_new_issue_creates_it_and_renames_the_file_to_the_number_it_got() {
     let output = talos(
         &root,
         Some(&stub),
-        &["issue:push", "--provider=github", "--id=OON-100000", "--module=user"],
+        &[
+            "issue:push",
+            "--provider=github",
+            "--id=OON-100000",
+            "--module=user",
+        ],
     );
 
     assert!(output.status.success(), "{}", text(&output));
@@ -240,11 +260,7 @@ fn pushing_an_issue_with_no_local_file_is_reported() {
     );
 
     assert!(!output.status.success());
-    assert!(
-        text(&output).contains("OON-999999"),
-        "{}",
-        text(&output)
-    );
+    assert!(text(&output).contains("OON-999999"), "{}", text(&output));
 }
 
 #[test]

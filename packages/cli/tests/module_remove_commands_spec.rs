@@ -39,7 +39,10 @@ fn workspace() -> (tempfile::TempDir, PathBuf) {
 
     for (name, kind, _) in members {
         let module = root.join("modules").join(name);
-        write(&module.join(format!("{name}.yml")), &format!("type: \"{kind}\"\n"));
+        write(
+            &module.join(format!("{name}.yml")),
+            &format!("type: \"{kind}\"\n"),
+        );
         write(
             &module.join("package.json"),
             &format!("{{ \"name\": \"@module/{name}\" }}\n"),
@@ -78,7 +81,10 @@ fn workspace() -> (tempfile::TempDir, PathBuf) {
             spreads("entities"),
         ),
     );
-    write(&root.join("modules/app/package.json"), "{ \"name\": \"@module/app\" }\n");
+    write(
+        &root.join("modules/app/package.json"),
+        "{ \"name\": \"@module/app\" }\n",
+    );
     write(
         &root.join("modules/shared/package.json"),
         "{ \"name\": \"@module/shared\" }\n",
@@ -117,7 +123,10 @@ fn design_remove_deletes_the_module_and_unwires_every_reference_to_it() {
         silent: true,
     });
 
-    assert!(!root.join("modules/brand").exists(), "the directory is gone");
+    assert!(
+        !root.join("modules/brand").exists(),
+        "the directory is gone"
+    );
     assert!(
         !read(&root.join("modules/app/src/AppModule.ts")).contains("BrandModule"),
         "the app module no longer registers it"

@@ -56,17 +56,26 @@ fn repository() -> (tempfile::TempDir, PathBuf) {
     write(&root.join("package.json"), "{ \"name\": \"scratch\" }\n");
     // The stand-in remote lives inside the scratch directory, so it has to be
     // ignored or the release would see it as a pending change.
-    write(&root.join(".gitignore"), ".remote.git/\nnode_modules/\nbun.lock\n");
+    write(
+        &root.join(".gitignore"),
+        ".remote.git/\nnode_modules/\nbun.lock\n",
+    );
     write(
         &root.join("packages/core/package.json"),
         "{\n  \"name\": \"@scratch/core\",\n  \"version\": \"1.2.3\"\n}\n",
     );
-    write(&root.join("packages/core/src/index.ts"), "export const one = 1;\n");
+    write(
+        &root.join("packages/core/src/index.ts"),
+        "export const one = 1;\n",
+    );
     write(
         &root.join("modules/user/package.json"),
         "{\n  \"name\": \"@module/user\",\n  \"version\": \"0.1.0\"\n}\n",
     );
-    write(&root.join("modules/user/src/index.ts"), "export const two = 2;\n");
+    write(
+        &root.join("modules/user/src/index.ts"),
+        "export const two = 2;\n",
+    );
     commit(&root, "chore(common): Initial commit");
 
     Command::new("git")
@@ -75,7 +84,10 @@ fn repository() -> (tempfile::TempDir, PathBuf) {
         .stderr(Stdio::null())
         .status()
         .expect("git init --bare should run");
-    git(&root, &["remote", "add", "origin", bare.to_string_lossy().as_ref()]);
+    git(
+        &root,
+        &["remote", "add", "origin", bare.to_string_lossy().as_ref()],
+    );
     git(&root, &["push", "-u", "origin", "main"]);
 
     (dir, root)
@@ -109,8 +121,7 @@ fn read(path: &Path) -> String {
 }
 
 fn version(manifest: &Path) -> String {
-    serde_json::from_str::<serde_json::Value>(&read(manifest))
-        .expect("valid manifest")["version"]
+    serde_json::from_str::<serde_json::Value>(&read(manifest)).expect("valid manifest")["version"]
         .as_str()
         .expect("a version")
         .to_string()
@@ -196,7 +207,10 @@ fn the_changelog_groups_commits_under_the_heading_their_type_belongs_to() {
     let changelog = read(&dir.path().join("CHANGELOG.md"));
     assert!(changelog.starts_with("# Changelog"), "{changelog}");
     for heading in ["### Added", "### Fixed", "### Changed", "### Removed"] {
-        assert!(changelog.contains(heading), "{heading} is missing:\n{changelog}");
+        assert!(
+            changelog.contains(heading),
+            "{heading} is missing:\n{changelog}"
+        );
     }
     assert!(changelog.contains("Do the thing — Tester"), "{changelog}");
 }
@@ -215,7 +229,9 @@ fn a_repository_url_turns_the_version_and_every_hash_into_a_link() {
 
     let changelog = read(&dir.path().join("CHANGELOG.md"));
     assert!(
-        changelog.contains("[1.3.0](https://github.com/ooneex/scratch/releases/tag/@scratch/core@1.3.0)"),
+        changelog.contains(
+            "[1.3.0](https://github.com/ooneex/scratch/releases/tag/@scratch/core@1.3.0)"
+        ),
         "{changelog}"
     );
     assert!(
@@ -253,9 +269,18 @@ fn a_new_release_is_written_under_the_unreleased_heading_when_there_is_one() {
 #[test]
 fn a_changelog_without_an_unreleased_heading_gets_the_release_appended() {
     let dir = tempfile::tempdir().expect("create temp dir");
-    write(&dir.path().join("CHANGELOG.md"), "# Changelog\n\n## [1.0.0] - 2020-01-01\n");
+    write(
+        &dir.path().join("CHANGELOG.md"),
+        "# Changelog\n\n## [1.0.0] - 2020-01-01\n",
+    );
 
-    update_changelog(dir.path(), "1.0.1", "x@1.0.1", &[commit_info("fix", false)], None);
+    update_changelog(
+        dir.path(),
+        "1.0.1",
+        "x@1.0.1",
+        &[commit_info("fix", false)],
+        None,
+    );
 
     let changelog = read(&dir.path().join("CHANGELOG.md"));
     assert!(
@@ -306,14 +331,21 @@ fn a_manifest_with_no_package_version_is_left_untouched() {
 #[test]
 fn a_feature_commit_releases_a_minor_version_and_tags_it() {
     let (_dir, root) = repository();
-    write(&root.join("packages/core/src/index.ts"), "export const one = 11;\n");
+    write(
+        &root.join("packages/core/src/index.ts"),
+        "export const one = 11;\n",
+    );
     commit(&root, "feat(core): Add the thing");
 
     let output = talos(&root, &["release:create", "--packages=core"]);
 
     assert!(output.status.success(), "{}", text(&output));
     assert_eq!(version(&root.join("packages/core/package.json")), "1.3.0");
-    assert!(tags(&root).contains("@scratch/core@1.3.0"), "{}", tags(&root));
+    assert!(
+        tags(&root).contains("@scratch/core@1.3.0"),
+        "{}",
+        tags(&root)
+    );
     let changelog = read(&root.join("packages/core/CHANGELOG.md"));
     assert!(changelog.contains("Add the thing"), "{changelog}");
 }
@@ -321,7 +353,10 @@ fn a_feature_commit_releases_a_minor_version_and_tags_it() {
 #[test]
 fn a_breaking_commit_releases_a_major_version() {
     let (_dir, root) = repository();
-    write(&root.join("modules/user/src/index.ts"), "export const two = 22;\n");
+    write(
+        &root.join("modules/user/src/index.ts"),
+        "export const two = 22;\n",
+    );
     commit(&root, "feat(user)!: Rewrite the interface");
 
     let output = talos(&root, &["release:create", "--modules=user"]);
@@ -349,7 +384,10 @@ fn a_crate_beside_the_manifest_has_its_version_kept_in_step() {
 #[test]
 fn a_package_with_no_commit_since_its_tag_is_left_alone() {
     let (_dir, root) = repository();
-    write(&root.join("packages/core/src/index.ts"), "export const one = 11;\n");
+    write(
+        &root.join("packages/core/src/index.ts"),
+        "export const one = 11;\n",
+    );
     commit(&root, "feat(core): Add the thing");
 
     talos(&root, &["release:create", "--packages=core"]);
@@ -357,19 +395,30 @@ fn a_package_with_no_commit_since_its_tag_is_left_alone() {
 
     let output = talos(&root, &["release:create", "--packages=core"]);
 
-    assert!(text(&output).contains("No packages have unreleased commits"), "{}", text(&output));
+    assert!(
+        text(&output).contains("No packages have unreleased commits"),
+        "{}",
+        text(&output)
+    );
     assert_eq!(version(&root.join("packages/core/package.json")), released);
 }
 
 #[test]
 fn a_dirty_working_tree_stops_the_release_before_anything_is_written() {
     let (_dir, root) = repository();
-    write(&root.join("packages/core/src/index.ts"), "export const one = 11;\n");
+    write(
+        &root.join("packages/core/src/index.ts"),
+        "export const one = 11;\n",
+    );
 
     let output = talos(&root, &["release:create", "--packages=core"]);
 
     assert!(!output.status.success());
-    assert!(text(&output).contains("pending changes"), "{}", text(&output));
+    assert!(
+        text(&output).contains("pending changes"),
+        "{}",
+        text(&output)
+    );
     assert_eq!(version(&root.join("packages/core/package.json")), "1.2.3");
 }
 

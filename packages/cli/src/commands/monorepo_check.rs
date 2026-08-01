@@ -1,8 +1,20 @@
+//! `monorepo:check` — the workspace gate: install, build, format, lint, then
+//! measure the tests.
+//!
+//! The first four steps are package scripts, so they are run through
+//! [`monorepo_run`]. The test step is not: running `bun test` per target says
+//! only that the suites pass, and a workspace gate is the place where how much
+//! they cover matters too. So the suites are run by [`coverage_check`] instead,
+//! which measures them once — with the same caching — and reports the modules
+//! ranked worst first alongside the files pulling them down.
+
 use clap::Args;
 
+use crate::commands::coverage_check::{self, CoverageCheckArgs};
 use crate::commands::monorepo_run::{self, MonorepoRunArgs};
 
-pub const CHECK_COMMANDS: &str = "install,build,fmt,lint,test";
+/// The package scripts run before the suites are measured, in order.
+pub const CHECK_COMMANDS: &str = "install,build,fmt,lint";
 
 #[derive(Args, Debug)]
 pub struct MonorepoCheckArgs {
@@ -14,17 +26,46 @@ pub struct MonorepoCheckArgs {
     pub logs: bool,
     #[arg(long, default_value_t = false)]
     pub no_cache: bool,
+    /// Minimum line and function coverage a module must reach, in percent.
+    #[arg(long)]
+    pub threshold: Option<f64>,
+    /// How many suites run at once (defaults to the core count, capped at 8).
+    #[arg(long)]
+    pub concurrency: Option<usize>,
+    /// Fail the gate on every module that stayed under the threshold, not just
+    /// on the suites that broke.
+    #[arg(long, default_value_t = false)]
+    pub strict: bool,
     #[arg(long)]
     pub cwd: Option<String>,
 }
 
 pub fn run(args: &MonorepoCheckArgs) {
-    monorepo_run::run(&MonorepoRunArgs {
+    // The suites are only worth measuring against a workspace that installed,
+    // built, formatted and linted, so a failure here ends the gate — as
+    // `monorepo_run::run` would, but before coverage is reached.
+    if !monorepo_run::execute(&MonorepoRunArgs {
         commands: Some(CHECK_COMMANDS.to_string()),
         packages: args.packages.clone(),
         modules: args.modules.clone(),
         logs: args.logs,
         no_cache: args.no_cache,
+        cwd: args.cwd.clone(),
+    }) {
+        std::process::exit(1);
+    }
+
+    // Exits non-zero itself on a broken suite, and under `--strict` on a module
+    // that stayed under the threshold.
+    coverage_check::run(&CoverageCheckArgs {
+        issues: false,
+        modules: args.modules.clone(),
+        packages: args.packages.clone(),
+        threshold: args.threshold,
+        logs: args.logs,
+        concurrency: args.concurrency,
+        no_cache: args.no_cache,
+        strict: args.strict,
         cwd: args.cwd.clone(),
     });
 }

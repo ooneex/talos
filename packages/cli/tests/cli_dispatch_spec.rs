@@ -43,12 +43,18 @@ fn seed_home(home: &Path) {
         "controller",
         "translation",
     ] {
-        write(&templates.join(format!("{name}.txt")), "export class {{NAME}} {}\n");
+        write(
+            &templates.join(format!("{name}.txt")),
+            "export class {{NAME}} {}\n",
+        );
         write(&templates.join(format!("{name}.test.txt")), "// {{NAME}}\n");
     }
     write(&templates.join("middleware.socket.txt"), "// socket\n");
     write(&templates.join("controller.socket.txt"), "// socket\n");
-    write(&templates.join("translation.yml.txt"), "hello:\n  en: \"Hello\"\n");
+    write(
+        &templates.join("translation.yml.txt"),
+        "hello:\n  en: \"Hello\"\n",
+    );
     write(&templates.join("translation.json.txt"), "{}\n");
     write(&templates.join("database.pg.txt"), "// pg\n");
     write(&templates.join("database.redis.txt"), "// redis\n");
@@ -56,34 +62,81 @@ fn seed_home(home: &Path) {
     write(&templates.join("database.test.txt"), "// {{NAME}}\n");
     write(&templates.join("database.redis.test.txt"), "// {{NAME}}\n");
     write(&templates.join("e2e.spec.txt"), "// e2e\n");
-    write(&templates.join("playwright.config.txt"), "export default {};\n");
-    write(&templates.join("react-component.txt"), "export const {{NAME}} = () => null;\n");
-    write(&templates.join("react-component.spec.txt"), "// {{NAME}} {{IMPORT}}\n");
+    write(
+        &templates.join("playwright.config.txt"),
+        "export default {};\n",
+    );
+    write(
+        &templates.join("react-component.txt"),
+        "export const {{NAME}} = () => null;\n",
+    );
+    write(
+        &templates.join("react-component.spec.txt"),
+        "// {{NAME}} {{IMPORT}}\n",
+    );
     write(&templates.join("react-component.happydom.txt"), "// dom\n");
     write(&templates.join("react-component.bunfig.txt"), "[test]\n");
-    write(&templates.join("migrations/migration.txt"), "// {{ version }} {{ name }}\n");
+    write(
+        &templates.join("migrations/migration.txt"),
+        "// {{ version }} {{ name }}\n",
+    );
     write(&templates.join("module/migration.up.txt"), "// up\n");
     write(&templates.join("module/migration.down.txt"), "// down\n");
-    write(&templates.join("seeds/seed.txt"), "// {{ name }} {{ dataFile }}\n");
+    write(
+        &templates.join("seeds/seed.txt"),
+        "// {{ name }} {{ dataFile }}\n",
+    );
     write(&templates.join("seeds/seed.test.txt"), "// {{NAME}}\n");
-    write(&templates.join("module/seed.run.txt"), "// seeds of {{name}}\n");
-    write(&templates.join("command/command.txt"), "// {{COMMAND_NAME}} {{NAME}}\n");
+    write(
+        &templates.join("module/seed.run.txt"),
+        "// seeds of {{name}}\n",
+    );
+    write(
+        &templates.join("command/command.txt"),
+        "// {{COMMAND_NAME}} {{NAME}}\n",
+    );
     write(&templates.join("command/command.test.txt"), "// {{NAME}}\n");
-    write(&templates.join("module/command.run.txt"), "// commands of {{name}}\n");
+    write(
+        &templates.join("module/command.run.txt"),
+        "// commands of {{name}}\n",
+    );
     write(&templates.join("mailer/mailer.txt"), "// {{NAME}}\n");
     write(&templates.join("mailer/mailer.test.txt"), "// {{NAME}}\n");
-    write(&templates.join("mailer/mailer-template.txt"), "// {{NAME}}\n");
-    write(&templates.join("mailer/mailer-template.test.txt"), "// {{NAME}}\n");
-    for name in ["route", "layout", "not-found-layout", "error-layout", "skeleton-layout", "query", "mutation"] {
+    write(
+        &templates.join("mailer/mailer-template.txt"),
+        "// {{NAME}}\n",
+    );
+    write(
+        &templates.join("mailer/mailer-template.test.txt"),
+        "// {{NAME}}\n",
+    );
+    for name in [
+        "route",
+        "layout",
+        "not-found-layout",
+        "error-layout",
+        "skeleton-layout",
+        "query",
+        "mutation",
+    ] {
         write(
             &templates.join(format!("spa/spa-feature.{name}.txt")),
             "// {{NAME}}\n",
         );
     }
-    write(&templates.join("spa/spa.use-translate.txt"), "// {{NAME}}\n");
+    write(
+        &templates.join("spa/spa.use-translate.txt"),
+        "// {{NAME}}\n",
+    );
     write(&templates.join("spa/spa.use-lang.txt"), "// lang\n");
-    write(&templates.join("module/module.txt"), "export const {{NAME}}Module = {};\n");
-    write(&templates.join("module/package.txt"), "{ \"name\": \"@module/{{NAME}}\" }\n");
+    write(
+        &templates.join("module/module.txt"),
+        "export const {{NAME}}Module = {};\n",
+    );
+    write(
+        &templates.join("module/package.txt"),
+        "{ \"name\": \"@module/{{NAME}}\" }\n",
+    );
     write(&templates.join("module/tsconfig.txt"), "{}\n");
     write(&templates.join("module/yml.txt"), "type: \"module\"\n");
     write(&templates.join("module/test.txt"), "// {{NAME}} {{name}}\n");
@@ -97,7 +150,10 @@ fn workspace(root: &Path) {
         &root.join("package.json"),
         "{\n  \"name\": \"scratch\",\n  \"dependencies\": {\n    \"@talosjs/ai\": \"1.0.0\",\n    \"@talosjs/analytics\": \"1.0.0\",\n    \"@talosjs/cache\": \"1.0.0\",\n    \"@talosjs/controller\": \"1.0.0\",\n    \"@talosjs/cron\": \"1.0.0\",\n    \"@talosjs/database\": \"1.0.0\",\n    \"@talosjs/event\": \"1.0.0\",\n    \"@talosjs/feature-flag\": \"1.0.0\",\n    \"@talosjs/logger\": \"1.0.0\",\n    \"@talosjs/mailer\": \"1.0.0\",\n    \"@talosjs/middleware\": \"1.0.0\",\n    \"@talosjs/permission\": \"1.0.0\",\n    \"@talosjs/queue\": \"1.0.0\",\n    \"@talosjs/rag\": \"1.0.0\",\n    \"@talosjs/rate-limit\": \"1.0.0\",\n    \"@talosjs/repository\": \"1.0.0\",\n    \"@talosjs/service\": \"1.0.0\",\n    \"@talosjs/storage\": \"1.0.0\",\n    \"@talosjs/translation\": \"1.0.0\",\n    \"@talosjs/utils\": \"1.0.0\",\n    \"@talosjs/workflow\": \"1.0.0\",\n    \"@playwright/test\": \"1.0.0\",\n    \"@tanstack/react-query\": \"1.0.0\",\n    \"zustand\": \"1.0.0\",\n    \"@happy-dom/global-registrator\": \"1.0.0\",\n    \"@testing-library/react\": \"1.0.0\",\n    \"@testing-library/jest-dom\": \"1.0.0\"\n  }\n}\n",
     );
-    write(&root.join("tsconfig.json"), "{ \"compilerOptions\": { \"paths\": {} } }\n");
+    write(
+        &root.join("tsconfig.json"),
+        "{ \"compilerOptions\": { \"paths\": {} } }\n",
+    );
     write(
         &root.join("modules/user/issues/OON-100000.yml"),
         "id: \"OON-100000\"\nmodule: \"user\"\ntitle: \"Something\"\nstate: \"Todo\"\npriority: \"Medium\"\n",
@@ -168,12 +224,21 @@ const GENERATORS: &[(&str, &str)] = &[
         "modules/user/src/ai/middlewares/SupportMiddleware.ts",
     ),
     ("ai:tool:create", "modules/user/src/ai/tools/SupportTool.ts"),
-    ("analytics:create", "modules/user/src/analytics/SupportAnalytics.ts"),
+    (
+        "analytics:create",
+        "modules/user/src/analytics/SupportAnalytics.ts",
+    ),
     ("cache:create", "modules/user/src/cache/SupportCache.ts"),
     ("cron:create", "modules/user/src/crons/SupportCron.ts"),
-    ("entity:create", "modules/user/src/entities/SupportEntity.ts"),
+    (
+        "entity:create",
+        "modules/user/src/entities/SupportEntity.ts",
+    ),
     ("event:create", "modules/user/src/events/SupportEvent.ts"),
-    ("flag:create", "modules/user/src/flags/SupportFeatureFlag.ts"),
+    (
+        "flag:create",
+        "modules/user/src/flags/SupportFeatureFlag.ts",
+    ),
     ("logger:create", "modules/user/src/loggers/SupportLogger.ts"),
     (
         "permission:create",
@@ -188,13 +253,22 @@ const GENERATORS: &[(&str, &str)] = &[
         "repository:create",
         "modules/user/src/repositories/SupportRepository.ts",
     ),
-    ("service:create", "modules/user/src/services/SupportService.ts"),
-    ("storage:create", "modules/user/src/storage/SupportStorage.ts"),
+    (
+        "service:create",
+        "modules/user/src/services/SupportService.ts",
+    ),
+    (
+        "storage:create",
+        "modules/user/src/storage/SupportStorage.ts",
+    ),
     (
         "vector-database:create",
         "modules/user/src/databases/SupportVectorDatabase.ts",
     ),
-    ("workflow:create", "modules/user/src/workflows/SupportWorkflow.ts"),
+    (
+        "workflow:create",
+        "modules/user/src/workflows/SupportWorkflow.ts",
+    ),
     (
         "workflow:transition:create",
         "modules/user/src/workflows/transitions/SupportTransition.ts",
@@ -254,7 +328,12 @@ fn the_bundle_generators_are_reachable_by_their_command_names() {
             "modules/user/src/translations/EmailTranslation.ts",
         ),
         (
-            &["middleware:create", "--name=auth", "--module=user", "--is-socket=false"],
+            &[
+                "middleware:create",
+                "--name=auth",
+                "--module=user",
+                "--is-socket=false",
+            ],
             "modules/user/src/middlewares/AuthMiddleware.ts",
         ),
         (
@@ -270,7 +349,12 @@ fn the_bundle_generators_are_reachable_by_their_command_names() {
             "modules/user/src/controllers/UserController.ts",
         ),
         (
-            &["database:create", "--name=main", "--module=user", "--type=postgres"],
+            &[
+                "database:create",
+                "--name=main",
+                "--module=user",
+                "--type=postgres",
+            ],
             "modules/user/src/databases/MainDatabase.ts",
         ),
     ];
@@ -300,12 +384,7 @@ fn migration_create_is_reachable_and_writes_a_timestamped_file() {
     let written = fs::read_dir(sandbox.root.join("modules/user/src/migrations"))
         .expect("the migrations directory was created")
         .flatten()
-        .any(|entry| {
-            entry
-                .file_name()
-                .to_string_lossy()
-                .starts_with("Migration")
-        });
+        .any(|entry| entry.file_name().to_string_lossy().starts_with("Migration"));
     assert!(written, "no migration was written");
 }
 

@@ -18,7 +18,10 @@ fn row(title: &str, total: usize, done: usize, running: &[&str]) -> LoaderRow {
         title: title.to_string(),
         total,
         done,
-        running: running.iter().map(|name| name.to_string()).collect::<BTreeSet<_>>(),
+        running: running
+            .iter()
+            .map(|name| name.to_string())
+            .collect::<BTreeSet<_>>(),
     }
 }
 
@@ -185,11 +188,15 @@ fn a_task_that_was_cached_or_skipped_prints_nothing() {
 
 #[test]
 fn an_excerpt_keeps_the_lines_around_every_signal_it_finds() {
-    let output = "setup\nbefore\nAssertionError: nope\nafter one\nafter two\nafter three\nfar away\n";
+    let output =
+        "setup\nbefore\nAssertionError: nope\nafter one\nafter two\nafter three\nfar away\n";
 
     let excerpt = failure_excerpt(output);
 
-    assert!(excerpt.iter().any(|line| line.contains("before")), "{excerpt:?}");
+    assert!(
+        excerpt.iter().any(|line| line.contains("before")),
+        "{excerpt:?}"
+    );
     assert!(
         excerpt.iter().any(|line| line.contains("AssertionError")),
         "{excerpt:?}"
