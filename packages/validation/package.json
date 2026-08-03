@@ -54,6 +54,12 @@
         "default": "./dist/src/constraints/AssertEmail.js"
       }
     },
+    "./constraints/AssertFile": {
+      "import": {
+        "types": "./dist/src/constraints/AssertFile.d.ts",
+        "default": "./dist/src/constraints/AssertFile.js"
+      }
+    },
     "./constraints/AssertFirstName": {
       "import": {
         "types": "./dist/src/constraints/AssertFirstName.d.ts",
@@ -126,6 +132,7 @@
   "dependencies": {
     "@talosjs/app-env": "workspace:^",
     "@talosjs/currencies": "workspace:^",
+    "@talosjs/http-mimes": "workspace:^",
     "@talosjs/translation": "workspace:^",
     "arktype": "^2.1.29"
   },

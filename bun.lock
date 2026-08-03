@@ -660,6 +660,7 @@
       "dependencies": {
         "@talosjs/app-env": "workspace:^",
         "@talosjs/currencies": "workspace:^",
+        "@talosjs/http-mimes": "workspace:^",
         "@talosjs/translation": "workspace:^",
         "arktype": "^2.1.29",
       },

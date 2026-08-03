@@ -10,6 +10,7 @@ export default defineConfig({
     "src/constraints/AssertCurrency.ts",
     "src/constraints/AssertDescription.ts",
     "src/constraints/AssertEmail.ts",
+    "src/constraints/AssertFile.ts",
     "src/constraints/AssertFirstName.ts",
     "src/constraints/AssertHexaColor.ts",
     "src/constraints/AssertHostname.ts",

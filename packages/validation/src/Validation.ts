@@ -1,4 +1,4 @@
-import { type } from "arktype";
+import { validateAssert } from "./guards";
 import type { AssertType, IAssert, ValidationResultType } from "./types";
 
 export abstract class Validation implements IAssert {
@@ -10,10 +10,10 @@ export abstract class Validation implements IAssert {
   public validate(data: unknown, constraint?: AssertType): ValidationResultType {
     constraint = constraint || this.getConstraint();
 
-    const out = constraint(data);
+    const result = validateAssert(constraint, data);
 
-    if (out instanceof type.errors) {
-      return this.invalidResult(out.summary);
+    if (!result.isValid) {
+      return this.invalidResult(result.message);
     }
 
     return this.validResult();
