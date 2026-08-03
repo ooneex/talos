@@ -89,7 +89,7 @@ describe("ClerkAuthMiddleware", () => {
 
       const result = await middleware.getCurrentUser("delegated-token");
 
-      expect(result).toBe(clerkUser);
+      expect(result).toBe(clerkUser as never);
       expect(mockClerkAuth.getCurrentUser).toHaveBeenCalledWith("delegated-token");
     });
   });
