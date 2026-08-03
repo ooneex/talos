@@ -22,6 +22,10 @@ pub enum CredentialsProvider {
     Discord,
     Reddit,
     Medium,
+    #[value(name = "cloudflare", alias = "r2")]
+    Cloudflare,
+    Bunny,
+    S3,
 }
 
 pub const PROVIDERS: &[CredentialsProvider] = &[
@@ -39,6 +43,9 @@ pub const PROVIDERS: &[CredentialsProvider] = &[
     CredentialsProvider::Discord,
     CredentialsProvider::Reddit,
     CredentialsProvider::Medium,
+    CredentialsProvider::Cloudflare,
+    CredentialsProvider::Bunny,
+    CredentialsProvider::S3,
 ];
 
 #[derive(Clone, Copy, Debug)]
@@ -154,6 +161,30 @@ const REDDIT_FIELDS: &[Field] = &[
 
 const MEDIUM_FIELDS: &[Field] = &[secret("token", "Enter Medium integration token")];
 
+const CLOUDFLARE_FIELDS: &[Field] = &[
+    secret("accessKey", "Enter Cloudflare R2 access key ID"),
+    secret("secretKey", "Enter Cloudflare R2 secret access key"),
+    with_default(
+        "endpoint",
+        "Enter Cloudflare R2 endpoint",
+        "https://your-account-id.r2.cloudflarestorage.com",
+    ),
+    with_default("region", "Enter Cloudflare R2 region", "EEUR"),
+];
+
+const BUNNY_FIELDS: &[Field] = &[
+    plain("storageZone", "Enter Bunny storage zone name"),
+    secret("accessKey", "Enter Bunny storage zone password"),
+    with_default("region", "Enter Bunny storage region", "de"),
+];
+
+const S3_FIELDS: &[Field] = &[
+    secret("accessKey", "Enter S3 access key ID"),
+    secret("secretKey", "Enter S3 secret access key"),
+    plain("bucket", "Enter S3 bucket name"),
+    with_default("region", "Enter S3 region", "us-east-1"),
+];
+
 impl CredentialsProvider {
     pub fn slug(self) -> &'static str {
         match self {
@@ -171,6 +202,9 @@ impl CredentialsProvider {
             Self::Discord => "discord",
             Self::Reddit => "reddit",
             Self::Medium => "medium",
+            Self::Cloudflare => "cloudflare",
+            Self::Bunny => "bunny",
+            Self::S3 => "s3",
         }
     }
 
@@ -190,6 +224,9 @@ impl CredentialsProvider {
             Self::Discord => "Discord",
             Self::Reddit => "Reddit",
             Self::Medium => "Medium",
+            Self::Cloudflare => "Cloudflare R2",
+            Self::Bunny => "Bunny",
+            Self::S3 => "Amazon S3",
         }
     }
 
@@ -212,6 +249,13 @@ impl CredentialsProvider {
             Self::Medium => {
                 "Create an integration token at https://medium.com/me/settings/security"
             }
+            Self::Cloudflare => {
+                "Create an R2 API token at https://dash.cloudflare.com/?to=/:account/r2/api-tokens"
+            }
+            Self::Bunny => "Copy the storage zone password at https://dash.bunny.net/storage",
+            Self::S3 => {
+                "Create an access key at https://console.aws.amazon.com/iam/home#/security_credentials"
+            }
         }
     }
 
@@ -231,6 +275,9 @@ impl CredentialsProvider {
             Self::Discord => DISCORD_FIELDS,
             Self::Reddit => REDDIT_FIELDS,
             Self::Medium => MEDIUM_FIELDS,
+            Self::Cloudflare => CLOUDFLARE_FIELDS,
+            Self::Bunny => BUNNY_FIELDS,
+            Self::S3 => S3_FIELDS,
         }
     }
 }
@@ -285,6 +332,24 @@ pub struct CredentialsCreateArgs {
     #[arg(long)]
     pub password: Option<String>,
 
+    #[arg(long)]
+    pub access_key: Option<String>,
+
+    #[arg(long)]
+    pub secret_key: Option<String>,
+
+    #[arg(long)]
+    pub endpoint: Option<String>,
+
+    #[arg(long)]
+    pub region: Option<String>,
+
+    #[arg(long)]
+    pub bucket: Option<String>,
+
+    #[arg(long)]
+    pub storage_zone: Option<String>,
+
     #[arg(long, default_value_t = false)]
     pub silent: bool,
 }
@@ -307,6 +372,12 @@ impl CredentialsCreateArgs {
             "botToken" => self.bot_token.clone(),
             "username" => self.username.clone(),
             "password" => self.password.clone(),
+            "accessKey" => self.access_key.clone(),
+            "secretKey" => self.secret_key.clone(),
+            "endpoint" => self.endpoint.clone(),
+            "region" => self.region.clone(),
+            "bucket" => self.bucket.clone(),
+            "storageZone" => self.storage_zone.clone(),
             _ => None,
         }
     }

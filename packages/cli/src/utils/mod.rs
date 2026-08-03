@@ -26,6 +26,7 @@ mod runnable_modules;
 mod rust_module;
 mod scaffold;
 mod skeleton;
+pub mod storage;
 mod style;
 mod yaml;
 

@@ -167,6 +167,8 @@ _talos() {
     'docker\:create:Add a docker service to docker-compose.yml'
     'docker\:credentials\:create:Save a Docker registry access token under the user config'
     'docker\:publish:Build and push a package or module Docker image to Docker Hub'
+    'storage\:push:Push a local file or folder to a Cloudflare R2, Bunny or S3 bucket'
+    'storage\:pull:Pull a Cloudflare R2, Bunny or S3 bucket path into a local folder'
     'npm\:credentials\:create:Save an npm Granular Access Token under the user config'
     'npm\:publish:Publish a package or module to npm'
     'monorepo\:run:Run package.json scripts across packages and modules with granular caching'
@@ -359,7 +361,7 @@ _talos() {
           ;;
         credentials:create)
           _arguments -s \
-            '--provider=[Credentials provider]:provider:(jira linear x instagram facebook linkedin tiktok threads whatsapp telegram messenger discord reddit medium)' \
+            '--provider=[Credentials provider]:provider:(jira linear x instagram facebook linkedin tiktok threads whatsapp telegram messenger discord reddit medium cloudflare bunny s3)' \
             '--base-url=[Base URL]:baseUrl' \
             '--email=[Account email]:email' \
             '--token=[API token]:token' \
@@ -374,7 +376,27 @@ _talos() {
             '--application-id=[Application ID]:applicationId' \
             '--bot-token=[Bot token]:botToken' \
             '--username=[Username]:username' \
-            '--password=[Password]:password'
+            '--password=[Password]:password' \
+            '--access-key=[Access key]:accessKey' \
+            '--secret-key=[Secret key]:secretKey' \
+            '--endpoint=[Endpoint URL]:endpoint' \
+            '--region=[Region]:region' \
+            '--bucket=[Bucket name]:bucket' \
+            '--storage-zone=[Storage zone name]:storageZone'
+          ;;
+        storage:push)
+          _arguments -s \
+            '--provider=[Storage provider]:provider:(cloudflare bunny s3)' \
+            '--from=[Local file or folder to push]:from:_files' \
+            '--destination=[Destination bucket path]:destination' \
+            '--zip[Send one zip archive instead of the individual files]'
+          ;;
+        storage:pull)
+          _arguments -s \
+            '--provider=[Storage provider]:provider:(cloudflare bunny s3)' \
+            '--from=[Remote bucket path to pull]:from' \
+            '--destination=[Local folder to pull into]:destination:_files -/' \
+            '--unzip[Unpack every zip archive that comes down]'
           ;;
         npm:credentials:create)
           _arguments -s \

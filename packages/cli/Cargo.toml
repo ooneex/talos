@@ -33,6 +33,9 @@ dashmap = { version = "6.2.1", features = ["serde"] }
 nanoid = "0.4"
 portable-pty = "0.9.0"
 toml = "1"
+sha2 = "0.10"
+hmac = "0.12"
+zip = { version = "8.6.0", default-features = false, features = ["deflate"] }
 
 [dev-dependencies]
 filetime = "0.2"

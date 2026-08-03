@@ -155,6 +155,14 @@ const COMMANDS: &[(&str, &str)] = &[
     ("spa:create", "Generate a new spa module"),
     ("storage:create", "Generate a new storage class"),
     (
+        "storage:push",
+        "Push a local file or folder to a Cloudflare R2, Bunny or S3 bucket",
+    ),
+    (
+        "storage:pull",
+        "Pull a Cloudflare R2, Bunny or S3 bucket path into a local folder",
+    ),
+    (
         "spa:feature:create",
         "Generate a new spa feature (route, layout, hooks and folders)",
     ),

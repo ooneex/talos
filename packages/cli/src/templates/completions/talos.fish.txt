@@ -193,6 +193,8 @@ for cmd in oo talos
     complete -c $cmd -f -n __fish_use_subcommand -a storybook:create -d 'Generate a new storybook module'
     complete -c $cmd -f -n __fish_use_subcommand -a storybook:remove -d 'Remove an existing storybook module'
     complete -c $cmd -f -n __fish_use_subcommand -a storage:create -d 'Generate a new storage class'
+    complete -c $cmd -f -n __fish_use_subcommand -a storage:push -d 'Push a local file or folder to a Cloudflare R2, Bunny or S3 bucket'
+    complete -c $cmd -f -n __fish_use_subcommand -a storage:pull -d 'Pull a Cloudflare R2, Bunny or S3 bucket path into a local folder'
     complete -c $cmd -f -n __fish_use_subcommand -a translation:create -d 'Generate a new translation class'
     complete -c $cmd -f -n __fish_use_subcommand -a vector-database:create -d 'Generate a new vector database class'
     complete -c $cmd -f -n __fish_use_subcommand -a workflow:create -d 'Generate a new workflow class'
@@ -286,7 +288,7 @@ for cmd in oo talos
     complete -c $cmd -n '__fish_seen_subcommand_from docker:publish' -l tag -x -d 'Image tag'
 
 
-    complete -c $cmd -n '__fish_seen_subcommand_from credentials:create' -l provider -x -a 'jira linear x instagram facebook linkedin tiktok threads whatsapp telegram messenger discord reddit medium' -d 'Credentials provider'
+    complete -c $cmd -n '__fish_seen_subcommand_from credentials:create' -l provider -x -a 'jira linear x instagram facebook linkedin tiktok threads whatsapp telegram messenger discord reddit medium cloudflare bunny s3' -d 'Credentials provider'
     complete -c $cmd -n '__fish_seen_subcommand_from credentials:create' -l base-url -x -d 'Base URL'
     complete -c $cmd -n '__fish_seen_subcommand_from credentials:create' -l email -x -d 'Account email'
     complete -c $cmd -n '__fish_seen_subcommand_from credentials:create' -l token -x -d 'API token'
@@ -302,8 +304,24 @@ for cmd in oo talos
     complete -c $cmd -n '__fish_seen_subcommand_from credentials:create' -l bot-token -x -d 'Bot token'
     complete -c $cmd -n '__fish_seen_subcommand_from credentials:create' -l username -x -d 'Username'
     complete -c $cmd -n '__fish_seen_subcommand_from credentials:create' -l password -x -d 'Password'
+    complete -c $cmd -n '__fish_seen_subcommand_from credentials:create' -l access-key -x -d 'Access key'
+    complete -c $cmd -n '__fish_seen_subcommand_from credentials:create' -l secret-key -x -d 'Secret key'
+    complete -c $cmd -n '__fish_seen_subcommand_from credentials:create' -l endpoint -x -d 'Endpoint URL'
+    complete -c $cmd -n '__fish_seen_subcommand_from credentials:create' -l region -x -d 'Region'
+    complete -c $cmd -n '__fish_seen_subcommand_from credentials:create' -l bucket -x -d 'Bucket name'
+    complete -c $cmd -n '__fish_seen_subcommand_from credentials:create' -l storage-zone -x -d 'Storage zone name'
 
     complete -c $cmd -n '__fish_seen_subcommand_from npm:credentials:create' -l token -x -d 'npm Granular Access Token'
+
+    complete -c $cmd -n '__fish_seen_subcommand_from storage:push' -l provider -x -a 'cloudflare bunny s3' -d 'Storage provider'
+    complete -c $cmd -n '__fish_seen_subcommand_from storage:push' -l from -r -d 'Local file or folder to push'
+    complete -c $cmd -n '__fish_seen_subcommand_from storage:push' -l destination -x -d 'Destination bucket path'
+    complete -c $cmd -n '__fish_seen_subcommand_from storage:push' -l zip -d 'Send one zip archive instead of the individual files'
+
+    complete -c $cmd -n '__fish_seen_subcommand_from storage:pull' -l provider -x -a 'cloudflare bunny s3' -d 'Storage provider'
+    complete -c $cmd -n '__fish_seen_subcommand_from storage:pull' -l from -x -d 'Remote bucket path to pull'
+    complete -c $cmd -n '__fish_seen_subcommand_from storage:pull' -l destination -r -f -a '(__fish_complete_directories)' -d 'Local folder to pull into'
+    complete -c $cmd -n '__fish_seen_subcommand_from storage:pull' -l unzip -d 'Unpack every zip archive that comes down'
 
     complete -c $cmd -n '__fish_seen_subcommand_from npm:publish' -l packages -a '(__talos_packages)' -d 'Package name(s), comma-separated'
     complete -c $cmd -n '__fish_seen_subcommand_from npm:publish' -l modules -a '(__talos_pkg_modules)' -d 'Module name(s), comma-separated'

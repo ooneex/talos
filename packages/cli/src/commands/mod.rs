@@ -74,6 +74,8 @@ pub mod spa_create;
 pub mod spa_feature_create;
 pub mod spa_remove;
 pub mod storage_create;
+pub mod storage_pull;
+pub mod storage_push;
 pub mod storybook_create;
 pub mod storybook_remove;
 pub mod test;
@@ -231,6 +233,14 @@ pub enum Commands {
 
     #[command(name = "storage:create")]
     StorageCreate(storage_create::StorageCreateArgs),
+
+    /// Push a local file or folder to a Cloudflare R2, Bunny or S3 bucket
+    #[command(name = "storage:push")]
+    StoragePush(storage_push::StoragePushArgs),
+
+    /// Pull a Cloudflare R2, Bunny or S3 bucket path into a local folder
+    #[command(name = "storage:pull")]
+    StoragePull(storage_pull::StoragePullArgs),
 
     #[command(name = "spa:create")]
     SpaCreate(spa_create::SpaCreateArgs),
@@ -402,6 +412,8 @@ impl Commands {
             Commands::RateLimitCreate(args) => rate_limit_create::run(args),
             Commands::ServiceCreate(args) => service_create::run(args),
             Commands::StorageCreate(args) => storage_create::run(args),
+            Commands::StoragePush(args) => storage_push::run(args),
+            Commands::StoragePull(args) => storage_pull::run(args),
             Commands::SpaCreate(args) => spa_create::run(args),
             Commands::AdminCreate(args) => admin_create::run(args),
             Commands::VectorDatabaseCreate(args) => vector_database_create::run(args),

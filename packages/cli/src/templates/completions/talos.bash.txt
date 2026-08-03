@@ -144,7 +144,7 @@ coverage:check \
 project:check \
 entity:create flag:create logger:create mailer:create marketing:create middleware:create permission:create \
 queue:create rate-limit:create event:create release:create repository:create sdk:create \
-service:create spa:create spa:feature:create spa:remove admin:create admin:remove storybook:create storybook:remove storage:create translation:create \
+service:create spa:create spa:feature:create spa:remove admin:create admin:remove storybook:create storybook:remove storage:create storage:push storage:pull translation:create \
 vector-database:create workflow:create workflow:transition:create microservice:create \
 microservice:remove migration:create migration:up migration:down module:create module:remove \
 seed:create seed:run"
@@ -257,9 +257,19 @@ seed:create seed:run"
     credentials:create)
       opts="--provider --base-url --email --token --client-id --client-secret --client-key \
 --access-token --app-id --app-secret --page-id --phone-number-id --application-id --bot-token \
---username --password"
+--username --password --access-key --secret-key --endpoint --region --bucket --storage-zone"
       [[ $flag == --provider ]] && candidates="jira linear x instagram facebook linkedin tiktok \
-threads whatsapp telegram messenger discord reddit medium"
+threads whatsapp telegram messenger discord reddit medium cloudflare bunny s3"
+      ;;
+    storage:push)
+      opts="--provider --from --destination --zip"
+      [[ $flag == --provider ]] && candidates="cloudflare bunny s3"
+      [[ $flag == --from ]] && candidates="$(compgen -f -- "$cur")"
+      ;;
+    storage:pull)
+      opts="--provider --from --destination --unzip"
+      [[ $flag == --provider ]] && candidates="cloudflare bunny s3"
+      [[ $flag == --destination ]] && candidates="$(compgen -d -- "$cur")"
       ;;
     npm:credentials:create)
       opts="--token"

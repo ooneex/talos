@@ -122,6 +122,12 @@ fn credentials_create_writes_a_profile_when_the_jira_flags_are_given() {
         bot_token: None,
         username: None,
         password: None,
+        access_key: None,
+        secret_key: None,
+        endpoint: None,
+        region: None,
+        bucket: None,
+        storage_zone: None,
         silent: true,
     });
 

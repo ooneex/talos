@@ -431,6 +431,31 @@ const PROVIDERS: &[(&str, &[&str], &str)] = &[
         "reddit.yml",
     ),
     ("medium", &["--token=t"], "medium.yml"),
+    (
+        "cloudflare",
+        &[
+            "--access-key=a",
+            "--secret-key=b",
+            "--endpoint=https://acc.r2.cloudflarestorage.com",
+            "--region=EEUR",
+        ],
+        "cloudflare.yml",
+    ),
+    (
+        "bunny",
+        &["--storage-zone=a", "--access-key=b", "--region=de"],
+        "bunny.yml",
+    ),
+    (
+        "s3",
+        &[
+            "--access-key=a",
+            "--secret-key=b",
+            "--bucket=c",
+            "--region=us-east-1",
+        ],
+        "s3.yml",
+    ),
 ];
 
 #[test]
