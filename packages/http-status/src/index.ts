@@ -148,6 +148,8 @@ export class HttpStatus implements IHttpStatus {
   public static Code: typeof STATUS_CODE = STATUS_CODE;
   public static Text: typeof STATUS_TEXT = STATUS_TEXT;
 
+  constructor() {}
+
   public isInformational: (code: StatusCodeType) => boolean = (code: StatusCodeType): boolean =>
     code >= STATUS_CODE.Continue && code < STATUS_CODE.OK;
 
