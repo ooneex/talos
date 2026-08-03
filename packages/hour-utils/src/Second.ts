@@ -8,9 +8,6 @@ class SecondConverter {
   }
 }
 
-// biome-ignore lint/complexity/noStaticOnlyClass: namespace-style API `Second.convert(...)` is the intended shape
-export class Second {
-  static convert(seconds: number): SecondConverter {
-    return new SecondConverter(seconds);
-  }
-}
+export const Second = {
+  convert: (seconds: number): SecondConverter => new SecondConverter(seconds),
+};

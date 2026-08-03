@@ -8,9 +8,6 @@ class HourConverter {
   }
 }
 
-// biome-ignore lint/complexity/noStaticOnlyClass: namespace-style API `Hour.convert(...)` is the intended shape
-export class Hour {
-  static convert(hours: number): HourConverter {
-    return new HourConverter(hours);
-  }
-}
+export const Hour = {
+  convert: (hours: number): HourConverter => new HourConverter(hours),
+};

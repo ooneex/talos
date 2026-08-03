@@ -8,9 +8,6 @@ class MinuteConverter {
   }
 }
 
-// biome-ignore lint/complexity/noStaticOnlyClass: namespace-style API `Minute.convert(...)` is the intended shape
-export class Minute {
-  static convert(minutes: number): MinuteConverter {
-    return new MinuteConverter(minutes);
-  }
-}
+export const Minute = {
+  convert: (minutes: number): MinuteConverter => new MinuteConverter(minutes),
+};

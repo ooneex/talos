@@ -8,9 +8,6 @@ class MillisecondConverter {
   }
 }
 
-// biome-ignore lint/complexity/noStaticOnlyClass: namespace-style API `Millisecond.convert(...)` is the intended shape
-export class Millisecond {
-  static convert(milliseconds: number): MillisecondConverter {
-    return new MillisecondConverter(milliseconds);
-  }
-}
+export const Millisecond = {
+  convert: (milliseconds: number): MillisecondConverter => new MillisecondConverter(milliseconds),
+};
