@@ -27,7 +27,24 @@ const mockQueueMethods = {
 // Mock implementations of the underlying bullmq Worker methods.
 const mockWorkerMethods = {
   close: mock(async (): Promise<void> => {}),
+  on: mock((_event: string, _listener: (...args: unknown[]) => void): void => {}),
 };
+
+// The worker events registerEvents() forwards, in the order it wires them.
+const WORKER_EVENTS = [
+  "active",
+  "completed",
+  "failed",
+  "progress",
+  "stalled",
+  "drained",
+  "paused",
+  "resumed",
+  "closing",
+  "closed",
+  "ready",
+  "error",
+] as const;
 
 // createBunRedisClient is mocked to simply pass through the raw client.
 const createBunRedisClient = mock((client: unknown) => client);
@@ -49,6 +66,7 @@ class MockQueue {
 // opening a real (blocking) Redis connection.
 class MockWorker {
   public close = mockWorkerMethods.close;
+  public on = mockWorkerMethods.on;
 
   constructor(name: string, processor: unknown, opts: unknown) {
     workerConstructorArgs.push({ name, processor, opts });
@@ -111,6 +129,7 @@ describe("Queue", () => {
       mockQueueMethods.remove,
       mockQueueMethods.close,
       mockWorkerMethods.close,
+      mockWorkerMethods.on,
       createBunRedisClient,
     ];
 
@@ -349,6 +368,60 @@ describe("Queue", () => {
       mockWorkerMethods.close.mockRejectedValue(new Error("Worker close failed"));
 
       expect(queue.close()).rejects.toThrow("Worker close failed");
+    });
+  });
+
+  describe("registerEvents", () => {
+    // A subclass that declares every hook, so registerEvents wires them all.
+    class HookedQueue extends TestQueue {
+      public readonly seen: string[] = [];
+
+      public onActive = (): void => void this.seen.push("active");
+      public onCompleted = (): void => void this.seen.push("completed");
+      public onFailed = (): void => void this.seen.push("failed");
+      public onProgress = (): void => void this.seen.push("progress");
+      public onStalled = (): void => void this.seen.push("stalled");
+      public onDrained = (): void => void this.seen.push("drained");
+      public onPaused = (): void => void this.seen.push("paused");
+      public onResumed = (): void => void this.seen.push("resumed");
+      public onClosing = (): void => void this.seen.push("closing");
+      public onClosed = (): void => void this.seen.push("closed");
+      public onReady = (): void => void this.seen.push("ready");
+      public onError = (): void => void this.seen.push("error");
+
+      public wire(): void {
+        this.registerEvents();
+      }
+    }
+
+    test("should subscribe every declared hook to its worker event", () => {
+      new HookedQueue(new AppEnv()).wire();
+
+      expect(mockWorkerMethods.on.mock.calls.map(([event]) => event)).toEqual([...WORKER_EVENTS]);
+    });
+
+    test("should invoke the hook bound to the queue when the worker emits", () => {
+      const hooked = new HookedQueue(new AppEnv());
+      hooked.wire();
+
+      for (const [, listener] of mockWorkerMethods.on.mock.calls) {
+        listener();
+      }
+
+      expect(hooked.seen).toEqual([...WORKER_EVENTS]);
+    });
+
+    test("should subscribe nothing when no hook is declared", () => {
+      // TestQueue declares no hooks, so registerEvents has nothing to wire.
+      class BareQueue extends TestQueue {
+        public wire(): void {
+          this.registerEvents();
+        }
+      }
+
+      new BareQueue(new AppEnv()).wire();
+
+      expect(mockWorkerMethods.on).not.toHaveBeenCalled();
     });
   });
 });
