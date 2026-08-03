@@ -55,6 +55,13 @@ pub struct SwaggerCreateArgs {
     #[arg(
         long,
         default_value_t = false,
+        help = "Reinstall the explorer from the template, discarding every local change to it. Without this, a re-run only writes route files and the specification"
+    )]
+    pub force: bool,
+
+    #[arg(
+        long,
+        default_value_t = false,
         help = "Bypass the skeleton cache and re-download templates (the cache otherwise auto-refreshes after 24h)"
     )]
     pub no_cache: bool,
@@ -498,6 +505,44 @@ fn collect_routes(
     routes
 }
 
+/// Write the documentation half of the module: one `*.route.ts` per route that
+/// does not have one yet, plus the published specification.
+///
+/// A route file that already exists is never rewritten — it holds the prose,
+/// the examples and the error statuses somebody wrote by hand, and none of that
+/// can be recovered from a decorator. Returns how many files were created.
+fn write_documentation(
+    module_dir: &Path,
+    routes: &[(String, RouteDefinition)],
+    prefix: &str,
+) -> usize {
+    let features_dir = module_dir.join("src").join("features");
+    let mut written = 0;
+
+    for (module_kebab, definition) in routes {
+        let feature_dir = features_dir.join(module_kebab);
+        let _ = fs::create_dir_all(&feature_dir);
+        let file_path = feature_dir.join(format!("{}.route.ts", definition.file_stem));
+        if file_path.exists() {
+            continue;
+        }
+        let _ = fs::write(
+            &file_path,
+            render_route_file(definition, &to_pascal_case(module_kebab)),
+        );
+        written += 1;
+    }
+
+    let public_dir = module_dir.join("public");
+    let _ = fs::create_dir_all(&public_dir);
+    let _ = fs::write(
+        public_dir.join("openapi.json"),
+        render_openapi(routes, prefix),
+    );
+
+    written
+}
+
 fn install_root_dependencies(cwd: &Path, deps: &[String], dev_deps: &[String]) -> bool {
     if !deps.is_empty()
         && !run_spinner_step(
@@ -599,6 +644,25 @@ pub fn run(args: &SwaggerCreateArgs) {
     // generator over an existing swagger cannot see its own output.
     let routes = collect_routes(&modules_dir, &target_module, &kebab_name, &prefix);
 
+    // An existing swagger owns its engine: the explorer is meant to be edited —
+    // an environment panel, a header editor, whatever the team adds — and a
+    // regeneration that reinstalled the template would silently undo all of it.
+    // A re-run therefore writes documentation only, and `--force` is the
+    // explicit way to ask for the template back.
+    let scaffolded = module_dir.join("package.json").exists();
+    let routes_only = scaffolded && !args.force;
+
+    if routes_only {
+        write_documentation(&module_dir, &routes, &prefix);
+        if !silent {
+            crate::utils::success(format!(
+                "modules/{kebab_name} updated · {} route(s) documented · engine left untouched (--force to reset it)",
+                routes.len()
+            ));
+        }
+        return;
+    }
+
     let clone_spinner = Spinner::start("Downloading swagger template...");
     let cloned = clone_skeleton(true, !args.no_cache);
     clone_spinner.stop();
@@ -668,24 +732,7 @@ pub fn run(args: &SwaggerCreateArgs) {
         let _ = fs::write(destination, content);
     }
 
-    let mut written = 0;
-    for (module_kebab, definition) in &routes {
-        let group = to_pascal_case(module_kebab);
-        let feature_dir = features_dir.join(module_kebab);
-        let _ = fs::create_dir_all(&feature_dir);
-        let file_path = feature_dir.join(format!("{}.route.ts", definition.file_stem));
-        // A route documented by hand keeps its prose; only new routes are written.
-        if file_path.exists() {
-            continue;
-        }
-        let _ = fs::write(&file_path, render_route_file(definition, &group));
-        written += 1;
-    }
-
-    let _ = fs::write(
-        module_dir.join("public").join("openapi.json"),
-        render_openapi(&routes, &prefix),
-    );
+    let written = write_documentation(&module_dir, &routes, &prefix);
 
     if !install_root_dependencies(&cwd, &deps, &dev_deps) {
         return;
@@ -873,6 +920,54 @@ export class GrantEntitlementController {}
         route.method = "socket".to_string();
 
         assert!(!render_openapi(&[("app".to_string(), route)], "api").contains("/v1/health"));
+    }
+
+    #[test]
+    fn writes_a_route_file_and_the_specification() {
+        let temp = tempfile::tempdir().expect("temp dir");
+        let route = parse_controller(HEALTH_CONTROLLER, "app", "api").expect("a route");
+
+        let written = write_documentation(temp.path(), &[("app".to_string(), route)], "api");
+
+        assert_eq!(written, 1);
+        assert!(
+            temp.path()
+                .join("src/features/app/HealthCheck.route.ts")
+                .is_file()
+        );
+        assert!(temp.path().join("public/openapi.json").is_file());
+    }
+
+    #[test]
+    fn never_overwrites_a_route_file_somebody_documented() {
+        let temp = tempfile::tempdir().expect("temp dir");
+        let route = parse_controller(HEALTH_CONTROLLER, "app", "api").expect("a route");
+        let routes = [("app".to_string(), route)];
+        write_documentation(temp.path(), &routes, "api");
+
+        let path = temp.path().join("src/features/app/HealthCheck.route.ts");
+        fs::write(&path, "// hand-written prose").expect("write route file");
+        let written = write_documentation(temp.path(), &routes, "api");
+
+        assert_eq!(written, 0);
+        assert_eq!(
+            fs::read_to_string(&path).expect("read back"),
+            "// hand-written prose"
+        );
+    }
+
+    #[test]
+    fn republishes_the_specification_even_when_no_route_file_is_new() {
+        let temp = tempfile::tempdir().expect("temp dir");
+        let route = parse_controller(HEALTH_CONTROLLER, "app", "api").expect("a route");
+        let routes = [("app".to_string(), route)];
+        write_documentation(temp.path(), &routes, "api");
+        fs::write(temp.path().join("public/openapi.json"), "stale").expect("stale spec");
+
+        write_documentation(temp.path(), &routes, "gateway");
+
+        let spec = fs::read_to_string(temp.path().join("public/openapi.json")).expect("read spec");
+        assert!(spec.contains("\"/gateway\""));
     }
 
     #[test]

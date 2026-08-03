@@ -347,7 +347,7 @@ threads whatsapp telegram messenger discord reddit medium"
       [[ $flag == --design ]] && candidates="$(_talos_yaml_modules design)"
       ;;
     swagger:create)
-      opts="--name --module --design --prefix --no-cache"
+      opts="--name --module --design --prefix --force --no-cache"
       [[ $flag == --design ]] && candidates="$(_talos_yaml_modules design)"
       [[ $flag == --module ]] && candidates="$(_talos_modules)"
       ;;

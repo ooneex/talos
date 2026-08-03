@@ -22,6 +22,7 @@ fn swagger_create_parses_all_flags() {
         "--cwd",
         "./here",
         "--silent",
+        "--force",
         "--no-cache",
     ])
     .expect("valid arguments should parse");
@@ -32,6 +33,7 @@ fn swagger_create_parses_all_flags() {
     assert_eq!(cli.args.prefix.as_deref(), Some("gateway"));
     assert_eq!(cli.args.cwd.as_deref(), Some("./here"));
     assert!(cli.args.silent);
+    assert!(cli.args.force);
     assert!(cli.args.no_cache);
 }
 
@@ -45,6 +47,7 @@ fn swagger_create_defaults_are_empty() {
     assert!(cli.args.prefix.is_none());
     assert!(cli.args.cwd.is_none());
     assert!(!cli.args.silent);
+    assert!(!cli.args.force);
     assert!(!cli.args.no_cache);
 }
 
