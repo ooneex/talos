@@ -1,5 +1,33 @@
-import { jsonSchemaToTypeString } from "@talosjs/validation";
+import { type AssertType, type IAssert, isAssert, isAssertRecord, jsonSchemaToTypeString } from "@talosjs/validation";
 import type { RouteConfigType, ValidRoutePath } from "./types";
+
+/**
+ * Resolve an IAssert wrapper down to the constraint it carries
+ */
+const resolveAssert = (assert: AssertType | IAssert): AssertType =>
+  isAssert(assert) ? resolveAssert(assert.getConstraint()) : assert;
+
+const normalizeTypeString = (typeString: string): string =>
+  typeString === "unknown" || typeString === "{  }" || typeString === "Record<string, unknown>" ? "never" : typeString;
+
+/**
+ * Convert a constraint — arktype type, IAssert or record of either — to its TypeScript type string
+ */
+const assertToTypeString = (assert: AssertType | IAssert): string => {
+  try {
+    const constraint = resolveAssert(assert);
+
+    if (isAssertRecord(constraint)) {
+      const properties = Object.entries(constraint).map(([key, entry]) => `${key}: ${assertToTypeString(entry)}`);
+
+      return properties.length > 0 ? `{ ${properties.join("; ")} }` : "never";
+    }
+
+    return normalizeTypeString(jsonSchemaToTypeString(constraint.toJsonSchema()));
+  } catch {
+    return "never";
+  }
+};
 
 // Type guards and validation helpers
 export const isValidRoutePath = (path: string): path is ValidRoutePath => {
@@ -64,70 +92,11 @@ export const routeConfigToTypeString = (
 
   const typeProperties: string[] = [];
 
-  if (config.response) {
-    try {
-      const constraint = "getConstraint" in config.response ? config.response.getConstraint() : config.response;
-      const schema = constraint.toJsonSchema();
-      let typeStr = jsonSchemaToTypeString(schema);
-      if (typeStr === "unknown" || typeStr === "{  }" || typeStr === "Record<string, unknown>") {
-        typeStr = "never";
-      }
-      typeProperties.push(`response: ${typeStr}`);
-    } catch {
-      typeProperties.push("response: never");
-    }
-  }
+  for (const key of ["response", "params", "payload", "queries"] as const) {
+    const assert = config[key];
 
-  if (config.params) {
-    const paramProps: string[] = [];
-
-    for (const [key, assert] of Object.entries(config.params)) {
-      try {
-        const constraint = "getConstraint" in assert ? assert.getConstraint() : assert;
-        const schema = constraint.toJsonSchema();
-        let typeStr = jsonSchemaToTypeString(schema);
-        if (typeStr === "unknown" || typeStr === "{  }" || typeStr === "Record<string, unknown>") {
-          typeStr = "never";
-        }
-        paramProps.push(`${key}: ${typeStr}`);
-      } catch {
-        paramProps.push(`${key}: never`);
-      }
-    }
-
-    if (paramProps.length > 0) {
-      const paramsType = `{ ${paramProps.join("; ")} }`;
-      typeProperties.push(`params: ${paramsType}`);
-    } else {
-      typeProperties.push("params: never");
-    }
-  }
-
-  if (config.payload) {
-    try {
-      const constraint = "getConstraint" in config.payload ? config.payload.getConstraint() : config.payload;
-      const schema = constraint.toJsonSchema();
-      let typeStr = jsonSchemaToTypeString(schema);
-      if (typeStr === "unknown" || typeStr === "{  }" || typeStr === "Record<string, unknown>") {
-        typeStr = "never";
-      }
-      typeProperties.push(`payload: ${typeStr}`);
-    } catch {
-      typeProperties.push("payload: never");
-    }
-  }
-
-  if (config.queries) {
-    try {
-      const constraint = "getConstraint" in config.queries ? config.queries.getConstraint() : config.queries;
-      const schema = constraint.toJsonSchema();
-      let typeStr = jsonSchemaToTypeString(schema);
-      if (typeStr === "unknown" || typeStr === "{  }" || typeStr === "Record<string, unknown>") {
-        typeStr = "never";
-      }
-      typeProperties.push(`queries: ${typeStr}`);
-    } catch {
-      typeProperties.push("queries: never");
+    if (assert) {
+      typeProperties.push(`${key}: ${assertToTypeString(assert)}`);
     }
   }
 
@@ -137,16 +106,49 @@ export const routeConfigToTypeString = (
 /**
  * Helper function to convert AssertType/IAssert to JSON Schema
  */
-const assertToJsonSchema = (assert: unknown): Record<string, unknown> => {
+const assertToJsonSchema = (assert: AssertType | IAssert): Record<string, unknown> => {
   try {
-    const constraint =
-      assert && typeof assert === "object" && "getConstraint" in assert
-        ? (assert as { getConstraint: () => { toJsonSchema: () => Record<string, unknown> } }).getConstraint()
-        : (assert as { toJsonSchema: () => Record<string, unknown> });
-    return constraint.toJsonSchema();
+    const constraint = resolveAssert(assert);
+
+    if (isAssertRecord(constraint)) {
+      const properties: Record<string, unknown> = {};
+
+      for (const [key, entry] of Object.entries(constraint)) {
+        const schema = assertToJsonSchema(entry);
+        delete schema.$schema;
+        schema.required = true;
+        properties[key] = schema;
+      }
+
+      return { type: "object", properties };
+    }
+
+    return constraint.toJsonSchema() as Record<string, unknown>;
   } catch {
     return { type: "unknown" };
   }
+};
+
+/**
+ * Build the documented schema of a route section, flagging each property as required or not
+ */
+const buildRouteSchema = (assert: AssertType | IAssert): Record<string, unknown> => {
+  const schema = assertToJsonSchema(assert);
+  delete schema.$schema;
+
+  // a record constraint already flags each of its properties as required
+  if (schema.type === "object" && schema.properties && !isAssertRecord(resolveAssert(assert))) {
+    const requiredFields = (schema.required as string[]) || [];
+    const properties = schema.properties as Record<string, unknown>;
+
+    for (const key of Object.keys(properties)) {
+      (properties[key] as Record<string, unknown>).required = requiredFields.includes(key);
+    }
+
+    delete schema.required;
+  }
+
+  return schema;
 };
 
 /**
@@ -212,67 +214,12 @@ export const routeConfigToJsonDoc = (config: RouteConfigType): Record<string, un
 
   const schemas: Record<string, Record<string, unknown>> = {};
 
-  if (config.params) {
-    const paramsSchema: Record<string, unknown> = {
-      type: "object",
-      properties: {},
-    };
+  for (const key of ["params", "queries", "payload", "files", "response"] as const) {
+    const assert = config[key];
 
-    for (const [key, assert] of Object.entries(config.params)) {
-      const schema = assertToJsonSchema(assert);
-      // Remove $schema from the schema object
-      delete schema.$schema;
-      // Add required field to each property
-      schema.required = true;
-      (paramsSchema.properties as Record<string, unknown>)[key] = schema;
+    if (assert) {
+      schemas[key] = buildRouteSchema(assert);
     }
-
-    schemas.params = paramsSchema;
-  }
-
-  if (config.queries) {
-    const schema = assertToJsonSchema(config.queries);
-    delete schema.$schema;
-    if (schema.type === "object" && schema.properties) {
-      const requiredFields = (schema.required as string[]) || [];
-      const properties = schema.properties as Record<string, unknown>;
-      for (const key of Object.keys(properties)) {
-        const propSchema = properties[key] as Record<string, unknown>;
-        propSchema.required = requiredFields.includes(key);
-      }
-      delete schema.required;
-    }
-    schemas.queries = schema;
-  }
-
-  if (config.payload) {
-    const schema = assertToJsonSchema(config.payload);
-    delete schema.$schema;
-    if (schema.type === "object" && schema.properties) {
-      const requiredFields = (schema.required as string[]) || [];
-      const properties = schema.properties as Record<string, unknown>;
-      for (const key of Object.keys(properties)) {
-        const propSchema = properties[key] as Record<string, unknown>;
-        propSchema.required = requiredFields.includes(key);
-      }
-      delete schema.required;
-    }
-    schemas.payload = schema;
-  }
-
-  if (config.response) {
-    const schema = assertToJsonSchema(config.response);
-    delete schema.$schema;
-    if (schema.type === "object" && schema.properties) {
-      const requiredFields = (schema.required as string[]) || [];
-      const properties = schema.properties as Record<string, unknown>;
-      for (const key of Object.keys(properties)) {
-        const propSchema = properties[key] as Record<string, unknown>;
-        propSchema.required = requiredFields.includes(key);
-      }
-      delete schema.required;
-    }
-    schemas.response = schema;
   }
 
   if (Object.keys(schemas).length > 0) {

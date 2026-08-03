@@ -1,6 +1,6 @@
 import type { ControllerClassType } from "@talosjs/controller";
 import type { HttpMethodType } from "@talosjs/types";
-import type { AssertType } from "@talosjs/validation";
+import type { AssertType, IAssert } from "@talosjs/validation";
 import { router } from "./Router";
 import type { ExtractParameters, RouteConfigType, RoutePathType } from "./types";
 
@@ -11,7 +11,7 @@ type TypedRouteConfig<T extends string> = Omit<
   RouteConfigType,
   "method" | "path" | "isSocket" | "controller" | "params"
 > & {
-  params?: ExtractParameters<T> extends never ? never : Record<ExtractParameters<T>, AssertType>;
+  params?: ExtractParameters<T> extends never ? never : Record<ExtractParameters<T>, AssertType | IAssert>;
 };
 
 type InferredRouteDecorator = (target: ControllerClassType) => void;

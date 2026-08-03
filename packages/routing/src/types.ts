@@ -3,16 +3,18 @@ import type { ControllerClassType } from "@talosjs/controller";
 import type { FeatureFlagClassType } from "@talosjs/feature-flag";
 import type { PermissionClassType } from "@talosjs/permission";
 import type { HttpMethodType } from "@talosjs/types";
-import type { AssertType, IAssert } from "@talosjs/validation";
+import type { AssertRecordType, AssertType, IAssert } from "@talosjs/validation";
+import type { AssertFile } from "@talosjs/validation/constraints/AssertFile";
 
 export type RouteConfigType = {
   name: string;
   path: `/${string}`;
   method: HttpMethodType;
   version: number;
-  params?: Record<string, AssertType | IAssert>;
+  params?: AssertRecordType;
   queries?: AssertType | IAssert;
   payload?: AssertType | IAssert;
+  files?: AssertFile;
   response?: AssertType | IAssert;
   controller: ControllerClassType;
   description: string;
