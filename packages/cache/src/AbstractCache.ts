@@ -1,6 +1,8 @@
 import type { ICache } from "./types";
 
 export abstract class AbstractCache implements ICache {
+  protected constructor() {}
+
   public abstract get<T = unknown>(key: string): Promise<T | undefined>;
   public abstract set<T = unknown>(key: string, value: T, ttl?: number): Promise<void>;
   public abstract delete(key: string): Promise<boolean>;
