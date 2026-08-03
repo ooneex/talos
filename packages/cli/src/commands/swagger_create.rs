@@ -81,6 +81,8 @@ pub struct RouteField {
     pub name: String,
     pub ty: String,
     pub required: bool,
+    /// The members of a nested object literal, e.g. `address: { city: string }`.
+    pub fields: Vec<RouteField>,
 }
 
 /// One route, as much of it as a controller states out loud.
@@ -272,17 +274,53 @@ pub fn extract_block(type_body: &str, block: &str) -> Vec<RouteField> {
         return Vec::new();
     };
 
-    split_members(&body)
+    fields_of(&body)
+}
+
+/// Turn the members of one object literal into fields, recursing into nested
+/// ones.
+///
+/// A member whose type is itself an object is documented as an object carrying
+/// its own fields, rather than as a field whose "type" is the whole literal
+/// spelled out — which is unreadable past two members and tells a reader
+/// nothing about which parts are optional.
+pub fn fields_of(body: &str) -> Vec<RouteField> {
+    split_members(body)
         .into_iter()
         .map(|(name, ty, required)| {
             // The explorer keys its upload control off the literal `file`, so a
             // `RequestFile` is translated here rather than re-detected there.
-            let ty = if is_file_type(&ty) {
-                "file".to_string()
-            } else {
-                ty
-            };
-            RouteField { name, ty, required }
+            if is_file_type(&ty) {
+                return RouteField {
+                    name,
+                    ty: "file".to_string(),
+                    required,
+                    fields: Vec::new(),
+                };
+            }
+
+            let trimmed = ty.trim();
+            let array = trimmed.ends_with("[]");
+            let inner = trimmed.trim_end_matches("[]").trim();
+            if inner.starts_with('{') && inner.ends_with('}') {
+                return RouteField {
+                    name,
+                    ty: if array {
+                        "object[]".to_string()
+                    } else {
+                        "object".to_string()
+                    },
+                    required,
+                    fields: fields_of(&inner[1..inner.len() - 1]),
+                };
+            }
+
+            RouteField {
+                name,
+                ty,
+                required,
+                fields: Vec::new(),
+            }
         })
         .collect()
 }
@@ -378,6 +416,7 @@ pub fn parse_controller(content: &str, module_name: &str, prefix: &str) -> Optio
                 name,
                 ty: "string".to_string(),
                 required: true,
+                fields: Vec::new(),
             });
         }
     }
@@ -403,20 +442,30 @@ fn quote(value: &str) -> String {
     format!("\"{}\"", value.replace('\\', "\\\\").replace('"', "\\\""))
 }
 
+/// One field, on one line when it is a leaf and as a block when it nests.
+fn render_field(indent: &str, field: &RouteField) -> String {
+    let head = format!(
+        "name: {}, type: {}, required: {}",
+        quote(&field.name),
+        quote(&field.ty),
+        field.required
+    );
+
+    if field.fields.is_empty() {
+        return format!("{indent}{{ {head} }},");
+    }
+
+    let nested = render_fields(&format!("{indent}  "), "fields", &field.fields);
+    format!("{indent}{{\n{indent}  {head},\n{nested}{indent}}},")
+}
+
 fn render_fields(indent: &str, label: &str, fields: &[RouteField]) -> String {
     if fields.is_empty() {
         return String::new();
     }
     let entries = fields
         .iter()
-        .map(|field| {
-            format!(
-                "{indent}  {{ name: {}, type: {}, required: {} }},",
-                quote(&field.name),
-                quote(&field.ty),
-                field.required
-            )
-        })
+        .map(|field| render_field(&format!("{indent}  "), field))
         .collect::<Vec<_>>()
         .join("\n");
     format!("{indent}{label}: [\n{entries}\n{indent}],\n")
@@ -892,6 +941,7 @@ export class GrantEntitlementController {}
                 name: "userId".to_string(),
                 ty: "string".to_string(),
                 required: true,
+                fields: Vec::new(),
             }]
         );
         assert_eq!(
@@ -901,16 +951,55 @@ export class GrantEntitlementController {}
                     name: "page".to_string(),
                     ty: "number".to_string(),
                     required: false,
+                    fields: Vec::new(),
                 },
                 RouteField {
                     name: "search".to_string(),
                     ty: "string".to_string(),
                     required: false,
+                    fields: Vec::new(),
                 },
             ]
         );
         assert_eq!(route.payload.len(), 2);
         assert_eq!(route.payload[0].ty, "\"free\" | \"pro\"");
+    }
+
+    #[test]
+    fn documents_a_nested_object_as_an_object_carrying_fields() {
+        let fields = fields_of("address: { city: string; zip?: number }; name: string");
+
+        assert_eq!(fields[0].name, "address");
+        assert_eq!(fields[0].ty, "object");
+        assert_eq!(fields[0].fields.len(), 2);
+        assert_eq!(fields[0].fields[0].name, "city");
+        assert!(!fields[0].fields[1].required);
+        assert!(fields[1].fields.is_empty());
+    }
+
+    #[test]
+    fn recurses_through_more_than_one_level() {
+        let fields = fields_of("a: { b: { c: string } }");
+
+        assert_eq!(fields[0].fields[0].ty, "object");
+        assert_eq!(fields[0].fields[0].fields[0].name, "c");
+    }
+
+    #[test]
+    fn marks_an_array_of_objects_as_such() {
+        let fields = fields_of("items: { sku: string }[]");
+
+        assert_eq!(fields[0].ty, "object[]");
+        assert_eq!(fields[0].fields[0].name, "sku");
+    }
+
+    #[test]
+    fn renders_a_nested_field_as_a_block() {
+        let rendered = render_fields("  ", "payload", &fields_of("address: { city: string }"));
+
+        assert!(rendered.contains("name: \"address\", type: \"object\""));
+        assert!(rendered.contains("fields: ["));
+        assert!(rendered.contains("name: \"city\""));
     }
 
     #[test]
