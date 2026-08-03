@@ -202,6 +202,18 @@ pub fn split_members(body: &str) -> Vec<(String, String, bool)> {
         .collect()
 }
 
+/// Whether a declared type is a file the framework rebuilds as a `RequestFile`.
+///
+/// A controller reads an upload through `context.request.files[name]`, which is
+/// only populated for `multipart/form-data` — so a payload naming `RequestFile`
+/// (or the browser's `File`) is what marks the whole body as multipart.
+pub fn is_file_type(ty: &str) -> bool {
+    let normalized = ty.trim().trim_end_matches("[]").trim();
+    normalized == "File"
+        || normalized.ends_with("RequestFile")
+        || normalized.ends_with("IRequestFile")
+}
+
 /// The members of one named block of a route type, e.g. its `queries`.
 pub fn extract_block(type_body: &str, block: &str) -> Vec<RouteField> {
     let Ok(pattern) = regex::Regex::new(&format!(r"\b{block}\s*:\s*\{{")) else {
@@ -216,7 +228,16 @@ pub fn extract_block(type_body: &str, block: &str) -> Vec<RouteField> {
 
     split_members(&body)
         .into_iter()
-        .map(|(name, ty, required)| RouteField { name, ty, required })
+        .map(|(name, ty, required)| {
+            // The explorer keys its upload control off the literal `file`, so a
+            // `RequestFile` is translated here rather than re-detected there.
+            let ty = if is_file_type(&ty) {
+                "file".to_string()
+            } else {
+                ty
+            };
+            RouteField { name, ty, required }
+        })
         .collect()
 }
 
@@ -377,6 +398,9 @@ pub fn render_route_file(definition: &RouteDefinition, group: &str) -> String {
     body.push_str(&render_fields("  ", "queries", &definition.queries));
     if !definition.payload.is_empty() {
         body.push_str("  payload: {\n");
+        if definition.payload.iter().any(|field| field.ty == "file") {
+            body.push_str("    contentType: \"multipart\",\n");
+        }
         body.push_str(&render_fields("    ", "fields", &definition.payload));
         body.push_str("  },\n");
     }
@@ -920,6 +944,54 @@ export class GrantEntitlementController {}
         route.method = "socket".to_string();
 
         assert!(!render_openapi(&[("app".to_string(), route)], "api").contains("/v1/health"));
+    }
+
+    const UPLOAD_CONTROLLER: &str = r#"
+type UploadRouteType = {
+  payload: { avatar: RequestFile; caption: string };
+  response: { url: string };
+};
+
+@Route.post("/media/upload", {
+  name: "media.upload",
+  version: 1,
+  description: "Upload an avatar",
+  roles: ["ROLE_USER"],
+})
+export class UploadController {}
+"#;
+
+    #[test]
+    fn recognises_the_types_the_framework_rebuilds_as_a_request_file() {
+        assert!(is_file_type("RequestFile"));
+        assert!(is_file_type("IRequestFile"));
+        assert!(is_file_type("File"));
+        assert!(is_file_type(" RequestFile[] "));
+        assert!(!is_file_type("string"));
+        assert!(!is_file_type("Profile"));
+    }
+
+    #[test]
+    fn marks_a_file_payload_field_as_a_file() {
+        let route = parse_controller(UPLOAD_CONTROLLER, "media", "api").expect("a route");
+
+        assert_eq!(route.payload[0].name, "avatar");
+        assert_eq!(route.payload[0].ty, "file");
+        assert_eq!(route.payload[1].ty, "string");
+    }
+
+    #[test]
+    fn declares_a_multipart_body_when_a_field_carries_a_file() {
+        let route = parse_controller(UPLOAD_CONTROLLER, "media", "api").expect("a route");
+
+        assert!(render_route_file(&route, "Media").contains("contentType: \"multipart\""));
+    }
+
+    #[test]
+    fn leaves_a_json_body_unmarked() {
+        let route = parse_controller(GRANT_CONTROLLER, "entitlement", "api").expect("a route");
+
+        assert!(!render_route_file(&route, "Entitlement").contains("contentType"));
     }
 
     #[test]
