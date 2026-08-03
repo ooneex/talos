@@ -106,16 +106,24 @@ pub struct RouteDefinition {
     pub response: Vec<RouteField>,
 }
 
+/// The body of the `{ … }` opening at `open_index`, and the byte offset of its
+/// closing brace.
+///
+/// `open_index` is a **byte** offset, so the walk slices from it rather than
+/// skipping that many items of `char_indices()`: one multi-byte character
+/// earlier in the file — an em dash in a comment is enough — would otherwise
+/// start the depth count inside the block and lose a closing brace.
 fn match_balanced(text: &str, open_index: usize) -> Option<(String, usize)> {
     let mut depth = 0;
-    for (i, ch) in text.char_indices().skip(open_index) {
+    for (offset, ch) in text.get(open_index..)?.char_indices() {
+        let index = open_index + offset;
         if ch == '{' {
             depth += 1;
         }
         if ch == '}' {
             depth -= 1;
             if depth == 0 {
-                return Some((text[open_index + 1..i].to_string(), i));
+                return Some((text[open_index + 1..index].to_string(), index));
             }
         }
     }
@@ -975,6 +983,21 @@ export class GrantEntitlementController {}
         assert_eq!(fields[0].fields[0].name, "city");
         assert!(!fields[0].fields[1].required);
         assert!(fields[1].fields.is_empty());
+    }
+
+    #[test]
+    fn survives_a_multi_byte_character_before_the_block() {
+        // `open_index` is a byte offset; an em dash earlier in the file used to
+        // shift the walk and swallow a closing brace, so a nested object came
+        // out as a truncated type string — and the generated file no longer
+        // parsed.
+        let text = "type T = {\n  // note — here\n  response: {\n    actor: {\n      id: string;\n    };\n  };\n};";
+        let start = text.find("response: {").expect("a block") + "response: ".len();
+        let (body, _) = match_balanced(text, start).expect("a balanced block");
+
+        assert!(body.contains("actor"));
+        assert_eq!(body.matches('{').count(), body.matches('}').count());
+        assert_eq!(fields_of(&body)[0].ty, "object");
     }
 
     #[test]

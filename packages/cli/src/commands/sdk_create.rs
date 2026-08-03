@@ -76,16 +76,24 @@ fn to_camel_case(value: &str) -> String {
     result
 }
 
+/// The body of the `{ … }` opening at `open_index`, and the byte offset of its
+/// closing brace.
+///
+/// `open_index` is a **byte** offset, so the walk slices from it rather than
+/// skipping that many items of `char_indices()`: one multi-byte character
+/// earlier in the file — an em dash in a comment is enough — would otherwise
+/// start the depth count inside the block and lose a closing brace.
 fn match_balanced(text: &str, open_index: usize) -> Option<(String, usize)> {
     let mut depth = 0;
-    for (i, ch) in text.char_indices().skip(open_index) {
+    for (offset, ch) in text.get(open_index..)?.char_indices() {
+        let index = open_index + offset;
         if ch == '{' {
             depth += 1;
         }
         if ch == '}' {
             depth -= 1;
             if depth == 0 {
-                return Some((text[open_index + 1..i].to_string(), i));
+                return Some((text[open_index + 1..index].to_string(), index));
             }
         }
     }
