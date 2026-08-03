@@ -1,7 +1,7 @@
 import { bdclient } from "@brightdata/sdk";
 import { AppEnv } from "@talosjs/app-env";
 import { inject } from "@talosjs/container";
-import { Assert, type AssertType } from "@talosjs/validation";
+import { Assert, type AssertSchemaType } from "@talosjs/validation";
 import { AiException } from "../AiException";
 import { decorator } from "../decorators";
 import type { ITool } from "../types";
@@ -92,7 +92,7 @@ export class BrightDataSearchTool implements ITool<unknown, Promise<BrightDataSe
   public getDescription = (): string =>
     "Search Google through Bright Data's SERP API. Returns the top organic results for a query with their title, URL, description, and rank. Optionally localize by country and language.";
 
-  public getInputSchema = (): AssertType =>
+  public getInputSchema = (): AssertSchemaType =>
     Assert({
       query: "string > 0",
       "limit?": "number > 0",

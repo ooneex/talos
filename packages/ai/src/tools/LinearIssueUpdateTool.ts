@@ -1,6 +1,6 @@
 import { inject } from "@talosjs/container";
 import { Issue, type LinearProjectType, LinearService, type LinearUserType } from "@talosjs/linear";
-import { Assert, type AssertType } from "@talosjs/validation";
+import { Assert, type AssertSchemaType } from "@talosjs/validation";
 import { decorator } from "../decorators";
 import type { ITool } from "../types";
 import { type LinearIssueResultType, toIssueResult } from "./utils";
@@ -54,7 +54,7 @@ export class LinearIssueUpdateTool implements ITool<unknown, Promise<LinearIssue
   public getDescription = (): string =>
     "Update an existing Linear issue. Requires the issue id; optionally changes the title, description, assignee, project, priority (0=none, 1=urgent, 2=high, 3=normal, 4=low), workflow state, or labels. Only the provided fields are changed. Returns the updated issue.";
 
-  public getInputSchema = (): AssertType =>
+  public getInputSchema = (): AssertSchemaType =>
     Assert({
       id: "string > 0",
       "title?": "string > 0",

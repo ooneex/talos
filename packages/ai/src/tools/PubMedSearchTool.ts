@@ -1,6 +1,6 @@
 import { AppEnv } from "@talosjs/app-env";
 import { inject } from "@talosjs/container";
-import { Assert, type AssertType } from "@talosjs/validation";
+import { Assert, type AssertSchemaType } from "@talosjs/validation";
 import { AiException } from "../AiException";
 import { decorator } from "../decorators";
 import type { ITool } from "../types";
@@ -87,7 +87,7 @@ export class PubMedSearchTool implements ITool<unknown, Promise<PubMedSearchResu
   public getDescription = (): string =>
     "Search PubMed for biomedical and life-sciences literature. Accepts PubMed query syntax (field tags, boolean operators) and returns the most relevant articles with their PMID, title, authors, journal, publication date, DOI, and PubMed URL.";
 
-  public getInputSchema = (): AssertType =>
+  public getInputSchema = (): AssertSchemaType =>
     Assert({
       query: "string > 0",
       "limit?": "number > 0",

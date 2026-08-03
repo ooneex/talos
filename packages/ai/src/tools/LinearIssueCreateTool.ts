@@ -6,7 +6,7 @@ import {
   type LinearTeamType,
   type LinearUserType,
 } from "@talosjs/linear";
-import { Assert, type AssertType } from "@talosjs/validation";
+import { Assert, type AssertSchemaType } from "@talosjs/validation";
 import { decorator } from "../decorators";
 import type { ITool } from "../types";
 import { type LinearIssueResultType, toIssueResult } from "./utils";
@@ -60,7 +60,7 @@ export class LinearIssueCreateTool implements ITool<unknown, Promise<LinearIssue
   public getDescription = (): string =>
     "Create a new Linear issue. Requires a title and a teamId; optionally accepts a description, assignee, project, priority (0=none, 1=urgent, 2=high, 3=normal, 4=low), workflow state, and labels. Returns the created issue.";
 
-  public getInputSchema = (): AssertType =>
+  public getInputSchema = (): AssertSchemaType =>
     Assert({
       title: "string > 0",
       teamId: "string > 0",

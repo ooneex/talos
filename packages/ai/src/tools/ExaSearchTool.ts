@@ -1,6 +1,6 @@
 import { AppEnv } from "@talosjs/app-env";
 import { inject } from "@talosjs/container";
-import { Assert, type AssertType } from "@talosjs/validation";
+import { Assert, type AssertSchemaType } from "@talosjs/validation";
 import Exa from "exa-js";
 import { decorator } from "../decorators";
 import type { ITool } from "../types";
@@ -88,7 +88,7 @@ export class ExaSearchTool implements ITool<unknown, Promise<ExaSearchResultType
   public getDescription = (): string =>
     "Search the web with Exa. Returns the most relevant pages for a query with their title, URL, published date, author, relevance score, and highlighted snippets. Optionally bias the search by type, category, or include/exclude specific domains.";
 
-  public getInputSchema = (): AssertType =>
+  public getInputSchema = (): AssertSchemaType =>
     Assert({
       query: "string > 0",
       "numResults?": "number > 0",

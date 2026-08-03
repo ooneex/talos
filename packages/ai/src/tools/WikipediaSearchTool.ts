@@ -1,4 +1,4 @@
-import { Assert, type AssertType } from "@talosjs/validation";
+import { Assert, type AssertSchemaType } from "@talosjs/validation";
 import { AiException } from "../AiException";
 import { decorator } from "../decorators";
 import type { ITool } from "../types";
@@ -73,7 +73,7 @@ export class WikipediaSearchTool implements ITool<unknown, Promise<WikipediaSear
   public getDescription = (): string =>
     "Search Wikipedia for encyclopedia articles. Returns the most relevant pages for a query with their title, a plain-text snippet, word count, and article URL. Optionally choose a language edition (e.g. `en`, `fr`).";
 
-  public getInputSchema = (): AssertType =>
+  public getInputSchema = (): AssertSchemaType =>
     Assert({
       query: "string > 0",
       "limit?": "number > 0",

@@ -1,4 +1,4 @@
-import type { AssertType } from "@talosjs/validation";
+import type { AssertSchemaType } from "@talosjs/validation";
 import type {
   AbortInfo,
   AfterToolCallInfo,
@@ -75,7 +75,7 @@ export type ChatInputType = {
   /** AbortController for request cancellation. */
   abortController?: AbortController;
   /** Standard Schema for structured output. */
-  outputSchema?: AssertType;
+  outputSchema?: AssertSchemaType;
   /** Middleware array for observing/transforming chat behavior. */
   middlewares?: AiMiddlewareClassType[];
   /**
@@ -129,7 +129,7 @@ export interface ITool<P = unknown, R = unknown> {
   getName: () => string;
   getDescription: () => string;
   handler: (param: P) => R;
-  getInputSchema?: () => AssertType;
+  getInputSchema?: () => AssertSchemaType;
   onBeforeCall?: (
     ctx: ChatMiddlewareContext,
     hookCtx: ToolCallHookContext,

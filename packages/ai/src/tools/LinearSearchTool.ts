@@ -1,6 +1,6 @@
 import { inject } from "@talosjs/container";
 import { LinearService } from "@talosjs/linear";
-import { Assert, type AssertType } from "@talosjs/validation";
+import { Assert, type AssertSchemaType } from "@talosjs/validation";
 import { decorator } from "../decorators";
 import type { ITool } from "../types";
 import { type LinearIssueResultType, toIssueResult } from "./utils";
@@ -46,7 +46,7 @@ export class LinearSearchTool implements ITool<unknown, Promise<LinearIssueResul
   public getDescription = (): string =>
     "Search Linear issues by free text. Matches the query against issue titles and descriptions and returns the most relevant issues with their identifier, title, status, assignee, and labels.";
 
-  public getInputSchema = (): AssertType =>
+  public getInputSchema = (): AssertSchemaType =>
     Assert({
       query: "string > 0",
       "teamId?": "string",

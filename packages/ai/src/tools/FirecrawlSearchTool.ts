@@ -1,6 +1,6 @@
 import { AppEnv } from "@talosjs/app-env";
 import { inject } from "@talosjs/container";
-import { Assert, type AssertType } from "@talosjs/validation";
+import { Assert, type AssertSchemaType } from "@talosjs/validation";
 import { Firecrawl } from "firecrawl";
 import { decorator } from "../decorators";
 import type { ITool } from "../types";
@@ -80,7 +80,7 @@ export class FirecrawlSearchTool implements ITool<unknown, Promise<FirecrawlSear
   public getDescription = (): string =>
     "Search the web with Firecrawl. Returns the most relevant web pages, news, and images for a query with their URL, title, description, and (for news/images) date and image URL. Optionally restrict to specific sources, include/exclude domains, or localize by country.";
 
-  public getInputSchema = (): AssertType =>
+  public getInputSchema = (): AssertSchemaType =>
     Assert({
       query: "string > 0",
       "limit?": "number > 0",

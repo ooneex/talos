@@ -1,6 +1,6 @@
 import { inject } from "@talosjs/container";
 import { LinearService } from "@talosjs/linear";
-import { Assert, type AssertType } from "@talosjs/validation";
+import { Assert, type AssertSchemaType } from "@talosjs/validation";
 import { decorator } from "../decorators";
 import type { ITool } from "../types";
 
@@ -42,7 +42,7 @@ export class LinearIssueDeleteTool implements ITool<unknown, Promise<LinearIssue
   public getDescription = (): string =>
     "Delete a Linear issue by its id. Returns whether the deletion succeeded. This is irreversible — only call it when the user has clearly asked to delete the issue.";
 
-  public getInputSchema = (): AssertType => Assert({ id: "string > 0" });
+  public getInputSchema = (): AssertSchemaType => Assert({ id: "string > 0" });
 
   public handler = async (param: unknown): Promise<LinearIssueDeleteResultType> => {
     const { id } = param as LinearIssueDeleteInputType;
