@@ -22,11 +22,6 @@ class MockS3File {
       this.content = buffer;
       return buffer.byteLength;
     }
-    if (typeof data === "object" && data !== null && "arrayBuffer" in data && typeof data.arrayBuffer === "function") {
-      const buffer = await data.arrayBuffer();
-      this.content = buffer;
-      return buffer.byteLength;
-    }
     return 0;
   }
 
