@@ -4,11 +4,15 @@
 //! The explorer itself is a browser module copied from the skeleton, the way
 //! `storybook:create` copies the gallery. What is generated on top of it is the
 //! documentation: every `@Route.<verb>` decorator in the target's controllers
-//! becomes a `src/features/<module>/<Name>.route.ts` carrying the half of the
-//! contract a decorator actually states — verb, path, version, roles, the
-//! declared `params`/`queries`/`payload` fields. The half it does not state —
-//! prose, examples, error statuses — is left as a stub for the
-//! `swagger-create` skill to write, and is preserved on every re-run.
+//! becomes a `src/features/<module>/<Name>.route.ts` stating exactly what the
+//! decorator and the route type say — verb, path, version, roles, and the
+//! declared `params`/`queries`/`payload`/`response` fields.
+//!
+//! `src/features/` is generated output and is rebuilt on every run, so a meta
+//! can never drift from the controller that serves it, and the meta of a
+//! controller that was deleted or unregistered retires with it. Only the
+//! controllers a module's `<Name>Module.ts` actually registers are documented:
+//! a file nobody registers serves nothing.
 
 use std::collections::BTreeSet;
 use std::fs;
@@ -130,6 +134,46 @@ fn read_module_type(modules_dir: &Path, module_kebab: &str) -> String {
             })
         })
         .unwrap_or_else(|| "module".to_string())
+}
+
+/// The controller classes a module actually registers.
+///
+/// A `*Controller.ts` sitting in `src/controllers/` is not served by anything
+/// until it appears in the module's `controllers: [...]`. Documenting the file
+/// rather than the registration would publish routes the app does not answer —
+/// so the manifest, not the directory listing, is what is read.
+///
+/// `None` means the module has no manifest to read, in which case every
+/// controller file counts: that is a module the convention has not reached yet,
+/// and skipping it silently would be worse than documenting too much.
+pub fn registered_controllers(module_dir: &Path, module_kebab: &str) -> Option<BTreeSet<String>> {
+    let manifest = module_dir
+        .join("src")
+        .join(format!("{}Module.ts", to_pascal_case(module_kebab)));
+    let content = fs::read_to_string(manifest).ok()?;
+    let matched = regex::Regex::new(r"controllers\s*:\s*\[")
+        .ok()?
+        .find(&content)?;
+    let list = content.get(matched.end()..)?.split(']').next()?.to_string();
+
+    Some(
+        list.split(',')
+            .map(str::trim)
+            // `...SharedModule.controllers` is a spread of another module's own
+            // registrations, which that module is documented for on its own.
+            .filter(|entry| !entry.is_empty() && !entry.starts_with("..."))
+            .map(str::to_string)
+            .collect(),
+    )
+}
+
+/// The class a controller file declares, e.g. `HealthController`.
+pub fn controller_class_of(content: &str) -> Option<String> {
+    regex::Regex::new(r"export\s+class\s+(\w+)")
+        .ok()?
+        .captures(content)?
+        .get(1)
+        .map(|matched| matched.as_str().to_string())
 }
 
 fn collect_controller_files(dir: &Path, files: &mut Vec<PathBuf>) {
@@ -524,6 +568,7 @@ fn collect_routes(
             continue;
         }
 
+        let registered = registered_controllers(&module_dir, &module_kebab);
         let mut controller_files = Vec::new();
         collect_controller_files(
             &module_dir.join("src").join("controllers"),
@@ -531,9 +576,17 @@ fn collect_routes(
         );
         controller_files.sort();
         for file in controller_files {
-            if let Ok(content) = fs::read_to_string(file)
-                && let Some(definition) = parse_controller(&content, &module_kebab, prefix)
+            let Ok(content) = fs::read_to_string(file) else {
+                continue;
+            };
+            // A controller file is not served by anything until the module's
+            // manifest lists it, so the registration is what is documented.
+            if let Some(registered) = &registered
+                && !registered.contains(&controller_class_of(&content).unwrap_or_default())
             {
+                continue;
+            }
+            if let Some(definition) = parse_controller(&content, &module_kebab, prefix) {
                 routes.push((module_kebab.clone(), definition));
             }
         }
@@ -554,15 +607,19 @@ fn write_documentation(
     prefix: &str,
 ) -> usize {
     let features_dir = module_dir.join("src").join("features");
+    // `src/features/` is generated output, rebuilt from scratch on every run. A
+    // route meta states only what a decorator states, so regenerating it loses
+    // nothing — and freezing it would let `roles`, a path or a field type drift
+    // away from the controller that actually serves the route. Wiping first is
+    // also what retires the metas of controllers that were removed or
+    // unregistered.
+    let _ = fs::remove_dir_all(&features_dir);
     let mut written = 0;
 
     for (module_kebab, definition) in routes {
         let feature_dir = features_dir.join(module_kebab);
         let _ = fs::create_dir_all(&feature_dir);
         let file_path = feature_dir.join(format!("{}.route.ts", definition.file_stem));
-        if file_path.exists() {
-            continue;
-        }
         let _ = fs::write(
             &file_path,
             render_route_file(definition, &to_pascal_case(module_kebab)),
@@ -690,11 +747,11 @@ pub fn run(args: &SwaggerCreateArgs) {
     let routes_only = scaffolded && !args.force;
 
     if routes_only {
-        write_documentation(&module_dir, &routes, &prefix);
+        let written = write_documentation(&module_dir, &routes, &prefix);
         if !silent {
             crate::utils::success(format!(
                 "modules/{kebab_name} updated · {} route(s) documented · engine left untouched (--force to reset it)",
-                routes.len()
+                written
             ));
         }
         return;
@@ -707,26 +764,6 @@ pub fn run(args: &SwaggerCreateArgs) {
         return;
     };
     let template_dir = repo_dir.join("modules").join("swagger");
-
-    // Route files are the generated documentation and are merged, never
-    // clobbered: everything else in the module is the engine and is replaced.
-    let existing_features = src_dir.join("features");
-    let preserved: BTreeSet<PathBuf> = if existing_features.is_dir() {
-        let mut files = Vec::new();
-        crate::utils::frontend_module::visit_files_recursive(&existing_features, &mut |path| {
-            files.push(path.to_path_buf());
-        });
-        files.into_iter().collect()
-    } else {
-        BTreeSet::new()
-    };
-    let preserved_contents: Vec<(PathBuf, String)> = preserved
-        .iter()
-        .filter_map(|path| {
-            let relative = path.strip_prefix(&existing_features).ok()?.to_path_buf();
-            Some((relative, fs::read_to_string(path).ok()?))
-        })
-        .collect();
 
     let _ = fs::remove_dir_all(&module_dir);
     let _ = fs::create_dir_all(&module_dir);
@@ -756,18 +793,6 @@ pub fn run(args: &SwaggerCreateArgs) {
     rewrite_playwright_port(&module_dir.join("playwright.config.ts"), port);
     rewrite_self_imports(&src_dir, "swagger", &kebab_name);
     rewrite_design_alias(&module_dir.join("vite.config.ts"), design_kebab.as_deref());
-
-    // The template ships one example route; the generated ones replace it.
-    let features_dir = src_dir.join("features");
-    let _ = fs::remove_dir_all(&features_dir);
-    let _ = fs::create_dir_all(&features_dir);
-    for (relative, content) in &preserved_contents {
-        let destination = features_dir.join(relative);
-        if let Some(parent) = destination.parent() {
-            let _ = fs::create_dir_all(parent);
-        }
-        let _ = fs::write(destination, content);
-    }
 
     let written = write_documentation(&module_dir, &routes, &prefix);
 
@@ -1052,21 +1077,73 @@ export class UploadController {}
     }
 
     #[test]
-    fn never_overwrites_a_route_file_somebody_documented() {
+    fn rewrites_a_route_file_so_it_cannot_drift_from_its_controller() {
         let temp = tempfile::tempdir().expect("temp dir");
         let route = parse_controller(HEALTH_CONTROLLER, "app", "api").expect("a route");
         let routes = [("app".to_string(), route)];
         write_documentation(temp.path(), &routes, "api");
 
         let path = temp.path().join("src/features/app/HealthCheck.route.ts");
-        fs::write(&path, "// hand-written prose").expect("write route file");
+        fs::write(
+            &path,
+            "// stale, written when the decorator said something else",
+        )
+        .expect("write route file");
         let written = write_documentation(temp.path(), &routes, "api");
 
-        assert_eq!(written, 0);
-        assert_eq!(
-            fs::read_to_string(&path).expect("read back"),
-            "// hand-written prose"
+        assert_eq!(written, 1);
+        assert!(
+            fs::read_to_string(&path)
+                .expect("read back")
+                .contains("app.health.check")
         );
+    }
+
+    #[test]
+    fn retires_the_meta_of_a_controller_that_is_gone() {
+        let temp = tempfile::tempdir().expect("temp dir");
+        let route = parse_controller(HEALTH_CONTROLLER, "app", "api").expect("a route");
+        write_documentation(temp.path(), &[("app".to_string(), route)], "api");
+        let orphan = temp.path().join("src/features/app/Removed.route.ts");
+        fs::write(&orphan, "// a controller nobody registers any more").expect("write orphan");
+
+        write_documentation(temp.path(), &[], "api");
+
+        assert!(!orphan.exists());
+    }
+
+    #[test]
+    fn documents_only_the_controllers_a_module_registers() {
+        let temp = tempfile::tempdir().expect("temp dir");
+        let src = temp.path().join("src");
+        fs::create_dir_all(&src).expect("create src");
+        fs::write(
+            src.join("AppModule.ts"),
+            "export const AppModule: ModuleType = {\n  controllers: [...SharedModule.controllers, HealthController],\n};",
+        )
+        .expect("write manifest");
+
+        let registered = registered_controllers(temp.path(), "app").expect("a manifest");
+
+        // The spread belongs to the module it comes from, which documents it.
+        assert_eq!(registered.len(), 1);
+        assert!(registered.contains("HealthController"));
+    }
+
+    #[test]
+    fn documents_everything_when_a_module_has_no_manifest() {
+        let temp = tempfile::tempdir().expect("temp dir");
+
+        assert!(registered_controllers(temp.path(), "app").is_none());
+    }
+
+    #[test]
+    fn reads_the_class_a_controller_declares() {
+        assert_eq!(
+            controller_class_of(HEALTH_CONTROLLER).as_deref(),
+            Some("HealthController")
+        );
+        assert!(controller_class_of("const x = 1;").is_none());
     }
 
     #[test]
