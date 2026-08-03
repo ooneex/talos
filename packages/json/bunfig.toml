@@ -9,4 +9,4 @@ coveragePathIgnorePatterns = [
   ".temp/**",
   "src/types.ts",
 ]
-coverageThreshold = { lines = 0.9, functions = 0.9, statements = 0.9 }
+coverageThreshold = { lines = 0.99, functions = 0.99, statements = 0.99 }

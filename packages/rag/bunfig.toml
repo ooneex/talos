@@ -9,4 +9,4 @@ coveragePathIgnorePatterns = [
   "src/types.ts",
 ]
 # Thresholds are enforced per file, so they are pinned to the least-covered file.
-coverageThreshold = { lines = 0.5, functions = 0, statements = 0.5 }
+coverageThreshold = { lines = 0.99, functions = 0.99, statements = 0.99 }
