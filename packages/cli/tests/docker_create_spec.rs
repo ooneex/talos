@@ -1,5 +1,6 @@
 use clap::Parser;
-use cli::commands::docker_create::DockerCreateArgs;
+use cli::commands::docker_create::{DockerCreateArgs, run, template_for};
+use std::sync::Mutex;
 
 #[derive(Parser)]
 struct TestCli {
@@ -7,13 +8,17 @@ struct TestCli {
     args: DockerCreateArgs,
 }
 
+static ENV_GUARD: Mutex<()> = Mutex::new(());
+
 #[test]
 fn docker_create_parses_all_flags() {
-    let cli = TestCli::try_parse_from(["talos", "--name", "redis", "--cwd", "./here"])
-        .expect("valid arguments should parse");
+    let cli =
+        TestCli::try_parse_from(["talos", "--name", "redis", "--cwd", "./here", "--no-cache"])
+            .expect("valid arguments should parse");
 
     assert_eq!(cli.args.name.as_deref(), Some("redis"));
     assert_eq!(cli.args.cwd.as_deref(), Some("./here"));
+    assert!(cli.args.no_cache);
 }
 
 #[test]
@@ -22,6 +27,7 @@ fn docker_create_defaults_are_empty() {
 
     assert!(cli.args.name.is_none());
     assert!(cli.args.cwd.is_none());
+    assert!(!cli.args.no_cache);
 }
 
 #[test]
@@ -86,4 +92,94 @@ fn service_exists_matches_a_top_level_service_key() {
     assert!(!service_exists(compose, "redis"));
     // `image:` is nested deeper, so it is not a service.
     assert!(!service_exists(compose, "image"));
+}
+
+#[test]
+fn template_for_reads_only_supported_services() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    std::fs::create_dir_all(dir.path().join("docker")).expect("docker dir");
+    std::fs::write(dir.path().join("docker/redis.txt"), "services:\n  redis:\n").expect("template");
+
+    assert_eq!(
+        template_for(dir.path(), "redis").as_deref(),
+        Some("services:\n  redis:\n")
+    );
+    assert!(template_for(dir.path(), "unknown").is_none());
+}
+
+#[test]
+fn docker_create_writes_a_new_compose_file_from_a_template() {
+    let _guard = ENV_GUARD.lock().unwrap_or_else(|error| error.into_inner());
+    let cwd = tempfile::tempdir().expect("cwd");
+    let templates = tempfile::tempdir().expect("templates");
+    std::fs::create_dir_all(cwd.path().join("modules/app")).expect("app");
+    std::fs::create_dir_all(templates.path().join("docker")).expect("docker");
+    std::fs::write(
+        templates.path().join("docker/redis.txt"),
+        "services:\n  redis:\n    image: redis:7\n",
+    )
+    .expect("template");
+    std::fs::write(
+        cwd.path().join("modules/app/package.json"),
+        "{\n  \"name\": \"@module/app\",\n  \"scripts\": {}\n}\n",
+    )
+    .expect("package");
+
+    let previous = std::env::var_os(cli::utils::TEMPLATES_DIR_ENV);
+    unsafe {
+        std::env::set_var(cli::utils::TEMPLATES_DIR_ENV, templates.path());
+    }
+    run(&DockerCreateArgs {
+        no_cache: false,
+        name: Some("redis".to_string()),
+        cwd: Some(cwd.path().display().to_string()),
+    });
+    match previous {
+        Some(value) => unsafe { std::env::set_var(cli::utils::TEMPLATES_DIR_ENV, value) },
+        None => unsafe { std::env::remove_var(cli::utils::TEMPLATES_DIR_ENV) },
+    }
+
+    let compose = std::fs::read_to_string(cwd.path().join("modules/app/docker-compose.yml"))
+        .expect("compose");
+    assert!(compose.contains("redis:7"), "{compose}");
+    let package =
+        std::fs::read_to_string(cwd.path().join("modules/app/package.json")).expect("package");
+    assert!(package.contains("docker compose up -d"), "{package}");
+}
+
+#[test]
+fn docker_create_leaves_an_existing_service_alone() {
+    let _guard = ENV_GUARD.lock().unwrap_or_else(|error| error.into_inner());
+    let cwd = tempfile::tempdir().expect("cwd");
+    let templates = tempfile::tempdir().expect("templates");
+    std::fs::create_dir_all(cwd.path().join("modules/app")).expect("app");
+    std::fs::create_dir_all(templates.path().join("docker")).expect("docker");
+    std::fs::write(
+        templates.path().join("docker/redis.txt"),
+        "services:\n  redis:\n    image: redis:7\n",
+    )
+    .expect("template");
+    let compose_path = cwd.path().join("modules/app/docker-compose.yml");
+    std::fs::write(&compose_path, "services:\n  redis:\n    image: redis:6\n").expect("compose");
+    std::fs::write(cwd.path().join("modules/app/package.json"), "{}\n").expect("package");
+    let previous = std::env::var_os(cli::utils::TEMPLATES_DIR_ENV);
+    unsafe {
+        std::env::set_var(cli::utils::TEMPLATES_DIR_ENV, templates.path());
+    }
+
+    run(&DockerCreateArgs {
+        no_cache: false,
+        name: Some("redis".to_string()),
+        cwd: Some(cwd.path().display().to_string()),
+    });
+
+    match previous {
+        Some(value) => unsafe { std::env::set_var(cli::utils::TEMPLATES_DIR_ENV, value) },
+        None => unsafe { std::env::remove_var(cli::utils::TEMPLATES_DIR_ENV) },
+    }
+
+    assert_eq!(
+        std::fs::read_to_string(&compose_path).expect("compose"),
+        "services:\n  redis:\n    image: redis:6\n"
+    );
 }

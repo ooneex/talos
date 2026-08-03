@@ -398,4 +398,67 @@ mod tests {
 
         assert!(result.is_err());
     }
+
+    #[test]
+    fn add_to_shared_module_surfaces_write_failures() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let path = tmp.path().join("shared.module.ts");
+        fs::write(
+            &path,
+            "export const SharedModule = {\n  entities: [],\n};\n",
+        )
+        .expect("module file");
+
+        fs::set_permissions(tmp.path(), fs::Permissions::from_mode(0o500)).expect("dir perms");
+        fs::set_permissions(&path, fs::Permissions::from_mode(0o400)).expect("file perms");
+
+        let result = add_to_shared_module(&path, "User", "user");
+
+        fs::set_permissions(tmp.path(), fs::Permissions::from_mode(0o700)).expect("restore dir");
+        fs::set_permissions(&path, fs::Permissions::from_mode(0o600)).expect("restore file");
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn remove_from_shared_module_surfaces_write_failures() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let path = tmp.path().join("shared.module.ts");
+        fs::write(
+            &path,
+            "import { UserModule } from \"@module/user/UserModule\";\nexport const SharedModule = {\n  entities: [...UserModule.entities],\n};\n",
+        )
+        .expect("module file");
+
+        fs::set_permissions(tmp.path(), fs::Permissions::from_mode(0o500)).expect("dir perms");
+        fs::set_permissions(&path, fs::Permissions::from_mode(0o400)).expect("file perms");
+
+        let result = remove_from_shared_module(&path, "User", "user");
+
+        fs::set_permissions(tmp.path(), fs::Permissions::from_mode(0o700)).expect("restore dir");
+        fs::set_permissions(&path, fs::Permissions::from_mode(0o600)).expect("restore file");
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn remove_path_alias_surfaces_write_failures() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let path = tmp.path().join("tsconfig.json");
+        fs::write(
+            &path,
+            "{\"compilerOptions\":{\"paths\":{\"@module/user/*\":[\"./modules/user/src/*\"]}}}",
+        )
+        .expect("tsconfig");
+
+        fs::set_permissions(tmp.path(), fs::Permissions::from_mode(0o500)).expect("dir perms");
+        fs::set_permissions(&path, fs::Permissions::from_mode(0o400)).expect("file perms");
+
+        let result = remove_path_alias(&path, "user");
+
+        fs::set_permissions(tmp.path(), fs::Permissions::from_mode(0o700)).expect("restore dir");
+        fs::set_permissions(&path, fs::Permissions::from_mode(0o600)).expect("restore file");
+
+        assert!(result.is_err());
+    }
 }

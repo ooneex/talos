@@ -98,6 +98,7 @@ fn validate_route_path_rejects_empty_and_malformed_segments() {
     assert!(validate_route_path("/users/:1id").is_err());
     assert!(validate_route_path("/users/:").is_err());
     assert!(validate_route_path("/users/what?").is_err());
+    assert!(validate_route_path("/users/na:me").is_err());
 }
 
 #[test]

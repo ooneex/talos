@@ -1,5 +1,7 @@
 use clap::Parser;
-use cli::commands::admin_create::AdminCreateArgs;
+use cli::commands::admin_create::{AdminCreateArgs, run};
+use std::os::unix::fs::PermissionsExt;
+use std::sync::Mutex;
 
 #[derive(Parser)]
 struct TestCli {
@@ -7,11 +9,22 @@ struct TestCli {
     args: AdminCreateArgs,
 }
 
+static ENV_GUARD: Mutex<()> = Mutex::new(());
+
 #[test]
 fn admin_create_parses_all_flags() {
     let cli = TestCli::try_parse_from([
-        "talos", "--name", "MyAdmin", "--design", "material", "--target", "api", "--cwd", "./here",
+        "talos",
+        "--name",
+        "MyAdmin",
+        "--design",
+        "material",
+        "--target",
+        "api",
+        "--cwd",
+        "./here",
         "--silent",
+        "--no-cache",
     ])
     .expect("valid arguments should parse");
 
@@ -20,6 +33,7 @@ fn admin_create_parses_all_flags() {
     assert_eq!(cli.args.target.as_deref(), Some("api"));
     assert_eq!(cli.args.cwd.as_deref(), Some("./here"));
     assert!(cli.args.silent);
+    assert!(cli.args.no_cache);
 }
 
 #[test]
@@ -31,6 +45,7 @@ fn admin_create_defaults_are_empty() {
     assert!(cli.args.target.is_none());
     assert!(cli.args.cwd.is_none());
     assert!(!cli.args.silent);
+    assert!(!cli.args.no_cache);
 }
 
 #[test]
@@ -179,4 +194,119 @@ fn visit_files_recursive_reaches_every_file_but_no_directory() {
     seen.sort();
 
     assert_eq!(seen, ["a.txt", "b.txt", "c.txt"]);
+}
+
+fn write(path: &std::path::Path, content: &str) {
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).expect("parent");
+    }
+    std::fs::write(path, content).expect("file");
+}
+
+#[test]
+fn admin_create_scaffolds_the_admin_and_missing_design_modules() {
+    let _guard = ENV_GUARD.lock().unwrap_or_else(|error| error.into_inner());
+    let home = tempfile::tempdir().expect("home");
+    let cwd = tempfile::tempdir().expect("cwd");
+    let bin = cwd.path().join("bin");
+    std::fs::create_dir_all(&bin).expect("bin");
+    let bun = bin.join("bun");
+    std::fs::write(
+        &bun,
+        "#!/bin/sh\nif [ \"$1\" = \"--version\" ]; then exit 0; fi\nexit 0\n",
+    )
+    .expect("bun");
+    let mut permissions = std::fs::metadata(&bun).expect("metadata").permissions();
+    permissions.set_mode(0o755);
+    std::fs::set_permissions(&bun, permissions).expect("permissions");
+
+    write(
+        &home.path().join(".talos/skeleton/modules/admin/admin.yml"),
+        "type: \"admin\"\ndesign: \"design\"\ntarget: \"app\"\n",
+    );
+    write(
+        &home
+            .path()
+            .join(".talos/skeleton/modules/admin/package.json"),
+        "{\n  \"name\": \"@module/admin\",\n  \"dependencies\": {\"a\": \"1\"},\n  \"devDependencies\": {\"b\": \"1\"},\n  \"scripts\": {}\n}\n",
+    );
+    write(
+        &home
+            .path()
+            .join(".talos/skeleton/modules/admin/src/index.ts"),
+        "export * from \"@module/admin/ui\";\n",
+    );
+    write(
+        &home
+            .path()
+            .join(".talos/skeleton/modules/admin/vite.config.ts"),
+        "const alias = {\n      \\\"@\\\": fileURLToPath(new URL(\\\"./src\\\", import.meta.url)),\n      \\\"@module/admin\\\": fileURLToPath(\n        new URL(\\\"../admin/src\\\", import.meta.url),\n      ),\n    };\n",
+    );
+    write(
+        &home
+            .path()
+            .join(".talos/skeleton/modules/design/design.yml"),
+        "type: \"design\"\n",
+    );
+    write(
+        &home
+            .path()
+            .join(".talos/skeleton/modules/design/package.json"),
+        "{ \"name\": \"@module/design\" }\n",
+    );
+    write(
+        &home
+            .path()
+            .join(".talos/skeleton/modules/design/src/index.ts"),
+        "export * from \"@module/design/components\";\n",
+    );
+
+    write(&cwd.path().join("modules/api/api.yml"), "type: \"api\"\n");
+    write(
+        &cwd.path().join("modules/api/package.json"),
+        "{\n  \"scripts\": { \"dev\": \"vite --port 3030\" }\n}\n",
+    );
+    write(
+        &cwd.path().join("tsconfig.json"),
+        "{\n  \"compilerOptions\": { \"paths\": {} }\n}\n",
+    );
+
+    let previous_home = std::env::var_os("HOME");
+    let previous_path = std::env::var_os("PATH");
+    unsafe {
+        std::env::set_var("HOME", home.path());
+        std::env::set_var("PATH", &bin);
+    }
+
+    run(&AdminCreateArgs {
+        name: Some("Backoffice".to_string()),
+        design: Some("Material".to_string()),
+        target: Some("api".to_string()),
+        cwd: Some(cwd.path().display().to_string()),
+        silent: true,
+        no_cache: false,
+    });
+
+    match previous_home {
+        Some(value) => unsafe { std::env::set_var("HOME", value) },
+        None => unsafe { std::env::remove_var("HOME") },
+    }
+    match previous_path {
+        Some(value) => unsafe { std::env::set_var("PATH", value) },
+        None => unsafe { std::env::remove_var("PATH") },
+    }
+
+    let admin_dir = cwd.path().join("modules/backoffice");
+    assert!(admin_dir.join("backoffice.yml").is_file());
+    let yml = std::fs::read_to_string(admin_dir.join("backoffice.yml")).expect("yml");
+    assert!(yml.contains("design: \"material\""), "{yml}");
+    assert!(yml.contains("target: \"api\""), "{yml}");
+    let package = std::fs::read_to_string(admin_dir.join("package.json")).expect("package");
+    assert!(package.contains("\"@module/backoffice\""), "{package}");
+    assert!(package.contains("--port 3031"), "{package}");
+    let source = std::fs::read_to_string(admin_dir.join("src/index.ts")).expect("source");
+    assert!(source.contains("@module/backoffice"), "{source}");
+    let vite = std::fs::read_to_string(admin_dir.join("vite.config.ts")).expect("vite");
+    assert!(vite.contains("@module/material"), "{vite}");
+    assert!(cwd.path().join("modules/material/material.yml").is_file());
 }

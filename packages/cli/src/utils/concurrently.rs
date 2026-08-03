@@ -498,3 +498,184 @@ pub fn run(commands: Vec<ConcurrentCommand>, options: ConcurrentlyOptions) -> Co
         exit_code,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Cursor;
+    use std::sync::mpsc;
+    use std::sync::{
+        Arc,
+        atomic::{AtomicUsize, Ordering},
+    };
+
+    fn quiet() -> ConcurrentlyOptions {
+        ConcurrentlyOptions {
+            prefix: PrefixStyle::None,
+            ..ConcurrentlyOptions::default()
+        }
+    }
+
+    fn exit_with(name: &'static str, code: u8) -> ConcurrentCommand {
+        ConcurrentCommand::new(name, format!("exit {code}"), move || {
+            let mut builder = CommandBuilder::new("sh");
+            builder.args(["-c", &format!("exit {code}")]);
+            builder
+        })
+    }
+
+    #[test]
+    fn pty_size_uses_zero_pixels() {
+        let size = pty_size();
+
+        assert_eq!(size.pixel_width, 0);
+        assert_eq!(size.pixel_height, 0);
+    }
+
+    #[test]
+    fn forward_stream_sends_each_line() {
+        let (sender, receiver) = mpsc::channel();
+
+        forward_stream(2, Cursor::new(b"first\nsecond\n".to_vec()), sender);
+
+        assert!(matches!(
+            receiver.recv_timeout(Duration::from_secs(1)).expect("first line"),
+            LogEvent::Line { index: 2, text } if text == "first"
+        ));
+        assert!(matches!(
+            receiver.recv_timeout(Duration::from_secs(1)).expect("second line"),
+            LogEvent::Line { index: 2, text } if text == "second"
+        ));
+    }
+
+    #[test]
+    fn spawn_process_returns_an_error_for_missing_binaries() {
+        let system = native_pty_system();
+        let size = pty_size();
+        let (sender, _receiver) = mpsc::channel();
+
+        let result = spawn_process(
+            &*system,
+            size,
+            CommandBuilder::new("definitely-not-a-real-binary"),
+            0,
+            sender,
+        );
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn run_reports_a_start_failure_and_stops_started_commands() {
+        let long = ConcurrentCommand::new("long", "sleep 30", || {
+            let mut builder = CommandBuilder::new("sh");
+            builder.args(["-c", "sleep 30"]);
+            builder
+        });
+        let missing = ConcurrentCommand::new("missing", "missing-binary", || {
+            CommandBuilder::new("definitely-not-a-real-binary")
+        });
+
+        let outcome = run(vec![long, missing], quiet());
+
+        assert!(!outcome.success);
+        assert_eq!(outcome.exit_code, 1);
+        assert!(outcome.events.is_empty());
+    }
+
+    #[test]
+    fn run_kills_other_processes_after_a_success_when_requested() {
+        let long = ConcurrentCommand::new("long", "sleep 30", || {
+            let mut builder = CommandBuilder::new("sh");
+            builder.args(["-c", "sleep 30"]);
+            builder
+        });
+
+        let outcome = run(
+            vec![exit_with("ok", 0), long],
+            ConcurrentlyOptions {
+                kill_others_on: vec![KillCondition::Success],
+                success_condition: SuccessCondition::First,
+                ..quiet()
+            },
+        );
+
+        assert!(outcome.success);
+        assert_eq!(outcome.events.len(), 2);
+        assert!(outcome.events.iter().any(|event| event.killed));
+    }
+
+    #[test]
+    fn run_supports_raw_output() {
+        let command = ConcurrentCommand::new("echo", "printf hello", || {
+            let mut builder = CommandBuilder::new("sh");
+            builder.args(["-c", "printf 'hello\\n'"]);
+            builder
+        });
+
+        let outcome = run(
+            vec![command],
+            ConcurrentlyOptions {
+                raw: true,
+                ..quiet()
+            },
+        );
+
+        assert!(outcome.success);
+        assert_eq!(outcome.exit_code, 0);
+        assert_eq!(outcome.events.len(), 1);
+    }
+
+    #[test]
+    fn run_stops_the_startup_spinner_after_the_first_output() {
+        let command = ConcurrentCommand::new("echo", "printf ready", || {
+            let mut builder = CommandBuilder::new("sh");
+            builder.args(["-c", "printf 'ready\\n'"]);
+            builder
+        });
+
+        let outcome = run(
+            vec![command],
+            ConcurrentlyOptions {
+                startup: Some(StartupNotice {
+                    starting_label: "Booting".to_string(),
+                    started_message: "Booted".to_string(),
+                }),
+                ..quiet()
+            },
+        );
+
+        assert!(outcome.success);
+        assert_eq!(outcome.events.len(), 1);
+    }
+
+    #[test]
+    fn run_reports_when_a_restart_cannot_be_spawned() {
+        let attempts = Arc::new(AtomicUsize::new(0));
+        let command = ConcurrentCommand::new("flaky", "flaky command", {
+            let attempts = attempts.clone();
+            move || {
+                if attempts.fetch_add(1, Ordering::SeqCst) == 0 {
+                    let mut builder = CommandBuilder::new("sh");
+                    builder.args(["-c", "exit 1"]);
+                    builder
+                } else {
+                    CommandBuilder::new("definitely-not-a-real-binary")
+                }
+            }
+        });
+
+        let outcome = run(
+            vec![command],
+            ConcurrentlyOptions {
+                restart_tries: 1,
+                restart_delay: Duration::from_millis(1),
+                ..quiet()
+            },
+        );
+
+        assert!(!outcome.success);
+        assert_eq!(outcome.events.len(), 1);
+        assert!(attempts.load(Ordering::SeqCst) >= 2);
+    }
+}

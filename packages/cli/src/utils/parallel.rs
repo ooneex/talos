@@ -149,6 +149,16 @@ mod tests {
     }
 
     #[test]
+    fn render_lines_keeps_running_actions_running() {
+        let labels = vec!["build".to_string()];
+        let statuses = vec![Mutex::new(ActionStatus::Running)];
+
+        render_lines(&labels, &statuses, 1);
+
+        assert_eq!(*statuses[0].lock().unwrap(), ActionStatus::Running);
+    }
+
+    #[test]
     fn rendered_run_reports_successes_and_failures_without_a_tty() {
         let failures = run_actions_rendered(
             vec![
@@ -157,6 +167,16 @@ mod tests {
             ],
             true,
         );
+
+        assert_eq!(failures, vec![("bad".to_string(), "boom".to_string())]);
+    }
+
+    #[test]
+    fn run_actions_delegates_to_the_rendered_runner() {
+        let failures = run_actions(vec![
+            Action::new("ok", || Ok(())),
+            Action::new("bad", || Err("boom".to_string())),
+        ]);
 
         assert_eq!(failures, vec![("bad".to_string(), "boom".to_string())]);
     }
