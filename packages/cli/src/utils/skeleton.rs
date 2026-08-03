@@ -102,6 +102,20 @@ fn git_clone_skeleton(destination: &Path, silent: bool) -> bool {
     )
 }
 
+/// Where the artifact templates sit inside a checked-out skeleton.
+///
+/// They live under `modules/`, not at the root: the skeleton publishes them as
+/// `modules/templates/`, which is what every `*-create` generator reads
+/// `controller.txt` and friends from.
+pub const TEMPLATES_SUBDIR: [&str; 2] = ["modules", "templates"];
+
+/// The directory `read_template` resolves names against.
+pub fn templates_dir_of(repo: &Path) -> PathBuf {
+    TEMPLATES_SUBDIR
+        .iter()
+        .fold(repo.to_path_buf(), |path, segment| path.join(segment))
+}
+
 pub fn skeleton_templates_dir(silent: bool, use_cache: bool) -> Option<PathBuf> {
     if let Some(dir) = std::env::var_os(TEMPLATES_DIR_ENV) {
         return Some(PathBuf::from(dir));
@@ -114,7 +128,7 @@ pub fn skeleton_templates_dir(silent: bool, use_cache: bool) -> Option<PathBuf> 
         spinner.stop();
         repo
     };
-    repo.map(|dir| dir.join("templates"))
+    repo.map(|dir| templates_dir_of(&dir))
 }
 
 pub fn read_template(dir: &Path, name: &str) -> Option<String> {
@@ -144,5 +158,31 @@ pub fn clone_skeleton(silent: bool, use_cache: bool) -> Option<PathBuf> {
     } else {
         let _ = fs::remove_dir_all(&cache_dir);
         None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn resolves_templates_under_the_modules_directory() {
+        // The skeleton publishes `modules/templates/`, so a root-level
+        // `templates/` would never be found and every generator would fail on
+        // "Failed to read template".
+        assert_eq!(
+            templates_dir_of(Path::new("/cache/skeleton")),
+            PathBuf::from("/cache/skeleton/modules/templates")
+        );
+    }
+
+    #[test]
+    fn the_env_override_wins_over_the_cache() {
+        // Safe to set: the override is read before anything is cloned.
+        unsafe { std::env::set_var(TEMPLATES_DIR_ENV, "/somewhere/else") };
+        let resolved = skeleton_templates_dir(true, true);
+        unsafe { std::env::remove_var(TEMPLATES_DIR_ENV) };
+
+        assert_eq!(resolved, Some(PathBuf::from("/somewhere/else")));
     }
 }
