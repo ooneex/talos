@@ -96,6 +96,8 @@ pub struct RouteDefinition {
     pub params: Vec<RouteField>,
     pub queries: Vec<RouteField>,
     pub payload: Vec<RouteField>,
+    /// The `response` block of the route type — what the route answers with.
+    pub response: Vec<RouteField>,
 }
 
 fn match_balanced(text: &str, open_index: usize) -> Option<(String, usize)> {
@@ -349,6 +351,7 @@ pub fn parse_controller(content: &str, module_name: &str, prefix: &str) -> Optio
         params,
         queries: extract_block(&type_body, "queries"),
         payload: extract_block(&type_body, "payload"),
+        response: extract_block(&type_body, "response"),
     })
 }
 
@@ -364,7 +367,7 @@ fn render_fields(indent: &str, label: &str, fields: &[RouteField]) -> String {
         .iter()
         .map(|field| {
             format!(
-                "{indent}  {{ name: {}, type: {}, required: {}, description: \"\" }},",
+                "{indent}  {{ name: {}, type: {}, required: {} }},",
                 quote(&field.name),
                 quote(&field.ty),
                 field.required
@@ -392,8 +395,12 @@ pub fn render_route_file(definition: &RouteDefinition, group: &str) -> String {
     body.push_str(&format!("  method: {},\n", quote(&definition.method)));
     body.push_str(&format!("  path: {},\n", quote(&definition.path)));
     body.push_str(&format!("  roles: [{roles}],\n"));
-    body.push_str(&format!("  summary: {},\n", quote(&definition.description)));
-    body.push_str("  description: \"\",\n");
+    // An empty key is scaffolding, not documentation. The generator states only
+    // what the controller says; prose is added afterwards, by hand or by the
+    // `swagger-create` skill.
+    if !definition.description.is_empty() {
+        body.push_str(&format!("  summary: {},\n", quote(&definition.description)));
+    }
     body.push_str(&render_fields("  ", "params", &definition.params));
     body.push_str(&render_fields("  ", "queries", &definition.queries));
     if !definition.payload.is_empty() {
@@ -404,7 +411,13 @@ pub fn render_route_file(definition: &RouteDefinition, group: &str) -> String {
         body.push_str(&render_fields("    ", "fields", &definition.payload));
         body.push_str("  },\n");
     }
-    body.push_str("  responses: [{ status: 200, description: \"\" }],\n");
+    if definition.response.is_empty() {
+        body.push_str("  responses: [{ status: 200 }],\n");
+    } else {
+        body.push_str("  responses: [\n    {\n      status: 200,\n");
+        body.push_str(&render_fields("      ", "fields", &definition.response));
+        body.push_str("    },\n  ],\n");
+    }
 
     format!(
         "import type {{ RouteMetaType }} from \"../../shared/route\";\n\nexport const meta = {{\n{body}}} satisfies RouteMetaType;\n"
@@ -924,6 +937,34 @@ export class GrantEntitlementController {}
         route.description = "the \"live\" probe".to_string();
 
         assert!(render_route_file(&route, "App").contains(r#"summary: "the \"live\" probe""#));
+    }
+
+    #[test]
+    fn publishes_the_shape_the_route_answers_with() {
+        let route = parse_controller(HEALTH_CONTROLLER, "app", "api").expect("a route");
+
+        assert_eq!(route.response.len(), 2);
+        assert_eq!(route.response[0].name, "status");
+        assert!(render_route_file(&route, "App").contains("fields: ["));
+    }
+
+    #[test]
+    fn writes_no_empty_key_the_controller_says_nothing_about() {
+        let mut route = parse_controller(HEALTH_CONTROLLER, "app", "api").expect("a route");
+        route.description = String::new();
+        let file = render_route_file(&route, "App");
+
+        assert!(!file.contains("summary:"));
+        assert!(!file.contains("description:"));
+        assert!(!file.contains(r#"description: """#));
+    }
+
+    #[test]
+    fn falls_back_to_a_bare_status_when_the_route_declares_no_response() {
+        let mut route = parse_controller(HEALTH_CONTROLLER, "app", "api").expect("a route");
+        route.response.clear();
+
+        assert!(render_route_file(&route, "App").contains("responses: [{ status: 200 }]"));
     }
 
     #[test]
