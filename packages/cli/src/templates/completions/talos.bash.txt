@@ -138,7 +138,6 @@ command:run completion:zsh completion:bash completion:fish help version upgrade 
 issue:create issue:pull issue:push issue:convert issue:check ai:chat:create ai:tool:create ai:middleware:create \
 analytics:create cache:create command:create controller:create credentials:create cron:create database:create \
 design:create design:remove docker:create docker:credentials:create docker:publish \
-bitbucket:credentials:create bitbucket:secret:push \
 npm:credentials:create npm:publish monorepo:run run monorepo:check check build fmt lint test \
 security:check \
 coverage:check \
@@ -254,12 +253,6 @@ seed:create seed:run"
       opts="--packages --modules --tag"
       [[ $flag == --packages ]] && candidates="$(_talos_docker_packages)"
       [[ $flag == --modules ]] && candidates="$(_talos_docker_modules)"
-      ;;
-    bitbucket:credentials:create)
-      opts="--username --token"
-      ;;
-    bitbucket:secret:push)
-      opts="--name --value"
       ;;
     credentials:create)
       opts="--provider --base-url --email --token --client-id --client-secret --client-key \

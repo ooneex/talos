@@ -9,8 +9,6 @@ pub mod app_create;
 pub mod app_init;
 pub mod app_start;
 pub mod app_stop;
-pub mod bitbucket_credentials_create;
-pub mod bitbucket_secret_push;
 pub mod build;
 pub mod cache_create;
 pub mod check;
@@ -249,12 +247,6 @@ pub enum Commands {
     #[command(name = "workflow:transition:create")]
     WorkflowTransitionCreate(workflow_transition_create::WorkflowTransitionCreateArgs),
 
-    #[command(name = "bitbucket:credentials:create")]
-    BitbucketCredentialsCreate(bitbucket_credentials_create::BitbucketCredentialsCreateArgs),
-
-    #[command(name = "bitbucket:secret:push")]
-    BitbucketSecretPush(bitbucket_secret_push::BitbucketSecretPushArgs),
-
     #[command(name = "docker:credentials:create")]
     DockerCredentialsCreate(docker_credentials_create::DockerCredentialsCreateArgs),
 
@@ -415,8 +407,6 @@ impl Commands {
             Commands::VectorDatabaseCreate(args) => vector_database_create::run(args),
             Commands::WorkflowCreate(args) => workflow_create::run(args),
             Commands::WorkflowTransitionCreate(args) => workflow_transition_create::run(args),
-            Commands::BitbucketCredentialsCreate(args) => bitbucket_credentials_create::run(args),
-            Commands::BitbucketSecretPush(args) => bitbucket_secret_push::run(args),
             Commands::DockerCredentialsCreate(args) => docker_credentials_create::run(args),
             Commands::CredentialsCreate(args) => credentials_create::run(args),
             Commands::NpmCredentialsCreate(args) => npm_credentials_create::run(args),

@@ -158,8 +158,6 @@ for cmd in oo talos
     complete -c $cmd -f -n __fish_use_subcommand -a docker:create -d 'Add a docker service to docker-compose.yml'
     complete -c $cmd -f -n __fish_use_subcommand -a docker:credentials:create -d 'Save a Docker registry access token under the user config'
     complete -c $cmd -f -n __fish_use_subcommand -a docker:publish -d 'Build and push a package or module Docker image to Docker Hub'
-    complete -c $cmd -f -n __fish_use_subcommand -a bitbucket:credentials:create -d 'Save a Bitbucket app password under the user config'
-    complete -c $cmd -f -n __fish_use_subcommand -a bitbucket:secret:push -d 'Create or update a Bitbucket Pipelines repository variable'
     complete -c $cmd -f -n __fish_use_subcommand -a npm:credentials:create -d 'Save an npm Granular Access Token under the user config'
     complete -c $cmd -f -n __fish_use_subcommand -a npm:publish -d 'Publish a package or module to npm'
     complete -c $cmd -f -n __fish_use_subcommand -a monorepo:run -d 'Run package.json scripts across packages and modules with granular caching'
@@ -287,10 +285,6 @@ for cmd in oo talos
     complete -c $cmd -n '__fish_seen_subcommand_from docker:publish' -l modules -a '(__talos_docker_modules)' -d 'Module name(s), comma-separated'
     complete -c $cmd -n '__fish_seen_subcommand_from docker:publish' -l tag -x -d 'Image tag'
 
-    complete -c $cmd -n '__fish_seen_subcommand_from bitbucket:credentials:create' -l username -x -d 'Bitbucket username'
-    complete -c $cmd -n '__fish_seen_subcommand_from bitbucket:credentials:create' -l token -x -d 'Bitbucket app password'
-    complete -c $cmd -n '__fish_seen_subcommand_from bitbucket:secret:push' -l name -x -d 'Variable name'
-    complete -c $cmd -n '__fish_seen_subcommand_from bitbucket:secret:push' -l value -x -d 'Variable value'
 
     complete -c $cmd -n '__fish_seen_subcommand_from credentials:create' -l provider -x -a 'jira linear x instagram facebook linkedin tiktok threads whatsapp telegram messenger discord reddit medium' -d 'Credentials provider'
     complete -c $cmd -n '__fish_seen_subcommand_from credentials:create' -l base-url -x -d 'Base URL'

@@ -167,8 +167,6 @@ _talos() {
     'docker\:create:Add a docker service to docker-compose.yml'
     'docker\:credentials\:create:Save a Docker registry access token under the user config'
     'docker\:publish:Build and push a package or module Docker image to Docker Hub'
-    'bitbucket\:credentials\:create:Save a Bitbucket app password under the user config'
-    'bitbucket\:secret\:push:Create or update a Bitbucket Pipelines repository variable'
     'npm\:credentials\:create:Save an npm Granular Access Token under the user config'
     'npm\:publish:Publish a package or module to npm'
     'monorepo\:run:Run package.json scripts across packages and modules with granular caching'
@@ -358,16 +356,6 @@ _talos() {
             '--packages=-[Package name(s), comma-separated (default: all)]::packages:_talos_docker_publish_packages' \
             '--modules=-[Module name(s), comma-separated (default: all)]::modules:_talos_docker_publish_modules' \
             '--tag=[Image tag (default: package.json version or latest)]:tag'
-          ;;
-        bitbucket:credentials:create)
-          _arguments -s \
-            '--username=[Bitbucket username]:username' \
-            '--token=[Bitbucket app password]:token'
-          ;;
-        bitbucket:secret:push)
-          _arguments -s \
-            '--name=[Variable name]:name' \
-            '--value=[Variable value]:value'
           ;;
         credentials:create)
           _arguments -s \

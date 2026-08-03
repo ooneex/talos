@@ -1,6 +1,6 @@
 //! The commands gated on a credentials file or on an external binary.
 //!
-//! `credentials:create` and its three siblings write a profile under
+//! `credentials:create` and its two siblings write a profile under
 //! `$HOME/.talos`; `npm:publish`, `docker:publish` and `app:stop` refuse to do
 //! anything until the binary they drive and the profile they need are both
 //! there. A scratch `HOME` and a `PATH` with nothing on it cover both sides
@@ -148,7 +148,7 @@ fn a_field_the_run_cannot_ask_for_leaves_no_profile_behind() {
 }
 
 #[test]
-fn the_three_dedicated_credential_commands_each_write_their_own_profile() {
+fn the_two_dedicated_credential_commands_each_write_their_own_profile() {
     let home = home();
 
     talos_bare(
@@ -165,15 +165,6 @@ fn the_three_dedicated_credential_commands_each_write_their_own_profile() {
             "--silent",
         ],
     );
-    talos_bare(
-        home.path(),
-        &[
-            "bitbucket:credentials:create",
-            "--username=me",
-            "--token=bb_token",
-            "--silent",
-        ],
-    );
 
     assert!(
         fs::read_to_string(home.path().join(".talos/credentials/npm.yml"))
@@ -184,11 +175,6 @@ fn the_three_dedicated_credential_commands_each_write_their_own_profile() {
         fs::read_to_string(home.path().join(".talos/credentials/docker.yml"))
             .expect("docker profile")
             .contains("docker_token")
-    );
-    assert!(
-        fs::read_to_string(home.path().join(".talos/credentials/bitbucket.yml"))
-            .expect("bitbucket profile")
-            .contains("bb_token")
     );
 }
 
@@ -324,25 +310,6 @@ fn app_stop_needs_an_app_module_before_it_needs_docker() {
 
     assert!(!output.status.success());
     assert!(text(&output).contains("app"), "{}", text(&output));
-}
-
-#[test]
-fn bitbucket_secret_push_without_a_stored_profile_says_which_command_creates_one() {
-    let (_dir, root) = workspace();
-    let home = home();
-
-    let output = talos(
-        &root,
-        home.path(),
-        true,
-        &["bitbucket:secret:push", "--name=API_KEY", "--value=secret"],
-    );
-
-    assert!(
-        text(&output).contains("bitbucket:credentials:create"),
-        "{}",
-        text(&output)
-    );
 }
 
 // ---------------------------------------------------------------------------

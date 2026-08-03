@@ -20,14 +20,6 @@ const COMMANDS: &[(&str, &str)] = &[
         "app:init",
         "Initialize a new application from the Talos skeleton",
     ),
-    (
-        "bitbucket:credentials:create",
-        "Save a Bitbucket app password under the user config",
-    ),
-    (
-        "bitbucket:secret:push",
-        "Create or update a Bitbucket Pipelines repository variable",
-    ),
     ("build", "Alias for `monorepo:run --commands=build`"),
     ("cache:create", "Generate a new cache class"),
     ("check", "Alias for `monorepo:check`"),
