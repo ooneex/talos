@@ -544,8 +544,12 @@ fn a_suite_that_never_reported_is_never_stored() {
 fn an_empty_workspace_reports_nothing_to_run() {
     let temp = tempfile::tempdir().expect("create temp dir");
 
-    let outcome = audit(temp.path(), None, None, None, Some(1));
-    assert_eq!(outcome.err(), Some(String::new()));
+    let outcome = audit(temp.path(), None, None, None, Some(1), true, true);
+    assert!(
+        outcome
+            .expect_err("an empty workspace holds no suite")
+            .starts_with("No module found to run")
+    );
 }
 
 // ---------------------------------------------------------------------------

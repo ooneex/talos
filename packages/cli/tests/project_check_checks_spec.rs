@@ -1483,11 +1483,11 @@ fn only_the_options_that_change_a_finding_key_the_cache() {
 }
 
 #[test]
-fn only_the_workspace_gate_and_the_suite_run_alone() {
+fn only_the_workspace_gate_and_the_suites_run_alone() {
     let serial: Vec<&str> = CheckId::ALL
         .into_iter()
         .filter(|id| id.is_serial())
         .map(|id| id.key())
         .collect();
-    assert_eq!(serial, vec!["workspace", "e2e"]);
+    assert_eq!(serial, vec!["workspace", "coverage", "e2e"]);
 }

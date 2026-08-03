@@ -45,7 +45,7 @@ _talos_docker_publish_modules() {
 }
 
 _talos_project_checks() {
-  _values -s , 'checks' workspace structure tsconfig lockfile conventions imports boundaries restricted container registration routes validation roles entities sql async complexity duplication orphans env dependencies outdated docker migrations accessibility contrast translations stories sdk tests e2e-coverage docs bundle security secrets git issues branches commits hygiene e2e
+  _values -s , 'checks' workspace structure tsconfig lockfile conventions imports boundaries restricted container registration routes validation roles entities sql async complexity duplication orphans env dependencies outdated docker migrations accessibility contrast translations stories sdk tests coverage e2e-coverage docs bundle security secrets git issues branches commits hygiene e2e
 }
 
 _talos_custom_commands() {
@@ -440,6 +440,8 @@ _talos() {
             '--packages=-[Package name(s), comma-separated (default: all)]::packages:_talos_publish_packages' \
             '--modules=-[Module name(s), comma-separated (default: all)]::modules:_talos_publish_modules' \
             '--audit-level=[Minimum vulnerability severity to report]:level:(low moderate high critical)' \
+            '--threshold=[Minimum line and function coverage, in percent]:threshold:(70 75 80 85 90 95 100)' \
+            '--concurrency=[How many suites the workspace check runs at once]:concurrency:(1 2 4 8)' \
             '--e2e[Also run the end-to-end suite]' \
             '--outdated[Also compare every dependency against the public registries]' \
             '--logs[Stream plain workspace logs instead of the interactive view]' \

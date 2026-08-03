@@ -8,9 +8,11 @@
 //! which measures them once — with the same caching — and reports the modules
 //! ranked worst first alongside the files pulling them down.
 
+use std::path::PathBuf;
+
 use clap::Args;
 
-use crate::commands::coverage_check::{self, CoverageCheckArgs};
+use crate::commands::coverage_check::{self, CoverageAudit, CoverageCheckArgs};
 use crate::commands::monorepo_run::{self, MonorepoRunArgs};
 
 /// The package scripts run before the suites are measured, in order.
@@ -38,6 +40,31 @@ pub struct MonorepoCheckArgs {
     pub strict: bool,
     #[arg(long)]
     pub cwd: Option<String>,
+}
+
+/// Measure the gate's suites without reporting them or ending the process.
+///
+/// `project:check` runs this very gate as its workspace check, but owns the
+/// report it prints and the status it exits with, so it runs [`CHECK_COMMANDS`]
+/// itself and then asks here for the same coverage [`run`] would have printed.
+/// The suites still draw their loader while they run, unless `quiet` says the
+/// caller is holding stdout for a report of its own.
+pub fn measure(args: &MonorepoCheckArgs, quiet: bool) -> Result<CoverageAudit, String> {
+    let root = args
+        .cwd
+        .clone()
+        .map(PathBuf::from)
+        .unwrap_or_else(crate::utils::current_dir);
+
+    coverage_check::audit(
+        &root,
+        args.modules.as_deref(),
+        args.packages.as_deref(),
+        args.threshold,
+        args.concurrency,
+        args.no_cache,
+        quiet,
+    )
 }
 
 pub fn run(args: &MonorepoCheckArgs) {

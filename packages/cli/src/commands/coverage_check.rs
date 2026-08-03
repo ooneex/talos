@@ -58,6 +58,9 @@ const DEFAULT_COVERAGE_DIR: &str = "coverage";
 /// How many suites run at once when `--concurrency` says nothing else.
 const MAX_CONCURRENCY: usize = 8;
 
+/// What a selection matching no measurable module is told.
+const NO_MODULE: &str = "No module found to run — a module needs a tests/ directory, and a package.json unless it is a crate";
+
 /// What `cargo llvm-cov` prints when the subcommand is not installed, and what
 /// to tell the reader to run when it is missing.
 const LLVM_COV_MISSING: &str = "no such command";
@@ -269,22 +272,58 @@ impl CoverageAudit {
 
 /// Run every selected suite and return the coverage instead of printing it.
 ///
-/// Nothing is read from or written to the cache here: an embedded report is
-/// asked for by a caller that wants the suites run, not replayed.
+/// This is the whole of the command bar the report it prints, so an embedded
+/// run can never measure differently from the command: same targets, same
+/// cache, same suites. `quiet` is for the one caller that owns stdout — a JSON
+/// report — and only silences the spinner and the loader.
 pub fn audit(
     root: &Path,
     modules: Option<&str>,
     packages: Option<&str>,
     threshold: Option<f64>,
     concurrency: Option<usize>,
+    no_cache: bool,
+    quiet: bool,
 ) -> Result<CoverageAudit, String> {
-    let targets = collect_targets(&workspace(root, modules, packages));
+    let members = workspace(root, modules, packages);
+    let targets = collect_targets(&members);
     if targets.is_empty() {
-        return Err(String::new());
+        return Err(NO_MODULE.to_string());
+    }
+
+    let runnable = targets
+        .iter()
+        .filter(|target| target.skip.is_none())
+        .count();
+
+    // Fingerprinting only earns its own walk when there is a suite it could
+    // spare, and it is the one stretch before the loader where nothing is
+    // printed, so it gets a spinner of its own.
+    let hashes = (!no_cache && runnable > 0).then(|| FileHashes::load(root));
+    let spinner =
+        (hashes.is_some() && !quiet).then(|| Spinner::start("Fingerprinting the workspace..."));
+    let cache = hashes.as_ref().map(|hashes| Cache {
+        root,
+        fingerprints: cache::Fingerprints::build(root, &members, hashes),
+    });
+    drop(spinner);
+
+    // Suites are the slowest thing the CLI does, so the wait is drawn rather
+    // than sat through — whoever asked for the numbers.
+    let loader = if runnable > 0 && !quiet {
+        Loader::start(vec![LoaderGroup::new("Suites", runnable)])
+    } else {
+        Loader::hidden()
+    };
+    let measured = run_suites(targets, concurrency, &loader, cache.as_ref());
+    loader.stop();
+
+    if let Some(hashes) = hashes.as_ref() {
+        hashes.save();
     }
 
     Ok(CoverageAudit {
-        modules: run_suites(targets, concurrency, &Loader::hidden(), None),
+        modules: measured,
         threshold: threshold.unwrap_or(DEFAULT_THRESHOLD),
     })
 }
@@ -295,49 +334,24 @@ pub fn run(args: &CoverageCheckArgs) {
         .clone()
         .map(PathBuf::from)
         .unwrap_or_else(crate::utils::current_dir);
-
-    let threshold = args.threshold.unwrap_or(DEFAULT_THRESHOLD);
-    let modules = workspace(&root, args.modules.as_deref(), args.packages.as_deref());
-    let targets = collect_targets(&modules);
-    if targets.is_empty() {
-        warn(
-            "No module found to run — a module needs a tests/ directory, and a package.json unless it is a crate",
-        );
-        return;
-    }
-
-    let runnable = targets
-        .iter()
-        .filter(|target| target.skip.is_none())
-        .count();
     let started = Instant::now();
 
-    // Fingerprinting only earns its own walk when there is a suite it could
-    // spare, and it is the one stretch before the loader where nothing is
-    // printed, so it gets a spinner of its own.
-    let hashes = (!args.no_cache && runnable > 0).then(|| FileHashes::load(&root));
-    let spinner = hashes
-        .is_some()
-        .then(|| Spinner::start("Fingerprinting the workspace..."));
-    let cache = hashes.as_ref().map(|hashes| Cache {
-        root: &root,
-        fingerprints: cache::Fingerprints::build(&root, &modules, hashes),
-    });
-    drop(spinner);
-
-    let loader = if runnable > 0 {
-        Loader::start(vec![LoaderGroup::new("Suites", runnable)])
-    } else {
-        Loader::hidden()
+    let audit = match audit(
+        &root,
+        args.modules.as_deref(),
+        args.packages.as_deref(),
+        args.threshold,
+        args.concurrency,
+        args.no_cache,
+        false,
+    ) {
+        Ok(audit) => audit,
+        Err(message) => {
+            warn(message);
+            return;
+        }
     };
-    let modules = run_suites(targets, args.concurrency, &loader, cache.as_ref());
-    loader.stop();
 
-    if let Some(hashes) = hashes.as_ref() {
-        hashes.save();
-    }
-
-    let audit = CoverageAudit { modules, threshold };
     if args.issues {
         create_issues(&audit);
         return;
@@ -348,6 +362,7 @@ pub fn run(args: &CoverageCheckArgs) {
         args.logs,
         args.strict,
         started.elapsed().as_millis() as u64,
+        false,
     );
     if audit.is_failure(args.strict) {
         std::process::exit(1);
@@ -1020,7 +1035,19 @@ pub fn mean(values: impl Iterator<Item = f64>) -> f64 {
 // Report output
 // ---------------------------------------------------------------------------
 
-fn print_report(audit: &CoverageAudit, logs: bool, strict: bool, elapsed_ms: u64) {
+/// Print the measured suites.
+///
+/// `compact` drops the modules that are already where they should be: a report
+/// embedded in a larger one — `project:check` — is read for what needs work,
+/// and sixty rows of `100%` bury the five that do. The command's own report
+/// keeps every row, because there the table *is* the answer.
+pub fn print_report(
+    audit: &CoverageAudit,
+    logs: bool,
+    strict: bool,
+    elapsed_ms: u64,
+    compact: bool,
+) {
     let ran = audit.ran();
     let skipped = audit
         .modules
@@ -1038,13 +1065,16 @@ fn print_report(audit: &CoverageAudit, logs: bool, strict: bool, elapsed_ms: u64
     scope.push(format!("threshold {}%", trim_percent(audit.threshold)));
     scope.push(format_duration(elapsed_ms));
 
+    println!();
     println!(
         "{}{}",
         style("▸ Coverage report").magenta().bold(),
         style(format!("  {}", scope.join(" · "))).dim()
     );
 
-    if ran.is_empty() {
+    // A run where every suite fell over has no row to draw, but the failures
+    // are the whole report — only a run with nothing at all to say stops here.
+    if ran.is_empty() && audit.broken().is_empty() {
         println!();
         warn(format!(
             "No suite ran — {skipped} module{} no test suite",
@@ -1053,11 +1083,28 @@ fn print_report(audit: &CoverageAudit, logs: bool, strict: bool, elapsed_ms: u64
         return;
     }
 
-    print_rows(audit, &ran, strict);
+    // Worst first either way, so the compact table is the head of the full one:
+    // what needs work, and a count of what does not.
+    let (rows, hidden): (Vec<&ModuleCoverage>, usize) = if compact {
+        (
+            ran.iter()
+                .copied()
+                .filter(|module| {
+                    !module.is_covered(audit.threshold) && module.status != RunStatus::Unmeasured
+                })
+                .collect(),
+            ran.iter()
+                .filter(|module| module.is_covered(audit.threshold))
+                .count(),
+        )
+    } else {
+        (ran.clone(), 0)
+    };
+    print_rows(audit, &rows, hidden, strict);
     print_low_files(audit, strict);
     print_failures(audit, logs);
     println!();
-    print_summary(audit, skipped);
+    print_summary(audit, skipped, strict);
 }
 
 /// One row per module: status, a line-coverage bar, both rates, and its tests.
@@ -1065,8 +1112,14 @@ fn print_report(audit: &CoverageAudit, logs: bool, strict: bool, elapsed_ms: u64
 /// Under `--strict` a module under the threshold is a failure, and is drawn as
 /// one: a red cross where the warning sign was, so the report never contradicts
 /// the status the run exits with.
-fn print_rows(audit: &CoverageAudit, ran: &[&ModuleCoverage], strict: bool) {
-    let width = ran
+fn print_rows(audit: &CoverageAudit, rows: &[&ModuleCoverage], hidden: usize, strict: bool) {
+    // Nothing to show is the good news, and the summary is where a compact
+    // report says it — an empty table under a heading says it worse.
+    if rows.is_empty() {
+        return;
+    }
+
+    let width = rows
         .iter()
         .map(|module| module.label.chars().count())
         .max()
@@ -1082,7 +1135,7 @@ fn print_rows(audit: &CoverageAudit, ran: &[&ModuleCoverage], strict: bool) {
         style("Tests").dim()
     );
 
-    for module in ran {
+    for module in rows {
         let passed = style(format!("{} passed", module.passed)).dim().to_string();
         let (icon, tests) = match &module.status {
             RunStatus::Failed => (
@@ -1129,6 +1182,18 @@ fn print_rows(audit: &CoverageAudit, ran: &[&ModuleCoverage], strict: bool) {
             style("✖").red().bold(),
             style(format!("{:<width$}", module.label)).bold(),
             style(reason).red()
+        );
+    }
+
+    if hidden > 0 {
+        println!(
+            "  {}",
+            style(format!(
+                "+{hidden} module{} clearing {}%",
+                if hidden == 1 { "" } else { "s" },
+                trim_percent(audit.threshold)
+            ))
+            .dim()
         );
     }
 }
@@ -1250,18 +1315,24 @@ fn print_failures(audit: &CoverageAudit, logs: bool) {
     }
 }
 
-fn print_summary(audit: &CoverageAudit, skipped: usize) {
+fn print_summary(audit: &CoverageAudit, skipped: usize, strict: bool) {
     let measured = audit.measured().len();
     let unmeasured = audit.ran().len() - measured;
     let broken = audit.broken().len();
     let under = audit.under().len();
 
-    let mut parts = vec![format!(
-        "{}% lines, {}% functions across {measured} module{}",
-        trim_percent(audit.lines()),
-        trim_percent(audit.functions()),
-        if measured == 1 { "" } else { "s" }
-    )];
+    // Averaging nothing gives 0%, which reads as "measured, and empty" — the
+    // opposite of what a run where every suite fell over found.
+    let mut parts = vec![if measured == 0 {
+        "nothing measured".to_string()
+    } else {
+        format!(
+            "{}% lines, {}% functions across {measured} module{}",
+            trim_percent(audit.lines()),
+            trim_percent(audit.functions()),
+            if measured == 1 { "" } else { "s" }
+        )
+    }];
     if unmeasured > 0 {
         parts.push(format!("{unmeasured} with no code to measure"));
     }
@@ -1297,11 +1368,16 @@ fn print_summary(audit: &CoverageAudit, skipped: usize) {
         ));
     }
 
-    println!(
-        "{} {}",
-        style("✖").red().bold(),
-        style(format!("{} — {detail}", issues.join(", "))).red()
-    );
+    // A broken suite fails the run whatever was asked for; a module that only
+    // stayed under the threshold fails it under `--strict` alone. The verdict
+    // is drawn as the status the run will actually exit with.
+    let message = format!("{} — {detail}", issues.join(", "));
+    if broken == 0 && !strict {
+        println!("{} {}", style("⚠").yellow().bold(), style(message).yellow());
+        return;
+    }
+
+    println!("{} {}", style("✖").red().bold(), style(message).red());
 }
 
 /// `▰▰▰▰▰▰▰▰▰▱▱▱` — the same bar the loaders draw, coloured by how far the rate

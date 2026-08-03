@@ -2,7 +2,7 @@
 //! single, readable report.
 //!
 //! The command is a thin orchestrator: each check reuses the very same code the
-//! dedicated command uses (`monorepo:run`, `security:check`, `issue:check`,
+//! dedicated command uses (`monorepo:check`, `security:check`, `issue:check`,
 //! `commitlint:check`), so a project can never drift between `project:check`
 //! and the individual commands. The checks that only read the repository live
 //! in the submodules next to this file.
@@ -79,16 +79,17 @@ use console::style;
 use rayon::prelude::*;
 use serde_json::{Value, json};
 
+use crate::commands::coverage_check::{
+    self, CoverageAudit, ModuleCoverage, RunStatus, trim_percent,
+};
 use crate::commands::issue_check::{self, CheckOptions};
+use crate::commands::monorepo_check::{self, MonorepoCheckArgs};
 use crate::commands::monorepo_run::{self, MonorepoRunArgs};
 use crate::commands::security_check;
 use crate::utils::{
     Loader, LoaderGroup, Spinner, current_dir, error, format_duration, get_valid_scopes,
     lint_commit_message, resolve_biome_command, strip_jsonc,
 };
-
-/// Commands the workspace check runs, in order.
-const WORKSPACE_COMMANDS: &str = "install,build,fmt,lint,test";
 
 /// Command the end-to-end check runs.
 const E2E_COMMANDS: &str = "e2e";
@@ -136,7 +137,7 @@ const MAX_SCANNED_FILE_BYTES: u64 = 512 * 1024;
 
 #[derive(Args, Debug, Default, Clone)]
 pub struct ProjectCheckArgs {
-    /// Only run these checks (comma-separated). Accepts a category — foundation, architecture, api, data, runtime, frontend, quality, supply-chain, process — or a check: workspace, structure, folders, tsconfig, lockfile, conventions, imports, boundaries, restricted, container, registration, middlewares, routes, openapi, pagination, validation, roles, permissions, entities, indexes, repositories, transactions, sql, async, exceptions, logging, complexity, duplication, orphans, events, queues, crons, workflows, mailers, flags, env, dependencies, outdated, docker, migrations, accessibility, contrast, tokens, assets, translations, stories, router, queries, sdk, tests, e2e-coverage, docs, bundle, security, secrets, git, issues, todos, branches, commits, hygiene, e2e.
+    /// Only run these checks (comma-separated). Accepts a category — foundation, architecture, api, data, runtime, frontend, quality, supply-chain, process — or a check: workspace, structure, folders, tsconfig, lockfile, conventions, imports, boundaries, restricted, container, registration, middlewares, routes, openapi, pagination, validation, roles, permissions, entities, indexes, repositories, transactions, sql, async, exceptions, logging, complexity, duplication, orphans, events, queues, crons, workflows, mailers, flags, env, dependencies, outdated, docker, migrations, accessibility, contrast, tokens, assets, translations, stories, router, queries, sdk, tests, coverage, e2e-coverage, docs, bundle, security, secrets, git, issues, todos, branches, commits, hygiene, e2e.
     #[arg(long)]
     pub only: Option<String>,
 
@@ -163,6 +164,15 @@ pub struct ProjectCheckArgs {
     /// Minimum vulnerability severity to report (low, moderate, high, critical).
     #[arg(long = "audit-level")]
     pub audit_level: Option<String>,
+
+    /// Minimum line and function coverage a module must reach, in percent.
+    #[arg(long)]
+    pub threshold: Option<f64>,
+
+    /// How many suites the workspace check runs at once (defaults to the core
+    /// count, capped at 8).
+    #[arg(long)]
+    pub concurrency: Option<usize>,
 
     /// Stream plain workspace logs instead of the interactive view.
     #[arg(long, default_value_t = false)]
@@ -242,6 +252,7 @@ pub enum CheckId {
     Queries,
     Sdk,
     Tests,
+    Coverage,
     E2eCoverage,
     Docs,
     Bundle,
@@ -372,7 +383,7 @@ impl CheckId {
     /// Every check, in execution order. The workspace runs first because the
     /// install it performs is what makes the other tools available, and the
     /// end-to-end suite runs last because it needs the build they produce.
-    pub const ALL: [CheckId; 63] = [
+    pub const ALL: [CheckId; 64] = [
         CheckId::Workspace,
         CheckId::Structure,
         CheckId::Folders,
@@ -424,6 +435,7 @@ impl CheckId {
         CheckId::Queries,
         CheckId::Sdk,
         CheckId::Tests,
+        CheckId::Coverage,
         CheckId::E2eCoverage,
         CheckId::Docs,
         CheckId::Bundle,
@@ -441,7 +453,7 @@ impl CheckId {
     /// Checks that run when nothing is requested explicitly. The end-to-end
     /// suite is opt-in because it boots the application, and the outdated check
     /// because it queries the public registries for every dependency.
-    pub const DEFAULT: [CheckId; 61] = [
+    pub const DEFAULT: [CheckId; 62] = [
         CheckId::Workspace,
         CheckId::Structure,
         CheckId::Folders,
@@ -492,6 +504,7 @@ impl CheckId {
         CheckId::Queries,
         CheckId::Sdk,
         CheckId::Tests,
+        CheckId::Coverage,
         CheckId::E2eCoverage,
         CheckId::Docs,
         CheckId::Bundle,
@@ -567,6 +580,7 @@ impl CheckId {
             | CheckId::Queries => Category::Frontend,
 
             CheckId::Tests
+            | CheckId::Coverage
             | CheckId::E2eCoverage
             | CheckId::Docs
             | CheckId::Hygiene
@@ -632,6 +646,7 @@ impl CheckId {
             CheckId::Queries => "queries",
             CheckId::Sdk => "sdk",
             CheckId::Tests => "tests",
+            CheckId::Coverage => "coverage",
             CheckId::E2eCoverage => "e2e-coverage",
             CheckId::Docs => "docs",
             CheckId::Bundle => "bundle",
@@ -700,6 +715,7 @@ impl CheckId {
             CheckId::Queries => "Queries",
             CheckId::Sdk => "SDK",
             CheckId::Tests => "Tests",
+            CheckId::Coverage => "Coverage",
             CheckId::E2eCoverage => "E2E coverage",
             CheckId::Docs => "Docs",
             CheckId::Bundle => "Bundle",
@@ -718,7 +734,9 @@ impl CheckId {
     /// What the check actually runs, shown while it is running.
     pub fn description(self) -> &'static str {
         match self {
-            CheckId::Workspace => "install, build, fmt, lint and test every package and module",
+            CheckId::Workspace => {
+                "install, build, fmt and lint every package and module, then measure their suites"
+            }
             CheckId::Structure => "module manifests, package names and path aliases",
             CheckId::Folders => "every folder against the layout its module type allows",
             CheckId::Tsconfig => "compiler settings inherited from the root config",
@@ -769,6 +787,7 @@ impl CheckId {
             CheckId::Queries => "cache keys read from a factory, and invalidated",
             CheckId::Sdk => "generated clients against the controllers they wrap",
             CheckId::Tests => "a spec file in every module that carries tests/",
+            CheckId::Coverage => "every suite, and how much of its module it covers",
             CheckId::E2eCoverage => "an end-to-end suite for every module that serves",
             CheckId::Docs => "relative links in every markdown document",
             CheckId::Bundle => "shipped source maps and stale build output",
@@ -805,6 +824,7 @@ impl CheckId {
         !matches!(
             self,
             CheckId::Workspace
+                | CheckId::Coverage
                 | CheckId::E2e
                 | CheckId::Security
                 | CheckId::Outdated
@@ -879,6 +899,7 @@ impl CheckId {
             | CheckId::Translations
             | CheckId::Sdk
             | CheckId::Tests
+            | CheckId::Coverage
             | CheckId::E2eCoverage
             | CheckId::Docs
             | CheckId::Bundle
@@ -901,7 +922,7 @@ impl CheckId {
     /// disk. The end-to-end suite boots the application and binds its ports.
     /// Everything else is a read, and reads can all happen at once.
     pub fn is_serial(self) -> bool {
-        matches!(self, CheckId::Workspace | CheckId::E2e)
+        matches!(self, CheckId::Workspace | CheckId::Coverage | CheckId::E2e)
     }
 
     /// Resolve a user-provided name, accepting the obvious aliases.
@@ -957,7 +978,8 @@ impl CheckId {
             "router" | "routing" | "route-tree" => Some(CheckId::Router),
             "queries" | "query" | "tanstack" | "cache-keys" => Some(CheckId::Queries),
             "sdk" | "client" => Some(CheckId::Sdk),
-            "tests" | "test" | "specs" | "coverage" => Some(CheckId::Tests),
+            "tests" | "test" | "specs" => Some(CheckId::Tests),
+            "coverage" | "cov" | "suites" => Some(CheckId::Coverage),
             "e2e-coverage" | "e2e-specs" | "browser-coverage" => Some(CheckId::E2eCoverage),
             "docs" | "doc" | "documentation" | "markdown" => Some(CheckId::Docs),
             "bundle" | "bundles" | "dist" => Some(CheckId::Bundle),
@@ -1257,22 +1279,138 @@ pub fn static_outcome(
 }
 
 // ---------------------------------------------------------------------------
-// Workspace — install, build, fmt, lint, test
+// Workspace — the `monorepo:check` gate: install, build, fmt, lint
 // ---------------------------------------------------------------------------
 
+/// The package scripts `monorepo:check` runs before it measures anything.
+///
+/// The suites are not among them: they are the [coverage](check_coverage)
+/// check, which runs immediately after this one — the same two halves, in the
+/// same order, that `monorepo:check` runs them in.
 fn check_workspace(args: &ProjectCheckArgs, root: &Path) -> CheckOutcome {
-    let summary = WORKSPACE_COMMANDS.replace(',', ", ");
+    let scope = monorepo_check::CHECK_COMMANDS.replace(',', ", ");
 
-    match run_tasks(args, root, WORKSPACE_COMMANDS) {
-        Ok(true) => CheckOutcome::new(CheckId::Workspace, CheckStatus::Passed, summary),
-        Ok(false) => CheckOutcome::new(CheckId::Workspace, CheckStatus::Failed, summary)
-            .with_details(vec![
-                "A workspace task failed — the failing task output is printed above".to_string(),
-            ])
+    match run_tasks(args, root, monorepo_check::CHECK_COMMANDS) {
+        Ok(true) => CheckOutcome::new(CheckId::Workspace, CheckStatus::Passed, scope),
+        Ok(false) => CheckOutcome::new(CheckId::Workspace, CheckStatus::Failed, scope)
+            .with_details(vec![format!(
+                "{ERROR_DETAIL}A workspace task failed — the failing task output is printed above"
+            )])
             .with_hint("Re-run the failing step alone, e.g. `talos lint --modules=<name> --logs`"),
-        Err(message) => CheckOutcome::new(CheckId::Workspace, CheckStatus::Failed, summary)
-            .with_details(vec![message]),
+        Err(message) => CheckOutcome::new(CheckId::Workspace, CheckStatus::Failed, scope)
+            .with_details(vec![format!("{ERROR_DETAIL}{message}")]),
     }
+}
+
+// ---------------------------------------------------------------------------
+// Coverage — the suites, measured, straight after the gate that built them
+// ---------------------------------------------------------------------------
+
+/// Run every suite through `coverage:check` and report what it covers.
+///
+/// This is the second half of the `monorepo:check` gate, and it runs where that
+/// gate runs it: right after the package scripts, on the tree they just built.
+/// The measured report is printed in full — ranked worst first, with the files
+/// pulling a module down — because a rate is only actionable next to the file
+/// that earned it; the row in the summary block then indexes it. Under `--json`
+/// nothing is printed and the same findings travel as details.
+fn check_coverage(args: &ProjectCheckArgs, root: &Path) -> CheckOutcome {
+    let started_at = Instant::now();
+    let audit = match monorepo_check::measure(
+        &MonorepoCheckArgs {
+            packages: args.packages.clone(),
+            modules: args.modules.clone(),
+            logs: args.logs,
+            no_cache: args.no_cache,
+            threshold: args.threshold,
+            concurrency: args.concurrency,
+            strict: args.strict,
+            cwd: Some(root.to_string_lossy().to_string()),
+        },
+        args.json,
+    ) {
+        Ok(audit) => audit,
+        Err(message) => {
+            return CheckOutcome::new(CheckId::Coverage, CheckStatus::Skipped, message)
+                .with_hint("Scaffold a suite with `talos test:create --module=<name>`");
+        }
+    };
+
+    if !args.json {
+        coverage_check::print_report(
+            &audit,
+            args.logs,
+            args.strict,
+            started_at.elapsed().as_millis() as u64,
+            // Only what needs work: the full table belongs to `coverage:check`,
+            // where it is the whole point, not to a report of sixty checks.
+            true,
+        );
+    }
+
+    static_outcome(
+        CheckId::Coverage,
+        &coverage_scope(&audit),
+        &format!("every module clears {}%", trim_percent(audit.threshold)),
+        audit.broken().into_iter().map(broken_suite).collect(),
+        audit
+            .under()
+            .into_iter()
+            .map(|module| under_covered(module, audit.threshold))
+            .collect(),
+    )
+    .with_hint(coverage_hint(&audit))
+}
+
+/// What was measured, which is what every summary line is read against.
+fn coverage_scope(audit: &CoverageAudit) -> String {
+    let ran = audit.ran().len();
+    if ran == 0 {
+        return "no suite to measure".to_string();
+    }
+
+    format!(
+        "{ran} suite{} · {}% lines · {}% functions",
+        if ran == 1 { "" } else { "s" },
+        trim_percent(audit.lines()),
+        trim_percent(audit.functions())
+    )
+}
+
+/// The one command that takes the reader from the row to the whole story.
+fn coverage_hint(audit: &CoverageAudit) -> String {
+    let broken = audit.broken();
+    if broken.is_empty() {
+        return "Inspect every module with `talos coverage:check`".to_string();
+    }
+
+    format!(
+        "Re-run the failing suite alone with `talos coverage:check --modules={} --logs`",
+        broken
+            .iter()
+            .map(|module| module.name.as_str())
+            .collect::<Vec<_>>()
+            .join(",")
+    )
+}
+
+fn broken_suite(module: &ModuleCoverage) -> String {
+    match &module.status {
+        RunStatus::Errored(reason) => format!("{} · {reason}", module.label),
+        _ => format!(
+            "{} · {} test{} failed",
+            module.label,
+            module.failed,
+            if module.failed == 1 { "" } else { "s" }
+        ),
+    }
+}
+
+fn under_covered(module: &ModuleCoverage, threshold: f64) -> String {
+    format!(
+        "{} · {:.0}% lines, {:.0}% functions — under {threshold:.0}%",
+        module.label, module.lines, module.functions
+    )
 }
 
 /// Run workspace tasks, keeping stdout clean when the report is JSON.
@@ -2466,6 +2604,8 @@ struct Progress {
     /// Where each category sits in the loader — only the categories the run
     /// actually selected get a row.
     rows: BTreeMap<Category, usize>,
+    /// Whether stdout is being held for a report, and so carries nothing else.
+    quiet: bool,
 }
 
 impl Progress {
@@ -2490,6 +2630,7 @@ impl Progress {
                 Loader::start(groups)
             },
             rows,
+            quiet,
         }
     }
 
@@ -2505,6 +2646,9 @@ impl Progress {
     /// display of its own that the loader would otherwise overwrite.
     fn announce(&self, id: CheckId) {
         self.loader.pause();
+        if self.quiet {
+            return;
+        }
         println!(
             "{}{}",
             style(format!("▸ {}", id.title())).cyan().bold(),
@@ -2590,6 +2734,7 @@ fn dispatch(args: &ProjectCheckArgs, root: &Path, id: CheckId) -> CheckOutcome {
         CheckId::Queries => queries::run(args, root),
         CheckId::Sdk => sdk::run(args, root),
         CheckId::Tests => tests::run(args, root),
+        CheckId::Coverage => check_coverage(args, root),
         CheckId::E2eCoverage => e2e_coverage::run(args, root),
         CheckId::Docs => docs::run(args, root),
         CheckId::Bundle => bundle::run(args, root),
@@ -2671,16 +2816,15 @@ pub fn execute(args: &ProjectCheckArgs, checks: &[CheckId]) -> ProjectReport {
     let mut outcomes: Vec<Option<CheckOutcome>> = vec![None; checks.len()];
     let progress = Progress::start(checks, args.json);
 
-    // The workspace gate first, on its own and with the terminal to itself.
-    for (index, id) in checks
-        .iter()
-        .enumerate()
-        .filter(|(_, id)| **id == CheckId::Workspace)
-    {
-        progress.announce(*id);
-        outcomes[index] = Some(run_check(args, &root, *id, cache.as_ref()));
-        progress.completed(*id);
-        progress.released();
+    // The workspace gate first, on its own and with the terminal to itself,
+    // then the suites it built — `monorepo:check`, in the order it runs.
+    for id in [CheckId::Workspace, CheckId::Coverage] {
+        for (index, id) in checks.iter().enumerate().filter(|(_, each)| **each == id) {
+            progress.announce(*id);
+            outcomes[index] = Some(run_check(args, &root, *id, cache.as_ref()));
+            progress.completed(*id);
+            progress.released();
+        }
     }
 
     let concurrent: Vec<(usize, CheckId)> = checks

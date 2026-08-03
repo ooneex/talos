@@ -297,7 +297,10 @@ fn collect_ignores_a_manifest_entry_that_is_not_a_range() {
 #[test]
 fn report_skips_when_no_registry_could_be_reached() {
     let left_pad = dependency("left-pad", Registry::Npm, "1.0.0", &["root"]);
-    let outcome = report(std::slice::from_ref(&left_pad), &answers(&[(&left_pad, None)]));
+    let outcome = report(
+        std::slice::from_ref(&left_pad),
+        &answers(&[(&left_pad, None)]),
+    );
 
     assert_eq!(outcome.status, CheckStatus::Skipped);
     assert_eq!(outcome.summary, "the registries could not be reached");
@@ -306,7 +309,10 @@ fn report_skips_when_no_registry_could_be_reached() {
 #[test]
 fn report_passes_when_every_dependency_is_on_a_current_major() {
     let react = dependency("react", Registry::Npm, "19.0.0", &["root"]);
-    let outcome = report(std::slice::from_ref(&react), &answers(&[(&react, Some("19.2.0"))]));
+    let outcome = report(
+        std::slice::from_ref(&react),
+        &answers(&[(&react, Some("19.2.0"))]),
+    );
 
     assert_eq!(outcome.status, CheckStatus::Passed);
     assert!(outcome.summary.starts_with("1 dependency · 1 behind"));
@@ -315,7 +321,10 @@ fn report_passes_when_every_dependency_is_on_a_current_major() {
 #[test]
 fn report_stays_quiet_about_a_minor_or_patch_behind() {
     let react = dependency("react", Registry::Npm, "19.0.0", &["root"]);
-    let outcome = report(std::slice::from_ref(&react), &answers(&[(&react, Some("19.2.0"))]));
+    let outcome = report(
+        std::slice::from_ref(&react),
+        &answers(&[(&react, Some("19.2.0"))]),
+    );
 
     assert!(outcome.details.is_empty());
 }
@@ -323,7 +332,10 @@ fn report_stays_quiet_about_a_minor_or_patch_behind() {
 #[test]
 fn report_warns_about_a_dependency_a_major_behind() {
     let react = dependency("react", Registry::Npm, "17.0.0", &["root", "modules/web"]);
-    let outcome = report(std::slice::from_ref(&react), &answers(&[(&react, Some("19.2.0"))]));
+    let outcome = report(
+        std::slice::from_ref(&react),
+        &answers(&[(&react, Some("19.2.0"))]),
+    );
 
     assert_eq!(outcome.status, CheckStatus::Warned);
     assert_eq!(outcome.details.len(), 1);
@@ -334,7 +346,10 @@ fn report_warns_about_a_dependency_a_major_behind() {
 #[test]
 fn report_counts_one_major_in_the_singular() {
     let react = dependency("react", Registry::Npm, "18.0.0", &["root"]);
-    let outcome = report(std::slice::from_ref(&react), &answers(&[(&react, Some("19.0.0"))]));
+    let outcome = report(
+        std::slice::from_ref(&react),
+        &answers(&[(&react, Some("19.0.0"))]),
+    );
 
     assert!(outcome.details[0].contains("1 major version behind"));
 }
