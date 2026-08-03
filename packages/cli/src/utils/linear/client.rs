@@ -11,13 +11,22 @@ const LINEAR_API_URL: &str = "https://api.linear.app/graphql";
 /// needs.
 pub struct LinearClient {
     token: String,
+    endpoint: String,
 }
 
 impl LinearClient {
     pub fn new(token: impl Into<String>) -> Self {
         Self {
             token: token.into(),
+            endpoint: LINEAR_API_URL.to_string(),
         }
+    }
+
+    /// Point the client at another GraphQL endpoint — a proxy, a self-hosted
+    /// gateway, or a stub server standing in for Linear.
+    pub fn with_endpoint(mut self, endpoint: impl Into<String>) -> Self {
+        self.endpoint = endpoint.into();
+        self
     }
 
     /// Build a client from the `linear.yml` credentials saved by
@@ -36,7 +45,7 @@ impl LinearClient {
     /// GraphQL `errors`.
     pub fn request(&self, query: &str, variables: Value) -> Option<Value> {
         let body = json!({ "query": query, "variables": variables });
-        let response: Value = ureq::post(LINEAR_API_URL)
+        let response: Value = ureq::post(&self.endpoint)
             .header("Authorization", &self.token)
             .header("Content-Type", "application/json")
             .send_json(body)

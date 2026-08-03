@@ -43,13 +43,33 @@ impl Registry {
         }
     }
 
+    /// The public host the registry is read from.
+    pub fn base(self) -> &'static str {
+        match self {
+            Registry::Npm => "https://registry.npmjs.org",
+            Registry::Crates => "https://crates.io",
+            Registry::PyPI => "https://pypi.org",
+        }
+    }
+
+    /// Where the latest published version sits, relative to the host.
+    pub fn path(self, name: &str) -> String {
+        match self {
+            Registry::Npm => format!("/{name}/latest"),
+            Registry::Crates => format!("/api/v1/crates/{name}"),
+            Registry::PyPI => format!("/pypi/{name}/json"),
+        }
+    }
+
     /// Where the latest published version is read from.
     pub fn url(self, name: &str) -> String {
-        match self {
-            Registry::Npm => format!("https://registry.npmjs.org/{name}/latest"),
-            Registry::Crates => format!("https://crates.io/api/v1/crates/{name}"),
-            Registry::PyPI => format!("https://pypi.org/pypi/{name}/json"),
-        }
+        self.url_at(self.base(), name)
+    }
+
+    /// The same lookup against another host — a mirror, an internal registry,
+    /// or a stub standing in for the public one.
+    pub fn url_at(self, base: &str, name: &str) -> String {
+        format!("{}{}", base.trim_end_matches('/'), self.path(name))
     }
 
     /// Pull the latest version out of the registry's response.
@@ -214,10 +234,19 @@ fn agent() -> ureq::Agent {
         .into()
 }
 
-/// Ask a registry for the latest published version.
-pub fn fetch_latest(agent: &ureq::Agent, dependency: &Dependency) -> Option<String> {
+/// Ask a registry for the latest published version. `base` overrides the public
+/// host the registry is normally read from.
+pub fn fetch_latest(
+    agent: &ureq::Agent,
+    dependency: &Dependency,
+    base: Option<&str>,
+) -> Option<String> {
+    let url = match base {
+        Some(base) => dependency.registry.url_at(base, &dependency.name),
+        None => dependency.registry.url(&dependency.name),
+    };
     let response: Value = agent
-        .get(&dependency.registry.url(&dependency.name))
+        .get(&url)
         // crates.io rejects a request that does not identify itself.
         .header("User-Agent", "talos-cli (project:check)")
         .call()
@@ -242,7 +271,7 @@ pub fn fetch_all(dependencies: &[Dependency]) -> BTreeMap<(Registry, String), Op
                     let Some(dependency) = dependencies.get(index) else {
                         return;
                     };
-                    let latest = fetch_latest(&agent, dependency);
+                    let latest = fetch_latest(&agent, dependency, None);
                     if let Ok(mut found) = found.lock() {
                         found.insert((dependency.registry, dependency.name.clone()), latest);
                     }
@@ -269,7 +298,15 @@ pub fn run(args: &ProjectCheckArgs, root: &Path) -> CheckOutcome {
         );
     }
 
-    let latest = fetch_all(&dependencies);
+    report(&dependencies, &fetch_all(&dependencies))
+}
+
+/// Turn the registry answers into the outcome. Split from [`run`] so the whole
+/// report can be exercised without reaching a registry.
+pub fn report(
+    dependencies: &[Dependency],
+    latest: &BTreeMap<(Registry, String), Option<String>>,
+) -> CheckOutcome {
     if latest.values().all(Option::is_none) {
         return CheckOutcome::new(
             CheckId::Outdated,
@@ -283,7 +320,7 @@ pub fn run(args: &ProjectCheckArgs, root: &Path) -> CheckOutcome {
     let mut warnings = Vec::new();
     let mut behind = 0;
 
-    for dependency in &dependencies {
+    for dependency in dependencies {
         let owners = dependency
             .owners
             .iter()

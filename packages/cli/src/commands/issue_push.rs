@@ -5,7 +5,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 use crate::utils::github;
-use crate::utils::{Provider, current_dir, read_credentials};
+use crate::utils::linear::LinearClient;
+use crate::utils::{Provider, current_dir};
 
 #[derive(Default, Deserialize, Serialize, Clone, Debug)]
 pub struct IssueComment {
@@ -47,29 +48,6 @@ pub struct IssuePushArgs {
 
     #[arg(long)]
     pub cwd: Option<String>,
-}
-
-fn read_linear_token() -> Option<String> {
-    let profile = read_credentials("linear.yml")?;
-    profile
-        .into_iter()
-        .find_map(|(key, value)| (key == "token").then_some(value))
-}
-
-fn linear_request(token: &str, query: &str, variables: Value) -> Option<Value> {
-    let body = json!({"query": query, "variables": variables});
-    let response: Value = ureq::post("https://api.linear.app/graphql")
-        .header("Authorization", token)
-        .header("Content-Type", "application/json")
-        .send_json(body)
-        .ok()?
-        .into_body()
-        .read_json()
-        .ok()?;
-    if response.get("errors").is_some() {
-        return None;
-    }
-    response.get("data").cloned()
 }
 
 /// Locate a local issue file by id across every module, preferring the
@@ -140,9 +118,9 @@ pub fn priority_value(priority: Option<&str>) -> Option<i64> {
     }
 }
 
-fn resolve_state(token: &str, state_name: &str) -> Option<String> {
+fn resolve_state(client: &LinearClient, state_name: &str) -> Option<String> {
     let query = r#"query { workflowStates { nodes { id name } } }"#;
-    let data = linear_request(token, query, json!({}))?;
+    let data = client.request(query, json!({}))?;
     data.get("workflowStates")?
         .get("nodes")?
         .as_array()?
@@ -156,12 +134,12 @@ fn resolve_state(token: &str, state_name: &str) -> Option<String> {
         .and_then(|state| state.get("id").and_then(Value::as_str).map(str::to_string))
 }
 
-fn resolve_label_ids(token: &str, label_names: &[String]) -> Vec<String> {
+fn resolve_label_ids(client: &LinearClient, label_names: &[String]) -> Vec<String> {
     if label_names.is_empty() {
         return Vec::new();
     }
     let query = r#"query { issueLabels { nodes { id name } } }"#;
-    let data = linear_request(token, query, json!({})).unwrap_or_default();
+    let data = client.request(query, json!({})).unwrap_or_default();
     let existing = data
         .get("issueLabels")
         .and_then(|v| v.get("nodes"))
@@ -184,7 +162,7 @@ fn resolve_label_ids(token: &str, label_names: &[String]) -> Vec<String> {
             continue;
         }
         let query = r#"mutation($name: String!) { issueLabelCreate(input: { name: $name }) { issueLabel { id } } }"#;
-        if let Some(data) = linear_request(token, query, json!({"name": name}))
+        if let Some(data) = client.request(query, json!({"name": name}))
             && let Some(id) = data
                 .get("issueLabelCreate")
                 .and_then(|v| v.get("issueLabel"))
@@ -197,9 +175,9 @@ fn resolve_label_ids(token: &str, label_names: &[String]) -> Vec<String> {
     ids
 }
 
-fn find_team_general(token: &str) -> Option<String> {
+fn find_team_general(client: &LinearClient) -> Option<String> {
     let query = r#"query { teams { nodes { id name key } } }"#;
-    let data = linear_request(token, query, json!({}))?;
+    let data = client.request(query, json!({}))?;
     data.get("teams")?
         .get("nodes")?
         .as_array()?
@@ -216,13 +194,24 @@ fn find_team_general(token: &str) -> Option<String> {
         .and_then(|team| team.get("id").and_then(Value::as_str).map(str::to_string))
 }
 
-fn get_issue(token: &str, id: &str) -> Option<Value> {
+fn get_issue(client: &LinearClient, id: &str) -> Option<Value> {
     let query =
         r#"query($id: String!) { issue(id: $id) { id identifier comments { nodes { body } } } }"#;
-    linear_request(token, query, json!({"id": id})).and_then(|data| data.get("issue").cloned())
+    // A `null` issue means Linear does not hold it yet, which is what sends the
+    // push down the create path — so it has to read as absent, not as present
+    // and empty.
+    client
+        .request(query, json!({"id": id}))
+        .and_then(|data| data.get("issue").cloned())
+        .filter(|issue| !issue.is_null())
 }
 
-fn sync_comments(token: &str, issue_id: &str, parsed: &ParsedIssue, existing: Option<&Value>) {
+fn sync_comments(
+    client: &LinearClient,
+    issue_id: &str,
+    parsed: &ParsedIssue,
+    existing: Option<&Value>,
+) {
     let existing_bodies: std::collections::BTreeSet<String> = existing
         .and_then(|existing| existing.get("comments"))
         .and_then(|v| v.get("nodes"))
@@ -238,17 +227,19 @@ fn sync_comments(token: &str, issue_id: &str, parsed: &ParsedIssue, existing: Op
         !comment.message.trim().is_empty() && !existing_bodies.contains(&comment.message)
     }) {
         let query = r#"mutation($issueId: String!, $body: String!) { commentCreate(input: { issueId: $issueId, body: $body }) { success } }"#;
-        let _ = linear_request(
-            token,
-            query,
-            json!({"issueId": issue_id, "body": comment.message}),
-        );
+        let _ = client.request(query, json!({"issueId": issue_id, "body": comment.message}));
     }
 }
 
 /// Push a single local issue file to Linear, creating it when it does not yet
 /// exist there and updating its fields when it does. Returns `true` on success.
-fn push_issue(token: &str, module: &str, issues_dir: &Path, file_path: &Path, id: &str) -> bool {
+pub fn push_issue(
+    client: &LinearClient,
+    module: &str,
+    issues_dir: &Path,
+    file_path: &Path,
+    id: &str,
+) -> bool {
     let Ok(content) = std::fs::read_to_string(file_path) else {
         crate::utils::error(format!("Failed to read {}", file_path.display()));
         return false;
@@ -259,13 +250,13 @@ fn push_issue(token: &str, module: &str, issues_dir: &Path, file_path: &Path, id
         .id
         .as_deref()
         .or(Some(id))
-        .and_then(|value| get_issue(token, value));
+        .and_then(|value| get_issue(client, value));
     let description = build_description(&parsed, module);
     let state_id = parsed
         .state
         .as_deref()
-        .and_then(|state| resolve_state(token, state));
-    let label_ids = resolve_label_ids(token, &parsed.labels);
+        .and_then(|state| resolve_state(client, state));
+    let label_ids = resolve_label_ids(client, &parsed.labels);
     let priority = priority_value(parsed.priority.as_deref());
 
     if let Some(existing) = existing {
@@ -284,11 +275,14 @@ fn push_issue(token: &str, module: &str, issues_dir: &Path, file_path: &Path, id
         if let Some(state_id) = state_id.as_deref() {
             input["stateId"] = json!(state_id);
         }
-        if linear_request(token, query, json!({"id": issue_id, "input": input})).is_none() {
+        if client
+            .request(query, json!({"id": issue_id, "input": input}))
+            .is_none()
+        {
             crate::utils::error(format!("Failed to update issue {id} in Linear"));
             return false;
         }
-        sync_comments(token, issue_id, &parsed, Some(&existing));
+        sync_comments(client, issue_id, &parsed, Some(&existing));
         crate::utils::success(format!(
             "Issue {} updated in Linear",
             existing
@@ -303,7 +297,7 @@ fn push_issue(token: &str, module: &str, issues_dir: &Path, file_path: &Path, id
         crate::utils::error(format!("Issue {id} has no title; cannot create in Linear"));
         return false;
     };
-    let Some(team_id) = find_team_general(token) else {
+    let Some(team_id) = find_team_general(client) else {
         crate::utils::error("No \"General\" team found in Linear");
         return false;
     };
@@ -320,7 +314,7 @@ fn push_issue(token: &str, module: &str, issues_dir: &Path, file_path: &Path, id
     if let Some(state_id) = state_id.as_deref() {
         input["stateId"] = json!(state_id);
     }
-    let Some(data) = linear_request(token, query, json!({"input": input})) else {
+    let Some(data) = client.request(query, json!({"input": input})) else {
         crate::utils::error(format!("Failed to create issue {id} in Linear"));
         return false;
     };
@@ -333,7 +327,7 @@ fn push_issue(token: &str, module: &str, issues_dir: &Path, file_path: &Path, id
         .get("id")
         .and_then(Value::as_str)
         .unwrap_or_default();
-    sync_comments(token, issue_id, &parsed, None);
+    sync_comments(client, issue_id, &parsed, None);
 
     let identifier = created
         .get("identifier")
@@ -447,9 +441,9 @@ pub fn run(args: &IssuePushArgs) {
         .unwrap_or_else(current_dir);
     let modules_dir = cwd.join("modules");
 
-    let token = match args.provider {
-        Provider::Linear => match read_linear_token() {
-            Some(token) => Some(token),
+    let client = match args.provider {
+        Provider::Linear => match LinearClient::from_credentials() {
+            Some(client) => Some(client),
             None => {
                 crate::utils::error(
                     "No Linear credentials found. Run `talos credentials:create --provider=linear`",
@@ -480,15 +474,9 @@ pub fn run(args: &IssuePushArgs) {
             .parent()
             .map(Path::to_path_buf)
             .unwrap_or_else(|| modules_dir.join(&module).join("issues"));
-        let pushed = match args.provider {
-            Provider::Linear => push_issue(
-                token.as_deref().unwrap_or_default(),
-                &module,
-                &issues_dir,
-                &file_path,
-                id,
-            ),
-            Provider::Github => push_issue_github(&module, &issues_dir, &file_path, id),
+        let pushed = match &client {
+            Some(client) => push_issue(client, &module, &issues_dir, &file_path, id),
+            None => push_issue_github(&module, &issues_dir, &file_path, id),
         };
         if !pushed {
             failures += 1;

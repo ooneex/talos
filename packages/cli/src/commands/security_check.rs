@@ -281,13 +281,25 @@ pub fn audit(
     packages: Option<&str>,
     audit_level: Option<&str>,
 ) -> Result<SecurityAudit, String> {
+    audit_at(root, modules, packages, audit_level, None)
+}
+
+/// The same audit against another OSV host — a mirror, or a stub standing in
+/// for the public API.
+pub fn audit_at(
+    root: &Path,
+    modules: Option<&str>,
+    packages: Option<&str>,
+    audit_level: Option<&str>,
+    base: Option<&str>,
+) -> Result<SecurityAudit, String> {
     let filter = build_filter(modules, packages);
     let min_severity = audit_level
         .map(Severity::from_label)
         .unwrap_or(Severity::Unknown);
     let (llm_findings, llm_files) = collect_llm_findings(root, filter.as_ref(), min_severity);
     let (mut findings, modules, dependencies) =
-        match collect_findings(root, filter.as_ref(), min_severity) {
+        match collect_findings(root, filter.as_ref(), min_severity, base) {
             Ok(outcome) => outcome,
             // A missing lockfile must not hide the assistant configuration
             // findings, which need neither a lockfile nor the network.
@@ -342,7 +354,7 @@ pub fn run(args: &SecurityCheckArgs) {
     };
 
     let (mut findings, modules, total_deps) =
-        match collect_findings(&root, filter.as_ref(), min_severity) {
+        match collect_findings(&root, filter.as_ref(), min_severity, None) {
             Ok(outcome) => outcome,
             Err(message) => {
                 if llm_files == 0 {
@@ -433,6 +445,7 @@ fn collect_findings(
     root: &Path,
     filter: Option<&BTreeSet<String>>,
     min_severity: Severity,
+    base: Option<&str>,
 ) -> Result<(Vec<Finding>, usize, usize), String> {
     let spinner = Spinner::start("Collecting dependencies");
     let mut modules = collect_modules(root);
@@ -466,7 +479,7 @@ fn collect_findings(
         unique.len(),
         if unique.len() == 1 { "" } else { "s" }
     ));
-    let vuln_ids = match osv_query_batch(&unique) {
+    let vuln_ids = match osv_query_batch(&unique, base) {
         Some(ids) => ids,
         None => {
             spinner.stop();
@@ -493,7 +506,7 @@ fn collect_findings(
             all_ids.len(),
             if all_ids.len() == 1 { "y" } else { "ies" }
         ));
-        let records = fetch_records(&all_ids);
+        let records = fetch_records(&all_ids, base);
         spinner.stop();
         records
     };
@@ -949,8 +962,12 @@ fn osv_agent() -> ureq::Agent {
     config.into()
 }
 
-fn osv_query_batch(packages: &[PackageKey]) -> Option<Vec<Vec<String>>> {
+fn osv_query_batch(packages: &[PackageKey], base: Option<&str>) -> Option<Vec<Vec<String>>> {
     let agent = osv_agent();
+    let query_url = match base {
+        Some(base) => format!("{}/v1/querybatch", base.trim_end_matches('/')),
+        None => OSV_QUERY_BATCH_URL.to_string(),
+    };
     let mut results: Vec<Vec<String>> = Vec::with_capacity(packages.len());
     for chunk in packages.chunks(OSV_BATCH_SIZE) {
         let queries: Vec<Value> = chunk
@@ -963,7 +980,7 @@ fn osv_query_batch(packages: &[PackageKey]) -> Option<Vec<Vec<String>>> {
             })
             .collect();
         let response: Value = agent
-            .post(OSV_QUERY_BATCH_URL)
+            .post(&query_url)
             .header("Content-Type", "application/json")
             .send_json(json!({ "queries": queries }))
             .ok()?
@@ -993,25 +1010,23 @@ fn osv_query_batch(packages: &[PackageKey]) -> Option<Vec<Vec<String>>> {
     Some(results)
 }
 
-fn fetch_records(ids: &BTreeSet<String>) -> HashMap<String, Value> {
+fn fetch_records(ids: &BTreeSet<String>, base: Option<&str>) -> HashMap<String, Value> {
     let agent = osv_agent();
     let mut records = HashMap::new();
     for id in ids {
-        if let Some(record) = fetch_record(&agent, id) {
+        if let Some(record) = fetch_record(&agent, id, base) {
             records.insert(id.clone(), record);
         }
     }
     records
 }
 
-fn fetch_record(agent: &ureq::Agent, id: &str) -> Option<Value> {
-    agent
-        .get(format!("{OSV_VULN_URL}/{id}"))
-        .call()
-        .ok()?
-        .into_body()
-        .read_json()
-        .ok()
+fn fetch_record(agent: &ureq::Agent, id: &str, base: Option<&str>) -> Option<Value> {
+    let url = match base {
+        Some(base) => format!("{}/v1/vulns/{id}", base.trim_end_matches('/')),
+        None => format!("{OSV_VULN_URL}/{id}"),
+    };
+    agent.get(url).call().ok()?.into_body().read_json().ok()
 }
 
 pub fn build_finding(

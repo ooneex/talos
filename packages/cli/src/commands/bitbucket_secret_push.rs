@@ -37,7 +37,9 @@ fn read_credentials_pair() -> Option<(String, String)> {
     Some((username?, token?))
 }
 
-fn parse_repository(input: &str) -> Option<(String, String)> {
+/// The `<workspace>/<slug>` pair a Bitbucket remote points at, whether the
+/// remote is written as SSH or HTTPS.
+pub fn parse_repository(input: &str) -> Option<(String, String)> {
     let remote = input.trim().trim_end_matches('/').trim_end_matches(".git");
     let path = regex::Regex::new(r"^(?:ssh://)?git@[^/:]+[:/](.+)$")
         .ok()?
@@ -54,7 +56,7 @@ fn parse_repository(input: &str) -> Option<(String, String)> {
         .then(|| (parts[0].to_string(), parts[1].to_string()))
 }
 
-fn basic_auth_header(username: &str, token: &str) -> String {
+pub fn basic_auth_header(username: &str, token: &str) -> String {
     format!("Basic {}", BASE64.encode(format!("{username}:{token}")))
 }
 
@@ -87,7 +89,8 @@ fn curl_bitbucket(
     }
 }
 
-fn find_variable_uuid(base: &str, name: &str, username: &str, token: &str) -> Option<String> {
+/// The uuid Bitbucket already holds for `name`, walking the paged listing.
+pub fn find_variable_uuid(base: &str, name: &str, username: &str, token: &str) -> Option<String> {
     let mut url = format!("{base}?pagelen=100");
     loop {
         let value: serde_json::Value = ureq::get(&url)
@@ -112,6 +115,39 @@ fn find_variable_uuid(base: &str, name: &str, username: &str, token: &str) -> Op
         let next = value.get("next").and_then(|v| v.as_str())?;
         url = next.to_string();
     }
+}
+
+/// Create the pipeline variable, or replace the one Bitbucket already holds
+/// under that name. `base` is the variables collection of one repository.
+///
+/// Returns the body Bitbucket answered with on failure, so the caller can print
+/// it.
+pub fn push_variable(
+    base: &str,
+    name: &str,
+    value: &str,
+    username: &str,
+    token: &str,
+) -> Result<(), String> {
+    let body = json!({"key": name, "value": value, "secured": true}).to_string();
+    let (status, response) =
+        curl_bitbucket("POST", base, &body, username, token).unwrap_or((0, "curl failed".into()));
+
+    if status == 200 || status == 201 {
+        return Ok(());
+    }
+
+    // 409 means the variable is already there, so it is updated in place.
+    if status == 409 {
+        let Some(uuid) = find_variable_uuid(base, name, username, token) else {
+            return Err(response);
+        };
+        let (status, _) = curl_bitbucket("PUT", &format!("{base}{uuid}"), &body, username, token)
+            .unwrap_or((0, String::new()));
+        return if status == 200 { Ok(()) } else { Err(response) };
+    }
+
+    Err(response)
 }
 
 pub fn run(args: &BitbucketSecretPushArgs) {
@@ -155,28 +191,12 @@ pub fn run(args: &BitbucketSecretPushArgs) {
     let base = format!(
         "https://api.bitbucket.org/2.0/repositories/{workspace}/{slug}/pipelines_config/variables/"
     );
-    let body = json!({"key": name, "value": value, "secured": true}).to_string();
-    let result = curl_bitbucket("POST", &base, &body, &username, &token)
-        .unwrap_or((0, "curl failed".to_string()));
-    let ok = if result.0 == 200 || result.0 == 201 {
-        true
-    } else if result.0 == 409 {
-        if let Some(uuid) = find_variable_uuid(&base, &name, &username, &token) {
-            let update = curl_bitbucket("PUT", &format!("{base}{uuid}"), &body, &username, &token)
-                .unwrap_or((0, String::new()));
-            update.0 == 200
-        } else {
-            false
-        }
-    } else {
-        false
-    };
-    if !ok {
+    if let Err(response) = push_variable(&base, &name, &value, &username, &token) {
         if !args.silent {
             crate::utils::error(format!(
                 "Failed to push variable \"{name}\" to {workspace}/{slug}"
             ));
-            eprintln!("{}", result.1.trim());
+            eprintln!("{}", response.trim());
         }
         std::process::exit(1);
     }

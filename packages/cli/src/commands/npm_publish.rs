@@ -111,9 +111,13 @@ fn read_token() -> Option<String> {
         .find_map(|(key, value)| (key == "token").then_some(value))
 }
 
-fn version_exists(name: &str, version: &str, token: &str) -> bool {
+/// Whether the registry already published that exact version. `base` overrides
+/// the public registry the lookup normally goes to.
+pub fn version_exists(name: &str, version: &str, token: &str, base: Option<&str>) -> bool {
     let url = format!(
-        "https://{NPM_REGISTRY}/{}/{}",
+        "{}/{}/{}",
+        base.map(|base| base.trim_end_matches('/').to_string())
+            .unwrap_or_else(|| format!("https://{NPM_REGISTRY}")),
         percent_encode(name),
         percent_encode(version)
     );
@@ -137,7 +141,8 @@ pub fn remove_tgz_files(dir: &Path) {
     }
 }
 
-fn extract_tarball_stripping_root(tarball: &Path, destination: &Path) -> std::io::Result<()> {
+/// Unpack a tarball, dropping the single wrapping directory npm packs into it.
+pub fn extract_tarball_stripping_root(tarball: &Path, destination: &Path) -> std::io::Result<()> {
     let file = fs::File::open(tarball)?;
     let mut archive = Archive::new(GzDecoder::new(file));
     for entry in archive.entries()? {
@@ -214,7 +219,7 @@ pub fn run(args: &NpmPublishArgs) {
             .map(|v| format!("{name}@{v}"))
             .unwrap_or_else(|| name.clone());
         if let Some(version) = version.as_deref()
-            && version_exists(&name, version, &token)
+            && version_exists(&name, version, &token, None)
         {
             ignored += 1;
             if !args.silent {
