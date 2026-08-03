@@ -14,6 +14,7 @@
 //! controllers a module's `<Name>Module.ts` actually registers are documented:
 //! a file nobody registers serves nothing.
 
+use serde_json::{Map, Value, json};
 use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -81,8 +82,23 @@ pub struct RouteField {
     pub name: String,
     pub ty: String,
     pub required: bool,
+    /// The JSDoc written above the member in the route type, if any.
+    ///
+    /// A controller is the only place a description can live and survive: the
+    /// swagger's `src/features/` is regenerated wholesale on every run, so
+    /// prose written there would be wiped by the next one.
+    pub description: String,
     /// The members of a nested object literal, e.g. `address: { city: string }`.
     pub fields: Vec<RouteField>,
+}
+
+/// One member of a route type, as written.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Member {
+    pub name: String,
+    pub ty: String,
+    pub required: bool,
+    pub description: String,
 }
 
 /// One route, as much of it as a controller states out loud.
@@ -97,7 +113,10 @@ pub struct RouteDefinition {
     pub method: String,
     /// Served path, prefix and version included.
     pub path: String,
+    /// The decorator's one-liner, published as the summary.
     pub description: String,
+    /// The JSDoc written above the decorator, published as the prose.
+    pub prose: String,
     pub roles: Vec<String>,
     pub params: Vec<RouteField>,
     pub queries: Vec<RouteField>,
@@ -209,12 +228,113 @@ fn collect_controller_files(dir: &Path, files: &mut Vec<PathBuf>) {
 ///
 /// Nested objects, unions and generics all live inside the member's type, so
 /// the split tracks bracket depth rather than looking for the next separator.
-pub fn split_members(body: &str) -> Vec<(String, String, bool)> {
-    let mut members = Vec::new();
+/// The prose of a JSDoc block, with the decoration every line carries removed.
+fn clean_jsdoc(body: &str) -> String {
+    body.lines()
+        .map(|line| line.trim().trim_start_matches('*').trim())
+        .filter(|line| !line.is_empty())
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+/// The JSDoc block written immediately above `index`, if there is one.
+///
+/// "Immediately" means nothing but whitespace between the block's `*/` and the
+/// thing it documents — otherwise the file's own header comment would be read
+/// as the description of whatever happens to come first.
+fn jsdoc_above(content: &str, index: usize) -> String {
+    let Some(before) = content.get(..index) else {
+        return String::new();
+    };
+    let before = before.trim_end();
+    let Some(head) = before.strip_suffix("*/") else {
+        return String::new();
+    };
+    let Some(start) = head.rfind("/**") else {
+        return String::new();
+    };
+    let body = head.get(start + 3..).unwrap_or("");
+    // A `*/` inside means the `/**` found opens an earlier block and the one
+    // just closed was a plain `/* … */`, which documents nothing.
+    if body.contains("*/") {
+        return String::new();
+    }
+    clean_jsdoc(body)
+}
+
+/// The members of one object literal, comments removed and the JSDoc above each
+/// member kept as its documentation.
+///
+/// Comments come off during the scan rather than after it: a separator inside a
+/// comment — the comma of "1-based, from the top" is enough — would otherwise
+/// cut a member in two and both halves would be discarded as unparseable. A
+/// string literal is walked through for the same reason, so the `//` of a
+/// `"https://…"` union member starts no comment.
+///
+/// Of the two comment forms only `/** … */` documents; a `//` aside is a note
+/// to whoever reads the controller, not a line of the published contract.
+pub fn split_members(body: &str) -> Vec<Member> {
+    let characters = body.chars().collect::<Vec<_>>();
+    let mut members: Vec<(String, String)> = Vec::new();
     let mut depth = 0;
     let mut current = String::new();
+    let mut description = String::new();
+    let mut index = 0;
 
-    for ch in body.chars() {
+    while index < characters.len() {
+        let ch = characters[index];
+        let next = characters.get(index + 1).copied();
+
+        if ch == '/' && next == Some('/') {
+            index += 2;
+            while index < characters.len() && characters[index] != '\n' {
+                index += 1;
+            }
+            continue;
+        }
+
+        if ch == '/' && next == Some('*') {
+            let documents = characters.get(index + 2) == Some(&'*');
+            let start = index + 2;
+            index = start;
+            while index < characters.len()
+                && !(characters[index] == '*' && characters.get(index + 1) == Some(&'/'))
+            {
+                index += 1;
+            }
+            // Only a block that *precedes* a member documents it. One met
+            // further in belongs to a nested member: it is copied through
+            // untouched so the pass that reads that nested literal still finds
+            // it, and letting it through here would overwrite the parent's
+            // description with its first child's.
+            if depth == 0 && current.trim().is_empty() {
+                if documents {
+                    let text = characters[start..index].iter().collect::<String>();
+                    description = clean_jsdoc(text.trim_start_matches('*'));
+                }
+            } else {
+                current.push_str("/*");
+                current.extend(&characters[start..index.min(characters.len())]);
+                current.push_str("*/");
+            }
+            index = (index + 2).min(characters.len());
+            continue;
+        }
+
+        if ch == '"' || ch == '\'' || ch == '`' {
+            current.push(ch);
+            index += 1;
+            while index < characters.len() && characters[index] != ch {
+                current.push(characters[index]);
+                index += 1;
+            }
+            if index < characters.len() {
+                current.push(ch);
+                index += 1;
+            }
+            continue;
+        }
+
         match ch {
             '{' | '[' | '(' | '<' => {
                 depth += 1;
@@ -225,18 +345,21 @@ pub fn split_members(body: &str) -> Vec<(String, String, bool)> {
                 current.push(ch);
             }
             ';' | ',' if depth == 0 => {
-                members.push(std::mem::take(&mut current));
+                members.push((
+                    std::mem::take(&mut current),
+                    std::mem::take(&mut description),
+                ));
             }
             _ => current.push(ch),
         }
+        index += 1;
     }
-    members.push(current);
+    members.push((current, description));
 
     members
         .into_iter()
-        .filter_map(|member| {
-            let member = member.trim();
-            let (name, ty) = member.split_once(':')?;
+        .filter_map(|(member, description)| {
+            let (name, ty) = member.trim().split_once(':')?;
             let name = name.trim();
             if name.is_empty() {
                 return None;
@@ -249,11 +372,12 @@ pub fn split_members(body: &str) -> Vec<(String, String, bool)> {
             {
                 return None;
             }
-            Some((
-                name.to_string(),
-                ty.trim().trim_end_matches(';').trim().to_string(),
-                !optional,
-            ))
+            Some(Member {
+                name: name.to_string(),
+                ty: ty.trim().trim_end_matches(';').trim().to_string(),
+                required: !optional,
+                description,
+            })
         })
         .collect()
 }
@@ -295,7 +419,14 @@ pub fn extract_block(type_body: &str, block: &str) -> Vec<RouteField> {
 pub fn fields_of(body: &str) -> Vec<RouteField> {
     split_members(body)
         .into_iter()
-        .map(|(name, ty, required)| {
+        .map(|member| {
+            let Member {
+                name,
+                ty,
+                required,
+                description,
+            } = member;
+
             // The explorer keys its upload control off the literal `file`, so a
             // `RequestFile` is translated here rather than re-detected there.
             if is_file_type(&ty) {
@@ -303,6 +434,7 @@ pub fn fields_of(body: &str) -> Vec<RouteField> {
                     name,
                     ty: "file".to_string(),
                     required,
+                    description,
                     fields: Vec::new(),
                 };
             }
@@ -319,6 +451,7 @@ pub fn fields_of(body: &str) -> Vec<RouteField> {
                         "object".to_string()
                     },
                     required,
+                    description,
                     fields: fields_of(&inner[1..inner.len() - 1]),
                 };
             }
@@ -327,6 +460,7 @@ pub fn fields_of(body: &str) -> Vec<RouteField> {
                 name,
                 ty,
                 required,
+                description,
                 fields: Vec::new(),
             }
         })
@@ -408,6 +542,11 @@ pub fn parse_controller(content: &str, module_name: &str, prefix: &str) -> Optio
         .map(str::to_string)
         .collect::<Vec<_>>();
 
+    // The decorator's one-liner is the summary; the prose a reader comes for —
+    // when to call the route, what it costs, when not to — is the JSDoc above
+    // the decorator, the only place it can be written and survive a rebuild.
+    let prose = jsdoc_above(content, decorator.get(0)?.start());
+
     // The route type carries the shapes; a controller that declares none still
     // documents fine, it just has no fields to pre-fill.
     let type_body = regex::Regex::new(r"(?:export\s+)?type\s+\w+RouteType\s*=\s*\{")
@@ -424,6 +563,7 @@ pub fn parse_controller(content: &str, module_name: &str, prefix: &str) -> Optio
                 name,
                 ty: "string".to_string(),
                 required: true,
+                description: String::new(),
                 fields: Vec::new(),
             });
         }
@@ -438,6 +578,7 @@ pub fn parse_controller(content: &str, module_name: &str, prefix: &str) -> Optio
         method,
         path: format!("/{prefix}/v{version}{route_path}"),
         description,
+        prose,
         roles,
         params,
         queries: extract_block(&type_body, "queries"),
@@ -452,8 +593,13 @@ fn quote(value: &str) -> String {
 
 /// One field, on one line when it is a leaf and as a block when it nests.
 fn render_field(indent: &str, field: &RouteField) -> String {
+    let described = if field.description.is_empty() {
+        String::new()
+    } else {
+        format!(", description: {}", quote(&field.description))
+    };
     let head = format!(
-        "name: {}, type: {}, required: {}",
+        "name: {}, type: {}, required: {}{described}",
         quote(&field.name),
         quote(&field.ty),
         field.required
@@ -502,6 +648,9 @@ pub fn render_route_file(definition: &RouteDefinition, group: &str) -> String {
     if !definition.description.is_empty() {
         body.push_str(&format!("  summary: {},\n", quote(&definition.description)));
     }
+    if !definition.prose.is_empty() {
+        body.push_str(&format!("  description: {},\n", quote(&definition.prose)));
+    }
     body.push_str(&render_fields("  ", "params", &definition.params));
     body.push_str(&render_fields("  ", "queries", &definition.queries));
     if !definition.payload.is_empty() {
@@ -525,6 +674,188 @@ pub fn render_route_file(definition: &RouteDefinition, group: &str) -> String {
     )
 }
 
+/// The JSON Schema a declared scalar name describes, with the `format` the name
+/// implies where one exists.
+fn scalar_schema(name: &str) -> Option<Value> {
+    let (ty, format) = match name.to_lowercase().as_str() {
+        "string" => ("string", None),
+        "uuid" => ("string", Some("uuid")),
+        "email" => ("string", Some("email")),
+        "url" => ("string", Some("uri")),
+        "date" => ("string", Some("date")),
+        "datetime" => ("string", Some("date-time")),
+        // An upload travels as raw bytes multipart-side and as base64 JSON-side.
+        "file" => ("string", Some("binary")),
+        "base64" => ("string", Some("byte")),
+        "number" | "float" => ("number", None),
+        "integer" | "int" => ("integer", None),
+        "boolean" | "bool" => ("boolean", None),
+        _ => return None,
+    };
+    Some(match format {
+        Some(format) => json!({ "type": ty, "format": format }),
+        None => json!({ "type": ty }),
+    })
+}
+
+/// The schema a declared type describes: an array for a `[]` suffix, an object
+/// for a type with members, an `enum` for a union of quoted literals, and a
+/// free-form value for anything the generator cannot pin down — which is
+/// honest, where guessing would not be.
+fn schema_of(declared: &str, fields: &[RouteField]) -> Value {
+    let declared = declared.trim();
+
+    if let Some(element) = declared.strip_suffix("[]") {
+        return json!({ "type": "array", "items": schema_of(element, fields) });
+    }
+
+    if !fields.is_empty() {
+        return object_schema(fields);
+    }
+
+    if declared.contains('|') {
+        let literals = declared
+            .split('|')
+            .map(str::trim)
+            .filter(|part| part.len() >= 2 && (part.starts_with('"') || part.starts_with('\'')))
+            .map(|part| &part[1..part.len() - 1])
+            .collect::<Vec<_>>();
+        if !literals.is_empty() {
+            return json!({ "type": "string", "enum": literals });
+        }
+    }
+
+    scalar_schema(declared).unwrap_or_else(|| json!({}))
+}
+
+/// The object schema a list of documented fields adds up to.
+fn object_schema(fields: &[RouteField]) -> Value {
+    let mut properties = Map::new();
+    for field in fields {
+        let mut schema = schema_of(&field.ty, &field.fields);
+        if !field.description.is_empty() {
+            schema["description"] = json!(field.description);
+        }
+        properties.insert(field.name.clone(), schema);
+    }
+
+    let mut schema = json!({ "type": "object", "properties": Value::Object(properties) });
+    let required = fields
+        .iter()
+        .filter(|field| field.required)
+        .map(|field| field.name.as_str())
+        .collect::<Vec<_>>();
+    if !required.is_empty() {
+        schema["required"] = json!(required);
+    }
+    schema
+}
+
+/// The wire shape of a successful answer.
+///
+/// A route type's `response` block names what the handler puts in `data`; the
+/// framework wraps it in an envelope before it reaches the network. A consumer
+/// reading the specification parses the envelope, so that is what the schema
+/// has to describe.
+fn envelope_schema(response: &[RouteField]) -> Value {
+    json!({
+        "type": "object",
+        "properties": {
+            "key": { "type": ["string", "null"] },
+            "data": object_schema(response),
+            "message": { "type": ["string", "null"] },
+            "success": { "type": "boolean" },
+            "done": { "type": "boolean" },
+            "status": { "type": "integer" },
+            "isClientError": { "type": "boolean" },
+            "isServerError": { "type": "boolean" },
+            "isNotFound": { "type": "boolean" },
+            "isUnauthorized": { "type": "boolean" },
+            "isForbidden": { "type": "boolean" },
+            "app": { "type": "object", "properties": { "env": { "type": "string" } } },
+        },
+        "required": ["data", "success", "status"],
+    })
+}
+
+fn parameter_of(field: &RouteField, location: &str) -> Value {
+    let mut parameter = json!({
+        "name": field.name,
+        "in": location,
+        "required": location == "path" || field.required,
+        "schema": schema_of(&field.ty, &field.fields),
+    });
+    if !field.description.is_empty() {
+        parameter["description"] = json!(field.description);
+    }
+    parameter
+}
+
+/// The single operation a route definition publishes.
+fn operation_of(definition: &RouteDefinition) -> Value {
+    let mut operation = Map::new();
+    operation.insert("operationId".into(), json!(definition.key));
+    if !definition.description.is_empty() {
+        operation.insert("summary".into(), json!(definition.description));
+    }
+    if !definition.prose.is_empty() {
+        operation.insert("description".into(), json!(definition.prose));
+    }
+    // The route key is `<module>.<…>`, and the module is the tag.
+    let group = definition.key.split('.').next().unwrap_or("API");
+    operation.insert("tags".into(), json!([to_pascal_case(group)]));
+
+    let parameters = definition
+        .params
+        .iter()
+        .map(|field| parameter_of(field, "path"))
+        .chain(
+            definition
+                .queries
+                .iter()
+                .map(|field| parameter_of(field, "query")),
+        )
+        .collect::<Vec<_>>();
+    if !parameters.is_empty() {
+        operation.insert("parameters".into(), json!(parameters));
+    }
+
+    if !definition.payload.is_empty() {
+        // A payload naming a file is carried by a form, not by JSON.
+        let media = if definition.payload.iter().any(|field| field.ty == "file") {
+            "multipart/form-data"
+        } else {
+            "application/json"
+        };
+        operation.insert(
+            "requestBody".into(),
+            json!({
+                "required": true,
+                "content": { media: { "schema": object_schema(&definition.payload) } },
+            }),
+        );
+    }
+
+    let success = if definition.response.is_empty() {
+        json!({ "description": "Successful response" })
+    } else {
+        json!({
+            "description": "Successful response",
+            "content": { "application/json": { "schema": envelope_schema(&definition.response) } },
+        })
+    };
+    operation.insert("responses".into(), json!({ "200": success }));
+
+    let security = if definition.roles.is_empty() {
+        json!([])
+    } else {
+        json!([{ "bearerAuth": [] }])
+    };
+    operation.insert("security".into(), security);
+
+    Value::Object(operation)
+}
+
 /// The OpenAPI document the generated routes add up to, published for consumers
 /// that read a specification rather than the explorer.
 ///
@@ -533,10 +864,12 @@ pub fn render_route_file(definition: &RouteDefinition, group: &str) -> String {
 /// `project:check --only=openapi` compares against, since a controller's
 /// decorator states the route without the prefix the app mounts it under.
 pub fn render_openapi(definitions: &[(String, RouteDefinition)], prefix: &str) -> String {
-    let mut paths: std::collections::BTreeMap<String, Vec<&RouteDefinition>> =
+    let mut paths: std::collections::BTreeMap<String, Map<String, Value>> =
         std::collections::BTreeMap::new();
     let parameter = regex::Regex::new(r":(\w+)").ok();
     for (_, definition) in definitions {
+        // A socket route has no HTTP operation to publish; the explorer
+        // documents it, the specification leaves it out.
         if definition.method == "socket" {
             continue;
         }
@@ -549,39 +882,31 @@ pub fn render_openapi(definitions: &[(String, RouteDefinition)], prefix: &str) -
             .as_ref()
             .map(|pattern| pattern.replace_all(served, "{$1}").into_owned())
             .unwrap_or_else(|| served.to_string());
-        paths.entry(path).or_default().push(definition);
+        paths
+            .entry(path)
+            .or_default()
+            .insert(definition.method.clone(), operation_of(definition));
     }
 
-    let rendered = paths
-        .iter()
-        .map(|(path, definitions)| {
-            let operations = definitions
-                .iter()
-                .map(|definition| {
-                    // The route key is `<module>.<...>`, and the module is the tag.
-                    let group = definition.key.split('.').next().unwrap_or("API");
-                    let security = if definition.roles.is_empty() {
-                        "[]".to_string()
-                    } else {
-                        "[{ \"bearerAuth\": [] }]".to_string()
-                    };
-                    format!(
-                        "      \"{}\": {{\n        \"operationId\": {},\n        \"summary\": {},\n        \"tags\": [{}],\n        \"responses\": {{ \"200\": {{ \"description\": \"Successful response\" }} }},\n        \"security\": {security}\n      }}",
-                        definition.method,
-                        quote(&definition.key),
-                        quote(&definition.description),
-                        quote(&to_pascal_case(group)),
-                    )
-                })
-                .collect::<Vec<_>>()
-                .join(",\n");
-            format!("    {}: {{\n{operations}\n    }}", quote(path))
-        })
-        .collect::<Vec<_>>()
-        .join(",\n");
+    let document = json!({
+        "openapi": "3.1.0",
+        "info": {
+            "title": "API",
+            "version": "1.0.0",
+            "description": "Generated by `talos swagger:create` from the target module's controllers. Re-run the generator whenever a route is added, renamed or removed.",
+        },
+        "servers": [{ "url": format!("/{prefix}") }],
+        "components": {
+            "securitySchemes": {
+                "bearerAuth": { "type": "http", "scheme": "bearer", "bearerFormat": "JWT" },
+            },
+        },
+        "paths": paths,
+    });
 
     format!(
-        "{{\n  \"openapi\": \"3.1.0\",\n  \"info\": {{\n    \"title\": \"API\",\n    \"version\": \"1.0.0\",\n    \"description\": \"Generated by `talos swagger:create` from the target module's controllers. Re-run the generator whenever a route is added, renamed or removed.\"\n  }},\n  \"servers\": [{{ \"url\": \"/{prefix}\" }}],\n  \"components\": {{\n    \"securitySchemes\": {{\n      \"bearerAuth\": {{ \"type\": \"http\", \"scheme\": \"bearer\", \"bearerFormat\": \"JWT\" }}\n    }}\n  }},\n  \"paths\": {{\n{rendered}\n  }}\n}}\n"
+        "{}\n",
+        serde_json::to_string_pretty(&document).unwrap_or_else(|_| "{}".to_string())
     )
 }
 
@@ -949,6 +1274,7 @@ export class GrantEntitlementController {}
                 name: "userId".to_string(),
                 ty: "string".to_string(),
                 required: true,
+                description: String::new(),
                 fields: Vec::new(),
             }]
         );
@@ -959,12 +1285,14 @@ export class GrantEntitlementController {}
                     name: "page".to_string(),
                     ty: "number".to_string(),
                     required: false,
+                    description: String::new(),
                     fields: Vec::new(),
                 },
                 RouteField {
                     name: "search".to_string(),
                     ty: "string".to_string(),
                     required: false,
+                    description: String::new(),
                     fields: Vec::new(),
                 },
             ]
@@ -1047,12 +1375,133 @@ export class GrantEntitlementController {}
     }
 
     #[test]
+    fn lifts_the_jsdoc_written_above_a_member() {
+        let members = split_members("/** The page to read, 1-based. */\n  page?: number;");
+
+        assert_eq!(members.len(), 1);
+        assert_eq!(members[0].name, "page");
+        assert_eq!(members[0].description, "The page to read, 1-based.");
+    }
+
+    #[test]
+    fn joins_a_jsdoc_block_written_across_several_lines() {
+        let members = split_members(
+            "/**\n   * Which slice to read.\n   *\n   * 1-based.\n   */\n  page: number;",
+        );
+
+        assert_eq!(members[0].description, "Which slice to read. 1-based.");
+    }
+
+    #[test]
+    fn lifts_the_jsdoc_written_above_the_decorator_as_the_route_prose() {
+        let source = r#"
+/**
+ * Grant an entitlement.
+ *
+ * Charges the card on file. Prefer `entitlement.preview` to check first.
+ */
+@Route.post("/grants", { name: "app.grant", version: 1, description: "Grant" })
+export class GrantController {}
+"#;
+        let route = parse_controller(source, "app", "api").expect("a route");
+
+        // The decorator's one-liner is the summary; the block above it is the
+        // prose a reader comes for.
+        assert_eq!(route.description, "Grant");
+        assert_eq!(
+            route.prose,
+            "Grant an entitlement. Charges the card on file. Prefer `entitlement.preview` to check first."
+        );
+
+        let operation = only_operation(&render_openapi(&[("app".to_string(), route)], "api"));
+        assert_eq!(operation["summary"], "Grant");
+        assert!(operation["description"].as_str().is_some());
+    }
+
+    #[test]
+    fn leaves_the_prose_empty_when_the_comment_above_is_not_jsdoc() {
+        let source = r#"
+/* not documentation */
+@Route.get("/health", { name: "app.health", version: 1, description: "Health" })
+export class HealthController {}
+"#;
+
+        assert_eq!(
+            parse_controller(source, "app", "api")
+                .expect("a route")
+                .prose,
+            ""
+        );
+    }
+
+    #[test]
+    fn keeps_a_nested_members_jsdoc_off_its_parent() {
+        let fields = fields_of(
+            "/** Where the slice sits. */\n  page: {\n    /** 1-based. */\n    index: number;\n  };",
+        );
+
+        assert_eq!(fields[0].description, "Where the slice sits.");
+        assert_eq!(fields[0].fields[0].description, "1-based.");
+    }
+
+    #[test]
+    fn reads_a_string_literal_without_mistaking_it_for_a_comment() {
+        let members = split_members(r#"origin: "https://a.example" | "https://b.example";"#);
+
+        assert_eq!(members.len(), 1);
+        assert_eq!(
+            members[0].ty,
+            r#""https://a.example" | "https://b.example""#
+        );
+    }
+
+    #[test]
+    fn keeps_a_commented_member_rather_than_dropping_it() {
+        // A comment left in place would be read as part of the member's name,
+        // and the member would vanish from the documentation entirely.
+        let members = split_members("// an aside\n  page: number;\n  /* another */ size: number;");
+
+        assert_eq!(
+            members
+                .iter()
+                .map(|member| member.name.as_str())
+                .collect::<Vec<_>>(),
+            vec!["page", "size"]
+        );
+        // Only `/** … */` documents; the rest is a note to whoever reads the file.
+        assert!(members.iter().all(|member| member.description.is_empty()));
+    }
+
+    #[test]
+    fn publishes_a_field_description_in_the_meta_and_the_specification() {
+        let source = r#"
+type SearchRouteType = {
+  queries: {
+    /** Free-text needle. */
+    q: string;
+  };
+};
+
+@Route.get("/search", { name: "app.search", version: 1, description: "Search" })
+export class SearchController {}
+"#;
+        let route = parse_controller(source, "app", "api").expect("a route");
+
+        assert!(render_route_file(&route, "App").contains("description: \"Free-text needle.\""));
+        let operation = only_operation(&render_openapi(&[("app".to_string(), route)], "api"));
+        assert_eq!(
+            operation["parameters"][0]["description"],
+            "Free-text needle."
+        );
+    }
+
+    #[test]
     fn splits_members_without_being_fooled_by_a_nested_shape() {
         let members = split_members("a: { b: string; c: number }; d: string[]");
 
         assert_eq!(members.len(), 2);
-        assert_eq!(members[0].0, "a");
-        assert_eq!(members[1].1, "string[]");
+        assert_eq!(members[0].name, "a");
+        assert_eq!(members[1].ty, "string[]");
     }
 
     #[test]
@@ -1104,16 +1553,120 @@ export class GrantEntitlementController {}
         assert!(render_route_file(&route, "App").contains("responses: [{ status: 200 }]"));
     }
 
+    /// The one operation a single-route specification publishes.
+    fn only_operation(spec: &str) -> Value {
+        let document: Value = serde_json::from_str(spec).expect("a JSON document");
+        let paths = document["paths"].as_object().expect("a path map");
+        let item = paths.values().next().expect("one path");
+        item.as_object()
+            .expect("an item")
+            .values()
+            .next()
+            .expect("one operation")
+            .clone()
+    }
+
     #[test]
     fn publishes_a_specification_spelling_parameters_the_openapi_way() {
         let route = parse_controller(GRANT_CONTROLLER, "entitlement", "api").expect("a route");
         let spec = render_openapi(&[("entitlement".to_string(), route)], "api");
+        let document: Value = serde_json::from_str(&spec).expect("a JSON document");
 
         // The mount prefix lives in `servers`, so the path is what the decorator
         // states — which is what the openapi check compares against.
-        assert!(spec.contains("\"/v2/entitlement/{userId}/grants\""));
-        assert!(spec.contains("\"servers\": [{ \"url\": \"/api\" }]"));
-        assert!(spec.contains("\"bearerAuth\": []"));
+        assert!(document["paths"]["/v2/entitlement/{userId}/grants"].is_object());
+        assert_eq!(document["servers"][0]["url"], "/api");
+        assert_eq!(
+            only_operation(&spec)["security"][0]["bearerAuth"],
+            json!([])
+        );
+    }
+
+    #[test]
+    fn documents_every_parameter_a_route_declares() {
+        let route = parse_controller(GRANT_CONTROLLER, "entitlement", "api").expect("a route");
+        let operation = only_operation(&render_openapi(
+            &[("entitlement".to_string(), route)],
+            "api",
+        ));
+        let parameters = operation["parameters"].as_array().expect("parameters");
+
+        let path = &parameters[0];
+        assert_eq!(path["name"], "userId");
+        assert_eq!(path["in"], "path");
+        // A path parameter is required by construction, whatever the type says.
+        assert_eq!(path["required"], true);
+        assert_eq!(path["schema"]["type"], "string");
+
+        let query = &parameters[1];
+        assert_eq!(query["name"], "page");
+        assert_eq!(query["in"], "query");
+        assert_eq!(query["required"], false);
+        assert_eq!(query["schema"]["type"], "number");
+    }
+
+    #[test]
+    fn documents_the_body_a_route_accepts() {
+        let route = parse_controller(GRANT_CONTROLLER, "entitlement", "api").expect("a route");
+        let operation = only_operation(&render_openapi(
+            &[("entitlement".to_string(), route)],
+            "api",
+        ));
+        let schema = &operation["requestBody"]["content"]["application/json"]["schema"];
+
+        assert_eq!(schema["type"], "object");
+        assert_eq!(schema["properties"]["plan"]["enum"], json!(["free", "pro"]));
+        assert_eq!(schema["properties"]["seats"]["type"], "number");
+        assert_eq!(schema["required"], json!(["plan", "seats"]));
+    }
+
+    #[test]
+    fn carries_a_file_payload_as_a_form_rather_than_as_json() {
+        let route = parse_controller(UPLOAD_CONTROLLER, "media", "api").expect("a route");
+        let operation = only_operation(&render_openapi(&[("media".to_string(), route)], "api"));
+        let schema = &operation["requestBody"]["content"]["multipart/form-data"]["schema"];
+
+        assert_eq!(schema["properties"]["avatar"]["format"], "binary");
+        assert!(operation["requestBody"]["content"]["application/json"].is_null());
+    }
+
+    #[test]
+    fn describes_the_answer_as_the_envelope_it_travels_in() {
+        let route = parse_controller(GRANT_CONTROLLER, "entitlement", "api").expect("a route");
+        let operation = only_operation(&render_openapi(
+            &[("entitlement".to_string(), route)],
+            "api",
+        ));
+        let schema = &operation["responses"]["200"]["content"]["application/json"]["schema"];
+
+        // The route type names what goes in `data`; the wire carries the whole
+        // envelope, and that is what a consumer parses.
+        assert_eq!(schema["properties"]["success"]["type"], "boolean");
+        assert_eq!(
+            schema["properties"]["data"]["properties"]["granted"]["type"],
+            "boolean"
+        );
+    }
+
+    #[test]
+    fn nests_a_schema_the_way_the_route_type_nests_it() {
+        let source = r#"
+type ProfileRouteType = {
+  response: { actor: { id: string; tags: string[] } };
+};
+
+@Route.get("/profile", { name: "app.profile", version: 1, description: "Read a profile" })
+export class ProfileController {}
+"#;
+        let route = parse_controller(source, "app", "api").expect("a route");
+        let operation = only_operation(&render_openapi(&[("app".to_string(), route)], "api"));
+        let actor = &operation["responses"]["200"]["content"]["application/json"]["schema"]["properties"]
+            ["data"]["properties"]["actor"];
+
+        assert_eq!(actor["type"], "object");
+        assert_eq!(actor["properties"]["id"]["type"], "string");
+        assert_eq!(actor["properties"]["tags"]["type"], "array");
+        assert_eq!(actor["properties"]["tags"]["items"]["type"], "string");
     }
 
     #[test]
