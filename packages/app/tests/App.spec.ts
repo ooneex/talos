@@ -872,10 +872,9 @@ hierarchy:
       await app.run();
 
       const serveOptions = (serveSpy.mock.calls as unknown[][])[0]?.[0] as {
-        routes: Record<
-          string,
-          (req: import("bun").BunRequest, server: import("bun").Server<unknown>) => Promise<Response>
-        >;
+        routes: {
+          "/*": (req: import("bun").BunRequest, server: import("bun").Server<unknown>) => Promise<Response>;
+        };
       };
 
       const response = await serveOptions.routes["/*"](

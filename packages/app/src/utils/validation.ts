@@ -2,29 +2,14 @@ import type { EnvironmentNameType } from "@talosjs/app-env";
 import type { ContextType } from "@talosjs/controller";
 import { HttpStatus, type StatusCodeType } from "@talosjs/http-status";
 import type { RouteConfigType } from "@talosjs/routing";
-import { type AssertType, type IAssert, type } from "@talosjs/validation";
+import { type AssertType, type IAssert, validateAssert } from "@talosjs/validation";
 
 export type RouteValidationErrorType = { message: string; status: StatusCodeType; key?: string | null };
 
 export const validateConstraint = (constraint: AssertType | IAssert, value: unknown): string | null => {
-  if (
-    constraint !== null &&
-    typeof constraint === "object" &&
-    "validate" in constraint &&
-    typeof constraint.validate === "function"
-  ) {
-    const result = constraint.validate(value);
-    if (!result.isValid) {
-      return result.message || "Validation failed";
-    }
-  } else if (typeof constraint === "function") {
-    const result = constraint(value);
-    if (result instanceof type.errors) {
-      return result.summary;
-    }
-  }
+  const result = validateAssert(constraint, value);
 
-  return null;
+  return result.isValid ? null : result.message || "Validation failed";
 };
 
 export const validateRouteAccess = async (
@@ -34,15 +19,13 @@ export const validateRouteAccess = async (
 ): Promise<RouteValidationErrorType | null> => {
   // Check params
   if (route.params) {
-    for (const [paramName, constraint] of Object.entries(route.params)) {
-      const error = validateConstraint(constraint, context.params?.[paramName]);
-      if (error) {
-        return {
-          message: `Invalid parameter "${paramName}": ${error}`,
-          status: HttpStatus.Code.BadRequest,
-          key: "INVALID_PARAMETER",
-        };
-      }
+    const error = validateConstraint(route.params, context.params);
+    if (error) {
+      return {
+        message: `Invalid parameter: ${error}`,
+        status: HttpStatus.Code.BadRequest,
+        key: "INVALID_PARAMETER",
+      };
     }
   }
 
@@ -66,6 +49,18 @@ export const validateRouteAccess = async (
         message: `Invalid payload: ${error}`,
         status: HttpStatus.Code.BadRequest,
         key: "INVALID_PAYLOAD",
+      };
+    }
+  }
+
+  // Check files
+  if (route.files) {
+    const error = validateConstraint(route.files, context.files);
+    if (error) {
+      return {
+        message: `Invalid file: ${error}`,
+        status: HttpStatus.Code.BadRequest,
+        key: "INVALID_FILE",
       };
     }
   }

@@ -4,6 +4,7 @@ import type { ContextType } from "@talosjs/controller";
 import { HttpStatus } from "@talosjs/http-status";
 import type { RouteConfigType } from "@talosjs/routing";
 import { type AssertType, type IAssert, type } from "@talosjs/validation";
+import { AssertFile } from "@talosjs/validation/constraints/AssertFile";
 import { validateConstraint, validateResponse, validateRouteAccess } from "@/utils/validation";
 import { createMockContext, createMockRoute } from "./helpers";
 
@@ -106,8 +107,19 @@ describe("validateRouteAccess", () => {
 
       expect(result).not.toBeNull();
       expect(result?.status).toBe(HttpStatus.Code.BadRequest);
-      expect(result?.message).toContain('Invalid parameter "id"');
+      expect(result?.message).toContain('Invalid parameter: "id"');
       expect(result?.key).toBe("INVALID_PARAMETER");
+    });
+
+    test("accepts a single constraint covering every param", async () => {
+      const context = createMockContext({ params: { id: "123" } });
+      const route = createMockRoute({ params: type({ id: "string" }) });
+
+      expect(await validateRouteAccess(context, route, Environment.DEVELOPMENT)).toBeNull();
+
+      const invalid = createMockContext({ params: { id: 123 } });
+
+      expect(await validateRouteAccess(invalid, route, Environment.DEVELOPMENT)).not.toBeNull();
     });
   });
 
@@ -162,6 +174,48 @@ describe("validateRouteAccess", () => {
       expect(result?.status).toBe(HttpStatus.Code.BadRequest);
       expect(result?.message).toContain("Invalid payload");
       expect(result?.key).toBe("INVALID_PAYLOAD");
+    });
+  });
+
+  describe("files validation", () => {
+    const createUpload = (name: string, mimeType: string): ContextType["files"][string] =>
+      new File(["content"], name, { type: mimeType }) as unknown as ContextType["files"][string];
+
+    test("returns null when files are valid", async () => {
+      const context = createMockContext({ files: { avatar: createUpload("avatar.png", "image/png") } });
+      const route = createMockRoute({
+        files: new AssertFile({ avatar: { types: ["image/*"] } }),
+      });
+
+      const result = await validateRouteAccess(context, route, Environment.DEVELOPMENT);
+
+      expect(result).toBeNull();
+    });
+
+    test("returns error when a file is invalid", async () => {
+      const context = createMockContext({ files: { avatar: createUpload("clip.mp4", "video/mp4") } });
+      const route = createMockRoute({
+        files: new AssertFile({ avatar: { types: ["image/*"] } }),
+      });
+
+      const result = await validateRouteAccess(context, route, Environment.DEVELOPMENT);
+
+      expect(result).not.toBeNull();
+      expect(result?.status).toBe(HttpStatus.Code.BadRequest);
+      expect(result?.message).toContain('Invalid file: "avatar"');
+      expect(result?.key).toBe("INVALID_FILE");
+    });
+
+    test("returns error when a required file is missing", async () => {
+      const context = createMockContext({ files: {} });
+      const route = createMockRoute({
+        files: new AssertFile({ avatar: {} }),
+      });
+
+      const result = await validateRouteAccess(context, route, Environment.DEVELOPMENT);
+
+      expect(result?.message).toContain("File is required");
+      expect(result?.key).toBe("INVALID_FILE");
     });
   });
 
