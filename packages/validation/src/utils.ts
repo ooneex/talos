@@ -1,7 +1,7 @@
+import { Validation } from "./Validation";
 import * as A from "arktype";
 import type { TypeParser } from "arktype/internal/type.ts";
 import type { AssertType, ValidationResultType } from "./types";
-import { Validation } from "./Validation";
 
 // biome-ignore lint/complexity/noBannedTypes: trust me
 export const Assert: TypeParser<{}> = A.type;
@@ -19,6 +19,10 @@ type ConcreteValidation = {
 
 export function createConstraint(constraintFn: () => AssertType, errorMessage: string | null): ConcreteValidation {
   return class extends Validation {
+    constructor() {
+      super();
+    }
+
     public getConstraint(): AssertType {
       return constraintFn();
     }

@@ -5,4 +5,8 @@ const AssertPortBase: ReturnType<typeof createConstraint> = createConstraint(
   "Must be a valid port number (1-65535)",
 );
 
-export class AssertPort extends AssertPortBase {}
+export class AssertPort extends AssertPortBase {
+  constructor() {
+    super();
+  }
+}

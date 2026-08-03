@@ -8,6 +8,10 @@ const YOUTUBE_URL_PATTERNS: RegExp[] = [
 ];
 
 export class AssertYoutubeUrl extends Validation {
+  constructor() {
+    super();
+  }
+
   public getConstraint(): AssertType {
     return Assert("string");
   }

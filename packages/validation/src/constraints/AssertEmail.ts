@@ -5,4 +5,8 @@ const AssertEmailBase: ReturnType<typeof createConstraint> = createConstraint(
   "Must be a valid email address",
 );
 
-export class AssertEmail extends AssertEmailBase {}
+export class AssertEmail extends AssertEmailBase {
+  constructor() {
+    super();
+  }
+}

@@ -380,6 +380,14 @@ describe("AssertUrl", () => {
     expect(result.message).toBe("URL must include protocol (http:// or https://) and follow strict URL format");
   });
 
+  test("should fail strict validation when basic length constraint fails", () => {
+    const result = validator.validateStrict("");
+    expect(result.isValid).toBe(false);
+    expect(result.message).toBe(
+      "URL must be between 1 and 2083 characters and follow a valid URL format (e.g., https://example.com, http://sub.domain.co.uk/path)",
+    );
+  });
+
   test("should return constraint correctly", () => {
     const constraint = validator.getConstraint();
     expect(constraint).toBeDefined();

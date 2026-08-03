@@ -13,6 +13,10 @@ const CHAT_QUERY_FORBIDDEN_PATTERNS: RegExp[] = [
 ];
 
 export class AssertChatQuery extends Validation {
+  constructor() {
+    super();
+  }
+
   public getConstraint(): AssertType {
     return Assert(`${CHAT_QUERY_MIN_LENGTH} <= string <= ${CHAT_QUERY_MAX_LENGTH}`);
   }

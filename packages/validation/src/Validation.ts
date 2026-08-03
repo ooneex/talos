@@ -2,6 +2,8 @@ import { type } from "arktype";
 import type { AssertType, IAssert, ValidationResultType } from "./types";
 
 export abstract class Validation implements IAssert {
+  protected constructor() {}
+
   public abstract getConstraint(): AssertType;
   public abstract getErrorMessage(): string | null;
 

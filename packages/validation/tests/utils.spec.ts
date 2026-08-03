@@ -238,6 +238,13 @@ describe("jsonSchemaToTypeString", () => {
       });
       expect(result).toBe("string | number | boolean");
     });
+
+    test("should return unknown when anyOf is not an array", () => {
+      const result = jsonSchemaToTypeString({
+        anyOf: "not-an-array",
+      });
+      expect(result).toBe("unknown");
+    });
   });
 
   describe("intersection types (allOf)", () => {

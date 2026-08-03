@@ -8,4 +8,8 @@ const AssertAppEnvBase: ReturnType<typeof createConstraint> = createConstraint(
   `Must be a valid environment (${environments.join(", ")})`,
 );
 
-export class AssertAppEnv extends AssertAppEnvBase {}
+export class AssertAppEnv extends AssertAppEnvBase {
+  constructor() {
+    super();
+  }
+}

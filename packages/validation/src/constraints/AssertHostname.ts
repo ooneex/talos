@@ -8,4 +8,8 @@ const AssertHostnameBase: ReturnType<typeof createConstraint> = createConstraint
   "Must be a valid hostname or IP address",
 );
 
-export class AssertHostname extends AssertHostnameBase {}
+export class AssertHostname extends AssertHostnameBase {
+  constructor() {
+    super();
+  }
+}

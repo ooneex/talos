@@ -5,4 +5,8 @@ const AssertDescriptionBase: ReturnType<typeof createConstraint> = createConstra
   "Description must be between 1 and 5000 characters",
 );
 
-export class AssertDescription extends AssertDescriptionBase {}
+export class AssertDescription extends AssertDescriptionBase {
+  constructor() {
+    super();
+  }
+}

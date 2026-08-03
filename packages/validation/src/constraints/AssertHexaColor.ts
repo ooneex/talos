@@ -6,6 +6,10 @@ const HEXA_COLOR_3_DIGIT_REGEX: RegExp = /^#[0-9A-Fa-f]{3}$/;
 const HEXA_COLOR_6_DIGIT_REGEX: RegExp = /^#[0-9A-Fa-f]{6}$/;
 
 export class AssertHexaColor extends Validation {
+  constructor() {
+    super();
+  }
+
   public getConstraint(): AssertType {
     return Assert("string");
   }

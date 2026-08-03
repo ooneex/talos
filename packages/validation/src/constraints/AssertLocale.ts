@@ -6,4 +6,8 @@ const AssertLocaleBase: ReturnType<typeof createConstraint> = createConstraint(
   "Locale must be a valid locale code",
 );
 
-export class AssertLocale extends AssertLocaleBase {}
+export class AssertLocale extends AssertLocaleBase {
+  constructor() {
+    super();
+  }
+}

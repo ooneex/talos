@@ -5,4 +5,8 @@ const AssertCountryCodeBase: ReturnType<typeof createConstraint> = createConstra
   "Country code must be a 2-character uppercase ISO 3166-1 alpha-2 code",
 );
 
-export class AssertCountryCode extends AssertCountryCodeBase {}
+export class AssertCountryCode extends AssertCountryCodeBase {
+  constructor() {
+    super();
+  }
+}

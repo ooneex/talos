@@ -6,6 +6,10 @@ const ID_REGEX: RegExp = /^[0-9a-f]+$/;
 const DEFAULT_ID_LENGTH: number = 25;
 
 export class AssertId extends Validation {
+  constructor() {
+    super();
+  }
+
   public getConstraint(): AssertType {
     return Assert(`${DEFAULT_ID_LENGTH} <= string <= ${DEFAULT_ID_LENGTH}`);
   }

@@ -5,4 +5,8 @@ const AssertFirstNameBase: ReturnType<typeof createConstraint> = createConstrain
   "First name must be between 1 and 50 characters and contain only letters, spaces, hyphens, and apostrophes",
 );
 
-export class AssertFirstName extends AssertFirstNameBase {}
+export class AssertFirstName extends AssertFirstNameBase {
+  constructor() {
+    super();
+  }
+}

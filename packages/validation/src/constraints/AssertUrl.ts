@@ -10,6 +10,10 @@ const STRICT_URL_REGEX: RegExp =
   /^https?:\/\/(?:[-\w.])+(?::[0-9]+)?(?:\/(?:[\w/_.])*(?:\?(?:[\w&=%.])*)?(?:#(?:[\w.])*)?)?$/;
 
 export class AssertUrl extends Validation {
+  constructor() {
+    super();
+  }
+
   public getConstraint(): AssertType {
     return Assert(`1 <= string <= ${URL_MAX_LENGTH}`);
   }
