@@ -87,7 +87,10 @@ fn issue_push_rejects_unknown_flag() {
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use cli::commands::issue_push::{ParsedIssue, build_description, find_issue_file, priority_value};
+use cli::commands::issue_push::{
+    ParsedIssue, build_description, find_issue_file, priority_value, repoint_dependencies,
+    set_issue_id,
+};
 
 /// A scratch directory that removes itself when the test ends.
 struct TempDir(PathBuf);
@@ -219,4 +222,72 @@ fn find_issue_file_is_none_when_no_module_holds_the_issue() {
     assert!(find_issue_file(dir.path(), None, "OON-404").is_none());
     // An unreadable modules directory is not a panic either.
     assert!(find_issue_file(&dir.path().join("nope"), None, "OON-1").is_none());
+}
+
+// ---------------------------------------------------------------------------
+// Adopting the id the tracker assigned
+// ---------------------------------------------------------------------------
+
+#[test]
+fn set_issue_id_replaces_the_declared_id() {
+    let source = "id: \"TMP-1\"\ntitle: \"Add pagination\"\n";
+
+    assert_eq!(
+        set_issue_id(source, "GEN-7"),
+        "id: \"GEN-7\"\ntitle: \"Add pagination\"\n"
+    );
+}
+
+#[test]
+fn set_issue_id_adds_the_id_as_the_first_key_when_it_is_missing() {
+    assert_eq!(
+        set_issue_id("title: \"Add pagination\"\n", "GEN-7"),
+        "id: \"GEN-7\"\ntitle: \"Add pagination\"\n"
+    );
+}
+
+#[test]
+fn set_issue_id_leaves_a_nested_id_alone() {
+    let source = "title: \"Add pagination\"\ncomments:\n  - id: \"keep-me\"\n";
+
+    assert_eq!(
+        set_issue_id(source, "GEN-7"),
+        format!("id: \"GEN-7\"\n{source}")
+    );
+}
+
+#[test]
+fn repoint_dependencies_rewrites_a_block_sequence() {
+    let source = "id: \"OON-2\"\ndependencies:\n  - \"TMP-1\"\n  - OON-9\ngoal: |\n  Keep TMP-1 in the prose.\n";
+
+    let updated = repoint_dependencies(source, "TMP-1", "GEN-7").expect("the file depends on it");
+
+    assert!(updated.contains("  - \"GEN-7\""));
+    assert!(updated.contains("  - OON-9"));
+    // Only the dependencies block is touched, so prose and formatting survive.
+    assert!(updated.contains("Keep TMP-1 in the prose."));
+    assert!(updated.ends_with('\n'));
+}
+
+#[test]
+fn repoint_dependencies_rewrites_a_flow_sequence() {
+    let updated = repoint_dependencies("dependencies: [TMP-1, OON-9]\n", "TMP-1", "GEN-7")
+        .expect("the file depends on it");
+
+    assert_eq!(updated, "dependencies: [GEN-7, OON-9]\n");
+}
+
+#[test]
+fn repoint_dependencies_matches_whole_ids_only() {
+    // `TMP-1` must not match inside `TMP-12`, and the block ends at the next
+    // top-level key.
+    let source = "dependencies:\n  - TMP-12\nbranch: \"feat/TMP-1\"\n";
+
+    assert!(repoint_dependencies(source, "TMP-1", "GEN-7").is_none());
+}
+
+#[test]
+fn repoint_dependencies_is_none_when_nothing_points_at_the_old_id() {
+    assert!(repoint_dependencies("dependencies: []\n", "TMP-1", "GEN-7").is_none());
+    assert!(repoint_dependencies("title: \"Add pagination\"", "TMP-1", "GEN-7").is_none());
 }

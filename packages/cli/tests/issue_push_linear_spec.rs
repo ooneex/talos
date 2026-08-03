@@ -464,3 +464,54 @@ fn push_issue_treats_unreadable_yaml_as_an_empty_issue() {
         "GEN-7"
     ));
 }
+
+#[test]
+fn push_issue_repoints_every_project_issue_that_depended_on_the_old_id() {
+    let dir = scratch();
+    let (issues, path) = issue_file(
+        dir.path(),
+        "TMP-1",
+        "id: \"TMP-1\"\ntitle: \"Add pagination\"\n",
+    );
+    // A dependant in another module, and one in a package.
+    let dependants = dir.path().join("modules/billing/issues");
+    fs::create_dir_all(&dependants).expect("create issues dir");
+    let dependant = dependants.join("OON-2.yml");
+    fs::write(
+        &dependant,
+        "id: \"OON-2\"\ndependencies:\n  - \"TMP-1\"\ngoal: |\n  Mentions TMP-1 in prose.\n",
+    )
+    .expect("write issue");
+    let packaged = dir.path().join("packages/cli/issues");
+    fs::create_dir_all(&packaged).expect("create issues dir");
+    let packaged = packaged.join("OON-3.yml");
+    fs::write(&packaged, "id: \"OON-3\"\ndependencies: [TMP-1]\n").expect("write issue");
+    let server = linear(Value::Null);
+
+    push_issue(&client(&server), "user", &issues, &path, "TMP-1");
+
+    let renamed = fs::read_to_string(issues.join("GEN-7.yml")).expect("read");
+    assert!(renamed.contains("id: \"GEN-7\""));
+    let dependant = fs::read_to_string(&dependant).expect("read");
+    assert!(dependant.contains("  - \"GEN-7\""));
+    assert!(
+        dependant.contains("Mentions TMP-1 in prose."),
+        "only the dependencies block is rewritten"
+    );
+    assert_eq!(
+        fs::read_to_string(&packaged).expect("read"),
+        "id: \"OON-3\"\ndependencies: [GEN-7]\n"
+    );
+}
+
+#[test]
+fn push_issue_keeps_the_file_untouched_when_linear_kept_the_local_id() {
+    let dir = scratch();
+    let source = "id: \"GEN-7\"\ntitle: \"Add pagination\"\ndependencies: []\n";
+    let (issues, path) = issue_file(dir.path(), "GEN-7", source);
+    let server = linear(json!({ "id": "uuid-1", "identifier": "GEN-7" }));
+
+    push_issue(&client(&server), "user", &issues, &path, "GEN-7");
+
+    assert_eq!(fs::read_to_string(&path).expect("read"), source);
+}
