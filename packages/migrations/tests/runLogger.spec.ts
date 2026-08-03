@@ -1,5 +1,5 @@
 import { describe, expect, spyOn, test } from "bun:test";
-import { COLORS, colorize, formatDuration, persist, runLogger, SYMBOLS } from "@/runLogger";
+import { bold, COLORS, colorize, formatDuration, persist, runLogger, SYMBOLS } from "@/runLogger";
 
 const ESC = String.fromCharCode(27);
 const RESET = `${ESC}[0m`;
@@ -52,6 +52,12 @@ describe("formatDuration", () => {
     expect(formatDuration(1000)).toBe("1.0s");
     expect(formatDuration(1500)).toBe("1.5s");
     expect(formatDuration(12_340)).toBe("12.3s");
+  });
+});
+
+describe("bold", () => {
+  test("should wrap text in bold ansi markers", () => {
+    expect(bold("hello")).toBe(`${ESC}[1mhello${RESET}`);
   });
 });
 

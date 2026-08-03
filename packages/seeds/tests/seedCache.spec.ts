@@ -85,6 +85,12 @@ describe("seed cache entries", () => {
     expect(await isSeedCached(cacheDir, "UsersSeed", "xyz")).toBe(false);
   });
 
+  test("should miss when the cache entry cannot be parsed", async () => {
+    await Bun.write(join(cacheDir, "UsersSeed.json"), "{not-json");
+
+    expect(await isSeedCached(cacheDir, "UsersSeed", "abc")).toBe(false);
+  });
+
   test("should miss after the entry is deleted", async () => {
     await writeSeedCache(cacheDir, "UsersSeed", "abc");
     await deleteSeedCache(cacheDir, "UsersSeed");

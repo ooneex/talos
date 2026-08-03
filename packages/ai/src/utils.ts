@@ -45,7 +45,7 @@ export const toServerTools = (tools: ITool[]): any[] =>
       lazy: true,
     });
 
-    return definition.server(async (args: unknown) => tool.handler(args));
+    return definition.server(tool.handler.bind(tool));
   });
 
 /**

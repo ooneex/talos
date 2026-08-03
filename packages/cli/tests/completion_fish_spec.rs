@@ -85,3 +85,28 @@ fn completion_fish_handles_an_unusable_home_path() {
         },
     }
 }
+
+#[test]
+fn completion_fish_handles_write_failures() {
+    let home = tempfile::tempdir().expect("tempdir");
+    let completion_dir = home.path().join(".config/fish/completions");
+    std::fs::create_dir_all(completion_dir.join("oo.fish")).expect("oo dir");
+    let previous = std::env::var_os("HOME");
+    unsafe {
+        std::env::set_var("HOME", home.path());
+    }
+
+    run(&CompletionFishArgs {});
+
+    match previous {
+        Some(value) => unsafe {
+            std::env::set_var("HOME", value);
+        },
+        None => unsafe {
+            std::env::remove_var("HOME");
+        },
+    }
+
+    assert!(completion_dir.join("oo.fish").is_dir());
+    assert!(!completion_dir.join("talos.fish").exists());
+}

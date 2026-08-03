@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, mock, test } from "bun:test";
 import { Cron } from "@/Cron";
 import type { CronTimeType, ICron } from "@/types";
 
@@ -28,8 +28,10 @@ class TestCronAdapter extends Cron {
 
 describe("CronAdapter", () => {
   let adapter: TestCronAdapter;
+  const originalCron = Bun.cron;
 
   afterEach(async () => {
+    (Bun as typeof Bun & { cron: typeof Bun.cron }).cron = originalCron;
     if (adapter) {
       await adapter.stop();
     }
@@ -140,6 +142,30 @@ describe("CronAdapter", () => {
       await adapter.start();
 
       expect(adapter.isActive()).toBe(true);
+    });
+
+    test("should execute the registered cron callback", async () => {
+      let scheduledHandler: (() => unknown) | undefined;
+      const cronJob = {
+        cron: "* * * * *",
+        stop: mock(() => cronJob),
+        ref: mock(() => cronJob),
+        unref: mock(() => cronJob),
+      };
+      const cronMock = mock((schedule: string, handler: () => unknown) => {
+        scheduledHandler = handler;
+        expect(schedule).toBe("* * * * *");
+        return cronJob;
+      });
+
+      (Bun as typeof Bun & { cron: typeof Bun.cron }).cron = cronMock as unknown as typeof Bun.cron;
+      adapter = new TestCronAdapter({ time: "every 1 minutes" });
+
+      await adapter.start();
+      await scheduledHandler?.();
+
+      expect(adapter.jobCallCount).toBe(1);
+      expect(cronMock).toHaveBeenCalledTimes(1);
     });
   });
 

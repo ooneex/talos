@@ -77,3 +77,28 @@ fn completion_zsh_handles_an_unusable_home_path() {
         },
     }
 }
+
+#[test]
+fn completion_zsh_handles_write_failures() {
+    let home = tempfile::tempdir().expect("tempdir");
+    let completion_dir = home.path().join(".zsh");
+    std::fs::create_dir_all(completion_dir.join("_oo")).expect("oo dir");
+    let previous = std::env::var_os("HOME");
+    unsafe {
+        std::env::set_var("HOME", home.path());
+    }
+
+    run(&CompletionZshArgs {});
+
+    match previous {
+        Some(value) => unsafe {
+            std::env::set_var("HOME", value);
+        },
+        None => unsafe {
+            std::env::remove_var("HOME");
+        },
+    }
+
+    assert!(completion_dir.join("_oo").is_dir());
+    assert!(!completion_dir.join("_talos").exists());
+}

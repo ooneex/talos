@@ -3,12 +3,35 @@
 mod support;
 
 use serde_json::json;
+use std::sync::Mutex;
 
 use cli::utils::linear::LinearClient;
 use support::http::{Reply, Server};
 
 fn client(server: &Server) -> LinearClient {
     LinearClient::new("lin_api_test").with_endpoint(server.base())
+}
+
+static HOME_GUARD: Mutex<()> = Mutex::new(());
+
+fn with_temp_home<T>(test: impl FnOnce() -> T) -> T {
+    let _guard = HOME_GUARD.lock().unwrap_or_else(|error| error.into_inner());
+    let original_home = std::env::var_os("HOME");
+    let tmp = tempfile::tempdir().expect("tempdir");
+    unsafe {
+        std::env::set_var("HOME", tmp.path());
+    }
+
+    let outcome = test();
+
+    unsafe {
+        match original_home {
+            Some(home) => std::env::set_var("HOME", home),
+            None => std::env::remove_var("HOME"),
+        }
+    }
+
+    outcome
 }
 
 // ---------------------------------------------------------------------------
@@ -207,4 +230,46 @@ fn get_issue_is_none_when_the_request_fails() {
     let server = Server::always(json!({ "errors": [{ "message": "boom" }] }));
 
     assert!(client(&server).get_issue("ABC-1").is_none());
+}
+
+#[test]
+fn from_credentials_reads_the_linear_token() {
+    with_temp_home(|| {
+        let credentials_dir = std::path::PathBuf::from(std::env::var("HOME").expect("HOME"))
+            .join(".talos/credentials");
+        std::fs::create_dir_all(&credentials_dir).expect("credentials dir");
+        std::fs::write(
+            credentials_dir.join("linear.yml"),
+            "profiles:\n  default:\n    token: lin_api_saved\n",
+        )
+        .expect("credentials file");
+
+        let server = Server::always(json!({ "data": { "viewer": { "id": "u1" } } }));
+        let client = LinearClient::from_credentials()
+            .expect("client should be created")
+            .with_endpoint(server.base());
+
+        let data = client.request("query { viewer { id } }", json!({}));
+        assert_eq!(data, Some(json!({ "viewer": { "id": "u1" } })));
+        assert_eq!(
+            server.requests()[0].header("Authorization"),
+            Some("lin_api_saved")
+        );
+    });
+}
+
+#[test]
+fn from_credentials_returns_none_without_a_token() {
+    with_temp_home(|| {
+        let credentials_dir = std::path::PathBuf::from(std::env::var("HOME").expect("HOME"))
+            .join(".talos/credentials");
+        std::fs::create_dir_all(&credentials_dir).expect("credentials dir");
+        std::fs::write(
+            credentials_dir.join("linear.yml"),
+            "profiles:\n  default:\n    email: ada@example.test\n",
+        )
+        .expect("credentials file");
+
+        assert!(LinearClient::from_credentials().is_none());
+    });
 }

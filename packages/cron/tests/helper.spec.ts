@@ -241,6 +241,28 @@ describe("convertToCrontab", () => {
     test("should handle 24 hours", () => {
       expect(convertToCrontab("every 24 hours")).toBe("0 */24 * * *");
     });
+
+    test("should throw error for unsupported prefixes and suffixes", () => {
+      expect(() => convertToCrontab("never 5 minutes" as CronTimeType)).toThrow(
+        "Invalid CronTimeType format: never 5 minutes",
+      );
+      expect(() => convertToCrontab("every 5 fortnights" as CronTimeType)).toThrow(
+        "Invalid CronTimeType format: every 5 fortnights",
+      );
+    });
+
+    test("should throw error for invalid numeric values", () => {
+      expect(() => convertToCrontab("every 0 minutes" as CronTimeType)).toThrow(
+        "Invalid number value in CronTimeType: 0",
+      );
+      expect(() => convertToCrontab("every nope minutes" as CronTimeType)).toThrow(
+        "Invalid number value in CronTimeType: nope",
+      );
+    });
+
+    test("should default a blank numeric segment to 1", () => {
+      expect(convertToCrontab("every  minutes" as CronTimeType)).toBe("* * * * *");
+    });
   });
 
   describe("real-world scenarios", () => {

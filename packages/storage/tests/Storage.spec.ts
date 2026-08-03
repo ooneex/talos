@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, test } from "bun:test";
+import { mkdir, rm } from "node:fs/promises";
+import { join } from "node:path";
 import type { S3File, S3Options } from "bun";
 import { Storage } from "@/Storage";
 
@@ -16,6 +18,11 @@ class MockS3File {
       return data.byteLength;
     }
     if (data instanceof Blob) {
+      const buffer = await data.arrayBuffer();
+      this.content = buffer;
+      return buffer.byteLength;
+    }
+    if (typeof data === "object" && data !== null && "arrayBuffer" in data && typeof data.arrayBuffer === "function") {
       const buffer = await data.arrayBuffer();
       this.content = buffer;
       return buffer.byteLength;
@@ -135,6 +142,54 @@ class TestStorage extends Storage {
     return this.mockClient.file(path) as unknown as S3File;
   }
 }
+
+class NativeClientStorage extends Storage {
+  protected bucket = "native-bucket";
+  private readonly nativeMockClient = new MockS3Client();
+
+  public getOptions(): S3Options {
+    return {
+      accessKeyId: "native-key",
+      secretAccessKey: "native-secret",
+      endpoint: "https://native.endpoint.test",
+      bucket: this.bucket,
+      region: "us-east-1",
+    };
+  }
+
+  protected override createClient(): Bun.S3Client {
+    return this.nativeMockClient as unknown as Bun.S3Client;
+  }
+
+  public getNativeMockClient(): MockS3Client {
+    return this.nativeMockClient;
+  }
+}
+
+class RealClientStorage extends Storage {
+  protected bucket = "real-bucket";
+
+  public getOptions(): S3Options {
+    return {
+      accessKeyId: "real-key",
+      secretAccessKey: "real-secret",
+      endpoint: "https://storage.example.com",
+      bucket: this.bucket,
+      region: "us-east-1",
+    };
+  }
+
+  public createRealClient(): Bun.S3Client {
+    return super.createClient();
+  }
+}
+
+const storageTmpDir = join(process.cwd(), "tests", "tmp", "storage-base");
+
+const resetStorageTmpDir = async (): Promise<void> => {
+  await rm(storageTmpDir, { force: true, recursive: true });
+  await mkdir(storageTmpDir, { recursive: true });
+};
 
 describe("Storage", () => {
   let storage: TestStorage;
@@ -289,15 +344,32 @@ describe("Storage", () => {
   });
 
   describe("putFile", () => {
-    test("should be callable with key and path", async () => {
-      // We can't easily mock Bun.file, so we test the method signature exists
-      expect(typeof storage.putFile).toBe("function");
+    test("should upload a local file through the shared put implementation", async () => {
+      await resetStorageTmpDir();
+      const localPath = join(storageTmpDir, "input.txt");
+      await Bun.write(localPath, "Local file content");
+
+      const bytesWritten = await storage.putFile("remote.txt", localPath);
+      const savedContent = new TextDecoder().decode(await storage.getAsArrayBuffer("remote.txt"));
+
+      expect(bytesWritten).toBe("Local file content".length);
+      expect(savedContent).toBe("Local file content");
     });
   });
 
   describe("putDir", () => {
-    test("should be callable with bucket and options", () => {
-      expect(typeof storage.putDir).toBe("function");
+    test("uploads nested directories recursively and returns total bytes", async () => {
+      await resetStorageTmpDir();
+      const sourceDir = join(storageTmpDir, "source");
+
+      await Bun.write(join(sourceDir, "root.txt"), "root");
+      await Bun.write(join(sourceDir, "nested", "file.txt"), "nested");
+
+      const bytesWritten = await storage.putDir("bucket", { path: sourceDir });
+
+      expect(bytesWritten).toBe("root".length + "nested".length);
+      expect(new TextDecoder().decode(await storage.getAsArrayBuffer("bucket/root.txt"))).toBe("root");
+      expect(new TextDecoder().decode(await storage.getAsArrayBuffer("bucket/nested/file.txt"))).toBe("nested");
     });
   });
 
@@ -360,6 +432,42 @@ describe("Storage", () => {
       const result = storage.getAsStream("stream.txt");
 
       expect(result).toBeInstanceOf(ReadableStream);
+    });
+
+    describe("getFile", () => {
+      test("downloads the object content to the target directory", async () => {
+        await resetStorageTmpDir();
+        const outputDir = join(storageTmpDir, "downloads");
+        const s3File = mockClient.file("folder/data.txt");
+        await s3File.write("downloaded content");
+
+        const bytesWritten = await storage.getFile("folder/data.txt", { outputDir });
+        const savedContent = await Bun.file(join(outputDir, "data.txt")).text();
+
+        expect(bytesWritten).toBe("downloaded content".length);
+        expect(savedContent).toBe("downloaded content");
+      });
+    });
+
+    describe("base client helpers", () => {
+      test("lazily creates a Bun S3 client and reuses it for S3 file operations", async () => {
+        const nativeStorage = new NativeClientStorage();
+        const nativeMockClient = nativeStorage.getNativeMockClient();
+
+        nativeMockClient.setListResult(["hello.txt"]);
+        expect(await nativeStorage.list()).toEqual(["hello.txt"]);
+
+        const bytesWritten = await nativeStorage.put("hello.txt", "hello world");
+        expect(bytesWritten).toBe("hello world".length);
+        expect(new TextDecoder().decode(await nativeStorage.getAsArrayBuffer("hello.txt"))).toBe("hello world");
+      });
+
+      test("creates a real Bun S3 client when requested", () => {
+        const realStorage = new RealClientStorage();
+        const client = realStorage.createRealClient();
+
+        expect(client).toBeInstanceOf(Bun.S3Client);
+      });
     });
 
     test("should be readable stream with content", async () => {

@@ -254,6 +254,53 @@ describe("PolarProduct", () => {
       expect(callArgs.productUpdate.name).toBe("Only Name Updated");
       expect(callArgs.productUpdate.description).toBeNull();
     });
+
+    test("should map prices and attached custom fields in updates", async () => {
+      await product.update("prod_123", {
+        prices: [
+          {
+            type: "fixed",
+            priceAmount: 2999,
+            minimumAmount: 1999,
+            maximumAmount: 3999,
+            presetAmount: 2499,
+          },
+        ],
+        attachedCustomFields: [{ customFieldId: "field_123", required: true }],
+      });
+
+      const callArgs = getUpdateCallArgs();
+      expect(callArgs.productUpdate.prices).toEqual([
+        {
+          type: "fixed",
+          priceCurrency: "usd",
+          priceAmount: 2999,
+          minimumAmount: 1999,
+          maximumAmount: 3999,
+          presetAmount: 2499,
+        },
+      ]);
+      expect(callArgs.productUpdate.attachedCustomFields).toEqual([
+        {
+          customFieldId: "field_123",
+          required: true,
+        },
+      ]);
+    });
+
+    test("should map images in updates", async () => {
+      await product.update("prod_123", {
+        images: [
+          {
+            id: "image_123",
+            url: "https://example.com/product.png",
+          },
+        ],
+      });
+
+      const callArgs = getUpdateCallArgs();
+      expect(callArgs.productUpdate.medias).toEqual(["https://example.com/product.png"]);
+    });
   });
 
   describe("remove", () => {

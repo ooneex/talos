@@ -853,5 +853,90 @@ hierarchy:
       serveSpy.mockRestore();
       exitSpy.mockRestore();
     });
+
+    test("uses the wildcard route for missing paths and runs the configured CORS middleware", async () => {
+      const serveSpy = spyOn(Bun, "serve").mockReturnValue(fakeServer as unknown as ReturnType<typeof Bun.serve>);
+      const exitSpy = spyOn(process, "exit").mockImplementation((() => undefined) as never);
+
+      class CorsMiddleware {
+        handler = mock((context: import("@talosjs/controller").ContextType) => Promise.resolve(context));
+      }
+      container.add(CorsMiddleware);
+
+      const app = new App(
+        createMockConfig({
+          cors: CorsMiddleware as unknown as AppConfigType["cors"],
+        }),
+      );
+
+      await app.run();
+
+      const serveOptions = (serveSpy.mock.calls as unknown[][])[0]?.[0] as {
+        routes: Record<
+          string,
+          (req: import("bun").BunRequest, server: import("bun").Server<unknown>) => Promise<Response>
+        >;
+      };
+
+      const response = await serveOptions.routes["/*"](
+        {
+          cookies: { get: mock(() => null), set: mock(() => {}) },
+          headers: new Headers(),
+          method: "GET",
+          url: "http://localhost/missing",
+          params: {},
+          json: mock(() => Promise.resolve({})),
+          formData: mock(() => Promise.resolve(new FormData())),
+        } as unknown as import("bun").BunRequest,
+        {
+          requestIP: mock(() => ({ address: "127.0.0.1" })),
+        } as unknown as import("bun").Server<unknown>,
+      );
+
+      expect(response.status).toBe(HttpStatus.Code.NotFound);
+      expect((container.get(CorsMiddleware) as CorsMiddleware).handler).toHaveBeenCalledTimes(1);
+
+      serveSpy.mockRestore();
+      exitSpy.mockRestore();
+    });
+
+    test("wires websocket message and close handlers into the served app", async () => {
+      const serveSpy = spyOn(Bun, "serve").mockReturnValue({
+        ...fakeServer,
+        publish: mock(() => {}),
+      } as unknown as ReturnType<typeof Bun.serve>);
+      const exitSpy = spyOn(process, "exit").mockImplementation((() => undefined) as never);
+
+      const app = new App(createMockConfig());
+      await app.run();
+
+      const serveOptions = (serveSpy.mock.calls as unknown[][])[0]?.[0] as {
+        websocket: {
+          message: (ws: import("bun").ServerWebSocket<{ id: string }>, message: string) => Promise<void>;
+          close: (ws: import("bun").ServerWebSocket<{ id: string }>) => Promise<void>;
+        };
+      };
+
+      const closeMock = mock(() => {});
+      await serveOptions.websocket.message(
+        {
+          data: { id: "missing-socket-state" },
+          close: closeMock,
+        } as unknown as import("bun").ServerWebSocket<{ id: string }>,
+        JSON.stringify({ payload: {}, queries: {}, lang: {} }),
+      );
+
+      expect(closeMock).toHaveBeenCalledWith(1011, "Connection state not found");
+
+      container.addConstant("socket-close-id", { connected: true });
+      await serveOptions.websocket.close({
+        data: { id: "socket-close-id" },
+      } as unknown as import("bun").ServerWebSocket<{ id: string }>);
+
+      expect(container.hasConstant("socket-close-id")).toBe(false);
+
+      serveSpy.mockRestore();
+      exitSpy.mockRestore();
+    });
   });
 });

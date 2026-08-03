@@ -279,6 +279,22 @@ describe("RedisRateLimiter", () => {
     });
   });
 
+  describe("isLimited method", () => {
+    test("should return the limited state from check", async () => {
+      mockRedisClient.incr.mockResolvedValue(121);
+      mockRedisClient.ttl.mockResolvedValue(60);
+
+      await expect(limiter.isLimited(testKey)).resolves.toBe(true);
+    });
+
+    test("should throw RateLimitException when check fails", async () => {
+      mockRedisClient.incr.mockRejectedValue(new Error("Redis connection failed"));
+
+      await expect(limiter.isLimited(testKey)).rejects.toThrow(RateLimitException);
+      await expect(limiter.isLimited(testKey)).rejects.toThrow('Failed to check rate limit for key "user:123"');
+    });
+  });
+
   describe("getCount method", () => {
     test("should return current count", async () => {
       mockRedisClient.get.mockResolvedValue("42");

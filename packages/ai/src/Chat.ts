@@ -40,6 +40,9 @@ import {
  * ```
  */
 export abstract class Chat implements IChat {
+  // biome-ignore lint/complexity/noUselessConstructor: explicit constructor is needed for Bun function coverage
+  public constructor() {}
+
   /** OpenRouter model identifier in `provider/model` form (e.g. `openai/gpt-5`). */
   public abstract getModel(): string;
 

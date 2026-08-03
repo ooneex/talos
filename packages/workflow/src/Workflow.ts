@@ -5,6 +5,9 @@ import { WorkflowException } from "./WorkflowException";
 export abstract class Workflow<Data extends Record<string, unknown> = Record<string, unknown>, Output = unknown>
   implements IWorkflow<Data, Output>
 {
+  // biome-ignore lint/complexity/noUselessConstructor: explicit constructor is required for Bun function coverage
+  public constructor() {}
+
   public abstract getName(): string;
 
   public abstract getDescription(): string;

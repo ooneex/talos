@@ -1,5 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
+use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 
 use clap::Parser;
@@ -17,11 +18,12 @@ use cli::commands::project_check::{
     A11yDiagnostic, CheckId, CheckOutcome, CheckStatus, HygieneSeverity, ProjectCheckArgs,
     ProjectReport, asynchrony, boundaries, branches, bundle, classify_a11y, complexity, container,
     contrast, dependencies, disabled_a11y_rules, discover_ui_modules, docker, docs, e2e_coverage,
-    entities, env, execute, graph, health, imports, lint_commits, lockfile, migrations,
-    modules_with_e2e, orphans, outdated, parse_biome_a11y, registration, render_json,
+    entities, env, exceptions, execute, graph, health, imports, lint_commits, lockfile, migrations,
+    modules_with_e2e, orphans, outdated, parse_biome_a11y, queries, registration, render_json,
     render_report, restricted, roles, routes, scan_source, sdk, secrets, select_checks, sql,
-    stories, structure, translations, tsconfig, validation,
+    stories, structure, transactions, translations, tsconfig, validation,
 };
+use filetime::{FileTime, set_file_mtime};
 
 #[derive(Parser)]
 struct TestCli {
@@ -1418,6 +1420,41 @@ fn a_pinned_compose_file_passes() {
 }
 
 #[test]
+fn a_compose_file_without_services_or_restart_is_reported() {
+    let empty: serde_yaml::Value = serde_yaml::from_str("version: '3.9'\n").expect("compose");
+    let findings = inspect_docker(&empty);
+    assert_eq!(findings.len(), 1);
+    assert!(findings[0].blocking);
+
+    let document: serde_yaml::Value = serde_yaml::from_str(
+        "services:\n  web:\n    build: .\n    ports:\n      - published: 8080\n  worker:\n    image: postgres\n    ports:\n      - 5432\n",
+    )
+    .expect("compose");
+    let findings = inspect_docker(&document);
+    assert!(
+        findings
+            .iter()
+            .any(|finding| finding.message.contains("no `restart` policy"))
+    );
+    assert!(
+        findings
+            .iter()
+            .any(|finding| finding.message.contains("image `postgres` is unpinned"))
+    );
+    assert_eq!(docker::host_port(":80"), None);
+
+    let missing: serde_yaml::Value =
+        serde_yaml::from_str("services:\n  ghost:\n    ports: [true, { published: 8080 }]\n")
+            .expect("compose");
+    let findings = inspect_docker(&missing);
+    assert!(findings.iter().any(|finding| {
+        finding
+            .message
+            .contains("declares neither `image` nor `build`")
+    }));
+}
+
+#[test]
 fn a_module_owned_compose_file_is_discovered() {
     let (_guard, root) = root();
     scaffold_root(&root);
@@ -1431,6 +1468,75 @@ fn a_module_owned_compose_file_is_discovered() {
 
     assert_eq!(outcome.status, CheckStatus::Passed);
     assert!(outcome.summary.contains("1 compose file"));
+}
+
+#[test]
+fn docker_is_skipped_without_any_compose_file_and_fails_on_invalid_yaml() {
+    let (_guard, root) = root();
+    assert_eq!(
+        docker::run(&ProjectCheckArgs::default(), &root).status,
+        CheckStatus::Skipped
+    );
+
+    write(&root.join("docker-compose.yml"), "services:\n  bad: [\n");
+    let outcome = docker::run(&ProjectCheckArgs::default(), &root);
+    assert_eq!(outcome.status, CheckStatus::Failed);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("is not valid YAML"))
+    );
+}
+
+#[test]
+fn docker_reports_an_unreadable_compose_file() {
+    let (_guard, root) = root();
+    let compose = root.join("docker-compose.yml");
+    write(
+        &compose,
+        "services:\n  db:\n    image: postgres:16\n    restart: always\n",
+    );
+    let mut permissions = fs::metadata(&compose).expect("metadata").permissions();
+    permissions.set_mode(0o000);
+    fs::set_permissions(&compose, permissions).expect("chmod");
+
+    let outcome = docker::run(&ProjectCheckArgs::default(), &root);
+    assert_eq!(outcome.status, CheckStatus::Failed);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("could not be read"))
+    );
+}
+
+#[test]
+fn docker_run_reports_blocking_compose_findings() {
+    let (_guard, root) = root();
+    write(
+        &root.join("docker-compose.yml"),
+        "services:\n  app:\n    ports:\n      - '8080:80'\n",
+    );
+
+    let outcome = docker::run(&ProjectCheckArgs::default(), &root);
+    assert_eq!(outcome.status, CheckStatus::Failed);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("declares neither `image` nor `build`"))
+    );
+
+    let document: serde_yaml::Value = serde_yaml::from_str(
+        "services:\n  app:\n    image: a:1\n    ports:\n      - { published: '8080' }\n",
+    )
+    .expect("compose");
+    assert!(
+        inspect_docker(&document)
+            .iter()
+            .any(|finding| finding.message.contains("no `restart` policy"))
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -1991,6 +2097,92 @@ fn a_module_extending_nothing_inherits_nothing() {
     );
 }
 
+#[test]
+fn tsconfig_helpers_detect_typescript_and_missing_excludes() {
+    let (_guard, root) = root();
+    let dir = workspace(&root, "user", "module");
+    write(
+        &root.join("tsconfig.json"),
+        "{ \"compilerOptions\": { \"strict\": true, \"noImplicitAny\": true, \"noUnusedParameters\": false } }\n",
+    );
+    write(&dir.join("src/index.ts"), "export const value = 1;\n");
+    fs::create_dir_all(dir.join("dist")).expect("create dist");
+    fs::create_dir_all(dir.join("node_modules")).expect("create node_modules");
+    write(
+        &dir.join("tsconfig.json"),
+        "{ \"extends\": \"../shared/tsconfig.json\", \"exclude\": [] }\n",
+    );
+
+    assert!(tsconfig::has_typescript(&dir));
+    let root_tsconfig = serde_json::json!({
+        "compilerOptions": { "strict": true, "noImplicitAny": true, "noUnusedParameters": false }
+    });
+    assert_eq!(tsconfig::option(&root_tsconfig, "strict"), Some(true));
+    assert_eq!(
+        tsconfig::strict_flags(&root_tsconfig),
+        vec!["strict", "noImplicitAny"]
+    );
+
+    let outcome = tsconfig::run(&ProjectCheckArgs::default(), &root);
+    assert_eq!(outcome.status, CheckStatus::Warned);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("extends \"../shared/tsconfig.json\""))
+    );
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("does not exclude \"dist\""))
+    );
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("does not exclude \"node_modules\""))
+    );
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("root tsconfig.json turns `noUnusedParameters` off"))
+    );
+}
+
+#[test]
+fn tsconfig_reports_invalid_root_or_module_json_and_skips_non_typescript_modules() {
+    let (_guard, root) = root();
+    let dir = workspace(&root, "user", "module");
+    write(&dir.join("src/index.js"), "export const value = 1;\n");
+    write(&root.join("tsconfig.json"), "{ nope\n");
+
+    assert_eq!(
+        tsconfig::run(&ProjectCheckArgs::default(), &root).status,
+        CheckStatus::Skipped
+    );
+
+    write(&dir.join("src/index.ts"), "export const value = 1;\n");
+    assert_eq!(
+        tsconfig::run(&ProjectCheckArgs::default(), &root).status,
+        CheckStatus::Failed
+    );
+
+    write(
+        &root.join("tsconfig.json"),
+        "{ \"compilerOptions\": { \"strict\": true } }\n",
+    );
+    write(&dir.join("tsconfig.json"), "{ nope\n");
+    let outcome = tsconfig::run(&ProjectCheckArgs::default(), &root);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("is not valid JSON"))
+    );
+}
+
 // ---------------------------------------------------------------------------
 // Lockfile
 // ---------------------------------------------------------------------------
@@ -2054,6 +2246,121 @@ fn a_nested_npm_lockfile_shadows_the_workspace_one() {
             .details
             .iter()
             .any(|detail| detail.contains("shadows the workspace lockfile"))
+    );
+}
+
+#[test]
+fn lockfile_helpers_cover_managers_missing_entries_and_staleness() {
+    let (_guard, root) = root();
+    write(&root.join("bun.lock"), "{}\n");
+    write(&root.join("Cargo.lock"), "{}\n");
+    write(&root.join("pdm.lock"), "{}\n");
+
+    let found = lockfile::lockfiles_in(&root);
+    assert!(found.contains(&"bun.lock".to_string()));
+    assert!(found.contains(&"Cargo.lock".to_string()));
+    assert_eq!(lockfile::managers(&found), ["bun"].into_iter().collect());
+
+    let manifest = serde_json::json!({
+        "dependencies": { "left-pad": "^1.0.0" },
+        "devDependencies": { "typescript": "~5.0.0" },
+        "peerDependencies": { "react": "^19.0.0" }
+    });
+    let missing =
+        lockfile::missing_from_lock(&manifest, "\"left-pad@1.0.0\"\nnode_modules/react\n");
+    assert_eq!(missing, vec!["typescript".to_string()]);
+
+    write(
+        &root.join("pyproject.toml"),
+        "[project]\nname = \"tooling\"\n",
+    );
+    write(&root.join("uv.lock"), "version = 1\n");
+    let old = FileTime::from_unix_time(1, 0);
+    let new = FileTime::from_unix_time(2, 0);
+    set_file_mtime(root.join("uv.lock"), old).expect("set lock mtime");
+    set_file_mtime(root.join("pyproject.toml"), new).expect("set manifest mtime");
+    assert!(lockfile::is_stale(
+        &root.join("pyproject.toml"),
+        &root.join("uv.lock")
+    ));
+}
+
+#[test]
+fn lockfile_reports_missing_root_lockfiles_and_nested_cargo_locks() {
+    let (_guard, root) = root();
+    write(
+        &root.join("package.json"),
+        "{ \"workspaces\": [\"modules/*\", \"packages/*\"] }\n",
+    );
+    let outcome = lockfile::run(&ProjectCheckArgs::default(), &root);
+    assert_eq!(outcome.status, CheckStatus::Failed);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("no npm lockfile at the root"))
+    );
+
+    write(
+        &root.join("Cargo.toml"),
+        "[workspace]\nmembers = [\"packages/*\"]\n",
+    );
+    write(&root.join("Cargo.lock"), "version = 3\n");
+    let crate_dir = root.join("packages/cli");
+    write(&crate_dir.join("Cargo.toml"), "[package]\nname = \"cli\"\n");
+    write(&crate_dir.join("src/lib.rs"), "pub fn run() {}\n");
+    write(&crate_dir.join("Cargo.lock"), "version = 3\n");
+
+    let outcome = lockfile::run(&ProjectCheckArgs::default(), &root);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("Cargo.lock is nested inside a workspace member"))
+    );
+}
+
+#[test]
+fn lockfile_is_skipped_without_a_manifest_or_lockfile() {
+    let (_guard, root) = root();
+    assert_eq!(
+        lockfile::run(&ProjectCheckArgs::default(), &root).status,
+        CheckStatus::Skipped
+    );
+}
+
+#[test]
+fn lockfile_run_warns_for_stale_foreign_locks_and_ignores_invalid_module_manifests() {
+    let (_guard, root) = root();
+    write(
+        &root.join("package.json"),
+        "{ \"workspaces\": [\"modules/*\"] }\n",
+    );
+    write(&root.join("bun.lock"), "{}\n");
+    write(
+        &root.join("pyproject.toml"),
+        "[project]\nname = \"tooling\"\n",
+    );
+    write(&root.join("uv.lock"), "version = 1\n");
+    let old = FileTime::from_unix_time(1, 0);
+    let new = FileTime::from_unix_time(2, 0);
+    set_file_mtime(root.join("uv.lock"), old).expect("set lock mtime");
+    set_file_mtime(root.join("pyproject.toml"), new).expect("set manifest mtime");
+    assert!(!lockfile::is_stale(
+        Path::new("nope"),
+        &root.join("uv.lock")
+    ));
+
+    let module = workspace(&root, "user", "module");
+    write(&module.join("package.json"), "{ nope\n");
+
+    let outcome = lockfile::run(&ProjectCheckArgs::default(), &root);
+    assert_eq!(outcome.status, CheckStatus::Warned);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("pyproject.toml is newer than uv.lock"))
     );
 }
 
@@ -2258,6 +2565,99 @@ fn an_sdk_targeting_a_deleted_module_fails() {
     );
 }
 
+#[test]
+fn an_sdk_without_a_target_or_with_a_target_without_routes_is_reported() {
+    let (_guard, root) = root();
+    let sdk_dir = root.join("modules/sdk");
+    write(
+        &root.join("package.json"),
+        "{ \"workspaces\": [\"modules/*\"] }\n",
+    );
+    write(&sdk_dir.join("sdk.yml"), "type: \"sdk\"\n");
+    write(&sdk_dir.join("package.json"), "{ \"name\": \"sdk\" }\n");
+    let outcome = sdk::run(&ProjectCheckArgs::default(), &root);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("declares no `target:`"))
+    );
+
+    let app = workspace(&root, "app", "api");
+    write(
+        &sdk_dir.join("sdk.yml"),
+        "type: \"sdk\"\ntarget: \"app\" # comment\n",
+    );
+    write(&sdk_dir.join("src/index.ts"), "export const sdk = {};\n");
+    write(
+        &app.join("src/services/UserService.ts"),
+        "export class UserService {}\n",
+    );
+
+    assert_eq!(
+        sdk::target_of(&cli::commands::project_check::modules::WorkspaceModule {
+            name: "sdk".to_string(),
+            group: "modules".to_string(),
+            kind: Some("sdk".to_string()),
+            dir: sdk_dir.clone(),
+        }),
+        Some("app".to_string())
+    );
+
+    let outcome = sdk::run(&ProjectCheckArgs::default(), &root);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("declares no route to wrap"))
+    );
+}
+
+#[test]
+fn sdk_surface_skips_unreadable_files_and_ignores_unnamed_routes() {
+    let (_guard, root) = root();
+    let sdk_dir = root.join("modules/sdk");
+    fs::create_dir_all(sdk_dir.join("src")).expect("create src");
+    write(&sdk_dir.join("sdk.yml"), "type: \"sdk\"\ntarget: \"app\"\n");
+    write(&sdk_dir.join("package.json"), "{ \"name\": \"sdk\" }\n");
+    write(&sdk_dir.join("src/index.ts"), "export const sdk = {};\n");
+    let unreadable = sdk_dir.join("src/secret.ts");
+    write(&unreadable, "export const nope = 1;\n");
+    let mut permissions = fs::metadata(&unreadable).expect("metadata").permissions();
+    permissions.set_mode(0o000);
+    fs::set_permissions(&unreadable, permissions).expect("chmod");
+
+    let surface = sdk::surface(&cli::commands::project_check::modules::WorkspaceModule {
+        name: "sdk".to_string(),
+        group: "modules".to_string(),
+        kind: Some("sdk".to_string()),
+        dir: sdk_dir,
+    });
+    assert!(surface.keys.is_empty());
+
+    let mut errors = Vec::new();
+    let mut warnings = Vec::new();
+    sdk::inspect(
+        "modules/sdk",
+        "app",
+        &surface,
+        &[cli::commands::project_check::routes::Route {
+            method: "get".to_string(),
+            path: "/users".to_string(),
+            name: None,
+            description: None,
+            version: Some(1),
+            version_raw: Some("1".to_string()),
+            roles: Vec::new(),
+            declares_roles: false,
+            file: "controller.ts".to_string(),
+        }],
+        &mut errors,
+        &mut warnings,
+    );
+    assert!(errors.is_empty());
+}
+
 // ---------------------------------------------------------------------------
 // Bundle
 // ---------------------------------------------------------------------------
@@ -2306,6 +2706,59 @@ fn a_range_is_reduced_to_the_version_it_starts_at() {
 }
 
 #[test]
+fn the_outdated_check_skips_when_nothing_is_pinned_and_fetch_all_handles_empty_sets() {
+    let (_guard, root) = root();
+    write(
+        &root.join("package.json"),
+        "{ \"workspaces\": [\"modules/*\"], \"dependencies\": { \"shared\": \"workspace:*\" } }\n",
+    );
+
+    assert!(outdated::fetch_all(&[]).is_empty());
+    assert_eq!(
+        outdated::run(&ProjectCheckArgs::default(), &root).status,
+        CheckStatus::Skipped
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Queries
+// ---------------------------------------------------------------------------
+
+#[test]
+fn queries_skip_without_frontend_modules_or_hooks_and_report_real_usage() {
+    let (_guard, root) = root();
+    assert_eq!(
+        queries::run(&ProjectCheckArgs::default(), &root).status,
+        CheckStatus::Skipped
+    );
+
+    let spa = workspace(&root, "web", "spa");
+    write(
+        &spa.join("src/features/user/Profile.tsx"),
+        "export const Profile = () => null;\n",
+    );
+    assert_eq!(
+        queries::run(&ProjectCheckArgs::default(), &root).status,
+        CheckStatus::Skipped
+    );
+
+    write(
+        &spa.join("src/features/user/Profile.tsx"),
+        "export const useProfile = () => useQuery({ queryKey: ['profile'], queryFn: getProfile });\nexport const useSaveProfile = () => useMutation({ mutationFn: saveProfile, onSuccess: () => queryClient.invalidateQueries({ queryKey: ['profile'] }) });\n",
+    );
+    let outcome = queries::run(&ProjectCheckArgs::default(), &root);
+    assert_eq!(outcome.status, CheckStatus::Warned);
+    assert!(outcome.summary.contains("1 query"));
+    assert!(outcome.summary.contains("1 mutation"));
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("key factory"))
+    );
+}
+
+#[test]
 fn only_a_major_gap_counts_as_behind() {
     assert_eq!(outdated::majors_behind("1.9.0", "3.0.1"), 2);
     assert_eq!(outdated::majors_behind("2.1.0", "2.9.9"), 0);
@@ -2331,6 +2784,349 @@ fn each_registry_reads_its_own_response_shape() {
         outdated::Registry::PyPI.latest(&pypi),
         Some("7.8.9".to_string())
     );
+}
+
+// ---------------------------------------------------------------------------
+// Validation
+// ---------------------------------------------------------------------------
+
+#[test]
+fn validation_detects_typed_sections_without_schemas_and_skips_when_no_contract_exists() {
+    let (_guard, root) = root();
+    let dir = workspace(&root, "user", "module");
+    write(
+        &dir.join("src/controllers/UserController.ts"),
+        "export class UserController {}\n",
+    );
+    assert_eq!(
+        validation::run(&ProjectCheckArgs::default(), &root).status,
+        CheckStatus::Skipped
+    );
+
+    write(
+        &dir.join("src/controllers/UserController.ts"),
+        "export type UserRouteType = { queries: { page: number } };\n@Route.get(\"/users\", { name: \"user.read\", roles: [\"ROLE_USER\"] })\nexport class UserController {}\n",
+    );
+    let outcome = validation::run(&ProjectCheckArgs::default(), &root);
+    assert_eq!(outcome.status, CheckStatus::Failed);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("`queries` is typed but the route asserts no schema"))
+    );
+}
+
+#[test]
+fn validation_skips_unreadable_controller_files() {
+    let (_guard, root) = root();
+    let dir = workspace(&root, "user", "module");
+    let controller = dir.join("src/controllers/UserController.ts");
+    write(
+        &controller,
+        "export type UserRouteType = { params: { id: string } };\n@Route.get(\"/users/:id\", { params: Assert({ id: 'string' }) })\nexport class UserController {}\n",
+    );
+    let mut permissions = fs::metadata(&controller).expect("metadata").permissions();
+    permissions.set_mode(0o000);
+    fs::set_permissions(&controller, permissions).expect("chmod");
+
+    assert_eq!(
+        validation::run(&ProjectCheckArgs::default(), &root).status,
+        CheckStatus::Skipped
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Exceptions
+// ---------------------------------------------------------------------------
+
+#[test]
+fn exceptions_skip_migrations_and_seeds_and_can_report_no_checked_source() {
+    let (_guard, root) = root();
+    let dir = workspace(&root, "user", "module");
+    write(
+        &dir.join("src/migrations/1700000000000-users.ts"),
+        "throw new Error('nope');\n",
+    );
+    write(
+        &dir.join("src/seeds/users.ts"),
+        "throw { reason: 'nope' };\n",
+    );
+
+    assert_eq!(
+        exceptions::run(&ProjectCheckArgs::default(), &root).status,
+        CheckStatus::Skipped
+    );
+}
+
+#[test]
+fn exceptions_ignore_real_exception_classes_and_unbalanced_catches() {
+    let mut errors = Vec::new();
+    let mut warnings = Vec::new();
+    exceptions::inspect(
+        "export class UserNotFoundException extends Exception {}\ntry { run(); } catch (error) {\n",
+        "a.ts",
+        &mut errors,
+        &mut warnings,
+    );
+
+    assert!(errors.is_empty());
+    assert!(warnings.is_empty());
+}
+
+// ---------------------------------------------------------------------------
+// Boundaries
+// ---------------------------------------------------------------------------
+
+#[test]
+fn boundaries_warn_on_design_dependencies_and_skip_singletons() {
+    let (_guard, root) = root();
+    let design = workspace(&root, "design", "design");
+    write(
+        &design.join("src/index.ts"),
+        "import { app } from \"@module/app/index\";\nexport const design = app;\n",
+    );
+    assert_eq!(
+        boundaries::run(&ProjectCheckArgs::default(), &root).status,
+        CheckStatus::Skipped
+    );
+
+    let app = workspace(&root, "app", "spa");
+    write(&app.join("src/index.ts"), "export const app = 1;\n");
+    let outcome = boundaries::run(&ProjectCheckArgs::default(), &root);
+    assert_eq!(outcome.status, CheckStatus::Warned);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("design module depends on a spa"))
+    );
+}
+
+#[test]
+fn boundary_verdicts_cover_storybooks_sdks_and_unknown_types() {
+    assert_eq!(
+        boundaries::runtime_of(Some("sdk")),
+        boundaries::Runtime::Shared
+    );
+    assert_eq!(boundaries::runtime_of(None), boundaries::Runtime::Unknown);
+    assert!(
+        boundaries::verdict(Some("storybook"), Some("spa"))
+            .expect("warning")
+            .1
+            .contains("documents a design module")
+    );
+    assert!(
+        boundaries::verdict(Some("sdk"), Some("module"))
+            .expect("warning")
+            .1
+            .contains("should not import a module")
+    );
+    assert_eq!(boundaries::verdict(None, Some("spa")), None);
+    assert_eq!(boundaries::verdict(Some("spa"), Some("spa")), None);
+}
+
+#[test]
+fn boundaries_inspect_ignores_unknown_or_allowed_crossings() {
+    let index = cli::commands::project_check::graph::SourceIndex {
+        files: vec![
+            cli::commands::project_check::graph::IndexedFile {
+                path: PathBuf::from("modules/spa/src/a.ts"),
+                label: "modules/spa/src/a.ts".to_string(),
+                module: "spa".to_string(),
+                group: "modules".to_string(),
+                kind: Some("spa".to_string()),
+                layer: Layer::Other,
+                imports: vec![
+                    cli::commands::project_check::graph::Import {
+                        specifier: "@module/unknown/x".to_string(),
+                        resolved: None,
+                        module: Some("unknown".to_string()),
+                        names: BTreeSet::new(),
+                        type_only: false,
+                    },
+                    cli::commands::project_check::graph::Import {
+                        specifier: "@module/design/x".to_string(),
+                        resolved: None,
+                        module: Some("design".to_string()),
+                        names: BTreeSet::new(),
+                        type_only: false,
+                    },
+                ],
+                exports: BTreeSet::new(),
+                reexports: false,
+                lines: 1,
+            },
+            cli::commands::project_check::graph::IndexedFile {
+                path: PathBuf::from("modules/design/src/a.ts"),
+                label: "modules/design/src/a.ts".to_string(),
+                module: "design".to_string(),
+                group: "modules".to_string(),
+                kind: Some("design".to_string()),
+                layer: Layer::Other,
+                imports: Vec::new(),
+                exports: BTreeSet::new(),
+                reexports: false,
+                lines: 1,
+            },
+        ],
+        aliases: BTreeMap::new(),
+    };
+    let modules = vec![
+        cli::commands::project_check::modules::WorkspaceModule {
+            name: "spa".to_string(),
+            group: "modules".to_string(),
+            kind: Some("spa".to_string()),
+            dir: PathBuf::from("modules/spa"),
+        },
+        cli::commands::project_check::modules::WorkspaceModule {
+            name: "design".to_string(),
+            group: "modules".to_string(),
+            kind: Some("design".to_string()),
+            dir: PathBuf::from("modules/design"),
+        },
+    ];
+    let (errors, warnings, count) = boundaries::inspect(&index, &modules);
+    assert!(errors.is_empty());
+    assert!(warnings.is_empty());
+    assert_eq!(count, 2);
+}
+
+// ---------------------------------------------------------------------------
+// Secrets
+// ---------------------------------------------------------------------------
+
+#[test]
+fn secrets_run_warns_in_fixtures_and_skips_empty_trees() {
+    let (_guard, root) = root();
+    assert_eq!(
+        secrets::run(&ProjectCheckArgs::default(), &root).status,
+        CheckStatus::Skipped
+    );
+
+    write(
+        &root.join("tests/fixture.spec.ts"),
+        "export const token = 'ghp_abcdefghijklmnopqrstuvwxyz1234567890';\n",
+    );
+    let outcome = secrets::run(&ProjectCheckArgs::default(), &root);
+    assert_eq!(outcome.status, CheckStatus::Warned);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("expected in a fixture"))
+    );
+}
+
+#[test]
+fn secrets_run_reports_real_secrets_and_skips_unreadable_files() {
+    let (_guard, root) = root();
+    assert!(secrets::is_secret_file("id_rsa"));
+    let src = root.join("src");
+    fs::create_dir_all(&src).expect("create src");
+    write(
+        &src.join("secrets.ts"),
+        "export const token = 'ghp_abcdefghijklmnopqrstuvwxyz1234567890';\n",
+    );
+    let unreadable = src.join("hidden.ts");
+    write(&unreadable, "export const x = 1;\n");
+    let mut permissions = fs::metadata(&unreadable).expect("metadata").permissions();
+    permissions.set_mode(0o000);
+    fs::set_permissions(&unreadable, permissions).expect("chmod");
+
+    let outcome = secrets::run(&ProjectCheckArgs::default(), &root);
+    assert_eq!(outcome.status, CheckStatus::Failed);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("hardcoded credential"))
+    );
+}
+
+#[test]
+fn real_secret_files_tracked_by_git_fail_the_check() {
+    let (_guard, root) = root();
+    std::process::Command::new("git")
+        .arg("init")
+        .current_dir(&root)
+        .output()
+        .expect("git init");
+    write(&root.join(".env"), "API_KEY=secret\n");
+    std::process::Command::new("git")
+        .args(["add", ".env"])
+        .current_dir(&root)
+        .output()
+        .expect("git add");
+
+    let outcome = secrets::run(&ProjectCheckArgs::default(), &root);
+    assert_eq!(outcome.status, CheckStatus::Failed);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains(".env is tracked by git"))
+    );
+}
+
+#[test]
+fn bare_git_repositories_do_not_crash_the_secrets_check() {
+    let (_guard, root) = root();
+    std::process::Command::new("git")
+        .args(["init", "--bare"])
+        .current_dir(&root)
+        .output()
+        .expect("git init --bare");
+
+    let outcome = secrets::run(&ProjectCheckArgs::default(), &root);
+    assert_eq!(outcome.status, CheckStatus::Skipped);
+}
+
+// ---------------------------------------------------------------------------
+// Transactions
+// ---------------------------------------------------------------------------
+
+#[test]
+fn transactions_skip_non_backend_workspaces_and_warn_on_multi_write_services() {
+    let (_guard, root) = root();
+    workspace(&root, "web", "spa");
+    assert_eq!(
+        transactions::run(&ProjectCheckArgs::default(), &root).status,
+        CheckStatus::Skipped
+    );
+
+    let dir = workspace(&root, "user", "module");
+    write(
+        &dir.join("src/services/UserService.ts"),
+        "export class UserService {\n  public async sync(): Promise<void> {\n    await this.repository.create({});\n    await this.repository.decrement({}, 'count', 1);\n  }\n}\n",
+    );
+    let outcome = transactions::run(&ProjectCheckArgs::default(), &root);
+    assert_eq!(outcome.status, CheckStatus::Warned);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("writes 2 times outside a transaction"))
+    );
+}
+
+#[test]
+fn transactions_skip_when_backend_has_only_exempt_or_unbalanced_sources() {
+    let (_guard, root) = root();
+    let dir = workspace(&root, "user", "module");
+    write(
+        &dir.join("src/repositories/UserRepository.ts"),
+        "export class UserRepository {\n  public async save(): Promise<void> {\n    await this.repository.save({});\n    await this.repository.save({});\n  }\n}\n",
+    );
+    assert_eq!(
+        transactions::run(&ProjectCheckArgs::default(), &root).status,
+        CheckStatus::Skipped
+    );
+
+    let broken = "public async save(order: OrderEntity): Promise<void> ";
+    assert!(transactions::inspect(broken, "a.ts").is_empty());
+    let unbalanced = "public async save(order: OrderEntity): Promise<void> { await repo.save({});";
+    assert!(transactions::inspect(unbalanced, "a.ts").is_empty());
 }
 
 // ---------------------------------------------------------------------------

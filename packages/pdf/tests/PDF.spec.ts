@@ -1,5 +1,6 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, spyOn, test } from "bun:test";
 import { appendFile, exists, mkdir, rm } from "node:fs/promises";
+import { join } from "node:path";
 import type {
   IPDF,
   PDFAddPageOptionsType,
@@ -19,6 +20,27 @@ import type {
   PDFUpdateMetadataOptionsType,
 } from "@/index";
 import { PDF, PDFException } from "@/index";
+
+const pdfWorkspaceDir = join("tests", "tmp", "pdf-coverage");
+
+const resetPdfWorkspace = async (): Promise<void> => {
+  await rm(pdfWorkspaceDir, { force: true, recursive: true });
+  await mkdir(pdfWorkspaceDir, { recursive: true });
+};
+
+const createPdfPath = (name: string): string => {
+  return join(pdfWorkspaceDir, name);
+};
+
+const collectAsyncItems = async <T>(generator: AsyncGenerator<T, void, unknown>): Promise<T[]> => {
+  const items: T[] = [];
+
+  for await (const item of generator) {
+    items.push(item);
+  }
+
+  return items;
+};
 
 describe("PDF", () => {
   describe("Types", () => {
@@ -256,6 +278,150 @@ describe("PDF", () => {
     test("should normalize path separators", () => {
       const pdf = new PDF("path/to/test.pdf");
       expect(pdf).toBeInstanceOf(PDF);
+    });
+  });
+
+  describe("create", () => {
+    test("should create a PDF with metadata and persist it to disk", async () => {
+      await resetPdfWorkspace();
+      const pdfPath = createPdfPath("created.pdf");
+      const pdf = new PDF(pdfPath);
+
+      const result = await pdf.create({
+        title: "Coverage PDF",
+        author: "Talos",
+        subject: "Coverage",
+        keywords: ["coverage", "pdf"],
+        producer: "talos-tests",
+        creator: "bun:test",
+      });
+      const metadata = await pdf.getMetadata();
+
+      expect(result.pageCount).toBe(metadata.pageCount);
+      expect(await exists(pdfPath)).toBe(true);
+      expect(metadata.title).toBe("Coverage PDF");
+      expect(metadata.author).toBe("Talos");
+      expect(metadata.subject).toBe("Coverage");
+      expect(metadata.keywords).toBe("coverage pdf");
+      expect(metadata.producer).toBe("talos-tests");
+      expect(metadata.creator).toBe("bun:test");
+    });
+
+    test("should wrap filesystem errors when PDF creation fails", async () => {
+      const writeSpy = spyOn(Bun, "write").mockRejectedValue(new Error("disk full"));
+
+      try {
+        await resetPdfWorkspace();
+        const pdf = new PDF(createPdfPath("create-failure.pdf"));
+
+        await expect(pdf.create({ title: "Broken" })).rejects.toThrow(PDFException);
+        await expect(pdf.create({ title: "Broken again" })).rejects.toThrow("Failed to create PDF document");
+      } finally {
+        writeSpy.mockRestore();
+      }
+    });
+  });
+
+  describe("document editing", () => {
+    test("should add a page with content and update metadata", async () => {
+      await resetPdfWorkspace();
+      const pdfPath = createPdfPath("editable.pdf");
+      const pdf = new PDF(pdfPath);
+
+      await pdf.create({ title: "Before update", author: "Original" });
+      const addPageResult = await pdf.addPage({
+        content: "First line\nSecond line",
+        fontSize: 18,
+      });
+
+      await pdf.updateMetadata({
+        title: "After update",
+        author: "Updated",
+        subject: "Edited PDF",
+        keywords: ["edited", "coverage"],
+        producer: "talos-tests",
+        creator: "bun:test",
+      });
+
+      const metadata = await pdf.getMetadata();
+      const pageText = await pdf.getPageContent(1);
+
+      expect(addPageResult.pageCount).toBe(await pdf.getPageCount());
+      expect(metadata.title).toBe("After update");
+      expect(metadata.author).toBe("Updated");
+      expect(metadata.subject).toBe("Edited PDF");
+      expect(metadata.keywords).toBe("edited coverage");
+      expect(typeof pageText).toBe("string");
+    });
+  });
+
+  describe("split", () => {
+    test("should split each page when no ranges are provided", async () => {
+      await resetPdfWorkspace();
+      const pdfPath = createPdfPath("split-default.pdf");
+      const pdf = new PDF(pdfPath);
+
+      await pdf.create();
+      await pdf.addPage({ content: "Page one" });
+      await pdf.addPage({ content: "Page two" });
+
+      const results = await collectAsyncItems(
+        pdf.split({
+          outputDir: join(pdfWorkspaceDir, "split-default-output"),
+        }),
+      );
+
+      expect(results).toHaveLength(await pdf.getPageCount());
+      expect(results[0]?.pages).toEqual({ start: 1, end: 1 });
+      expect(results[1]?.pages).toEqual({ start: 2, end: 2 });
+      expect(await exists(results[0]?.path as string)).toBe(true);
+      expect(await exists(results[1]?.path as string)).toBe(true);
+    });
+
+    test("should split a PDF using both single-page and range inputs", async () => {
+      await resetPdfWorkspace();
+      const pdfPath = createPdfPath("split-ranges.pdf");
+      const pdf = new PDF(pdfPath);
+
+      await pdf.create();
+      await pdf.addPage({ content: "Page one" });
+      await pdf.addPage({ content: "Page two" });
+      await pdf.addPage({ content: "Page three" });
+
+      const results = await collectAsyncItems(
+        pdf.split({
+          outputDir: join(pdfWorkspaceDir, "split-ranges-output"),
+          prefix: "section",
+          ranges: [2, [1, 3]],
+        }),
+      );
+
+      expect(results.map((result) => result.pages)).toEqual([
+        { start: 2, end: 2 },
+        { start: 1, end: 3 },
+      ]);
+      expect(results[0]?.path.endsWith(join("split-ranges-output", "section-2.pdf"))).toBe(true);
+      expect(results[1]?.path.endsWith(join("split-ranges-output", "section-1-3.pdf"))).toBe(true);
+    });
+  });
+
+  describe("removePages", () => {
+    test("should remove valid unique pages and ignore invalid entries", async () => {
+      await resetPdfWorkspace();
+      const pdfPath = createPdfPath("remove-pages.pdf");
+      const pdf = new PDF(pdfPath);
+
+      await pdf.create();
+      await pdf.addPage({ content: "Page one" });
+      await pdf.addPage({ content: "Page two" });
+      await pdf.addPage({ content: "Page three" });
+      await pdf.addPage({ content: "Page four" });
+      await pdf.addPage({ content: "Page five" });
+
+      const result = await pdf.removePages([0, 1, [2, 4], [6, 8], [5, 4], 2.5]);
+
+      expect(result.remainingPages).toBe(1);
+      expect(await pdf.getPageCount()).toBe(1);
     });
   });
 

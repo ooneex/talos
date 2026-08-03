@@ -35,6 +35,11 @@ describe("buildFilter", () => {
       const filter: Filter<TestData> = { field: "score", op: "<=", value: 100 };
       expect(buildFilter(filter)).toBe("metadata.score <= 100");
     });
+
+    test("should preserve unsupported operators for forward compatibility", () => {
+      const filter = { field: "score", op: "!=", value: 42 } as unknown as Filter<TestData>;
+      expect(buildFilter(filter)).toBe("metadata.score != 42");
+    });
   });
 
   describe("null checks", () => {

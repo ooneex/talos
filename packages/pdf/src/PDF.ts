@@ -33,7 +33,7 @@ export class PDF implements IPDF {
    * @param options - Options for PDF processing
    */
   constructor(source: string, options: PDFOptionsType = {}) {
-    this.source = path.join(...source.split(/[/\\]/));
+    this.source = source.replace(/[/\\]/g, path.sep);
     this.options = {
       scale: options.scale ?? 3,
       ...(options.password !== undefined && { password: options.password }),
@@ -494,7 +494,7 @@ export class PDF implements IPDF {
       });
     }
 
-    const normalizedOutputDir = path.join(...options.outputDir.split(/[/\\]/));
+    const normalizedOutputDir = options.outputDir.replace(/[/\\]/g, path.sep);
     const prefix = options.prefix ?? "image";
 
     try {
@@ -558,7 +558,7 @@ export class PDF implements IPDF {
    * @returns Array of page image results with page numbers and file paths
    */
   public async *pagesToImages(options: PDFToImagesOptionsType): AsyncGenerator<PDFPageImageResultType, void, unknown> {
-    const normalizedOutputDir = path.join(...options.outputDir.split(/[/\\]/));
+    const normalizedOutputDir = options.outputDir.replace(/[/\\]/g, path.sep);
     const prefix = options.prefix ?? "page";
     const savedWorker = (globalThis as Record<string, unknown>).pdfjsWorker;
     (globalThis as Record<string, unknown>).pdfjsWorker = undefined;
@@ -604,7 +604,7 @@ export class PDF implements IPDF {
       });
     }
 
-    const normalizedOutputDir = path.join(...options.outputDir.split(/[/\\]/));
+    const normalizedOutputDir = options.outputDir.replace(/[/\\]/g, path.sep);
     const prefix = options.prefix ?? "page";
     const savedWorker = (globalThis as Record<string, unknown>).pdfjsWorker;
     (globalThis as Record<string, unknown>).pdfjsWorker = undefined;
@@ -652,7 +652,7 @@ export class PDF implements IPDF {
    * @returns Array of split PDF results with page ranges and file paths
    */
   public async *split(options: PDFSplitOptionsType): AsyncGenerator<PDFSplitResultType, void, unknown> {
-    const normalizedOutputDir = path.join(...options.outputDir.split(/[/\\]/));
+    const normalizedOutputDir = options.outputDir.replace(/[/\\]/g, path.sep);
     const prefix = options.prefix ?? "page";
 
     try {

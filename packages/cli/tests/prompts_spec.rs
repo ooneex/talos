@@ -159,3 +159,28 @@ fn ask_destination_module_falls_back_to_app_when_no_prompt_can_be_shown() {
 
     assert_eq!(ask_destination_module(dir.path(), "Choose"), "app");
 }
+
+#[test]
+fn find_destination_modules_ignores_non_destinations_and_missing_descriptors() {
+    let dir = TempDir::new("prompts-destination-filter");
+    dir.write("modules/admin/admin.yml", "type: \"admin\"\n");
+    dir.write("modules/lib/lib.yml", "type: \"module\"\n");
+    dir.dir("modules/missing");
+    dir.write("modules/app/app.yml", "type: \"api\"\n");
+
+    assert_eq!(find_destination_modules(dir.path()), ["app"]);
+}
+
+#[test]
+fn ask_destination_module_falls_back_to_app_even_without_an_app_choice() {
+    let dir = TempDir::new("prompts-destination-fallback");
+    dir.write("modules/gateway/gateway.yml", "type: \"microservice\"\n");
+
+    assert_eq!(ask_destination_module(dir.path(), "Choose"), "app");
+}
+
+#[test]
+fn resolve_name_and_destination_requires_missing_values_to_be_prompted() {
+    assert!(resolve_name_and_destination(None, Some("./dest".into())).is_none());
+    assert!(resolve_name_and_destination(Some("MyApp".into()), None).is_none());
+}

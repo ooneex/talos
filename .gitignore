@@ -151,3 +151,4 @@ packages/app/src/fetchers
 packages/app/src/hooks
 packages/pdf/tests/tmp
 packages/rag/tests/tmp
+packages/storage/tests/tmp

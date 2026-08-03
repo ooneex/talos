@@ -12,10 +12,12 @@ use cli::commands::project_check::artifacts::{
     contains_word, declared, is_empty_body, method_body, returned_string,
 };
 use cli::commands::project_check::modules::WorkspaceModule;
+use cli::commands::project_check::routes::Route;
 use cli::commands::project_check::{
     Category, CheckId, ProjectCheckArgs, assets, cache, crons, events, exceptions, flags, folders,
     indexes, logging, mailers, middlewares, openapi, pagination, permissions, queries, queues,
-    repositories, router, routes, todos, tokens, transactions, workflows,
+    repositories, router, routes, sdk, todos, tokens, transactions, tsconfig, validation,
+    workflows,
 };
 
 // ---------------------------------------------------------------------------
@@ -361,6 +363,38 @@ fn an_empty_catch_swallows_the_failure() {
     assert!(warnings[0].contains("empty"));
 }
 
+#[test]
+fn thrown_literals_and_detached_exception_classes_are_reported() {
+    let mut errors = Vec::new();
+    let mut warnings = Vec::new();
+    exceptions::inspect(
+        "throw \"boom\";\nexport class BrokenException {}\n",
+        "a.ts",
+        &mut errors,
+        &mut warnings,
+    );
+
+    assert_eq!(errors.len(), 1);
+    assert!(errors[0].contains("thrown literal"));
+    assert_eq!(warnings.len(), 1);
+    assert!(warnings[0].contains("does not extend Exception"));
+}
+
+#[test]
+fn a_non_empty_catch_is_left_alone() {
+    let mut errors = Vec::new();
+    let mut warnings = Vec::new();
+    exceptions::inspect(
+        "try {\n  run();\n} catch (error) {\n  log(error);\n}\n",
+        "a.ts",
+        &mut errors,
+        &mut warnings,
+    );
+
+    assert!(errors.is_empty());
+    assert!(warnings.is_empty());
+}
+
 // ---------------------------------------------------------------------------
 // Crons
 // ---------------------------------------------------------------------------
@@ -508,6 +542,24 @@ public getTransitions = (): WorkflowTransitionClassType[] => [
 }
 
 #[test]
+fn a_single_transition_list_is_balanced_to_its_closing_bracket() {
+    assert_eq!(
+        workflows::transitions_of("public getTransitions = () => [ShipOrderTransition];"),
+        Some(vec!["ShipOrderTransition".to_string()])
+    );
+}
+
+#[test]
+fn transitions_can_be_read_from_a_block_body_return() {
+    assert_eq!(
+        workflows::transitions_of(
+            "public getTransitions(): WorkflowTransitionClassType[] { return [ShipOrderTransition]; }",
+        ),
+        Some(vec!["ShipOrderTransition".to_string()])
+    );
+}
+
+#[test]
 fn a_workflow_listing_a_missing_transition_fails() {
     let workflows = vec![workflows::WorkflowDefinition {
         class: "CheckoutWorkflow".to_string(),
@@ -539,6 +591,146 @@ fn a_workflow_running_nothing_is_reported() {
 
     assert!(errors.is_empty());
     assert!(warnings[0].contains("runs no transition"));
+}
+
+#[test]
+fn workflow_helpers_read_names_and_transition_safety() {
+    let workflow = cli::commands::project_check::artifacts::Artifact {
+        kind: "workflow".to_string(),
+        class: "CheckoutWorkflow".to_string(),
+        file: "a.ts".to_string(),
+        path: std::path::PathBuf::from("a.ts"),
+        module: "shop".to_string(),
+        label: "modules/shop".to_string(),
+        content: "export class CheckoutWorkflow {\n  public getName = (): string => \"checkout\";\n  public getTransitions = (): WorkflowTransitionClassType[] => {\n    return [ReserveStockTransition, ChargeCardTransition<ResultType>];\n  };\n}\n".to_string(),
+    };
+    let parsed = workflows::parse(&workflow);
+    assert_eq!(parsed.name.as_deref(), Some("checkout"));
+    assert_eq!(
+        parsed.transitions,
+        vec![
+            "ReserveStockTransition".to_string(),
+            "ChargeCardTransition".to_string(),
+            "ResultType".to_string(),
+        ]
+    );
+
+    let placeholder = cli::commands::project_check::artifacts::Artifact {
+        kind: "transition".to_string(),
+        class: "ReserveStockTransition".to_string(),
+        file: "reserve.ts".to_string(),
+        path: std::path::PathBuf::from("reserve.ts"),
+        module: "shop".to_string(),
+        label: "modules/shop".to_string(),
+        content: "export class ReserveStockTransition {\n  public handler = async (data) => {\n    return data;\n  };\n}\n".to_string(),
+    };
+    assert!(!workflows::does_work(&placeholder));
+    assert!(!workflows::is_reversible(&placeholder));
+
+    let real = cli::commands::project_check::artifacts::Artifact {
+        kind: "transition".to_string(),
+        class: "ChargeCardTransition".to_string(),
+        file: "charge.ts".to_string(),
+        path: std::path::PathBuf::from("charge.ts"),
+        module: "shop".to_string(),
+        label: "modules/shop".to_string(),
+        content: "export class ChargeCardTransition {\n  public handler = async (data) => {\n    await gateway.charge(data);\n    return data;\n  };\n\n  public rollback = async () => {\n    await gateway.refund();\n  };\n}\n".to_string(),
+    };
+    assert!(workflows::does_work(&real));
+    assert!(workflows::is_reversible(&real));
+}
+
+#[test]
+fn duplicate_workflow_names_or_orphan_transitions_are_reported() {
+    let workflows = vec![
+        workflows::WorkflowDefinition {
+            class: "CheckoutWorkflow".to_string(),
+            name: Some("checkout".to_string()),
+            transitions: vec!["ChargeCardTransition".to_string()],
+            file: "a.ts".to_string(),
+        },
+        workflows::WorkflowDefinition {
+            class: "RetryWorkflow".to_string(),
+            name: Some("checkout".to_string()),
+            transitions: vec!["ReserveStockTransition".to_string()],
+            file: "b.ts".to_string(),
+        },
+    ];
+    let transitions = vec![
+        cli::commands::project_check::artifacts::Artifact {
+            kind: "transition".to_string(),
+            class: "ChargeCardTransition".to_string(),
+            file: "charge.ts".to_string(),
+            path: std::path::PathBuf::from("charge.ts"),
+            module: "shop".to_string(),
+            label: "modules/shop".to_string(),
+            content: "export class ChargeCardTransition {\n  public handler = async () => {\n    await gateway.charge();\n  };\n}\n".to_string(),
+        },
+        cli::commands::project_check::artifacts::Artifact {
+            kind: "transition".to_string(),
+            class: "ReserveStockTransition".to_string(),
+            file: "reserve.ts".to_string(),
+            path: std::path::PathBuf::from("reserve.ts"),
+            module: "shop".to_string(),
+            label: "modules/shop".to_string(),
+            content: "export class ReserveStockTransition {\n  public handler = async (data) => {\n    return data;\n  };\n}\n".to_string(),
+        },
+        cli::commands::project_check::artifacts::Artifact {
+            kind: "transition".to_string(),
+            class: "GhostTransition".to_string(),
+            file: "ghost.ts".to_string(),
+            path: std::path::PathBuf::from("ghost.ts"),
+            module: "shop".to_string(),
+            label: "modules/shop".to_string(),
+            content: "export class GhostTransition {\n  public handler = async () => {\n    await doWork();\n  };\n  public rollback = async () => {\n    await undoWork();\n  };\n}\n".to_string(),
+        },
+    ];
+
+    let mut errors = Vec::new();
+    let mut warnings = Vec::new();
+    workflows::inspect(&workflows, &transitions, &mut errors, &mut warnings);
+
+    assert!(errors.iter().any(|error| error.contains("already used by")));
+    assert!(errors.iter().any(|error| error.contains("never runs")));
+    assert!(
+        warnings
+            .iter()
+            .any(|warning| warning.contains("empty rollback"))
+    );
+    assert!(
+        warnings
+            .iter()
+            .any(|warning| warning.contains("returns its input untouched"))
+    );
+}
+
+#[test]
+fn a_workflow_without_a_literal_name_is_reported() {
+    let workflows = vec![workflows::WorkflowDefinition {
+        class: "CheckoutWorkflow".to_string(),
+        name: None,
+        transitions: vec!["ChargeCardTransition".to_string()],
+        file: "a.ts".to_string(),
+    }];
+    let transitions = vec![cli::commands::project_check::artifacts::Artifact {
+        kind: "transition".to_string(),
+        class: "ChargeCardTransition".to_string(),
+        file: "charge.ts".to_string(),
+        path: std::path::PathBuf::from("charge.ts"),
+        module: "shop".to_string(),
+        label: "modules/shop".to_string(),
+        content: "export class ChargeCardTransition {\n  public handler = async () => {\n    await gateway.charge();\n  };\n  public rollback = async () => {\n    await gateway.refund();\n  };\n}\n".to_string(),
+    }];
+
+    let mut errors = Vec::new();
+    let mut warnings = Vec::new();
+    workflows::inspect(&workflows, &transitions, &mut errors, &mut warnings);
+
+    assert!(
+        errors
+            .iter()
+            .any(|error| error.contains("returns no literal name"))
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -732,6 +924,21 @@ fn a_key_read_from_a_factory_is_left_alone() {
 }
 
 #[test]
+fn a_query_without_a_key_is_reported_and_feature_paths_are_detected() {
+    let source = r#"useSuspenseQuery({ queryFn: getUser });"#;
+    let sites = queries::call_sites(source, "modules/spa/src/features/user/a.ts");
+
+    assert_eq!(queries::feature_of(&sites[0].file), Some("user"));
+
+    let mut errors = Vec::new();
+    let mut warnings = Vec::new();
+    queries::inspect(&sites, &mut errors, &mut warnings);
+
+    assert!(errors.is_empty());
+    assert!(warnings[0].contains("declares no queryKey"));
+}
+
+#[test]
 fn a_mutation_that_never_invalidates_leaves_the_screen_stale() {
     let source = r#"useMutation({ mutationFn: updateUser });"#;
     let sites = queries::call_sites(source, "a.ts");
@@ -742,6 +949,66 @@ fn a_mutation_that_never_invalidates_leaves_the_screen_stale() {
 
     assert_eq!(warnings.len(), 1);
     assert!(warnings[0].contains("never refreshes"));
+}
+
+#[test]
+fn cache_writes_count_as_invalidations() {
+    for marker in [
+        "invalidateQueries",
+        "setQueryData",
+        "resetQueries",
+        "removeQueries",
+    ] {
+        let source = format!(
+            "useMutation({{ mutationFn: updateUser, onSuccess: () => queryClient.{marker}({{ queryKey: ['user'] }}) }});"
+        );
+        let sites = queries::call_sites(&source, "a.ts");
+
+        let mut errors = Vec::new();
+        let mut warnings = Vec::new();
+        queries::inspect(&sites, &mut errors, &mut warnings);
+
+        assert!(errors.is_empty(), "{marker}");
+        assert!(warnings.is_empty(), "{marker}");
+    }
+}
+
+#[test]
+fn shared_files_have_no_feature_scope() {
+    assert_eq!(
+        queries::feature_of("modules/spa/src/shared/hooks/useA.ts"),
+        None
+    );
+}
+
+#[test]
+fn malformed_or_same_feature_query_keys_do_not_collide() {
+    let malformed = queries::call_sites("useQuery({ queryKey: [\"broken\"]", "a.ts");
+    assert!(malformed.is_empty());
+
+    let sites = vec![
+        queries::CallSite {
+            hook: "useQuery".to_string(),
+            file: "modules/spa/src/features/user/a.ts".to_string(),
+            line: 1,
+            literal_root: Some("profile".to_string()),
+            from_factory: false,
+            invalidates: false,
+        },
+        queries::CallSite {
+            hook: "useQuery".to_string(),
+            file: "modules/spa/src/features/user/b.ts".to_string(),
+            line: 2,
+            literal_root: Some("profile".to_string()),
+            from_factory: false,
+            invalidates: false,
+        },
+    ];
+    let mut errors = Vec::new();
+    let mut warnings = Vec::new();
+    queries::inspect(&sites, &mut errors, &mut warnings);
+    assert!(errors.is_empty());
+    assert_eq!(warnings.len(), 2);
 }
 
 #[test]
@@ -949,6 +1216,17 @@ public async place(order: OrderEntity): Promise<void> {
 }
 
 #[test]
+fn a_method_with_only_one_write_is_not_reported() {
+    let source = r#"
+private static sync = async (): Promise<void> => {
+  await this.repository.save({});
+}
+"#;
+
+    assert!(transactions::inspect(source, "a.ts").is_empty());
+}
+
+#[test]
 fn the_repository_layer_is_exempt() {
     assert!(!transactions::is_checked(
         "modules/user/src/repositories/UserRepository.ts"
@@ -956,6 +1234,161 @@ fn the_repository_layer_is_exempt() {
     assert!(transactions::is_checked(
         "modules/user/src/services/UserService.ts"
     ));
+}
+
+// ---------------------------------------------------------------------------
+// Validation
+// ---------------------------------------------------------------------------
+
+#[test]
+fn validation_strips_line_and_block_comments() {
+    let stripped = validation::strip_comments(
+        "params: {\n  id: string, // gone\n  /* block */\n  slug?: string,\n}\n",
+    );
+
+    assert!(!stripped.contains("gone"));
+    assert!(!stripped.contains("block"));
+    assert!(stripped.contains("slug?: string"));
+}
+
+#[test]
+fn validation_body_balances_nested_braces() {
+    let source = "{ payload: { user: { id: string } }, queries: { page: number } }";
+    let found = validation::body(source, 0).expect("balanced");
+
+    assert!(found.contains("payload"));
+    assert!(validation::body("{ payload: { id: string }", 0).is_none());
+}
+
+#[test]
+fn validation_reports_missing_and_extra_fields() {
+    let contract = validation::Contract {
+        typed: vec![
+            (
+                "params".to_string(),
+                ["id".to_string()].into_iter().collect(),
+            ),
+            (
+                "queries".to_string(),
+                ["page".to_string()].into_iter().collect(),
+            ),
+        ],
+        asserted: vec![(
+            "params".to_string(),
+            ["id".to_string(), "slug".to_string()].into_iter().collect(),
+        )],
+    };
+
+    let mut errors = Vec::new();
+    let mut warnings = Vec::new();
+    validation::inspect("controller.ts", &contract, &mut errors, &mut warnings);
+
+    assert!(
+        errors
+            .iter()
+            .any(|error| error.contains("`queries` is typed but the route asserts no schema"))
+    );
+    assert!(
+        warnings
+            .iter()
+            .any(|warning| warning.contains("`params.slug` is validated but missing"))
+    );
+}
+
+#[test]
+fn tsconfig_inspect_module_accepts_the_root_extends_path() {
+    let module = WorkspaceModule {
+        name: "user".to_string(),
+        group: "modules".to_string(),
+        kind: Some("module".to_string()),
+        dir: std::path::PathBuf::from("modules/user"),
+    };
+    let mut errors = Vec::new();
+    let mut warnings = Vec::new();
+    tsconfig::inspect_module(
+        &module,
+        &serde_json::json!({
+            "extends": "../../tsconfig.json",
+            "exclude": ["dist", "node_modules"]
+        }),
+        &["strict"],
+        &mut errors,
+        &mut warnings,
+    );
+    assert!(errors.is_empty());
+    assert!(warnings.is_empty());
+}
+
+// ---------------------------------------------------------------------------
+// SDK
+// ---------------------------------------------------------------------------
+
+#[test]
+fn sdk_surface_reads_keys_endpoints_and_placeholders() {
+    let (guard, root) = folder_root();
+    let module = write_module(&root, "sdk", "sdk");
+    fs::create_dir_all(module.dir.join("src")).expect("create src");
+    fs::write(
+        module.dir.join("src/index.ts"),
+        "export const userRead = { key: \"user.read\", endpoint: \"/v2/users\", run: () => { throw new Error('Not implemented'); } };\nexport const orderList = { key: \"order.list\", endpoint: \"/v1/orders\" };\n",
+    )
+    .expect("write sdk source");
+
+    let surface = sdk::surface(&module);
+    assert_eq!(
+        surface.keys,
+        ["order.list".to_string(), "user.read".to_string()]
+            .into_iter()
+            .collect()
+    );
+    assert!(surface.endpoints.contains("/v2/users"));
+    assert_eq!(surface.unimplemented, 1);
+    drop(guard);
+}
+
+#[test]
+fn sdk_inspect_reports_stale_methods_and_endpoints() {
+    let surface = sdk::SdkSurface {
+        keys: ["user.read".to_string(), "user.stale".to_string()]
+            .into_iter()
+            .collect(),
+        endpoints: ["/v1/users".to_string()].into_iter().collect(),
+        unimplemented: 1,
+    };
+    let routes = vec![Route {
+        method: "get".to_string(),
+        path: "/users/:id".to_string(),
+        name: Some("user.read".to_string()),
+        description: None,
+        version: Some(2),
+        version_raw: Some("2".to_string()),
+        roles: vec!["ROLE_USER".to_string()],
+        declares_roles: true,
+        file: "controller.ts".to_string(),
+    }];
+
+    let mut errors = Vec::new();
+    let mut warnings = Vec::new();
+    sdk::inspect(
+        "modules/sdk",
+        "app",
+        &surface,
+        &routes,
+        &mut errors,
+        &mut warnings,
+    );
+
+    assert!(
+        errors
+            .iter()
+            .any(|error| error.contains("still exposes `user.stale`"))
+    );
+    assert!(
+        errors
+            .iter()
+            .any(|error| error.contains("now answers on `/v2/users/:id`"))
+    );
+    assert!(warnings[0].contains("Not implemented"));
 }
 
 // ---------------------------------------------------------------------------

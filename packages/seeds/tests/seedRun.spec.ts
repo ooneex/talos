@@ -11,6 +11,7 @@ describe("run", () => {
   let originalGet: typeof container.get;
   let originalExit: typeof process.exit;
   let originalAppEnv: string | undefined;
+  let originalArgv: string[];
   let cacheDir: string;
   let stdout: string[];
   let stdoutSpy: ReturnType<typeof spyOn>;
@@ -22,6 +23,7 @@ describe("run", () => {
     originalGet = container.get;
     originalExit = process.exit;
     originalAppEnv = process.env.APP_ENV;
+    originalArgv = [...Bun.argv];
 
     SEEDS_CONTAINER.length = 0;
     cacheDir = join(process.cwd(), ".temp", `seed-run-${Date.now()}-${Math.random().toString(36).slice(2)}`);
@@ -47,6 +49,7 @@ describe("run", () => {
     } else {
       process.env.APP_ENV = originalAppEnv;
     }
+    (Bun as { argv: string[] }).argv = originalArgv;
     SEEDS_CONTAINER.length = 0;
     rmSync(cacheDir, { recursive: true, force: true });
   });
@@ -230,6 +233,43 @@ describe("run", () => {
     expect(await isSeedCached(cacheDir, "CachedSeed", hash)).toBe(true);
   });
 
+  test("should drop the database when the drop flag is provided", async () => {
+    class DropSeed implements ISeed {
+      run<T = unknown>(_data?: unknown[]): T | Promise<T> {
+        return Promise.resolve(undefined as unknown as T);
+      }
+      isActive() {
+        return true;
+      }
+      getDependencies() {
+        return [];
+      }
+      getEnv() {
+        return [];
+      }
+    }
+
+    const seedInstance = new DropSeed();
+    const dropFn = mock(() => Promise.resolve());
+    const closeFn = mock(() => Promise.resolve());
+    const originalGetConstant = container.getConstant;
+
+    (Bun as { argv: string[] }).argv = ["bun", "run", "--drop"];
+    SEEDS_CONTAINER.push(DropSeed as unknown as SeedClassType);
+    container.get = mock(() => seedInstance) as unknown as typeof container.get;
+    container.getConstant = mock((id: string | symbol) => {
+      if (id === "database") return { drop: dropFn, close: closeFn };
+      return originalGetConstant.call(container, id);
+    }) as typeof container.getConstant;
+
+    await run({ cacheDir });
+
+    expect(dropFn).toHaveBeenCalledTimes(1);
+    expect(output()).toContain("Database dropped");
+
+    container.getConstant = originalGetConstant;
+  });
+
   test("should skip a seed whose cache entry is still valid", async () => {
     const calls: string[] = [];
 
@@ -261,6 +301,64 @@ describe("run", () => {
 
     expect(calls).toEqual([]);
     expect(output()).toContain("cached");
+  });
+
+  test("should skip only the seeds whose cache entries are still valid", async () => {
+    const calls: string[] = [];
+
+    class CachedSeed implements ISeed {
+      run<T = unknown>(_data?: unknown[]): T | Promise<T> {
+        calls.push("cached.run");
+        return Promise.resolve(undefined as unknown as T);
+      }
+      isActive() {
+        return true;
+      }
+      getDependencies() {
+        return [];
+      }
+      getEnv() {
+        return [];
+      }
+    }
+
+    class FreshSeed implements ISeed {
+      run<T = unknown>(_data?: unknown[]): T | Promise<T> {
+        calls.push("fresh.run");
+        return Promise.resolve(undefined as unknown as T);
+      }
+      isActive() {
+        return true;
+      }
+      getDependencies() {
+        return [];
+      }
+      getEnv() {
+        return [];
+      }
+    }
+
+    const cachedSeed = new CachedSeed();
+    const freshSeed = new FreshSeed();
+
+    SEEDS_CONTAINER.push(CachedSeed as unknown as SeedClassType, FreshSeed as unknown as SeedClassType);
+    container.get = mock((seedClass: SeedClassType) => {
+      if (seedClass === (CachedSeed as unknown as SeedClassType)) {
+        return cachedSeed;
+      }
+      if (seedClass === (FreshSeed as unknown as SeedClassType)) {
+        return freshSeed;
+      }
+      throw new Error("unexpected seed class");
+    }) as unknown as typeof container.get;
+
+    await writeSeedCache(cacheDir, "CachedSeed", computeSeedHash(cachedSeed, process.env.APP_ENV));
+
+    await run({ cacheDir });
+
+    expect(calls).toEqual(["fresh.run"]);
+    expect(output()).toContain("CachedSeed  up to date (cached)");
+    expect(output()).toContain("FreshSeed");
   });
 
   test("should re-run a seed when its cached hash no longer matches", async () => {

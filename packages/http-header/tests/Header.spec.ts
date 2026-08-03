@@ -130,6 +130,18 @@ describe("Header", () => {
         expect(result).toBe(header);
       });
     });
+
+    describe("clearContentType", () => {
+      test("should remove content type and charset headers", () => {
+        header.contentType("application/json", "UTF-8");
+
+        const result = header.clearContentType();
+
+        expect(result).toBe(header);
+        expect(header.has("Content-Type")).toBe(false);
+        expect(header.has("Accept-Charset")).toBe(false);
+      });
+    });
   });
 
   describe("content type convenience methods", () => {

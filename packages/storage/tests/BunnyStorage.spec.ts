@@ -1,4 +1,6 @@
 import { afterEach, beforeEach, describe, expect, mock, spyOn, test } from "bun:test";
+import { mkdir, rm } from "node:fs/promises";
+import { join } from "node:path";
 
 // Mock the decorators module before importing BunnyStorage
 mock.module("@/decorators", () => ({
@@ -36,6 +38,7 @@ function mockFile(overrides: Partial<Record<string, unknown>> = {}): Record<stri
 
 describe("BunnyStorage", () => {
   const originalEnv = { ...Bun.env };
+  const workspaceTmpDir = join(process.cwd(), "tests", "tmp", "bunny-storage");
   let fetchMock: ReturnType<typeof spyOn>;
 
   beforeEach(() => {
@@ -45,11 +48,12 @@ describe("BunnyStorage", () => {
     fetchMock = spyOn(globalThis, "fetch");
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     Bun.env.STORAGE_BUNNY_ACCESS_KEY = originalEnv.STORAGE_BUNNY_ACCESS_KEY;
     Bun.env.STORAGE_BUNNY_STORAGE_ZONE = originalEnv.STORAGE_BUNNY_STORAGE_ZONE;
     Bun.env.STORAGE_BUNNY_REGION = originalEnv.STORAGE_BUNNY_REGION;
     fetchMock.mockRestore();
+    await rm(workspaceTmpDir, { force: true, recursive: true });
   });
 
   describe("constructor", () => {
@@ -438,6 +442,29 @@ describe("BunnyStorage", () => {
       const decoder = new TextDecoder();
       const content = chunks.map((chunk) => decoder.decode(chunk)).join("");
       expect(content).toBe("streamed content");
+    });
+
+    test("should abort the stream with a StorageException when download fails", async () => {
+      fetchMock.mockResolvedValueOnce(new Response("Error", { status: 500, statusText: "Server Error" }));
+
+      const storage = new BunnyStorage(new AppEnv());
+      const stream = storage.getAsStream("file.txt");
+      const reader = stream.getReader();
+
+      await expect(reader.read()).rejects.toBeInstanceOf(StorageException);
+    });
+  });
+
+  describe("getFile", () => {
+    test("should download a remote file to the requested output directory", async () => {
+      await mkdir(workspaceTmpDir, { recursive: true });
+      fetchMock.mockResolvedValueOnce(new Response("downloaded content", { status: 200 }));
+
+      const storage = new BunnyStorage(new AppEnv());
+      const bytesWritten = await storage.getFile("reports/daily.txt", { outputDir: workspaceTmpDir });
+
+      expect(bytesWritten).toBe("downloaded content".length);
+      expect(await Bun.file(join(workspaceTmpDir, "daily.txt")).text()).toBe("downloaded content");
     });
   });
 });

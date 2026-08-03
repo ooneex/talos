@@ -1,4 +1,4 @@
-import { afterAll, afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { afterAll, afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test";
 import { rmdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -139,6 +139,29 @@ describe("FilesystemCacheAdapter", () => {
 
       const result = await adapter.get("corrupted");
       expect(result).toBeUndefined();
+    });
+
+    test("should swallow cache-file deletion errors for expired entries", async () => {
+      const fileSpy = spyOn(Bun, "file").mockImplementation(
+        () =>
+          ({
+            exists: () => Promise.resolve(true),
+            text: () =>
+              Promise.resolve(
+                JSON.stringify({
+                  value: testValue,
+                  ttl: 1,
+                  createdAt: 0,
+                  originalKey: testKey,
+                }),
+              ),
+            delete: () => Promise.reject(new Error("delete failed")),
+          }) as unknown as ReturnType<typeof Bun.file>,
+      );
+
+      await expect(adapter.get(testKey)).resolves.toBeUndefined();
+
+      fileSpy.mockRestore();
     });
   });
 
@@ -416,6 +439,21 @@ describe("FilesystemCacheAdapter", () => {
 
       expect(await adapter.has("key1")).toBe(false);
       expect(await adapter.get<string>("key2")).toBe("value2");
+    });
+
+    test("should swallow file deletion errors while clearing", async () => {
+      await adapter.set("key1", "value1");
+
+      const fileSpy = spyOn(Bun, "file").mockImplementation(
+        () =>
+          ({
+            delete: () => Promise.reject(new Error("delete failed")),
+          }) as unknown as ReturnType<typeof Bun.file>,
+      );
+
+      await expect(adapter.clear()).resolves.toBeUndefined();
+
+      fileSpy.mockRestore();
     });
   });
 

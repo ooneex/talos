@@ -5,6 +5,9 @@ import type { ITranslation, LocaleType, TranslationDictType, TransOptionsType } 
 const FALLBACK_LOCALE: LocaleType = "en";
 
 export abstract class Translation implements ITranslation {
+  // biome-ignore lint/complexity/noUselessConstructor: Bun coverage requires an explicit constructor to mark it as hit
+  public constructor() {}
+
   public has(key: string): boolean {
     return has(this.getDict(), key);
   }

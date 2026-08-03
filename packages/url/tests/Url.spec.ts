@@ -106,6 +106,16 @@ describe("Url (Mutable)", () => {
     expect(url.toString()).toBe("https://example.com/");
   });
 
+  test("should reset https default port when switching to http", () => {
+    const url = new Url("https://example.com:443");
+
+    url.setProtocol("http");
+
+    expect(url.getProtocol()).toBe("http");
+    expect(url.getPort()).toBe(80);
+    expect(url.toString()).toBe("http://example.com/");
+  });
+
   test("should set hostname correctly", () => {
     const url = new Url("https://example.com");
 

@@ -216,3 +216,145 @@ pub fn scaffold_resource(config: &ScaffoldConfig, options: ScaffoldOptions, cwd:
 pub fn current_dir() -> PathBuf {
     std::env::current_dir().unwrap_or_default()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::os::unix::fs::PermissionsExt;
+
+    fn config() -> ScaffoldConfig {
+        ScaffoldConfig {
+            label: "Service",
+            prompt_message: "Enter service name",
+            suffix: "Service",
+            template: "export class {{NAME}}Service {}\n".to_string(),
+            test_template: "// {{NAME}} in {{MODULE}}\n".to_string(),
+            dir: "services",
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn add_class_to_module_prepends_an_import_when_none_exist() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let path = tmp.path().join("SharedModule.ts");
+        fs::write(
+            &path,
+            "export const SharedModule = {\n  services: [],\n};\n",
+        )
+        .expect("module");
+
+        add_class_to_module(&path, "UserService", "services", "services").expect("class added");
+
+        let output = fs::read_to_string(&path).expect("module");
+        assert!(output.contains("import { UserService } from \"./services/UserService\";"));
+        assert!(output.contains("services: [UserService]"));
+    }
+
+    #[test]
+    fn scaffold_resource_returns_early_when_prompt_input_is_unavailable() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+
+        scaffold_resource(
+            &config(),
+            ScaffoldOptions {
+                name: None,
+                module: Some("shared".to_string()),
+                r#override: false,
+            },
+            tmp.path(),
+        );
+
+        assert!(!tmp.path().join("modules/shared/src/services").exists());
+    }
+
+    #[test]
+    fn scaffold_resource_keeps_existing_files_when_override_is_declined() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let base = tmp.path().join("modules/shared");
+        fs::create_dir_all(base.join("src/services")).expect("services dir");
+        fs::write(base.join("package.json"), "{}").expect("package");
+        let service_path = base.join("src/services/UserService.ts");
+        fs::write(&service_path, "original\n").expect("service");
+
+        scaffold_resource(
+            &config(),
+            ScaffoldOptions {
+                name: Some("user".to_string()),
+                module: Some("shared".to_string()),
+                r#override: false,
+            },
+            tmp.path(),
+        );
+
+        assert_eq!(
+            fs::read_to_string(&service_path).expect("service"),
+            "original\n"
+        );
+    }
+
+    #[test]
+    fn scaffold_resource_reports_source_write_failures() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let base = tmp.path().join("modules/shared");
+        fs::create_dir_all(&base).expect("base");
+        fs::write(base.join("package.json"), "{}").expect("package");
+        fs::write(base.join("src"), "not a directory").expect("blocking file");
+
+        scaffold_resource(
+            &config(),
+            ScaffoldOptions {
+                name: Some("user".to_string()),
+                module: Some("shared".to_string()),
+                r#override: true,
+            },
+            tmp.path(),
+        );
+
+        assert!(base.join("src").is_file());
+        assert!(!base.join("tests/services/UserService.spec.ts").exists());
+    }
+
+    #[test]
+    fn install_dependency_returns_when_dependency_already_exists_in_dev_dependencies() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        fs::write(
+            tmp.path().join("package.json"),
+            r#"{"devDependencies":{"left-pad":"1.0.0"}}"#,
+        )
+        .expect("package");
+
+        install_dependency("left-pad", tmp.path());
+
+        let package = fs::read_to_string(tmp.path().join("package.json")).expect("package");
+        assert!(package.contains("devDependencies"));
+    }
+
+    #[test]
+    fn current_dir_matches_the_process_directory() {
+        assert_eq!(
+            super::current_dir(),
+            std::env::current_dir().unwrap_or_default()
+        );
+    }
+
+    #[test]
+    fn add_class_to_module_surfaces_write_failures() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let path = tmp.path().join("SharedModule.ts");
+        fs::write(
+            &path,
+            "export const SharedModule = {\n  services: [],\n};\n",
+        )
+        .expect("module");
+        fs::set_permissions(tmp.path(), fs::Permissions::from_mode(0o500)).expect("dir perms");
+        fs::set_permissions(&path, fs::Permissions::from_mode(0o400)).expect("file perms");
+
+        let result = add_class_to_module(&path, "UserService", "services", "services");
+
+        fs::set_permissions(tmp.path(), fs::Permissions::from_mode(0o700)).expect("restore dir");
+        fs::set_permissions(&path, fs::Permissions::from_mode(0o600)).expect("restore file");
+
+        assert!(result.is_err());
+    }
+}

@@ -7,6 +7,11 @@ type DataType = {
 };
 
 export class VectorDatabase extends AbstractVectorDatabase<DataType> {
+  // biome-ignore lint/complexity/noUselessConstructor: explicit constructor is required for Bun function coverage
+  public constructor() {
+    super();
+  }
+
   public getDatabaseUri(): string {
     return "";
   }

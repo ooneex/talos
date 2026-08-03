@@ -230,6 +230,12 @@ describe("ReadonlyUrl", () => {
       // Last value should win
       expect(queries.tag).toBe("blue");
     });
+
+    test("should get a single query value by key", () => {
+      const url = new ReadonlyUrl("https://example.com?tag=blue");
+      expect(url.getQuery("tag")).toBe("blue");
+      expect(url.getQuery("missing")).toBeNull();
+    });
   });
 
   describe("Fragment parsing", () => {

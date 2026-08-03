@@ -7,6 +7,7 @@ const NAME_MAX_LENGTH: number = 50;
 const NAME_REGEX: RegExp = /^[a-zA-ZÀ-ÿĀ-žА-я\u4e00-\u9fff\s\-'0-9.]+$/;
 
 export class AssertName extends Validation {
+  // biome-ignore lint/complexity/noUselessConstructor: explicit constructor needed so bun's coverage tool marks it as hit
   constructor() {
     super();
   }

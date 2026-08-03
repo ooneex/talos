@@ -82,6 +82,18 @@ describe("ClerkAuthMiddleware", () => {
     }
   });
 
+  describe("getCurrentUser", () => {
+    test("should delegate to ClerkAuth", async () => {
+      const clerkUser = createMockClerkUser();
+      mockClerkAuth.getCurrentUser.mockResolvedValueOnce(clerkUser);
+
+      const result = await middleware.getCurrentUser("delegated-token");
+
+      expect(result).toBe(clerkUser);
+      expect(mockClerkAuth.getCurrentUser).toHaveBeenCalledWith("delegated-token");
+    });
+  });
+
   describe("Token validation", () => {
     test("should throw AuthException when bearer token is missing and roles require auth", async () => {
       const context = createMockContext(null, { roles: ["ROLE_USER"] });

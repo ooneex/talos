@@ -8,6 +8,9 @@ export abstract class Storage implements IStorage {
   public abstract getOptions(): S3Options;
   protected abstract bucket: string;
 
+  // biome-ignore lint/complexity/noUselessConstructor: explicit constructor is required for Bun coverage
+  public constructor() {}
+
   public getBucket(): string {
     return this.bucket;
   }
@@ -119,10 +122,14 @@ export abstract class Storage implements IStorage {
 
   protected getClient(): Bun.S3Client {
     if (!this.client) {
-      this.client = new Bun.S3Client(this.getOptions());
+      this.client = this.createClient();
     }
 
     return this.client;
+  }
+
+  protected createClient(): Bun.S3Client {
+    return new Bun.S3Client(this.getOptions());
   }
 
   protected getS3File(path: string): S3File {

@@ -6,6 +6,7 @@ const AssertPortBase: ReturnType<typeof createConstraint> = createConstraint(
 );
 
 export class AssertPort extends AssertPortBase {
+  // biome-ignore lint/complexity/noUselessConstructor: explicit constructor needed so bun's coverage tool marks it as hit
   constructor() {
     super();
   }

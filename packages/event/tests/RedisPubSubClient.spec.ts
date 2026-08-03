@@ -293,6 +293,26 @@ describe("RedisPubSubClient", () => {
       expect(mockSubscriberClient.subscribe).toHaveBeenCalledTimes(2);
     });
 
+    test("should parse subscribed messages before invoking the handler", async () => {
+      const client = new RedisPubSubClient<TestData>(new AppEnv(), {
+        connectionString: "redis://localhost:6379",
+      });
+
+      const handler = mock(() => {});
+      await client.subscribe("test-channel", handler);
+
+      const subscriberHandler = mockSubscriberClient.subscribe.mock.calls[0]?.[1] as
+        | ((message: string, channel: string) => void)
+        | undefined;
+
+      subscriberHandler?.(JSON.stringify({ message: "hello", count: 42 }), "test-channel");
+
+      expect(handler).toHaveBeenCalledWith({
+        data: { message: "hello", count: 42 },
+        channel: "test-channel",
+      });
+    });
+
     test("should throw EventException on subscribe error", async () => {
       mockRedisClient.duplicate.mockRejectedValue(new Error("Duplicate failed"));
 

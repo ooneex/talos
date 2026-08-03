@@ -240,6 +240,70 @@ describe("routeConfigToTypeString", () => {
     expect(result).toMatch(/\n\}$/);
     expect(result).toContain(";\n  ");
   });
+
+  test("converts unknown or empty schemas to never", () => {
+    const unknownSchemaAssert = {
+      toJsonSchema: (): Record<string, unknown> => ({}),
+    };
+
+    const result = routeConfigToTypeString({
+      response: unknownSchemaAssert,
+      params: {
+        id: unknownSchemaAssert,
+      },
+      payload: unknownSchemaAssert,
+      queries: unknownSchemaAssert,
+    } as never);
+
+    expect(result).toContain("response: never");
+    expect(result).toContain("params: { id: never }");
+    expect(result).toContain("payload: never");
+    expect(result).toContain("queries: never");
+  });
+
+  test("converts explicit unknown schemas to never", () => {
+    const explicitUnknownSchemaAssert = {
+      toJsonSchema: (): Record<string, unknown> => ({
+        type: "unknown",
+      }),
+    };
+
+    const result = routeConfigToTypeString({
+      response: explicitUnknownSchemaAssert,
+    } as never);
+
+    expect(result).toContain("response: never");
+  });
+
+  test("falls back to never when schema conversion throws", () => {
+    const brokenSchemaAssert = {
+      toJsonSchema: (): Record<string, unknown> => {
+        throw new Error("schema conversion failed");
+      },
+    };
+
+    const result = routeConfigToTypeString({
+      response: brokenSchemaAssert,
+      params: {
+        id: brokenSchemaAssert,
+      },
+      payload: brokenSchemaAssert,
+      queries: brokenSchemaAssert,
+    } as never);
+
+    expect(result).toContain("response: never");
+    expect(result).toContain("params: { id: never }");
+    expect(result).toContain("payload: never");
+    expect(result).toContain("queries: never");
+  });
+
+  test("returns params: never when params are defined but empty", () => {
+    const result = routeConfigToTypeString({
+      params: {},
+    } as never);
+
+    expect(result).toContain("params: never");
+  });
 });
 
 describe("routeConfigToJsonDoc", () => {
@@ -837,5 +901,30 @@ describe("routeConfigToJsonDoc", () => {
     const security = result.security as Record<string, unknown>;
     expect(security.environments).toEqual([Environment.LOCAL]);
     expect(security.roles).toEqual(["ROLE_ADMIN"]);
+  });
+
+  test("falls back to an unknown schema when JSON schema conversion throws", () => {
+    const brokenSchemaAssert = {
+      toJsonSchema: (): Record<string, unknown> => {
+        throw new Error("schema conversion failed");
+      },
+    };
+
+    const config: RouteConfigType = {
+      name: "api.users.broken",
+      path: "/users",
+      method: "POST",
+      version: 1,
+      controller: MockController,
+      description: "Broken schema route",
+      isSocket: false,
+      payload: brokenSchemaAssert as never,
+    };
+
+    const result = routeConfigToJsonDoc(config);
+    const schemas = result.schemas as Record<string, unknown>;
+    const payloadSchema = schemas.payload as Record<string, unknown>;
+
+    expect(payloadSchema).toEqual({ type: "unknown" });
   });
 });

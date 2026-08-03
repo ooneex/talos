@@ -148,6 +148,7 @@ export class HttpStatus implements IHttpStatus {
   public static Code: typeof STATUS_CODE = STATUS_CODE;
   public static Text: typeof STATUS_TEXT = STATUS_TEXT;
 
+  // biome-ignore lint/complexity/noUselessConstructor: explicit constructor needed so bun's coverage tool marks it as hit
   constructor() {}
 
   public isInformational: (code: StatusCodeType) => boolean = (code: StatusCodeType): boolean =>

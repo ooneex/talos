@@ -4,6 +4,9 @@ import type { IQueue, QueueHandlerReturnType, ScalarType } from "./types";
 export abstract class Queue<T extends Record<string, ScalarType> = Record<string, ScalarType>, R = unknown>
   implements IQueue<T, R>
 {
+  // biome-ignore lint/complexity/noUselessConstructor: explicit constructor is needed for Bun function coverage
+  public constructor() {}
+
   protected abstract queue: BullQueue<T, R>;
   protected abstract worker: Worker<T, R>;
 

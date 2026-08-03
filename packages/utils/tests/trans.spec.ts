@@ -104,4 +104,9 @@ describe("has", () => {
   test("should return false when traversing through a non-object", () => {
     expect(has(dict, "user.profile.name.deeper")).toBe(false);
   });
+
+  test("should return false when traversal reaches a primitive value before the key ends", () => {
+    const invalidDict = { broken: "plain-text" } as unknown as TransDictType;
+    expect(has(invalidDict, "broken.deeper")).toBe(false);
+  });
 });

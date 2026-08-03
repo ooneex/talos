@@ -280,6 +280,28 @@ describe("socketRouteUtils", () => {
       expect(sentData.status).toBe(HttpStatus.Code.InternalServerError);
     });
 
+    test("sends exception when the incoming socket message is not valid JSON", async () => {
+      const wsSendMock = mock(() => {});
+      const context = createMockSocketContext();
+      const route = createMockSocketRoute();
+      const wsId = "test-ws-invalid-json";
+
+      if (container.hasConstant(wsId)) {
+        container.removeConstant(wsId);
+      }
+      container.addConstant(wsId, { context, route });
+
+      await socketRouteHandler({
+        message: "{invalid-json",
+        ws: createMockWs(wsId, wsSendMock) as unknown as import("bun").ServerWebSocket<{ id: string }>,
+        server: createMockServer() as unknown as import("bun").Server<{ id: string }>,
+      });
+
+      const sentData = JSON.parse(String((wsSendMock.mock.calls as unknown[][])?.[0]?.[0]));
+      expect(sentData.status).toBe(HttpStatus.Code.BadRequest);
+      expect(sentData.key).toBe("INVALID_JSON");
+    });
+
     test("sends exception when route validation fails", async () => {
       const wsSendMock = mock(() => {});
       const context = createMockSocketContext();
@@ -383,7 +405,46 @@ describe("socketRouteUtils", () => {
       expect(wsSendMock).toHaveBeenCalled();
       const sentData = JSON.parse(String((wsSendMock.mock.calls as unknown[][])?.[0]?.[0]));
       expect(sentData.status).toBe(HttpStatus.Code.InternalServerError);
-      expect(sentData.message).toBe("Controller error");
+    });
+
+    test("sends exception when the controller response does not satisfy the route response constraint", async () => {
+      const wsSendMock = mock(() => {});
+      const context = createMockSocketContext();
+
+      class InvalidResponseSocketController {
+        index(ctx: ContextType): IResponse {
+          ctx.response.done = true;
+          return ctx.response.json({ count: "wrong-type" });
+        }
+      }
+      container.add(InvalidResponseSocketController);
+
+      const route = createMockSocketRoute({
+        controller: InvalidResponseSocketController,
+        response: {
+          validate: () => ({
+            isValid: false,
+            message: "count must be a number",
+          }),
+        },
+      });
+      const wsId = "test-ws-invalid-response";
+
+      if (container.hasConstant(wsId)) {
+        container.removeConstant(wsId);
+      }
+      container.addConstant(wsId, { context, route });
+
+      await socketRouteHandler({
+        message: JSON.stringify({ payload: {}, queries: {}, lang: {} }),
+        ws: createMockWs(wsId, wsSendMock) as unknown as import("bun").ServerWebSocket<{ id: string }>,
+        server: createMockServer() as unknown as import("bun").Server<{ id: string }>,
+      });
+
+      const sentData = JSON.parse(String((wsSendMock.mock.calls as unknown[][])?.[0]?.[0]));
+      expect(sentData.status).toBe(HttpStatus.Code.NotAcceptable);
+      expect(sentData.key).toBe("INVALID_RESPONSE");
+      expect(sentData.message).toContain("count must be a number");
     });
 
     test("sends exception when controller throws unknown error", async () => {

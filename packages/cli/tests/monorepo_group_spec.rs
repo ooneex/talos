@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
+use cli::utils::{INSTALL_COMMAND, build_install_group};
 use cli::utils::{MonorepoTarget, TargetType, TaskStatus, build_group};
 
 fn target(name: &str, scripts: &[&str], workspace_deps: &[&str]) -> MonorepoTarget {
@@ -159,4 +160,19 @@ fn build_group_wires_deps_only_for_ordered_commands() {
         app_test.deps.is_empty(),
         "order-independent commands should not wire cross-package deps"
     );
+}
+
+#[test]
+fn build_install_group_creates_one_root_install_task() {
+    let root = Path::new("/repo");
+
+    let tasks = build_install_group(root);
+
+    assert_eq!(tasks.len(), 1);
+    assert_eq!(tasks[0].key, format!("root#{INSTALL_COMMAND}"));
+    assert_eq!(tasks[0].label, INSTALL_COMMAND);
+    assert_eq!(tasks[0].cwd, root);
+    assert_eq!(tasks[0].argv, vec!["bun", "install"]);
+    assert!(!tasks[0].cacheable);
+    assert_eq!(tasks[0].status, TaskStatus::Pending);
 }

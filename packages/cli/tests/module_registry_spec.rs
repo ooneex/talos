@@ -233,6 +233,41 @@ fn remove_path_alias_is_fine_when_there_is_nothing_to_remove() {
     assert!(remove_path_alias(&path, "user").is_ok());
 }
 
+#[test]
+fn add_to_shared_module_inserts_an_import_when_none_exist() {
+    let dir = TempDir::new("registry-shared-no-imports");
+    let path = dir.write(
+        "shared.module.ts",
+        "export const SharedModule = {\n  entities: [],\n};\n",
+    );
+
+    add_to_shared_module(&path, "User", "user").expect("the module registers");
+
+    let out = dir.read("shared.module.ts");
+    assert!(out.starts_with("import { UserModule }"));
+    assert!(out.contains("...UserModule.entities"));
+}
+
+#[test]
+fn add_to_app_module_leaves_unknown_shapes_alone() {
+    let dir = TempDir::new("registry-app-no-fields");
+    let path = dir.write("app.module.ts", "export const AppModule = {};\n");
+
+    add_to_app_module(&path, "User", "user").expect("the module registers");
+
+    let out = dir.read("app.module.ts");
+    assert!(out.contains(r#"import { UserModule } from "@module/user/UserModule";"#));
+    assert!(!out.contains("...UserModule.controllers"));
+}
+
+#[test]
+fn remove_path_alias_reports_invalid_json() {
+    let dir = TempDir::new("registry-alias-remove-bad");
+    let path = dir.write("tsconfig.json", "not json at all");
+
+    assert!(remove_path_alias(&path, "user").is_err());
+}
+
 // ---------------------------------------------------------------------------
 // jsonc
 // ---------------------------------------------------------------------------
@@ -256,6 +291,16 @@ fn strip_jsonc_leaves_comment_markers_inside_strings_alone() {
 
     assert!(stripped.contains("https://example.test"));
     assert!(stripped.contains("/* not a comment */"));
+}
+
+#[test]
+fn strip_jsonc_removes_trailing_commas_after_comments() {
+    let stripped =
+        strip_jsonc("{\n  \"items\": [1, 2,],\n  \"meta\": {\n    \"ok\": true,\n  },\n}\n");
+
+    let value: serde_json::Value = serde_json::from_str(&stripped).expect("valid json");
+    assert_eq!(value["items"][1], 2);
+    assert_eq!(value["meta"]["ok"], true);
 }
 
 #[test]

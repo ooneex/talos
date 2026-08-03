@@ -99,6 +99,12 @@ describe("migration cache entries", () => {
     expect(await isMigrationCached(cacheDir, "20240101120000", "xyz")).toBe(false);
   });
 
+  test("should miss when the cache entry cannot be parsed", async () => {
+    await Bun.write(join(cacheDir, "20240101120000.json"), "{invalid-json");
+
+    expect(await isMigrationCached(cacheDir, "20240101120000", "abc")).toBe(false);
+  });
+
   test("should miss after the entry is deleted", async () => {
     await writeMigrationCache(cacheDir, "20240101120000", "abc");
     await deleteMigrationCache(cacheDir, "20240101120000");

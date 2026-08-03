@@ -341,3 +341,61 @@ pub fn strip_jsonc(text: &str) -> String {
 
     cleaned
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::os::unix::fs::PermissionsExt;
+
+    #[test]
+    fn spread_into_field_returns_the_original_content_for_an_invalid_pattern() {
+        let content = "export const AppModule = {};\n";
+
+        assert_eq!(spread_into_field(content, "broken(", "UserModule"), content);
+    }
+
+    #[test]
+    fn insert_import_prepends_when_the_file_has_no_imports() {
+        let content = "export const SharedModule = {};\n";
+
+        let updated = insert_import(content, "UserModule", "@module/user/UserModule");
+
+        assert!(updated.starts_with("import { UserModule } from \"@module/user/UserModule\";"));
+        assert!(updated.ends_with(content));
+    }
+
+    #[test]
+    fn remove_spread_from_fields_drops_trailing_and_leading_entries() {
+        let content = "controllers: [...UserModule.controllers, ...BillingModule.controllers]\ncronJobs: [ ...UserModule.cronJobs ]\n";
+
+        let updated =
+            remove_spread_from_fields(content, "UserModule", &["controllers", "cronJobs"]);
+
+        assert!(!updated.contains("UserModule.controllers"));
+        assert!(!updated.contains("UserModule.cronJobs"));
+        assert!(updated.contains("BillingModule.controllers"));
+    }
+
+    #[test]
+    fn add_to_app_module_surfaces_write_failures() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let path = tmp.path().join("app.module.ts");
+        fs::write(
+            &path,
+            "import { Module } from \"@talosjs/module\";\n\nexport const AppModule = {\n  controllers: [],\n  middlewares: [],\n  cronJobs: [],\n  events: [],\n};\n",
+        )
+        .expect("module file");
+
+        let dir_permissions = fs::Permissions::from_mode(0o500);
+        let file_permissions = fs::Permissions::from_mode(0o400);
+        fs::set_permissions(tmp.path(), dir_permissions).expect("dir permissions");
+        fs::set_permissions(&path, file_permissions).expect("file permissions");
+
+        let result = add_to_app_module(&path, "User", "user");
+
+        fs::set_permissions(tmp.path(), fs::Permissions::from_mode(0o700)).expect("restore dir");
+        fs::set_permissions(&path, fs::Permissions::from_mode(0o600)).expect("restore file");
+
+        assert!(result.is_err());
+    }
+}

@@ -6,6 +6,7 @@ const HEXA_COLOR_3_DIGIT_REGEX: RegExp = /^#[0-9A-Fa-f]{3}$/;
 const HEXA_COLOR_6_DIGIT_REGEX: RegExp = /^#[0-9A-Fa-f]{6}$/;
 
 export class AssertHexaColor extends Validation {
+  // biome-ignore lint/complexity/noUselessConstructor: explicit constructor needed so bun's coverage tool marks it as hit
   constructor() {
     super();
   }

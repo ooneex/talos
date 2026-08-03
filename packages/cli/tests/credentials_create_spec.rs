@@ -1,5 +1,8 @@
 use clap::Parser;
-use cli::commands::credentials_create::{CredentialsCreateArgs, CredentialsProvider, PROVIDERS};
+use cli::commands::credentials_create::{
+    CredentialsCreateArgs, CredentialsProvider, PROVIDERS, run,
+};
+use cli::utils::read_credentials;
 
 #[derive(Parser)]
 struct TestCli {
@@ -82,5 +85,66 @@ fn every_provider_has_a_unique_slug_and_a_hint() {
         PROVIDERS
             .iter()
             .all(|provider| provider.hint().contains("https://"))
+    );
+}
+
+#[test]
+fn every_provider_has_a_non_empty_label() {
+    assert!(
+        PROVIDERS
+            .iter()
+            .all(|provider| !provider.label().is_empty())
+    );
+}
+
+#[test]
+fn credentials_create_writes_a_profile_when_the_jira_flags_are_given() {
+    let home = tempfile::tempdir().expect("tempdir");
+    let previous = std::env::var_os("HOME");
+    unsafe {
+        std::env::set_var("HOME", home.path());
+    }
+
+    run(&CredentialsCreateArgs {
+        provider: Some(CredentialsProvider::Jira),
+        base_url: Some("https://acme.atlassian.net".to_string()),
+        email: Some("dev@acme.com".to_string()),
+        token: Some("secret".to_string()),
+        client_id: None,
+        client_secret: None,
+        client_key: None,
+        access_token: None,
+        app_id: None,
+        app_secret: None,
+        page_id: None,
+        phone_number_id: None,
+        application_id: None,
+        bot_token: None,
+        username: None,
+        password: None,
+        silent: true,
+    });
+
+    let credentials = read_credentials("jira.yml");
+
+    match previous {
+        Some(value) => unsafe {
+            std::env::set_var("HOME", value);
+        },
+        None => unsafe {
+            std::env::remove_var("HOME");
+        },
+    }
+
+    assert_eq!(
+        credentials,
+        Some(vec![
+            (
+                "baseUrl".to_string(),
+                "https://acme.atlassian.net".to_string(),
+            ),
+            ("email".to_string(), "dev@acme.com".to_string()),
+            ("token".to_string(), "secret".to_string()),
+        ])
     );
 }

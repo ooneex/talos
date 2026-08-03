@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { Second } from "@/index";
 import type { TimeFormat } from "@/decompose";
+import { Second } from "@/index";
 
 describe("decomposeSeconds unsupported format", () => {
   test("should throw when given an unsupported format", () => {

@@ -742,6 +742,33 @@ describe("run", () => {
       expect(args[0].labels).toEqual(["bug", "frontend"]);
     });
 
+    test("should flatten repeated and comma-separated agents values", async () => {
+      const runFn = mock(async () => {});
+
+      class AgentsCommand implements ICommand {
+        public run = runFn;
+        public getName(): string {
+          return "agents-cmd";
+        }
+        public getDescription(): string {
+          return "agents command";
+        }
+      }
+
+      container.add(AgentsCommand);
+      COMMANDS_CONTAINER.push(AgentsCommand);
+
+      mockParseArgsResult = {
+        values: { agents: [".claude,.codex", ".cursor"] },
+        positionals: ["bun", "script.ts", "agents-cmd"],
+      };
+
+      await run();
+
+      const args = runFn.mock.calls[0] as unknown as [Record<string, unknown>];
+      expect(args[0].agents).toEqual([".claude", ".codex", ".cursor"]);
+    });
+
     test("should pass channel and destination options", async () => {
       const runFn = mock(async () => {});
 

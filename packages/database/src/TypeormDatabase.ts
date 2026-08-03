@@ -5,6 +5,9 @@ export abstract class TypeormDatabase implements ITypeormDatabase {
   protected source: DataSource;
   public abstract getSource(database?: string): DataSource;
 
+  // biome-ignore lint/complexity/noUselessConstructor: explicit constructor is required for Bun coverage
+  public constructor() {}
+
   public async open<Entity extends ObjectLiteral>(
     entity: EntityTarget<Entity>,
     database?: string,

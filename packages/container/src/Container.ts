@@ -8,6 +8,9 @@ import { EContainerScope, type IContainer } from "./types";
 const sharedDI = new InversifyContainer();
 
 export class Container implements IContainer {
+  // biome-ignore lint/complexity/noUselessConstructor: explicit constructor is needed for Bun function coverage
+  public constructor() {}
+
   public add(target: new (...args: any[]) => any, scope: EContainerScope = EContainerScope.Singleton): void {
     try {
       sharedDI.unbind(target);

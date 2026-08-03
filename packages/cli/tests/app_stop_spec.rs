@@ -161,3 +161,40 @@ fn app_stop_exits_when_no_matching_docker_services_exist() {
     assert!(!output.status.success());
     assert!(text(&output).contains("No matching Docker services to stop"));
 }
+
+#[test]
+fn app_stop_falls_back_to_app_when_package_name_is_missing() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    std::fs::create_dir_all(dir.path().join("modules/app")).expect("app dir");
+    std::fs::create_dir_all(dir.path().join("modules/api")).expect("api dir");
+    std::fs::write(dir.path().join("modules/app/package.json"), "{}").expect("package");
+    std::fs::write(dir.path().join("modules/app/app.yml"), "type: \"api\"\n").expect("yml");
+    std::fs::write(
+        dir.path().join("modules/app/docker-compose.yml"),
+        "services: {}\n",
+    )
+    .expect("compose");
+    std::fs::write(dir.path().join("modules/api/api.yml"), "type: \"api\"\n").expect("api yml");
+    let bin = dir.path().join("bin");
+    std::fs::create_dir_all(&bin).expect("bin");
+    write_executable(
+        &bin.join("docker"),
+        "#!/bin/sh\nif [ \"$1\" = \"--version\" ]; then exit 0; fi\nexit 0\n",
+    );
+
+    let output = run_talos(
+        dir.path(),
+        &bin,
+        &[
+            "app:stop",
+            "--cwd",
+            dir.path().to_str().expect("utf8"),
+            "--modules",
+            "api",
+        ],
+    );
+
+    let output_text = text(&output);
+    assert!(output.status.success(), "{output_text}");
+    assert!(output_text.contains("Stopping Docker services for app"));
+}

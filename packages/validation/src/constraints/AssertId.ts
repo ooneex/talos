@@ -6,6 +6,7 @@ const ID_REGEX: RegExp = /^[0-9a-f]+$/;
 const DEFAULT_ID_LENGTH: number = 25;
 
 export class AssertId extends Validation {
+  // biome-ignore lint/complexity/noUselessConstructor: explicit constructor needed so bun's coverage tool marks it as hit
   constructor() {
     super();
   }

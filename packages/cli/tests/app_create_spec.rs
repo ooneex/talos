@@ -2,7 +2,7 @@ use std::fs;
 use std::process::{Command, Output};
 
 use clap::Parser;
-use cli::commands::app_create::{AppCreateArgs, CI_PROVIDERS, write_ci_cd_files, write_named};
+use cli::commands::app_create::{AppCreateArgs, CI_PROVIDERS, run, write_ci_cd_files, write_named};
 use tempfile::tempdir;
 
 #[derive(Parser)]
@@ -33,11 +33,19 @@ fn make_templates_dir() -> tempfile::TempDir {
 
 #[test]
 fn app_create_args_parses_all_flags() {
-    let cli = TestCli::try_parse_from(["talos", "--name", "MyApi", "--destination", "./my-api"])
-        .expect("valid arguments should parse");
+    let cli = TestCli::try_parse_from([
+        "talos",
+        "--name",
+        "MyApi",
+        "--destination",
+        "./my-api",
+        "--no-cache",
+    ])
+    .expect("valid arguments should parse");
 
     assert_eq!(cli.args.name.as_deref(), Some("MyApi"));
     assert_eq!(cli.args.destination.as_deref(), Some("./my-api"));
+    assert!(cli.args.no_cache);
 }
 
 #[test]
@@ -46,6 +54,7 @@ fn app_create_args_defaults_are_none() {
 
     assert!(cli.args.name.is_none());
     assert!(cli.args.destination.is_none());
+    assert!(!cli.args.no_cache);
 }
 
 #[test]
@@ -207,4 +216,21 @@ fn app_create_scaffolds_an_api_project_from_the_cached_skeleton() {
     assert!(output_text.contains("my-api created successfully"));
     assert!(output_text.contains("talos app:start"));
     assert!(output_text.contains("talos app:stop"));
+}
+
+#[test]
+fn app_create_run_returns_cleanly_when_the_name_cannot_be_resolved() {
+    let dir = tempdir().unwrap();
+
+    run(&AppCreateArgs {
+        name: None,
+        destination: Some(dir.path().join("unused").display().to_string()),
+        no_cache: false,
+    });
+
+    assert_eq!(
+        fs::read_dir(dir.path()).unwrap().count(),
+        0,
+        "no project should be scaffolded when the prompt is unavailable"
+    );
 }

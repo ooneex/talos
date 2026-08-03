@@ -17,6 +17,22 @@ class TestTranslation extends Translation {
   }
 }
 
+class MissingLocaleTranslation extends Translation {
+  public getName(): string {
+    return "missing-locale";
+  }
+
+  public getDict(): TranslationDictType {
+    return {
+      validation: {
+        locale_only: {
+          fr: "Bonjour",
+        },
+      },
+    };
+  }
+}
+
 describe("Translation", () => {
   const translation = new TestTranslation();
 
@@ -104,6 +120,21 @@ describe("Translation", () => {
 
     test("trans() should throw for a missing key", () => {
       expect(() => translation.trans("validation.does_not_exist")).toThrow(TranslationException);
+    });
+
+    test("trans() should throw when a key exists but neither the locale nor fallback locale exists", () => {
+      const missingLocaleTranslation = new MissingLocaleTranslation();
+
+      expect(() => missingLocaleTranslation.trans("validation.locale_only", { lang: "es" })).toThrow(
+        new TranslationException(
+          'Translation "validation.locale_only" is missing for locale "es" and fallback "en"',
+          "LOCALE_NOT_FOUND",
+          {
+            key: "validation.locale_only",
+            lang: "es",
+          },
+        ),
+      );
     });
   });
 });

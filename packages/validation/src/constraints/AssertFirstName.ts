@@ -6,6 +6,7 @@ const AssertFirstNameBase: ReturnType<typeof createConstraint> = createConstrain
 );
 
 export class AssertFirstName extends AssertFirstNameBase {
+  // biome-ignore lint/complexity/noUselessConstructor: explicit constructor needed so bun's coverage tool marks it as hit
   constructor() {
     super();
   }

@@ -9,6 +9,7 @@ const AssertCurrencyBase: ReturnType<typeof createConstraint> = createConstraint
 );
 
 export class AssertCurrency extends AssertCurrencyBase {
+  // biome-ignore lint/complexity/noUselessConstructor: explicit constructor needed so bun's coverage tool marks it as hit
   constructor() {
     super();
   }

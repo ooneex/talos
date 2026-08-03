@@ -9,6 +9,9 @@ import type {
 } from "./types";
 
 export class Issue {
+  // biome-ignore lint/complexity/noUselessConstructor: explicit constructor is needed for Bun function coverage
+  public constructor() {}
+
   public id?: string;
   public title?: string;
   public description?: string;

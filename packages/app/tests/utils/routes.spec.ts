@@ -186,6 +186,225 @@ describe("formatHttpRoutes permission", () => {
   });
 });
 
+describe("formatHttpRoutes middleware and access control", () => {
+  const createReq = (url: string): BunRequest =>
+    ({
+      cookies: { get: mock(() => null), set: mock(() => {}) },
+      headers: new Headers(),
+      method: "GET",
+      url,
+      params: {},
+      json: mock(() => Promise.resolve({})),
+      formData: mock(() => Promise.resolve(new FormData())),
+    }) as unknown as BunRequest;
+
+  const createServer = (): Server<unknown> =>
+    ({ requestIP: mock(() => ({ address: "127.0.0.1" })) }) as unknown as Server<unknown>;
+
+  test("returns an exception response when a middleware throws", async () => {
+    container.addConstant("logger", createMockLogger());
+    container.add(AppEnv);
+
+    const indexMock = mock(() => new HttpResponse().json({ ok: true }));
+
+    class ThrowingMiddleware {
+      async handler(): Promise<never> {
+        throw new Error("Middleware exploded");
+      }
+    }
+    container.add(ThrowingMiddleware);
+
+    class ThrowingMiddlewareController {
+      index = indexMock;
+    }
+    container.add(ThrowingMiddlewareController);
+
+    const handler = formatHttpRoutes(
+      new Map([
+        [
+          "/middleware-error",
+          [
+            createMockRoute({
+              path: "/middleware-error",
+              method: "GET",
+              controller: ThrowingMiddlewareController,
+            } as Partial<RouteConfigType>),
+          ],
+        ],
+      ]),
+      [ThrowingMiddleware as unknown as import("@talosjs/middleware").MiddlewareClassType],
+    )["/v1/middleware-error"]?.GET;
+
+    // biome-ignore lint/complexity/noBannedTypes: trust me
+    const response = await (handler as Function)(createReq("http://localhost/v1/middleware-error"), createServer());
+    const body = await response.json();
+
+    expect(response.status).toBe(HttpStatus.Code.InternalServerError);
+    expect(body.message).toBe("Middleware exploded");
+    expect(indexMock).not.toHaveBeenCalled();
+
+    container.removeConstant("logger");
+  });
+
+  test("returns forbidden when the authenticated user is not allowed in the current environment", async () => {
+    container.addConstant("logger", createMockLogger());
+    container.add(AppEnv);
+
+    const indexMock = mock(() => new HttpResponse().json({ ok: true }));
+
+    class RestrictedUsersMiddleware {
+      async handler(context: import("@talosjs/controller").ContextType) {
+        context.user = {
+          id: "user-1",
+          email: "blocked@example.com",
+          roles: ["ROLE_USER"],
+        } as unknown as typeof context.user;
+        context.env = {
+          ...context.env,
+          APP_ENV: "staging",
+          STAGING_ALLOWED_USERS: ["allowed@example.com"],
+        } as typeof context.env;
+
+        return context;
+      }
+    }
+    container.add(RestrictedUsersMiddleware);
+
+    class RestrictedUsersController {
+      index = indexMock;
+    }
+    container.add(RestrictedUsersController);
+
+    const handler = formatHttpRoutes(
+      new Map([
+        [
+          "/allowed-users",
+          [
+            createMockRoute({
+              path: "/allowed-users",
+              method: "GET",
+              controller: RestrictedUsersController,
+            } as Partial<RouteConfigType>),
+          ],
+        ],
+      ]),
+      [RestrictedUsersMiddleware as unknown as import("@talosjs/middleware").MiddlewareClassType],
+    )["/v1/allowed-users"]?.GET;
+
+    // biome-ignore lint/complexity/noBannedTypes: trust me
+    const response = await (handler as Function)(createReq("http://localhost/v1/allowed-users"), createServer());
+    const body = await response.json();
+
+    expect(response.status).toBe(HttpStatus.Code.Forbidden);
+    expect(body.key).toBe("USER_NOT_ALLOWED");
+    expect(body.message).toContain('User "blocked@example.com" is not allowed');
+    expect(indexMock).not.toHaveBeenCalled();
+
+    container.removeConstant("logger");
+  });
+
+  test("returns forbidden when permission.build().check denies the request", async () => {
+    container.addConstant("logger", createMockLogger());
+    container.add(AppEnv);
+
+    const indexMock = mock(() => new HttpResponse().json({ ok: true }));
+
+    const checkMock = mock(() => Promise.resolve(false));
+    const buildMock = mock(() => Promise.resolve({ check: checkMock }));
+    const setUserPermissionsMock = mock(() => Promise.resolve({ build: buildMock }));
+    const allowMock = mock(() => Promise.resolve({ setUserPermissions: setUserPermissionsMock }));
+
+    class DeniedPermission {
+      allow = allowMock;
+    }
+    container.add(DeniedPermission);
+
+    class DeniedPermissionController {
+      index = indexMock;
+    }
+    container.add(DeniedPermissionController);
+
+    const handler = formatHttpRoutes(
+      new Map([
+        [
+          "/permission-denied",
+          [
+            createMockRoute({
+              path: "/permission-denied",
+              method: "GET",
+              controller: DeniedPermissionController,
+              permission: DeniedPermission as unknown as PermissionClassType,
+            } as Partial<RouteConfigType>),
+          ],
+        ],
+      ]),
+    )["/v1/permission-denied"]?.GET;
+
+    // biome-ignore lint/complexity/noBannedTypes: trust me
+    const response = await (handler as Function)(createReq("http://localhost/v1/permission-denied"), createServer());
+    const body = await response.json();
+
+    expect(response.status).toBe(HttpStatus.Code.Forbidden);
+    expect(body.key).toBe("PERMISSION_DENIED");
+    expect(allowMock).toHaveBeenCalledTimes(1);
+    expect(setUserPermissionsMock).toHaveBeenCalledTimes(1);
+    expect(buildMock).toHaveBeenCalledTimes(1);
+    expect(checkMock).toHaveBeenCalledTimes(1);
+    expect(indexMock).not.toHaveBeenCalled();
+
+    container.removeConstant("logger");
+  });
+
+  test("allows the request when permission.build().check grants access", async () => {
+    container.addConstant("logger", createMockLogger());
+    container.add(AppEnv);
+
+    const indexMock = mock(() => new HttpResponse().json({ ok: true }));
+
+    const checkMock = mock(() => Promise.resolve(true));
+    const buildMock = mock(() => Promise.resolve({ check: checkMock }));
+    const setUserPermissionsMock = mock(() => Promise.resolve({ build: buildMock }));
+    const allowMock = mock(() => Promise.resolve({ setUserPermissions: setUserPermissionsMock }));
+
+    class AllowedPermission {
+      allow = allowMock;
+    }
+    container.add(AllowedPermission);
+
+    class AllowedPermissionController {
+      index = indexMock;
+    }
+    container.add(AllowedPermissionController);
+
+    const handler = formatHttpRoutes(
+      new Map([
+        [
+          "/permission-allowed",
+          [
+            createMockRoute({
+              path: "/permission-allowed",
+              method: "GET",
+              controller: AllowedPermissionController,
+              permission: AllowedPermission as unknown as PermissionClassType,
+            } as Partial<RouteConfigType>),
+          ],
+        ],
+      ]),
+    )["/v1/permission-allowed"]?.GET;
+
+    // biome-ignore lint/complexity/noBannedTypes: trust me
+    const response = await (handler as Function)(createReq("http://localhost/v1/permission-allowed"), createServer());
+    const body = await response.json();
+
+    expect(response.status).toBe(HttpStatus.Code.OK);
+    expect(body.data.ok).toBe(true);
+    expect(indexMock).toHaveBeenCalledTimes(1);
+    expect(checkMock).toHaveBeenCalledTimes(1);
+
+    container.removeConstant("logger");
+  });
+});
+
 describe("formatHttpRoutes feature flag", () => {
   const setupConstants = () => {
     container.addConstant("logger", createMockLogger());

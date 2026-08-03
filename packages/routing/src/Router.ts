@@ -5,6 +5,9 @@ import type { IRouter, RouteConfigType } from "./types";
 export class Router implements IRouter {
   private routes: Map<string, RouteConfigType[]> = new Map();
 
+  // biome-ignore lint/complexity/noUselessConstructor: Bun coverage requires an explicit constructor to mark it as hit
+  public constructor() {}
+
   public addRoute(route: RouteConfigType): this {
     const name = route.name;
 

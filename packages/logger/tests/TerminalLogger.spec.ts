@@ -1,4 +1,4 @@
-import { describe, expect, mock, test } from "bun:test";
+import { describe, expect, mock, spyOn, test } from "bun:test";
 import type { IException } from "@talosjs/exception";
 import { TerminalLogger } from "@/TerminalLogger";
 
@@ -212,6 +212,19 @@ describe("TerminalLogger", () => {
   });
 
   describe("colorizeText (tested through public methods)", () => {
+    test("should handle Bun.color throwing gracefully", () => {
+      const logger = new TerminalLogger();
+      const colorSpy = spyOn(Bun, "color").mockImplementation(() => {
+        throw new Error("color failure");
+      });
+
+      try {
+        expect(() => logger.info("Test", { key: "value" })).not.toThrow();
+      } finally {
+        colorSpy.mockRestore();
+      }
+    });
+
     test("should handle invalid color gracefully", () => {
       const logger = new TerminalLogger();
       // Data values trigger colorizeText with various colors

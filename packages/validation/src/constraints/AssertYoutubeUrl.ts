@@ -8,6 +8,7 @@ const YOUTUBE_URL_PATTERNS: RegExp[] = [
 ];
 
 export class AssertYoutubeUrl extends Validation {
+  // biome-ignore lint/complexity/noUselessConstructor: explicit constructor needed so bun's coverage tool marks it as hit
   constructor() {
     super();
   }

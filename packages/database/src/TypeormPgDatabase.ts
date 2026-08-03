@@ -1,3 +1,5 @@
+import { AppEnv } from "@talosjs/app-env";
+import { inject } from "@talosjs/container";
 import { DataSource } from "typeorm";
 import { DatabaseException } from "./DatabaseException";
 import { decorator } from "./decorators";
@@ -5,8 +7,16 @@ import { TypeormDatabase } from "./TypeormDatabase";
 
 @decorator.database()
 export class TypeormPgDatabase extends TypeormDatabase {
+  public constructor(@inject(AppEnv) private readonly env: AppEnv = new AppEnv()) {
+    super();
+  }
+
   public getSource(_database?: string): DataSource {
-    const url = "";
+    if (this.source) {
+      return this.source;
+    }
+
+    const url = this.env.DATABASE_URL;
 
     if (!url) {
       throw new DatabaseException(

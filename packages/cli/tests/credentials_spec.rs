@@ -168,3 +168,35 @@ fn save_credentials_reports_a_failed_write() {
         assert!(saved.is_none());
     });
 }
+
+#[test]
+fn save_credentials_with_feedback_still_returns_the_written_path() {
+    with_temp_home(|| {
+        let path = save_credentials(
+            "loud.yml",
+            "Loud",
+            &[("token".to_string(), "secret".to_string())],
+            false,
+        )
+        .expect("save");
+
+        assert!(path.exists());
+        assert_eq!(
+            read_credentials("loud.yml"),
+            Some(vec![("token".to_string(), "secret".to_string())])
+        );
+    });
+}
+
+#[test]
+fn read_credentials_tolerates_malformed_yaml_by_returning_no_entries() {
+    with_temp_home(|| {
+        let path = std::path::PathBuf::from(std::env::var("HOME").expect("HOME"))
+            .join(".talos")
+            .join("credentials");
+        std::fs::create_dir_all(&path).expect("credentials dir");
+        std::fs::write(path.join("broken.yml"), "profiles: [").expect("broken yaml");
+
+        assert_eq!(read_credentials("broken.yml"), Some(Vec::new()));
+    });
+}

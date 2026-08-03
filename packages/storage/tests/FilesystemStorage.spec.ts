@@ -1,4 +1,5 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, mock, test } from "bun:test";
+import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { $ } from "bun";
 
@@ -28,9 +29,11 @@ async function rmrf(path: string): Promise<void> {
 describe("FilesystemStorage", () => {
   const testBasePath = "/tmp/filesystem-storage-test";
   const originalEnv = { ...Bun.env };
+  const testWorkspacePath = join(process.cwd(), "tests", "tmp", "filesystem-storage");
 
   beforeAll(async () => {
     await rmrf(testBasePath);
+    await rmrf(testWorkspacePath);
   });
 
   beforeEach(() => {
@@ -40,10 +43,12 @@ describe("FilesystemStorage", () => {
   afterEach(async () => {
     Bun.env.FILESYSTEM_STORAGE_PATH = originalEnv.FILESYSTEM_STORAGE_PATH;
     await rmrf(testBasePath);
+    await rmrf(testWorkspacePath);
   });
 
   afterAll(async () => {
     await rmrf(testBasePath);
+    await rmrf(testWorkspacePath);
   });
 
   describe("constructor", () => {
@@ -556,6 +561,62 @@ describe("FilesystemStorage", () => {
 
       expect(buffer).toBeInstanceOf(ArrayBuffer);
       expect(new Uint8Array(buffer)).toEqual(content);
+    });
+
+    describe("getFile", () => {
+      test("should save a bucket file to the requested output directory", async () => {
+        const storage = new FilesystemStorage(new AppEnv());
+        storage.setBucket("download-bucket");
+        await storage.put("nested/report.txt", "report content");
+
+        const outputDir = join(testWorkspacePath, "downloads");
+        const bytesWritten = await storage.getFile("nested/report.txt", { outputDir });
+
+        expect(bytesWritten).toBeGreaterThanOrEqual(0);
+        expect(await Bun.file(join(outputDir, "report.txt")).text()).toBe("report content");
+      });
+
+      test("should throw StorageException when the bucket file does not exist", async () => {
+        const storage = new FilesystemStorage(new AppEnv());
+        storage.setBucket("download-bucket");
+
+        expect(storage.getFile("missing.txt", { outputDir: join(testWorkspacePath, "missing") })).rejects.toThrow(
+          StorageException,
+        );
+        expect(storage.getFile("missing.txt", { outputDir: join(testWorkspacePath, "missing") })).rejects.toThrow(
+          "does not exist",
+        );
+      });
+
+      test("should throw StorageException when creating the output directory fails", async () => {
+        const storage = new FilesystemStorage(new AppEnv());
+        storage.setBucket("download-bucket");
+        await storage.put("nested/report.txt", "report content");
+
+        const blockingFile = join(testWorkspacePath, "not-a-directory");
+        await Bun.write(blockingFile, "block");
+
+        expect(storage.getFile("nested/report.txt", { outputDir: join(blockingFile, "child") })).rejects.toThrow(
+          StorageException,
+        );
+        expect(storage.getFile("nested/report.txt", { outputDir: join(blockingFile, "child") })).rejects.toThrow(
+          "Failed to create directory",
+        );
+      });
+
+      test("should throw StorageException when writing the output file fails", async () => {
+        const storage = new FilesystemStorage(new AppEnv());
+        storage.setBucket("download-bucket");
+        await storage.put("nested/report.txt", "report content");
+
+        const outputDir = join(testWorkspacePath, "existing-directory");
+        await mkdir(outputDir, { recursive: true });
+
+        expect(storage.getFile("nested/report.txt", { filename: "", outputDir })).rejects.toThrow(StorageException);
+        expect(storage.getFile("nested/report.txt", { filename: "", outputDir })).rejects.toThrow(
+          "Failed to save file",
+        );
+      });
     });
 
     test("should throw StorageException when file does not exist", async () => {

@@ -1,4 +1,4 @@
-import { describe, expect, mock, test } from "bun:test";
+import { describe, expect, mock, spyOn, test } from "bun:test";
 import { AppEnv } from "@talosjs/app-env";
 import { container } from "@talosjs/container";
 import type { BunRequest, Server } from "bun";
@@ -190,6 +190,34 @@ describe("buildHttpContext", () => {
     expect(context.cache).toBeDefined();
 
     cleanupContainer(["cache"]);
+  });
+
+  test("ignores optional services when container.getConstant throws", async () => {
+    setupContainer();
+
+    const originalHasConstant = container.hasConstant.bind(container);
+    const originalGetConstant = container.getConstant.bind(container);
+    const hasConstantSpy = spyOn(container, "hasConstant").mockImplementation((key: string) => {
+      return key === "cache" || originalHasConstant(key);
+    });
+    const getConstantSpy = spyOn(container, "getConstant").mockImplementation(((key: string) => {
+      if (key === "cache") {
+        throw new Error("cache unavailable");
+      }
+
+      return originalGetConstant(key);
+    }) as typeof container.getConstant);
+
+    const req = createMockReq();
+    const server = createMockServer();
+
+    const context = await buildHttpContext({ req, server });
+
+    expect(context.cache).toBeUndefined();
+
+    hasConstantSpy.mockRestore();
+    getConstantSpy.mockRestore();
+    cleanupContainer();
   });
 
   test("includes route roles when provided", async () => {

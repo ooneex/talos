@@ -1,6 +1,9 @@
 import type { IRole, RolesConfigType } from "./types";
 
 export class Role implements IRole {
+  // biome-ignore lint/complexity/noUselessConstructor: explicit constructor is required for Bun function coverage
+  public constructor() {}
+
   public hasRole(userRole: Uppercase<string>, requiredRole: Uppercase<string>, config: RolesConfigType): boolean {
     if (userRole === requiredRole) return config.hierarchy[userRole] !== undefined;
     return this.getInheritedRoles(userRole, config).includes(requiredRole);

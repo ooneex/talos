@@ -24,39 +24,33 @@ export const convertToCrontab = (cronTime: CronTimeType): string => {
   // Handle "in" prefix (one-time execution)
   if (prefix === "in") {
     const now = new Date();
+    const format = (date: Date): string =>
+      `${date.getMinutes()} ${date.getHours()} ${date.getDate()} ${date.getMonth() + 1} *`;
 
     switch (suffix) {
-      case "seconds": {
-        const futureSeconds = new Date(now.getTime() + value * 1000);
-        return `${futureSeconds.getMinutes()} ${futureSeconds.getHours()} ${futureSeconds.getDate()} ${futureSeconds.getMonth() + 1} *`;
-      }
-
-      case "minutes": {
-        const futureMinutes = new Date(now.getTime() + value * 60 * 1000);
-        return `${futureMinutes.getMinutes()} ${futureMinutes.getHours()} ${futureMinutes.getDate()} ${futureMinutes.getMonth() + 1} *`;
-      }
-
-      case "hours": {
-        const futureHours = new Date(now.getTime() + value * 60 * 60 * 1000);
-        return `${futureHours.getMinutes()} ${futureHours.getHours()} ${futureHours.getDate()} ${futureHours.getMonth() + 1} *`;
-      }
-
-      case "days": {
-        const futureDays = new Date(now.getTime() + value * 24 * 60 * 60 * 1000);
-        return `${futureDays.getMinutes()} ${futureDays.getHours()} ${futureDays.getDate()} ${futureDays.getMonth() + 1} *`;
-      }
-
       case "months": {
         const futureMonths = new Date(now);
         futureMonths.setMonth(futureMonths.getMonth() + value);
-        return `${futureMonths.getMinutes()} ${futureMonths.getHours()} ${futureMonths.getDate()} ${futureMonths.getMonth() + 1} *`;
+        return format(futureMonths);
       }
 
       case "years": {
         const futureYears = new Date(now);
         futureYears.setFullYear(futureYears.getFullYear() + value);
-        return `${futureYears.getMinutes()} ${futureYears.getHours()} ${futureYears.getDate()} ${futureYears.getMonth() + 1} *`;
+        return format(futureYears);
       }
+
+      case "seconds":
+        return format(new Date(now.getTime() + value * 1000));
+
+      case "minutes":
+        return format(new Date(now.getTime() + value * 60 * 1000));
+
+      case "hours":
+        return format(new Date(now.getTime() + value * 60 * 60 * 1000));
+
+      case "days":
+        return format(new Date(now.getTime() + value * 24 * 60 * 60 * 1000));
     }
   }
 

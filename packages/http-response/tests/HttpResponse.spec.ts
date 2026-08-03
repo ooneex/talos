@@ -438,6 +438,28 @@ describe("HttpResponse", () => {
       expect(captured).toBeInstanceOf(AbortSignal);
     });
 
+    test("should abort the producer signal when the stream is cancelled", async () => {
+      let resolveSignal: ((signal: AbortSignal) => void) | null = null;
+      const signalPromise = new Promise<AbortSignal>((resolve) => {
+        resolveSignal = resolve;
+      });
+
+      response.stream(async (writer) => {
+        resolveSignal?.(writer.signal);
+        await new Promise(() => {});
+      });
+
+      const webResponse = response.get();
+      const reader = webResponse.body?.getReader();
+      const signal = await signalPromise;
+
+      expect(signal.aborted).toBe(false);
+
+      await reader?.cancel();
+
+      expect(signal.aborted).toBe(true);
+    });
+
     test("should not be a stream after switching to json", () => {
       response.stream(createStream(["hello"]));
       expect(response.isStream()).toBe(true);

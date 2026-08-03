@@ -134,6 +134,32 @@ describe("LinearService", () => {
       expect(service.createIssue({ title: "My Issue" })).rejects.toBeInstanceOf(LinearException);
     });
 
+    test("should forward label ids when labels are provided", async () => {
+      let receivedInput: Record<string, unknown> | undefined;
+
+      mock.module("@linear/sdk", () => ({
+        LinearClient: class {
+          createIssue = async (input: Record<string, unknown>) => {
+            receivedInput = input;
+            return { issue: Promise.resolve(mockIssue) };
+          };
+        },
+      }));
+
+      const svc = new LinearService({} as unknown as AppEnv, { apiKey: "test-key" });
+      await svc.createIssue({
+        title: "New Issue",
+        team: { id: "team-1", name: "Engineering", key: "ENG" },
+        labels: [
+          { id: "label-1", name: "Bug", color: "#FF0000" },
+          { name: "Missing id", color: "#00FF00" },
+          { id: "label-2", name: "Feature", color: "#0000FF" },
+        ],
+      });
+
+      expect(receivedInput).toMatchObject({ labelIds: ["label-1", "label-2"] });
+    });
+
     test("should throw when issue creation returns no data", async () => {
       mock.module("@linear/sdk", () => ({
         LinearClient: class {
@@ -171,6 +197,30 @@ describe("LinearService", () => {
 
       const svc = new LinearService({} as unknown as AppEnv, { apiKey: "test-key" });
       expect(svc.updateIssue("issue-1", { title: "Updated" })).rejects.toBeInstanceOf(LinearException);
+    });
+
+    test("should forward label ids when updating labels", async () => {
+      let receivedInput: Record<string, unknown> | undefined;
+
+      mock.module("@linear/sdk", () => ({
+        LinearClient: class {
+          updateIssue = async (_id: string, input: Record<string, unknown>) => {
+            receivedInput = input;
+            return { issue: Promise.resolve(mockIssue) };
+          };
+        },
+      }));
+
+      const svc = new LinearService({} as unknown as AppEnv, { apiKey: "test-key" });
+      await svc.updateIssue("issue-1", {
+        labels: [
+          { id: "label-1", name: "Bug", color: "#FF0000" },
+          { name: "Missing id", color: "#00FF00" },
+          { id: "label-2", name: "Feature", color: "#0000FF" },
+        ],
+      });
+
+      expect(receivedInput).toMatchObject({ labelIds: ["label-1", "label-2"] });
     });
   });
 

@@ -91,6 +91,41 @@ fn exposes_the_manual_upgrade_command() {
     }
 }
 
+#[test]
+fn upgrade_commands_honor_the_override_urls() {
+    let _guard = ENV_GUARD.lock().unwrap_or_else(|error| error.into_inner());
+    unsafe {
+        std::env::set_var("TALOS_INSTALL_SH_URL", "https://example.test/install.sh");
+        std::env::set_var("TALOS_INSTALL_PS1_URL", "https://example.test/install.ps1");
+    }
+
+    let command = build_install_command(std::path::Path::new("."));
+    let manual = manual_install_command();
+
+    unsafe {
+        std::env::remove_var("TALOS_INSTALL_SH_URL");
+        std::env::remove_var("TALOS_INSTALL_PS1_URL");
+    }
+
+    let args: Vec<String> = command
+        .get_args()
+        .map(|arg| arg.to_string_lossy().to_string())
+        .collect();
+    if cfg!(windows) {
+        assert!(
+            args.iter()
+                .any(|arg| arg.contains("example.test/install.ps1"))
+        );
+        assert!(manual.contains("example.test/install.ps1"));
+    } else {
+        assert!(
+            args.iter()
+                .any(|arg| arg.contains("example.test/install.sh"))
+        );
+        assert!(manual.contains("example.test/install.sh"));
+    }
+}
+
 fn talos(args: &[&str], envs: &[(&str, &str)]) -> Output {
     let mut command = Command::new(env!("CARGO_BIN_EXE_talos"));
     command.args(args).env("NO_COLOR", "1");

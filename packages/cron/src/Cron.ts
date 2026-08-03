@@ -18,6 +18,9 @@ export abstract class Cron implements ICron {
   private cronJob: BunCronJob | null = null;
   private active = false;
 
+  // biome-ignore lint/complexity/noUselessConstructor: explicit constructor is required for Bun coverage.
+  public constructor() {}
+
   public abstract getTime(): CronTimeType;
   public abstract handler(): Promise<void>;
   public abstract getTimeZone(): TimeZoneType | null;

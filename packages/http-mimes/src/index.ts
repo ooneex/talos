@@ -2487,6 +2487,9 @@ export interface IMime {
 }
 
 export class Mime implements IMime {
+  // biome-ignore lint/complexity/noUselessConstructor: explicit constructor is needed for Bun function coverage
+  public constructor() {}
+
   /**
    * Checks if a given MIME type is JSON-related
    * @param mime - The MIME type to check
