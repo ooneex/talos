@@ -118,3 +118,93 @@ pub fn run(args: &ModuleRemoveArgs) {
         crate::utils::success(format!("modules/{kebab_name} removed successfully"));
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn read_module_type_reads_the_declared_type() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        std::fs::write(
+            dir.path().join("billing.yml"),
+            "name: \"billing\"\ntype: \"microservice\"\n",
+        )
+        .expect("write");
+
+        assert_eq!(
+            read_module_type(dir.path(), "billing").as_deref(),
+            Some("microservice")
+        );
+    }
+
+    #[test]
+    fn remove_from_app_yml_removes_the_module_block_and_extra_blank_lines() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let app_yml = dir.path().join("app.yml");
+        std::fs::write(
+            &app_yml,
+            "modules:\n  - name: \"billing\"\n    source: \"modules/billing\"\n\n  - name: \"kept\"\n",
+        )
+        .expect("write");
+
+        remove_from_app_yml(&app_yml, "billing");
+
+        let content = std::fs::read_to_string(app_yml).expect("read");
+        assert!(!content.contains("billing"));
+        assert!(content.contains("kept"));
+        assert!(!content.contains("\n\n\n"));
+    }
+
+    #[test]
+    fn run_removes_a_module_without_prompting_when_silent() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let root = dir.path();
+        std::fs::create_dir_all(root.join("modules/billing/src")).expect("billing dir");
+        std::fs::create_dir_all(root.join("modules/app/src")).expect("app dir");
+        std::fs::create_dir_all(root.join("modules/shared/src")).expect("shared dir");
+        std::fs::write(
+            root.join("modules/billing/package.json"),
+            "{ \"name\": \"@module/billing\" }\n",
+        )
+        .expect("package");
+        std::fs::write(
+            root.join("modules/billing/billing.yml"),
+            "type: \"module\"\n",
+        )
+        .expect("yml");
+        std::fs::write(
+            root.join("modules/app/src/AppModule.ts"),
+            "import { BillingModule } from \"@module/billing/BillingModule\";\n\nexport const AppModule = {\n  controllers: [\n    ...BillingModule.controllers,\n  ],\n  middlewares: [],\n  cronJobs: [],\n  events: [],\n};\n",
+        )
+        .expect("app module");
+        std::fs::write(
+            root.join("modules/shared/src/SharedModule.ts"),
+            "import { BillingModule } from \"@module/billing/BillingModule\";\n\nexport const SharedModule = {\n  entities: [\n    ...BillingModule.entities,\n  ],\n};\n",
+        )
+        .expect("shared module");
+        std::fs::write(
+            root.join("tsconfig.json"),
+            "{ \"compilerOptions\": { \"paths\": { \"@module/billing/*\": [\"modules/billing/src/*\"] } } }\n",
+        )
+        .expect("tsconfig");
+
+        run(&ModuleRemoveArgs {
+            name: Some("billing".to_string()),
+            cwd: Some(root.display().to_string()),
+            silent: true,
+        });
+
+        assert!(!root.join("modules/billing").exists());
+        assert!(
+            !std::fs::read_to_string(root.join("modules/app/src/AppModule.ts"))
+                .expect("app module")
+                .contains("BillingModule")
+        );
+        assert!(
+            !std::fs::read_to_string(root.join("tsconfig.json"))
+                .expect("tsconfig")
+                .contains("@module/billing")
+        );
+    }
+}

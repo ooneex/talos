@@ -9,7 +9,7 @@ use console::{Term, style};
 const SPINNER_FRAMES: [&str; 10] = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 const SPINNER_INTERVAL: Duration = Duration::from_millis(80);
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum ActionStatus {
     Running,
     Success,
@@ -128,4 +128,36 @@ pub fn run_actions_rendered(actions: Vec<Action>, render: bool) -> Vec<(String, 
     Arc::try_unwrap(errors)
         .map(|mutex| mutex.into_inner().unwrap())
         .unwrap_or_default()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn render_lines_prints_each_label_with_a_status_glyph() {
+        let labels = vec!["build".to_string(), "test".to_string()];
+        let statuses = vec![
+            Mutex::new(ActionStatus::Success),
+            Mutex::new(ActionStatus::Failed),
+        ];
+
+        render_lines(&labels, &statuses, 0);
+
+        assert_eq!(*statuses[0].lock().unwrap(), ActionStatus::Success);
+        assert_eq!(*statuses[1].lock().unwrap(), ActionStatus::Failed);
+    }
+
+    #[test]
+    fn rendered_run_reports_successes_and_failures_without_a_tty() {
+        let failures = run_actions_rendered(
+            vec![
+                Action::new("ok", || Ok(())),
+                Action::new("bad", || Err("boom".to_string())),
+            ],
+            true,
+        );
+
+        assert_eq!(failures, vec![("bad".to_string(), "boom".to_string())]);
+    }
 }

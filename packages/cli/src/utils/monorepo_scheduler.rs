@@ -599,3 +599,139 @@ pub fn failure_excerpt(output: &str) -> Vec<String> {
     excerpt.truncate(max_lines);
     excerpt
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use std::os::unix::fs::PermissionsExt;
+    use std::path::PathBuf;
+
+    fn make_task(key: &str, target_key: &str) -> Task {
+        Task {
+            key: key.to_string(),
+            label: key.to_string(),
+            target_key: Some(target_key.to_string()),
+            command: "fmt".to_string(),
+            cwd: PathBuf::from("/repo"),
+            argv: vec!["bun".to_string(), "run".to_string(), "fmt".to_string()],
+            cacheable: false,
+            deps: Vec::new(),
+            status: TaskStatus::Pending,
+            output: String::new(),
+            exit_code: None,
+            duration_ms: 0,
+            hash: None,
+        }
+    }
+
+    fn make_target(root: &Path, key: &str, name: &str) -> MonorepoTarget {
+        let mut scripts = HashMap::new();
+        scripts.insert("fmt".to_string(), "biome check --write".to_string());
+        MonorepoTarget {
+            key: key.to_string(),
+            name: name.to_string(),
+            target_type: crate::utils::TargetType::Module,
+            dir: root.join(key),
+            scripts,
+            direct_scripts: false,
+            workspace_deps: Vec::new(),
+        }
+    }
+
+    fn write_executable(path: &Path, content: &str) {
+        fs::create_dir_all(path.parent().expect("parent")).expect("create parent");
+        fs::write(path, content).expect("write script");
+        let mut permissions = fs::metadata(path).expect("metadata").permissions();
+        permissions.set_mode(0o755);
+        fs::set_permissions(path, permissions).expect("permissions");
+    }
+
+    #[test]
+    fn biome_batch_pass_marks_all_targets_successful_on_one_clean_run() {
+        let root = tempfile::tempdir().expect("tempdir");
+        let cache = tempfile::tempdir().expect("tempdir");
+        write_executable(
+            &root.path().join("node_modules/.bin/biome"),
+            &format!(
+                "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"{}\"\nexit 0\n",
+                root.path().join("biome.log").display()
+            ),
+        );
+        fs::create_dir_all(root.path().join("modules/app")).expect("module dir");
+        fs::create_dir_all(root.path().join("modules/web")).expect("module dir");
+
+        let mut tasks = vec![
+            make_task("app#fmt", "modules/app"),
+            make_task("web#fmt", "modules/web"),
+        ];
+        let targets = vec![
+            make_target(root.path(), "modules/app", "app"),
+            make_target(root.path(), "modules/web", "web"),
+        ];
+        let footer = Footer::start(tasks.len());
+
+        let failed = run_biome_batch_pass(
+            &mut tasks,
+            &targets,
+            root.path(),
+            "root-hash",
+            cache.path(),
+            &FingerprintMemo::new(),
+            false,
+            true,
+            &FileHashCache::new(),
+            &CacheIndex::new(),
+            &footer,
+        );
+
+        assert!(!failed);
+        assert!(tasks.iter().all(|task| task.status == TaskStatus::Success));
+        let log = fs::read_to_string(root.path().join("biome.log")).expect("log");
+        assert!(log.contains("check --write modules/app modules/web"));
+    }
+
+    #[test]
+    fn biome_batch_pass_attributes_global_failures_to_every_target() {
+        let root = tempfile::tempdir().expect("tempdir");
+        let cache = tempfile::tempdir().expect("tempdir");
+        write_executable(
+            &root.path().join("node_modules/.bin/biome"),
+            "#!/bin/sh\necho 'global failure' >&2\nexit 1\n",
+        );
+        fs::create_dir_all(root.path().join("modules/app")).expect("module dir");
+        fs::create_dir_all(root.path().join("modules/web")).expect("module dir");
+
+        let mut tasks = vec![
+            make_task("app#fmt", "modules/app"),
+            make_task("web#fmt", "modules/web"),
+        ];
+        let targets = vec![
+            make_target(root.path(), "modules/app", "app"),
+            make_target(root.path(), "modules/web", "web"),
+        ];
+        let footer = Footer::start(tasks.len());
+
+        let failed = run_biome_batch_pass(
+            &mut tasks,
+            &targets,
+            root.path(),
+            "root-hash",
+            cache.path(),
+            &FingerprintMemo::new(),
+            false,
+            true,
+            &FileHashCache::new(),
+            &CacheIndex::new(),
+            &footer,
+        );
+
+        assert!(failed);
+        assert!(tasks.iter().all(|task| task.status == TaskStatus::Failed));
+        assert!(
+            tasks
+                .iter()
+                .all(|task| task.output.contains("global failure"))
+        );
+    }
+}

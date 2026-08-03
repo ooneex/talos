@@ -52,7 +52,10 @@ fn resolve_name_and_destination_uses_provided_values_without_prompting() {
 mod support;
 
 use cli::utils::{
-    find_destination_modules, validate_route_method, validate_route_name, validate_route_path,
+    ask_confirm, ask_destination, ask_destination_module, ask_input, ask_input_with_default,
+    ask_multiselect, ask_name, ask_password, ask_plain_input, ask_route_method, ask_route_name,
+    ask_route_path, ask_select, find_destination_modules, validate_route_method,
+    validate_route_name, validate_route_path,
 };
 use support::TempDir;
 
@@ -129,4 +132,30 @@ fn find_destination_modules_is_empty_without_a_modules_directory() {
     let dir = TempDir::new("prompts-destinations-missing");
 
     assert!(find_destination_modules(dir.path()).is_empty());
+}
+
+#[test]
+fn interactive_prompt_wrappers_fall_back_cleanly_without_a_terminal() {
+    assert!(ask_input("Name").is_none());
+    assert!(ask_input_with_default("Name", "app").is_none());
+    assert!(ask_plain_input("Any").is_none());
+    assert!(ask_name().is_none());
+    assert!(ask_destination("./app").is_none());
+    assert!(ask_confirm("Continue?", true));
+    assert!(!ask_confirm("Continue?", false));
+    assert!(ask_select("Pick", &["a", "b"]).is_none());
+    assert!(ask_multiselect("Pick", &["a", "b"], &[true, false]).is_none());
+    assert!(ask_password("Secret").is_none());
+    assert!(ask_route_name("Route name").is_none());
+    assert!(ask_route_path("Route path", "/users").is_none());
+    assert!(ask_route_method("Method").is_none());
+}
+
+#[test]
+fn ask_destination_module_falls_back_to_app_when_no_prompt_can_be_shown() {
+    let dir = TempDir::new("prompts-destination-module");
+    dir.write("modules/app/app.yml", "type: \"api\"\n");
+    dir.write("modules/gateway/gateway.yml", "type: \"microservice\"\n");
+
+    assert_eq!(ask_destination_module(dir.path(), "Choose"), "app");
 }

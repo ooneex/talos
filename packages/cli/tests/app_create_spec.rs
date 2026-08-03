@@ -1,4 +1,5 @@
 use std::fs;
+use std::process::{Command, Output};
 
 use clap::Parser;
 use cli::commands::app_create::{AppCreateArgs, CI_PROVIDERS, write_ci_cd_files, write_named};
@@ -142,4 +143,68 @@ fn write_ci_cd_files_returns_error_when_template_missing() {
 #[test]
 fn ci_providers_lists_the_three_supported_providers() {
     assert_eq!(CI_PROVIDERS, ["github", "gitlab", "bitbucket"]);
+}
+
+fn seed_skeleton(root: &std::path::Path) {
+    let write = |path: &std::path::Path, content: &str| {
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent).expect("create parent");
+        }
+        fs::write(path, content).expect("write file");
+    };
+
+    write(&root.join("package.json"), "{ \"name\": \"skeleton\" }\n");
+    write(&root.join("bun.lock"), "{}\n");
+    write(&root.join("tsconfig.json"), "{ \"compilerOptions\": {} }\n");
+    write(&root.join(".dockerignore"), "node_modules\n");
+    write(&root.join("README.md"), "# skeleton\n");
+    write(
+        &root.join("modules/app/.env.example.yml"),
+        "server:\n  port: 3000\n",
+    );
+    write(
+        &root.join("modules/app/package.json"),
+        "{ \"name\": \"@module/app\" }\n",
+    );
+    write(&root.join(".git/HEAD"), "ref: refs/heads/main\n");
+}
+
+fn run_talos(cwd: &std::path::Path, home: &std::path::Path, args: &[&str]) -> Output {
+    Command::new(env!("CARGO_BIN_EXE_talos"))
+        .args(args)
+        .current_dir(cwd)
+        .env("HOME", home)
+        .env("NO_COLOR", "1")
+        .output()
+        .expect("talos should run")
+}
+
+fn text(output: &Output) -> String {
+    format!(
+        "{}{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    )
+}
+
+#[test]
+fn app_create_scaffolds_an_api_project_from_the_cached_skeleton() {
+    let home = tempdir().unwrap();
+    let workdir = tempdir().unwrap();
+    seed_skeleton(&home.path().join(".talos/skeleton"));
+
+    let output = run_talos(
+        workdir.path(),
+        home.path(),
+        &["app:create", "--name", "MyApi", "--destination", "my-api"],
+    );
+
+    let output_text = text(&output);
+    assert!(output.status.success(), "{output_text}");
+    let destination = workdir.path().join("my-api");
+    assert!(destination.join("package.json").is_file());
+    assert!(destination.join("modules/app/.env.yml").is_file());
+    assert!(output_text.contains("my-api created successfully"));
+    assert!(output_text.contains("talos app:start"));
+    assert!(output_text.contains("talos app:stop"));
 }

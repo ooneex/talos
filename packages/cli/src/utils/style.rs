@@ -40,7 +40,10 @@ impl Spinner {
                 handle: None,
             };
         }
+        Self::start_attended(message)
+    }
 
+    fn start_attended(message: String) -> Self {
         print!("\u{1b}[?25l");
         let stop_flag = Arc::new(AtomicBool::new(false));
         let flag = stop_flag.clone();
@@ -229,7 +232,10 @@ impl Loader {
         if groups.is_empty() || !Term::stdout().features().is_attended() {
             return Self::hidden();
         }
+        Self::start_attended(groups)
+    }
 
+    fn start_attended(groups: Vec<LoaderGroup>) -> Self {
         let inner = Arc::new(LoaderInner {
             state: Mutex::new(LoaderState {
                 title_width: groups
@@ -400,4 +406,76 @@ pub fn step(message: impl AsRef<str>) {
         style("▸").cyan().bold(),
         style(message.as_ref()).cyan()
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn spinner_attended_start_creates_a_running_handle() {
+        let spinner = Spinner::start_attended("Loading".to_string());
+        assert!(spinner.handle.is_some());
+        spinner.stop();
+    }
+
+    #[test]
+    fn loader_row_uses_done_and_running_state_in_its_line() {
+        let mut running = BTreeSet::new();
+        running.insert("alpha".to_string());
+        running.insert("beta".to_string());
+        running.insert("gamma".to_string());
+        running.insert("delta".to_string());
+        let row = LoaderRow {
+            title: "Checks".to_string(),
+            total: 8,
+            done: 3,
+            running,
+        };
+
+        let line = row.line("⠋", 6, 3, 120);
+
+        assert!(line.contains("Checks"));
+        assert!(line.contains("3/8"));
+        assert!(line.contains("alpha"));
+        assert!(line.contains("+1"));
+    }
+
+    #[test]
+    fn loader_state_paint_moves_the_cursor_back_up() {
+        let mut state = LoaderState {
+            groups: vec![LoaderRow {
+                title: "Checks".to_string(),
+                total: 1,
+                done: 1,
+                running: BTreeSet::new(),
+            }],
+            title_width: 6,
+            count_width: 3,
+            frame: 0,
+        };
+
+        let painted = state.paint();
+
+        assert!(painted.contains("Checks"));
+        assert!(painted.contains("\u{1b}[1A"));
+        assert_eq!(state.frame, 1);
+    }
+
+    #[test]
+    fn loader_attended_start_supports_pause_resume_and_progress() {
+        let loader = Loader::start_attended(vec![LoaderGroup::new("Checks", 2)]);
+
+        loader.entered(0, "lint");
+        loader.left(0, "lint");
+        loader.advance(0);
+        loader.pause();
+        loader.resume();
+        loader.stop();
+    }
+
+    #[test]
+    fn truncate_returns_empty_for_zero_width() {
+        assert_eq!(truncate("label", 0), "");
+    }
 }

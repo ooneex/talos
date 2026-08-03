@@ -6,6 +6,7 @@ use clap::Args;
 use serde_json::json;
 
 use crate::utils::{ask_input, ask_password, current_dir, git_origin_url, read_credentials};
+const BITBUCKET_API_BASE_ENV: &str = "TALOS_BITBUCKET_API_BASE";
 
 #[derive(Args, Debug)]
 pub struct BitbucketSecretPushArgs {
@@ -150,6 +151,11 @@ pub fn push_variable(
     Err(response)
 }
 
+fn bitbucket_api_base() -> String {
+    std::env::var(BITBUCKET_API_BASE_ENV)
+        .unwrap_or_else(|_| "https://api.bitbucket.org".to_string())
+}
+
 pub fn run(args: &BitbucketSecretPushArgs) {
     let (username, token) = match read_credentials_pair() {
         Some(value) => value,
@@ -189,7 +195,8 @@ pub fn run(args: &BitbucketSecretPushArgs) {
         .or_else(|| ask_password("Enter variable value"))
         .unwrap_or_default();
     let base = format!(
-        "https://api.bitbucket.org/2.0/repositories/{workspace}/{slug}/pipelines_config/variables/"
+        "{}/2.0/repositories/{workspace}/{slug}/pipelines_config/variables/",
+        bitbucket_api_base().trim_end_matches('/')
     );
     if let Err(response) = push_variable(&base, &name, &value, &username, &token) {
         if !args.silent {

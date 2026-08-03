@@ -183,7 +183,7 @@ fn the_generated_module_file_carries_the_api_and_the_definitions() {
 #[test]
 fn a_route_that_is_already_in_the_file_is_not_added_twice() {
     let definition = parse_controller(CONTROLLER, "user").expect("the controller parses");
-    let existing = build_module_file("app", &[definition.clone()]);
+    let existing = build_module_file("app", std::slice::from_ref(&definition));
 
     let keys = extract_existing_keys(&existing);
 

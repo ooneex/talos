@@ -58,7 +58,10 @@ impl Footer {
                 enabled: false,
             };
         }
+        Self::start_attended(inner)
+    }
 
+    fn start_attended(inner: Arc<FooterInner>) -> Self {
         print!("\u{1b}[?25l");
         let _ = stdout().flush();
 
@@ -206,4 +209,59 @@ fn truncate(label: &str, max: usize) -> String {
     }
     let kept: String = label.chars().take(max.saturating_sub(1)).collect();
     format!("{kept}…")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn attended_footer(total: usize) -> Footer {
+        Footer::start_attended(Arc::new(FooterInner {
+            state: Mutex::new(FooterState {
+                total,
+                finished: 0,
+                failed: 0,
+                running: Vec::new(),
+                frame: 0,
+            }),
+            stop: AtomicBool::new(false),
+            started_at: Instant::now(),
+        }))
+    }
+
+    #[test]
+    fn attended_footer_updates_running_and_finished_counts() {
+        let footer = attended_footer(2);
+
+        assert!(footer.enabled());
+        footer.task_started("lint");
+        footer.task_finished("lint", true, &["detail".to_string()]);
+        footer.stop();
+    }
+
+    #[test]
+    fn paint_footer_clears_the_terminal_and_moves_back_up() {
+        let mut buf = String::new();
+        paint_footer(
+            &FooterState {
+                total: 1,
+                finished: 1,
+                failed: 0,
+                running: vec!["lint".to_string()],
+                frame: 0,
+            },
+            120,
+            500,
+            &mut buf,
+        );
+
+        assert!(buf.contains("\u{1b}[0J"));
+        assert!(buf.contains("\u{1b}["));
+        assert!(buf.ends_with('\r'));
+    }
+
+    #[test]
+    fn truncate_returns_empty_for_zero_width() {
+        assert_eq!(truncate("lint", 0), "");
+    }
 }

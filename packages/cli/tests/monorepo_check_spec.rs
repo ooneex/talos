@@ -1,5 +1,7 @@
 use clap::Parser;
-use cli::commands::monorepo_check::{CHECK_COMMANDS, MonorepoCheckArgs};
+use cli::commands::monorepo_check::{
+    CHECK_COMMANDS, MonorepoCheckArgs, coverage_args, script_args,
+};
 
 #[derive(Parser)]
 struct TestCli {
@@ -62,4 +64,53 @@ fn monorepo_check_runs_the_scripted_gate_in_order() {
 #[test]
 fn monorepo_check_rejects_unknown_flag() {
     assert!(TestCli::try_parse_from(["talos", "--definitely-not-a-flag"]).is_err());
+}
+
+#[test]
+fn monorepo_check_builds_the_scripted_gate_arguments() {
+    let args = MonorepoCheckArgs {
+        packages: Some("core".to_string()),
+        modules: Some("user".to_string()),
+        logs: true,
+        no_cache: true,
+        threshold: Some(85.0),
+        concurrency: Some(4),
+        strict: true,
+        cwd: Some("./here".to_string()),
+    };
+
+    let scripted = script_args(&args);
+
+    assert_eq!(scripted.commands.as_deref(), Some(CHECK_COMMANDS));
+    assert_eq!(scripted.packages.as_deref(), Some("core"));
+    assert_eq!(scripted.modules.as_deref(), Some("user"));
+    assert!(scripted.logs);
+    assert!(scripted.no_cache);
+    assert_eq!(scripted.cwd.as_deref(), Some("./here"));
+}
+
+#[test]
+fn monorepo_check_builds_the_coverage_arguments() {
+    let args = MonorepoCheckArgs {
+        packages: Some("core".to_string()),
+        modules: Some("user".to_string()),
+        logs: true,
+        no_cache: true,
+        threshold: Some(85.0),
+        concurrency: Some(4),
+        strict: true,
+        cwd: Some("./here".to_string()),
+    };
+
+    let coverage = coverage_args(&args);
+
+    assert!(!coverage.issues);
+    assert_eq!(coverage.packages.as_deref(), Some("core"));
+    assert_eq!(coverage.modules.as_deref(), Some("user"));
+    assert!(coverage.logs);
+    assert!(coverage.no_cache);
+    assert_eq!(coverage.threshold, Some(85.0));
+    assert_eq!(coverage.concurrency, Some(4));
+    assert!(coverage.strict);
+    assert_eq!(coverage.cwd.as_deref(), Some("./here"));
 }

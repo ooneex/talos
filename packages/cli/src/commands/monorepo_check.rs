@@ -67,24 +67,19 @@ pub fn measure(args: &MonorepoCheckArgs, quiet: bool) -> Result<CoverageAudit, S
     )
 }
 
-pub fn run(args: &MonorepoCheckArgs) {
-    // The suites are only worth measuring against a workspace that installed,
-    // built, formatted and linted, so a failure here ends the gate — as
-    // `monorepo_run::run` would, but before coverage is reached.
-    if !monorepo_run::execute(&MonorepoRunArgs {
+pub fn script_args(args: &MonorepoCheckArgs) -> MonorepoRunArgs {
+    MonorepoRunArgs {
         commands: Some(CHECK_COMMANDS.to_string()),
         packages: args.packages.clone(),
         modules: args.modules.clone(),
         logs: args.logs,
         no_cache: args.no_cache,
         cwd: args.cwd.clone(),
-    }) {
-        std::process::exit(1);
     }
+}
 
-    // Exits non-zero itself on a broken suite, and under `--strict` on a module
-    // that stayed under the threshold.
-    coverage_check::run(&CoverageCheckArgs {
+pub fn coverage_args(args: &MonorepoCheckArgs) -> CoverageCheckArgs {
+    CoverageCheckArgs {
         issues: false,
         modules: args.modules.clone(),
         packages: args.packages.clone(),
@@ -94,5 +89,18 @@ pub fn run(args: &MonorepoCheckArgs) {
         no_cache: args.no_cache,
         strict: args.strict,
         cwd: args.cwd.clone(),
-    });
+    }
+}
+
+pub fn run(args: &MonorepoCheckArgs) {
+    // The suites are only worth measuring against a workspace that installed,
+    // built, formatted and linted, so a failure here ends the gate — as
+    // `monorepo_run::run` would, but before coverage is reached.
+    if !monorepo_run::execute(&script_args(args)) {
+        std::process::exit(1);
+    }
+
+    // Exits non-zero itself on a broken suite, and under `--strict` on a module
+    // that stayed under the threshold.
+    coverage_check::run(&coverage_args(args));
 }

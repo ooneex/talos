@@ -235,3 +235,161 @@ pub fn run(args: &IssuePullArgs) {
         std::process::exit(1);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::fs;
+
+    use tempfile::tempdir;
+
+    use super::{PulledIssue, find_existing_issue, resolve_target, write_pulled};
+    use crate::utils::github::GithubIssue;
+    use crate::utils::linear::LinearIssue;
+
+    #[test]
+    fn pulled_issue_from_linear_trims_and_defaults_values() {
+        let issue = LinearIssue {
+            identifier: None,
+            title: Some("  Add tests  ".to_string()),
+            description: Some("  Cover more lines  ".to_string()),
+            priority: Some("High".to_string()),
+            state: None,
+            labels: vec!["coverage".to_string()],
+            comments: Vec::new(),
+        };
+
+        let pulled = PulledIssue::from_linear(&issue, "ABC-123");
+
+        assert_eq!(pulled.identifier, "ABC-123");
+        assert_eq!(pulled.title, "Add tests");
+        assert_eq!(pulled.description, "Cover more lines");
+        assert_eq!(pulled.state.as_deref(), Some("Todo"));
+        assert_eq!(pulled.priority.as_deref(), Some("High"));
+        assert_eq!(pulled.labels, vec!["coverage".to_string()]);
+    }
+
+    #[test]
+    fn pulled_issue_from_github_trims_and_normalizes_identifier() {
+        let issue = GithubIssue {
+            identifier: None,
+            title: Some("  Fix bug  ".to_string()),
+            description: Some("  Repro steps  ".to_string()),
+            state: None,
+            labels: vec!["bug".to_string()],
+            comments: Vec::new(),
+        };
+
+        let pulled = PulledIssue::from_github(&issue, "#42");
+
+        assert_eq!(pulled.identifier, "42");
+        assert_eq!(pulled.title, "Fix bug");
+        assert_eq!(pulled.description, "Repro steps");
+        assert_eq!(pulled.state.as_deref(), Some("Todo"));
+        assert_eq!(pulled.priority, None);
+        assert_eq!(pulled.labels, vec!["bug".to_string()]);
+    }
+
+    #[test]
+    fn to_yaml_uses_existing_identifier_and_module() {
+        let root = tempdir().expect("tempdir");
+        let issues_dir = root.path().join("modules/shared/issues");
+        fs::create_dir_all(&issues_dir).expect("issues dir");
+
+        let yaml = PulledIssue {
+            identifier: "ABC-123".to_string(),
+            title: "Add tests".to_string(),
+            state: Some("Todo".to_string()),
+            priority: Some("Medium".to_string()),
+            description: "Details".to_string(),
+            labels: vec!["coverage".to_string()],
+        }
+        .to_yaml("shared", &issues_dir);
+
+        assert!(yaml.contains("id: \"ABC-123\""));
+        assert!(yaml.contains("module: \"shared\""));
+        assert!(yaml.contains("title: \"Add tests\""));
+        assert!(yaml.contains("priority: \"Medium\""));
+    }
+
+    #[test]
+    fn find_existing_issue_and_resolve_target_prefer_existing_module() {
+        let root = tempdir().expect("tempdir");
+        let modules_dir = root.path().join("modules");
+        let existing_dir = modules_dir.join("billing/issues");
+        fs::create_dir_all(&existing_dir).expect("existing issues dir");
+        let existing_file = existing_dir.join("ABC-123.yml");
+        fs::write(&existing_file, "id: \"ABC-123\"\n").expect("issue file");
+
+        let found = find_existing_issue(&modules_dir, "ABC-123").expect("existing issue");
+        assert_eq!(found.0, "billing");
+        assert_eq!(found.1, existing_file);
+
+        let resolved = resolve_target(&modules_dir, "shared", root.path(), "ABC-123");
+        assert_eq!(resolved.0, "billing");
+        assert_eq!(resolved.1, existing_dir);
+    }
+
+    #[test]
+    fn resolve_target_creates_default_module_issues_dir() {
+        let root = tempdir().expect("tempdir");
+        let modules_dir = root.path().join("modules");
+        fs::create_dir_all(root.path().join("modules/shared")).expect("shared module");
+        fs::write(
+            root.path().join("modules/shared/package.json"),
+            "{ \"name\": \"shared\" }\n",
+        )
+        .expect("package");
+        fs::write(
+            root.path().join("modules/shared/shared.yml"),
+            "name: \"shared\"\ntype: \"library\"\n",
+        )
+        .expect("module yml");
+
+        let resolved = resolve_target(&modules_dir, "shared", root.path(), "NEW-1");
+
+        assert_eq!(resolved.0, "shared");
+        assert_eq!(resolved.1, root.path().join("modules/shared/issues"));
+        assert!(resolved.1.is_dir());
+    }
+
+    #[test]
+    fn write_pulled_creates_and_updates_issue_file() {
+        let root = tempdir().expect("tempdir");
+        let modules_dir = root.path().join("modules");
+        let shared_dir = root.path().join("modules/shared");
+        fs::create_dir_all(&shared_dir).expect("shared module");
+        fs::write(
+            shared_dir.join("package.json"),
+            "{ \"name\": \"shared\" }\n",
+        )
+        .expect("package");
+        fs::write(
+            shared_dir.join("shared.yml"),
+            "name: \"shared\"\ntype: \"library\"\n",
+        )
+        .expect("module yml");
+
+        let pulled = PulledIssue {
+            identifier: "ABC-123".to_string(),
+            title: "Add tests".to_string(),
+            state: Some("Todo".to_string()),
+            priority: Some("High".to_string()),
+            description: "Initial body".to_string(),
+            labels: vec!["coverage".to_string()],
+        };
+
+        assert!(write_pulled(&modules_dir, "shared", root.path(), &pulled));
+
+        let file_path = root.path().join("modules/shared/issues/ABC-123.yml");
+        let created = fs::read_to_string(&file_path).expect("created issue");
+        assert!(created.contains("title: \"Add tests\""));
+
+        let updated = PulledIssue {
+            description: "Updated body".to_string(),
+            ..pulled
+        };
+        assert!(write_pulled(&modules_dir, "shared", root.path(), &updated));
+        let updated_contents = fs::read_to_string(&file_path).expect("updated issue");
+        assert!(updated_contents.contains("Updated body"));
+    }
+}

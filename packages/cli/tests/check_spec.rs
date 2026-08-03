@@ -1,5 +1,5 @@
 use clap::Parser;
-use cli::commands::check::CheckArgs;
+use cli::commands::check::{CheckArgs, forwarded_args};
 
 #[derive(Parser)]
 struct TestCli {
@@ -43,4 +43,29 @@ fn check_defaults_are_empty() {
 #[test]
 fn check_rejects_unknown_flag() {
     assert!(TestCli::try_parse_from(["talos", "--definitely-not-a-flag"]).is_err());
+}
+
+#[test]
+fn check_forwards_all_flags_to_monorepo_check() {
+    let args = CheckArgs {
+        packages: Some("core".to_string()),
+        modules: Some("user".to_string()),
+        logs: true,
+        no_cache: true,
+        threshold: Some(85.0),
+        concurrency: Some(4),
+        strict: true,
+        cwd: Some("./here".to_string()),
+    };
+
+    let forwarded = forwarded_args(&args);
+
+    assert_eq!(forwarded.packages.as_deref(), Some("core"));
+    assert_eq!(forwarded.modules.as_deref(), Some("user"));
+    assert!(forwarded.logs);
+    assert!(forwarded.no_cache);
+    assert_eq!(forwarded.threshold, Some(85.0));
+    assert_eq!(forwarded.concurrency, Some(4));
+    assert!(forwarded.strict);
+    assert_eq!(forwarded.cwd.as_deref(), Some("./here"));
 }

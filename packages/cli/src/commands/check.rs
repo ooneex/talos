@@ -25,8 +25,8 @@ pub struct CheckArgs {
     pub cwd: Option<String>,
 }
 
-pub fn run(args: &CheckArgs) {
-    monorepo_check::run(&MonorepoCheckArgs {
+pub fn forwarded_args(args: &CheckArgs) -> MonorepoCheckArgs {
+    MonorepoCheckArgs {
         packages: args.packages.clone(),
         modules: args.modules.clone(),
         logs: args.logs,
@@ -35,5 +35,9 @@ pub fn run(args: &CheckArgs) {
         concurrency: args.concurrency,
         strict: args.strict,
         cwd: args.cwd.clone(),
-    });
+    }
+}
+
+pub fn run(args: &CheckArgs) {
+    monorepo_check::run(&forwarded_args(args));
 }
