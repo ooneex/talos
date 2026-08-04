@@ -17,12 +17,8 @@ export abstract class Workflow<Data extends Record<string, unknown> = Record<str
   public async run<Context = unknown>(data: Data, context?: Context): Promise<Output> {
     const transitions = this.getTransitions().map((transition) => container.get<ITransition>(transition));
 
-    const activeTransitions: ITransition[] = [];
-    for (const transition of transitions) {
-      if (await transition.isActive(data, context)) {
-        activeTransitions.push(transition);
-      }
-    }
+    const activeFlags = await Promise.all(transitions.map((transition) => transition.isActive(data, context)));
+    const activeTransitions = transitions.filter((_, index) => activeFlags[index]);
 
     const executed: ITransition[] = [];
     let output: Output = undefined as Output;
