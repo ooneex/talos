@@ -1,5 +1,5 @@
 import type { LocaleType } from "@talosjs/translation";
-import { MailerLayoutBody } from "./MailerLayoutBody";
+import { MAILER_BODY_STYLE, MailerLayoutBody } from "./MailerLayoutBody";
 import { MailerLayoutFooter } from "./MailerLayoutFooter";
 import { MailerLayoutHeader } from "./MailerLayoutHeader";
 
@@ -56,20 +56,7 @@ const MailerLayoutComponent = ({
     >
       <div
         style={{
-          backgroundColor: "#ffffff",
-          width: "100%",
-          maxWidth: "640px",
-          padding: "32px",
-          margin: "auto",
-          borderRadius: "4px",
-          display: "flex",
-          flexDirection: "column",
-          columnGap: "26px",
-          marginTop: "60px",
-          marginBottom: "32px",
-          color: "#432371",
-          lineHeight: "1.5",
-          fontSize: "16px",
+          ...MAILER_BODY_STYLE,
         }}
       >
         {children}

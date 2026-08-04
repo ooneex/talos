@@ -1,7 +1,7 @@
 // biome-ignore lint/suspicious/noExplicitAny: trust me
 export type MailerClassType = new (...args: any[]) => IMailer;
 
-export interface MailerAttachmentType {
+export interface IMailerAttachment {
   /** Name of the attached file. */
   filename: string;
   /** Content of the attached file, as a base64 string or Buffer. */
@@ -23,6 +23,6 @@ export interface IMailer {
     subject: string;
     content: React.ReactNode;
     from?: { name: string; address: string };
-    attachments?: MailerAttachmentType[];
+    attachments?: IMailerAttachment[];
   }) => Promise<void>;
 }
