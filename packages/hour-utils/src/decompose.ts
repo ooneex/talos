@@ -1,6 +1,6 @@
-export type TimeFormat = "dhms" | "dhm" | "dh" | "d" | "hms" | "hm" | "h" | "ms" | "m" | "s";
+export type TimeFormatType = "dhms" | "dhm" | "dh" | "d" | "hms" | "hm" | "h" | "ms" | "m" | "s";
 
-export type TimeResult<F extends TimeFormat> = F extends "dhms"
+export type TimeResultType<F extends TimeFormatType> = F extends "dhms"
   ? { d: number; h: number; m: number; s: number; text: string }
   : F extends "dhm"
     ? { d: number; h: number; m: number; text: string }
@@ -33,125 +33,130 @@ const buildText = (parts: readonly [number, string][]): string => {
   return nonZero.map(([value, unit]) => `${value}${unit}`).join(" ");
 };
 
-export const decomposeSeconds = <F extends TimeFormat>(totalSeconds: number, format: F): TimeResult<F> => {
-  const total = Math.floor(totalSeconds);
+const decomposeDays = (total: number) => {
+  const d = Math.floor(total / SECONDS_PER_DAY);
+  const afterDays = total % SECONDS_PER_DAY;
+  const h = Math.floor(afterDays / 3600);
+  const m = Math.floor((afterDays % 3600) / 60);
+  const s = afterDays % 60;
 
-  switch (format) {
-    case "dhms": {
-      const d = Math.floor(total / SECONDS_PER_DAY);
-      const afterDays = total % SECONDS_PER_DAY;
-      const h = Math.floor(afterDays / 3600);
-      const m = Math.floor((afterDays % 3600) / 60);
-      const s = afterDays % 60;
-      return {
-        d,
-        h,
-        m,
-        s,
-        text: buildText([
-          [d, "d"],
-          [h, "h"],
-          [m, "m"],
-          [s, "s"],
-        ]),
-      } as TimeResult<F>;
-    }
-    case "dhm": {
-      const d = Math.floor(total / SECONDS_PER_DAY);
-      const afterDays = total % SECONDS_PER_DAY;
-      const h = Math.floor(afterDays / 3600);
-      const m = Math.floor((afterDays % 3600) / 60);
-      return {
-        d,
-        h,
-        m,
-        text: buildText([
-          [d, "d"],
-          [h, "h"],
-          [m, "m"],
-        ]),
-      } as TimeResult<F>;
-    }
-    case "dh": {
-      const d = Math.floor(total / SECONDS_PER_DAY);
-      const h = Math.floor((total % SECONDS_PER_DAY) / 3600);
-      return {
-        d,
-        h,
-        text: buildText([
-          [d, "d"],
-          [h, "h"],
-        ]),
-      } as TimeResult<F>;
-    }
-    case "d": {
-      const d = Math.floor(total / SECONDS_PER_DAY);
-      return {
-        d,
-        text: buildText([[d, "d"]]),
-      } as TimeResult<F>;
-    }
-    case "hms": {
-      const h = Math.floor(total / 3600);
-      const m = Math.floor((total % 3600) / 60);
-      const s = total % 60;
-      return {
-        h,
-        m,
-        s,
-        text: buildText([
-          [h, "h"],
-          [m, "m"],
-          [s, "s"],
-        ]),
-      } as TimeResult<F>;
-    }
-    case "hm": {
-      const h = Math.floor(total / 3600);
-      const m = Math.floor((total % 3600) / 60);
-      return {
-        h,
-        m,
-        text: buildText([
-          [h, "h"],
-          [m, "m"],
-        ]),
-      } as TimeResult<F>;
-    }
-    case "h": {
-      const h = Math.floor(total / 3600);
-      return {
-        h,
-        text: buildText([[h, "h"]]),
-      } as TimeResult<F>;
-    }
-    case "ms": {
-      const m = Math.floor(total / 60);
-      const s = total % 60;
-      return {
-        m,
-        s,
-        text: buildText([
-          [m, "m"],
-          [s, "s"],
-        ]),
-      } as TimeResult<F>;
-    }
-    case "m": {
-      const m = Math.floor(total / 60);
-      return {
-        m,
-        text: buildText([[m, "m"]]),
-      } as TimeResult<F>;
-    }
-    case "s": {
-      return {
-        s: total,
-        text: buildText([[total, "s"]]),
-      } as TimeResult<F>;
-    }
-    default: {
-      throw new Error(`Unsupported format: ${format}`);
-    }
+  return { d, h, m, s };
+};
+
+const decomposeHours = (total: number) => {
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+
+  return { h, m, s };
+};
+
+const decomposeMinutes = (total: number) => {
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+
+  return { m, s };
+};
+
+const formatters = {
+  dhms: (total: number) => {
+    const { d, h, m, s } = decomposeDays(total);
+    return {
+      d,
+      h,
+      m,
+      s,
+      text: buildText([
+        [d, "d"],
+        [h, "h"],
+        [m, "m"],
+        [s, "s"],
+      ]),
+    };
+  },
+  dhm: (total: number) => {
+    const { d, h, m } = decomposeDays(total);
+    return {
+      d,
+      h,
+      m,
+      text: buildText([
+        [d, "d"],
+        [h, "h"],
+        [m, "m"],
+      ]),
+    };
+  },
+  dh: (total: number) => {
+    const { d, h } = decomposeDays(total);
+    return {
+      d,
+      h,
+      text: buildText([
+        [d, "d"],
+        [h, "h"],
+      ]),
+    };
+  },
+  d: (total: number) => {
+    const { d } = decomposeDays(total);
+    return { d, text: buildText([[d, "d"]]) };
+  },
+  hms: (total: number) => {
+    const { h, m, s } = decomposeHours(total);
+    return {
+      h,
+      m,
+      s,
+      text: buildText([
+        [h, "h"],
+        [m, "m"],
+        [s, "s"],
+      ]),
+    };
+  },
+  hm: (total: number) => {
+    const { h, m } = decomposeHours(total);
+    return {
+      h,
+      m,
+      text: buildText([
+        [h, "h"],
+        [m, "m"],
+      ]),
+    };
+  },
+  h: (total: number) => {
+    const { h } = decomposeHours(total);
+    return { h, text: buildText([[h, "h"]]) };
+  },
+  ms: (total: number) => {
+    const { m, s } = decomposeMinutes(total);
+    return {
+      m,
+      s,
+      text: buildText([
+        [m, "m"],
+        [s, "s"],
+      ]),
+    };
+  },
+  m: (total: number) => {
+    const { m } = decomposeMinutes(total);
+    return { m, text: buildText([[m, "m"]]) };
+  },
+  s: (total: number) => {
+    return { s: total, text: buildText([[total, "s"]]) };
+  },
+} satisfies { [K in TimeFormatType]: (total: number) => TimeResultType<K> };
+
+export const decomposeSeconds = <F extends TimeFormatType>(totalSeconds: number, format: F): TimeResultType<F> => {
+  const total = Math.floor(totalSeconds);
+  const formatter = formatters[format];
+
+  if (!formatter) {
+    throw new Error(`Unsupported format: ${format}`);
   }
+
+  return formatter(total) as TimeResultType<F>;
 };

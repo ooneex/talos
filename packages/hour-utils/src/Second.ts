@@ -1,9 +1,9 @@
-import { decomposeSeconds, type TimeFormat, type TimeResult } from "./decompose";
+import { decomposeSeconds, type TimeFormatType, type TimeResultType } from "./decompose";
 
 class SecondConverter {
   constructor(private readonly seconds: number) {}
 
-  to<F extends TimeFormat>(format: F): TimeResult<F> {
+  to<F extends TimeFormatType>(format: F): TimeResultType<F> {
     return decomposeSeconds(this.seconds, format);
   }
 }
