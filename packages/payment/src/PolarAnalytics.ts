@@ -68,36 +68,8 @@ export class PolarAnalytics {
     return `${year}-${month}-${day}` as unknown as RFCDate;
   }
 
-  private mapPeriod(period: {
-    timestamp: Date;
-    orders: number;
-    revenue: number;
-    cumulativeRevenue: number;
-    averageOrderValue: number;
-    oneTimeProducts: number;
-    oneTimeProductsRevenue: number;
-    newSubscriptions: number;
-    newSubscriptionsRevenue: number;
-    renewedSubscriptions: number;
-    renewedSubscriptionsRevenue: number;
-    activeSubscriptions: number;
-    monthlyRecurringRevenue: number;
-  }): AnalyticsPeriodType {
-    return {
-      timestamp: period.timestamp,
-      orders: period.orders,
-      revenue: period.revenue,
-      cumulativeRevenue: period.cumulativeRevenue,
-      averageOrderValue: period.averageOrderValue,
-      oneTimeProducts: period.oneTimeProducts,
-      oneTimeProductsRevenue: period.oneTimeProductsRevenue,
-      newSubscriptions: period.newSubscriptions,
-      newSubscriptionsRevenue: period.newSubscriptionsRevenue,
-      renewedSubscriptions: period.renewedSubscriptions,
-      renewedSubscriptionsRevenue: period.renewedSubscriptionsRevenue,
-      activeSubscriptions: period.activeSubscriptions,
-      monthlyRecurringRevenue: period.monthlyRecurringRevenue,
-    };
+  private mapPeriod(period: AnalyticsPeriodType): AnalyticsPeriodType {
+    return period;
   }
 
   private mapMetricInfo(metric: { slug: string; displayName: string; type: string }): AnalyticsMetricInfoType {

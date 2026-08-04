@@ -1,19 +1,15 @@
 import type { CurrencyCodeType } from "@talosjs/currencies";
 import type { IBase, ScalarType } from "@talosjs/types";
-
 export enum EPriceType {
   FIXED = "fixed",
   CUSTOM = "custom",
   FREE = "free",
 }
-
 export type PriceTypeType = `${EPriceType}`;
-
 export type ProductImageType = {
   id: string;
   url: string;
 };
-
 export type PriceType = {
   type: PriceTypeType;
   priceCurrency?: string;
@@ -22,35 +18,28 @@ export type PriceType = {
   maximumAmount?: number;
   presetAmount?: number;
 };
-
 export type CustomFieldType = {
   customFieldId: string;
   required: boolean;
 };
-
 export enum EDiscountType {
   PERCENTAGE = "percentage",
   FIXED = "fixed",
 }
-
 export enum EDiscountDuration {
   ONCE = "once",
   REPEATING = "repeating",
   FOREVER = "forever",
 }
-
 export type DiscountDurationType = `${EDiscountDuration}`;
-
 export enum ESubscriptionPeriod {
   MONTHLY = "monthly",
   YEARLY = "yearly",
   WEEKLY = "weekly",
   DAILY = "daily",
 }
-
 export type DiscountType = `${EDiscountType}`;
 export type SubscriptionPeriodType = `${ESubscriptionPeriod}`;
-
 export enum EBenefitType {
   CREDITS = "credits",
   LICENSE_KEYS = "license_keys",
@@ -59,9 +48,7 @@ export enum EBenefitType {
   DISCORD_ACCESS = "discord_access",
   CUSTOM = "custom",
 }
-
 export type BenefitTypeType = `${EBenefitType}`;
-
 export enum EGitHubPermission {
   READ = "read",
   TRIAGE = "triage",
@@ -69,9 +56,7 @@ export enum EGitHubPermission {
   MAINTAIN = "maintain",
   ADMIN = "admin",
 }
-
 export type GitHubPermissionType = `${EGitHubPermission}`;
-
 export type BenefitBaseType = {
   type: BenefitTypeType;
   name: string;
@@ -80,13 +65,11 @@ export type BenefitBaseType = {
   isDeletable?: boolean;
   organizationId?: string;
 };
-
 export type CreditsBenefitType = BenefitBaseType & {
   type: typeof EBenefitType.CREDITS;
   amount: number;
   rollover?: boolean;
 };
-
 export type LicenseKeysBenefitType = BenefitBaseType & {
   type: typeof EBenefitType.LICENSE_KEYS;
   prefix?: string;
@@ -96,12 +79,10 @@ export type LicenseKeysBenefitType = BenefitBaseType & {
   activationLimit?: number;
   usageLimit?: number;
 };
-
 export type FileDownloadsBenefitType = BenefitBaseType & {
   type: typeof EBenefitType.FILE_DOWNLOADS;
   files?: BenefitFileType[];
 };
-
 export type BenefitFileType = {
   id: string;
   name: string;
@@ -110,25 +91,21 @@ export type BenefitFileType = {
   checksum?: string;
   isEnabled?: boolean;
 };
-
 export type GitHubRepositoryAccessBenefitType = BenefitBaseType & {
   type: typeof EBenefitType.GITHUB_REPOSITORY_ACCESS;
   repositoryOwner: string;
   repositoryName: string;
   permission?: GitHubPermissionType;
 };
-
 export type DiscordAccessBenefitType = BenefitBaseType & {
   type: typeof EBenefitType.DISCORD_ACCESS;
   guildId: string;
   roleId: string;
 };
-
 export type CustomBenefitType = BenefitBaseType & {
   type: typeof EBenefitType.CUSTOM;
   note?: string;
 };
-
 export type BenefitType =
   | CreditsBenefitType
   | LicenseKeysBenefitType
@@ -136,7 +113,6 @@ export type BenefitType =
   | GitHubRepositoryAccessBenefitType
   | DiscordAccessBenefitType
   | CustomBenefitType;
-
 export interface IProduct extends IBase {
   key?: string;
   name: string;
@@ -157,14 +133,12 @@ export interface IProduct extends IBase {
   benefits?: BenefitType[];
   attachedCustomFields?: CustomFieldType[];
 }
-
 export interface IFeature extends IBase {
   name: string;
   description?: string;
   isEnabled?: boolean;
   limit?: number;
 }
-
 export interface IPlan extends IBase {
   name: string;
   description?: string;
@@ -176,14 +150,12 @@ export interface IPlan extends IBase {
   isActive?: boolean;
   trialDays?: number;
 }
-
 export interface ICredit extends IBase {
   balance: number;
   currency?: CurrencyCodeType;
   expiresAt?: Date;
   description?: string;
 }
-
 export interface ISubscription extends IBase {
   discounts?: IDiscount[];
   plans?: IPlan[];
@@ -193,7 +165,6 @@ export interface ISubscription extends IBase {
   isTrial?: boolean;
   isActive?: boolean;
 }
-
 export interface IDiscount extends IBase {
   key?: string;
   name: string;
@@ -217,7 +188,6 @@ export interface IDiscount extends IBase {
   organizationId?: string;
   metadata?: Record<string, string | number | boolean>;
 }
-
 export enum ECheckoutStatus {
   OPEN = "open",
   EXPIRED = "expired",
@@ -225,9 +195,7 @@ export enum ECheckoutStatus {
   SUCCEEDED = "succeeded",
   FAILED = "failed",
 }
-
 export type CheckoutStatusType = `${ECheckoutStatus}`;
-
 export type CheckoutCustomerType = {
   id?: string;
   email?: string;
@@ -236,7 +204,6 @@ export type CheckoutCustomerType = {
   billingAddress?: CheckoutAddressType;
   taxId?: string;
 };
-
 export type CheckoutAddressType = {
   line1?: string;
   line2?: string;
@@ -245,7 +212,6 @@ export type CheckoutAddressType = {
   postalCode?: string;
   country?: string;
 };
-
 export type CheckoutCreateType = {
   products: string[];
   customerExternalId?: string;
@@ -260,7 +226,6 @@ export type CheckoutCreateType = {
   embedOrigin?: string;
   metadata?: Record<string, string | number | boolean>;
 };
-
 export type CheckoutType = {
   id: string;
   url?: string;
@@ -286,11 +251,9 @@ export type CheckoutType = {
   customer?: CheckoutCustomerType;
   metadata?: Record<string, string | number | boolean>;
 };
-
 export type CustomerSessionCreateType = {
   customerId: string;
 };
-
 export type CustomerSessionType = {
   id: string;
   token: string;
@@ -299,7 +262,6 @@ export type CustomerSessionType = {
   expiresAt?: Date;
   customerId?: string;
 };
-
 export type CustomerAddressType = {
   line1?: string;
   line2?: string;
@@ -308,7 +270,6 @@ export type CustomerAddressType = {
   postalCode?: string;
   country?: string;
 };
-
 export type CustomerCreateType = {
   email: string;
   name?: string;
@@ -318,7 +279,6 @@ export type CustomerCreateType = {
   organizationId?: string;
   metadata?: Record<string, string | number | boolean>;
 };
-
 export type CustomerUpdateType = {
   email?: string;
   name?: string;
@@ -326,7 +286,6 @@ export type CustomerUpdateType = {
   taxId?: string;
   metadata?: Record<string, string | number | boolean>;
 };
-
 export type CustomerType = {
   id: string;
   email: string;
@@ -342,7 +301,6 @@ export type CustomerType = {
   updatedAt?: Date;
   deletedAt?: Date;
 };
-
 export type CustomerListOptionsType = {
   organizationId?: string;
   email?: string;
@@ -350,7 +308,6 @@ export type CustomerListOptionsType = {
   page?: number;
   limit?: number;
 };
-
 export type CustomerListResultType = {
   items: CustomerType[];
   pagination: {
@@ -358,7 +315,6 @@ export type CustomerListResultType = {
     maxPage: number;
   };
 };
-
 export enum EAnalyticsInterval {
   YEAR = "year",
   MONTH = "month",
@@ -366,16 +322,12 @@ export enum EAnalyticsInterval {
   DAY = "day",
   HOUR = "hour",
 }
-
 export type AnalyticsIntervalType = `${EAnalyticsInterval}`;
-
 export enum EBillingType {
   ONE_TIME = "one_time",
   RECURRING = "recurring",
 }
-
 export type BillingTypeType = `${EBillingType}`;
-
 export type AnalyticsOptionsType = {
   startDate: Date;
   endDate: Date;
@@ -385,7 +337,6 @@ export type AnalyticsOptionsType = {
   billingType?: BillingTypeType | BillingTypeType[];
   customerId?: string | string[];
 };
-
 export type AnalyticsPeriodType = {
   timestamp: Date;
   orders: number;
@@ -401,13 +352,11 @@ export type AnalyticsPeriodType = {
   activeSubscriptions: number;
   monthlyRecurringRevenue: number;
 };
-
 export type AnalyticsMetricInfoType = {
   slug: string;
   displayName: string;
   type: string;
 };
-
 export type AnalyticsMetricsType = {
   orders: AnalyticsMetricInfoType;
   revenue: AnalyticsMetricInfoType;
@@ -422,16 +371,13 @@ export type AnalyticsMetricsType = {
   activeSubscriptions: AnalyticsMetricInfoType;
   monthlyRecurringRevenue: AnalyticsMetricInfoType;
 };
-
 export type AnalyticsResponseType = {
   periods: AnalyticsPeriodType[];
   metrics: AnalyticsMetricsType;
 };
-
 export type AnalyticsIntervalLimitType = {
   maxDays: number;
 };
-
 export type AnalyticsIntervalsLimitsType = {
   hour: AnalyticsIntervalLimitType;
   day: AnalyticsIntervalLimitType;
@@ -439,12 +385,10 @@ export type AnalyticsIntervalsLimitsType = {
   month: AnalyticsIntervalLimitType;
   year: AnalyticsIntervalLimitType;
 };
-
 export type AnalyticsLimitsType = {
   minDate: Date;
   intervals: AnalyticsIntervalsLimitsType;
 };
-
 export type CustomerSessionResponseType = {
   id: string;
   token: string;
@@ -453,7 +397,6 @@ export type CustomerSessionResponseType = {
   expiresAt?: Date;
   customerId?: string;
 };
-
 export type DiscountResponseType = {
   id: string;
   createdAt?: Date;
@@ -474,7 +417,6 @@ export type DiscountResponseType = {
   metadata: Record<string, string | number | boolean>;
   products?: { id: string; name: string }[];
 };
-
 export type CheckoutResponseType = {
   id: string;
   createdAt?: Date;
@@ -514,7 +456,6 @@ export type CheckoutResponseType = {
   };
   metadata: Record<string, string | number | boolean>;
 };
-
 export type CustomerResponseType = {
   id: string;
   createdAt?: Date;
@@ -537,7 +478,6 @@ export type CustomerResponseType = {
   organizationId?: string;
   metadata?: Record<string, string | number | boolean>;
 };
-
 export type CustomerListResponseType = {
   result: {
     items: CustomerResponseType[];
