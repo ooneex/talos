@@ -121,7 +121,7 @@ export class Html implements IHtml {
     const $ = this.$;
     const headings: HtmlHeadingType[] = [];
 
-    $("h1, h2, h3, h4, h5, h6").each((_, element) => {
+    for (const element of $("h1, h2, h3, h4, h5, h6").toArray()) {
       const $heading = $(element);
       const tagName = element.tagName.toLowerCase();
       const level = Number.parseInt(tagName.charAt(1), 10);
@@ -131,7 +131,7 @@ export class Html implements IHtml {
         text: $heading.text().trim(),
         id: $heading.attr("id") || null,
       });
-    });
+    }
 
     return headings;
   }
@@ -144,22 +144,8 @@ export class Html implements IHtml {
     const $ = this.$;
     const videos: HtmlVideoType[] = [];
 
-    $("video").each((_, element) => {
+    for (const element of $("video").toArray()) {
       const $video = $(element);
-      const sources: { src: string; type: string | null }[] = [];
-
-      $video.find("source").each((_, sourceElement) => {
-        const $source = $(sourceElement);
-        const src = $source.attr("src");
-
-        if (src) {
-          sources.push({
-            src,
-            type: $source.attr("type") || null,
-          });
-        }
-      });
-
       videos.push({
         src: $video.attr("src") || null,
         poster: $video.attr("poster") || null,
@@ -169,9 +155,9 @@ export class Html implements IHtml {
         autoplay: $video.attr("autoplay") !== undefined,
         loop: $video.attr("loop") !== undefined,
         muted: $video.attr("muted") !== undefined,
-        sources,
+        sources: this.getVideoSources($video),
       });
-    });
+    }
 
     return videos;
   }
@@ -184,19 +170,36 @@ export class Html implements IHtml {
     const $ = this.$;
     const tasks: HtmlTaskType[] = [];
 
-    $('input[type="checkbox"]').each((_, element) => {
+    for (const element of $('input[type="checkbox"]').toArray()) {
       const $checkbox = $(element);
       const $parent = $checkbox.parent();
       const checked = $checkbox.attr("checked") !== undefined;
 
-      const text = $parent.text().trim();
-
       tasks.push({
-        text,
+        text: $parent.text().trim(),
         checked,
       });
-    });
+    }
 
     return tasks;
+  }
+
+  private getVideoSources($video: ReturnType<CheerioAPI>): Array<{ src: string; type: string | null }> {
+    const $ = this.$;
+    const sources: Array<{ src: string; type: string | null }> = [];
+
+    for (const sourceElement of $video.find("source").toArray()) {
+      const $source = $(sourceElement);
+      const src = $source.attr("src");
+
+      if (src) {
+        sources.push({
+          src,
+          type: $source.attr("type") || null,
+        });
+      }
+    }
+
+    return sources;
   }
 }
