@@ -21,7 +21,10 @@ export type CronTimeType = `${PrefixType} ${number} ${SuffixType}`;
 // biome-ignore lint/suspicious/noExplicitAny: trust me
 export type CronClassType = new (...args: any[]) => ICron;
 
-// TODO: Add description
+/**
+ * Contract every cron job class implements — registered via `@decorator.cron()`
+ * and scheduled from the `getTime()` sentence it declares.
+ */
 export interface ICron {
   getTime: () => Promise<CronTimeType> | CronTimeType;
   start: () => Promise<void> | void;
