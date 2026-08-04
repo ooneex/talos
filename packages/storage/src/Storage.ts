@@ -1,6 +1,6 @@
-import { readdir } from "node:fs/promises";
 import { basename, join } from "node:path";
 import type { BunFile, S3File, S3Options } from "bun";
+import { putDirRecursive } from "./putDir";
 import type { GetFileOptionsType, IStorage, PutDirOptionsType } from "./types";
 
 export abstract class Storage implements IStorage {
@@ -56,33 +56,7 @@ export abstract class Storage implements IStorage {
   }
 
   public async putDir(bucket: string, options: PutDirOptionsType): Promise<number> {
-    const { path, filter } = options;
-    const entries = await readdir(path, { withFileTypes: true });
-
-    const tasks: Promise<number>[] = [];
-
-    for (const entry of entries) {
-      const entryLocalPath = join(path, entry.name);
-      const entryKey = bucket ? `${bucket}/${entry.name}` : entry.name;
-
-      if (filter && !filter.test(entryLocalPath)) {
-        continue;
-      }
-
-      if (entry.isDirectory()) {
-        const subOptions: PutDirOptionsType = { path: entryLocalPath };
-        if (filter) {
-          subOptions.filter = filter;
-        }
-        tasks.push(this.putDir(entryKey, subOptions));
-      } else {
-        tasks.push(this.putFile(entryKey, entryLocalPath));
-      }
-    }
-
-    const results = await Promise.all(tasks);
-
-    return results.reduce((sum, bytes) => sum + bytes, 0);
+    return await putDirRecursive(this, bucket, options);
   }
 
   public async put(

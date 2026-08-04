@@ -1,4 +1,3 @@
-import { readdir } from "node:fs/promises";
 import { basename, join } from "node:path";
 import type { ReadableStream as NodeReadableStream } from "node:stream/web";
 import * as BunnyStorageSDK from "@bunny.net/storage-sdk";
@@ -6,6 +5,7 @@ import { AppEnv } from "@talosjs/app-env";
 import { inject } from "@talosjs/container";
 import type { BunFile, S3File } from "bun";
 import { decorator } from "./decorators";
+import { putDirRecursive } from "./putDir";
 import { StorageException } from "./StorageException";
 import type { GetFileOptionsType, IStorage, PutDirOptionsType } from "./types";
 
@@ -111,33 +111,7 @@ export class BunnyStorage implements IStorage {
   }
 
   public async putDir(bucket: string, options: PutDirOptionsType): Promise<number> {
-    const { path, filter } = options;
-    const entries = await readdir(path, { withFileTypes: true });
-
-    const tasks: Promise<number>[] = [];
-
-    for (const entry of entries) {
-      const entryLocalPath = join(path, entry.name);
-      const entryKey = bucket ? `${bucket}/${entry.name}` : entry.name;
-
-      if (filter && !filter.test(entryLocalPath)) {
-        continue;
-      }
-
-      if (entry.isDirectory()) {
-        const subOptions: PutDirOptionsType = { path: entryLocalPath };
-        if (filter) {
-          subOptions.filter = filter;
-        }
-        tasks.push(this.putDir(entryKey, subOptions));
-      } else {
-        tasks.push(this.putFile(entryKey, entryLocalPath));
-      }
-    }
-
-    const results = await Promise.all(tasks);
-
-    return results.reduce((sum, bytes) => sum + bytes, 0);
+    return await putDirRecursive(this, bucket, options);
   }
 
   public async put(

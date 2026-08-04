@@ -151,23 +151,7 @@ export class FilesystemStorage extends Storage {
 
     try {
       await file.delete();
-
-      let parentDir = dirname(filePath);
-      const bucketPath = this.getBucketPath();
-
-      while (parentDir !== bucketPath && parentDir !== this.storagePath) {
-        try {
-          const entries = await readdir(parentDir);
-          if (entries.length === 0) {
-            await rmdir(parentDir);
-            parentDir = dirname(parentDir);
-          } else {
-            break;
-          }
-        } catch {
-          break;
-        }
-      }
+      await this.deleteEmptyParentDirectories(filePath);
     } catch (error) {
       throw new StorageException(
         `Failed to delete file ${key}: ${error instanceof Error ? error.message : String(error)}`,
@@ -186,44 +170,10 @@ export class FilesystemStorage extends Storage {
     content: string | ArrayBuffer | SharedArrayBuffer | Request | Response | BunFile | S3File | Blob,
   ): Promise<number> {
     const filePath = this.getFilePath(key);
-    const dir = dirname(filePath);
+    await this.ensureDirectory(dirname(filePath), "STORAGE_UPLOAD_FAILED");
 
     try {
-      if (!existsSync(dir)) {
-        await mkdir(dir, { recursive: true });
-      }
-    } catch (error) {
-      throw new StorageException(
-        `Failed to create directory ${dir}: ${error instanceof Error ? error.message : String(error)}`,
-        "STORAGE_UPLOAD_FAILED",
-      );
-    }
-
-    try {
-      let bytesWritten: number;
-
-      if (typeof content === "string") {
-        bytesWritten = await Bun.write(filePath, content);
-      } else if (content instanceof ArrayBuffer) {
-        bytesWritten = await Bun.write(filePath, content);
-      } else if (content instanceof SharedArrayBuffer) {
-        const arrayBuffer = new ArrayBuffer(content.byteLength);
-        new Uint8Array(arrayBuffer).set(new Uint8Array(content));
-        bytesWritten = await Bun.write(filePath, arrayBuffer);
-      } else if (content instanceof Request) {
-        const arrayBuffer = await content.arrayBuffer();
-        bytesWritten = await Bun.write(filePath, arrayBuffer);
-      } else if (content instanceof Response) {
-        const arrayBuffer = await content.arrayBuffer();
-        bytesWritten = await Bun.write(filePath, arrayBuffer);
-      } else if (content instanceof Blob) {
-        bytesWritten = await Bun.write(filePath, content);
-      } else {
-        const arrayBuffer = await (content as BunFile | S3File).arrayBuffer();
-        bytesWritten = await Bun.write(filePath, arrayBuffer);
-      }
-
-      return bytesWritten;
+      return await Bun.write(filePath, await this.normalizeContent(content));
     } catch (error) {
       throw new StorageException(
         `Failed to write file ${key}: ${error instanceof Error ? error.message : String(error)}`,
@@ -242,18 +192,7 @@ export class FilesystemStorage extends Storage {
 
     const filename = options.filename ?? basename(key);
     const localPath = join(options.outputDir, filename);
-    const dir = dirname(localPath);
-
-    try {
-      if (!existsSync(dir)) {
-        await mkdir(dir, { recursive: true });
-      }
-    } catch (error) {
-      throw new StorageException(
-        `Failed to create directory ${dir}: ${error instanceof Error ? error.message : String(error)}`,
-        "STORAGE_DOWNLOAD_FAILED",
-      );
-    }
+    await this.ensureDirectory(dirname(localPath), "STORAGE_DOWNLOAD_FAILED");
 
     try {
       return await Bun.write(localPath, file);
@@ -318,5 +257,70 @@ export class FilesystemStorage extends Storage {
         "STORAGE_DOWNLOAD_FAILED",
       );
     }
+  }
+
+  private async deleteEmptyParentDirectories(filePath: string): Promise<void> {
+    let parentDir = dirname(filePath);
+    const bucketPath = this.getBucketPath();
+
+    while (parentDir !== bucketPath && parentDir !== this.storagePath) {
+      const wasDeleted = await this.deleteDirectoryIfEmpty(parentDir);
+
+      if (!wasDeleted) {
+        break;
+      }
+
+      parentDir = dirname(parentDir);
+    }
+  }
+
+  private async deleteDirectoryIfEmpty(path: string): Promise<boolean> {
+    try {
+      const entries = await readdir(path);
+      if (entries.length !== 0) {
+        return false;
+      }
+
+      await rmdir(path);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  private async ensureDirectory(
+    path: string,
+    code: "STORAGE_UPLOAD_FAILED" | "STORAGE_DOWNLOAD_FAILED",
+  ): Promise<void> {
+    try {
+      if (!existsSync(path)) {
+        await mkdir(path, { recursive: true });
+      }
+    } catch (error) {
+      throw new StorageException(
+        `Failed to create directory ${path}: ${error instanceof Error ? error.message : String(error)}`,
+        code,
+      );
+    }
+  }
+
+  private async normalizeContent(
+    content: string | ArrayBuffer | SharedArrayBuffer | Request | Response | BunFile | S3File | Blob,
+  ): Promise<string | ArrayBuffer | Blob> {
+    if (typeof content === "string" || content instanceof ArrayBuffer || content instanceof Blob) {
+      return content;
+    }
+
+    if (content instanceof SharedArrayBuffer) {
+      const arrayBuffer = new ArrayBuffer(content.byteLength);
+      new Uint8Array(arrayBuffer).set(new Uint8Array(content));
+      return arrayBuffer;
+    }
+
+    if (content instanceof Request || content instanceof Response) {
+      return await content.arrayBuffer();
+    }
+
+    return await (content as BunFile | S3File).arrayBuffer();
   }
 }
