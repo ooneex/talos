@@ -34,34 +34,13 @@ export class Yaml<T = unknown> implements IYaml<T> {
         const { done, value } = await reader.read();
 
         if (done) {
-          if (buffer.trim()) {
-            yield* this.filter(this.parse(buffer), options?.ignore);
-          }
+          yield* this.flushBuffer(buffer, options?.ignore);
           break;
         }
 
         buffer += decoder.decode(value, { stream: true });
-
-        if (isArrayFormat === null) {
-          const trimmed = buffer.trimStart();
-          if (trimmed.length > 0) {
-            isArrayFormat = trimmed.startsWith("- ");
-          }
-        }
-
-        if (isArrayFormat) {
-          yield* this.filter(this.drainArrayItems(buffer), options?.ignore);
-          const lastSep = buffer.lastIndexOf("\n\n- ");
-          if (lastSep !== -1) {
-            buffer = buffer.slice(lastSep + 2);
-          }
-        } else {
-          yield* this.filter(this.drainDocuments(buffer), options?.ignore);
-          const lastSep = buffer.lastIndexOf("\n---\n");
-          if (lastSep !== -1) {
-            buffer = buffer.slice(lastSep + 5);
-          }
-        }
+        isArrayFormat = this.detectArrayFormat(buffer, isArrayFormat);
+        buffer = yield* this.drainBuffer(buffer, isArrayFormat, options?.ignore);
       }
     } catch (error) {
       if (error instanceof YamlException) {
@@ -75,6 +54,14 @@ export class Yaml<T = unknown> implements IYaml<T> {
     } finally {
       reader.releaseLock();
     }
+  }
+
+  private *flushBuffer(buffer: string, ignore?: { [K in keyof T]?: RegExp }): Generator<T> {
+    if (!buffer.trim()) {
+      return;
+    }
+
+    yield* this.filter(this.parse(buffer), ignore);
   }
 
   public async toJson(options: YamlToJsonOptionsType<T>): Promise<void> {
@@ -103,14 +90,7 @@ export class Yaml<T = unknown> implements IYaml<T> {
 
     for await (const item of this.load(ignore ? { ignore } : undefined)) {
       const record = item as Record<string, unknown>;
-      const row = headers.map((h) => {
-        const value = String(record[h] ?? "");
-        if (value.includes(separator) || value.includes('"') || value.includes("\n")) {
-          return `"${value.replace(/"/g, '""')}"`;
-        }
-        return value;
-      });
-      writer.write(`${row.join(separator)}\n`);
+      writer.write(`${this.buildCsvRow(record, headers, separator)}\n`);
     }
 
     await writer.end();
@@ -138,6 +118,34 @@ export class Yaml<T = unknown> implements IYaml<T> {
         yield* this.parse(document);
       }
     }
+  }
+
+  private detectArrayFormat(buffer: string, current: boolean | null): boolean | null {
+    if (current !== null) {
+      return current;
+    }
+
+    const trimmed = buffer.trimStart();
+    if (trimmed.length === 0) {
+      return null;
+    }
+
+    return trimmed.startsWith("- ");
+  }
+
+  private *drainBuffer(buffer: string, isArrayFormat: boolean | null, ignore?: { [K in keyof T]?: RegExp }) {
+    const items = isArrayFormat ? this.drainArrayItems(buffer) : this.drainDocuments(buffer);
+    yield* this.filter(items, ignore);
+
+    const separator = isArrayFormat ? "\n\n- " : "\n---\n";
+    const offset = isArrayFormat ? 2 : 5;
+    const lastSeparator = buffer.lastIndexOf(separator);
+
+    if (lastSeparator === -1) {
+      return buffer;
+    }
+
+    return buffer.slice(lastSeparator + offset);
   }
 
   private *filter(items: Generator<T>, ignore?: { [K in keyof T]?: RegExp }): Generator<T> {
@@ -182,5 +190,19 @@ export class Yaml<T = unknown> implements IYaml<T> {
     } else {
       yield parsed as T;
     }
+  }
+
+  private buildCsvRow(record: Record<string, unknown>, headers: string[], separator: string): string {
+    return headers.map((header) => this.escapeCsvValue(record[header], separator)).join(separator);
+  }
+
+  private escapeCsvValue(value: unknown, separator: string): string {
+    const stringValue = String(value ?? "");
+
+    if (!stringValue.includes(separator) && !stringValue.includes('"') && !stringValue.includes("\n")) {
+      return stringValue;
+    }
+
+    return `"${stringValue.replace(/"/g, '""')}"`;
   }
 }
