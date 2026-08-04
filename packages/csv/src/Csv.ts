@@ -42,39 +42,15 @@ export class Csv<T = unknown> implements ICsv<T> {
         const { done, value } = await reader.read();
 
         if (done) {
-          if (buffer.trim()) {
-            if (!headers) {
-              break;
-            }
-            const item = this.parseRow(buffer, headers);
-            if (item && !this.isIgnored(item, options?.ignore)) {
-              yield item;
-            }
-          }
+          yield* this.loadRemainingBuffer(buffer, headers, options?.ignore);
           break;
         }
 
         buffer += decoder.decode(value, { stream: true });
-
-        let newlineIndex: number;
-        while ((newlineIndex = buffer.indexOf("\n")) !== -1) {
-          const line = buffer.slice(0, newlineIndex).trim();
-          buffer = buffer.slice(newlineIndex + 1);
-
-          if (!line) {
-            continue;
-          }
-
-          if (!headers) {
-            headers = this.parseCsvFields(line);
-            continue;
-          }
-
-          const item = this.parseRow(line, headers);
-          if (item && !this.isIgnored(item, options?.ignore)) {
-            yield item;
-          }
-        }
+        const processed = this.processBuffer(buffer, headers, options?.ignore);
+        buffer = processed.buffer;
+        headers = processed.headers;
+        yield* processed.items;
       }
     } catch (error) {
       if (error instanceof CsvException) {
@@ -119,18 +95,100 @@ export class Csv<T = unknown> implements ICsv<T> {
         writer.write("\n");
       }
 
-      const keys = Object.keys(record);
-      for (let i = 0; i < keys.length; i++) {
-        const key = keys[i] as string;
-        const value = record[key];
-        const prefix = i === 0 ? "- " : "  ";
-        writer.write(`${prefix}${key}: ${this.formatYamlValue(value)}\n`);
-      }
+      this.writeYamlRecord(writer, record);
 
       first = false;
     }
 
     await writer.end();
+  }
+
+  private *loadRemainingBuffer(buffer: string, headers: string[] | null, ignore?: CsvIgnoreType<T>): Generator<T> {
+    if (!buffer.trim() || !headers) {
+      return;
+    }
+
+    const item = this.parseRow(buffer, headers);
+    if (item && !this.isIgnored(item, ignore)) {
+      yield item;
+    }
+  }
+
+  private processBuffer(
+    buffer: string,
+    headers: string[] | null,
+    ignore?: CsvIgnoreType<T>,
+  ): {
+    buffer: string;
+    headers: string[] | null;
+    items: T[];
+  } {
+    const items: T[] = [];
+    let remaining = buffer;
+    let currentHeaders = headers;
+    let newlineIndex = remaining.indexOf("\n");
+
+    while (newlineIndex !== -1) {
+      const line = remaining.slice(0, newlineIndex).trim();
+      remaining = remaining.slice(newlineIndex + 1);
+
+      if (!line) {
+        newlineIndex = remaining.indexOf("\n");
+        continue;
+      }
+
+      if (!currentHeaders) {
+        currentHeaders = this.parseCsvFields(line);
+        newlineIndex = remaining.indexOf("\n");
+        continue;
+      }
+
+      const item = this.parseRow(line, currentHeaders);
+      if (item && !this.isIgnored(item, ignore)) {
+        items.push(item);
+      }
+
+      newlineIndex = remaining.indexOf("\n");
+    }
+
+    return {
+      buffer: remaining,
+      headers: currentHeaders,
+      items,
+    };
+  }
+
+  private consumeQuotedField(
+    line: string,
+    index: number,
+    current: string,
+    char: string,
+  ): {
+    current: string;
+    inQuotes: boolean;
+    index: number;
+  } {
+    if (char !== '"') {
+      return {
+        current: `${current}${char}`,
+        inQuotes: true,
+        index,
+      };
+    }
+
+    if (line[index + 1] === '"') {
+      return {
+        current: `${current}"`,
+        inQuotes: true,
+        index: index + 1,
+      };
+    }
+
+    return {
+      current,
+      inQuotes: false,
+      index,
+    };
   }
 
   private parseCsvFields(line: string): string[] {
@@ -139,27 +197,28 @@ export class Csv<T = unknown> implements ICsv<T> {
     let inQuotes = false;
 
     for (let i = 0; i < line.length; i++) {
-      const char = line[i];
+      const char = line[i] ?? "";
 
       if (inQuotes) {
-        if (char === '"') {
-          if (i + 1 < line.length && line[i + 1] === '"') {
-            current += '"';
-            i++;
-          } else {
-            inQuotes = false;
-          }
-        } else {
-          current += char;
-        }
-      } else if (char === '"') {
+        const quotedField = this.consumeQuotedField(line, i, current, char);
+        current = quotedField.current;
+        inQuotes = quotedField.inQuotes;
+        i = quotedField.index;
+        continue;
+      }
+
+      if (char === '"') {
         inQuotes = true;
-      } else if (char === this.separator) {
+        continue;
+      }
+
+      if (char === this.separator) {
         fields.push(current);
         current = "";
-      } else {
-        current += char;
+        continue;
       }
+
+      current += char;
     }
 
     fields.push(current);
@@ -193,6 +252,15 @@ export class Csv<T = unknown> implements ICsv<T> {
     }
 
     return false;
+  }
+
+  private writeYamlRecord(writer: { write: (chunk: string) => unknown }, record: Record<string, unknown>): void {
+    const keys = Object.keys(record);
+
+    keys.forEach((key, index) => {
+      const prefix = index === 0 ? "- " : "  ";
+      writer.write(`${prefix}${key}: ${this.formatYamlValue(record[key])}\n`);
+    });
   }
 
   private formatYamlValue(value: unknown): string {
