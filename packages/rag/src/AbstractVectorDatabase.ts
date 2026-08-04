@@ -3,12 +3,12 @@ import "@lancedb/lancedb/embedding/openai";
 import type { EmbeddingFunction } from "@lancedb/lancedb/embedding";
 import { getRegistry, LanceSchema } from "@lancedb/lancedb/embedding";
 import { Utf8 } from "apache-arrow";
-import type { EmbeddingModelType, EmbeddingProviderType, FieldValueType, IVectorDatabase } from "./types.ts";
+import type { EmbeddingModelType, EmbeddingProviderType, FieldValueType, VectorDatabaseType } from "./types.ts";
 import { VectorDatabaseException } from "./VectorDatabaseException.ts";
 import { VectorTable } from "./VectorTable.ts";
 
 export abstract class AbstractVectorDatabase<DataType extends { metadata: Record<string, unknown> }>
-  implements IVectorDatabase<DataType>
+  implements VectorDatabaseType<DataType>
 {
   private db: lancedb.Connection | null = null;
   private embedding: EmbeddingFunction;

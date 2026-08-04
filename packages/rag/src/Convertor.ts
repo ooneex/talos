@@ -2,9 +2,9 @@ import path from "node:path";
 import { convert } from "@opendataloader/pdf";
 import { random } from "@talosjs/utils/random";
 import { ConvertorException } from "./ConvertorException";
-import type { ChunkType, ConvertorFileType, ConvertorOptionsType, IConvertor } from "./types";
+import type { ChunkType, ConvertorFileType, ConvertorOptionsType, ConvertorType } from "./types";
 
-export class Convertor implements IConvertor {
+export class Convertor implements ConvertorType {
   private readonly source: string;
 
   constructor(source: string) {
@@ -17,61 +17,16 @@ export class Convertor implements IConvertor {
     try {
       const subDir = random.id();
       const outputDir = path.join(options.outputDir ?? "", subDir);
-      const { password, imageFormat, quiet, pages } = options;
-
-      await convert([this.source], {
-        outputDir,
-        format: "json,markdown",
-        imageDir: path.join(outputDir, "images"),
-        imageOutput: "external",
-        ...(password !== undefined && { password }),
-        ...(imageFormat !== undefined && { imageFormat }),
-        ...(quiet !== undefined && { quiet }),
-        ...(pages !== undefined && { pages }),
-      });
-
-      const glob = new Bun.Glob("*");
-      let jsonFile: string | undefined;
-      let mdFile: string | undefined;
-      for await (const file of glob.scan(outputDir)) {
-        if (!jsonFile && file.endsWith(".json")) jsonFile = file;
-        if (!mdFile && file.endsWith(".md")) mdFile = file;
-        if (jsonFile && mdFile) break;
-      }
-
-      if (!jsonFile) {
-        throw new ConvertorException("No JSON output file found after conversion", "NO_JSON_OUTPUT", {
-          source: this.source,
-        });
-      }
-
-      if (!mdFile) {
-        throw new ConvertorException("No Markdown output file found after conversion", "NO_MARKDOWN_OUTPUT", {
-          source: this.source,
-        });
-      }
-
+      await convert([this.source], this.buildConvertOptions(outputDir, options));
+      const { jsonFile, mdFile } = await this.findOutputFiles(outputDir);
       const jsonPath = path.join(outputDir, jsonFile);
       const doc = await Bun.file(jsonPath).json();
       const fileName = doc["file name"] ?? path.basename(this.source);
 
       yield* this.generateChunks(doc.kids ?? [], fileName);
 
-      const renamedJson = `${random.id()}.json`;
-      const renamedMd = `${random.id()}.md`;
-
       const mdPath = path.join(outputDir, mdFile);
-      const renamedJsonPath = path.join(outputDir, renamedJson);
-      const renamedMdPath = path.join(outputDir, renamedMd);
-
-      await Promise.all([Bun.write(renamedJsonPath, Bun.file(jsonPath)), Bun.write(renamedMdPath, Bun.file(mdPath))]);
-
-      await Promise.all([Bun.file(jsonPath).delete(), Bun.file(mdPath).delete()]);
-
-      return {
-        json: { name: renamedJson, path: renamedJsonPath },
-        markdown: { name: renamedMd, path: renamedMdPath },
-      };
+      return await this.renameOutputs(outputDir, jsonPath, mdPath);
     } catch (error) {
       if (error instanceof ConvertorException) throw error;
       throw new ConvertorException(
@@ -92,33 +47,30 @@ export class Convertor implements IConvertor {
 
     for (const element of kids) {
       const type = element.type as string | undefined;
-      if (!type) continue;
-
-      if (type === "heading") {
-        if (currentContent.length > 0) {
-          yield {
-            text: currentContent.join("\n"),
-            metadata: { heading: currentHeading, page: startPage, pages: Array.from(pageSet), source },
-          };
-        }
-        const content = this.extractContent(element);
-        currentHeading = content;
-        currentContent = content ? [content] : [];
-        startPage = (element["page number"] as number) ?? null;
-        pageSet = new Set(startPage !== null ? [startPage] : []);
+      if (!type) {
         continue;
       }
 
-      if (type === "paragraph" || type === "list") {
-        const content = this.extractContent(element);
-        if (content) {
-          currentContent.push(content);
-          const page = element["page number"] as number | undefined;
-          if (page !== undefined) {
-            pageSet.add(page);
-          }
+      if (type === "heading") {
+        const headingState = this.startHeadingChunk(
+          element,
+          currentHeading,
+          currentContent,
+          startPage,
+          pageSet,
+          source,
+        );
+        currentHeading = headingState.currentHeading;
+        currentContent = headingState.currentContent;
+        startPage = headingState.startPage;
+        pageSet = headingState.pageSet;
+        if (headingState.previousChunk) {
+          yield headingState.previousChunk;
         }
+        continue;
       }
+
+      this.appendContentChunk(element, type, currentContent, pageSet);
     }
 
     if (currentContent.length > 0) {
@@ -147,5 +99,123 @@ export class Convertor implements IConvertor {
         yield* this.extractTexts(kid);
       }
     }
+  }
+
+  private startHeadingChunk(
+    element: Record<string, unknown>,
+    currentHeading: string | null,
+    currentContent: string[],
+    startPage: number | null,
+    pageSet: Set<number>,
+    source: string,
+  ): {
+    previousChunk?: ChunkType | undefined;
+    currentHeading: string | null;
+    currentContent: string[];
+    startPage: number | null;
+    pageSet: Set<number>;
+  } {
+    const previousChunk =
+      currentContent.length > 0
+        ? {
+            text: currentContent.join("\n"),
+            metadata: { heading: currentHeading, page: startPage, pages: Array.from(pageSet), source },
+          }
+        : undefined;
+    const content = this.extractContent(element);
+    const page = (element["page number"] as number) ?? null;
+
+    return {
+      previousChunk,
+      currentHeading: content,
+      currentContent: content ? [content] : [],
+      startPage: page,
+      pageSet: new Set(page !== null ? [page] : []),
+    };
+  }
+
+  private appendContentChunk(
+    element: Record<string, unknown>,
+    type: string,
+    currentContent: string[],
+    pageSet: Set<number>,
+  ): void {
+    if (type !== "paragraph" && type !== "list") {
+      return;
+    }
+
+    const content = this.extractContent(element);
+    if (!content) {
+      return;
+    }
+
+    currentContent.push(content);
+    const page = element["page number"] as number | undefined;
+    if (page !== undefined) {
+      pageSet.add(page);
+    }
+  }
+
+  private buildConvertOptions(outputDir: string, options: ConvertorOptionsType) {
+    const { password, imageFormat, quiet, pages } = options;
+
+    return {
+      outputDir,
+      format: "json,markdown",
+      imageDir: path.join(outputDir, "images"),
+      imageOutput: "external",
+      ...(password !== undefined && { password }),
+      ...(imageFormat !== undefined && { imageFormat }),
+      ...(quiet !== undefined && { quiet }),
+      ...(pages !== undefined && { pages }),
+    };
+  }
+
+  private async findOutputFiles(outputDir: string): Promise<{ jsonFile: string; mdFile: string }> {
+    const glob = new Bun.Glob("*");
+    let jsonFile: string | undefined;
+    let mdFile: string | undefined;
+
+    for await (const file of glob.scan(outputDir)) {
+      jsonFile ??= file.endsWith(".json") ? file : undefined;
+      mdFile ??= file.endsWith(".md") ? file : undefined;
+
+      if (jsonFile && mdFile) {
+        break;
+      }
+    }
+
+    if (!jsonFile) {
+      throw new ConvertorException("No JSON output file found after conversion", "NO_JSON_OUTPUT", {
+        source: this.source,
+      });
+    }
+
+    if (!mdFile) {
+      throw new ConvertorException("No Markdown output file found after conversion", "NO_MARKDOWN_OUTPUT", {
+        source: this.source,
+      });
+    }
+
+    return { jsonFile, mdFile };
+  }
+
+  private async renameOutputs(
+    outputDir: string,
+    jsonPath: string,
+    mdPath: string,
+  ): Promise<{ json: ConvertorFileType; markdown: ConvertorFileType }> {
+    const renamedJson = `${random.id()}.json`;
+    const renamedMd = `${random.id()}.md`;
+    const renamedJsonPath = path.join(outputDir, renamedJson);
+    const renamedMdPath = path.join(outputDir, renamedMd);
+
+    await Promise.all([Bun.write(renamedJsonPath, Bun.file(jsonPath)), Bun.write(renamedMdPath, Bun.file(mdPath))]);
+    await Promise.all([Bun.file(jsonPath).delete(), Bun.file(mdPath).delete()]);
+
+    return {
+      json: { name: renamedJson, path: renamedJsonPath },
+      markdown: { name: renamedMd, path: renamedMdPath },
+    };
   }
 }

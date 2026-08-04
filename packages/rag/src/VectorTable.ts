@@ -1,5 +1,5 @@
 import * as lancedb from "@lancedb/lancedb";
-import type { Filter } from "./types.ts";
+import type { FilterType } from "./types.ts";
 import { buildFilter } from "./utils.ts";
 
 export class VectorTable<DataType extends { metadata: Record<string, unknown> }> {
@@ -120,7 +120,7 @@ export class VectorTable<DataType extends { metadata: Record<string, unknown> }>
     options?: {
       limit?: number;
       select?: (keyof DataType["metadata"] | "id" | "text")[];
-      filter?: Filter<DataType>;
+      filter?: FilterType<DataType>;
       // Number of IVF partitions to search. Higher values improve recall but reduce speed.
       nprobes?: number;
       // Multiplier for additional candidate rows during IVF PQ refine step to improve recall accuracy.
@@ -176,7 +176,7 @@ export class VectorTable<DataType extends { metadata: Record<string, unknown> }>
     query: string,
     options?: {
       limit?: number;
-      filter?: Filter<DataType>;
+      filter?: FilterType<DataType>;
       verbose?: boolean;
     },
   ): Promise<string> {
@@ -202,7 +202,7 @@ export class VectorTable<DataType extends { metadata: Record<string, unknown> }>
     query: string,
     options?: {
       limit?: number;
-      filter?: Filter<DataType>;
+      filter?: FilterType<DataType>;
     },
   ): Promise<string> {
     const { limit = 10, filter } = options ?? {};

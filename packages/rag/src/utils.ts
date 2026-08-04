@@ -1,6 +1,6 @@
-import type { Filter } from "./types.ts";
+import type { FilterType } from "./types.ts";
 
-export const buildFilter = <T extends { metadata: Record<string, unknown> }>(filter: Filter<T>): string => {
+export const buildFilter = <T extends { metadata: Record<string, unknown> }>(filter: FilterType<T>): string => {
   if ("AND" in filter) {
     return `(${filter.AND.map(buildFilter).join(" AND ")})`;
   }

@@ -49,13 +49,13 @@ export type ChunkType = {
 
 export type ConvertorFileType = { name: string; path: string };
 
-export type IConvertor = {
+export type ConvertorType = {
   convert: (
     options?: ConvertorOptionsType,
   ) => AsyncGenerator<ChunkType, { json: ConvertorFileType; markdown: ConvertorFileType }>;
 };
 
-export type IVectorDatabase<DataType extends { metadata: Record<string, unknown> }> = {
+export type VectorDatabaseType<DataType extends { metadata: Record<string, unknown> }> = {
   getDatabaseUri: () => string;
   connect: () => Promise<void>;
   getDatabase: () => Connection;
@@ -101,19 +101,19 @@ export type FieldValueType =
   | EmbeddingFunction;
 
 // biome-ignore lint/suspicious/noExplicitAny: trust me
-export type VectorDatabaseClassType = new (...args: any[]) => IVectorDatabase<any>;
+export type VectorDatabaseClassType = new (...args: any[]) => VectorDatabaseType<any>;
 
-export type FilterField<T extends { metadata: Record<string, unknown> }> = keyof T["metadata"] | "id" | "text";
+export type FilterFieldType<T extends { metadata: Record<string, unknown> }> = keyof T["metadata"] | "id" | "text";
 
-export type FilterCondition<T extends { metadata: Record<string, unknown> }> =
-  | { field: FilterField<T>; op: ">" | ">=" | "<" | "<=" | "="; value: string | number }
-  | { field: FilterField<T>; op: "IN"; value: (string | number)[] }
-  | { field: FilterField<T>; op: "LIKE" | "NOT LIKE"; value: string }
-  | { field: FilterField<T>; op: "IS NULL" | "IS NOT NULL"; value?: never }
-  | { field: FilterField<T>; op: "IS TRUE" | "IS NOT TRUE" | "IS FALSE" | "IS NOT FALSE"; value?: never };
+export type FilterConditionType<T extends { metadata: Record<string, unknown> }> =
+  | { field: FilterFieldType<T>; op: ">" | ">=" | "<" | "<=" | "="; value: string | number }
+  | { field: FilterFieldType<T>; op: "IN"; value: (string | number)[] }
+  | { field: FilterFieldType<T>; op: "LIKE" | "NOT LIKE"; value: string }
+  | { field: FilterFieldType<T>; op: "IS NULL" | "IS NOT NULL"; value?: never }
+  | { field: FilterFieldType<T>; op: "IS TRUE" | "IS NOT TRUE" | "IS FALSE" | "IS NOT FALSE"; value?: never };
 
-export type Filter<T extends { metadata: Record<string, unknown> }> =
-  | FilterCondition<T>
-  | { AND: Filter<T>[] }
-  | { OR: Filter<T>[] }
-  | { NOT: Filter<T> };
+export type FilterType<T extends { metadata: Record<string, unknown> }> =
+  | FilterConditionType<T>
+  | { AND: FilterType<T>[] }
+  | { OR: FilterType<T>[] }
+  | { NOT: FilterType<T> };
