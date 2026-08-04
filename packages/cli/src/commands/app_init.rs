@@ -66,6 +66,69 @@ pub fn run(args: &AppInitArgs) {
     });
 }
 
+/// Builds the post-scaffold actions: dependency install, git init (with an
+/// optional commit-msg hook), and — when any agent directories were chosen —
+/// scaffolding their skill files.
+fn build_init_actions(
+    destination: &Path,
+    kebab_name: &str,
+    skeleton_repo_dir: &Path,
+    install_hook: bool,
+    agent_dirs: &[String],
+    silent: bool,
+) -> Vec<Action> {
+    let mut actions = vec![
+        Action::new("Installing dependencies", {
+            let destination = destination.to_path_buf();
+            move || run_captured(Command::new("bun").arg("install").current_dir(&destination))
+        }),
+        Action::new("Initializing git repository", {
+            let destination = destination.to_path_buf();
+            move || {
+                run_captured(Command::new("git").arg("init").current_dir(&destination))?;
+                if install_hook {
+                    write_commitlint_hook(&destination)?;
+                }
+                Ok(())
+            }
+        }),
+    ];
+    if !agent_dirs.is_empty() {
+        actions.push(Action::new("Scaffolding agent skills", {
+            let destination = destination.to_path_buf();
+            let kebab_name = kebab_name.to_string();
+            let skeleton_repo_dir = skeleton_repo_dir.to_path_buf();
+            let agent_dirs = agent_dirs.to_vec();
+            move || {
+                run_agent_skills(
+                    &skeleton_repo_dir,
+                    &destination,
+                    &kebab_name,
+                    &agent_dirs,
+                    silent,
+                )
+            }
+        }));
+    }
+    actions
+}
+
+/// Prints every failed action and reports whether any of them should abort
+/// the init: only the agent-skills step is allowed to fail without one.
+fn report_action_failures(failures: &[(String, String)]) -> bool {
+    let mut fatal = false;
+    for (label, message) in failures {
+        crate::utils::error(format!("{label} failed"));
+        if !message.trim().is_empty() {
+            eprintln!("{}", message.trim_end());
+        }
+        if label != "Scaffolding agent skills" {
+            fatal = true;
+        }
+    }
+    fatal
+}
+
 pub fn execute(options: AppInitOptions) -> Option<PathBuf> {
     let AppInitOptions {
         name,
@@ -99,52 +162,18 @@ pub fn execute(options: AppInitOptions) -> Option<PathBuf> {
 
     let agent_dirs = resolve_agent_dirs(silent);
 
-    let mut actions = vec![
-        Action::new("Installing dependencies", {
-            let destination = destination.clone();
-            move || run_captured(Command::new("bun").arg("install").current_dir(&destination))
-        }),
-        Action::new("Initializing git repository", {
-            let destination = destination.clone();
-            move || {
-                run_captured(Command::new("git").arg("init").current_dir(&destination))?;
-                if install_hook {
-                    write_commitlint_hook(&destination)?;
-                }
-                Ok(())
-            }
-        }),
-    ];
-    if !agent_dirs.is_empty() {
-        actions.push(Action::new("Scaffolding agent skills", {
-            let destination = destination.clone();
-            let kebab_name = kebab_name.clone();
-            let skeleton_repo_dir = skeleton_repo_dir.clone();
-            move || {
-                run_agent_skills(
-                    &skeleton_repo_dir,
-                    &destination,
-                    &kebab_name,
-                    &agent_dirs,
-                    silent,
-                )
-            }
-        }));
-    }
+    let actions = build_init_actions(
+        &destination,
+        &kebab_name,
+        &skeleton_repo_dir,
+        install_hook,
+        &agent_dirs,
+        silent,
+    );
 
     let failures = run_actions(actions);
 
-    let mut fatal = false;
-    for (label, message) in &failures {
-        crate::utils::error(format!("{label} failed"));
-        if !message.trim().is_empty() {
-            eprintln!("{}", message.trim_end());
-        }
-        if label != "Scaffolding agent skills" {
-            fatal = true;
-        }
-    }
-    if fatal {
+    if report_action_failures(&failures) {
         return None;
     }
 

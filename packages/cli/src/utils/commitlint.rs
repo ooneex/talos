@@ -45,6 +45,80 @@ pub fn get_valid_scopes(root_dir: &Path) -> Vec<String> {
     scopes.into_iter().collect()
 }
 
+fn lint_type(r#type: &str, errors: &mut Vec<String>) {
+    if r#type != r#type.to_lowercase() {
+        errors.push(format!("Type \"{}\" must be lower-case.", r#type));
+    }
+    if !COMMIT_TYPES.contains(&r#type.to_lowercase().as_str()) {
+        errors.push(format!(
+            "Type \"{}\" must be one of: {}.",
+            r#type,
+            COMMIT_TYPES.join(", ")
+        ));
+    }
+}
+
+fn lint_scope(scope: Option<&str>, valid_scopes: &[String], errors: &mut Vec<String>) {
+    if scope.is_none_or(|scope| scope.trim().is_empty()) {
+        errors.push(format!(
+            "Scope must not be empty — use \"{COMMON_SCOPE}\" or a package/module name."
+        ));
+        return;
+    }
+    let Some(scope) = scope else {
+        return;
+    };
+    for entry in split_scopes(scope) {
+        if entry != entry.to_lowercase() {
+            errors.push(format!("Scope \"{entry}\" must be lower-case."));
+        }
+        if !valid_scopes.contains(&entry.to_lowercase()) {
+            errors.push(format!(
+                "Scope \"{entry}\" is not valid — use \"{COMMON_SCOPE}\" or a package/module name."
+            ));
+        }
+    }
+}
+
+fn lint_subject(subject: &str, errors: &mut Vec<String>) {
+    let trimmed_subject = subject.trim();
+    if trimmed_subject.is_empty() {
+        errors.push("Subject must not be empty.".to_string());
+        return;
+    }
+    if trimmed_subject.ends_with('.') {
+        errors.push("Subject must not end with a period (\".\").".to_string());
+    }
+    if trimmed_subject
+        .chars()
+        .next()
+        .is_some_and(|ch| ch.is_ascii_lowercase())
+    {
+        errors.push(
+            "Subject must start with an upper-case letter (sentence, start, pascal or upper case)."
+                .to_string(),
+        );
+    }
+}
+
+fn lint_body(lines: &[&str], errors: &mut Vec<String>) {
+    if lines.len() <= 1 {
+        return;
+    }
+    if lines.get(1).copied().unwrap_or_default().trim() != "" {
+        errors.push("There must be a blank line between the header and the body.".to_string());
+    }
+    for (index, line) in lines.iter().enumerate().skip(2) {
+        if line.len() > BODY_MAX_LINE_LENGTH {
+            errors.push(format!(
+                "Body line {} must be at most {BODY_MAX_LINE_LENGTH} characters (got {}).",
+                index + 1,
+                line.len()
+            ));
+        }
+    }
+}
+
 pub fn lint_commit_message(message: &str, valid_scopes: &[String]) -> Vec<String> {
     let mut errors = Vec::new();
     let normalized = message.replace("\r\n", "\n");
@@ -79,67 +153,10 @@ pub fn lint_commit_message(message: &str, valid_scopes: &[String]) -> Vec<String
     let scope = caps.get(2).map(|m| m.as_str());
     let subject = caps.get(4).map(|m| m.as_str()).unwrap_or_default();
 
-    if r#type != r#type.to_lowercase() {
-        errors.push(format!("Type \"{}\" must be lower-case.", r#type));
-    }
-    if !COMMIT_TYPES.contains(&r#type.to_lowercase().as_str()) {
-        errors.push(format!(
-            "Type \"{}\" must be one of: {}.",
-            r#type,
-            COMMIT_TYPES.join(", ")
-        ));
-    }
-
-    if scope.is_none_or(|scope| scope.trim().is_empty()) {
-        errors.push(format!(
-            "Scope must not be empty — use \"{COMMON_SCOPE}\" or a package/module name."
-        ));
-    } else if let Some(scope) = scope {
-        for entry in split_scopes(scope) {
-            if entry != entry.to_lowercase() {
-                errors.push(format!("Scope \"{entry}\" must be lower-case."));
-            }
-            if !valid_scopes.contains(&entry.to_lowercase()) {
-                errors.push(format!(
-                    "Scope \"{entry}\" is not valid — use \"{COMMON_SCOPE}\" or a package/module name."
-                ));
-            }
-        }
-    }
-
-    let trimmed_subject = subject.trim();
-    if trimmed_subject.is_empty() {
-        errors.push("Subject must not be empty.".to_string());
-    } else {
-        if trimmed_subject.ends_with('.') {
-            errors.push("Subject must not end with a period (\".\").".to_string());
-        }
-        if trimmed_subject
-            .chars()
-            .next()
-            .is_some_and(|ch| ch.is_ascii_lowercase())
-        {
-            errors.push(
-                "Subject must start with an upper-case letter (sentence, start, pascal or upper case)."
-                    .to_string(),
-            );
-        }
-    }
-
-    if lines.len() > 1 {
-        if lines.get(1).copied().unwrap_or_default().trim() != "" {
-            errors.push("There must be a blank line between the header and the body.".to_string());
-        }
-        for (index, line) in lines.iter().enumerate().skip(2) {
-            if line.len() > BODY_MAX_LINE_LENGTH {
-                errors.push(format!(
-                    "Body line {} must be at most {BODY_MAX_LINE_LENGTH} characters (got {}).",
-                    index + 1,
-                    line.len()
-                ));
-            }
-        }
-    }
+    lint_type(r#type, &mut errors);
+    lint_scope(scope, valid_scopes, &mut errors);
+    lint_subject(subject, &mut errors);
+    lint_body(&lines, &mut errors);
 
     errors
 }

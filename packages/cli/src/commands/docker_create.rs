@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use clap::Args;
 use serde_json::{Map, Value};
 
@@ -100,6 +102,93 @@ pub fn service_exists(content: &str, name: &str) -> bool {
         .any(|line| line.trim_end() == format!("  {name}:"))
 }
 
+/// Merges a new service's block and volumes into an existing
+/// `docker-compose.yml`, inserting the service before the `volumes:`/`networks:`
+/// section (whichever comes first) and adding any volumes it declares that
+/// the file doesn't already have.
+fn merge_service_into_compose(existing_content: String, template_content: &str) -> String {
+    let service_block = extract_service_block(template_content);
+    let new_volume_names = extract_volume_names(template_content);
+
+    let mut updated_content = existing_content;
+    let volumes_index = updated_content.find("\nvolumes:");
+    let networks_index = updated_content.find("\nnetworks:");
+    let insert_index = match (volumes_index, networks_index) {
+        (Some(left), Some(right)) => Some(left.min(right)),
+        (Some(index), None) | (None, Some(index)) => Some(index),
+        (None, None) => None,
+    };
+
+    if let Some(insert_index) = insert_index {
+        updated_content = format!(
+            "{}\n{}{}",
+            &updated_content[..insert_index],
+            service_block,
+            &updated_content[insert_index..]
+        );
+    } else {
+        updated_content = format!("{}\n{}", updated_content.trim_end(), service_block);
+    }
+
+    for volume_name in new_volume_names {
+        let volume_key = format!("  {volume_name}:");
+        if updated_content.contains(&volume_key) {
+            continue;
+        }
+
+        if let Some(volumes_index) = updated_content.find("\nvolumes:") {
+            let section_start = volumes_index + "\nvolumes:".len();
+            let after_volumes = updated_content[section_start..].to_string();
+            updated_content = format!(
+                "{}\n{}{}",
+                &updated_content[..section_start],
+                volume_key,
+                after_volumes
+            );
+        } else {
+            updated_content = format!(
+                "{}\n\nvolumes:\n{}\n",
+                updated_content.trim_end(),
+                volume_key
+            );
+        }
+    }
+
+    updated_content
+}
+
+/// Adds a `dev` script that boots docker then the app, if the app module's
+/// `package.json` does not already declare one.
+fn ensure_docker_dev_script(base: &Path) {
+    let package_json_path = base.join("package.json");
+    let Ok(raw) = std::fs::read_to_string(&package_json_path) else {
+        return;
+    };
+    let Ok(mut package_json) = serde_json::from_str::<Value>(&raw) else {
+        return;
+    };
+    if !package_json.is_object() {
+        package_json = Value::Object(Map::new());
+    }
+    let Some(root) = package_json.as_object_mut() else {
+        return;
+    };
+    let scripts = root
+        .entry("scripts")
+        .or_insert_with(|| Value::Object(Map::new()));
+    if !scripts.is_object() {
+        *scripts = Value::Object(Map::new());
+    }
+    if let Some(map) = scripts.as_object_mut() {
+        map.entry("dev".to_string()).or_insert_with(|| {
+            Value::String("docker compose up -d && bun --hot run ./src/index.ts".to_string())
+        });
+    }
+    if let Ok(json) = serde_json::to_string_pretty(&package_json) {
+        let _ = std::fs::write(&package_json_path, format!("{json}\n"));
+    }
+}
+
 pub fn run(args: &DockerCreateArgs) {
     let name = match args.name.clone() {
         Some(name) => name,
@@ -137,53 +226,7 @@ pub fn run(args: &DockerCreateArgs) {
             return;
         }
 
-        let service_block = extract_service_block(&template_content);
-        let new_volume_names = extract_volume_names(&template_content);
-
-        let mut updated_content = existing_content;
-        let volumes_index = updated_content.find("\nvolumes:");
-        let networks_index = updated_content.find("\nnetworks:");
-        let insert_index = match (volumes_index, networks_index) {
-            (Some(left), Some(right)) => Some(left.min(right)),
-            (Some(index), None) | (None, Some(index)) => Some(index),
-            (None, None) => None,
-        };
-
-        if let Some(insert_index) = insert_index {
-            updated_content = format!(
-                "{}\n{}{}",
-                &updated_content[..insert_index],
-                service_block,
-                &updated_content[insert_index..]
-            );
-        } else {
-            updated_content = format!("{}\n{}", updated_content.trim_end(), service_block);
-        }
-
-        for volume_name in new_volume_names {
-            let volume_key = format!("  {volume_name}:");
-            if updated_content.contains(&volume_key) {
-                continue;
-            }
-
-            if let Some(volumes_index) = updated_content.find("\nvolumes:") {
-                let section_start = volumes_index + "\nvolumes:".len();
-                let after_volumes = updated_content[section_start..].to_string();
-                updated_content = format!(
-                    "{}\n{}{}",
-                    &updated_content[..section_start],
-                    volume_key,
-                    after_volumes
-                );
-            } else {
-                updated_content = format!(
-                    "{}\n\nvolumes:\n{}\n",
-                    updated_content.trim_end(),
-                    volume_key
-                );
-            }
-        }
-
+        let updated_content = merge_service_into_compose(existing_content, &template_content);
         if let Err(error) = std::fs::write(&compose_path, updated_content) {
             crate::utils::error(format!(
                 "Failed to write {}: {error}",
@@ -199,31 +242,7 @@ pub fn run(args: &DockerCreateArgs) {
         return;
     }
 
-    let package_json_path = base.join("package.json");
-    if let Ok(raw) = std::fs::read_to_string(&package_json_path)
-        && let Ok(mut package_json) = serde_json::from_str::<Value>(&raw)
-    {
-        if !package_json.is_object() {
-            package_json = Value::Object(Map::new());
-        }
-        let Some(root) = package_json.as_object_mut() else {
-            return;
-        };
-        let scripts = root
-            .entry("scripts")
-            .or_insert_with(|| Value::Object(Map::new()));
-        if !scripts.is_object() {
-            *scripts = Value::Object(Map::new());
-        }
-        if let Some(map) = scripts.as_object_mut() {
-            map.entry("dev".to_string()).or_insert_with(|| {
-                Value::String("docker compose up -d && bun --hot run ./src/index.ts".to_string())
-            });
-        }
-        if let Ok(json) = serde_json::to_string_pretty(&package_json) {
-            let _ = std::fs::write(&package_json_path, format!("{json}\n"));
-        }
-    }
+    ensure_docker_dev_script(&base);
 
     crate::utils::success(format!("Service \"{name}\" added to docker-compose.yml"));
     crate::utils::info("Run 'bun run dev' to start docker containers and the app");

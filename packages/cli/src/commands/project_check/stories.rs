@@ -1,9 +1,9 @@
-//! Stories check — the design system against the gallery that documents it.
-//!
-//! A storybook module is how a component is reviewed, shared and kept honest.
-//! A component with no story is invisible to everyone who is not reading the
-//! source, and a story left behind by a deleted or renamed component breaks the
-//! gallery for every other component in its group.
+// Stories check — the design system against the gallery that documents it.
+//
+// A storybook module is how a component is reviewed, shared and kept honest.
+// A component with no story is invisible to everyone who is not reading the
+// source, and a story left behind by a deleted or renamed component breaks the
+// gallery for every other component in its group.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
@@ -163,68 +163,10 @@ pub fn run(args: &ProjectCheckArgs, root: &Path) -> CheckOutcome {
     let mut documented_names = 0;
 
     for storybook in storybooks {
-        let label = storybook.label();
-        let stories: Vec<_> = collect_files(&storybook.dir.join("src"), TS_EXTENSIONS, 8)
-            .into_iter()
-            .filter(|path| is_story(path))
-            .collect();
-        counted += stories.len();
-
-        let sources: Vec<&WorkspaceModule> = previewed(&index, &storybook.name)
-            .into_iter()
-            .filter_map(|name| all.iter().find(|module| module.name == name))
-            .filter(|module| module.kind.as_deref() == Some("design"))
-            .collect();
-        let names: BTreeSet<String> = sources.iter().map(|module| module.name.clone()).collect();
-
-        if sources.is_empty() {
-            warnings.push(format!(
-                "{label}: no story imports a design module — the gallery documents nothing"
-            ));
-            continue;
-        }
-
-        let published: BTreeMap<String, Component> = sources
-            .iter()
-            .flat_map(|module| components(&index, module))
-            .map(|component| (component.name.clone(), component))
-            .collect();
-        documented_names += published.len();
-
-        let told = told(&index, &storybook.name, &names);
-
-        for path in &stories {
-            let file = relative(root, path);
-            let Ok(content) = fs::read_to_string(path) else {
-                continue;
-            };
-            // The gallery reads `meta` to build the sidebar entry, the controls
-            // and the usage text; a story without one renders as an empty page.
-            if !content.contains("export const meta") {
-                errors.push(format!("{file}: the story exports no `meta`"));
-            }
-            if let Some(file_index) = index.file(path)
-                && !file_index.imports.iter().any(|import| {
-                    import
-                        .module
-                        .as_ref()
-                        .is_some_and(|module| names.contains(module))
-                })
-            {
-                errors.push(format!(
-                    "{file}: the story imports nothing from the design module it documents"
-                ));
-            }
-        }
-
-        for (name, component) in &published {
-            if !is_documented(name, &told) {
-                warnings.push(format!(
-                    "{label}: `{name}` ({}) has no story",
-                    component.file
-                ));
-            }
-        }
+        let (stories, documented) =
+            check_storybook(root, &index, &all, storybook, &mut errors, &mut warnings);
+        counted += stories;
+        documented_names += documented;
     }
 
     if counted == 0 && documented_names == 0 {
@@ -249,4 +191,93 @@ pub fn run(args: &ProjectCheckArgs, root: &Path) -> CheckOutcome {
         warnings,
     )
     .with_hint("Write the missing ones with the `storybook-story-create` skill")
+}
+
+/// Checks one storybook module's stories against the design modules it
+/// previews. Returns the number of stories found and the number of
+/// published components considered documented-or-not.
+fn check_storybook(
+    root: &Path,
+    index: &SourceIndex,
+    all: &[WorkspaceModule],
+    storybook: &WorkspaceModule,
+    errors: &mut Vec<String>,
+    warnings: &mut Vec<String>,
+) -> (usize, usize) {
+    let label = storybook.label();
+    let stories: Vec<_> = collect_files(&storybook.dir.join("src"), TS_EXTENSIONS, 8)
+        .into_iter()
+        .filter(|path| is_story(path))
+        .collect();
+    let story_count = stories.len();
+
+    let sources: Vec<&WorkspaceModule> = previewed(index, &storybook.name)
+        .into_iter()
+        .filter_map(|name| all.iter().find(|module| module.name == name))
+        .filter(|module| module.kind.as_deref() == Some("design"))
+        .collect();
+    let names: BTreeSet<String> = sources.iter().map(|module| module.name.clone()).collect();
+
+    if sources.is_empty() {
+        warnings.push(format!(
+            "{label}: no story imports a design module — the gallery documents nothing"
+        ));
+        return (story_count, 0);
+    }
+
+    let published: BTreeMap<String, Component> = sources
+        .iter()
+        .flat_map(|module| components(index, module))
+        .map(|component| (component.name.clone(), component))
+        .collect();
+    let documented_count = published.len();
+
+    let told = told(index, &storybook.name, &names);
+
+    for path in &stories {
+        check_story_file(root, index, path, &names, errors);
+    }
+
+    for (name, component) in &published {
+        if !is_documented(name, &told) {
+            warnings.push(format!(
+                "{label}: `{name}` ({}) has no story",
+                component.file
+            ));
+        }
+    }
+
+    (story_count, documented_count)
+}
+
+/// Checks a single story file: it must export a `meta` and import from the
+/// design module it documents.
+fn check_story_file(
+    root: &Path,
+    index: &SourceIndex,
+    path: &Path,
+    names: &BTreeSet<String>,
+    errors: &mut Vec<String>,
+) {
+    let file = relative(root, path);
+    let Ok(content) = fs::read_to_string(path) else {
+        return;
+    };
+    // The gallery reads `meta` to build the sidebar entry, the controls
+    // and the usage text; a story without one renders as an empty page.
+    if !content.contains("export const meta") {
+        errors.push(format!("{file}: the story exports no `meta`"));
+    }
+    if let Some(file_index) = index.file(path)
+        && !file_index.imports.iter().any(|import| {
+            import
+                .module
+                .as_ref()
+                .is_some_and(|module| names.contains(module))
+        })
+    {
+        errors.push(format!(
+            "{file}: the story imports nothing from the design module it documents"
+        ));
+    }
 }

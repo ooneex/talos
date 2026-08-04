@@ -5,7 +5,11 @@ use std::process::{Command, Stdio};
 use clap::Args;
 use serde_json::Value;
 
-use crate::utils::{Action, current_dir, ensure_bin, read_credentials, run_actions_rendered};
+pub use crate::utils::split_csv;
+use crate::utils::{
+    Action, PublishTarget, current_dir, discover_publish_targets, ensure_bin, read_credentials,
+    resolve_publish_targets, run_actions_rendered,
+};
 
 const DEFAULT_REGISTRY: &str = "docker.io";
 
@@ -27,38 +31,10 @@ pub struct DockerPublishArgs {
     pub cwd: Option<String>,
 }
 
-#[derive(Clone, Debug)]
-pub struct Target {
-    pub base: String,
-    pub name: String,
-}
-
-pub fn split_csv(value: Option<&str>) -> Vec<String> {
-    value
-        .unwrap_or_default()
-        .split(',')
-        .map(str::trim)
-        .filter(|v| !v.is_empty())
-        .map(str::to_string)
-        .collect()
-}
+pub type Target = PublishTarget;
 
 pub fn discover(cwd: &std::path::Path, dir_name: &str, kind: &'static str) -> Vec<Target> {
-    fs::read_dir(cwd.join(dir_name))
-        .ok()
-        .into_iter()
-        .flatten()
-        .flatten()
-        .filter(|e| e.path().is_dir())
-        .map(|e| {
-            let name = e.file_name().to_string_lossy().to_string();
-            let _ = kind;
-            Target {
-                base: format!("{dir_name}/{name}"),
-                name,
-            }
-        })
-        .collect()
+    discover_publish_targets(cwd, dir_name, kind)
 }
 
 pub fn resolve_targets(
@@ -66,25 +42,7 @@ pub fn resolve_targets(
     packages: Option<&str>,
     modules: Option<&str>,
 ) -> Vec<Target> {
-    if packages.is_none() && modules.is_none() {
-        let mut all = discover(cwd, "packages", "package");
-        all.extend(discover(cwd, "modules", "module"));
-        return all;
-    }
-    let mut targets = Vec::new();
-    for name in split_csv(packages) {
-        targets.push(Target {
-            base: format!("packages/{name}"),
-            name,
-        });
-    }
-    for name in split_csv(modules) {
-        targets.push(Target {
-            base: format!("modules/{name}"),
-            name,
-        });
-    }
-    targets
+    resolve_publish_targets(cwd, packages, modules)
 }
 
 fn read_docker_credentials() -> Option<(String, String, String)> {

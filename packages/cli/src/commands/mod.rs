@@ -365,6 +365,28 @@ pub enum Commands {
 
 impl Commands {
     pub fn run(&self) {
+        if self.run_scaffold_commands()
+            || self.run_utility_commands()
+            || self.run_quality_commands()
+            || self.run_meta_commands()
+        {
+            return;
+        }
+
+        match self {
+            Commands::MonorepoCheck(args) => monorepo_check::run(args),
+            Commands::Check(args) => check::run(args),
+            Commands::SecurityCheck(args) => security_check::run(args),
+            Commands::CoverageCheck(args) => coverage_check::run(args),
+            Commands::ProjectCheck(args) => project_check::run(args),
+            Commands::MigrationUp(args) => migration_up::run(args),
+            Commands::MigrationDown(args) => migration_down::run(args),
+            Commands::SeedRun(args) => seed_run::run(args),
+            _ => {}
+        }
+    }
+
+    fn run_scaffold_commands(&self) -> bool {
         match self {
             Commands::AppInit(args) => app_init::run(args),
             Commands::AppCreate(args) => app_create::run(args),
@@ -423,20 +445,6 @@ impl Commands {
             Commands::CredentialsCreate(args) => credentials_create::run(args),
             Commands::NpmCredentialsCreate(args) => npm_credentials_create::run(args),
             Commands::NpmPublish(args) => npm_publish::run(args),
-            Commands::Upgrade(args) => upgrade::run(args),
-            Commands::Version(args) => version::run(args),
-            Commands::Help(args) => help::run(args),
-            Commands::CompletionBash(args) => completion_bash::run(args),
-            Commands::CompletionFish(args) => completion_fish::run(args),
-            Commands::CompletionZsh(args) => completion_zsh::run(args),
-            Commands::MonorepoRun(args) => monorepo_run::run(args),
-            Commands::Run(args) => run::run(args),
-            Commands::Build(args) => build::run(args),
-            Commands::CommitlintCheck(args) => commitlint_check::run(args),
-            Commands::CommitlintInit(args) => commitlint_init::run(args),
-            Commands::Fmt(args) => fmt::run(args),
-            Commands::Lint(args) => lint::run(args),
-            Commands::Test(args) => test::run(args),
             Commands::TranslationCreate(args) => translation_create::run(args),
             Commands::E2eCreate(args) => e2e_create::run(args),
             Commands::E2eRun(args) => e2e_run::run(args),
@@ -445,14 +453,44 @@ impl Commands {
             Commands::AdminRemove(args) => admin_remove::run(args),
             Commands::StorybookCreate(args) => storybook_create::run(args),
             Commands::StorybookRemove(args) => storybook_remove::run(args),
-            Commands::MonorepoCheck(args) => monorepo_check::run(args),
-            Commands::Check(args) => check::run(args),
-            Commands::SecurityCheck(args) => security_check::run(args),
-            Commands::CoverageCheck(args) => coverage_check::run(args),
-            Commands::ProjectCheck(args) => project_check::run(args),
-            Commands::MigrationUp(args) => migration_up::run(args),
-            Commands::MigrationDown(args) => migration_down::run(args),
-            Commands::SeedRun(args) => seed_run::run(args),
+            _ => return false,
         }
+        true
+    }
+
+    fn run_utility_commands(&self) -> bool {
+        match self {
+            Commands::MonorepoRun(args) => monorepo_run::run(args),
+            Commands::Run(args) => run::run(args),
+            Commands::Build(args) => build::run(args),
+            Commands::Upgrade(args) => upgrade::run(args),
+            Commands::CommandRun(args) => command_run::run(args),
+            _ => return false,
+        }
+        true
+    }
+
+    fn run_quality_commands(&self) -> bool {
+        match self {
+            Commands::CommitlintCheck(args) => commitlint_check::run(args),
+            Commands::CommitlintInit(args) => commitlint_init::run(args),
+            Commands::Fmt(args) => fmt::run(args),
+            Commands::Lint(args) => lint::run(args),
+            Commands::Test(args) => test::run(args),
+            _ => return false,
+        }
+        true
+    }
+
+    fn run_meta_commands(&self) -> bool {
+        match self {
+            Commands::Version(args) => version::run(args),
+            Commands::Help(args) => help::run(args),
+            Commands::CompletionBash(args) => completion_bash::run(args),
+            Commands::CompletionFish(args) => completion_fish::run(args),
+            Commands::CompletionZsh(args) => completion_zsh::run(args),
+            _ => return false,
+        }
+        true
     }
 }

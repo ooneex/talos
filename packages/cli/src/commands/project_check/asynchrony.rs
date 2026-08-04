@@ -1,10 +1,10 @@
-//! Async check — the awaits that turn one request into a hundred.
-//!
-//! An `await` inside a loop runs the round trips one after another: ten items
-//! is a slow endpoint, ten thousand is a timeout. The fix is nearly always the
-//! same — collect the promises and await them together, or ask the database for
-//! the whole set once — but nothing in the type system or the linter notices
-//! the difference.
+// Async check — the awaits that turn one request into a hundred.
+//
+// An `await` inside a loop runs the round trips one after another: ten items
+// is a slow endpoint, ten thousand is a timeout. The fix is nearly always the
+// same — collect the promises and await them together, or ask the database for
+// the whole set once — but nothing in the type system or the linter notices
+// the difference.
 
 use std::fs;
 use std::path::Path;
@@ -58,6 +58,16 @@ fn code_only(line: &str) -> &str {
     line
 }
 
+/// Applies one character's effect on brace depth, returning the updated
+/// depth and whether a brace has been seen yet.
+fn apply_brace(character: char, depth: i64, opened: bool) -> (i64, bool) {
+    match character {
+        '{' => (depth + 1, true),
+        '}' => (depth - 1, opened),
+        _ => (depth, opened),
+    }
+}
+
 /// Where the block opened on `start` ends, following its braces.
 fn block_end(lines: &[&str], start: usize) -> Option<usize> {
     let mut depth: i64 = 0;
@@ -65,14 +75,7 @@ fn block_end(lines: &[&str], start: usize) -> Option<usize> {
 
     for (offset, line) in lines[start..].iter().enumerate() {
         for character in code_only(line).chars() {
-            match character {
-                '{' => {
-                    depth += 1;
-                    opened = true;
-                }
-                '}' => depth -= 1,
-                _ => {}
-            }
+            (depth, opened) = apply_brace(character, depth, opened);
         }
         if opened && depth <= 0 {
             return Some(start + offset);

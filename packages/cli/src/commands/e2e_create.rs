@@ -57,6 +57,80 @@ fn ensure_playwright_dependency(cwd: &std::path::Path) {
     );
 }
 
+/// Adds an `e2e` script (running Playwright) to the module's `package.json`
+/// if it doesn't already declare one.
+fn ensure_e2e_script(package_json_path: &std::path::Path, module: &str) {
+    let Ok(raw) = std::fs::read_to_string(package_json_path) else {
+        return;
+    };
+    let Ok(mut package_json) = serde_json::from_str::<Value>(&raw) else {
+        return;
+    };
+    if !package_json.is_object() {
+        package_json = Value::Object(Map::new());
+    }
+    let Some(root) = package_json.as_object_mut() else {
+        return;
+    };
+    let scripts = root
+        .entry("scripts")
+        .or_insert_with(|| Value::Object(Map::new()));
+    if !scripts.is_object() {
+        *scripts = Value::Object(Map::new());
+    }
+    let Some(map) = scripts.as_object_mut() else {
+        return;
+    };
+    if map.contains_key("e2e") {
+        return;
+    }
+    map.insert(
+        "e2e".to_string(),
+        Value::String("bunx playwright test".to_string()),
+    );
+    if let Ok(json) = serde_json::to_string_pretty(&package_json) {
+        let _ = std::fs::write(package_json_path, format!("{json}\n"));
+        crate::utils::success(format!(
+            "modules/{module}/package.json updated with the e2e script"
+        ));
+    }
+}
+
+/// Writes the e2e spec (after the override check) and the module's
+/// `playwright.config.ts` if it doesn't exist yet. Returns `false` when a
+/// write failed and `run` should bail out.
+fn write_e2e_files(
+    spec_path: &std::path::Path,
+    config_path: &std::path::Path,
+    spec_template: &str,
+    config_template: &str,
+) -> bool {
+    if let Some(parent) = spec_path.parent()
+        && let Err(error) = std::fs::create_dir_all(parent)
+    {
+        crate::utils::error(format!("Failed to create {}: {error}", parent.display()));
+        return false;
+    }
+    if let Err(error) = std::fs::write(spec_path, spec_template) {
+        crate::utils::error(format!("Failed to write {}: {error}", spec_path.display()));
+        return false;
+    }
+    crate::utils::success(format!("{} created successfully", spec_path.display()));
+
+    if !config_path.exists() {
+        if let Err(error) = std::fs::write(config_path, config_template) {
+            crate::utils::error(format!(
+                "Failed to write {}: {error}",
+                config_path.display()
+            ));
+            return false;
+        }
+        crate::utils::success(format!("{} created successfully", config_path.display()));
+    }
+
+    true
+}
+
 pub fn run(args: &E2eCreateArgs) {
     let name = match args.name.clone() {
         Some(name) => name,
@@ -105,59 +179,12 @@ pub fn run(args: &E2eCreateArgs) {
         return;
     }
 
-    if let Err(error) = std::fs::create_dir_all(&e2e_dir) {
-        crate::utils::error(format!("Failed to create {}: {error}", e2e_dir.display()));
-        return;
-    }
-    if let Err(error) = std::fs::write(&spec_path, &spec_template) {
-        crate::utils::error(format!("Failed to write {}: {error}", spec_path.display()));
-        return;
-    }
-    crate::utils::success(format!("{} created successfully", spec_path.display()));
-
     let config_path = base.join("playwright.config.ts");
-    if !config_path.exists() {
-        if let Err(error) = std::fs::write(&config_path, &config_template) {
-            crate::utils::error(format!(
-                "Failed to write {}: {error}",
-                config_path.display()
-            ));
-            return;
-        }
-        crate::utils::success(format!("{} created successfully", config_path.display()));
+    if !write_e2e_files(&spec_path, &config_path, &spec_template, &config_template) {
+        return;
     }
 
-    let package_json_path = base.join("package.json");
-    if let Ok(raw) = std::fs::read_to_string(&package_json_path)
-        && let Ok(mut package_json) = serde_json::from_str::<Value>(&raw)
-    {
-        if !package_json.is_object() {
-            package_json = Value::Object(Map::new());
-        }
-        let Some(root) = package_json.as_object_mut() else {
-            return;
-        };
-        let scripts = root
-            .entry("scripts")
-            .or_insert_with(|| Value::Object(Map::new()));
-        if !scripts.is_object() {
-            *scripts = Value::Object(Map::new());
-        }
-        if let Some(map) = scripts.as_object_mut()
-            && !map.contains_key("e2e")
-        {
-            map.insert(
-                "e2e".to_string(),
-                Value::String("bunx playwright test".to_string()),
-            );
-            if let Ok(json) = serde_json::to_string_pretty(&package_json) {
-                let _ = std::fs::write(&package_json_path, format!("{json}\n"));
-                crate::utils::success(format!(
-                    "modules/{module}/package.json updated with the e2e script"
-                ));
-            }
-        }
-    }
+    ensure_e2e_script(&base.join("package.json"), &module);
 
     ensure_playwright_dependency(&cwd);
     let _ = run_spinner_step(

@@ -1,11 +1,11 @@
-//! Routes check — the HTTP surface the controllers add up to.
-//!
-//! Every controller declares its route in isolation, so nothing stops two of
-//! them claiming the same method and path: the router keeps one, and which one
-//! depends on registration order. The same blindness lets a route ship with no
-//! `roles`, which makes it public — the most expensive kind of typo in the
-//! codebase — or with a name the SDK cannot address it by, no description for
-//! the OpenAPI document, and a version that is not a number.
+// Routes check — the HTTP surface the controllers add up to.
+//
+// Every controller declares its route in isolation, so nothing stops two of
+// them claiming the same method and path: the router keeps one, and which one
+// depends on registration order. The same blindness lets a route ship with no
+// `roles`, which makes it public — the most expensive kind of typo in the
+// codebase — or with a name the SDK cannot address it by, no description for
+// the OpenAPI document, and a version that is not a number.
 
 use std::collections::BTreeMap;
 use std::fs;

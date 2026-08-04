@@ -1,14 +1,14 @@
-//! Lockfile check — whether an install here reproduces the install in CI.
-//!
-//! The lockfile is the only file that decides which versions a teammate, a CI
-//! runner and a production image actually get. A second lockfile from another
-//! package manager, one nested inside a module, or one that predates the
-//! manifest next to it all mean the same thing: two machines resolve the same
-//! ranges differently.
-//!
-//! `is_stale` is kept for the foreign ecosystems only — a `package.json` newer
-//! than `bun.lock` is not reported, since an mtime says nothing about whether
-//! the edit actually touched a dependency.
+// Lockfile check — whether an install here reproduces the install in CI.
+//
+// The lockfile is the only file that decides which versions a teammate, a CI
+// runner and a production image actually get. A second lockfile from another
+// package manager, one nested inside a module, or one that predates the
+// manifest next to it all mean the same thing: two machines resolve the same
+// ranges differently.
+//
+// `is_stale` is kept for the foreign ecosystems only — a `package.json` newer
+// than `bun.lock` is not reported, since an mtime says nothing about whether
+// the edit actually touched a dependency.
 
 use std::collections::BTreeSet;
 use std::fs;
@@ -158,47 +158,13 @@ pub fn run(args: &ProjectCheckArgs, root: &Path) -> CheckOutcome {
     }
 
     errors.extend(nested(root, &modules));
-
-    // Every manifest is compared against the lockfile, because in a workspace
-    // it is the module manifests that hold the dependencies.
-    if let Some(name) = present
-        .iter()
-        .find(|file| NPM_LOCKFILES.iter().any(|(npm, _)| npm == *file))
-    {
-        let path = root.join(name);
-        // `bun.lockb` is binary; only the text lockfiles can be searched.
-        let content = fs::read_to_string(&path).unwrap_or_default();
-
-        for manifest_path in std::iter::once(manifest_path.clone())
-            .chain(modules.iter().map(WorkspaceModule::package_json_path))
-            .filter(|path| path.is_file())
-            .filter(|_| !content.is_empty())
-        {
-            let Some(manifest) = super::modules::read_json(&manifest_path) else {
-                continue;
-            };
-            for missing in missing_from_lock(&manifest, &content) {
-                errors.push(format!(
-                    "{}: `{missing}` is declared but absent from {name}",
-                    relative(root, &manifest_path)
-                ));
-            }
-        }
-    }
-
-    for lockfile in FOREIGN_LOCKFILES {
-        let path = root.join(lockfile);
-        let manifest = match lockfile {
-            "Cargo.lock" => root.join("Cargo.toml"),
-            _ => root.join("pyproject.toml"),
-        };
-        if path.is_file() && manifest.is_file() && is_stale(&manifest, &path) {
-            warnings.push(format!(
-                "{} is newer than {lockfile} — re-lock so the resolution matches",
-                relative(root, &manifest)
-            ));
-        }
-    }
+    errors.extend(missing_manifest_entries(
+        root,
+        &present,
+        &manifest_path,
+        &modules,
+    ));
+    warnings.extend(stale_foreign_lockfiles(root));
 
     let scope = if present.is_empty() {
         "no lockfile".to_string()
@@ -219,4 +185,66 @@ pub fn run(args: &ProjectCheckArgs, root: &Path) -> CheckOutcome {
         warnings,
     )
     .with_hint("Commit the lockfile — CI installs from it, not from the ranges")
+}
+
+/// Compares every manifest (root plus modules) against the npm lockfile's
+/// text, reporting any declared dependency that is absent from it.
+fn missing_manifest_entries(
+    root: &Path,
+    present: &[String],
+    manifest_path: &Path,
+    modules: &[WorkspaceModule],
+) -> Vec<String> {
+    let mut errors = Vec::new();
+
+    // Every manifest is compared against the lockfile, because in a workspace
+    // it is the module manifests that hold the dependencies.
+    let Some(name) = present
+        .iter()
+        .find(|file| NPM_LOCKFILES.iter().any(|(npm, _)| npm == *file))
+    else {
+        return errors;
+    };
+
+    let path = root.join(name);
+    // `bun.lockb` is binary; only the text lockfiles can be searched.
+    let content = fs::read_to_string(&path).unwrap_or_default();
+
+    for manifest_path in std::iter::once(manifest_path.to_path_buf())
+        .chain(modules.iter().map(WorkspaceModule::package_json_path))
+        .filter(|path| path.is_file())
+        .filter(|_| !content.is_empty())
+    {
+        let Some(manifest) = super::modules::read_json(&manifest_path) else {
+            continue;
+        };
+        for missing in missing_from_lock(&manifest, &content) {
+            errors.push(format!(
+                "{}: `{missing}` is declared but absent from {name}",
+                relative(root, &manifest_path)
+            ));
+        }
+    }
+
+    errors
+}
+
+/// Reports every foreign lockfile (`Cargo.lock`, Python locks) whose owning
+/// manifest was modified more recently than the lock itself.
+fn stale_foreign_lockfiles(root: &Path) -> Vec<String> {
+    let mut warnings = Vec::new();
+    for lockfile in FOREIGN_LOCKFILES {
+        let path = root.join(lockfile);
+        let manifest = match lockfile {
+            "Cargo.lock" => root.join("Cargo.toml"),
+            _ => root.join("pyproject.toml"),
+        };
+        if path.is_file() && manifest.is_file() && is_stale(&manifest, &path) {
+            warnings.push(format!(
+                "{} is newer than {lockfile} — re-lock so the resolution matches",
+                relative(root, &manifest)
+            ));
+        }
+    }
+    warnings
 }

@@ -1,10 +1,10 @@
-//! Tokens check — whether a component styles itself out of the design system.
-//!
-//! The design system exists so that a colour, a radius or a step of the type
-//! scale is decided once and themed everywhere. A literal `#1d4ed8` in a
-//! component is not wrong on the day it is written — it is wrong on the day the
-//! brand changes, or the dark theme ships, and it is invisible to every other
-//! check because it is a perfectly valid string.
+// Tokens check — whether a component styles itself out of the design system.
+//
+// The design system exists so that a colour, a radius or a step of the type
+// scale is decided once and themed everywhere. A literal `#1d4ed8` in a
+// component is not wrong on the day it is written — it is wrong on the day the
+// brand changes, or the dark theme ships, and it is invisible to every other
+// check because it is a perfectly valid string.
 
 use std::path::Path;
 use std::sync::OnceLock;

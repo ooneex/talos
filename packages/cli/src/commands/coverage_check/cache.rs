@@ -1,26 +1,26 @@
-//! The cache that lets a second `coverage:check` skip the suites the first one
-//! already measured.
-//!
-//! Running a suite is the most expensive thing this command does, and its
-//! result is a function of the code it runs over: the same sources in produce
-//! the same table out. So an entry records the fingerprint of everything a
-//! module's suite reads and is reused only when every one of them still
-//! matches.
-//!
-//! What a suite reads is more than the module directory. A module imports its
-//! workspace dependencies, so an edit to `packages/color` has to re-run every
-//! module that depends on it — the entry therefore carries one fingerprint per
-//! member in the module's transitive dependency closure. It also loads a
-//! handful of root files (the manifests, the lockfile, the TypeScript
-//! configuration, the environment), which are fingerprinted together as one
-//! more input. The rest of the root is left out on purpose: editing a README
-//! does not change what a test covers, and re-running the whole workspace for
-//! it would cost more than the cache ever saves.
-//!
-//! Entries live in `var/cache/coverage/<module>.json`, next to the project and
-//! monorepo caches, and `--no-cache` bypasses both reading and writing. Only a
-//! suite that actually reported is stored: a run that could not start is a
-//! transient failure, not an answer.
+// The cache that lets a second `coverage:check` skip the suites the first one
+// already measured.
+//
+// Running a suite is the most expensive thing this command does, and its
+// result is a function of the code it runs over: the same sources in produce
+// the same table out. So an entry records the fingerprint of everything a
+// module's suite reads and is reused only when every one of them still
+// matches.
+//
+// What a suite reads is more than the module directory. A module imports its
+// workspace dependencies, so an edit to `packages/color` has to re-run every
+// module that depends on it — the entry therefore carries one fingerprint per
+// member in the module's transitive dependency closure. It also loads a
+// handful of root files (the manifests, the lockfile, the TypeScript
+// configuration, the environment), which are fingerprinted together as one
+// more input. The rest of the root is left out on purpose: editing a README
+// does not change what a test covers, and re-running the whole workspace for
+// it would cost more than the cache ever saves.
+//
+// Entries live in `var/cache/coverage/<module>.json`, next to the project and
+// monorepo caches, and `--no-cache` bypasses both reading and writing. Only a
+// suite that actually reported is stored: a run that could not start is a
+// transient failure, not an answer.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
@@ -129,6 +129,29 @@ fn root_fingerprint(root: &Path, hashes: &FileHashes) -> String {
     hasher.finalize().to_hex().to_string()
 }
 
+/// The workspace members one module's manifest declares as dependencies,
+/// resolved by package name to their labels.
+fn direct_dependencies(
+    module: &WorkspaceModule,
+    labels: &BTreeMap<String, String>,
+) -> BTreeSet<String> {
+    let mut deps = BTreeSet::new();
+    let Some(manifest) = module.package_json() else {
+        return deps;
+    };
+    for field in DEPENDENCY_FIELDS {
+        let Some(declared) = manifest.get(field).and_then(|value| value.as_object()) else {
+            continue;
+        };
+        for name in declared.keys() {
+            if let Some(dependency) = labels.get(name.as_str()) {
+                deps.insert(dependency.clone());
+            }
+        }
+    }
+    deps
+}
+
 /// Every member's transitive workspace dependencies, by label.
 fn dependencies(modules: &[WorkspaceModule]) -> BTreeMap<String, BTreeSet<String>> {
     let labels: BTreeMap<String, String> = modules
@@ -143,20 +166,7 @@ fn dependencies(modules: &[WorkspaceModule]) -> BTreeMap<String, BTreeSet<String
         .iter()
         .map(|module| {
             let label = module.label();
-            let mut deps = BTreeSet::new();
-            if let Some(manifest) = module.package_json() {
-                for field in DEPENDENCY_FIELDS {
-                    let Some(declared) = manifest.get(field).and_then(|value| value.as_object())
-                    else {
-                        continue;
-                    };
-                    for name in declared.keys() {
-                        if let Some(dependency) = labels.get(name.as_str()) {
-                            deps.insert(dependency.clone());
-                        }
-                    }
-                }
-            }
+            let mut deps = direct_dependencies(module, &labels);
             deps.remove(&label);
             (label, deps)
         })

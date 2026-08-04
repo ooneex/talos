@@ -44,6 +44,13 @@ pub fn ask_input(prompt: &str) -> Option<String> {
         .ok()
 }
 
+/// Returns `value` unchanged when present, or falls back to prompting for it
+/// with [`ask_input`]. Shared by the scaffolders that ask for a name and a
+/// module only when the caller did not pass them as flags.
+pub fn prompt_if_missing(value: Option<String>, prompt: &str) -> Option<String> {
+    value.or_else(|| ask_input(prompt))
+}
+
 pub fn ask_input_with_default(prompt: &str, initial: &str) -> Option<String> {
     Input::with_theme(&ColorfulTheme::default())
         .with_prompt(prompt)

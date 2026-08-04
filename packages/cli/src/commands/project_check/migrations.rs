@@ -1,8 +1,8 @@
-//! Migrations check — the ordering guarantees a schema history depends on.
-//!
-//! Migrations run in timestamp order across every module, so two files sharing
-//! a timestamp have an undefined order, and a migration without a `down` cannot
-//! be rolled back.
+// Migrations check — the ordering guarantees a schema history depends on.
+//
+// Migrations run in timestamp order across every module, so two files sharing
+// a timestamp have an undefined order, and a migration without a `down` cannot
+// be rolled back.
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -32,6 +32,71 @@ pub fn directions(content: &str) -> (bool, bool) {
     )
 }
 
+/// Checks every migration in one module, reporting timestamp collisions and
+/// missing `up`/`down` methods; returns the count inspected.
+fn check_module_migrations(
+    root: &Path,
+    module_dir: &Path,
+    seen: &mut BTreeMap<u64, String>,
+    errors: &mut Vec<String>,
+    warnings: &mut Vec<String>,
+) -> usize {
+    let mut counted = 0;
+    for path in collect_files(&module_dir.join("src").join("migrations"), &["ts"], 3) {
+        let Some(stem) = path.file_stem().and_then(|stem| stem.to_str()) else {
+            continue;
+        };
+        let label = relative(root, &path);
+        counted += 1;
+
+        match timestamp(stem) {
+            Some(value) => {
+                if let Some(existing) = seen.get(&value) {
+                    errors.push(format!(
+                        "{label} shares its timestamp with {existing} — the run order is undefined"
+                    ));
+                } else {
+                    seen.insert(value, label.clone());
+                }
+            }
+            None => warnings.push(format!(
+                "{label} does not start with a timestamp — it will not sort with the others"
+            )),
+        }
+
+        let Ok(content) = fs::read_to_string(&path) else {
+            continue;
+        };
+        let (up, down) = directions(&content);
+        if !up {
+            errors.push(format!("{label} has no `up` method"));
+        }
+        if !down {
+            warnings.push(format!(
+                "{label} has no `down` method — it cannot be rolled back"
+            ));
+        }
+    }
+    counted
+}
+
+/// Checks every seed file in one module is valid YAML; returns the count
+/// inspected.
+fn check_module_seeds(root: &Path, module_dir: &Path, errors: &mut Vec<String>) -> usize {
+    let mut seeds = 0;
+    for path in collect_files(&module_dir.join("src").join("seeds"), &["yml", "yaml"], 3) {
+        seeds += 1;
+        let label = relative(root, &path);
+        let Ok(content) = fs::read_to_string(&path) else {
+            continue;
+        };
+        if let Err(error) = serde_yaml::from_str::<serde_yaml::Value>(&content) {
+            errors.push(format!("{label} is not valid YAML: {error}"));
+        }
+    }
+    seeds
+}
+
 pub fn run(args: &ProjectCheckArgs, root: &Path) -> CheckOutcome {
     let modules = filter_modules(
         discover_modules(root),
@@ -45,52 +110,9 @@ pub fn run(args: &ProjectCheckArgs, root: &Path) -> CheckOutcome {
     let mut seeds = 0;
 
     for module in &modules {
-        for path in collect_files(&module.dir.join("src").join("migrations"), &["ts"], 3) {
-            let Some(stem) = path.file_stem().and_then(|stem| stem.to_str()) else {
-                continue;
-            };
-            let label = relative(root, &path);
-            counted += 1;
-
-            match timestamp(stem) {
-                Some(value) => {
-                    if let Some(existing) = seen.get(&value) {
-                        errors.push(format!(
-                            "{label} shares its timestamp with {existing} — the run order is undefined"
-                        ));
-                    } else {
-                        seen.insert(value, label.clone());
-                    }
-                }
-                None => warnings.push(format!(
-                    "{label} does not start with a timestamp — it will not sort with the others"
-                )),
-            }
-
-            let Ok(content) = fs::read_to_string(&path) else {
-                continue;
-            };
-            let (up, down) = directions(&content);
-            if !up {
-                errors.push(format!("{label} has no `up` method"));
-            }
-            if !down {
-                warnings.push(format!(
-                    "{label} has no `down` method — it cannot be rolled back"
-                ));
-            }
-        }
-
-        for path in collect_files(&module.dir.join("src").join("seeds"), &["yml", "yaml"], 3) {
-            seeds += 1;
-            let label = relative(root, &path);
-            let Ok(content) = fs::read_to_string(&path) else {
-                continue;
-            };
-            if let Err(error) = serde_yaml::from_str::<serde_yaml::Value>(&content) {
-                errors.push(format!("{label} is not valid YAML: {error}"));
-            }
-        }
+        counted +=
+            check_module_migrations(root, &module.dir, &mut seen, &mut errors, &mut warnings);
+        seeds += check_module_seeds(root, &module.dir, &mut errors);
     }
 
     if counted == 0 && seeds == 0 {

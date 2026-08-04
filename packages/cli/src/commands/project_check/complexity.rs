@@ -1,12 +1,15 @@
-//! Complexity check — the budgets that keep a file readable.
-//!
-//! None of this breaks a build, which is exactly why it accumulates: a function
-//! grows by four lines at a time and nothing ever says stop. The budgets below
-//! are the point where a reviewer stops holding the whole thing in their head,
-//! so everything here warns rather than fails.
+// Complexity check — the budgets that keep a file readable.
+//
+// None of this breaks a build, which is exactly why it accumulates: a function
+// grows by four lines at a time and nothing ever says stop. The budgets below
+// are the point where a reviewer stops holding the whole thing in their head,
+// so everything here warns rather than fails.
 
 use std::fs;
 use std::path::Path;
+use std::sync::OnceLock;
+
+use regex::Regex;
 
 use super::modules::{
     PYTHON_EXTENSIONS, RUST_EXTENSIONS, TS_EXTENSIONS, collect_files, discover_modules,
@@ -51,6 +54,87 @@ fn code_only(line: &str) -> &str {
     line
 }
 
+fn string_literal_pattern() -> &'static Regex {
+    static PATTERN: OnceLock<Regex> = OnceLock::new();
+    PATTERN.get_or_init(|| {
+        Regex::new(r#""(?:[^"\\]|\\.)*"|`(?:[^`\\]|\\.)*`|'(?:[^'\\]|\\.)*'"#)
+            .expect("the string literal pattern is valid")
+    })
+}
+
+/// Whether `line[i..]` opens a raw string, returning the number of `#`
+/// delimiters and the index its content starts at.
+fn raw_string_open(chars: &[char], i: usize) -> Option<(usize, usize)> {
+    if chars[i] != 'r' {
+        return None;
+    }
+    let mut hashes = 0;
+    let mut cursor = i + 1;
+    while chars.get(cursor) == Some(&'#') {
+        hashes += 1;
+        cursor += 1;
+    }
+    (chars.get(cursor) == Some(&'"')).then_some((hashes, cursor + 1))
+}
+
+/// The index of the `"` that closes a raw string opened with `hashes` `#`
+/// delimiters, searching from its content start.
+fn raw_string_close(chars: &[char], content_start: usize, hashes: usize) -> Option<usize> {
+    (content_start..chars.len()).find(|&candidate| {
+        chars[candidate] == '"'
+            && (0..hashes).all(|offset| chars.get(candidate + 1 + offset) == Some(&'#'))
+    })
+}
+
+/// Masks a Rust raw string literal (`r"…"`, `r#"…"#`, `r##"…"##`, …), whose
+/// content is exempt from backslash escaping and so may hold an unescaped
+/// quote that would otherwise desynchronize the plain quote-pair matcher
+/// below — a regex character class like `r#"[^"]*"#` is exactly this shape.
+fn mask_raw_strings(line: &str) -> String {
+    let chars: Vec<char> = line.chars().collect();
+    let mut out = String::with_capacity(chars.len());
+    let mut i = 0;
+    while i < chars.len() {
+        let opened = raw_string_open(&chars, i).and_then(|(hashes, content_start)| {
+            raw_string_close(&chars, content_start, hashes)
+                .map(|close| (hashes, content_start, close))
+        });
+        let Some((hashes, content_start, close)) = opened else {
+            out.push(chars[i]);
+            i += 1;
+            continue;
+        };
+        out.push('r');
+        for _ in 0..hashes {
+            out.push('#');
+        }
+        out.push('"');
+        for _ in content_start..close {
+            out.push(' ');
+        }
+        out.push('"');
+        for _ in 0..hashes {
+            out.push('#');
+        }
+        i = close + hashes + 1;
+    }
+    out
+}
+
+/// Masks the contents of quoted literals so a stray `{` or `}` inside a
+/// regex pattern, a format string, or a character class is never mistaken
+/// for a block boundary. A lone lifetime apostrophe (`&'a str`) has no
+/// partner quote on the line, so the pattern never matches it and the
+/// brace it precedes is still counted.
+pub(super) fn without_string_contents(line: &str) -> String {
+    let raw_masked = mask_raw_strings(line);
+    string_literal_pattern()
+        .replace_all(&raw_masked, |captured: &regex::Captures| {
+            " ".repeat(captured[0].chars().count())
+        })
+        .into_owned()
+}
+
 /// The deepest block nesting a file reaches, and the line it happens on.
 ///
 /// Only braces count. A chained call or a long argument list is wide, not
@@ -61,7 +145,7 @@ pub fn deepest_nesting(content: &str) -> (usize, usize) {
     let mut deepest_line = 0;
 
     for (number, line) in content.lines().enumerate() {
-        for character in code_only(line).chars() {
+        for character in without_string_contents(code_only(line)).chars() {
             match character {
                 '{' => depth += 1,
                 '}' => depth = (depth - 1).max(0),
@@ -210,7 +294,7 @@ fn function_length(lines: &[&str], start: usize) -> Option<usize> {
     let mut opened = false;
 
     for (offset, line) in lines[start..].iter().enumerate() {
-        for character in code_only(line).chars() {
+        for character in without_string_contents(code_only(line)).chars() {
             match character {
                 '{' => {
                     depth += 1;

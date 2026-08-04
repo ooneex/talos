@@ -15,6 +15,13 @@ struct TargetDir {
     kind: String,
 }
 
+fn base_name(path: &str) -> String {
+    Path::new(path)
+        .file_name()
+        .map(|name| name.to_string_lossy().to_string())
+        .unwrap_or_else(|| path.to_string())
+}
+
 #[derive(Clone, Debug)]
 pub struct CommitInfo {
     pub hash: String,
@@ -189,106 +196,10 @@ fn get_repo_url(cwd: &Path) -> Option<String> {
     })
 }
 
-pub fn update_changelog(
-    dir: &Path,
-    version: &str,
-    tag: &str,
-    commits: &[CommitInfo],
-    repo_url: Option<&str>,
-) {
-    let changelog_path = dir.join("CHANGELOG.md");
-    let today = chrono::Utc::now().format("%Y-%m-%d").to_string();
-    let mut groups: std::collections::BTreeMap<&str, Vec<&CommitInfo>> =
-        std::collections::BTreeMap::new();
-    let category = |ty: &str| match ty {
-        "feat" => "Added",
-        "fix" => "Fixed",
-        "revert" => "Removed",
-        _ => "Changed",
-    };
-    for commit in commits {
-        groups
-            .entry(category(&commit.r#type))
-            .or_default()
-            .push(commit);
-    }
-    let version_link = repo_url
-        .map(|repo| format!("[{version}]({repo}/releases/tag/{tag})"))
-        .unwrap_or_else(|| format!("[{version}]"));
-    let mut section = format!("## {version_link} - {today}\n");
-    for cat in [
-        "Added",
-        "Changed",
-        "Deprecated",
-        "Removed",
-        "Fixed",
-        "Security",
-    ] {
-        if let Some(list) = groups.get(cat) {
-            if list.is_empty() {
-                continue;
-            }
-            section.push_str(&format!("\n### {cat}\n\n"));
-            for commit in list {
-                let link = repo_url
-                    .map(|repo| format!(" ([{}]({repo}/commit/{}))", commit.hash, commit.hash))
-                    .unwrap_or_default();
-                section.push_str(&format!(
-                    "- {} — {}{}\n",
-                    commit.subject, commit.author, link
-                ));
-            }
-        }
-    }
-    let existing = fs::read_to_string(&changelog_path).unwrap_or_default();
-    let new_content = if existing.is_empty() {
-        format!("# Changelog\n\n{section}\n")
-    } else if let Some(index) = existing.find("## [Unreleased]") {
-        let end = existing[index..]
-            .find('\n')
-            .map(|n| index + n + 1)
-            .unwrap_or(existing.len());
-        format!("{}\n{}\n{}", &existing[..end], section, &existing[end..])
-    } else {
-        format!("{}\n\n{}\n", existing.trim_end(), section)
-    };
-    let _ = fs::write(changelog_path, new_content);
-}
+#[path = "release_create/changelog.rs"]
+mod changelog;
 
-pub fn update_cargo_version(path: &Path, new_version: &str) {
-    let Ok(content) = fs::read_to_string(path) else {
-        return;
-    };
-    let mut in_package = false;
-    let mut updated = false;
-    let mut lines: Vec<String> = Vec::new();
-    for line in content.lines() {
-        let trimmed = line.trim();
-        if trimmed.starts_with('[') && trimmed.ends_with(']') {
-            in_package = trimmed == "[package]";
-        }
-        if in_package
-            && !updated
-            && trimmed
-                .split_once('=')
-                .map(|(key, _)| key.trim() == "version")
-                .unwrap_or(false)
-        {
-            lines.push(format!("version = \"{new_version}\""));
-            updated = true;
-            continue;
-        }
-        lines.push(line.to_string());
-    }
-    if updated {
-        let mut output = lines.join("\n");
-        if content.ends_with('\n') {
-            output.push('\n');
-        }
-        let _ = fs::write(path, output);
-    }
-}
-
+pub use changelog::{update_cargo_version, update_changelog};
 fn git(cwd: &Path, args: &[&str]) -> bool {
     Command::new("git")
         .args(args)
@@ -321,6 +232,38 @@ pub fn run(args: &ReleaseCreateArgs) {
         crate::utils::error("build, fmt, lint or test failed. Aborting release");
         std::process::exit(1);
     }
+
+    let target_dirs = discover_target_dirs(&cwd, args);
+    let repo_url = get_repo_url(&cwd);
+    let plans = build_release_plans(&cwd, &target_dirs);
+    if plans.is_empty() {
+        println!("No packages have unreleased commits");
+        return;
+    }
+
+    let (released_packages, released_modules) =
+        commit_and_tag_plans(&cwd, &plans, repo_url.as_deref());
+
+    crate::utils::success(format!("{} package(s) released", plans.len()));
+    if ask_confirm("Push commits and tags to remote?", true) {
+        push_to_remote(&cwd);
+    }
+    if args.publish {
+        npm_publish::run(&NpmPublishArgs {
+            packages: (!released_packages.is_empty()).then(|| released_packages.join(",")),
+            modules: (!released_modules.is_empty()).then(|| released_modules.join(",")),
+            access: "public".to_string(),
+            silent: false,
+            cwd: Some(cwd.to_string_lossy().to_string()),
+        });
+    }
+}
+
+/// Discovers every `packages/*` and `modules/*` directory, then narrows the
+/// list down to the ones the caller asked for (or all of them, if neither
+/// `--packages` nor `--modules` was given). Exits the process when nothing
+/// is found, since there is nothing left to release.
+fn discover_target_dirs(cwd: &Path, args: &ReleaseCreateArgs) -> Vec<TargetDir> {
     let mut dirs = Vec::new();
     for (name, kind) in [("packages", "package"), ("modules", "module")] {
         if let Ok(entries) = fs::read_dir(cwd.join(name)) {
@@ -339,49 +282,16 @@ pub fn run(args: &ReleaseCreateArgs) {
         crate::utils::error("No packages or modules found");
         std::process::exit(1);
     }
-    let package_names = args
-        .packages
-        .as_deref()
-        .map(|v| {
-            v.split(',')
-                .map(str::trim)
-                .filter(|v| !v.is_empty())
-                .map(str::to_string)
-                .collect::<Vec<_>>()
-        })
-        .unwrap_or_default();
-    let module_names = args
-        .modules
-        .as_deref()
-        .map(|v| {
-            v.split(',')
-                .map(str::trim)
-                .filter(|v| !v.is_empty())
-                .map(str::to_string)
-                .collect::<Vec<_>>()
-        })
-        .unwrap_or_default();
+
+    let package_names = split_names(args.packages.as_deref());
+    let module_names = split_names(args.modules.as_deref());
     let target_dirs: Vec<TargetDir> = if package_names.is_empty() && module_names.is_empty() {
-        dirs.clone()
+        dirs
     } else {
         dirs.into_iter()
             .filter(|dir| {
-                (dir.kind == "package"
-                    && package_names.contains(
-                        &Path::new(&dir.base)
-                            .file_name()
-                            .unwrap()
-                            .to_string_lossy()
-                            .to_string(),
-                    ))
-                    || (dir.kind == "module"
-                        && module_names.contains(
-                            &Path::new(&dir.base)
-                                .file_name()
-                                .unwrap()
-                                .to_string_lossy()
-                                .to_string(),
-                        ))
+                (dir.kind == "package" && package_names.contains(&base_name(&dir.base)))
+                    || (dir.kind == "module" && module_names.contains(&base_name(&dir.base)))
             })
             .collect()
     };
@@ -389,9 +299,29 @@ pub fn run(args: &ReleaseCreateArgs) {
         crate::utils::error("No requested packages or modules found");
         std::process::exit(1);
     }
-    let repo_url = get_repo_url(&cwd);
+    target_dirs
+}
+
+/// Splits a comma-separated `--packages`/`--modules` argument into trimmed,
+/// non-empty names.
+fn split_names(value: Option<&str>) -> Vec<String> {
+    value
+        .map(|v| {
+            v.split(',')
+                .map(str::trim)
+                .filter(|v| !v.is_empty())
+                .map(str::to_string)
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default()
+}
+
+/// Builds a release plan for every target directory that has unreleased
+/// commits: reads its `package.json`, computes the semver bump from the
+/// commits since its last tag, and stages the new version in memory.
+fn build_release_plans(cwd: &Path, target_dirs: &[TargetDir]) -> Vec<ReleasePlan> {
     let mut plans = Vec::new();
-    for dir in target_dirs {
+    for dir in target_dirs.iter().cloned() {
         let full_dir = cwd.join(&dir.base);
         let package_json_path = full_dir.join("package.json");
         let Ok(raw) = fs::read_to_string(&package_json_path) else {
@@ -414,8 +344,8 @@ pub fn run(args: &ReleaseCreateArgs) {
         else {
             continue;
         };
-        let last_tag = get_last_tag(&cwd, &package_name);
-        let commits = get_commits_since_tag(&cwd, last_tag.as_deref(), &dir.base);
+        let last_tag = get_last_tag(cwd, &package_name);
+        let commits = get_commits_since_tag(cwd, last_tag.as_deref(), &dir.base);
         if commits.is_empty() {
             continue;
         }
@@ -439,99 +369,25 @@ pub fn run(args: &ReleaseCreateArgs) {
             tag,
         });
     }
-    if plans.is_empty() {
-        println!("No packages have unreleased commits");
-        return;
-    }
+    plans
+}
+
+/// Writes each plan's `package.json`/changelog/`Cargo.toml`, commits and tags
+/// it, then returns the released package/module base names (Rust crates are
+/// excluded since they are not published to npm). Exits the process if a
+/// commit or tag fails, since a partial release must not continue silently.
+fn commit_and_tag_plans(
+    cwd: &Path,
+    plans: &[ReleasePlan],
+    repo_url: Option<&str>,
+) -> (Vec<String>, Vec<String>) {
     let mut released_packages = Vec::new();
     let mut released_modules = Vec::new();
-    for plan in &plans {
-        let _ = fs::write(
-            &plan.package_json_path,
-            format!(
-                "{}\n",
-                serde_json::to_string_pretty(&plan.package_json).unwrap_or_default()
-            ),
-        );
-        update_changelog(
-            &plan.full_dir,
-            &plan.new_version,
-            &plan.tag,
-            &plan.commits,
-            repo_url.as_deref(),
-        );
-        let is_rust = plan.cargo_toml_path.is_some();
-        if let Some(cargo_toml_path) = &plan.cargo_toml_path {
-            update_cargo_version(cargo_toml_path, &plan.new_version);
-        }
-        let mut add_paths = vec![
-            "add".to_string(),
-            format!("{}/package.json", plan.dir.base),
-            format!("{}/CHANGELOG.md", plan.dir.base),
-        ];
-        if is_rust {
-            add_paths.push(format!("{}/Cargo.toml", plan.dir.base));
-        }
-        let add_refs: Vec<&str> = add_paths.iter().map(String::as_str).collect();
-        if !git(&cwd, &add_refs)
-            || !git(
-                &cwd,
-                &[
-                    "commit",
-                    "--no-verify",
-                    "-m",
-                    &format!(
-                        "chore(release): {}@{}",
-                        plan.package_json
-                            .get("name")
-                            .and_then(Value::as_str)
-                            .unwrap_or_default(),
-                        plan.new_version
-                    ),
-                ],
-            )
-            || !git(
-                &cwd,
-                &[
-                    "tag",
-                    "-a",
-                    &plan.tag,
-                    "-m",
-                    &format!(
-                        "chore(release): {}@{}",
-                        plan.package_json
-                            .get("name")
-                            .and_then(Value::as_str)
-                            .unwrap_or_default(),
-                        plan.new_version
-                    ),
-                ],
-            )
-        {
-            crate::utils::error(format!(
-                "Failed to release {}",
-                plan.package_json
-                    .get("name")
-                    .and_then(Value::as_str)
-                    .unwrap_or_default()
-            ));
-            std::process::exit(1);
-        }
-        crate::utils::success(format!(
-            "{} released ({} bump, {} commit(s))",
-            plan.package_json
-                .get("name")
-                .and_then(Value::as_str)
-                .unwrap_or_default(),
-            plan.bump_type,
-            plan.commits.len()
-        ));
-        let base_name = Path::new(&plan.dir.base)
-            .file_name()
-            .unwrap()
-            .to_string_lossy()
-            .to_string();
-        if is_rust {
+    for plan in plans {
+        apply_release_plan(cwd, plan, repo_url);
+
+        let base_name = base_name(&plan.dir.base);
+        if plan.cargo_toml_path.is_some() {
             continue;
         }
         if plan.dir.kind == "package" {
@@ -540,27 +396,72 @@ pub fn run(args: &ReleaseCreateArgs) {
             released_modules.push(base_name);
         }
     }
-    crate::utils::success(format!("{} package(s) released", plans.len()));
-    if ask_confirm("Push commits and tags to remote?", true) {
-        let _ = run_spinner_step(
-            false,
-            "Refreshing bun.lock",
-            Command::new("bun").arg("install").current_dir(&cwd),
-        );
-        let _ = git(&cwd, &["add", "bun.lock"]);
-        let _ = git(&cwd, &["commit", "-m", "chore(common): Update bun.lock"]);
-        let pushed = git(&cwd, &["push"]) && git(&cwd, &["push", "--tags"]);
-        if !pushed {
-            crate::utils::error("Failed to push to remote");
-        }
+    (released_packages, released_modules)
+}
+
+/// Writes one plan's `package.json`/changelog/`Cargo.toml`, then commits and
+/// tags it. Exits the process on failure.
+fn apply_release_plan(cwd: &Path, plan: &ReleasePlan, repo_url: Option<&str>) {
+    let _ = fs::write(
+        &plan.package_json_path,
+        format!(
+            "{}\n",
+            serde_json::to_string_pretty(&plan.package_json).unwrap_or_default()
+        ),
+    );
+    update_changelog(
+        &plan.full_dir,
+        &plan.new_version,
+        &plan.tag,
+        &plan.commits,
+        repo_url,
+    );
+    let is_rust = plan.cargo_toml_path.is_some();
+    if let Some(cargo_toml_path) = &plan.cargo_toml_path {
+        update_cargo_version(cargo_toml_path, &plan.new_version);
     }
-    if args.publish {
-        npm_publish::run(&NpmPublishArgs {
-            packages: (!released_packages.is_empty()).then(|| released_packages.join(",")),
-            modules: (!released_modules.is_empty()).then(|| released_modules.join(",")),
-            access: "public".to_string(),
-            silent: false,
-            cwd: Some(cwd.to_string_lossy().to_string()),
-        });
+
+    let name = plan
+        .package_json
+        .get("name")
+        .and_then(Value::as_str)
+        .unwrap_or_default();
+    let message = format!("chore(release): {name}@{}", plan.new_version);
+    let mut add_paths = vec![
+        "add".to_string(),
+        format!("{}/package.json", plan.dir.base),
+        format!("{}/CHANGELOG.md", plan.dir.base),
+    ];
+    if is_rust {
+        add_paths.push(format!("{}/Cargo.toml", plan.dir.base));
+    }
+    let add_refs: Vec<&str> = add_paths.iter().map(String::as_str).collect();
+    if !git(cwd, &add_refs)
+        || !git(cwd, &["commit", "--no-verify", "-m", &message])
+        || !git(cwd, &["tag", "-a", &plan.tag, "-m", &message])
+    {
+        crate::utils::error(format!("Failed to release {name}"));
+        std::process::exit(1);
+    }
+    crate::utils::success(format!(
+        "{name} released ({} bump, {} commit(s))",
+        plan.bump_type,
+        plan.commits.len()
+    ));
+}
+
+/// Refreshes `bun.lock`, commits it, and pushes the release commits and tags
+/// to the remote.
+fn push_to_remote(cwd: &Path) {
+    let _ = run_spinner_step(
+        false,
+        "Refreshing bun.lock",
+        Command::new("bun").arg("install").current_dir(cwd),
+    );
+    let _ = git(cwd, &["add", "bun.lock"]);
+    let _ = git(cwd, &["commit", "-m", "chore(common): Update bun.lock"]);
+    let pushed = git(cwd, &["push"]) && git(cwd, &["push", "--tags"]);
+    if !pushed {
+        crate::utils::error("Failed to push to remote");
     }
 }

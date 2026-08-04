@@ -1,10 +1,10 @@
-//! Exceptions check — whether a failure carries enough to be handled.
-//!
-//! The framework maps a thrown `Exception` onto a status code and a response
-//! body using the code it carries. A bare `new Error("not found")` carries
-//! nothing: it comes back as a 500 with a stack trace, whatever it actually
-//! meant. A swallowed one is worse — the request succeeds and the failure is
-//! never seen at all.
+// Exceptions check — whether a failure carries enough to be handled.
+//
+// The framework maps a thrown `Exception` onto a status code and a response
+// body using the code it carries. A bare `new Error("not found")` carries
+// nothing: it comes back as a 500 with a stack trace, whatever it actually
+// meant. A swallowed one is worse — the request succeeds and the failure is
+// never seen at all.
 
 use std::path::Path;
 use std::sync::OnceLock;

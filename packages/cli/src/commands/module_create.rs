@@ -61,6 +61,121 @@ pub fn run(args: &ModuleCreateArgs) {
     });
 }
 
+struct ModuleTemplates {
+    module: String,
+    package: String,
+    tsconfig: String,
+    yml: String,
+    test: String,
+    bunfig: String,
+}
+
+fn load_module_templates(templates_dir: &std::path::Path) -> Option<ModuleTemplates> {
+    Some(ModuleTemplates {
+        module: read_template(templates_dir, "module/module.txt")?,
+        package: read_template(templates_dir, "module/package.txt")?,
+        tsconfig: read_template(templates_dir, "module/tsconfig.txt")?,
+        yml: read_template(templates_dir, "module/yml.txt")?,
+        test: read_template(templates_dir, "module/test.txt")?,
+        bunfig: read_template(templates_dir, "module/bunfig.txt")?,
+    })
+}
+
+/// Registers the new module inside its destination's module class, whether
+/// that destination is the app itself, `shared`, or a microservice.
+fn wire_module_into_destination(
+    cwd: &std::path::Path,
+    pascal_name: &str,
+    kebab_name: &str,
+    destination_kebab: &str,
+) {
+    if kebab_name == destination_kebab {
+        return;
+    }
+
+    if destination_kebab == "app" {
+        let app_module_path = cwd
+            .join("modules")
+            .join("app")
+            .join("src")
+            .join("AppModule.ts");
+        if app_module_path.exists() {
+            let _ = add_to_app_module(&app_module_path, pascal_name, kebab_name);
+        }
+
+        if kebab_name != "shared" {
+            let shared_module_path = cwd
+                .join("modules")
+                .join("shared")
+                .join("src")
+                .join("SharedModule.ts");
+            if shared_module_path.exists() {
+                let _ = add_to_shared_module(&shared_module_path, pascal_name, kebab_name);
+            }
+        }
+    } else {
+        let destination_pascal = to_pascal_case(destination_kebab);
+        let destination_module_path = cwd
+            .join("modules")
+            .join(destination_kebab)
+            .join("src")
+            .join(format!("{destination_pascal}Module.ts"));
+        if destination_module_path.exists() {
+            let _ = add_to_microservice_module(&destination_module_path, pascal_name, kebab_name);
+        }
+    }
+}
+
+/// Renders every module template and writes the resulting files to disk.
+/// Returns `false` when a write failed and `execute` should bail out.
+fn write_module_files(
+    templates: &ModuleTemplates,
+    src_dir: &std::path::Path,
+    module_dir: &std::path::Path,
+    tests_dir: &std::path::Path,
+    pascal_name: &str,
+    kebab_name: &str,
+) -> bool {
+    let module_content = templates.module.replace("{{NAME}}", pascal_name);
+    let package_content = templates.package.replace("{{NAME}}", kebab_name);
+    let test_content = templates
+        .test
+        .replace("{{NAME}}", pascal_name)
+        .replace("{{name}}", kebab_name);
+    let yml_content = templates.yml.replace("{{name}}", kebab_name);
+
+    let writes: [(PathBuf, &str); 6] = [
+        (
+            src_dir.join(format!("{pascal_name}Module.ts")),
+            module_content.as_str(),
+        ),
+        (module_dir.join("package.json"), package_content.as_str()),
+        (
+            module_dir.join("tsconfig.json"),
+            templates.tsconfig.as_str(),
+        ),
+        (module_dir.join("bunfig.toml"), templates.bunfig.as_str()),
+        (
+            module_dir.join(format!("{kebab_name}.yml")),
+            yml_content.as_str(),
+        ),
+        (
+            tests_dir.join(format!("{pascal_name}Module.spec.ts")),
+            test_content.as_str(),
+        ),
+    ];
+    for (path, content) in writes {
+        if let Some(parent) = path.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+        if let Err(error) = std::fs::write(&path, content) {
+            crate::utils::error(format!("Failed to write {}: {error}", path.display()));
+            return false;
+        }
+    }
+    true
+}
+
 pub fn execute(options: ModuleCreateOptions) {
     let ModuleCreateOptions {
         name,
@@ -92,93 +207,22 @@ pub fn execute(options: ModuleCreateOptions) {
     let Some(templates_dir) = skeleton_templates_dir(silent, !no_cache) else {
         return;
     };
-    let Some(module_template) = read_template(&templates_dir, "module/module.txt") else {
-        return;
-    };
-    let Some(package_template) = read_template(&templates_dir, "module/package.txt") else {
-        return;
-    };
-    let Some(tsconfig_template) = read_template(&templates_dir, "module/tsconfig.txt") else {
-        return;
-    };
-    let Some(yml_template) = read_template(&templates_dir, "module/yml.txt") else {
-        return;
-    };
-    let Some(test_template) = read_template(&templates_dir, "module/test.txt") else {
-        return;
-    };
-    let Some(bunfig_template) = read_template(&templates_dir, "module/bunfig.txt") else {
+    let Some(templates) = load_module_templates(&templates_dir) else {
         return;
     };
 
-    let module_content = module_template.replace("{{NAME}}", &pascal_name);
-    let package_content = package_template.replace("{{NAME}}", &kebab_name);
-    let test_content = test_template
-        .replace("{{NAME}}", &pascal_name)
-        .replace("{{name}}", &kebab_name);
-    let yml_content = yml_template.replace("{{name}}", &kebab_name);
-
-    let writes: [(PathBuf, &str); 6] = [
-        (
-            src_dir.join(format!("{pascal_name}Module.ts")),
-            module_content.as_str(),
-        ),
-        (module_dir.join("package.json"), package_content.as_str()),
-        (module_dir.join("tsconfig.json"), tsconfig_template.as_str()),
-        (module_dir.join("bunfig.toml"), bunfig_template.as_str()),
-        (
-            module_dir.join(format!("{kebab_name}.yml")),
-            yml_content.as_str(),
-        ),
-        (
-            tests_dir.join(format!("{pascal_name}Module.spec.ts")),
-            test_content.as_str(),
-        ),
-    ];
-    for (path, content) in writes {
-        if let Some(parent) = path.parent() {
-            let _ = std::fs::create_dir_all(parent);
-        }
-        if let Err(error) = std::fs::write(&path, content) {
-            crate::utils::error(format!("Failed to write {}: {error}", path.display()));
-            return;
-        }
+    if !write_module_files(
+        &templates,
+        &src_dir,
+        &module_dir,
+        &tests_dir,
+        &pascal_name,
+        &kebab_name,
+    ) {
+        return;
     }
 
-    if kebab_name != destination_kebab {
-        if destination_kebab == "app" {
-            let app_module_path = cwd
-                .join("modules")
-                .join("app")
-                .join("src")
-                .join("AppModule.ts");
-            if app_module_path.exists() {
-                let _ = add_to_app_module(&app_module_path, &pascal_name, &kebab_name);
-            }
-
-            if kebab_name != "shared" {
-                let shared_module_path = cwd
-                    .join("modules")
-                    .join("shared")
-                    .join("src")
-                    .join("SharedModule.ts");
-                if shared_module_path.exists() {
-                    let _ = add_to_shared_module(&shared_module_path, &pascal_name, &kebab_name);
-                }
-            }
-        } else {
-            let destination_pascal = to_pascal_case(&destination_kebab);
-            let destination_module_path = cwd
-                .join("modules")
-                .join(&destination_kebab)
-                .join("src")
-                .join(format!("{destination_pascal}Module.ts"));
-            if destination_module_path.exists() {
-                let _ =
-                    add_to_microservice_module(&destination_module_path, &pascal_name, &kebab_name);
-            }
-        }
-    }
+    wire_module_into_destination(&cwd, &pascal_name, &kebab_name, &destination_kebab);
 
     let app_tsconfig_path = cwd.join("tsconfig.json");
     if app_tsconfig_path.exists() {

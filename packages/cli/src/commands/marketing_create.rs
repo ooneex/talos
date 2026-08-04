@@ -78,18 +78,11 @@ fn copy_media(
     Ok(stored)
 }
 
-pub fn run(args: &MarketingCreateArgs) {
-    let cwd = args
-        .cwd
-        .clone()
-        .map(PathBuf::from)
-        .unwrap_or_else(current_dir);
-    let module = args.module.clone().unwrap_or_else(|| "shared".to_string());
-    let title = args.title.clone().unwrap_or_default();
-    let content = args.content.clone().unwrap_or_default();
-
+/// Normalizes and deduplicates the requested platforms, printing an error and
+/// returning `None` when one isn't recognized.
+fn resolve_platforms(requested: &[String]) -> Option<Vec<String>> {
     let mut platforms = Vec::new();
-    for platform in &args.platforms {
+    for platform in requested {
         match normalize_platform(platform) {
             Some(resolved) => {
                 if !platforms.iter().any(|existing| existing == resolved) {
@@ -101,23 +94,66 @@ pub fn run(args: &MarketingCreateArgs) {
                     "Unknown platform \"{platform}\". Expected one of: {}",
                     MARKETING_PLATFORMS.join(", ")
                 ));
-                return;
+                return None;
             }
         }
     }
+    Some(platforms)
+}
 
-    let state = match args.state.as_deref() {
-        None => "Todo".to_string(),
+/// Normalizes the requested state, defaulting to `Todo` and printing an
+/// error when it isn't recognized.
+fn resolve_state(requested: Option<&str>) -> Option<String> {
+    match requested {
+        None => Some("Todo".to_string()),
         Some(value) => match normalize_state(value) {
-            Some(resolved) => resolved.to_string(),
+            Some(resolved) => Some(resolved.to_string()),
             None => {
                 crate::utils::error(format!(
                     "Unknown state \"{value}\". Expected one of: {}",
                     MARKETING_STATES.join(", ")
                 ));
-                return;
+                None
             }
         },
+    }
+}
+
+/// Copies the requested images and videos into the post's media folders,
+/// leaving a `.gitkeep` behind for whichever folder stays empty.
+fn prepare_media(
+    args: &MarketingCreateArgs,
+    images_dir: &Path,
+    videos_dir: &Path,
+) -> Result<(Vec<String>, Vec<String>), String> {
+    let images = copy_media(&args.images, images_dir, IMAGE_EXTENSION)?;
+    let videos = copy_media(&args.videos, videos_dir, VIDEO_EXTENSION)?;
+
+    if images.is_empty() {
+        let _ = std::fs::write(images_dir.join(".gitkeep"), "");
+    }
+    if videos.is_empty() {
+        let _ = std::fs::write(videos_dir.join(".gitkeep"), "");
+    }
+
+    Ok((images, videos))
+}
+
+pub fn run(args: &MarketingCreateArgs) {
+    let cwd = args
+        .cwd
+        .clone()
+        .map(PathBuf::from)
+        .unwrap_or_else(current_dir);
+    let module = args.module.clone().unwrap_or_else(|| "shared".to_string());
+    let title = args.title.clone().unwrap_or_default();
+    let content = args.content.clone().unwrap_or_default();
+
+    let Some(platforms) = resolve_platforms(&args.platforms) else {
+        return;
+    };
+    let Some(state) = resolve_state(args.state.as_deref()) else {
+        return;
     };
 
     ensure_module(&module, &cwd);
@@ -139,13 +175,7 @@ pub fn run(args: &MarketingCreateArgs) {
     }
 
     // A post that can't take its media is not a post — leave nothing behind.
-    let media = copy_media(&args.images, &images_dir, IMAGE_EXTENSION).and_then(|images| {
-        Ok((
-            images,
-            copy_media(&args.videos, &videos_dir, VIDEO_EXTENSION)?,
-        ))
-    });
-    let (images, videos) = match media {
+    let (images, videos) = match prepare_media(args, &images_dir, &videos_dir) {
         Ok(media) => media,
         Err(error) => {
             crate::utils::error(error);
@@ -153,14 +183,6 @@ pub fn run(args: &MarketingCreateArgs) {
             return;
         }
     };
-
-    // Empty media folders would not survive a commit otherwise.
-    if images.is_empty() {
-        let _ = std::fs::write(images_dir.join(".gitkeep"), "");
-    }
-    if videos.is_empty() {
-        let _ = std::fs::write(videos_dir.join(".gitkeep"), "");
-    }
 
     let yaml = marketing_to_yaml(&MarketingYaml {
         id: Some(resolved_id.clone()),

@@ -1,7 +1,7 @@
-//! Docker check — the compose file the whole local stack depends on.
-//!
-//! `:latest` tags make an environment unreproducible and duplicate host ports
-//! make `app:start` fail in a way that reads like an application bug.
+// Docker check — the compose file the whole local stack depends on.
+//
+// `:latest` tags make an environment unreproducible and duplicate host ports
+// make `app:start` fail in a way that reads like an application bug.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -64,6 +64,52 @@ pub fn host_port(mapping: &str) -> Option<String> {
     }
 }
 
+/// The host port a single `ports` entry publishes, in whatever form YAML
+/// parsed it as (a string, a bare number, or a long-form mapping).
+fn port_mapping_text(entry: &Value) -> Option<String> {
+    match entry {
+        Value::String(value) => Some(value.clone()),
+        Value::Number(value) => Some(value.to_string()),
+        Value::Mapping(value) => value
+            .get(Value::from("published"))
+            .map(|published| match published {
+                Value::String(value) => value.clone(),
+                other => format!("{other:?}"),
+            })
+            .map(|published| format!("{published}:0")),
+        _ => None,
+    }
+}
+
+/// Checks one service's `ports` for a host port already claimed by another
+/// service, recording every mapping it publishes along the way.
+fn check_service_ports(
+    name: &str,
+    service: &Value,
+    used_ports: &mut Vec<(String, String)>,
+    findings: &mut Vec<DockerFinding>,
+) {
+    let Some(ports) = service.get("ports").and_then(Value::as_sequence) else {
+        return;
+    };
+    for entry in ports {
+        let Some(mapping) = port_mapping_text(entry) else {
+            continue;
+        };
+        let Some(port) = host_port(&mapping) else {
+            continue;
+        };
+        if let Some((owner, _)) = used_ports.iter().find(|(_, taken)| *taken == port) {
+            findings.push(DockerFinding {
+                message: format!("host port {port} is published by both `{owner}` and `{name}`"),
+                blocking: true,
+            });
+        } else {
+            used_ports.push((name.to_string(), port));
+        }
+    }
+}
+
 /// Inspect a parsed compose document.
 pub fn inspect(document: &Value) -> Vec<DockerFinding> {
     let mut findings = Vec::new();
@@ -104,36 +150,7 @@ pub fn inspect(document: &Value) -> Vec<DockerFinding> {
             });
         }
 
-        if let Some(ports) = service.get("ports").and_then(Value::as_sequence) {
-            for entry in ports {
-                let mapping = match entry {
-                    Value::String(value) => value.clone(),
-                    Value::Number(value) => value.to_string(),
-                    Value::Mapping(value) => value
-                        .get(Value::from("published"))
-                        .map(|published| match published {
-                            Value::String(value) => value.clone(),
-                            other => format!("{other:?}"),
-                        })
-                        .map(|published| format!("{published}:0"))
-                        .unwrap_or_default(),
-                    _ => continue,
-                };
-                let Some(port) = host_port(&mapping) else {
-                    continue;
-                };
-                if let Some((owner, _)) = used_ports.iter().find(|(_, taken)| *taken == port) {
-                    findings.push(DockerFinding {
-                        message: format!(
-                            "host port {port} is published by both `{owner}` and `{name}`"
-                        ),
-                        blocking: true,
-                    });
-                } else {
-                    used_ports.push((name.clone(), port));
-                }
-            }
-        }
+        check_service_ports(&name, service, &mut used_ports, &mut findings);
     }
 
     findings

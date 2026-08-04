@@ -1,8 +1,8 @@
-//! Translations check — locale parity inside every dictionary.
-//!
-//! `trans()` falls back to `en` and returns the key itself when a locale is
-//! missing, so an incomplete dictionary ships silently. Comparing every leaf
-//! against the locales the file already uses catches it before release.
+// Translations check — locale parity inside every dictionary.
+//
+// `trans()` falls back to `en` and returns the key itself when a locale is
+// missing, so an incomplete dictionary ships silently. Comparing every leaf
+// against the locales the file already uses catches it before release.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
@@ -12,18 +12,17 @@ use std::sync::OnceLock;
 use regex::Regex;
 use serde_json::Value;
 
-use super::modules::{
-    WorkspaceModule, collect_files, discover_modules, filter_modules, relative, wanted_names,
-};
-use crate::commands::project_check::{
-    CheckId, CheckOutcome, CheckStatus, ProjectCheckArgs, static_outcome,
-};
+use super::modules::{WorkspaceModule, collect_files};
 
 /// The locale every dictionary must define, because `trans()` falls back to it.
 pub const FALLBACK_LOCALE: &str = "en";
 
 /// File names the translation generators produce.
 const DICTIONARY_NAMES: [&str; 3] = ["translations.yml", "translations.yaml", "translations.json"];
+
+/// Directory names holding fixture or test data, where a `translations.yml`
+/// is an example dictionary rather than one the application ships.
+const FIXTURE_DIR_HINTS: [&str; 5] = ["tests", "test", "fixtures", "mocks", "__mocks__"];
 
 /// A dictionary flattened to `key path -> locale -> value`.
 pub type Dictionary = BTreeMap<String, BTreeMap<String, String>>;
@@ -307,7 +306,10 @@ pub fn unused_keys(dictionary: &Dictionary, used: &BTreeSet<String>) -> Vec<Stri
 /// The dictionary serving a source file: the deepest scope enclosing it, so a
 /// spa feature's own `translations.json` wins over the module dictionary above
 /// it. `None` when no dictionary covers the file at all.
-fn owning_scope(parsed: &[(String, Option<PathBuf>, Dictionary)], path: &Path) -> Option<usize> {
+pub(super) fn owning_scope(
+    parsed: &[(String, Option<PathBuf>, Dictionary)],
+    path: &Path,
+) -> Option<usize> {
     parsed
         .iter()
         .enumerate()
@@ -331,126 +333,23 @@ pub fn discover_dictionaries(modules: &[WorkspaceModule]) -> Vec<PathBuf> {
                 .map(|name| DICTIONARY_NAMES.contains(&name))
                 .unwrap_or(false)
         })
+        // A dictionary under a fixture-style directory (tests, mocks, templates)
+        // is example or test data, not a real dictionary an application ships —
+        // its keys are exercised by the test itself, not by `keys_used_under`.
+        .filter(|path| {
+            !path.components().any(|component| {
+                component.as_os_str().to_str().is_some_and(|name| {
+                    FIXTURE_DIR_HINTS.contains(&name.to_ascii_lowercase().as_str())
+                })
+            })
+        })
         .collect();
     files.sort();
     files.dedup();
     files
 }
 
-pub fn run(args: &ProjectCheckArgs, root: &Path) -> CheckOutcome {
-    let modules = filter_modules(
-        discover_modules(root),
-        &wanted_names(args.modules.as_deref(), args.packages.as_deref()),
-    );
-    let files = discover_dictionaries(&modules);
+#[path = "translations/check.rs"]
+mod check;
 
-    if files.is_empty() {
-        return CheckOutcome::new(
-            CheckId::Translations,
-            CheckStatus::Skipped,
-            "no translations dictionary found",
-        );
-    }
-
-    let mut errors = Vec::new();
-    let mut warnings = Vec::new();
-    let mut keys = 0;
-    let mut defined: BTreeSet<String> = BTreeSet::new();
-    let mut parsed: Vec<(String, Option<PathBuf>, Dictionary)> = Vec::new();
-
-    for path in &files {
-        let label = relative(root, path);
-        let json = path.extension().and_then(|ext| ext.to_str()) == Some("json");
-        let Some(document) = fs::read_to_string(path)
-            .ok()
-            .and_then(|content| parse_dictionary(&content, json))
-        else {
-            errors.push(format!("{label} could not be parsed"));
-            continue;
-        };
-
-        let dictionary = flatten(&document);
-        keys += dictionary.len();
-        defined.extend(dictionary.keys().cloned());
-        let (file_errors, file_warnings) = inspect_dictionary(&label, &dictionary);
-        errors.extend(file_errors);
-        warnings.extend(file_warnings);
-        parsed.push((label, dictionary_scope(path), dictionary));
-    }
-
-    // Each file is read against the dictionary that actually serves it — the
-    // nearest scope enclosing it — because that is the only dictionary the hook
-    // or the injected class it calls has bound. Resolving against the union
-    // instead would let a key defined in one feature excuse a lookup in the
-    // next, which is exactly the case that throws at runtime.
-    let mut selection = Usage::default();
-    let mut scoped: Vec<Usage> = vec![Usage::default(); parsed.len()];
-    let mut sources = 0;
-    for module in &modules {
-        let src = module.dir.join("src");
-        for path in collect_files(&src, &["ts", "tsx"], 8) {
-            sources += 1;
-            let Ok(content) = fs::read_to_string(&path) else {
-                continue;
-            };
-            let usage = scan_usage(&content);
-            selection.absorb(&usage);
-            if let Some(index) = owning_scope(&parsed, &path) {
-                scoped[index].absorb(&usage);
-            }
-        }
-    }
-
-    // With nothing to read the dictionaries from — a translations-only package,
-    // or a module whose UI is not written yet — every key would look unused.
-    if sources > 0 {
-        let reached = selection.reached();
-        for key in missing_keys(&selection.lookups, &defined) {
-            errors.push(format!("`{key}` is looked up but no dictionary defines it"));
-        }
-
-        for (index, (label, _, dictionary)) in parsed.iter().enumerate() {
-            let usage = &scoped[index];
-            let own: BTreeSet<String> = dictionary.keys().cloned().collect();
-
-            // Defined somewhere, but not here: the lookup resolves only if the
-            // file imported another feature's hook, so it warns rather than
-            // fails.
-            for key in missing_keys(&usage.lookups, &own)
-                .into_iter()
-                .filter(|key| reached.contains(key) && defined.contains(key))
-            {
-                warnings.push(format!(
-                    "{label}: `{key}` is looked up in its scope but only another dictionary defines it"
-                ));
-            }
-
-            if usage.dynamic {
-                warnings.push(format!(
-                    "{label}: unused keys not checked — a `trans()` call in its scope builds the key at runtime"
-                ));
-                continue;
-            }
-
-            for key in unused_keys(dictionary, &reached) {
-                warnings.push(format!("{label}: `{key}` is defined but never looked up"));
-            }
-        }
-    }
-
-    let scope = format!(
-        "{} dictionar{} · {keys} key{}",
-        files.len(),
-        if files.len() == 1 { "y" } else { "ies" },
-        if keys == 1 { "" } else { "s" }
-    );
-
-    static_outcome(
-        CheckId::Translations,
-        &scope,
-        "every locale is complete",
-        errors,
-        warnings,
-    )
-    .with_hint("Complete the dictionaries with the `translation-translate` skill")
-}
+pub use check::run;

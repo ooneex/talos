@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use clap::Args;
 use regex::Regex;
 
@@ -110,13 +112,24 @@ pub fn add_class_to_module(module_path: &std::path::Path, class_name: &str) -> R
     std::fs::write(module_path, content).map_err(|error| error.to_string())
 }
 
-pub fn run(args: &ControllerCreateArgs) {
+/// The values resolved from flags or prompts before any file is touched.
+struct ResolvedControllerArgs {
+    name: String,
+    cwd: std::path::PathBuf,
+    module: String,
+    is_socket: bool,
+    route_name: String,
+    route_type_name: String,
+    route_path: String,
+    route_method: Option<String>,
+}
+
+/// Resolves every flag/prompt this command needs, returning `None` when the
+/// user cancels an interactive prompt.
+fn resolve_controller_args(args: &ControllerCreateArgs) -> Option<ResolvedControllerArgs> {
     let name = match args.name.clone() {
         Some(name) => name,
-        None => match ask_input("Enter controller name") {
-            Some(name) => name,
-            None => return,
-        },
+        None => ask_input("Enter controller name")?,
     };
     let cwd = args
         .cwd
@@ -136,19 +149,13 @@ pub fn run(args: &ControllerCreateArgs) {
 
     let route_name = match args.route_name.clone() {
         Some(route_name) => route_name,
-        None => match ask_route_name("Enter route name (e.g., api.user.create)") {
-            Some(route_name) => route_name,
-            None => return,
-        },
+        None => ask_route_name("Enter route name (e.g., api.user.create)")?,
     };
     let route_type_name = to_pascal_case(&route_name);
 
     let route_path = match args.route_path.clone() {
         Some(route_path) => route_path,
-        None => match ask_route_path("Enter route path", "/") {
-            Some(route_path) => route_path,
-            None => return,
-        },
+        None => ask_route_path("Enter route path", "/")?,
     };
     let route_path = normalize_route_path(&route_path);
 
@@ -161,32 +168,63 @@ pub fn run(args: &ControllerCreateArgs) {
         }
     };
 
-    let Some(templates_dir) = skeleton_templates_dir(false, !args.no_cache) else {
-        return;
-    };
-    let template_file = if is_socket {
+    Some(ResolvedControllerArgs {
+        name,
+        cwd,
+        module,
+        is_socket,
+        route_name,
+        route_type_name,
+        route_path,
+        route_method,
+    })
+}
+
+/// Renders the controller's source content from its template, substituting
+/// the resolved name, route metadata, and (when not a socket controller) the
+/// route method.
+fn build_controller_content(
+    templates_dir: &Path,
+    resolved: &ResolvedControllerArgs,
+) -> Option<String> {
+    let template_file = if resolved.is_socket {
         "controller.socket.txt"
     } else {
         "controller.txt"
     };
-    let Some(selected_template) = read_template(&templates_dir, template_file) else {
+    let selected_template = read_template(templates_dir, template_file)?;
+    let mut content = selected_template.replace("{{NAME}}", &resolved.name);
+    content = content
+        .replace("{{ROUTE_NAME}}", &resolved.route_name)
+        .replace("{{TYPE_NAME}}", &resolved.route_type_name)
+        .replace("{{ROUTE_PATH}}", &resolved.route_path);
+    if let Some(route_method) = &resolved.route_method {
+        content = content.replace("{{ROUTE_METHOD}}", route_method);
+    }
+    Some(content)
+}
+
+pub fn run(args: &ControllerCreateArgs) {
+    let Some(resolved) = resolve_controller_args(args) else {
+        return;
+    };
+    let ResolvedControllerArgs {
+        name, cwd, module, ..
+    } = &resolved;
+
+    let Some(templates_dir) = skeleton_templates_dir(false, !args.no_cache) else {
+        return;
+    };
+    let Some(content) = build_controller_content(&templates_dir, &resolved) else {
         return;
     };
     let Some(test_template) = read_template(&templates_dir, "controller.test.txt") else {
         return;
     };
-    let mut content = selected_template.replace("{{NAME}}", &name);
-    content = content
-        .replace("{{ROUTE_NAME}}", &route_name)
-        .replace("{{TYPE_NAME}}", &route_type_name)
-        .replace("{{ROUTE_PATH}}", &route_path);
-    if let Some(route_method) = route_method {
-        content = content.replace("{{ROUTE_METHOD}}", &route_method);
-    }
 
-    ensure_module(&module, &cwd);
+    ensure_module(module, cwd);
 
-    let base = cwd.join("modules").join(&module);
+    let base = cwd.join("modules").join(module);
     let controllers_dir = base.join("src").join("controllers");
     let file_path = controllers_dir.join(format!("{name}Controller.ts"));
 
@@ -213,8 +251,8 @@ pub fn run(args: &ControllerCreateArgs) {
     }
 
     let test_content = test_template
-        .replace("{{NAME}}", &name)
-        .replace("{{MODULE}}", &module);
+        .replace("{{NAME}}", name)
+        .replace("{{MODULE}}", module);
     let tests_dir = base.join("tests").join("controllers");
     let test_file_path = tests_dir.join(format!("{name}Controller.spec.ts"));
     let _ = std::fs::create_dir_all(&tests_dir);
@@ -226,7 +264,7 @@ pub fn run(args: &ControllerCreateArgs) {
         return;
     }
 
-    let module_pascal_name = to_pascal_case(&module);
+    let module_pascal_name = to_pascal_case(module);
     let module_path = base
         .join("src")
         .join(format!("{module_pascal_name}Module.ts"));
@@ -237,5 +275,5 @@ pub fn run(args: &ControllerCreateArgs) {
     crate::utils::success(format!("{} created successfully", file_path.display()));
     crate::utils::success(format!("{} created successfully", test_file_path.display()));
 
-    install_dependency("@talosjs/controller", &cwd);
+    install_dependency("@talosjs/controller", cwd);
 }

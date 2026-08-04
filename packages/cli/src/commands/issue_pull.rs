@@ -3,9 +3,10 @@ use std::path::{Path, PathBuf};
 use clap::Args;
 
 use crate::utils::github::{self, GithubIssue};
-use crate::utils::linear::{LinearClient, LinearIssue};
+use crate::utils::linear::LinearIssue;
 use crate::utils::{
     IssueYaml, Provider, current_dir, ensure_module, generate_issue_id, issue_to_yaml,
+    resolve_provider_client,
 };
 
 #[derive(Args, Debug)]
@@ -184,26 +185,7 @@ pub fn run(args: &IssuePullArgs) {
     let module = args.module.clone().unwrap_or_else(|| "shared".to_string());
     let modules_dir = cwd.join("modules");
 
-    let client = match args.provider {
-        Provider::Linear => match LinearClient::from_credentials() {
-            Some(client) => Some(client),
-            None => {
-                crate::utils::error(
-                    "No Linear credentials found. Run `talos credentials:create --provider=linear`",
-                );
-                std::process::exit(1);
-            }
-        },
-        Provider::Github => {
-            if !github::is_available() {
-                crate::utils::error(
-                    "GitHub CLI (`gh`) not found. Install it and run `gh auth login`",
-                );
-                std::process::exit(1);
-            }
-            None
-        }
-    };
+    let client = resolve_provider_client(args.provider);
 
     let mut failures = 0;
     for id in &ids {

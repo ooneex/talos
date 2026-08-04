@@ -1,8 +1,8 @@
-//! `storage:pull` — download a remote bucket path into a local folder.
-//!
-//! The mirror of `storage:push`: the transport lives in `utils::storage`, and
-//! this command is about turning object keys into local paths — safely, since
-//! a key and a zip entry both come from the other side of the network.
+// `storage:pull` — download a remote bucket path into a local folder.
+//
+// The mirror of `storage:push`: the transport lives in `utils::storage`, and
+// this command is about turning object keys into local paths — safely, since
+// a key and a zip entry both come from the other side of the network.
 
 use std::fs;
 use std::io::{Cursor, Read};
@@ -12,12 +12,14 @@ use std::sync::Mutex;
 use clap::Args;
 use rayon::prelude::*;
 
-use crate::commands::storage_push::{ask_storage_provider, missing_credentials};
+use crate::commands::storage_push::{
+    ask_storage_provider, exit_with, missing_credentials, resolve_required_input,
+};
 use crate::utils::storage::{
     Remote, StorageProvider, agent, get_object, join_key, list_objects, resolve_remote,
 };
 use crate::utils::{
-    Loader, LoaderGroup, ask_plain_input, current_dir, error, info, read_credentials, success, warn,
+    Loader, LoaderGroup, current_dir, error, info, read_credentials, success, warn,
 };
 
 #[derive(Args, Debug)]
@@ -46,41 +48,65 @@ pub struct StoragePullArgs {
     pub cwd: Option<String>,
 }
 
+fn print_pull_summary(
+    root: &std::path::Path,
+    from: &str,
+    downloads_len: usize,
+    skipped: usize,
+    failures: &[(String, String)],
+    silent: bool,
+) {
+    if !silent && skipped > 0 {
+        warn(format!(
+            "Skipped {skipped} object(s) whose key escapes {}",
+            root.display()
+        ));
+    }
+    if silent {
+        return;
+    }
+    for (key, message) in failures {
+        error(format!("{key}: {message}"));
+    }
+    let pulled = downloads_len.saturating_sub(failures.len());
+    if failures.is_empty() {
+        success(format!("Pulled {pulled} object(s) into {}", root.display()));
+    } else {
+        info(format!(
+            "Summary: {pulled} pulled, {} failed",
+            failures.len()
+        ));
+    }
+    let _ = from;
+}
+
 pub fn run(args: &StoragePullArgs) {
     let Some(provider) = args.provider.or_else(ask_storage_provider) else {
-        error("No provider given");
-        std::process::exit(1);
+        exit_with("No provider given");
     };
 
-    let Some(from) = args
-        .from
-        .clone()
-        .or_else(|| ask_plain_input("Enter the remote bucket path to pull"))
-    else {
-        error("No `--from` path given");
+    let Some(from) = resolve_required_input(
+        args.from.clone(),
+        "Enter the remote bucket path to pull",
+        "No `--from` path given",
+    ) else {
         std::process::exit(1);
     };
-
-    let Some(destination) = args
-        .destination
-        .clone()
-        .or_else(|| ask_plain_input("Enter the local folder to pull into"))
-    else {
-        error("No `--destination` folder given");
+    let Some(destination) = resolve_required_input(
+        args.destination.clone(),
+        "Enter the local folder to pull into",
+        "No `--destination` folder given",
+    ) else {
         std::process::exit(1);
     };
 
     let Some(profile) = read_credentials(&format!("{}.yml", provider.slug())) else {
-        error(missing_credentials(provider));
-        std::process::exit(1);
+        exit_with(missing_credentials(provider));
     };
 
     let (remote, prefix) = match resolve_remote(provider, &profile, &from) {
         Ok(resolved) => resolved,
-        Err(message) => {
-            error(message);
-            std::process::exit(1);
-        }
+        Err(message) => exit_with(message),
     };
 
     let cwd = args
@@ -90,17 +116,13 @@ pub fn run(args: &StoragePullArgs) {
         .unwrap_or_else(current_dir);
     let root = cwd.join(&destination);
     if let Err(e) = fs::create_dir_all(&root) {
-        error(format!("Cannot create {}: {e}", root.display()));
-        std::process::exit(1);
+        exit_with(format!("Cannot create {}: {e}", root.display()));
     }
 
     let agent = agent();
     let keys = match list_objects(&agent, &remote, &prefix) {
         Ok(keys) => keys,
-        Err(message) => {
-            error(format!("Cannot list {from}: {message}"));
-            std::process::exit(1);
-        }
+        Err(message) => exit_with(format!("Cannot list {from}: {message}")),
     };
 
     // A prefix that lists nothing may still be one object's exact key — that is
@@ -116,36 +138,19 @@ pub fn run(args: &StoragePullArgs) {
         .filter_map(|key| local_path(&root, &prefix, key).map(|path| (key.clone(), path)))
         .collect();
     let skipped = keys.iter().filter(|key| !key.ends_with('/')).count() - downloads.len();
-    if skipped > 0 && !args.silent {
-        warn(format!(
-            "Skipped {skipped} object(s) whose key escapes {}",
-            root.display()
-        ));
-    }
     if downloads.is_empty() {
-        error(format!("Nothing to pull from {from}"));
-        std::process::exit(1);
+        exit_with(format!("Nothing to pull from {from}"));
     }
 
     let failures = pull_all(&remote, &downloads, provider, args.unzip, args.silent);
-
-    if !args.silent {
-        for (key, message) in &failures {
-            error(format!("{key}: {message}"));
-        }
-    }
-
-    let pulled = downloads.len() - failures.len();
-    if !args.silent {
-        if failures.is_empty() {
-            success(format!("Pulled {pulled} object(s) into {}", root.display()));
-        } else {
-            info(format!(
-                "Summary: {pulled} pulled, {} failed",
-                failures.len()
-            ));
-        }
-    }
+    print_pull_summary(
+        &root,
+        &from,
+        downloads.len(),
+        skipped,
+        &failures,
+        args.silent,
+    );
     if !failures.is_empty() {
         std::process::exit(1);
     }
@@ -174,14 +179,16 @@ fn pull_all(
         loader.entered(0, key.clone());
         let outcome = get_object(&agent, remote, key)
             .and_then(|body| write_object(path, &body, unzip && is_zip(key)));
-        if let Err(message) = outcome {
-            failures.lock().unwrap().push((key.clone(), message));
+        if let Err(message) = outcome
+            && let Ok(mut locked) = failures.lock()
+        {
+            locked.push((key.clone(), message));
         }
         loader.left(0, key);
     });
     loader.stop();
 
-    failures.into_inner().unwrap()
+    failures.into_inner().unwrap_or_default()
 }
 
 fn is_zip(key: &str) -> bool {

@@ -1,10 +1,10 @@
-//! Outdated check — how far the declared dependencies have fallen behind.
-//!
-//! The security check answers "is anything I depend on known to be broken?".
-//! This one answers the question that comes before it: a dependency three major
-//! versions behind is not a vulnerability yet, but it is the reason the upgrade
-//! that fixes one will take a week. It is opt-in because it talks to the public
-//! registries.
+// Outdated check — how far the declared dependencies have fallen behind.
+//
+// The security check answers "is anything I depend on known to be broken?".
+// This one answers the question that comes before it: a dependency three major
+// versions behind is not a vulnerability yet, but it is the reason the upgrade
+// that fixes one will take a week. It is opt-in because it talks to the public
+// registries.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
@@ -257,6 +257,26 @@ pub fn fetch_latest(
     dependency.registry.latest(&response)
 }
 
+/// One worker's share of the lookup: claims dependencies from the shared
+/// counter one at a time until none are left, recording each result.
+fn fetch_worker(
+    agent: &ureq::Agent,
+    dependencies: &[Dependency],
+    next: &std::sync::atomic::AtomicUsize,
+    found: &Mutex<BTreeMap<(Registry, String), Option<String>>>,
+) {
+    loop {
+        let index = next.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let Some(dependency) = dependencies.get(index) else {
+            return;
+        };
+        let latest = fetch_latest(agent, dependency, None);
+        if let Ok(mut found) = found.lock() {
+            found.insert((dependency.registry, dependency.name.clone()), latest);
+        }
+    }
+}
+
 /// Look every dependency up, a few at a time.
 pub fn fetch_all(dependencies: &[Dependency]) -> BTreeMap<(Registry, String), Option<String>> {
     let agent = agent();
@@ -265,18 +285,7 @@ pub fn fetch_all(dependencies: &[Dependency]) -> BTreeMap<(Registry, String), Op
 
     std::thread::scope(|scope| {
         for _ in 0..WORKERS.min(dependencies.len().max(1)) {
-            scope.spawn(|| {
-                loop {
-                    let index = next.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                    let Some(dependency) = dependencies.get(index) else {
-                        return;
-                    };
-                    let latest = fetch_latest(&agent, dependency, None);
-                    if let Ok(mut found) = found.lock() {
-                        found.insert((dependency.registry, dependency.name.clone()), latest);
-                    }
-                }
-            });
+            scope.spawn(|| fetch_worker(&agent, dependencies, &next, &found));
         }
     });
 

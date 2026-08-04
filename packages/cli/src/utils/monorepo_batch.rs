@@ -66,7 +66,7 @@ pub(crate) fn split_biome_output_by_target(
     output: &str,
     keys: &[String],
 ) -> HashMap<String, String> {
-    let header = Regex::new(r"^(\S+):(\d+):(\d+)").unwrap();
+    let header = Regex::new(r"^(\S+):(\d+):(\d+)").expect("the biome header pattern is valid");
     let mut sections: HashMap<String, Vec<String>> = HashMap::new();
     let mut current: Option<String> = None;
 

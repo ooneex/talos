@@ -47,10 +47,7 @@ fn args(root: &Path) -> ProjectCheckArgs {
 
 #[test]
 fn markers_finds_every_allowed_marker_form() {
-    let content = "// TODO(OON-123456) parenthesised\n\
-                   // FIXME[OON-2]: bracketed\n\
-                   // HACK (OON-3) spaced\n\
-                   // XXX(ABC-4) another kind\n";
+    let content = "// TODO(OON-123456) parenthesised\n// FIXME[OON-2]: bracketed\n// HACK (OON-3) spaced\n// XXX(ABC-4) another kind\n";
 
     let found = markers(content, "src/a.ts");
 

@@ -1,7 +1,7 @@
 use clap::Args;
 
 use crate::utils::{
-    ask_confirm, ask_input, current_dir, ensure_module, read_template, skeleton_templates_dir,
+    ask_confirm, ask_input, read_template, resolve_scaffold_module, skeleton_templates_dir,
     to_kebab_case, to_pascal_case, write_export_index,
 };
 
@@ -27,34 +27,79 @@ pub struct CommandCreateArgs {
     pub cwd: Option<String>,
 }
 
+struct CommandTemplates {
+    command: String,
+    test: String,
+    run: String,
+}
+
+fn class_name(name: &str) -> String {
+    to_pascal_case(name)
+        .strip_suffix("Command")
+        .map(str::to_string)
+        .unwrap_or_else(|| to_pascal_case(name))
+}
+
+fn ensure_command_files(
+    command_dir: &std::path::Path,
+    tests_dir: &std::path::Path,
+    command_file_path: &std::path::Path,
+    test_path: &std::path::Path,
+    content: &str,
+    test_content: &str,
+) -> bool {
+    if let Err(error) = std::fs::create_dir_all(command_dir) {
+        crate::utils::error(format!(
+            "Failed to create {}: {error}",
+            command_dir.display()
+        ));
+        return false;
+    }
+    let _ = std::fs::create_dir_all(tests_dir);
+    if let Err(error) = std::fs::write(command_file_path, content) {
+        crate::utils::error(format!(
+            "Failed to write {}: {error}",
+            command_file_path.display()
+        ));
+        return false;
+    }
+    if let Err(error) = std::fs::write(test_path, test_content) {
+        crate::utils::error(format!("Failed to write {}: {error}", test_path.display()));
+        return false;
+    }
+    true
+}
+
+fn ensure_command_runner(base: &std::path::Path, module: &str, template: &str) {
+    let bin_run_path = base.join("bin").join("command").join("run.ts");
+    if !bin_run_path.exists() {
+        if let Some(parent) = bin_run_path.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+        let _ = std::fs::write(&bin_run_path, template.replace("{{name}}", module));
+    }
+}
+
+fn load_templates(no_cache: bool) -> Option<CommandTemplates> {
+    let templates_dir = skeleton_templates_dir(false, !no_cache)?;
+    Some(CommandTemplates {
+        command: read_template(&templates_dir, "command/command.txt")?,
+        test: read_template(&templates_dir, "command/command.test.txt")?,
+        run: read_template(&templates_dir, "module/command.run.txt")?,
+    })
+}
+
+fn resolve_name(name: Option<String>) -> Option<String> {
+    name.or_else(|| ask_input("Enter command name"))
+}
+
 pub fn run(args: &CommandCreateArgs) {
-    let name = match args.name.clone() {
-        Some(name) => name,
-        None => match ask_input("Enter command name") {
-            Some(name) => name,
-            None => return,
-        },
+    let Some(name) = resolve_name(args.name.clone()) else {
+        return;
     };
-    let cwd = args
-        .cwd
-        .clone()
-        .map(std::path::PathBuf::from)
-        .unwrap_or_else(current_dir);
-    let module = args.module.clone().unwrap_or_else(|| "shared".to_string());
+    let (cwd, module) = resolve_scaffold_module(args.cwd.clone(), args.module.clone());
 
-    ensure_module(&module, &cwd);
-
-    let Some(templates_dir) = skeleton_templates_dir(false, !args.no_cache) else {
-        return;
-    };
-    let Some(command_template) = read_template(&templates_dir, "command/command.txt") else {
-        return;
-    };
-    let Some(command_test_template) = read_template(&templates_dir, "command/command.test.txt")
-    else {
-        return;
-    };
-    let Some(command_run_template) = read_template(&templates_dir, "module/command.run.txt") else {
+    let Some(templates) = load_templates(args.no_cache) else {
         return;
     };
 
@@ -62,10 +107,7 @@ pub fn run(args: &CommandCreateArgs) {
     let command_dir = base.join("src").join("commands");
     let tests_dir = base.join("tests").join("commands");
 
-    let class_name = to_pascal_case(&name)
-        .strip_suffix("Command")
-        .map(str::to_string)
-        .unwrap_or_else(|| to_pascal_case(&name));
+    let class_name = class_name(&name);
     let command_file_path = command_dir.join(format!("{class_name}Command.ts"));
 
     if !args.r#override
@@ -79,37 +121,28 @@ pub fn run(args: &CommandCreateArgs) {
     }
 
     let command_name = to_kebab_case(&class_name).replace('-', ":");
-    let content = command_template
+    let content = templates
+        .command
         .replace("{{NAME}}", &class_name)
         .replace("{{COMMAND_NAME}}", &command_name)
         .replace(
             "{{COMMAND_DESCRIPTION}}",
             &format!("Execute {command_name} command"),
         );
-    let test_content = command_test_template
+    let test_content = templates
+        .test
         .replace("{{NAME}}", &class_name)
         .replace("{{MODULE}}", &to_kebab_case(&module));
 
-    if let Err(error) = std::fs::create_dir_all(&command_dir) {
-        crate::utils::error(format!(
-            "Failed to create {}: {error}",
-            command_dir.display()
-        ));
-        return;
-    }
-    let _ = std::fs::create_dir_all(&tests_dir);
-
     let test_path = tests_dir.join(format!("{class_name}Command.spec.ts"));
-
-    if let Err(error) = std::fs::write(&command_file_path, content) {
-        crate::utils::error(format!(
-            "Failed to write {}: {error}",
-            command_file_path.display()
-        ));
-        return;
-    }
-    if let Err(error) = std::fs::write(&test_path, test_content) {
-        crate::utils::error(format!("Failed to write {}: {error}", test_path.display()));
+    if !ensure_command_files(
+        &command_dir,
+        &tests_dir,
+        &command_file_path,
+        &test_path,
+        &content,
+        &test_content,
+    ) {
         return;
     }
 
@@ -123,16 +156,7 @@ pub fn run(args: &CommandCreateArgs) {
         return;
     }
 
-    let bin_run_path = base.join("bin").join("command").join("run.ts");
-    if !bin_run_path.exists() {
-        if let Some(parent) = bin_run_path.parent() {
-            let _ = std::fs::create_dir_all(parent);
-        }
-        let _ = std::fs::write(
-            &bin_run_path,
-            command_run_template.replace("{{name}}", &module),
-        );
-    }
+    ensure_command_runner(&base, &module, &templates.run);
 
     crate::utils::success(format!(
         "{} created successfully",

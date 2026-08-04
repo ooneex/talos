@@ -1,11 +1,11 @@
-//! Queries check — the cache keys a front-end module reads and invalidates by.
-//!
-//! TanStack Query is keyed by an array, and the array is the whole contract: a
-//! read and the invalidation meant to refresh it agree only if the two literals
-//! happen to match. They drift the moment a key gains a parameter, and the
-//! symptom is not an error — it is a screen that keeps showing what the user
-//! just changed. The convention is a key factory per feature, which is exactly
-//! what can be checked.
+// Queries check — the cache keys a front-end module reads and invalidates by.
+//
+// TanStack Query is keyed by an array, and the array is the whole contract: a
+// read and the invalidation meant to refresh it agree only if the two literals
+// happen to match. They drift the moment a key gains a parameter, and the
+// symptom is not an error — it is a screen that keeps showing what the user
+// just changed. The convention is a key factory per feature, which is exactly
+// what can be checked.
 
 use std::collections::BTreeMap;
 use std::path::Path;

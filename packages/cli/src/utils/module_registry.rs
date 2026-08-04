@@ -43,8 +43,14 @@ fn spread_into_field(content: &str, field: &str, module_name: &str) -> String {
         format!("\n{indent}{spread},\n{closing_indent}")
     };
 
-    let whole = caps.get(0).unwrap().as_str();
-    let prefix = caps.get(1).unwrap().as_str();
+    let whole = caps
+        .get(0)
+        .expect("the full match is always present")
+        .as_str();
+    let prefix = caps
+        .get(1)
+        .expect("the field prefix capture is always present")
+        .as_str();
     content.replacen(whole, &format!("{prefix}{new_value}"), 1)
 }
 
@@ -247,7 +253,9 @@ pub fn remove_path_alias(tsconfig_path: &Path, kebab_name: &str) -> Result<(), S
     .map_err(|e| e.to_string())
 }
 
-pub fn strip_jsonc(text: &str) -> String {
+/// Removes `//` and `/* */` comments from JSONC text, respecting string
+/// literals so a `//` inside a string isn't treated as a comment.
+fn strip_comments(text: &str) -> String {
     let mut stripped = String::with_capacity(text.len());
     let mut chars = text.char_indices().peekable();
     let mut in_string = false;
@@ -300,9 +308,15 @@ pub fn strip_jsonc(text: &str) -> String {
         stripped.push(c);
     }
 
-    let mut cleaned = String::with_capacity(stripped.len());
-    let bytes: Vec<char> = stripped.chars().collect();
-    in_string = false;
+    stripped
+}
+
+/// Removes trailing commas before a closing `}` or `]`, respecting string
+/// literals.
+fn strip_trailing_commas(text: &str) -> String {
+    let mut cleaned = String::with_capacity(text.len());
+    let bytes: Vec<char> = text.chars().collect();
+    let mut in_string = false;
     let mut i = 0;
     while i < bytes.len() {
         let c = bytes[i];
@@ -340,6 +354,10 @@ pub fn strip_jsonc(text: &str) -> String {
     }
 
     cleaned
+}
+
+pub fn strip_jsonc(text: &str) -> String {
+    strip_trailing_commas(&strip_comments(text))
 }
 
 #[cfg(test)]

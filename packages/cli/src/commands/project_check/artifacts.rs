@@ -1,12 +1,12 @@
-//! The decorated classes the framework wires up, read once for the checks that
-//! reason about them.
-//!
-//! Every framework artifact — a middleware, an event, a queue, a cron job, a
-//! workflow, a permission, a mailer, a feature flag — is a class carrying a
-//! `@decorator.<kind>()`. The checks that follow all need the same three things:
-//! which classes carry which decorator, what a named method of one returns, and
-//! whether anything else in the workspace so much as mentions the class. Reading
-//! that once here keeps each rule down to the question it actually asks.
+// The decorated classes the framework wires up, read once for the checks that
+// reason about them.
+//
+// Every framework artifact — a middleware, an event, a queue, a cron job, a
+// workflow, a permission, a mailer, a feature flag — is a class carrying a
+// `@decorator.<kind>()`. The checks that follow all need the same three things:
+// which classes carry which decorator, what a named method of one returns, and
+// whether anything else in the workspace so much as mentions the class. Reading
+// that once here keeps each rule down to the question it actually asks.
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -81,30 +81,44 @@ pub fn declared(content: &str, kinds: &[&str]) -> Vec<(String, String)> {
     found
 }
 
+/// The artifacts a single source file declares, restricted to the given
+/// kinds. Returns `None` when the file cannot be read or declares none.
+fn artifacts_in_file(
+    root: &Path,
+    module: &WorkspaceModule,
+    path: &Path,
+    kinds: &[&str],
+) -> Option<Vec<Artifact>> {
+    let content = fs::read_to_string(path).ok()?;
+    let declarations = declared(&content, kinds);
+    if declarations.is_empty() {
+        return None;
+    }
+    let file = relative(root, path);
+    Some(
+        declarations
+            .into_iter()
+            .map(|(kind, class)| Artifact {
+                kind,
+                class,
+                file: file.clone(),
+                path: path.to_path_buf(),
+                module: module.name.clone(),
+                label: module.label(),
+                content: content.clone(),
+            })
+            .collect(),
+    )
+}
+
 /// Every artifact of the given kinds declared by a set of modules.
 pub fn collect(root: &Path, modules: &[WorkspaceModule], kinds: &[&str]) -> Vec<Artifact> {
     let mut artifacts = Vec::new();
 
     for module in modules {
         for path in collect_files(&module.dir.join("src"), TS_EXTENSIONS, MAX_SOURCE_DEPTH) {
-            let Ok(content) = fs::read_to_string(&path) else {
-                continue;
-            };
-            let declarations = declared(&content, kinds);
-            if declarations.is_empty() {
-                continue;
-            }
-            let file = relative(root, &path);
-            for (kind, class) in declarations {
-                artifacts.push(Artifact {
-                    kind,
-                    class,
-                    file: file.clone(),
-                    path: path.clone(),
-                    module: module.name.clone(),
-                    label: module.label(),
-                    content: content.clone(),
-                });
+            if let Some(found) = artifacts_in_file(root, module, &path, kinds) {
+                artifacts.extend(found);
             }
         }
     }

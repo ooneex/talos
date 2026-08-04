@@ -32,6 +32,52 @@ pub struct DatabaseCreateArgs {
     pub cwd: Option<String>,
 }
 
+fn normalize_database_name(name: &str) -> String {
+    let name = to_pascal_case(name);
+    name.strip_suffix("DatabaseAdapter")
+        .or_else(|| name.strip_suffix("Database"))
+        .map(str::to_string)
+        .unwrap_or(name)
+}
+
+fn template_files(db_type: &str) -> (&'static str, &'static str) {
+    match db_type {
+        "postgres" => ("database.pg.txt", "database.test.txt"),
+        "redis" => ("database.redis.txt", "database.redis.test.txt"),
+        _ => ("database.sqlite.txt", "database.test.txt"),
+    }
+}
+
+fn write_database_files(
+    database_dir: &std::path::Path,
+    tests_dir: &std::path::Path,
+    file_path: &std::path::Path,
+    test_file_path: &std::path::Path,
+    content: &str,
+    test_content: &str,
+) -> bool {
+    if let Err(error) = std::fs::create_dir_all(database_dir) {
+        crate::utils::error(format!(
+            "Failed to create {}: {error}",
+            database_dir.display()
+        ));
+        return false;
+    }
+    let _ = std::fs::create_dir_all(tests_dir);
+    if let Err(error) = std::fs::write(file_path, content) {
+        crate::utils::error(format!("Failed to write {}: {error}", file_path.display()));
+        return false;
+    }
+    if let Err(error) = std::fs::write(test_file_path, test_content) {
+        crate::utils::error(format!(
+            "Failed to write {}: {error}",
+            test_file_path.display()
+        ));
+        return false;
+    }
+    true
+}
+
 pub fn run(args: &DatabaseCreateArgs) {
     let name = match args.name.clone() {
         Some(name) => name,
@@ -47,12 +93,7 @@ pub fn run(args: &DatabaseCreateArgs) {
         .unwrap_or_else(current_dir);
     let module = args.module.clone().unwrap_or_else(|| "shared".to_string());
 
-    let name = to_pascal_case(&name);
-    let name = name
-        .strip_suffix("DatabaseAdapter")
-        .or_else(|| name.strip_suffix("Database"))
-        .map(str::to_string)
-        .unwrap_or(name);
+    let name = normalize_database_name(&name);
 
     let db_type = match args.r#type.clone() {
         Some(db_type) => db_type,
@@ -65,11 +106,7 @@ pub fn run(args: &DatabaseCreateArgs) {
     let Some(templates_dir) = skeleton_templates_dir(false, !args.no_cache) else {
         return;
     };
-    let template_file = match db_type.as_str() {
-        "postgres" => "database.pg.txt",
-        "redis" => "database.redis.txt",
-        _ => "database.sqlite.txt",
-    };
+    let (template_file, test_file) = template_files(&db_type);
     let Some(template) = read_template(&templates_dir, template_file) else {
         return;
     };
@@ -91,23 +128,6 @@ pub fn run(args: &DatabaseCreateArgs) {
         return;
     }
 
-    if let Err(error) = std::fs::create_dir_all(&database_dir) {
-        crate::utils::error(format!(
-            "Failed to create {}: {error}",
-            database_dir.display()
-        ));
-        return;
-    }
-    if let Err(error) = std::fs::write(&file_path, content) {
-        crate::utils::error(format!("Failed to write {}: {error}", file_path.display()));
-        return;
-    }
-
-    let test_file = if db_type == "redis" {
-        "database.redis.test.txt"
-    } else {
-        "database.test.txt"
-    };
     let Some(test_template) = read_template(&templates_dir, test_file) else {
         return;
     };
@@ -116,12 +136,14 @@ pub fn run(args: &DatabaseCreateArgs) {
         .replace("{{MODULE}}", &module);
     let tests_dir = base.join("tests").join("databases");
     let test_file_path = tests_dir.join(format!("{name}Database.spec.ts"));
-    let _ = std::fs::create_dir_all(&tests_dir);
-    if let Err(error) = std::fs::write(&test_file_path, test_content) {
-        crate::utils::error(format!(
-            "Failed to write {}: {error}",
-            test_file_path.display()
-        ));
+    if !write_database_files(
+        &database_dir,
+        &tests_dir,
+        &file_path,
+        &test_file_path,
+        &content,
+        &test_content,
+    ) {
         return;
     }
 

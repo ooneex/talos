@@ -1,11 +1,11 @@
-//! Duplication check — the same block of code, written more than once.
-//!
-//! Copy-paste is invisible to every other check here: both copies are short
-//! enough, both are within budget, both compile. It only shows up later, when a
-//! fix lands in one of them and not the other. This walks the sources looking
-//! for runs of identical significant lines that appear in more than one place,
-//! and warns rather than fails — merging two blocks is a judgement call, and
-//! the answer is sometimes to leave them apart.
+// Duplication check — the same block of code, written more than once.
+//
+// Copy-paste is invisible to every other check here: both copies are short
+// enough, both are within budget, both compile. It only shows up later, when a
+// fix lands in one of them and not the other. This walks the sources looking
+// for runs of identical significant lines that appear in more than one place,
+// and warns rather than fails — merging two blocks is a judgement call, and
+// the answer is sometimes to leave them apart.
 
 use std::collections::HashMap;
 use std::collections::hash_map::DefaultHasher;
@@ -163,6 +163,124 @@ fn overlaps(claimed: &[(usize, usize)], start: usize, end: usize) -> bool {
     claimed.iter().any(|&(from, to)| start < to && from < end)
 }
 
+/// Shrinks a run's length so that two occurrences of the same repeated block
+/// back to back are never merged into one over-long match — the run stops at
+/// the gap between them, never below the window they were matched on.
+fn clamp_to_nearest_repeat(spots: &[(usize, usize)], length: usize) -> usize {
+    let mut length = length;
+    for (index, &(spot, spot_start)) in spots.iter().enumerate() {
+        for &(other, other_start) in &spots[index + 1..] {
+            if spot == other {
+                length = length.min(other_start.abs_diff(spot_start));
+            }
+        }
+    }
+    length
+}
+
+/// Every occurrence matching the block starting at `(file, start)`, skipping
+/// ones already claimed by an earlier finding or one that overlaps a spot
+/// already collected.
+fn matching_spots(
+    units: &[Vec<Unit>],
+    claimed: &[Vec<(usize, usize)>],
+    candidates: &[(usize, usize)],
+    file: usize,
+    start: usize,
+) -> Vec<(usize, usize)> {
+    let mut spots = vec![(file, start)];
+    for &(other, other_start) in candidates {
+        if (other, other_start) == (file, start)
+            || !identical(&units[file], start, &units[other], other_start)
+            || overlaps(&claimed[other], other_start, other_start + MIN_BLOCK_LINES)
+            // Two windows of the same repeated block are one copy, not
+            // two, so an occurrence overlapping one already taken is
+            // left out.
+            || spots.iter().any(|&(taken, taken_start)| {
+                taken == other
+                    && other_start < taken_start + MIN_BLOCK_LINES
+                    && taken_start < other_start + MIN_BLOCK_LINES
+            })
+        {
+            continue;
+        }
+        spots.push((other, other_start));
+    }
+    spots
+}
+
+/// How far a matched block can grow while every occurrence keeps agreeing,
+/// staying clear of lines a previous finding already claimed.
+fn grow_run(
+    units: &[Vec<Unit>],
+    claimed: &[Vec<(usize, usize)>],
+    spots: &[(usize, usize)],
+    file: usize,
+    start: usize,
+) -> usize {
+    let mut length = MIN_BLOCK_LINES;
+    while spots
+        .iter()
+        .all(|&(spot, spot_start)| spot_start + length < units[spot].len())
+    {
+        let next = &units[file][start + length].1;
+        if !spots
+            .iter()
+            .all(|&(spot, spot_start)| &units[spot][spot_start + length].1 == next)
+        {
+            break;
+        }
+        if spots.iter().any(|&(spot, spot_start)| {
+            overlaps(&claimed[spot], spot_start, spot_start + length + 1)
+        }) {
+            break;
+        }
+        length += 1;
+    }
+    clamp_to_nearest_repeat(spots, length)
+}
+
+/// The duplicate found at `(file, start)`, when its matching occurrences
+/// form a block long and heavy enough to report — claiming the lines it
+/// covers in every occurrence along the way.
+fn duplicate_at(
+    units: &[Vec<Unit>],
+    claimed: &mut [Vec<(usize, usize)>],
+    index: &HashMap<u64, Vec<(usize, usize)>>,
+    files: &[(String, String)],
+    file: usize,
+    start: usize,
+) -> Option<Duplicate> {
+    if overlaps(&claimed[file], start, start + MIN_BLOCK_LINES) {
+        return None;
+    }
+    let candidates = index.get(&fingerprint(&units[file], start, MIN_BLOCK_LINES))?;
+    let spots = matching_spots(units, claimed, candidates, file, start);
+    if spots.len() < 2 {
+        return None;
+    }
+
+    let length = grow_run(units, claimed, &spots, file, start);
+    if weight(&units[file], start, length) < MIN_BLOCK_CHARS {
+        return None;
+    }
+
+    for &(spot, spot_start) in &spots {
+        claimed[spot].push((spot_start, spot_start + length));
+    }
+
+    Some(Duplicate {
+        lines: length,
+        occurrences: spots
+            .iter()
+            .map(|&(spot, spot_start)| Occurrence {
+                file: files[spot].0.clone(),
+                line: units[spot][spot_start].0,
+            })
+            .collect(),
+    })
+}
+
 /// Every duplicated block across the given files, keyed by their labels.
 ///
 /// A block is reported once, at its longest: the run is grown while every
@@ -189,87 +307,10 @@ pub fn detect(files: &[(String, String)]) -> Vec<Duplicate> {
 
     for file in 0..units.len() {
         for start in 0..units[file].len().saturating_sub(MIN_BLOCK_LINES - 1) {
-            if overlaps(&claimed[file], start, start + MIN_BLOCK_LINES) {
-                continue;
-            }
-
-            let Some(candidates) = index.get(&fingerprint(&units[file], start, MIN_BLOCK_LINES))
-            else {
-                continue;
-            };
-
-            let mut spots = vec![(file, start)];
-            for &(other, other_start) in candidates {
-                if (other, other_start) == (file, start)
-                    || !identical(&units[file], start, &units[other], other_start)
-                    || overlaps(&claimed[other], other_start, other_start + MIN_BLOCK_LINES)
-                    // Two windows of the same repeated block are one copy, not
-                    // two, so an occurrence overlapping one already taken is
-                    // left out.
-                    || spots.iter().any(|&(taken, taken_start)| {
-                        taken == other
-                            && other_start < taken_start + MIN_BLOCK_LINES
-                            && taken_start < other_start + MIN_BLOCK_LINES
-                    })
-                {
-                    continue;
-                }
-                spots.push((other, other_start));
-            }
-
-            if spots.len() < 2 {
-                continue;
-            }
-
-            let mut length = MIN_BLOCK_LINES;
-            while spots
-                .iter()
-                .all(|&(spot, spot_start)| spot_start + length < units[spot].len())
+            if let Some(duplicate) = duplicate_at(&units, &mut claimed, &index, files, file, start)
             {
-                let next = &units[file][start + length].1;
-                if !spots
-                    .iter()
-                    .all(|&(spot, spot_start)| &units[spot][spot_start + length].1 == next)
-                {
-                    break;
-                }
-                if spots.iter().any(|&(spot, spot_start)| {
-                    overlaps(&claimed[spot], spot_start, spot_start + length + 1)
-                }) {
-                    break;
-                }
-                length += 1;
+                duplicates.push(duplicate);
             }
-
-            // Growing the run can walk one occurrence into the next when the
-            // same block repeats back to back, so it stops at the gap between
-            // them — never below the window they were matched on.
-            for (index, &(spot, spot_start)) in spots.iter().enumerate() {
-                for &(other, other_start) in &spots[index + 1..] {
-                    if spot == other {
-                        length = length.min(other_start.abs_diff(spot_start));
-                    }
-                }
-            }
-
-            if weight(&units[file], start, length) < MIN_BLOCK_CHARS {
-                continue;
-            }
-
-            for &(spot, spot_start) in &spots {
-                claimed[spot].push((spot_start, spot_start + length));
-            }
-
-            duplicates.push(Duplicate {
-                lines: length,
-                occurrences: spots
-                    .iter()
-                    .map(|&(spot, spot_start)| Occurrence {
-                        file: files[spot].0.clone(),
-                        line: units[spot][spot_start].0,
-                    })
-                    .collect(),
-            });
         }
     }
 

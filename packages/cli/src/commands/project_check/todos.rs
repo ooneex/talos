@@ -50,7 +50,11 @@ pub fn markers(content: &str, file: &str) -> Vec<Marker> {
     let mut found = Vec::new();
 
     for (number, line) in content.lines().enumerate() {
-        for captured in marker_pattern().captures_iter(line) {
+        // A quoted string that merely illustrates the marker format — inside a
+        // test fixture or a code-generation template — is not a real marker
+        // left behind in this file; only unquoted text (a genuine comment) is.
+        let masked = super::complexity::without_string_contents(line);
+        for captured in marker_pattern().captures_iter(&masked) {
             let (Some(kind), Some(issue)) = (captured.get(1), captured.get(2)) else {
                 continue;
             };

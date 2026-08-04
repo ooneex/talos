@@ -7,7 +7,11 @@ use flate2::read::GzDecoder;
 use serde_json::Value;
 use tar::Archive;
 
-use crate::utils::{Action, current_dir, ensure_bin, read_credentials, run_actions_rendered};
+pub use crate::utils::split_csv;
+use crate::utils::{
+    Action, PublishTarget, current_dir, discover_publish_targets, ensure_bin, read_credentials,
+    resolve_publish_targets, run_actions_rendered,
+};
 
 const NPM_REGISTRY: &str = "registry.npmjs.org";
 
@@ -29,39 +33,10 @@ pub struct NpmPublishArgs {
     pub cwd: Option<String>,
 }
 
-#[derive(Clone, Debug)]
-pub struct Target {
-    pub base: String,
-    pub kind: &'static str,
-    pub name: String,
-}
-
-pub fn split_csv(value: Option<&str>) -> Vec<String> {
-    value
-        .unwrap_or_default()
-        .split(',')
-        .map(str::trim)
-        .filter(|v| !v.is_empty())
-        .map(str::to_string)
-        .collect()
-}
+pub type Target = PublishTarget;
 
 pub fn discover(cwd: &std::path::Path, dir_name: &str, kind: &'static str) -> Vec<Target> {
-    fs::read_dir(cwd.join(dir_name))
-        .ok()
-        .into_iter()
-        .flatten()
-        .flatten()
-        .filter(|e| e.path().is_dir())
-        .map(|e| {
-            let name = e.file_name().to_string_lossy().to_string();
-            Target {
-                base: format!("{dir_name}/{name}"),
-                kind,
-                name,
-            }
-        })
-        .collect()
+    discover_publish_targets(cwd, dir_name, kind)
 }
 
 pub fn resolve_targets(
@@ -69,27 +44,7 @@ pub fn resolve_targets(
     packages: Option<&str>,
     modules: Option<&str>,
 ) -> Vec<Target> {
-    if packages.is_none() && modules.is_none() {
-        let mut all = discover(cwd, "packages", "package");
-        all.extend(discover(cwd, "modules", "module"));
-        return all;
-    }
-    let mut targets = Vec::new();
-    for name in split_csv(packages) {
-        targets.push(Target {
-            base: format!("packages/{name}"),
-            kind: "package",
-            name,
-        });
-    }
-    for name in split_csv(modules) {
-        targets.push(Target {
-            base: format!("modules/{name}"),
-            kind: "module",
-            name,
-        });
-    }
-    targets
+    resolve_publish_targets(cwd, packages, modules)
 }
 
 pub fn percent_encode(input: &str) -> String {
@@ -167,6 +122,59 @@ pub fn extract_tarball_stripping_root(tarball: &Path, destination: &Path) -> std
     Ok(())
 }
 
+/// Reads a target's `package.json` and builds the publish action for it,
+/// or reports why it should be skipped/ignored. `ignored` is bumped when the
+/// version is already published on the registry.
+fn build_publish_action(
+    cwd: &Path,
+    target: &Target,
+    token: &str,
+    access: &str,
+    silent: bool,
+    ignored: &mut usize,
+) -> Option<Action> {
+    let target_dir = cwd.join(&target.base);
+    let pkg_path = target_dir.join("package.json");
+    let Ok(raw) = fs::read_to_string(&pkg_path) else {
+        crate::utils::error(format!(
+            "No {} named \"{}\" found",
+            target.kind, target.name
+        ));
+        return None;
+    };
+    let Ok(pkg) = serde_json::from_str::<Value>(&raw) else {
+        return None;
+    };
+    let name = pkg
+        .get("name")
+        .and_then(Value::as_str)
+        .unwrap_or(&target.name)
+        .to_string();
+    let version = pkg
+        .get("version")
+        .and_then(Value::as_str)
+        .map(str::to_string);
+    let label = version
+        .as_ref()
+        .map(|v| format!("{name}@{v}"))
+        .unwrap_or_else(|| name.clone());
+    if let Some(version) = version.as_deref()
+        && version_exists(&name, version, token, None)
+    {
+        *ignored += 1;
+        if !silent {
+            println!("Skipped {label} (already published)");
+        }
+        return None;
+    }
+
+    let access = access.to_string();
+    let token = token.to_string();
+    Some(Action::new(format!("Publishing {label}"), move || {
+        publish_one(&target_dir, &access, &token)
+    }))
+}
+
 pub fn run(args: &NpmPublishArgs) {
     let cwd = args
         .cwd
@@ -191,49 +199,19 @@ pub fn run(args: &NpmPublishArgs) {
         }
     };
     let mut ignored = 0;
-    let mut actions: Vec<Action> = Vec::new();
-    for target in targets {
-        let target_dir = cwd.join(&target.base);
-        let pkg_path = target_dir.join("package.json");
-        let Ok(raw) = fs::read_to_string(&pkg_path) else {
-            crate::utils::error(format!(
-                "No {} named \"{}\" found",
-                target.kind, target.name
-            ));
-            continue;
-        };
-        let Ok(pkg) = serde_json::from_str::<Value>(&raw) else {
-            continue;
-        };
-        let name = pkg
-            .get("name")
-            .and_then(Value::as_str)
-            .unwrap_or(&target.name)
-            .to_string();
-        let version = pkg
-            .get("version")
-            .and_then(Value::as_str)
-            .map(str::to_string);
-        let label = version
-            .as_ref()
-            .map(|v| format!("{name}@{v}"))
-            .unwrap_or_else(|| name.clone());
-        if let Some(version) = version.as_deref()
-            && version_exists(&name, version, &token, None)
-        {
-            ignored += 1;
-            if !args.silent {
-                println!("Skipped {label} (already published)");
-            }
-            continue;
-        }
-
-        let access = args.access.clone();
-        let token = token.clone();
-        actions.push(Action::new(format!("Publishing {label}"), move || {
-            publish_one(&target_dir, &access, &token)
-        }));
-    }
+    let actions: Vec<Action> = targets
+        .iter()
+        .filter_map(|target| {
+            build_publish_action(
+                &cwd,
+                target,
+                &token,
+                &args.access,
+                args.silent,
+                &mut ignored,
+            )
+        })
+        .collect();
 
     let total = actions.len();
     let failures = run_actions_rendered(actions, !args.silent);

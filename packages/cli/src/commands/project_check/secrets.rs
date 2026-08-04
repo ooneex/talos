@@ -1,8 +1,8 @@
-//! Secrets check — credentials that must never be committed.
-//!
-//! The security check only knows about vulnerable *dependencies*. This one
-//! looks at the repository itself: high-confidence credential formats, and any
-//! environment or key file that git is actually tracking.
+// Secrets check — credentials that must never be committed.
+//
+// The security check only knows about vulnerable *dependencies*. This one
+// looks at the repository itself: high-confidence credential formats, and any
+// environment or key file that git is actually tracking.
 
 use std::fs;
 use std::path::Path;
@@ -99,6 +99,39 @@ pub fn looks_like_secret(value: &str) -> bool {
     value.len() >= 16 || value.chars().any(|character| character.is_ascii_digit())
 }
 
+/// The findings a single line produces against every known credential
+/// format.
+fn known_format_findings(line: &str, number: usize, fixture: bool) -> Vec<SecretFinding> {
+    known_formats()
+        .into_iter()
+        .filter(|(_, regex)| regex.is_match(line))
+        .map(|(rule, _)| SecretFinding {
+            line: number,
+            rule,
+            message: if fixture {
+                format!("credential-shaped string ({rule}) — expected in a fixture?")
+            } else {
+                format!("hardcoded credential ({rule})")
+            },
+            confident: !fixture,
+        })
+        .collect()
+}
+
+/// The finding a hardcoded assignment produces, when its value looks like a
+/// secret rather than a placeholder.
+fn assignment_finding(line: &str, number: usize) -> Option<SecretFinding> {
+    let captured = assignment_format().captures(line)?;
+    let key = captured.get(1).map_or("", |group| group.as_str());
+    let value = captured.get(2).map_or("", |group| group.as_str());
+    looks_like_secret(value).then(|| SecretFinding {
+        line: number,
+        rule: "hardcoded-assignment",
+        message: format!("`{key}` is assigned a literal value"),
+        confident: false,
+    })
+}
+
 /// Scan one file's content. In a `fixture` path a credential-shaped string is
 /// expected, so findings are downgraded to warnings instead of being trusted.
 pub fn scan_content(content: &str, fixture: bool) -> Vec<SecretFinding> {
@@ -106,36 +139,13 @@ pub fn scan_content(content: &str, fixture: bool) -> Vec<SecretFinding> {
 
     for (index, line) in content.lines().enumerate() {
         let number = index + 1;
-
-        for (rule, regex) in known_formats() {
-            if regex.is_match(line) {
-                findings.push(SecretFinding {
-                    line: number,
-                    rule,
-                    message: if fixture {
-                        format!("credential-shaped string ({rule}) — expected in a fixture?")
-                    } else {
-                        format!("hardcoded credential ({rule})")
-                    },
-                    confident: !fixture,
-                });
-            }
-        }
+        findings.extend(known_format_findings(line, number, fixture));
 
         if fixture {
             continue;
         }
-        if let Some(captured) = assignment_format().captures(line) {
-            let key = captured.get(1).map_or("", |group| group.as_str());
-            let value = captured.get(2).map_or("", |group| group.as_str());
-            if looks_like_secret(value) {
-                findings.push(SecretFinding {
-                    line: number,
-                    rule: "hardcoded-assignment",
-                    message: format!("`{key}` is assigned a literal value"),
-                    confident: false,
-                });
-            }
+        if let Some(finding) = assignment_finding(line, number) {
+            findings.push(finding);
         }
     }
 

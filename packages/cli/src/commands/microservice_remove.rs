@@ -1,9 +1,8 @@
 use clap::Args;
-use regex::Regex;
 
 use crate::utils::{
-    ask_confirm, ask_input, current_dir, remove_from_app_module, remove_from_shared_module,
-    remove_path_alias, to_kebab_case, to_pascal_case,
+    ask_input, ensure_removable, remove_microservice_app_blocks, remove_standard_module_references,
+    resolve_cwd, resolve_module_identity,
 };
 
 #[derive(Args, Debug)]
@@ -18,100 +17,32 @@ pub struct MicroserviceRemoveArgs {
     pub silent: bool,
 }
 
-fn remove_block(path: &std::path::Path, pattern: &str) {
-    let Ok(content) = std::fs::read_to_string(path) else {
-        return;
-    };
-    let Ok(re) = Regex::new(pattern) else {
-        return;
-    };
-    let cleaned = re.replace(&content, "").into_owned();
-    let cleaned = Regex::new(r"\n{3,}")
-        .ok()
-        .map(|re| re.replace_all(&cleaned, "\n\n").into_owned())
-        .unwrap_or(cleaned);
-    let _ = std::fs::write(path, cleaned);
-}
-
 pub fn run(args: &MicroserviceRemoveArgs) {
-    let name = match args.name.clone() {
-        Some(name) => name,
-        None => match ask_input("Enter microservice name to remove") {
-            Some(name) => name,
-            None => return,
-        },
-    };
-    let cwd = args
-        .cwd
+    let name = args
+        .name
         .clone()
-        .map(std::path::PathBuf::from)
-        .unwrap_or_else(current_dir);
-    let silent = args.silent;
-
-    let pascal_name = to_pascal_case(&name)
-        .strip_suffix("Module")
-        .map(str::to_string)
-        .unwrap_or_else(|| to_pascal_case(&name));
-    let kebab_name = to_kebab_case(&pascal_name);
-
-    if kebab_name == "app" || kebab_name == "shared" {
-        if !silent {
-            crate::utils::error(format!("Cannot remove the \"{kebab_name}\" module"));
-        }
+        .or_else(|| ask_input("Enter microservice name to remove"))
+        .unwrap_or_default();
+    if name.is_empty() {
         return;
     }
 
-    let module_dir = cwd.join("modules").join(&kebab_name);
-    if !module_dir.join("package.json").exists() {
-        if !silent {
-            crate::utils::error(format!("Microservice \"{kebab_name}\" does not exist"));
-        }
-        return;
-    }
-
-    if !silent
-        && !ask_confirm(
-            &format!("Are you sure you want to remove the \"{kebab_name}\" microservice?"),
-            false,
-        )
+    let cwd = resolve_cwd(args.cwd.as_deref());
+    let identity = resolve_module_identity(&cwd, &name);
+    if !ensure_removable(&identity, "Microservice", args.silent)
+        || !crate::utils::confirm_removal(&identity.kebab_name, "microservice", args.silent)
     {
         return;
     }
 
-    let app_module_path = cwd
-        .join("modules")
-        .join("app")
-        .join("src")
-        .join("AppModule.ts");
-    let _ = remove_from_app_module(&app_module_path, &pascal_name, &kebab_name);
-    let shared_module_path = cwd
-        .join("modules")
-        .join("shared")
-        .join("src")
-        .join("SharedModule.ts");
-    let _ = remove_from_shared_module(&shared_module_path, &pascal_name, &kebab_name);
+    remove_standard_module_references(&cwd, &identity.pascal_name, &identity.kebab_name);
+    remove_microservice_app_blocks(&cwd, &identity.kebab_name);
+    let _ = std::fs::remove_dir_all(&identity.module_dir);
 
-    let esc = regex::escape(&kebab_name);
-    remove_block(
-        &cwd.join("modules").join("app").join("app.yml"),
-        &format!(
-            r#"(?m)(?:^[ \t]*# {esc} microservice[^\n]*\n)?^  - name: \"{esc}\"\n(?:^ {{4,}}[^\n]*\n)*"#
-        ),
-    );
-    remove_block(
-        &cwd.join("modules").join("app").join(".env.yml"),
-        &format!(r"(?m)^  {esc}:\n(?:^ {{4,}}[^\n]*\n)*"),
-    );
-    remove_block(
-        &cwd.join("modules").join("app").join("docker-compose.yml"),
-        &format!(r#"(?m)(?:^[ \t]*# {esc} microservice[^\n]*\n)?^  {esc}:\n(?:^ {{4,}}[^\n]*\n)*"#),
-    );
-
-    let app_tsconfig_path = cwd.join("tsconfig.json");
-    let _ = remove_path_alias(&app_tsconfig_path, &kebab_name);
-    let _ = std::fs::remove_dir_all(&module_dir);
-
-    if !silent {
-        crate::utils::success(format!("modules/{kebab_name} removed successfully"));
+    if !args.silent {
+        crate::utils::success(format!(
+            "modules/{} removed successfully",
+            identity.kebab_name
+        ));
     }
 }

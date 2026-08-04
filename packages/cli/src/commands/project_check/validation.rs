@@ -1,11 +1,11 @@
-//! Validation check — the route's TypeScript type against the schema that
-//! guards it.
-//!
-//! A controller declares the same shape twice: once as a `RouteType` the
-//! handler reads, and once as the `Assert` schema the framework validates the
-//! request against. The compiler only sees the first. A field added to the type
-//! and not to the schema arrives unvalidated; a field asserted but never typed
-//! is rejected for a reason the handler cannot explain.
+// Validation check — the route's TypeScript type against the schema that
+// guards it.
+//
+// A controller declares the same shape twice: once as a `RouteType` the
+// handler reads, and once as the `Assert` schema the framework validates the
+// request against. The compiler only sees the first. A field added to the type
+// and not to the schema arrives unvalidated; a field asserted but never typed
+// is rejected for a reason the handler cannot explain.
 
 use std::collections::BTreeSet;
 use std::fs;
@@ -63,12 +63,7 @@ pub fn strip_comments(content: &str) -> String {
         if character == '/' {
             match chars.peek() {
                 Some('/') => {
-                    for skipped in chars.by_ref() {
-                        if skipped == '\n' {
-                            out.push('\n');
-                            break;
-                        }
-                    }
+                    skip_line_comment(&mut chars, &mut out);
                     continue;
                 }
                 Some('*') => {
@@ -83,6 +78,17 @@ pub fn strip_comments(content: &str) -> String {
     }
 
     out
+}
+
+/// Consumes a `//` line comment, keeping the newline that ends it so line
+/// numbers downstream are unaffected.
+fn skip_line_comment(chars: &mut std::iter::Peekable<std::str::Chars>, out: &mut String) {
+    for skipped in chars.by_ref() {
+        if skipped == '\n' {
+            out.push('\n');
+            break;
+        }
+    }
 }
 
 /// The body of the object opening at `open`, balanced across nested braces.

@@ -45,6 +45,18 @@ pub fn ensure_module(module: &str, cwd: &std::path::Path) {
     });
 }
 
+/// Resolves the working directory and target module for a resource-scaffolding command
+/// (e.g. `command:create`, `seed:create`), creating the module first if it does not
+/// already exist. Shared by every scaffolder that accepts `--cwd`/`--module` flags.
+pub fn resolve_scaffold_module(cwd: Option<String>, module: Option<String>) -> (PathBuf, String) {
+    let cwd = cwd.map(PathBuf::from).unwrap_or_else(current_dir);
+    let module = module.unwrap_or_else(|| "shared".to_string());
+
+    ensure_module(&module, &cwd);
+
+    (cwd, module)
+}
+
 pub fn add_class_to_module(
     module_path: &std::path::Path,
     class_name: &str,
@@ -74,8 +86,16 @@ pub fn add_class_to_module(
         } else {
             format!("{existing}, {class_name}")
         };
-        let whole = caps.get(0).unwrap().as_str().to_string();
-        let prefix = caps.get(1).unwrap().as_str().to_string();
+        let whole = caps
+            .get(0)
+            .expect("the full match is always present")
+            .as_str()
+            .to_string();
+        let prefix = caps
+            .get(1)
+            .expect("the field prefix capture is always present")
+            .as_str()
+            .to_string();
         content = content.replacen(&whole, &format!("{prefix}{new_value}"), 1);
     }
 
@@ -109,16 +129,14 @@ pub fn install_dependency(dependency: &str, cwd: &std::path::Path) {
     );
 }
 
-pub fn scaffold_resource(config: &ScaffoldConfig, options: ScaffoldOptions, cwd: &std::path::Path) {
-    let name = match options.name {
+/// Resolves the resource name from the flag or prompt, applying pascal-case
+/// normalization and stripping the configured suffixes (e.g. so
+/// `UserService` becomes `User`).
+fn resolve_scaffold_name(config: &ScaffoldConfig, name: Option<String>) -> Option<String> {
+    let name = match name {
         Some(name) => name,
-        None => match ask_input(config.prompt_message) {
-            Some(name) => name,
-            None => return,
-        },
+        None => ask_input(config.prompt_message)?,
     };
-
-    let module = options.module.unwrap_or_else(|| "shared".to_string());
 
     let mut name = to_pascal_case(&name);
     let strip_suffixes: &[&str] = if config.strip_suffixes.is_empty() {
@@ -131,13 +149,47 @@ pub fn scaffold_resource(config: &ScaffoldConfig, options: ScaffoldOptions, cwd:
             name = stripped.to_string();
         }
     }
+    Some(name)
+}
 
-    let mut content = config.template.replace("{{NAME}}", &name);
+/// Renders the resource's template, substituting `{{NAME}}` and any
+/// additional placeholders `config.template_data` declares.
+fn build_scaffold_content(config: &ScaffoldConfig, name: &str) -> String {
+    let mut content = config.template.replace("{{NAME}}", name);
     if let Some(template_data) = &config.template_data {
-        for (key, value) in template_data(&name) {
+        for (key, value) in template_data(name) {
             content = content.replace(&format!("{{{{{key}}}}}"), &value);
         }
     }
+    content
+}
+
+/// Registers the new class into the module's `<Name>Module.ts`, when the
+/// config declares a `module_field` to spread it into.
+fn register_in_module(config: &ScaffoldConfig, base: &std::path::Path, module: &str, name: &str) {
+    let Some(module_field) = config.module_field else {
+        return;
+    };
+    let module_pascal_name = to_pascal_case(module);
+    let module_path = base
+        .join("src")
+        .join(format!("{module_pascal_name}Module.ts"));
+    if module_path.exists() {
+        let _ = add_class_to_module(
+            &module_path,
+            &format!("{name}{}", config.suffix),
+            config.dir,
+            module_field,
+        );
+    }
+}
+
+pub fn scaffold_resource(config: &ScaffoldConfig, options: ScaffoldOptions, cwd: &std::path::Path) {
+    let Some(name) = resolve_scaffold_name(config, options.name) else {
+        return;
+    };
+    let module = options.module.unwrap_or_else(|| "shared".to_string());
+    let content = build_scaffold_content(config, &name);
 
     ensure_module(&module, cwd);
 
@@ -180,20 +232,7 @@ pub fn scaffold_resource(config: &ScaffoldConfig, options: ScaffoldOptions, cwd:
     }
     let _ = fs::write(&test_file_path, test_content);
 
-    if let Some(module_field) = config.module_field {
-        let module_pascal_name = to_pascal_case(&module);
-        let module_path = base
-            .join("src")
-            .join(format!("{module_pascal_name}Module.ts"));
-        if module_path.exists() {
-            let _ = add_class_to_module(
-                &module_path,
-                &format!("{name}{}", config.suffix),
-                config.dir,
-                module_field,
-            );
-        }
-    }
+    register_in_module(config, &base, &module, &name);
 
     super::style::success(format!(
         "{} created successfully",

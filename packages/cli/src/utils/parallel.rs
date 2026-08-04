@@ -126,7 +126,8 @@ pub fn run_actions_rendered(actions: Vec<Action>, render: bool) -> Vec<(String, 
     }
 
     Arc::try_unwrap(errors)
-        .map(|mutex| mutex.into_inner().unwrap())
+        .ok()
+        .and_then(|mutex| mutex.into_inner().ok())
         .unwrap_or_default()
 }
 

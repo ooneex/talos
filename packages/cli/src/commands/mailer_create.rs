@@ -27,13 +27,47 @@ pub struct MailerCreateArgs {
     pub cwd: Option<String>,
 }
 
+struct MailerTemplates {
+    mailer: String,
+    mailer_test: String,
+    template: String,
+    template_test: String,
+}
+
+fn normalize_mailer_name(name: &str) -> String {
+    let name = to_pascal_case(name);
+    name.strip_suffix("Mailer")
+        .map(str::to_string)
+        .unwrap_or(name)
+}
+
+fn write_mailer_files(files: [(&std::path::Path, &str); 4]) -> bool {
+    for (path, content) in files {
+        if let Err(error) = std::fs::write(path, content) {
+            crate::utils::error(format!("Failed to write {}: {error}", path.display()));
+            return false;
+        }
+    }
+    true
+}
+
+fn load_templates(no_cache: bool) -> Option<MailerTemplates> {
+    let templates_dir = skeleton_templates_dir(false, !no_cache)?;
+    Some(MailerTemplates {
+        mailer: read_template(&templates_dir, "mailer/mailer.txt")?,
+        mailer_test: read_template(&templates_dir, "mailer/mailer.test.txt")?,
+        template: read_template(&templates_dir, "mailer/mailer-template.txt")?,
+        template_test: read_template(&templates_dir, "mailer/mailer-template.test.txt")?,
+    })
+}
+
+fn resolve_name(name: Option<String>) -> Option<String> {
+    name.or_else(|| ask_input("Enter mailer name"))
+}
+
 pub fn run(args: &MailerCreateArgs) {
-    let name = match args.name.clone() {
-        Some(name) => name,
-        None => match ask_input("Enter mailer name") {
-            Some(name) => name,
-            None => return,
-        },
+    let Some(name) = resolve_name(args.name.clone()) else {
+        return;
     };
     let cwd = args
         .cwd
@@ -42,34 +76,13 @@ pub fn run(args: &MailerCreateArgs) {
         .unwrap_or_else(current_dir);
     let module = args.module.clone().unwrap_or_else(|| "shared".to_string());
 
-    let name = to_pascal_case(&name);
-    let name = name
-        .strip_suffix("Mailer")
-        .map(str::to_string)
-        .unwrap_or(name);
+    let name = normalize_mailer_name(&name);
 
-    let Some(templates_dir) = skeleton_templates_dir(false, !args.no_cache) else {
+    let Some(templates) = load_templates(args.no_cache) else {
         return;
     };
-    let Some(mailer_template) = read_template(&templates_dir, "mailer/mailer.txt") else {
-        return;
-    };
-    let Some(mailer_test_template) = read_template(&templates_dir, "mailer/mailer.test.txt") else {
-        return;
-    };
-    let Some(mailer_template_template) =
-        read_template(&templates_dir, "mailer/mailer-template.txt")
-    else {
-        return;
-    };
-    let Some(mailer_template_test_template) =
-        read_template(&templates_dir, "mailer/mailer-template.test.txt")
-    else {
-        return;
-    };
-
-    let mailer_content = mailer_template.replace("{{NAME}}", &name);
-    let template_content = mailer_template_template.replace("{{NAME}}", &name);
+    let mailer_content = templates.mailer.replace("{{NAME}}", &name);
+    let template_content = templates.template.replace("{{NAME}}", &name);
 
     ensure_module(&module, &cwd);
 
@@ -88,10 +101,12 @@ pub fn run(args: &MailerCreateArgs) {
         return;
     }
 
-    let mailer_test_content = mailer_test_template
+    let mailer_test_content = templates
+        .mailer_test
         .replace("{{NAME}}", &name)
         .replace("{{MODULE}}", &module);
-    let template_test_content = mailer_template_test_template
+    let template_test_content = templates
+        .template_test
         .replace("{{NAME}}", &name)
         .replace("{{MODULE}}", &module);
     let tests_dir = base.join("tests").join("mailers");
@@ -107,34 +122,23 @@ pub fn run(args: &MailerCreateArgs) {
     }
     let _ = std::fs::create_dir_all(&tests_dir);
 
-    for (path, content) in [
+    if !write_mailer_files([
         (&mailer_file_path, mailer_content.as_str()),
         (&template_file_path, template_content.as_str()),
         (&mailer_test_file_path, mailer_test_content.as_str()),
         (&template_test_file_path, template_test_content.as_str()),
-    ] {
-        if let Err(error) = std::fs::write(path, content) {
-            crate::utils::error(format!("Failed to write {}: {error}", path.display()));
-            return;
-        }
+    ]) {
+        return;
     }
 
-    crate::utils::success(format!(
-        "{} created successfully",
-        mailer_file_path.display()
-    ));
-    crate::utils::success(format!(
-        "{} created successfully",
-        template_file_path.display()
-    ));
-    crate::utils::success(format!(
-        "{} created successfully",
-        mailer_test_file_path.display()
-    ));
-    crate::utils::success(format!(
-        "{} created successfully",
-        template_test_file_path.display()
-    ));
+    for path in [
+        &mailer_file_path,
+        &template_file_path,
+        &mailer_test_file_path,
+        &template_test_file_path,
+    ] {
+        crate::utils::success(format!("{} created successfully", path.display()));
+    }
 
     install_dependency("@talosjs/mailer", &cwd);
 }

@@ -161,23 +161,13 @@ fn scaffold_spa_translation(
     ensure_dependency(cwd, "zustand");
 }
 
-pub fn run(args: &TranslationCreateArgs) {
-    let cwd = args
-        .cwd
-        .clone()
-        .map(std::path::PathBuf::from)
-        .unwrap_or_else(current_dir);
-    let module_kebab = to_kebab_case(
-        to_pascal_case(args.module.as_deref().unwrap_or("shared"))
-            .strip_suffix("Module")
-            .unwrap_or(&to_pascal_case(args.module.as_deref().unwrap_or("shared"))),
-    );
-
-    if read_module_type(&cwd, &module_kebab) == "spa" {
-        scaffold_spa_translation(&cwd, &module_kebab, args);
-        return;
-    }
-
+/// Scaffolds a translation for a regular (non-spa) module: the translation
+/// class, its spec, and the module's `translations.yml` dictionary.
+fn create_module_translation(
+    cwd: &std::path::Path,
+    module_kebab: &str,
+    args: &TranslationCreateArgs,
+) {
     let name = match args.name.clone() {
         Some(name) => name,
         None => match ask_input("Enter translation name") {
@@ -190,9 +180,9 @@ pub fn run(args: &TranslationCreateArgs) {
         name = stripped.to_string();
     }
 
-    ensure_module(&module_kebab, &cwd);
+    ensure_module(module_kebab, cwd);
 
-    let base = cwd.join("modules").join(&module_kebab);
+    let base = cwd.join("modules").join(module_kebab);
     let translations_dir = base.join("src").join("translations");
     let file_path = translations_dir.join(format!("{name}Translation.ts"));
     if !args.r#override
@@ -231,7 +221,7 @@ pub fn run(args: &TranslationCreateArgs) {
         &test_path,
         test_template
             .replace("{{NAME}}", &name)
-            .replace("{{MODULE}}", &module_kebab),
+            .replace("{{MODULE}}", module_kebab),
     );
 
     let dict_path = base.join("src").join("translations.yml");
@@ -245,5 +235,25 @@ pub fn run(args: &TranslationCreateArgs) {
         crate::utils::success(format!("{} created successfully", dict_path.display()));
     }
 
-    ensure_dependency(&cwd, "@talosjs/translation");
+    ensure_dependency(cwd, "@talosjs/translation");
+}
+
+pub fn run(args: &TranslationCreateArgs) {
+    let cwd = args
+        .cwd
+        .clone()
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(current_dir);
+    let module_kebab = to_kebab_case(
+        to_pascal_case(args.module.as_deref().unwrap_or("shared"))
+            .strip_suffix("Module")
+            .unwrap_or(&to_pascal_case(args.module.as_deref().unwrap_or("shared"))),
+    );
+
+    if read_module_type(&cwd, &module_kebab) == "spa" {
+        scaffold_spa_translation(&cwd, &module_kebab, args);
+        return;
+    }
+
+    create_module_translation(&cwd, &module_kebab, args);
 }

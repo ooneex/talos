@@ -46,27 +46,64 @@ pub struct StoragePushArgs {
     pub cwd: Option<String>,
 }
 
+pub(crate) fn resolve_required_input(
+    value: Option<String>,
+    prompt: &str,
+    missing_message: &str,
+) -> Option<String> {
+    let resolved = value.or_else(|| ask_plain_input(prompt));
+    if resolved.is_none() {
+        error(missing_message);
+    }
+    resolved
+}
+
+pub(crate) fn exit_with(message: impl Into<String>) -> ! {
+    error(message.into());
+    std::process::exit(1);
+}
+
+fn print_push_summary(
+    destination: &str,
+    uploads_len: usize,
+    failures: &[(String, String)],
+    silent: bool,
+) {
+    if silent {
+        return;
+    }
+    for (key, message) in failures {
+        error(format!("{key}: {message}"));
+    }
+
+    let pushed = uploads_len.saturating_sub(failures.len());
+    if failures.is_empty() {
+        success(format!("Pushed {pushed} object(s) to {destination}"));
+    } else {
+        info(format!(
+            "Summary: {pushed} pushed, {} failed",
+            failures.len()
+        ));
+    }
+}
+
 pub fn run(args: &StoragePushArgs) {
     let Some(provider) = args.provider.or_else(ask_storage_provider) else {
-        error("No provider given");
-        std::process::exit(1);
+        exit_with("No provider given");
     };
 
-    let Some(from) = args
-        .from
-        .clone()
-        .or_else(|| ask_plain_input("Enter the local file or folder to push"))
-    else {
-        error("No `--from` path given");
+    let Some(from) = resolve_required_input(
+        args.from.clone(),
+        "Enter the local file or folder to push",
+        "No `--from` path given",
+    ) else {
         std::process::exit(1);
     };
-
-    let Some(destination) = args
-        .destination
-        .clone()
-        .or_else(|| ask_plain_input("Enter the destination bucket path"))
-    else {
-        error("No `--destination` path given");
+    let Some(destination) = resolve_required_input(
+        args.destination.clone(),
+        "Enter the destination bucket path",
+        "No `--destination` path given",
+    ) else {
         std::process::exit(1);
     };
 
@@ -77,54 +114,28 @@ pub fn run(args: &StoragePushArgs) {
         .unwrap_or_else(current_dir);
     let source = cwd.join(&from);
     if !source.exists() {
-        error(format!("No such file or folder: {}", source.display()));
-        std::process::exit(1);
+        exit_with(format!("No such file or folder: {}", source.display()));
     }
 
     let Some(profile) = read_credentials(&format!("{}.yml", provider.slug())) else {
-        error(missing_credentials(provider));
-        std::process::exit(1);
+        exit_with(missing_credentials(provider));
     };
 
     let (remote, prefix) = match resolve_remote(provider, &profile, &destination) {
         Ok(resolved) => resolved,
-        Err(message) => {
-            error(message);
-            std::process::exit(1);
-        }
+        Err(message) => exit_with(message),
     };
 
     let uploads = match collect_uploads(&source, &prefix, args.zip) {
         Ok(uploads) => uploads,
-        Err(message) => {
-            error(message);
-            std::process::exit(1);
-        }
+        Err(message) => exit_with(message),
     };
     if uploads.is_empty() {
-        error(format!("Nothing to push from {}", source.display()));
-        std::process::exit(1);
+        exit_with(format!("Nothing to push from {}", source.display()));
     }
 
     let failures = push_all(&remote, &uploads, provider, args.silent);
-
-    if !args.silent {
-        for (key, message) in &failures {
-            error(format!("{key}: {message}"));
-        }
-    }
-
-    let pushed = uploads.len() - failures.len();
-    if !args.silent {
-        if failures.is_empty() {
-            success(format!("Pushed {pushed} object(s) to {destination}"));
-        } else {
-            info(format!(
-                "Summary: {pushed} pushed, {} failed",
-                failures.len()
-            ));
-        }
-    }
+    print_push_summary(&destination, uploads.len(), &failures, args.silent);
     if !failures.is_empty() {
         std::process::exit(1);
     }
@@ -153,14 +164,16 @@ fn push_all(
         let outcome = upload
             .read()
             .and_then(|body| put_object(&agent, remote, &upload.key, &body));
-        if let Err(message) = outcome {
-            failures.lock().unwrap().push((upload.key.clone(), message));
+        if let Err(message) = outcome
+            && let Ok(mut locked) = failures.lock()
+        {
+            locked.push((upload.key.clone(), message));
         }
         loader.left(0, &upload.key);
     });
     loader.stop();
 
-    failures.into_inner().unwrap()
+    failures.into_inner().unwrap_or_default()
 }
 
 /// The message that names the command creating the profile this run wanted.
