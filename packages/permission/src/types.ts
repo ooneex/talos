@@ -81,7 +81,7 @@ export enum EPermissionSubject {
 }
 
 export type PermissionActionType = `${EPermissionAction}`;
-export type Subjects = `${EPermissionSubject}`;
+export type SubjectsType = `${EPermissionSubject}`;
 
 // biome-ignore lint/suspicious/noExplicitAny: trust me
 export type PermissionClassType = new (...args: any[]) => IPermission;
@@ -91,6 +91,6 @@ export interface IPermission<A extends string = string, S extends string = strin
   setUserPermissions: (context: ContextType) => Promise<IPermission<A, S>> | IPermission<A, S>;
   build: () => Promise<IPermission<A, S>> | IPermission<A, S>;
   check: (context: ContextType) => Promise<boolean> | boolean;
-  can: (action: PermissionActionType | A, subject: Subjects | S, field?: string) => Promise<boolean> | boolean;
-  cannot: (action: PermissionActionType | A, subject: Subjects | S, field?: string) => Promise<boolean> | boolean;
+  can: (action: PermissionActionType | A, subject: SubjectsType | S, field?: string) => Promise<boolean> | boolean;
+  cannot: (action: PermissionActionType | A, subject: SubjectsType | S, field?: string) => Promise<boolean> | boolean;
 }

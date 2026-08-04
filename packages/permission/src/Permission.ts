@@ -1,7 +1,7 @@
 import { AbilityBuilder, createMongoAbility, type MongoAbility } from "@casl/ability";
 import type { ContextType } from "../../controller/src/types";
 import { PermissionException } from "./PermissionException";
-import type { IPermission, PermissionActionType, Subjects } from "./types";
+import type { IPermission, PermissionActionType, SubjectsType } from "./types";
 
 export abstract class Permission<A extends string = string, S extends string = string> implements IPermission<A, S> {
   protected ability: AbilityBuilder<MongoAbility>;
@@ -20,14 +20,14 @@ export abstract class Permission<A extends string = string, S extends string = s
     return this;
   }
 
-  public can(action: PermissionActionType | A, subject: Subjects | S, field?: string): boolean {
+  public can(action: PermissionActionType | A, subject: SubjectsType | S, field?: string): boolean {
     if (!this.builtAbility) {
       throw new PermissionException("Permission must be built before checking abilities", "NOT_BUILT");
     }
     return this.builtAbility.can(action as string, subject as string, field);
   }
 
-  public cannot(action: PermissionActionType | A, subject: Subjects | S, field?: string): boolean {
+  public cannot(action: PermissionActionType | A, subject: SubjectsType | S, field?: string): boolean {
     if (!this.builtAbility) {
       throw new PermissionException("Permission must be built before checking abilities", "NOT_BUILT");
     }
