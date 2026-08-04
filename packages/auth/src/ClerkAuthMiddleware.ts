@@ -3,7 +3,7 @@ import { container, inject } from "@talosjs/container";
 import type { ContextConfigType, ContextType } from "@talosjs/controller";
 import { HttpStatus } from "@talosjs/http-status";
 import type { IMiddleware } from "@talosjs/middleware";
-import type { RolesConfigType } from "@talosjs/role";
+import type { IRolesConfig } from "@talosjs/role";
 import type { IUser } from "@talosjs/user";
 import { AuthException } from "./AuthException";
 import { ClerkAuth } from "./ClerkAuth";
@@ -21,7 +21,7 @@ export class ClerkAuthMiddleware implements IMiddleware, IAuth {
   public async handler<T extends ContextConfigType>(context: ContextType<T>): Promise<ContextType<T>> {
     const token = context.header.getBearerToken() ?? context.queries?.bearerToken;
 
-    const rolesConfig = container.hasConstant("app.roles") ? container.getConstant<RolesConfigType>("app.roles") : null;
+    const rolesConfig = container.hasConstant("app.roles") ? container.getConstant<IRolesConfig>("app.roles") : null;
 
     const guestRole = rolesConfig?.roles.GUEST ?? "ROLE_GUEST";
     const routeRoles = context.route?.roles ?? [];
