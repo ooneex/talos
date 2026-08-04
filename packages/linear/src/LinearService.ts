@@ -22,18 +22,15 @@ const PRIORITIES: LinearPriorityType[] = [
   { value: 3, label: "Normal" },
   { value: 4, label: "Low" },
 ];
-
 @injectable()
 export class LinearService implements ILinearService {
   private readonly client: LinearClient;
   private readonly defaultTeamId: string | undefined;
-
   public constructor(
     @inject(AppEnv) private readonly env: AppEnv,
     config: LinearConfigType = {},
   ) {
     const apiKey = config.apiKey || this.env.LINEAR_API_KEY;
-
     if (!apiKey) {
       throw new LinearException(
         "Linear API key is required. Please provide it through the constructor config or set the LINEAR_API_KEY environment variable.",
@@ -41,11 +38,9 @@ export class LinearService implements ILinearService {
         {},
       );
     }
-
     this.client = new LinearClient({ apiKey });
     this.defaultTeamId = config.teamId || this.env.LINEAR_TEAM_ID;
   }
-
   public async getIssue(id: string): Promise<Issue> {
     try {
       const issue = await this.client.issue(id);
@@ -54,7 +49,6 @@ export class LinearService implements ILinearService {
       throw new LinearException(`Failed to fetch issue: ${id}`, "ISSUE_FETCH_ERROR", { id, cause: String(e) });
     }
   }
-
   public async getIssues(teamId?: string, filters: Record<string, unknown> = {}): Promise<Issue[]> {
     const resolvedTeamId = teamId ?? this.defaultTeamId;
     try {
@@ -69,7 +63,6 @@ export class LinearService implements ILinearService {
       });
     }
   }
-
   public async createIssue(input: Issue): Promise<Issue> {
     try {
       if (!input.title || !input.team) {
@@ -85,7 +78,6 @@ export class LinearService implements ILinearService {
         ...(input.state != null ? { stateId: input.state.id } : {}),
         ...(input.labels != null ? { labelIds: input.labels.flatMap((l) => (l.id != null ? [l.id] : [])) } : {}),
       });
-
       const issue = await payload.issue;
       if (!issue) {
         throw new LinearException("Issue creation returned no data", "ISSUE_CREATE_ERROR", {
@@ -101,7 +93,6 @@ export class LinearService implements ILinearService {
       });
     }
   }
-
   public async updateIssue(id: string, input: Issue): Promise<Issue> {
     try {
       const payload = await this.client.updateIssue(id, {
@@ -113,7 +104,6 @@ export class LinearService implements ILinearService {
         ...(input.state != null ? { stateId: input.state.id } : {}),
         ...(input.labels != null ? { labelIds: input.labels.flatMap((l) => (l.id != null ? [l.id] : [])) } : {}),
       });
-
       const issue = await payload.issue;
       if (!issue) {
         throw new LinearException("Issue update returned no data", "ISSUE_UPDATE_ERROR", { id });
@@ -124,7 +114,6 @@ export class LinearService implements ILinearService {
       throw new LinearException(`Failed to update issue: ${id}`, "ISSUE_UPDATE_ERROR", { id, cause: String(e) });
     }
   }
-
   public async deleteIssue(id: string): Promise<boolean> {
     try {
       const payload = await this.client.deleteIssue(id);
@@ -133,7 +122,6 @@ export class LinearService implements ILinearService {
       throw new LinearException(`Failed to delete issue: ${id}`, "ISSUE_DELETE_ERROR", { id, cause: String(e) });
     }
   }
-
   public async getTeams(): Promise<LinearTeamType[]> {
     try {
       const teams = await this.client.teams();
@@ -146,14 +134,12 @@ export class LinearService implements ILinearService {
       throw new LinearException("Failed to fetch teams", "TEAMS_FETCH_ERROR", { cause: String(e) });
     }
   }
-
   public async getProjects(teamId?: string): Promise<LinearProjectType[]> {
     const resolvedTeamId = teamId ?? this.defaultTeamId;
     try {
       const projects = await this.client.projects(
         resolvedTeamId ? { filter: { accessibleTeams: { id: { eq: resolvedTeamId } } } } : {},
       );
-
       return projects.nodes.map((project) => ({
         id: project.id,
         name: project.name,
@@ -167,7 +153,6 @@ export class LinearService implements ILinearService {
       });
     }
   }
-
   public async getViewer(): Promise<LinearUserType> {
     try {
       const viewer = await this.client.viewer;
@@ -181,7 +166,6 @@ export class LinearService implements ILinearService {
       throw new LinearException("Failed to fetch viewer", "VIEWER_FETCH_ERROR", { cause: String(e) });
     }
   }
-
   public async getLabel(id: string): Promise<LinearLabelType> {
     try {
       const label = await this.client.issueLabel(id);
@@ -196,7 +180,6 @@ export class LinearService implements ILinearService {
       throw new LinearException(`Failed to fetch label: ${id}`, "LABEL_FETCH_ERROR", { id, cause: String(e) });
     }
   }
-
   public async getLabels(teamId?: string): Promise<LinearLabelType[]> {
     const resolvedTeamId = teamId ?? this.defaultTeamId;
     try {
@@ -217,7 +200,6 @@ export class LinearService implements ILinearService {
       });
     }
   }
-
   public async createLabel(input: LinearLabelType): Promise<LinearLabelType> {
     const resolvedTeamId = input.teamId ?? this.defaultTeamId;
     try {
@@ -251,7 +233,6 @@ export class LinearService implements ILinearService {
       });
     }
   }
-
   public async updateLabel(id: string, input: LinearLabelType): Promise<LinearLabelType> {
     try {
       const payload = await this.client.updateIssueLabel(id, {
@@ -275,7 +256,6 @@ export class LinearService implements ILinearService {
       throw new LinearException(`Failed to update label: ${id}`, "LABEL_UPDATE_ERROR", { id, cause: String(e) });
     }
   }
-
   public async deleteLabel(id: string): Promise<boolean> {
     try {
       const payload = await this.client.deleteIssueLabel(id);
@@ -284,11 +264,9 @@ export class LinearService implements ILinearService {
       throw new LinearException(`Failed to delete label: ${id}`, "LABEL_DELETE_ERROR", { id, cause: String(e) });
     }
   }
-
   public getPriorities(): LinearPriorityType[] {
     return PRIORITIES;
   }
-
   public async getPriority(issueId: string): Promise<LinearPriorityType> {
     try {
       const issue = await this.client.issue(issueId);
@@ -305,7 +283,6 @@ export class LinearService implements ILinearService {
       });
     }
   }
-
   public async setPriority(issueId: string, priority: number): Promise<Issue> {
     try {
       if (!PRIORITIES.some((p) => p.value === priority)) {
@@ -326,11 +303,9 @@ export class LinearService implements ILinearService {
       });
     }
   }
-
   public async clearPriority(issueId: string): Promise<Issue> {
     return this.setPriority(issueId, 0);
   }
-
   public async getState(id: string): Promise<LinearStateType> {
     try {
       const state = await this.client.workflowState(id);
@@ -347,7 +322,6 @@ export class LinearService implements ILinearService {
       throw new LinearException(`Failed to fetch state: ${id}`, "STATE_FETCH_ERROR", { id, cause: String(e) });
     }
   }
-
   public async getStates(teamId?: string): Promise<LinearStateType[]> {
     const resolvedTeamId = teamId ?? this.defaultTeamId;
     try {
@@ -370,7 +344,6 @@ export class LinearService implements ILinearService {
       });
     }
   }
-
   public async createState(input: LinearStateType): Promise<LinearStateType> {
     const resolvedTeamId = input.teamId ?? this.defaultTeamId;
     try {
@@ -408,7 +381,6 @@ export class LinearService implements ILinearService {
       });
     }
   }
-
   public async updateState(id: string, input: LinearStateType): Promise<LinearStateType> {
     try {
       const payload = await this.client.updateWorkflowState(id, {
@@ -435,7 +407,6 @@ export class LinearService implements ILinearService {
       throw new LinearException(`Failed to update state: ${id}`, "STATE_UPDATE_ERROR", { id, cause: String(e) });
     }
   }
-
   public async deleteState(id: string): Promise<boolean> {
     try {
       const payload = await this.client.archiveWorkflowState(id);
@@ -444,7 +415,6 @@ export class LinearService implements ILinearService {
       throw new LinearException(`Failed to delete state: ${id}`, "STATE_DELETE_ERROR", { id, cause: String(e) });
     }
   }
-
   public async checkLabelById(id: string): Promise<boolean> {
     try {
       await this.client.issueLabel(id);
@@ -453,7 +423,6 @@ export class LinearService implements ILinearService {
       return false;
     }
   }
-
   public async checkLabelByName(name: string, teamId?: string): Promise<boolean> {
     const resolvedTeamId = teamId ?? this.defaultTeamId;
     try {
@@ -469,15 +438,12 @@ export class LinearService implements ILinearService {
       });
     }
   }
-
   public checkPriorityById(value: number): boolean {
     return PRIORITIES.some((p) => p.value === value);
   }
-
   public checkPriorityByName(name: string): boolean {
     return PRIORITIES.some((p) => p.label.toLowerCase() === name.toLowerCase());
   }
-
   public async checkStateById(id: string): Promise<boolean> {
     try {
       await this.client.workflowState(id);
@@ -486,7 +452,6 @@ export class LinearService implements ILinearService {
       return false;
     }
   }
-
   public async checkStateByName(name: string, teamId?: string): Promise<boolean> {
     const resolvedTeamId = teamId ?? this.defaultTeamId;
     try {
@@ -502,7 +467,6 @@ export class LinearService implements ILinearService {
       });
     }
   }
-
   public async createComment(issueId: string, body: string): Promise<LinearCommentType> {
     try {
       const payload = await this.client.createComment({ issueId, body });
