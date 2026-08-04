@@ -23,5 +23,8 @@
   },
   "workspaces": [
     "packages/*"
-  ]
+  ],
+  "overrides": {
+    "brace-expansion": "^2.1.3"
+  }
 }
