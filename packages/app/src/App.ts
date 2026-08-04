@@ -6,7 +6,7 @@ import { Exception, type IException } from "@talosjs/exception";
 import { HttpStatus } from "@talosjs/http-status";
 import { type ILogger, type LogDataType, TerminalLogger } from "@talosjs/logger";
 import type { MiddlewareClassType, SocketMiddlewareClassType } from "@talosjs/middleware";
-import { generateRolesTypes, type RolesConfigType, validateConfig } from "@talosjs/role";
+import { generateRolesTypes, type IRolesConfig, validateConfig } from "@talosjs/role";
 import { router } from "@talosjs/routing";
 import type { ScalarType } from "@talosjs/types";
 import { trim } from "@talosjs/utils/trim";
@@ -17,6 +17,7 @@ import type { BunRequest, Server, ServerWebSocket } from "bun";
 import { logger as loggerFunc } from "./logger";
 import { formatSocketRoutes, socketRouteHandler } from "./socketRouteUtils";
 import type { AppConfigType, IAppEventStart } from "./types";
+import type { HttpRouteHandlerType } from "./utils";
 import {
   buildHttpContext,
   formatHttpRoutes,
@@ -127,7 +128,7 @@ export class App {
     for (const rolesDir of rolesDirs) {
       const rolesFile = Bun.file(join(rolesDir, "roles.yml"));
       if (await rolesFile.exists()) {
-        const rolesConfig = Bun.YAML.parse(await rolesFile.text()) as RolesConfigType;
+        const rolesConfig = Bun.YAML.parse(await rolesFile.text()) as IRolesConfig;
         validateConfig(rolesConfig);
         container.addConstant("app.roles", rolesConfig);
 
@@ -146,12 +147,7 @@ export class App {
   }
 
   public async run(): Promise<App> {
-    // Bun.main is modules/<module-name>/src/index.ts, so the module root is two levels up.
-    // Load the project root .env.yml as the shared base, then overlay the module's own
-    // .env.yml so its specific values (e.g. its distinct PORT) take precedence.
-    const moduleRoot = dirname(dirname(Bun.main));
-    const cwd = process.cwd();
-    await loadEnv([join(cwd, ".env.yml"), join(moduleRoot, ".env.yml")]);
+    await this.loadEnvironment();
 
     const logger = new TerminalLogger();
 
@@ -163,84 +159,134 @@ export class App {
     }
 
     const env = container.get<IAppEnv>(AppEnv);
-    let hostname = env.HOST_NAME;
-
     const { middlewares = [], routing } = this.config;
-    const prefix = trim(routing.prefix, "/");
+    const server = this.createServer(env, middlewares as MiddlewareClassType[], trim(routing.prefix, "/"));
 
+    await this.handleStart(server);
+
+    logServerStart(this.buildServerStartInfo(server, env));
+    this.startCronJobs();
+
+    return this;
+  }
+
+  private async loadEnvironment(): Promise<void> {
+    // Bun.main is modules/<module-name>/src/index.ts, so the module root is two levels up.
+    // Load the project root .env.yml as the shared base, then overlay the module's own
+    // .env.yml so its specific values (e.g. its distinct PORT) take precedence.
+    const moduleRoot = dirname(dirname(Bun.main));
+    const cwd = process.cwd();
+    await loadEnv([join(cwd, ".env.yml"), join(moduleRoot, ".env.yml")]);
+  }
+
+  private buildMiddlewares(middlewares: MiddlewareClassType[]): MiddlewareClassType[] {
     const allMiddlewares = this.config.cors
       ? [...(middlewares as MiddlewareClassType[]), this.config.cors]
       : (middlewares as MiddlewareClassType[]);
 
-    const routes = {
-      ...formatHttpRoutes(router.getHttpRoutes(), allMiddlewares, prefix),
-      ...formatSocketRoutes(router.getSocketRoutes(), prefix),
-    };
+    return allMiddlewares;
+  }
 
-    const port = env.PORT;
-
-    const server = Bun.serve({
-      port,
-      hostname,
+  private createServer(env: IAppEnv, middlewares: MiddlewareClassType[], prefix: string): Server<unknown> {
+    let server!: Server<unknown>;
+    server = Bun.serve({
+      port: env.PORT,
+      hostname: env.HOST_NAME,
       development: env.isLocal,
-      routes: {
-        ...routes,
-        "/*": async (req: BunRequest, server: Server<unknown>) => {
-          const url = new URL(req.url);
-          const route = {
-            name: "",
-            path: url.pathname as `/${string}`,
-            method: req.method as RouteInfoType["method"],
-            version: 0,
-            description: "Not Found",
-          };
-          let context = await buildHttpContext({ req, server, route });
-          context.response.notFound("Not Found");
-
-          if (this.config.cors) {
-            context = await runMiddlewares(context, [this.config.cors]);
-          }
-
-          logRequest(context);
-
-          return context.response.get(context.env.APP_ENV);
-        },
-      },
-      websocket: {
-        perMessageDeflate: true,
-        async message(ws: ServerWebSocket<{ id: string }>, message: string) {
-          await socketRouteHandler({
-            message,
-            ws,
-            server,
-            middlewares: middlewares as SocketMiddlewareClassType[],
-          });
-        },
-        async close(ws: ServerWebSocket<{ id: string }>) {
-          container.removeConstant(ws.data.id);
-        },
-      },
+      routes: this.buildRoutes(prefix, middlewares),
+      websocket: this.buildWebsocketHandlers(() => server, middlewares),
     });
 
-    if (this.config.onStart) {
-      const appEventStart = container.getConstant<IAppEventStart>("app.event.start");
-      await appEventStart.handle(server);
+    return server;
+  }
+
+  private buildRoutes(prefix: string, middlewares: MiddlewareClassType[]) {
+    const allMiddlewares = this.buildMiddlewares(middlewares);
+
+    return {
+      ...formatHttpRoutes(router.getHttpRoutes(), allMiddlewares, prefix),
+      ...formatSocketRoutes(router.getSocketRoutes(), prefix),
+      "/*": this.createNotFoundHandler(),
+    };
+  }
+
+  private createNotFoundHandler(): HttpRouteHandlerType {
+    return async (req: BunRequest, server: Server<unknown>) => {
+      const context = await this.buildNotFoundContext(req, server);
+      logRequest(context);
+      return context.response.get(context.env.APP_ENV);
+    };
+  }
+
+  private async buildNotFoundContext(req: BunRequest, server: Server<unknown>) {
+    const url = new URL(req.url);
+    const route = {
+      name: "",
+      path: url.pathname as `/${string}`,
+      method: req.method as RouteInfoType["method"],
+      version: 0,
+      description: "Not Found",
+    };
+    let context = await buildHttpContext({ req, server, route });
+    context.response.notFound("Not Found");
+
+    if (!this.config.cors) {
+      return context;
     }
 
-    hostname = server.hostname || "0.0.0.0";
+    context = await runMiddlewares(context, [this.config.cors]);
+    return context;
+  }
 
+  private buildWebsocketHandlers(getServer: () => Server<unknown>, middlewares: MiddlewareClassType[]) {
+    return {
+      perMessageDeflate: true,
+      message: async (ws: ServerWebSocket<{ id: string }>, message: string) => {
+        await socketRouteHandler({
+          message,
+          ws,
+          server: getServer() as Server<{ id: string }>,
+          middlewares: middlewares as unknown as SocketMiddlewareClassType[],
+        });
+      },
+      close: (ws: ServerWebSocket<{ id: string }>) => {
+        container.removeConstant(ws.data.id);
+      },
+    };
+  }
+
+  private async handleStart(server: Server<unknown>): Promise<void> {
+    if (!this.config.onStart) {
+      return;
+    }
+
+    const appEventStart = container.getConstant<IAppEventStart>("app.event.start");
+    await appEventStart.handle(server);
+  }
+
+  private buildServerStartInfo(server: Server<unknown>, env: IAppEnv) {
+    const hostname = this.normalizeHostname(server.hostname || env.HOST_NAME);
+
+    return {
+      baseUrl: `${server.protocol}://${hostname}:${server.port}`,
+      appEnv: env.APP_ENV,
+      port: server.port ?? env.PORT,
+      isLocal: env.isLocal,
+    };
+  }
+
+  private normalizeHostname(hostname: string): string {
     if (hostname === "0.0.0.0") {
-      hostname = "localhost";
+      return "localhost";
     }
 
-    const baseUrl = `${server.protocol}://${hostname}:${server.port}`;
-    logServerStart({ baseUrl, appEnv: env.APP_ENV, port: server.port ?? port, isLocal: env.isLocal });
+    return hostname;
+  }
 
+  private startCronJobs(): void {
     this.config.cronJobs?.forEach((cronJob) => {
       const cron = container.get<ICron>(cronJob);
       cron.start();
     });
-
-    return this;
   }
 }

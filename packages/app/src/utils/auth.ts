@@ -1,7 +1,7 @@
 import { container } from "@talosjs/container";
 import type { ContextType } from "@talosjs/controller";
 import { HttpStatus } from "@talosjs/http-status";
-import type { RolesConfigType } from "@talosjs/role";
+import type { IRolesConfig } from "@talosjs/role";
 import type { RouteValidationErrorType } from "./validation";
 
 export const applyEnvRoles = (context: ContextType): void => {
@@ -9,7 +9,7 @@ export const applyEnvRoles = (context: ContextType): void => {
     return;
   }
 
-  const rolesConfig = container.hasConstant("app.roles") ? container.getConstant<RolesConfigType>("app.roles") : null;
+  const rolesConfig = container.hasConstant("app.roles") ? container.getConstant<IRolesConfig>("app.roles") : null;
 
   if (!rolesConfig) {
     return;
