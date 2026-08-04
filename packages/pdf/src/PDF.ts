@@ -1,73 +1,47 @@
 import path from "node:path";
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
-import { pdf } from "pdf-to-img";
 import sharp from "sharp";
 import { extractImages, getDocumentProxy } from "unpdf";
+import {
+  buildPageImageResult,
+  convertPdfToImages,
+  getPageText,
+  normalizePageNumbers,
+  normalizeRanges,
+  splitPdfRange,
+} from "./internal";
 import { PDFException } from "./PDFException";
 import type {
   IPDF,
-  PDFAddPageOptionsType,
-  PDFAddPageResultType,
-  PDFCreateOptionsType,
-  PDFCreateResultType,
-  PDFExtractedImageType,
-  PDFGetImagesOptionsType,
-  PDFMetadataResultType,
-  PDFOptionsType,
-  PDFPageImageResultType,
-  PDFPageTextResultType,
-  PDFRemovePagesResultType,
-  PDFSplitOptionsType,
-  PDFSplitResultType,
-  PDFToImagesOptionsType,
-  PDFUpdateMetadataOptionsType,
+  IPDFAddPageOptions,
+  IPDFAddPageResult,
+  IPDFCreateOptions,
+  IPDFCreateResult,
+  IPDFExtractedImage,
+  IPDFGetImagesOptions,
+  IPDFMetadataResult,
+  IPDFOptions,
+  IPDFPageImageResult,
+  IPDFPageTextResult,
+  IPDFRemovePagesResult,
+  IPDFSplitOptions,
+  IPDFSplitResult,
+  IPDFToImagesOptions,
+  IPDFUpdateMetadataOptions,
 } from "./types";
-
 export class PDF implements IPDF {
   private readonly source: string;
-  private readonly options: PDFOptionsType;
-
-  /**
-   * Create a new PDF instance
-   * @param source - Path to PDF file
-   * @param options - Options for PDF processing
-   */
-  constructor(source: string, options: PDFOptionsType = {}) {
+  private readonly options: IPDFOptions;
+  constructor(source: string, options: IPDFOptions = {}) {
     this.source = source.replace(/[/\\]/g, path.sep);
     this.options = {
       scale: options.scale ?? 3,
       ...(options.password !== undefined && { password: options.password }),
     };
   }
-
-  /**
-   * Create a new PDF document and save to the source path
-   * @param options - Optional content and metadata options for the PDF document
-   * @returns Result containing the page count
-   *
-   * @example
-   * ```typescript
-   * // Create a simple empty PDF
-   * const pdf = new PDF("/path/to/output.pdf");
-   * const result = await pdf.create();
-   *
-   * // Create a PDF with metadata
-   * const pdf = new PDF("/path/to/output.pdf");
-   * const result = await pdf.create({
-   *   title: "My Document",
-   *   author: "John Doe",
-   *   subject: "Example PDF",
-   *   keywords: ["example", "pdf", "document"],
-   *   creator: "My App",
-   *   producer: "pdf-lib",
-   * });
-   * ```
-   */
-  public async create(options: PDFCreateOptionsType = {}): Promise<PDFCreateResultType> {
+  public async create(options: IPDFCreateOptions = {}): Promise<IPDFCreateResult> {
     try {
       const pdfDoc = await PDFDocument.create();
-
-      // Set metadata if provided
       if (options.title) {
         pdfDoc.setTitle(options.title);
       }
@@ -86,11 +60,8 @@ export class PDF implements IPDF {
       if (options.creator) {
         pdfDoc.setCreator(options.creator);
       }
-
       const pdfBytes = await pdfDoc.save();
-
       await Bun.write(this.source, pdfBytes);
-
       return {
         pageCount: pdfDoc.getPageCount(),
       };
@@ -104,69 +75,18 @@ export class PDF implements IPDF {
       });
     }
   }
-
-  /**
-   * Add a page to an existing PDF document
-   * @param options - Optional content options for the page
-   * @returns Result containing the total page count
-   *
-   * @example
-   * ```typescript
-   * const pdf = new PDF("/path/to/document.pdf");
-   *
-   * // Add an empty page
-   * await pdf.addPage();
-   *
-   * // Add a page with content
-   * await pdf.addPage({
-   *   content: "Hello, World!",
-   *   fontSize: 24,
-   * });
-   * ```
-   */
-  public async addPage(options: PDFAddPageOptionsType = {}): Promise<PDFAddPageResultType> {
+  public async addPage(options: IPDFAddPageOptions = {}): Promise<IPDFAddPageResult> {
     try {
       const sourceBytes = await Bun.file(this.source).arrayBuffer();
-
       const pdfDoc = await PDFDocument.load(sourceBytes, {
         ignoreEncryption: this.options.password !== undefined,
       });
-
       const page = pdfDoc.addPage();
-
-      // Add content if provided
       if (options.content) {
-        const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-        const fontSize = options.fontSize ?? 12;
-        const margin = 50;
-        const lineHeight = fontSize * 1.2;
-
-        const { height } = page.getSize();
-        let y = height - margin;
-
-        const lines = options.content.split("\n");
-
-        for (const line of lines) {
-          if (y < margin) {
-            break;
-          }
-
-          page.drawText(line, {
-            x: margin,
-            y,
-            size: fontSize,
-            font,
-            color: rgb(0, 0, 0),
-          });
-
-          y -= lineHeight;
-        }
+        await this.drawPageContent(pdfDoc, page, options);
       }
-
       const pdfBytes = await pdfDoc.save();
-
       await Bun.write(this.source, pdfBytes);
-
       return {
         pageCount: pdfDoc.getPageCount(),
       };
@@ -180,30 +100,13 @@ export class PDF implements IPDF {
       });
     }
   }
-
-  /**
-   * Get metadata from the PDF document
-   * @returns PDF metadata including title, author, dates, and page count
-   *
-   * @example
-   * ```typescript
-   * const pdf = new PDF("/path/to/document.pdf");
-   * const metadata = await pdf.getMetadata();
-   *
-   * console.log(metadata.title);
-   * console.log(metadata.author);
-   * console.log(metadata.pageCount);
-   * ```
-   */
-  public async getMetadata(): Promise<PDFMetadataResultType> {
+  public async getMetadata(): Promise<IPDFMetadataResult> {
     try {
       const sourceBytes = await Bun.file(this.source).arrayBuffer();
-
       const pdfDoc = await PDFDocument.load(sourceBytes, {
         ignoreEncryption: this.options.password !== undefined,
         updateMetadata: false,
       });
-
       return {
         title: pdfDoc.getTitle(),
         author: pdfDoc.getAuthor(),
@@ -225,34 +128,12 @@ export class PDF implements IPDF {
       });
     }
   }
-
-  /**
-   * Update metadata of an existing PDF document
-   * @param options - Metadata options to update
-   *
-   * @example
-   * ```typescript
-   * const pdf = new PDF("/path/to/document.pdf");
-   * await pdf.updateMetadata({
-   *   title: "Updated Title",
-   *   author: "New Author",
-   *   subject: "Updated Subject",
-   *   keywords: ["updated", "keywords"],
-   *   producer: "My App",
-   *   creator: "pdf-lib",
-   *   creationDate: new Date("2020-01-01"),
-   *   modificationDate: new Date(),
-   * });
-   * ```
-   */
-  public async updateMetadata(options: PDFUpdateMetadataOptionsType): Promise<void> {
+  public async updateMetadata(options: IPDFUpdateMetadataOptions): Promise<void> {
     try {
       const sourceBytes = await Bun.file(this.source).arrayBuffer();
-
       const pdfDoc = await PDFDocument.load(sourceBytes, {
         ignoreEncryption: this.options.password !== undefined,
       });
-
       if (options.title !== undefined) {
         pdfDoc.setTitle(options.title);
       }
@@ -277,9 +158,7 @@ export class PDF implements IPDF {
       if (options.modificationDate !== undefined) {
         pdfDoc.setModificationDate(options.modificationDate);
       }
-
       const pdfBytes = await pdfDoc.save();
-
       await Bun.write(this.source, pdfBytes);
     } catch (error) {
       if (error instanceof PDFException) {
@@ -291,10 +170,6 @@ export class PDF implements IPDF {
       });
     }
   }
-
-  /**
-   * Get the total number of pages in the PDF
-   */
   public async getPageCount(): Promise<number> {
     try {
       const sourceBytes = await Bun.file(this.source).arrayBuffer();
@@ -310,52 +185,21 @@ export class PDF implements IPDF {
       });
     }
   }
-
-  /**
-   * Get the text content of a specific page
-   * @param pageNumber - Page number (1-indexed)
-   * @returns Extracted text content from the page
-   *
-   * @example
-   * ```typescript
-   * const pdf = new PDF("/path/to/document.pdf");
-   *
-   * // Get content from page 1
-   * const content = await pdf.getPageContent(1);
-   * console.log(content); // "Lorem ipsum dolor sit amet..."
-   *
-   * // Get content from a specific page
-   * const page3Content = await pdf.getPageContent(3);
-   * console.log(page3Content); // Plain text content
-   * ```
-   */
   public async getPageContent(pageNumber: number): Promise<string> {
     if (pageNumber < 1 || !Number.isInteger(pageNumber)) {
       throw new PDFException("Page number must be a positive integer", "PDF_INVALID_PAGE_NUMBER", {
         pageNumber,
       });
     }
-
     try {
-      const sourceBytes = await Bun.file(this.source).arrayBuffer();
-      const document = await getDocumentProxy(new Uint8Array(sourceBytes));
-      const totalPages = document.numPages;
-
+      const { text, totalPages } = await getPageText(this.source, pageNumber);
       if (pageNumber > totalPages) {
         throw new PDFException("Page number exceeds total pages", "PDF_PAGE_OUT_OF_RANGE", {
           pageNumber,
           totalPages,
         });
       }
-
-      const page = await document.getPage(pageNumber);
-      const textContent = await page.getTextContent();
-      const text = textContent.items
-        .filter((item) => "str" in item)
-        .map((item) => ("hasEOL" in item && item.hasEOL ? `${item.str}\n` : item.str))
-        .join("");
-
-      return text.trim();
+      return text;
     } catch (error) {
       if (error instanceof PDFException) {
         throw error;
@@ -367,26 +211,11 @@ export class PDF implements IPDF {
       });
     }
   }
-
-  /**
-   * Extract text content from all pages
-   * @yields Page text result with page number and text content
-   *
-   * @example
-   * ```typescript
-   * const pdf = new PDF("/path/to/document.pdf");
-   *
-   * for await (const { page, text } of pdf.pagesToText()) {
-   *   console.log(`Page ${page}: ${text}`);
-   * }
-   * ```
-   */
-  public async *pagesToText(): AsyncGenerator<PDFPageTextResultType, void, unknown> {
+  public async *pagesToText(): AsyncGenerator<IPDFPageTextResult, void, unknown> {
     try {
       const sourceBytes = await Bun.file(this.source).arrayBuffer();
       const document = await getDocumentProxy(new Uint8Array(sourceBytes));
       const totalPages = document.numPages;
-
       for (let pageNumber = 1; pageNumber <= totalPages; pageNumber++) {
         const page = await document.getPage(pageNumber);
         const textContent = await page.getTextContent();
@@ -394,7 +223,6 @@ export class PDF implements IPDF {
           .filter((item) => "str" in item)
           .map((item) => ("hasEOL" in item && item.hasEOL ? `${item.str}\n` : item.str))
           .join("");
-
         yield {
           page: pageNumber,
           text: text.trim(),
@@ -410,48 +238,23 @@ export class PDF implements IPDF {
       });
     }
   }
-
-  /**
-   * Extract text content from a specific page
-   * @param pageNumber - Page number (1-indexed)
-   * @returns Page text result with page number and text content
-   *
-   * @example
-   * ```typescript
-   * const pdf = new PDF("/path/to/document.pdf");
-   * const { page, text } = await pdf.pageToText(1);
-   * console.log(`Page ${page}: ${text}`);
-   * ```
-   */
-  public async pageToText(pageNumber: number): Promise<PDFPageTextResultType> {
+  public async pageToText(pageNumber: number): Promise<IPDFPageTextResult> {
     if (pageNumber < 1 || !Number.isInteger(pageNumber)) {
       throw new PDFException("Page number must be a positive integer", "PDF_INVALID_PAGE_NUMBER", {
         pageNumber,
       });
     }
-
     try {
-      const sourceBytes = await Bun.file(this.source).arrayBuffer();
-      const document = await getDocumentProxy(new Uint8Array(sourceBytes));
-      const totalPages = document.numPages;
-
+      const { text, totalPages } = await getPageText(this.source, pageNumber);
       if (pageNumber > totalPages) {
         throw new PDFException("Page number exceeds total pages", "PDF_PAGE_OUT_OF_RANGE", {
           pageNumber,
           totalPages,
         });
       }
-
-      const page = await document.getPage(pageNumber);
-      const textContent = await page.getTextContent();
-      const text = textContent.items
-        .filter((item) => "str" in item)
-        .map((item) => ("hasEOL" in item && item.hasEOL ? `${item.str}\n` : item.str))
-        .join("");
-
       return {
         page: pageNumber,
-        text: text.trim(),
+        text,
       };
     } catch (error) {
       if (error instanceof PDFException) {
@@ -464,81 +267,29 @@ export class PDF implements IPDF {
       });
     }
   }
-
-  /**
-   * Extract images from PDF pages and save to disk
-   * @param options - Options including output directory, optional prefix, and optional page number
-   * @yields Extracted image with page number, file path, and dimensions
-   *
-   * @example
-   * ```typescript
-   * const pdf = new PDF("/path/to/document.pdf");
-   *
-   * // Extract images from all pages
-   * for await (const image of pdf.getImages({ outputDir: "/output" })) {
-   *   console.log(`Image: ${image.path}, ${image.width}x${image.height}`);
-   * }
-   *
-   * // Extract images from a specific page
-   * for await (const image of pdf.getImages({ outputDir: "/output", prefix: "doc", pageNumber: 1 })) {
-   *   console.log(`Page ${image.page}: ${image.path}`);
-   * }
-   * ```
-   */
-  public async *getImages(options: PDFGetImagesOptionsType): AsyncGenerator<PDFExtractedImageType, void, unknown> {
+  public async *getImages(options: IPDFGetImagesOptions): AsyncGenerator<IPDFExtractedImage, void, unknown> {
     const { pageNumber } = options;
-
     if (pageNumber !== undefined && (pageNumber < 1 || !Number.isInteger(pageNumber))) {
       throw new PDFException("Page number must be a positive integer", "PDF_INVALID_PAGE_NUMBER", {
         pageNumber,
       });
     }
-
     const normalizedOutputDir = options.outputDir.replace(/[/\\]/g, path.sep);
     const prefix = options.prefix ?? "image";
-
     try {
       const sourceBytes = await Bun.file(this.source).arrayBuffer();
       const document = await getDocumentProxy(new Uint8Array(sourceBytes));
       const totalPages = document.numPages;
-
       if (pageNumber !== undefined && pageNumber > totalPages) {
         throw new PDFException("Page number exceeds total pages", "PDF_PAGE_OUT_OF_RANGE", {
           pageNumber,
           totalPages,
         });
       }
-
       const startPage = pageNumber ?? 1;
       const endPage = pageNumber ?? totalPages;
-
       for (let page = startPage; page <= endPage; page++) {
-        const pageImages = await extractImages(document, page);
-        let imageIndex = 0;
-        for (const img of pageImages) {
-          imageIndex++;
-          const fileName = `${prefix}-p${page}-${imageIndex}.png`;
-          const filePath = path.join(normalizedOutputDir, fileName);
-
-          const pngBuffer = await sharp(img.data, {
-            raw: {
-              width: img.width,
-              height: img.height,
-              channels: img.channels,
-            },
-          })
-            .png()
-            .toBuffer();
-
-          await Bun.write(filePath, pngBuffer);
-
-          yield {
-            page,
-            path: filePath,
-            width: img.width,
-            height: img.height,
-          };
-        }
+        yield* this.extractPageImages(document, page, normalizedOutputDir, prefix);
       }
     } catch (error) {
       if (error instanceof PDFException) {
@@ -551,38 +302,17 @@ export class PDF implements IPDF {
       });
     }
   }
-
-  /**
-   * Convert all pages to images and save to disk
-   * @param options - Options including output directory and optional prefix
-   * @returns Array of page image results with page numbers and file paths
-   */
-  public async *pagesToImages(options: PDFToImagesOptionsType): AsyncGenerator<PDFPageImageResultType, void, unknown> {
+  public async *pagesToImages(options: IPDFToImagesOptions): AsyncGenerator<IPDFPageImageResult, void, unknown> {
     const normalizedOutputDir = options.outputDir.replace(/[/\\]/g, path.sep);
     const prefix = options.prefix ?? "page";
-    const savedWorker = (globalThis as Record<string, unknown>).pdfjsWorker;
-    (globalThis as Record<string, unknown>).pdfjsWorker = undefined;
-
     try {
-      const document = await pdf(this.source, this.options);
+      const document = await convertPdfToImages(this.source, this.options);
       let pageNumber = 1;
-
       for await (const image of document) {
-        const fileName = `${prefix}-${pageNumber}.png`;
-        const filePath = path.join(normalizedOutputDir, fileName);
-
-        await Bun.write(filePath, Buffer.from(image));
-
-        yield {
-          page: pageNumber,
-          path: filePath,
-        };
+        yield await buildPageImageResult(image, normalizedOutputDir, prefix, pageNumber);
         pageNumber++;
       }
-
-      (globalThis as Record<string, unknown>).pdfjsWorker = savedWorker;
     } catch (error) {
-      (globalThis as Record<string, unknown>).pdfjsWorker = savedWorker;
       throw new PDFException("Failed to convert PDF to images", "PDF_CONVERT_IMAGES_FAILED", {
         source: this.source,
         outputDir: normalizedOutputDir,
@@ -590,50 +320,25 @@ export class PDF implements IPDF {
       });
     }
   }
-
-  /**
-   * Convert a specific page to an image and save to disk
-   * @param pageNumber - Page number (1-indexed)
-   * @param options - Options including output directory and optional prefix
-   * @returns Page image result with page number and file path
-   */
-  public async pageToImage(pageNumber: number, options: PDFToImagesOptionsType): Promise<PDFPageImageResultType> {
+  public async pageToImage(pageNumber: number, options: IPDFToImagesOptions): Promise<IPDFPageImageResult> {
     if (pageNumber < 1 || !Number.isInteger(pageNumber)) {
       throw new PDFException("Page number must be a positive integer", "PDF_INVALID_PAGE_NUMBER", {
         pageNumber,
       });
     }
-
     const normalizedOutputDir = options.outputDir.replace(/[/\\]/g, path.sep);
     const prefix = options.prefix ?? "page";
-    const savedWorker = (globalThis as Record<string, unknown>).pdfjsWorker;
-    (globalThis as Record<string, unknown>).pdfjsWorker = undefined;
-
     try {
-      const document = await pdf(this.source, this.options);
-
+      const document = await convertPdfToImages(this.source, this.options);
       if (pageNumber > document.length) {
         throw new PDFException("Page number exceeds total pages", "PDF_PAGE_OUT_OF_RANGE", {
           pageNumber,
           totalPages: document.length,
         });
       }
-
       const image = await document.getPage(pageNumber);
-
-      const fileName = `${prefix}-${pageNumber}.png`;
-      const filePath = path.join(normalizedOutputDir, fileName);
-
-      await Bun.write(filePath, Buffer.from(image));
-
-      (globalThis as Record<string, unknown>).pdfjsWorker = savedWorker;
-
-      return {
-        page: pageNumber,
-        path: filePath,
-      };
+      return await buildPageImageResult(image, normalizedOutputDir, prefix, pageNumber);
     } catch (error) {
-      (globalThis as Record<string, unknown>).pdfjsWorker = savedWorker;
       if (error instanceof PDFException) {
         throw error;
       }
@@ -645,64 +350,24 @@ export class PDF implements IPDF {
       });
     }
   }
-
-  /**
-   * Split the PDF into separate documents and save to disk
-   * @param options - Split options with output directory, page ranges, and optional prefix
-   * @returns Array of split PDF results with page ranges and file paths
-   */
-  public async *split(options: PDFSplitOptionsType): AsyncGenerator<PDFSplitResultType, void, unknown> {
+  public async *split(options: IPDFSplitOptions): AsyncGenerator<IPDFSplitResult, void, unknown> {
     const normalizedOutputDir = options.outputDir.replace(/[/\\]/g, path.sep);
     const prefix = options.prefix ?? "page";
-
     try {
       const sourceBytes = await Bun.file(this.source).arrayBuffer();
-
       const sourcePdf = await PDFDocument.load(sourceBytes, {
         ignoreEncryption: this.options.password !== undefined,
       });
-
       const totalPages = sourcePdf.getPageCount();
-
       if (totalPages === 0) {
         throw new PDFException("PDF has no pages", "PDF_NO_PAGES", {
           source: this.source,
         });
       }
-
-      const ranges = this.normalizeRanges(options.ranges, totalPages);
-
-      // Validate all ranges first
+      const ranges = normalizeRanges(options.ranges, totalPages);
+      this.validateRanges(ranges, totalPages);
       for (const { start, end } of ranges) {
-        if (start < 1 || end > totalPages || start > end) {
-          throw new PDFException("Invalid page range", "PDF_INVALID_PAGE_RANGE", {
-            start,
-            end,
-            totalPages,
-          });
-        }
-      }
-
-      for (const { start, end } of ranges) {
-        const newPdf = await PDFDocument.create();
-        const pageIndices = Array.from({ length: end - start + 1 }, (_, i) => start - 1 + i);
-        const copiedPages = await newPdf.copyPages(sourcePdf, pageIndices);
-
-        for (const page of copiedPages) {
-          newPdf.addPage(page);
-        }
-
-        const pdfBytes = await newPdf.save();
-
-        const fileName = start === end ? `${prefix}-${start}.pdf` : `${prefix}-${start}-${end}.pdf`;
-        const filePath = path.join(normalizedOutputDir, fileName);
-
-        await Bun.write(filePath, pdfBytes);
-
-        yield {
-          pages: { start, end },
-          path: filePath,
-        };
+        yield await splitPdfRange(sourcePdf, normalizedOutputDir, prefix, start, end);
       }
     } catch (error) {
       if (error instanceof PDFException) {
@@ -715,74 +380,36 @@ export class PDF implements IPDF {
       });
     }
   }
-
-  /**
-   * Remove specified pages from the PDF
-   * @param pages - Page numbers to remove (1-indexed). Can be individual numbers or ranges [start, end]
-   * @returns Result with remaining page count and PDF buffer
-   *
-   * @example
-   * ```typescript
-   * const pdf = new PDF("/path/to/document.pdf");
-   *
-   * // Remove individual pages (pages 2 and 5)
-   * const result1 = await pdf.removePages([2, 5]);
-   *
-   * // Remove a range of pages (pages 3 to 6)
-   * const result2 = await pdf.removePages([[3, 6]]);
-   *
-   * // Remove mixed: individual pages and ranges (pages 1, 4-6, and 10)
-   * const result3 = await pdf.removePages([1, [4, 6], 10]);
-   *
-   * console.log(result3.remainingPages); // Number of pages left
-   * console.log(result3.buffer);         // Buffer containing the resulting PDF
-   *
-   * // Save to file
-   * await Bun.write("/path/to/output.pdf", result3.buffer);
-   * ```
-   */
-  public async removePages(pages: (number | [number, number])[]): Promise<PDFRemovePagesResultType> {
+  public async removePages(pages: (number | [number, number])[]): Promise<IPDFRemovePagesResult> {
     try {
       const sourceBytes = await Bun.file(this.source).arrayBuffer();
-
       const pdfDoc = await PDFDocument.load(sourceBytes, {
         ignoreEncryption: this.options.password !== undefined,
       });
-
       const totalPages = pdfDoc.getPageCount();
-
       if (totalPages === 0) {
         throw new PDFException("PDF has no pages", "PDF_NO_PAGES", {
           source: this.source,
         });
       }
-
-      // Normalize page numbers to remove into a flat sorted array
-      const pagesToRemove = this.normalizePageNumbers(pages, totalPages);
-
+      const pagesToRemove = normalizePageNumbers(pages, totalPages);
       if (pagesToRemove.length === 0) {
         throw new PDFException("No valid pages specified for removal", "PDF_NO_VALID_PAGES", {
           pages,
         });
       }
-
       if (pagesToRemove.length >= totalPages) {
         throw new PDFException("Cannot remove all pages from PDF", "PDF_CANNOT_REMOVE_ALL_PAGES", {
           pagesToRemove,
           totalPages,
         });
       }
-
-      // Remove pages in reverse order to maintain correct indices
       const sortedDescending = [...pagesToRemove].sort((a, b) => b - a);
       for (const pageNum of sortedDescending) {
         pdfDoc.removePage(pageNum - 1); // Convert to 0-indexed
       }
-
       const pdfBytes = await pdfDoc.save();
-
       await Bun.write(this.source, pdfBytes);
-
       return {
         remainingPages: pdfDoc.getPageCount(),
       };
@@ -797,53 +424,74 @@ export class PDF implements IPDF {
       });
     }
   }
-
-  /**
-   * Normalize page numbers into a flat array of unique valid page numbers
-   */
-  private normalizePageNumbers(pages: (number | [number, number])[], totalPages: number): number[] {
-    const pageSet = new Set<number>();
-
-    for (const page of pages) {
-      if (typeof page === "number") {
-        if (page >= 1 && page <= totalPages && Number.isInteger(page)) {
-          pageSet.add(page);
-        }
-      } else {
-        const [start, end] = page;
-        if (start <= end) {
-          for (let i = Math.max(1, start); i <= Math.min(totalPages, end); i++) {
-            if (Number.isInteger(i)) {
-              pageSet.add(i);
-            }
-          }
-        }
-      }
+  private async *extractPageImages(
+    document: Awaited<ReturnType<typeof getDocumentProxy>>,
+    page: number,
+    outputDir: string,
+    prefix: string,
+  ): AsyncGenerator<IPDFExtractedImage, void, unknown> {
+    const pageImages = await extractImages(document, page);
+    let imageIndex = 0;
+    for (const image of pageImages) {
+      imageIndex++;
+      const fileName = `${prefix}-p${page}-${imageIndex}.png`;
+      const filePath = path.join(outputDir, fileName);
+      const pngBuffer = await sharp(image.data, {
+        raw: {
+          width: image.width,
+          height: image.height,
+          channels: image.channels,
+        },
+      })
+        .png()
+        .toBuffer();
+      await Bun.write(filePath, pngBuffer);
+      yield {
+        page,
+        path: filePath,
+        width: image.width,
+        height: image.height,
+      };
     }
-
-    return Array.from(pageSet);
   }
-
-  /**
-   * Normalize page ranges for splitting
-   * If no ranges provided, creates individual page ranges
-   */
-  private normalizeRanges(
-    ranges: PDFSplitOptionsType["ranges"] | undefined,
-    totalPages: number,
-  ): { start: number; end: number }[] {
-    if (!ranges || ranges.length === 0) {
-      return Array.from({ length: totalPages }, (_, i) => ({
-        start: i + 1,
-        end: i + 1,
-      }));
+  private async drawPageContent(
+    pdfDoc: PDFDocument,
+    page: ReturnType<PDFDocument["addPage"]>,
+    options: IPDFAddPageOptions,
+  ): Promise<void> {
+    if (!options.content) {
+      return;
     }
-
-    return ranges.map((range) => {
-      if (typeof range === "number") {
-        return { start: range, end: range };
+    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const fontSize = options.fontSize ?? 12;
+    const margin = 50;
+    const lineHeight = fontSize * 1.2;
+    const { height } = page.getSize();
+    let y = height - margin;
+    for (const line of options.content.split("\n")) {
+      if (y < margin) {
+        break;
       }
-      return { start: range[0], end: range[1] };
-    });
+      page.drawText(line, {
+        x: margin,
+        y,
+        size: fontSize,
+        font,
+        color: rgb(0, 0, 0),
+      });
+      y -= lineHeight;
+    }
+  }
+  private validateRanges(ranges: Array<{ start: number; end: number }>, totalPages: number): void {
+    for (const { start, end } of ranges) {
+      if (start >= 1 && end <= totalPages && start <= end) {
+        continue;
+      }
+      throw new PDFException("Invalid page range", "PDF_INVALID_PAGE_RANGE", {
+        start,
+        end,
+        totalPages,
+      });
+    }
   }
 }

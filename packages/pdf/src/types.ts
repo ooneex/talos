@@ -1,7 +1,7 @@
 /**
  * Options for PDF to image conversion
  */
-export interface PDFOptionsType {
+export interface IPDFOptions {
   /**
    * Password for encrypted PDFs
    */
@@ -16,7 +16,7 @@ export interface PDFOptionsType {
 /**
  * Options for converting PDF pages to images and saving to disk
  */
-export interface PDFToImagesOptionsType {
+export interface IPDFToImagesOptions {
   /**
    * Output directory to save the images
    */
@@ -30,7 +30,7 @@ export interface PDFToImagesOptionsType {
 /**
  * Result of converting a PDF page to an image saved to disk
  */
-export interface PDFPageImageResultType {
+export interface IPDFPageImageResult {
   /**
    * Page number (1-indexed)
    */
@@ -44,7 +44,7 @@ export interface PDFPageImageResultType {
 /**
  * Result of extracting text content from a PDF page
  */
-export interface PDFPageTextResultType {
+export interface IPDFPageTextResult {
   /**
    * Page number (1-indexed)
    */
@@ -58,7 +58,7 @@ export interface PDFPageTextResultType {
 /**
  * Options for splitting a PDF and saving to disk
  */
-export interface PDFSplitOptionsType {
+export interface IPDFSplitOptions {
   /**
    * Output directory to save the split PDF files
    */
@@ -79,7 +79,7 @@ export interface PDFSplitOptionsType {
 /**
  * Result of splitting a PDF and saving to disk
  */
-export interface PDFSplitResultType {
+export interface IPDFSplitResult {
   /**
    * Page range that was extracted (1-indexed)
    */
@@ -93,14 +93,14 @@ export interface PDFSplitResultType {
 /**
  * Result of removing pages from a PDF
  */
-export interface PDFRemovePagesResultType {
+export interface IPDFRemovePagesResult {
   remainingPages: number;
 }
 
 /**
  * Options for creating a new PDF document
  */
-export interface PDFCreateOptionsType {
+export interface IPDFCreateOptions {
   /**
    * Title of the PDF document
    */
@@ -130,7 +130,7 @@ export interface PDFCreateOptionsType {
 /**
  * Result of creating a new PDF document
  */
-export interface PDFCreateResultType {
+export interface IPDFCreateResult {
   /**
    * Number of pages in the document
    */
@@ -140,7 +140,7 @@ export interface PDFCreateResultType {
 /**
  * Options for adding a page to a PDF document
  */
-export interface PDFAddPageOptionsType {
+export interface IPDFAddPageOptions {
   /**
    * Text content to add to the page
    */
@@ -154,7 +154,7 @@ export interface PDFAddPageOptionsType {
 /**
  * Result of adding a page to a PDF document
  */
-export interface PDFAddPageResultType {
+export interface IPDFAddPageResult {
   /**
    * Total number of pages after adding
    */
@@ -164,7 +164,7 @@ export interface PDFAddPageResultType {
 /**
  * Result of getting PDF metadata
  */
-export interface PDFMetadataResultType {
+export interface IPDFMetadataResult {
   /**
    * Title of the PDF document
    */
@@ -206,7 +206,7 @@ export interface PDFMetadataResultType {
 /**
  * Options for updating PDF metadata
  */
-export interface PDFUpdateMetadataOptionsType {
+export interface IPDFUpdateMetadataOptions {
   /**
    * Title of the PDF document
    */
@@ -244,7 +244,7 @@ export interface PDFUpdateMetadataOptionsType {
 /**
  * Options for extracting images from PDF pages
  */
-export interface PDFGetImagesOptionsType {
+export interface IPDFGetImagesOptions {
   /**
    * Output directory to save the images
    */
@@ -262,7 +262,7 @@ export interface PDFGetImagesOptionsType {
 /**
  * Extracted image saved to disk
  */
-export interface PDFExtractedImageType {
+export interface IPDFExtractedImage {
   /**
    * Page number the image was extracted from (1-indexed)
    */
@@ -290,26 +290,26 @@ export interface IPDF {
    * @param options - Optional content and metadata options for the PDF document
    * @returns Result containing the page count
    */
-  create(options?: PDFCreateOptionsType): Promise<PDFCreateResultType>;
+  create(options?: IPDFCreateOptions): Promise<IPDFCreateResult>;
 
   /**
    * Add a page to an existing PDF document
    * @param options - Optional content options for the page
    * @returns Result containing the total page count
    */
-  addPage(options?: PDFAddPageOptionsType): Promise<PDFAddPageResultType>;
+  addPage(options?: IPDFAddPageOptions): Promise<IPDFAddPageResult>;
 
   /**
    * Get metadata from the PDF document
    * @returns PDF metadata including title, author, dates, and page count
    */
-  getMetadata(): Promise<PDFMetadataResultType>;
+  getMetadata(): Promise<IPDFMetadataResult>;
 
   /**
    * Update metadata of an existing PDF document
    * @param options - Metadata options to update
    */
-  updateMetadata(options: PDFUpdateMetadataOptionsType): Promise<void>;
+  updateMetadata(options: IPDFUpdateMetadataOptions): Promise<void>;
 
   /**
    * Get the total number of pages in the PDF
@@ -321,28 +321,28 @@ export interface IPDF {
    * @param options - Options including output directory and optional prefix
    * @returns Array of page image results with page numbers and file paths
    */
-  pagesToImages(options: PDFToImagesOptionsType): AsyncGenerator<PDFPageImageResultType, void, unknown>;
+  pagesToImages(options: IPDFToImagesOptions): AsyncGenerator<IPDFPageImageResult, void, unknown>;
 
   /**
    * Convert a specific page to an image and save to disk
    * @param pageNumber - Page number (1-indexed)
    * @param options - Options including output directory and optional prefix
    */
-  pageToImage(pageNumber: number, options: PDFToImagesOptionsType): Promise<PDFPageImageResultType>;
+  pageToImage(pageNumber: number, options: IPDFToImagesOptions): Promise<IPDFPageImageResult>;
 
   /**
    * Split the PDF into separate documents and save to disk
    * @param options - Split options with output directory, page ranges, and optional prefix
    * @returns Array of split PDF results with page ranges and file paths
    */
-  split(options: PDFSplitOptionsType): AsyncGenerator<PDFSplitResultType, void, unknown>;
+  split(options: IPDFSplitOptions): AsyncGenerator<IPDFSplitResult, void, unknown>;
 
   /**
    * Remove specified pages from the PDF
    * @param pages - Page numbers to remove (1-indexed). Can be individual numbers or ranges [start, end]
    * @returns Result with remaining page count and PDF buffer
    */
-  removePages(pages: (number | [number, number])[]): Promise<PDFRemovePagesResultType>;
+  removePages(pages: (number | [number, number])[]): Promise<IPDFRemovePagesResult>;
 
   /**
    * Get the text content of a specific page
@@ -355,19 +355,19 @@ export interface IPDF {
    * Extract text content from all pages
    * @yields Page text result with page number and text content
    */
-  pagesToText(): AsyncGenerator<PDFPageTextResultType, void, unknown>;
+  pagesToText(): AsyncGenerator<IPDFPageTextResult, void, unknown>;
 
   /**
    * Extract text content from a specific page
    * @param pageNumber - Page number (1-indexed)
    * @returns Page text result with page number and text content
    */
-  pageToText(pageNumber: number): Promise<PDFPageTextResultType>;
+  pageToText(pageNumber: number): Promise<IPDFPageTextResult>;
 
   /**
    * Extract images from PDF pages and save to disk
    * @param options - Options including output directory, optional prefix, and optional page number
    * @returns Result containing total pages and array of extracted images with file paths
    */
-  getImages(options: PDFGetImagesOptionsType): AsyncGenerator<PDFExtractedImageType, void, unknown>;
+  getImages(options: IPDFGetImagesOptions): AsyncGenerator<IPDFExtractedImage, void, unknown>;
 }

@@ -3,21 +3,21 @@ import { appendFile, exists, mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 import type {
   IPDF,
-  PDFAddPageOptionsType,
-  PDFAddPageResultType,
-  PDFCreateOptionsType,
-  PDFCreateResultType,
-  PDFExtractedImageType,
-  PDFGetImagesOptionsType,
-  PDFMetadataResultType,
-  PDFOptionsType,
-  PDFPageImageResultType,
-  PDFPageTextResultType,
-  PDFRemovePagesResultType,
-  PDFSplitOptionsType,
-  PDFSplitResultType,
-  PDFToImagesOptionsType,
-  PDFUpdateMetadataOptionsType,
+  IPDFAddPageOptions,
+  IPDFAddPageResult,
+  IPDFCreateOptions,
+  IPDFCreateResult,
+  IPDFExtractedImage,
+  IPDFGetImagesOptions,
+  IPDFMetadataResult,
+  IPDFOptions,
+  IPDFPageImageResult,
+  IPDFPageTextResult,
+  IPDFRemovePagesResult,
+  IPDFSplitOptions,
+  IPDFSplitResult,
+  IPDFToImagesOptions,
+  IPDFUpdateMetadataOptions,
 } from "@/index";
 import { PDF, PDFException } from "@/index";
 
@@ -62,8 +62,8 @@ describe("PDF", () => {
       expect(typeof pdfInstance.removePages).toBe("function");
     });
 
-    test("should export PDFOptionsType", () => {
-      const options: PDFOptionsType = {
+    test("should export IPDFOptions", () => {
+      const options: IPDFOptions = {
         scale: 2,
         password: "secret",
       };
@@ -71,8 +71,8 @@ describe("PDF", () => {
       expect(options.password).toBe("secret");
     });
 
-    test("should export PDFToImagesOptionsType", () => {
-      const options: PDFToImagesOptionsType = {
+    test("should export IPDFToImagesOptions", () => {
+      const options: IPDFToImagesOptions = {
         outputDir: "/tmp/output",
         prefix: "image",
       };
@@ -80,8 +80,8 @@ describe("PDF", () => {
       expect(options.prefix).toBe("image");
     });
 
-    test("should export PDFPageImageResultType", () => {
-      const result: PDFPageImageResultType = {
+    test("should export IPDFPageImageResult", () => {
+      const result: IPDFPageImageResult = {
         page: 1,
         path: "/tmp/output/page-1.png",
       };
@@ -89,8 +89,8 @@ describe("PDF", () => {
       expect(result.path).toBe("/tmp/output/page-1.png");
     });
 
-    test("should export PDFPageTextResultType", () => {
-      const result: PDFPageTextResultType = {
+    test("should export IPDFPageTextResult", () => {
+      const result: IPDFPageTextResult = {
         page: 1,
         text: "Hello world",
       };
@@ -98,8 +98,8 @@ describe("PDF", () => {
       expect(result.text).toBe("Hello world");
     });
 
-    test("should export PDFSplitOptionsType", () => {
-      const options: PDFSplitOptionsType = {
+    test("should export IPDFSplitOptions", () => {
+      const options: IPDFSplitOptions = {
         outputDir: "/tmp/split-output",
         ranges: [[1, 3], 5, [7, 10]],
         prefix: "doc",
@@ -109,8 +109,8 @@ describe("PDF", () => {
       expect(options.prefix).toBe("doc");
     });
 
-    test("should export PDFSplitResultType", () => {
-      const result: PDFSplitResultType = {
+    test("should export IPDFSplitResult", () => {
+      const result: IPDFSplitResult = {
         pages: { start: 1, end: 3 },
         path: "/tmp/split-output/doc-1-3.pdf",
       };
@@ -118,8 +118,8 @@ describe("PDF", () => {
       expect(result.path).toBe("/tmp/split-output/doc-1-3.pdf");
     });
 
-    test("should export PDFCreateOptionsType", () => {
-      const options: PDFCreateOptionsType = {
+    test("should export IPDFCreateOptions", () => {
+      const options: IPDFCreateOptions = {
         title: "Test PDF",
         author: "Test Author",
         subject: "Test Subject",
@@ -135,15 +135,15 @@ describe("PDF", () => {
       expect(options.creator).toBe("Test Creator");
     });
 
-    test("should export PDFCreateResultType", () => {
-      const result: PDFCreateResultType = {
+    test("should export IPDFCreateResult", () => {
+      const result: IPDFCreateResult = {
         pageCount: 0,
       };
       expect(result.pageCount).toBe(0);
     });
 
-    test("should export PDFAddPageOptionsType", () => {
-      const options: PDFAddPageOptionsType = {
+    test("should export IPDFAddPageOptions", () => {
+      const options: IPDFAddPageOptions = {
         content: "Hello, World!",
         fontSize: 24,
       };
@@ -151,15 +151,15 @@ describe("PDF", () => {
       expect(options.fontSize).toBe(24);
     });
 
-    test("should export PDFAddPageResultType", () => {
-      const result: PDFAddPageResultType = {
+    test("should export IPDFAddPageResult", () => {
+      const result: IPDFAddPageResult = {
         pageCount: 1,
       };
       expect(result.pageCount).toBe(1);
     });
 
-    test("should export PDFMetadataResultType", () => {
-      const result: PDFMetadataResultType = {
+    test("should export IPDFMetadataResult", () => {
+      const result: IPDFMetadataResult = {
         title: "Test Title",
         author: "Test Author",
         subject: "Test Subject",
@@ -181,8 +181,8 @@ describe("PDF", () => {
       expect(result.pageCount).toBe(5);
     });
 
-    test("should export PDFUpdateMetadataOptionsType", () => {
-      const options: PDFUpdateMetadataOptionsType = {
+    test("should export IPDFUpdateMetadataOptions", () => {
+      const options: IPDFUpdateMetadataOptions = {
         title: "Updated Title",
         author: "Updated Author",
         subject: "Updated Subject",
@@ -202,15 +202,15 @@ describe("PDF", () => {
       expect(options.modificationDate).toEqual(new Date("2024-01-02"));
     });
 
-    test("should export PDFRemovePagesResultType", () => {
-      const result: PDFRemovePagesResultType = {
+    test("should export IPDFRemovePagesResult", () => {
+      const result: IPDFRemovePagesResult = {
         remainingPages: 3,
       };
       expect(result.remainingPages).toBe(3);
     });
 
-    test("should export PDFGetImagesOptionsType", () => {
-      const options: PDFGetImagesOptionsType = {
+    test("should export IPDFGetImagesOptions", () => {
+      const options: IPDFGetImagesOptions = {
         outputDir: "/tmp/images",
         prefix: "img",
         pageNumber: 1,
@@ -220,8 +220,8 @@ describe("PDF", () => {
       expect(options.pageNumber).toBe(1);
     });
 
-    test("should export PDFGetImagesOptionsType without optional fields", () => {
-      const options: PDFGetImagesOptionsType = {
+    test("should export IPDFGetImagesOptions without optional fields", () => {
+      const options: IPDFGetImagesOptions = {
         outputDir: "/tmp/images",
       };
       expect(options.outputDir).toBe("/tmp/images");
@@ -229,8 +229,8 @@ describe("PDF", () => {
       expect(options.pageNumber).toBeUndefined();
     });
 
-    test("should export PDFExtractedImageType", () => {
-      const image: PDFExtractedImageType = {
+    test("should export IPDFExtractedImage", () => {
+      const image: IPDFExtractedImage = {
         page: 1,
         path: "/tmp/images/image-1-1.png",
         width: 800,
@@ -242,8 +242,8 @@ describe("PDF", () => {
       expect(image.height).toBe(600);
     });
 
-    test("should export PDFGetImagesOptionsType", () => {
-      const options: PDFGetImagesOptionsType = {
+    test("should export IPDFGetImagesOptions", () => {
+      const options: IPDFGetImagesOptions = {
         outputDir: "/tmp/images",
         prefix: "image",
         pageNumber: 1,
@@ -426,7 +426,7 @@ describe("PDF", () => {
   });
 
   describe("getPageImage validation", () => {
-    const testOptions: PDFToImagesOptionsType = { outputDir: "/tmp/pdf-test" };
+    const testOptions: IPDFToImagesOptions = { outputDir: "/tmp/pdf-test" };
 
     test("should throw PDFException for page number less than 1", async () => {
       const pdf = new PDF("test.pdf");
@@ -573,7 +573,7 @@ describe("PDF", () => {
   describe("pagesToText", () => {
     test("should yield text content for all pages", async () => {
       const pdf = new PDF("tests/file-sample.pdf");
-      const results: PDFPageTextResultType[] = [];
+      const results: IPDFPageTextResult[] = [];
 
       for await (const result of pdf.pagesToText()) {
         results.push(result);
@@ -687,7 +687,7 @@ describe("PDF", () => {
   });
 
   describe("getImages validation", () => {
-    const testOptions: PDFGetImagesOptionsType = { outputDir: "/tmp/pdf-test" };
+    const testOptions: IPDFGetImagesOptions = { outputDir: "/tmp/pdf-test" };
 
     test("should throw PDFException for page number less than 1", async () => {
       const pdf = new PDF("test.pdf");
@@ -761,7 +761,7 @@ describe("PDF", () => {
     test("should extract images from PDF", async () => {
       const outputDir = "tests/tmp/images";
       const pdf = new PDF("tests/file-sample.pdf");
-      const images: PDFExtractedImageType[] = [];
+      const images: IPDFExtractedImage[] = [];
 
       for await (const image of pdf.getImages({ outputDir })) {
         images.push(image);
@@ -785,7 +785,7 @@ describe("PDF", () => {
     test("should extract images from a specific page", async () => {
       const outputDir = "tests/tmp/images-page";
       const pdf = new PDF("tests/file-sample.pdf");
-      const images: PDFExtractedImageType[] = [];
+      const images: IPDFExtractedImage[] = [];
 
       for await (const image of pdf.getImages({ outputDir, pageNumber: 1 })) {
         images.push(image);
