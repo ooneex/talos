@@ -382,6 +382,27 @@ describe("Exception", () => {
         expect(result[1]?.fileName).toBe("/path/file.js");
       }
     });
+
+    test("should parse direct locations and bare function names", () => {
+      const exception = new Exception("Test");
+      exception.stack = `Error: Test
+    at /path/file.js:1:1
+    at anonymousFunction`;
+
+      const result = exception.stackToJson();
+
+      expect(result).not.toBeNull();
+      expect(result).toHaveLength(2);
+
+      if (result) {
+        expect(result[0]).toMatchObject({
+          fileName: "/path/file.js",
+          lineNumber: 1,
+          columnNumber: 1,
+        });
+        expect(result[1]?.functionName).toBe("anonymousFunction");
+      }
+    });
   });
 
   describe("Serialization and Inspection", () => {

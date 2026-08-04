@@ -40,77 +40,76 @@ export class Exception extends Error implements IException {
     // Skip the first line (error message) and process stack frames
     for (let i = 1; i < stackLines.length; i++) {
       const line = stackLines[i]?.trim();
-      if (!line) continue;
-
-      const frame: ExceptionStackFrameType = {
-        source: line,
-      };
-
-      // Parse common stack trace formats
-      // Format: "    at functionName (file:line:column)"
-      // Format: "    at file:line:column"
-      // Format: "    at functionName (file)"
-
-      const atMatch = line.match(/^\s*at\s+(.+)$/);
-      if (atMatch) {
-        const content = atMatch[1];
-
-        // Check if it has parentheses (function name with location)
-        const funcWithLocationMatch = content?.match(/^(.+?)\s+\((.+)\)$/);
-        if (funcWithLocationMatch) {
-          const functionName = funcWithLocationMatch[1];
-          const location = funcWithLocationMatch[2];
-
-          if (functionName) {
-            frame.functionName = functionName;
-          }
-
-          // Parse file:line:column
-          const locationMatch = location?.match(/^(.+):(\d+):(\d+)$/);
-          if (locationMatch) {
-            const fileName = locationMatch[1];
-            const lineNum = locationMatch[2];
-            const colNum = locationMatch[3];
-
-            if (fileName) {
-              frame.fileName = fileName;
-            }
-            if (lineNum) {
-              frame.lineNumber = Number.parseInt(lineNum, 10);
-            }
-            if (colNum) {
-              frame.columnNumber = Number.parseInt(colNum, 10);
-            }
-          } else if (location) {
-            frame.fileName = location;
-          }
-        } else {
-          // Direct file:line:column format
-          const directLocationMatch = content?.match(/^(.+):(\d+):(\d+)$/);
-          if (directLocationMatch) {
-            const fileName = directLocationMatch[1];
-            const lineNum = directLocationMatch[2];
-            const colNum = directLocationMatch[3];
-
-            if (fileName) {
-              frame.fileName = fileName;
-            }
-            if (lineNum) {
-              frame.lineNumber = Number.parseInt(lineNum, 10);
-            }
-            if (colNum) {
-              frame.columnNumber = Number.parseInt(colNum, 10);
-            }
-          } else if (content) {
-            // Assume it's a function name or location without line numbers
-            frame.functionName = content;
-          }
-        }
+      if (!line) {
+        continue;
       }
 
-      frames.push(frame);
+      frames.push(parseStackFrame(line));
     }
 
     return frames;
   }
 }
+
+const parseStackFrame = (line: string): ExceptionStackFrameType => {
+  const frame: ExceptionStackFrameType = {
+    source: line,
+  };
+  const atMatch = line.match(/^\s*at\s+(.+)$/);
+
+  if (!atMatch?.[1]) {
+    return frame;
+  }
+
+  const content = atMatch[1];
+  const funcWithLocationMatch = content.match(/^(.+?)\s+\((.+)\)$/);
+
+  if (funcWithLocationMatch) {
+    applyFunctionFrame(frame, funcWithLocationMatch[1], funcWithLocationMatch[2]);
+    return frame;
+  }
+
+  applyDirectFrame(frame, content);
+  return frame;
+};
+
+const applyFunctionFrame = (frame: ExceptionStackFrameType, functionName?: string, location?: string): void => {
+  if (functionName) {
+    frame.functionName = functionName;
+  }
+
+  if (location) {
+    applyLocation(frame, location);
+  }
+};
+
+const applyDirectFrame = (frame: ExceptionStackFrameType, content: string): void => {
+  if (applyLocation(frame, content)) {
+    return;
+  }
+
+  frame.functionName = content;
+};
+
+const applyLocation = (frame: ExceptionStackFrameType, location: string): boolean => {
+  const locationMatch = location.match(/^(.+):(\d+):(\d+)$/);
+
+  if (!locationMatch) {
+    frame.fileName = location;
+    return false;
+  }
+
+  const [, fileName, lineNumber, columnNumber] = locationMatch;
+
+  if (fileName) {
+    frame.fileName = fileName;
+  }
+  if (lineNumber) {
+    frame.lineNumber = Number.parseInt(lineNumber, 10);
+  }
+  if (columnNumber) {
+    frame.columnNumber = Number.parseInt(columnNumber, 10);
+  }
+
+  return true;
+};
