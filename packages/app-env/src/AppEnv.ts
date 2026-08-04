@@ -2,6 +2,160 @@ import { injectable } from "@talosjs/container";
 import { parseString } from "@talosjs/utils/parseString";
 import type { EnvironmentNameType, IAppEnv } from "./types";
 
+type MutableAppEnvType = { -readonly [K in keyof IAppEnv]: IAppEnv[K] };
+
+const readString = (key: keyof typeof Bun.env): string | undefined => {
+  return Bun.env[key]?.trim();
+};
+
+const readStringList = (key: keyof typeof Bun.env): string[] => {
+  return (Bun.env[key] || "")
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+};
+
+const buildEnvironmentFlags = (
+  appEnv: EnvironmentNameType,
+): Pick<
+  IAppEnv,
+  | "isLocal"
+  | "isDevelopment"
+  | "isStaging"
+  | "isTesting"
+  | "isTest"
+  | "isQa"
+  | "isUat"
+  | "isIntegration"
+  | "isPreview"
+  | "isDemo"
+  | "isSandbox"
+  | "isBeta"
+  | "isCanary"
+  | "isHotfix"
+  | "isProduction"
+> => {
+  return {
+    isLocal: appEnv === "local",
+    isDevelopment: appEnv === "development",
+    isStaging: appEnv === "staging",
+    isTesting: appEnv === "testing",
+    isTest: appEnv === "test",
+    isQa: appEnv === "qa",
+    isUat: appEnv === "uat",
+    isIntegration: appEnv === "integration",
+    isPreview: appEnv === "preview",
+    isDemo: appEnv === "demo",
+    isSandbox: appEnv === "sandbox",
+    isBeta: appEnv === "beta",
+    isCanary: appEnv === "canary",
+    isHotfix: appEnv === "hotfix",
+    isProduction: appEnv === "production",
+  };
+};
+
+const buildAllowedUsers = (): Pick<
+  IAppEnv,
+  | "DEVELOPMENT_ALLOWED_USERS"
+  | "STAGING_ALLOWED_USERS"
+  | "TESTING_ALLOWED_USERS"
+  | "TEST_ALLOWED_USERS"
+  | "QA_ALLOWED_USERS"
+  | "UAT_ALLOWED_USERS"
+  | "INTEGRATION_ALLOWED_USERS"
+  | "PREVIEW_ALLOWED_USERS"
+  | "DEMO_ALLOWED_USERS"
+  | "SANDBOX_ALLOWED_USERS"
+  | "BETA_ALLOWED_USERS"
+  | "CANARY_ALLOWED_USERS"
+  | "HOTFIX_ALLOWED_USERS"
+  | "SYSTEM_USERS"
+  | "SUPER_ADMIN_USERS"
+  | "ADMIN_USERS"
+> => {
+  return {
+    DEVELOPMENT_ALLOWED_USERS: readStringList("DEVELOPMENT_ALLOWED_USERS"),
+    STAGING_ALLOWED_USERS: readStringList("STAGING_ALLOWED_USERS"),
+    TESTING_ALLOWED_USERS: readStringList("TESTING_ALLOWED_USERS"),
+    TEST_ALLOWED_USERS: readStringList("TEST_ALLOWED_USERS"),
+    QA_ALLOWED_USERS: readStringList("QA_ALLOWED_USERS"),
+    UAT_ALLOWED_USERS: readStringList("UAT_ALLOWED_USERS"),
+    INTEGRATION_ALLOWED_USERS: readStringList("INTEGRATION_ALLOWED_USERS"),
+    PREVIEW_ALLOWED_USERS: readStringList("PREVIEW_ALLOWED_USERS"),
+    DEMO_ALLOWED_USERS: readStringList("DEMO_ALLOWED_USERS"),
+    SANDBOX_ALLOWED_USERS: readStringList("SANDBOX_ALLOWED_USERS"),
+    BETA_ALLOWED_USERS: readStringList("BETA_ALLOWED_USERS"),
+    CANARY_ALLOWED_USERS: readStringList("CANARY_ALLOWED_USERS"),
+    HOTFIX_ALLOWED_USERS: readStringList("HOTFIX_ALLOWED_USERS"),
+    SYSTEM_USERS: readStringList("SYSTEM_USERS"),
+    SUPER_ADMIN_USERS: readStringList("SUPER_ADMIN_USERS"),
+    ADMIN_USERS: readStringList("ADMIN_USERS"),
+  };
+};
+
+const buildScalarEnvValues = (
+  appEnv: EnvironmentNameType,
+): Omit<IAppEnv, keyof ReturnType<typeof buildEnvironmentFlags> | keyof ReturnType<typeof buildAllowedUsers>> => {
+  return {
+    APP_ENV: appEnv,
+    PORT: Bun.env.PORT ? parseString<number>(Bun.env.PORT.trim()) : 3000,
+    HOST_NAME: readString("HOST_NAME") || "0.0.0.0",
+    LOGS_DATABASE_URL: readString("LOGS_DATABASE_URL"),
+    BETTERSTACK_LOGGER_SOURCE_TOKEN: readString("BETTERSTACK_LOGGER_SOURCE_TOKEN"),
+    BETTERSTACK_LOGGER_INGESTING_HOST: readString("BETTERSTACK_LOGGER_INGESTING_HOST"),
+    BETTERSTACK_EXCEPTION_LOGGER_APPLICATION_TOKEN: readString("BETTERSTACK_EXCEPTION_LOGGER_APPLICATION_TOKEN"),
+    BETTERSTACK_EXCEPTION_LOGGER_INGESTING_HOST: readString("BETTERSTACK_EXCEPTION_LOGGER_INGESTING_HOST"),
+    ANALYTICS_POSTHOG_PROJECT_TOKEN: readString("ANALYTICS_POSTHOG_PROJECT_TOKEN"),
+    ANALYTICS_POSTHOG_HOST: readString("ANALYTICS_POSTHOG_HOST"),
+    CACHE_REDIS_URL: readString("CACHE_REDIS_URL"),
+    CACHE_UPSTASH_REDIS_REST_URL: readString("CACHE_UPSTASH_REDIS_REST_URL"),
+    CACHE_UPSTASH_REDIS_REST_TOKEN: readString("CACHE_UPSTASH_REDIS_REST_TOKEN"),
+    PUBSUB_REDIS_URL: readString("PUBSUB_REDIS_URL"),
+    RATE_LIMIT_REDIS_URL: readString("RATE_LIMIT_REDIS_URL"),
+    RATE_LIMIT_UPSTASH_REDIS_URL: readString("RATE_LIMIT_UPSTASH_REDIS_URL"),
+    RATE_LIMIT_UPSTASH_REDIS_TOKEN: readString("RATE_LIMIT_UPSTASH_REDIS_TOKEN"),
+    QUEUE_REDIS_URL: readString("QUEUE_REDIS_URL"),
+    CORS_ORIGINS: readString("CORS_ORIGINS"),
+    CORS_METHODS: readString("CORS_METHODS"),
+    CORS_HEADERS: readString("CORS_HEADERS"),
+    CORS_EXPOSED_HEADERS: readString("CORS_EXPOSED_HEADERS"),
+    CORS_CREDENTIALS: readString("CORS_CREDENTIALS"),
+    CORS_MAX_AGE: readString("CORS_MAX_AGE"),
+    STORAGE_CLOUDFLARE_ACCESS_KEY: readString("STORAGE_CLOUDFLARE_ACCESS_KEY"),
+    STORAGE_CLOUDFLARE_SECRET_KEY: readString("STORAGE_CLOUDFLARE_SECRET_KEY"),
+    STORAGE_CLOUDFLARE_ENDPOINT: readString("STORAGE_CLOUDFLARE_ENDPOINT"),
+    STORAGE_CLOUDFLARE_REGION: readString("STORAGE_CLOUDFLARE_REGION"),
+    STORAGE_BUNNY_ACCESS_KEY: readString("STORAGE_BUNNY_ACCESS_KEY"),
+    STORAGE_BUNNY_STORAGE_ZONE: readString("STORAGE_BUNNY_STORAGE_ZONE"),
+    STORAGE_BUNNY_REGION: readString("STORAGE_BUNNY_REGION"),
+    FILESYSTEM_STORAGE_PATH: readString("FILESYSTEM_STORAGE_PATH"),
+    DATABASE_URL: readString("DATABASE_URL"),
+    DATABASE_REDIS_URL: readString("DATABASE_REDIS_URL"),
+    SQLITE_DATABASE_PATH: readString("SQLITE_DATABASE_PATH"),
+    MAILER_SENDER_NAME: readString("MAILER_SENDER_NAME"),
+    MAILER_SENDER_ADDRESS: readString("MAILER_SENDER_ADDRESS"),
+    RESEND_API_KEY: readString("RESEND_API_KEY"),
+    JWT_SECRET: readString("JWT_SECRET"),
+    OPENROUTER_API_KEY: readString("OPENROUTER_API_KEY"),
+    OPENAI_API_KEY: readString("OPENAI_API_KEY"),
+    ANTHROPIC_API_KEY: readString("ANTHROPIC_API_KEY"),
+    GEMINI_API_KEY: readString("GEMINI_API_KEY"),
+    GROQ_API_KEY: readString("GROQ_API_KEY"),
+    OLLAMA_HOST: readString("OLLAMA_HOST"),
+    POLAR_ACCESS_TOKEN: readString("POLAR_ACCESS_TOKEN"),
+    POLAR_ENVIRONMENT: readString("POLAR_ENVIRONMENT"),
+    AUTH_TOKEN: readString("AUTH_TOKEN"),
+    CLERK_SECRET_KEY: readString("CLERK_SECRET_KEY"),
+    LINEAR_API_KEY: readString("LINEAR_API_KEY"),
+    LINEAR_TEAM_ID: readString("LINEAR_TEAM_ID"),
+    SEARCH_EXA_API_KEY: readString("SEARCH_EXA_API_KEY"),
+    SEARCH_FIRECRAWL_API_KEY: readString("SEARCH_FIRECRAWL_API_KEY"),
+    SEARCH_PUBMED_API_KEY: readString("SEARCH_PUBMED_API_KEY"),
+    SEARCH_BRIGHTDATA_API_KEY: readString("SEARCH_BRIGHTDATA_API_KEY"),
+    SEARCH_BRIGHTDATA_SERP_ZONE: readString("SEARCH_BRIGHTDATA_SERP_ZONE"),
+  };
+};
+
 @injectable()
 export class AppEnv implements IAppEnv {
   public readonly isLocal: boolean;
@@ -130,176 +284,11 @@ export class AppEnv implements IAppEnv {
   public readonly ADMIN_USERS: string[];
 
   public constructor() {
-    // App
-    this.APP_ENV = (Bun.env.APP_ENV?.trim() || "production") as EnvironmentNameType;
-    this.isLocal = this.APP_ENV === "local";
-    this.isDevelopment = this.APP_ENV === "development";
-    this.isStaging = this.APP_ENV === "staging";
-    this.isTesting = this.APP_ENV === "testing";
-    this.isTest = this.APP_ENV === "test";
-    this.isQa = this.APP_ENV === "qa";
-    this.isUat = this.APP_ENV === "uat";
-    this.isIntegration = this.APP_ENV === "integration";
-    this.isPreview = this.APP_ENV === "preview";
-    this.isDemo = this.APP_ENV === "demo";
-    this.isSandbox = this.APP_ENV === "sandbox";
-    this.isBeta = this.APP_ENV === "beta";
-    this.isCanary = this.APP_ENV === "canary";
-    this.isHotfix = this.APP_ENV === "hotfix";
-    this.isProduction = this.APP_ENV === "production";
-    this.PORT = Bun.env.PORT ? parseString<number>(Bun.env.PORT.trim()) : 3000;
-    this.HOST_NAME = Bun.env.HOST_NAME?.trim() || "0.0.0.0";
+    const appEnv = (readString("APP_ENV") || "production") as EnvironmentNameType;
+    const state = this as MutableAppEnvType;
 
-    // Logs
-    this.LOGS_DATABASE_URL = Bun.env.LOGS_DATABASE_URL?.trim();
-    this.BETTERSTACK_LOGGER_SOURCE_TOKEN = Bun.env.BETTERSTACK_LOGGER_SOURCE_TOKEN?.trim();
-    this.BETTERSTACK_LOGGER_INGESTING_HOST = Bun.env.BETTERSTACK_LOGGER_INGESTING_HOST?.trim();
-    this.BETTERSTACK_EXCEPTION_LOGGER_APPLICATION_TOKEN =
-      Bun.env.BETTERSTACK_EXCEPTION_LOGGER_APPLICATION_TOKEN?.trim();
-    this.BETTERSTACK_EXCEPTION_LOGGER_INGESTING_HOST = Bun.env.BETTERSTACK_EXCEPTION_LOGGER_INGESTING_HOST?.trim();
-
-    // Analytics
-    this.ANALYTICS_POSTHOG_PROJECT_TOKEN = Bun.env.ANALYTICS_POSTHOG_PROJECT_TOKEN?.trim();
-    this.ANALYTICS_POSTHOG_HOST = Bun.env.ANALYTICS_POSTHOG_HOST?.trim();
-
-    // Cache
-    this.CACHE_REDIS_URL = Bun.env.CACHE_REDIS_URL?.trim();
-    this.CACHE_UPSTASH_REDIS_REST_URL = Bun.env.CACHE_UPSTASH_REDIS_REST_URL?.trim();
-    this.CACHE_UPSTASH_REDIS_REST_TOKEN = Bun.env.CACHE_UPSTASH_REDIS_REST_TOKEN?.trim();
-
-    // Pub/Sub
-    this.PUBSUB_REDIS_URL = Bun.env.PUBSUB_REDIS_URL?.trim();
-
-    // Rate limit
-    this.RATE_LIMIT_REDIS_URL = Bun.env.RATE_LIMIT_REDIS_URL?.trim();
-    this.RATE_LIMIT_UPSTASH_REDIS_URL = Bun.env.RATE_LIMIT_UPSTASH_REDIS_URL?.trim();
-    this.RATE_LIMIT_UPSTASH_REDIS_TOKEN = Bun.env.RATE_LIMIT_UPSTASH_REDIS_TOKEN?.trim();
-
-    // Queue
-    this.QUEUE_REDIS_URL = Bun.env.QUEUE_REDIS_URL?.trim();
-
-    // CORS
-    this.CORS_ORIGINS = Bun.env.CORS_ORIGINS?.trim();
-    this.CORS_METHODS = Bun.env.CORS_METHODS?.trim();
-    this.CORS_HEADERS = Bun.env.CORS_HEADERS?.trim();
-    this.CORS_EXPOSED_HEADERS = Bun.env.CORS_EXPOSED_HEADERS?.trim();
-    this.CORS_CREDENTIALS = Bun.env.CORS_CREDENTIALS?.trim();
-    this.CORS_MAX_AGE = Bun.env.CORS_MAX_AGE?.trim();
-
-    // Storage
-    this.STORAGE_CLOUDFLARE_ACCESS_KEY = Bun.env.STORAGE_CLOUDFLARE_ACCESS_KEY?.trim();
-    this.STORAGE_CLOUDFLARE_SECRET_KEY = Bun.env.STORAGE_CLOUDFLARE_SECRET_KEY?.trim();
-    this.STORAGE_CLOUDFLARE_ENDPOINT = Bun.env.STORAGE_CLOUDFLARE_ENDPOINT?.trim();
-    this.STORAGE_CLOUDFLARE_REGION = Bun.env.STORAGE_CLOUDFLARE_REGION?.trim();
-    this.STORAGE_BUNNY_ACCESS_KEY = Bun.env.STORAGE_BUNNY_ACCESS_KEY?.trim();
-    this.STORAGE_BUNNY_STORAGE_ZONE = Bun.env.STORAGE_BUNNY_STORAGE_ZONE?.trim();
-    this.STORAGE_BUNNY_REGION = Bun.env.STORAGE_BUNNY_REGION?.trim();
-    this.FILESYSTEM_STORAGE_PATH = Bun.env.FILESYSTEM_STORAGE_PATH?.trim();
-
-    // Database
-    this.DATABASE_URL = Bun.env.DATABASE_URL?.trim();
-    this.DATABASE_REDIS_URL = Bun.env.DATABASE_REDIS_URL?.trim();
-    this.SQLITE_DATABASE_PATH = Bun.env.SQLITE_DATABASE_PATH?.trim();
-
-    // Mailer
-    this.MAILER_SENDER_NAME = Bun.env.MAILER_SENDER_NAME?.trim();
-    this.MAILER_SENDER_ADDRESS = Bun.env.MAILER_SENDER_ADDRESS?.trim();
-    this.RESEND_API_KEY = Bun.env.RESEND_API_KEY?.trim();
-
-    // JWT
-    this.JWT_SECRET = Bun.env.JWT_SECRET?.trim();
-
-    // AI
-    this.OPENROUTER_API_KEY = Bun.env.OPENROUTER_API_KEY?.trim();
-    this.OPENAI_API_KEY = Bun.env.OPENAI_API_KEY?.trim();
-    this.ANTHROPIC_API_KEY = Bun.env.ANTHROPIC_API_KEY?.trim();
-    this.GEMINI_API_KEY = Bun.env.GEMINI_API_KEY?.trim();
-    this.GROQ_API_KEY = Bun.env.GROQ_API_KEY?.trim();
-    this.OLLAMA_HOST = Bun.env.OLLAMA_HOST?.trim();
-
-    // Payment
-    this.POLAR_ACCESS_TOKEN = Bun.env.POLAR_ACCESS_TOKEN?.trim();
-    this.POLAR_ENVIRONMENT = Bun.env.POLAR_ENVIRONMENT?.trim();
-
-    // Authentication
-    this.AUTH_TOKEN = Bun.env.AUTH_TOKEN?.trim();
-    this.CLERK_SECRET_KEY = Bun.env.CLERK_SECRET_KEY?.trim();
-
-    // Linear
-    this.LINEAR_API_KEY = Bun.env.LINEAR_API_KEY?.trim();
-    this.LINEAR_TEAM_ID = Bun.env.LINEAR_TEAM_ID?.trim();
-
-    // Search
-    this.SEARCH_EXA_API_KEY = Bun.env.SEARCH_EXA_API_KEY?.trim();
-    this.SEARCH_FIRECRAWL_API_KEY = Bun.env.SEARCH_FIRECRAWL_API_KEY?.trim();
-    this.SEARCH_PUBMED_API_KEY = Bun.env.SEARCH_PUBMED_API_KEY?.trim();
-    this.SEARCH_BRIGHTDATA_API_KEY = Bun.env.SEARCH_BRIGHTDATA_API_KEY?.trim();
-    this.SEARCH_BRIGHTDATA_SERP_ZONE = Bun.env.SEARCH_BRIGHTDATA_SERP_ZONE?.trim();
-
-    // Allowed Users
-    this.DEVELOPMENT_ALLOWED_USERS = (Bun.env.DEVELOPMENT_ALLOWED_USERS || "")
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-    this.STAGING_ALLOWED_USERS = (Bun.env.STAGING_ALLOWED_USERS || "")
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-    this.TESTING_ALLOWED_USERS = (Bun.env.TESTING_ALLOWED_USERS || "")
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-    this.TEST_ALLOWED_USERS = (Bun.env.TEST_ALLOWED_USERS || "")
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-    this.QA_ALLOWED_USERS = (Bun.env.QA_ALLOWED_USERS || "")
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-    this.UAT_ALLOWED_USERS = (Bun.env.UAT_ALLOWED_USERS || "")
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-    this.INTEGRATION_ALLOWED_USERS = (Bun.env.INTEGRATION_ALLOWED_USERS || "")
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-    this.PREVIEW_ALLOWED_USERS = (Bun.env.PREVIEW_ALLOWED_USERS || "")
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-    this.DEMO_ALLOWED_USERS = (Bun.env.DEMO_ALLOWED_USERS || "")
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-    this.SANDBOX_ALLOWED_USERS = (Bun.env.SANDBOX_ALLOWED_USERS || "")
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-    this.BETA_ALLOWED_USERS = (Bun.env.BETA_ALLOWED_USERS || "")
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-    this.CANARY_ALLOWED_USERS = (Bun.env.CANARY_ALLOWED_USERS || "")
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-    this.HOTFIX_ALLOWED_USERS = (Bun.env.HOTFIX_ALLOWED_USERS || "")
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-    this.SYSTEM_USERS = (Bun.env.SYSTEM_USERS || "")
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-    this.SUPER_ADMIN_USERS = (Bun.env.SUPER_ADMIN_USERS || "")
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-    this.ADMIN_USERS = (Bun.env.ADMIN_USERS || "")
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
+    Object.assign(state, buildScalarEnvValues(appEnv));
+    Object.assign(state, buildEnvironmentFlags(appEnv));
+    Object.assign(state, buildAllowedUsers());
   }
 }
