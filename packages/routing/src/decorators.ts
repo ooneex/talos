@@ -2,7 +2,7 @@ import type { ControllerClassType } from "@talosjs/controller";
 import type { HttpMethodType } from "@talosjs/types";
 import type { AssertType, IAssert } from "@talosjs/validation";
 import { router } from "./Router";
-import type { ExtractParameters, RouteConfigType, RoutePathType } from "./types";
+import type { ExtractParametersType, RouteConfigType, RoutePathType } from "./types";
 
 // biome-ignore lint/suspicious/noExplicitAny: socket controllers have a different context type
 type SocketControllerClassType = new (...args: any[]) => { index: (...args: any[]) => any };
@@ -11,7 +11,7 @@ type TypedRouteConfig<T extends string> = Omit<
   RouteConfigType,
   "method" | "path" | "isSocket" | "controller" | "params"
 > & {
-  params?: ExtractParameters<T> extends never ? never : Record<ExtractParameters<T>, AssertType | IAssert>;
+  params?: ExtractParametersType<T> extends never ? never : Record<ExtractParametersType<T>, AssertType | IAssert>;
 };
 
 type InferredRouteDecorator = (target: ControllerClassType) => void;

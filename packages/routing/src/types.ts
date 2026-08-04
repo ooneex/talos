@@ -44,7 +44,7 @@ export interface IRouter {
 /**
  * Check if a string segment is a route parameter (starts with :)
  */
-export type IsParameter<T extends string> = T extends `:${string}` ? true : false;
+export type IsParameterType<T extends string> = T extends `:${string}` ? true : false;
 
 /**
  * Extract all parameter names from a route path
@@ -53,8 +53,8 @@ export type IsParameter<T extends string> = T extends `:${string}` ? true : fals
  * - "/users/:id/bills/:billId" -> "id" | "billId"
  * - "/static/path" -> never
  */
-export type ExtractParameters<T extends string> = T extends `${infer _Start}/:${infer Param}/${infer Rest}`
-  ? Param | ExtractParameters<`/${Rest}`>
+export type ExtractParametersType<T extends string> = T extends `${infer _Start}/:${infer Param}/${infer Rest}`
+  ? Param | ExtractParametersType<`/${Rest}`>
   : T extends `${infer _Start}/:${infer Param}`
     ? Param
     : never;
@@ -83,7 +83,7 @@ type ValidateSegments<T extends string> = T extends `${infer Segment}/${infer Re
  * - Parameters must be in format /:paramName
  * - Allow multiple parameters like /users/:id/emails/:emailId
  */
-export type ValidateRoutePath<T extends string> = T extends `/${infer Path}`
+export type ValidateRoutePathType<T extends string> = T extends `/${infer Path}`
   ? T extends `${string}//${string}`
     ? never // Reject paths with double slashes
     : T extends `${string}/:${string}/:`
@@ -100,42 +100,42 @@ export type ValidateRoutePath<T extends string> = T extends `/${infer Path}`
 /**
  * Main route path type that ensures valid path structure
  */
-export type RoutePathType<T extends string = string> = ValidateRoutePath<T>;
+export type RoutePathType<T extends string = string> = ValidateRoutePathType<T>;
 
 /**
  * Extract route parameters as a typed record
  * Examples:
- * - RouteParameters<"/users/:id"> -> { id: string }
- * - RouteParameters<"/users/:id/bills/:billId"> -> { id: string; billId: string }
- * - RouteParameters<"/static"> -> Record<string, never>
+ * - RouteParametersType<"/users/:id"> -> { id: string }
+ * - RouteParametersType<"/users/:id/bills/:billId"> -> { id: string; billId: string }
+ * - RouteParametersType<"/static"> -> Record<string, never>
  */
-export type RouteParameters<T extends string> = ExtractParameters<T> extends never
+export type RouteParametersType<T extends string> = ExtractParametersType<T> extends never
   ? Record<string, never>
-  : Record<ExtractParameters<T>, string>;
+  : Record<ExtractParametersType<T>, string>;
 
 /**
  * Check if a route path has parameters
  */
-export type HasParameters<T extends string> = ExtractParameters<T> extends never ? false : true;
+export type HasParametersType<T extends string> = ExtractParametersType<T> extends never ? false : true;
 
 /**
  * Get parameter count for a route path
  */
-export type CountParameters<
+export type CountParametersType<
   T extends string,
   Count extends readonly unknown[] = readonly [],
-> = ExtractParameters<T> extends never
+> = ExtractParametersType<T> extends never
   ? Count["length"]
   : T extends `${infer _Start}/:${infer _Param}/${infer Rest}`
-    ? CountParameters<`/${Rest}`, readonly [...Count, unknown]>
+    ? CountParametersType<`/${Rest}`, readonly [...Count, unknown]>
     : T extends `${infer _Start}/:${infer _Param}`
       ? [...Count, unknown]["length"]
       : Count["length"];
 
-export type ParameterCount<T extends string> = CountParameters<T>;
+export type ParameterCountType<T extends string> = CountParametersType<T>;
 
 /**
  * Utility type to ensure route path is valid at compile time
- * Usage: const path: ValidRoutePath = "/users/:id/bills/:billId";
+ * Usage: const path: ValidRoutePathType = "/users/:id/bills/:billId";
  */
-export type ValidRoutePath = RoutePathType<string>;
+export type ValidRoutePathType = RoutePathType<string>;

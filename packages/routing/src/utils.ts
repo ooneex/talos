@@ -1,5 +1,5 @@
 import { type AssertType, type IAssert, isAssert, isAssertRecord, jsonSchemaToTypeString } from "@talosjs/validation";
-import type { RouteConfigType, ValidRoutePath } from "./types";
+import type { RouteConfigType, ValidRoutePathType } from "./types";
 
 /**
  * Resolve an IAssert wrapper down to the constraint it carries
@@ -30,7 +30,7 @@ const assertToTypeString = (assert: AssertType | IAssert): string => {
 };
 
 // Type guards and validation helpers
-export const isValidRoutePath = (path: string): path is ValidRoutePath => {
+export const isValidRoutePath = (path: string): path is ValidRoutePathType => {
   // Runtime validation
   if (!path.startsWith("/")) return false;
   if (path.includes("//")) return false;
