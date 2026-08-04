@@ -38,42 +38,9 @@ export class BetterstackExceptionLogger implements ILogger {
   public error(message: string | IException, data?: Record<string, ScalarType>): void {
     Sentry.withScope((scope) => {
       if (typeof message === "string") {
-        if (data) {
-          scope.setExtras(data);
-        }
-        scope.addBreadcrumb({
-          category: "error",
-          message,
-          level: "error",
-        });
-
-        Sentry.captureException(new Error(message));
+        this.captureStringError(scope, message, data);
       } else {
-        scope.setTag("exception.name", message.name);
-        scope.setTag("exception.status", message.status);
-
-        scope.setContext("exception", {
-          name: message.name,
-          status: message.status,
-          date: message.date.toISOString(),
-          stack: message.stackToJson(),
-        });
-
-        if (data) {
-          scope.setExtras(data);
-        }
-
-        scope.addBreadcrumb({
-          category: "exception",
-          message: message.message ?? "Unknown error",
-          level: "error",
-          data: {
-            name: message.name,
-            status: message.status,
-          },
-        });
-
-        Sentry.captureException(message);
+        this.captureTypedException(scope, message, data);
       }
     });
   }
@@ -100,5 +67,45 @@ export class BetterstackExceptionLogger implements ILogger {
 
   public async flush(): Promise<void> {
     await Sentry.flush(2000);
+  }
+
+  private applyExtras(scope: Sentry.Scope, data?: Record<string, ScalarType>): void {
+    if (data) {
+      scope.setExtras(data);
+    }
+  }
+
+  private captureStringError(scope: Sentry.Scope, message: string, data?: Record<string, ScalarType>): void {
+    this.applyExtras(scope, data);
+    scope.addBreadcrumb({
+      category: "error",
+      message,
+      level: "error",
+    });
+
+    Sentry.captureException(new Error(message));
+  }
+
+  private captureTypedException(scope: Sentry.Scope, message: IException, data?: Record<string, ScalarType>): void {
+    scope.setTag("exception.name", message.name);
+    scope.setTag("exception.status", message.status);
+    scope.setContext("exception", {
+      name: message.name,
+      status: message.status,
+      date: message.date.toISOString(),
+      stack: message.stackToJson(),
+    });
+    this.applyExtras(scope, data);
+    scope.addBreadcrumb({
+      category: "exception",
+      message: message.message ?? "Unknown error",
+      level: "error",
+      data: {
+        name: message.name,
+        status: message.status,
+      },
+    });
+
+    Sentry.captureException(message);
   }
 }
