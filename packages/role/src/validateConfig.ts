@@ -1,9 +1,9 @@
 import { RoleException } from "./RoleException";
-import type { RolesConfigType } from "./types";
+import type { IRolesConfig } from "./types";
 
 const REQUIRED_ROLES = ["GUEST", "TRIAL_USER", "USER", "PREMIUM_USER", "ADMIN", "SUPER_ADMIN", "SYSTEM"] as const;
 
-export const validateConfig = (config: RolesConfigType): void => {
+export const validateConfig = (config: IRolesConfig): void => {
   for (const key of REQUIRED_ROLES) {
     if (!config.roles[key as Uppercase<string>]) {
       throw new RoleException(`Missing required role key: roles.${key}`, key as Uppercase<string>);

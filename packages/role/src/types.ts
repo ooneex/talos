@@ -5,12 +5,12 @@ export type RoleHierarchyEntryType = {
 
 export type RoleHierarchyType = Record<Uppercase<string>, RoleHierarchyEntryType>;
 
-export interface RolesConfigType {
+export interface IRolesConfig {
   roles: Record<Uppercase<string>, Uppercase<string>>;
   hierarchy: RoleHierarchyType;
 }
 
 export interface IRole {
-  hasRole: (userRole: Uppercase<string>, requiredRole: Uppercase<string>, config: RolesConfigType) => boolean;
-  getInheritedRoles: (role: Uppercase<string>, config: RolesConfigType) => Uppercase<string>[];
+  hasRole: (userRole: Uppercase<string>, requiredRole: Uppercase<string>, config: IRolesConfig) => boolean;
+  getInheritedRoles: (role: Uppercase<string>, config: IRolesConfig) => Uppercase<string>[];
 }

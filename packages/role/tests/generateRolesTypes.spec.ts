@@ -1,11 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import { YAML } from "bun";
-import { generateRolesTypes, type RolesConfigType } from "@/index";
+import { generateRolesTypes, type IRolesConfig } from "@/index";
 import rolesYml from "@/roles.yml" with { type: "text" };
 
-const config = YAML.parse(rolesYml) as RolesConfigType;
+const config = YAML.parse(rolesYml) as IRolesConfig;
 
-const minimalConfig: RolesConfigType = {
+const minimalConfig: IRolesConfig = {
   roles: {
     GUEST: "ROLE_GUEST",
     ADMIN: "ROLE_ADMIN",
@@ -32,7 +32,7 @@ describe("generateRolesTypes", () => {
     });
 
     test("should produce a single-member union when config has one role", () => {
-      const single: RolesConfigType = {
+      const single: IRolesConfig = {
         roles: { USER: "ROLE_USER" },
         hierarchy: { ROLE_USER: { description: "User" } },
       };
@@ -88,7 +88,7 @@ describe("generateRolesTypes", () => {
     });
 
     test("should return an empty-union RoleType for an empty roles map", () => {
-      const empty: RolesConfigType = { roles: {}, hierarchy: {} };
+      const empty: IRolesConfig = { roles: {}, hierarchy: {} };
       const output = generateRolesTypes(empty);
       expect(output).toContain("export type RoleType = ;");
       expect(output).toContain("export type RoleHierarchyRoleType = ;");

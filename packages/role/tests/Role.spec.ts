@@ -2,9 +2,9 @@ import { describe, expect, test } from "bun:test";
 import { YAML } from "bun";
 import { Role } from "@/Role";
 import rolesYml from "@/roles.yml" with { type: "text" };
-import type { RolesConfigType } from "@/types";
+import type { IRolesConfig } from "@/types";
 
-const config = YAML.parse(rolesYml) as RolesConfigType;
+const config = YAML.parse(rolesYml) as IRolesConfig;
 
 describe("Role", () => {
   const role = new Role();
@@ -95,7 +95,7 @@ describe("Role", () => {
     });
 
     test("should handle a config with no hierarchy entries gracefully", () => {
-      const emptyConfig: RolesConfigType = { roles: {}, hierarchy: {} };
+      const emptyConfig: IRolesConfig = { roles: {}, hierarchy: {} };
       const result = role.getInheritedRoles("ROLE_GUEST", emptyConfig);
       expect(result).toEqual([]);
     });

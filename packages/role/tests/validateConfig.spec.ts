@@ -2,12 +2,12 @@ import { describe, expect, test } from "bun:test";
 import { YAML } from "bun";
 import { RoleException } from "@/RoleException";
 import rolesYml from "@/roles.yml" with { type: "text" };
-import type { RolesConfigType } from "@/types";
+import type { IRolesConfig } from "@/types";
 import { validateConfig } from "@/validateConfig";
 
-const validConfig = YAML.parse(rolesYml) as RolesConfigType;
+const validConfig = YAML.parse(rolesYml) as IRolesConfig;
 
-const clone = (c: RolesConfigType): RolesConfigType => JSON.parse(JSON.stringify(c));
+const clone = (c: IRolesConfig): IRolesConfig => JSON.parse(JSON.stringify(c));
 
 describe("validateConfig", () => {
   describe("required roles", () => {

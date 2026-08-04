@@ -28,8 +28,8 @@
     "lint": "tsc --noEmit && bunx biome lint"
   },
   "dependencies": {
-    "@talosjs/exception": "workspace:*",
-    "@talosjs/http-status": "workspace:*"
+    "@talosjs/exception": "workspace:^",
+    "@talosjs/http-status": "workspace:^"
   },
   "devDependencies": {},
   "keywords": [
