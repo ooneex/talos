@@ -16,164 +16,177 @@ const toKebabCsv = (value: string): string =>
     .filter(Boolean)
     .join(",");
 
-export const run = async (): Promise<void> => {
-  await loadEnv();
+const COMMAND_OPTIONS = {
+  name: {
+    type: "string",
+  },
+  "route-name": {
+    type: "string",
+  },
+  "route-path": {
+    type: "string",
+  },
+  "route-method": {
+    type: "string",
+  },
+  "is-socket": {
+    type: "boolean",
+  },
+  dir: {
+    type: "string",
+  },
+  channel: {
+    type: "string",
+  },
+  "table-name": {
+    type: "string",
+  },
+  version: {
+    type: "string",
+  },
+  module: {
+    type: "string",
+  },
+  modules: {
+    type: "string",
+  },
+  design: {
+    type: "string",
+  },
+  destination: {
+    type: "string",
+  },
+  drop: {
+    type: "boolean",
+  },
+  target: {
+    type: "string",
+  },
+  override: {
+    type: "boolean",
+  },
+  id: {
+    type: "string",
+  },
+  provider: {
+    type: "string",
+  },
+  title: {
+    type: "string",
+  },
+  state: {
+    type: "string",
+  },
+  priority: {
+    type: "string",
+  },
+  description: {
+    type: "string",
+  },
+  labels: {
+    type: "string",
+    multiple: true,
+  },
+  interactive: {
+    type: "boolean",
+  },
+  token: {
+    type: "string",
+  },
+  registry: {
+    type: "string",
+  },
+  username: {
+    type: "string",
+  },
+  package: {
+    type: "string",
+  },
+  packages: {
+    type: "string",
+  },
+  access: {
+    type: "string",
+  },
+  publish: {
+    type: "boolean",
+  },
+  commands: {
+    type: "string",
+  },
+  file: {
+    type: "string",
+  },
+  logs: {
+    type: "boolean",
+  },
+  "no-cache": {
+    type: "boolean",
+  },
+  tag: {
+    type: "string",
+  },
+  silent: {
+    type: "boolean",
+  },
+  cwd: {
+    type: "string",
+  },
+  agents: {
+    type: "string",
+    multiple: true,
+  },
+  api: {
+    type: "string",
+  },
+  microservice: {
+    type: "string",
+  },
+  spa: {
+    type: "string",
+  },
+} as const;
 
-  const { values, positionals } = parseArgs({
+type ParsedArgsType = ReturnType<typeof parseCliArgs>;
+
+const parseCliArgs = () => {
+  return parseArgs({
     args: Bun.argv,
-    options: {
-      name: {
-        type: "string",
-      },
-      "route-name": {
-        type: "string",
-      },
-      "route-path": {
-        type: "string",
-      },
-      "route-method": {
-        type: "string",
-      },
-      "is-socket": {
-        type: "boolean",
-      },
-      dir: {
-        type: "string",
-      },
-      channel: {
-        type: "string",
-      },
-      "table-name": {
-        type: "string",
-      },
-      version: {
-        type: "string",
-      },
-      module: {
-        type: "string",
-      },
-      modules: {
-        type: "string",
-      },
-      design: {
-        type: "string",
-      },
-      destination: {
-        type: "string",
-      },
-      drop: {
-        type: "boolean",
-      },
-      target: {
-        type: "string",
-      },
-      override: {
-        type: "boolean",
-      },
-      id: {
-        type: "string",
-      },
-      provider: {
-        type: "string",
-      },
-      title: {
-        type: "string",
-      },
-      state: {
-        type: "string",
-      },
-      priority: {
-        type: "string",
-      },
-      description: {
-        type: "string",
-      },
-      labels: {
-        type: "string",
-        multiple: true,
-      },
-      interactive: {
-        type: "boolean",
-      },
-      token: {
-        type: "string",
-      },
-      registry: {
-        type: "string",
-      },
-      username: {
-        type: "string",
-      },
-      package: {
-        type: "string",
-      },
-      packages: {
-        type: "string",
-      },
-      access: {
-        type: "string",
-      },
-      publish: {
-        type: "boolean",
-      },
-      commands: {
-        type: "string",
-      },
-      file: {
-        type: "string",
-      },
-      logs: {
-        type: "boolean",
-      },
-      "no-cache": {
-        type: "boolean",
-      },
-      tag: {
-        type: "string",
-      },
-      silent: {
-        type: "boolean",
-      },
-      cwd: {
-        type: "string",
-      },
-      agents: {
-        type: "string",
-        multiple: true,
-      },
-    },
+    options: COMMAND_OPTIONS,
     strict: false,
     allowPositionals: true,
   });
+};
 
-  const logger = new TerminalLogger();
-
-  // With no command, `-v` / `--version` prints the version and `-h` / `--help` shows help.
+const resolveCommandName = ({ values, positionals }: ParsedArgsType): string => {
   const hasVersionFlag = values.v === true || values.version === true;
   const hasHelpFlag = values.h === true || values.help === true;
   const flagCommand = hasVersionFlag ? "version" : hasHelpFlag ? "help" : undefined;
-  const commandName = positionals[2] ?? flagCommand ?? "help";
+  return positionals[2] ?? flagCommand ?? "help";
+};
 
-  const command = getCommand(commandName);
-
-  if (!command) {
-    logger.error(`No commands found for "${commandName}"\n`, undefined, {
-      showArrow: false,
-      showTimestamp: false,
-      showLevel: false,
-    });
-    process.exit(1);
+const parseAgents = (agents: ParsedArgsType["values"]["agents"]): string[] | undefined => {
+  if (!Array.isArray(agents)) {
+    return undefined;
   }
 
-  const parsedValues = {
+  return agents.flatMap((agent) => (typeof agent === "string" ? agent.split(",") : [])).filter(Boolean);
+};
+
+const toOptionalKebabCsv = (value: unknown): string | undefined => {
+  return typeof value === "string" ? toKebabCsv(value) : undefined;
+};
+
+const buildParsedValues = ({ values, positionals }: ParsedArgsType) => {
+  return {
     name: values.name,
     dir: values.dir,
     channel: values.channel,
     isSocket: values["is-socket"],
     tableName: values["table-name"],
     version: values.version,
-    module: typeof values.module === "string" ? toKebabCsv(values.module) : undefined,
-    modules: typeof values.modules === "string" ? toKebabCsv(values.modules) : undefined,
+    module: toOptionalKebabCsv(values.module),
+    modules: toOptionalKebabCsv(values.modules),
     design: values.design,
     destination: values.destination,
     drop: values.drop,
@@ -190,8 +203,8 @@ export const run = async (): Promise<void> => {
     token: values.token,
     registry: values.registry,
     username: values.username,
-    package: typeof values.package === "string" ? toKebabCsv(values.package) : undefined,
-    packages: typeof values.packages === "string" ? toKebabCsv(values.packages) : undefined,
+    package: toOptionalKebabCsv(values.package),
+    packages: toOptionalKebabCsv(values.packages),
     access: values.access,
     publish: values.publish,
     commands: values.commands,
@@ -205,9 +218,7 @@ export const run = async (): Promise<void> => {
     // `agent:skills:create` prompt. Accepts repeated flags and/or comma-separated
     // lists (`--agents=.claude,.codex` == `--agents=.claude --agents=.codex`);
     // the dirs are kept literal (dot-prefixed), so no kebab-casing here.
-    agents: Array.isArray(values.agents)
-      ? values.agents.flatMap((agent) => (typeof agent === "string" ? agent.split(",") : [])).filter(Boolean)
-      : undefined,
+    agents: parseAgents(values.agents),
     // `--api` / `--microservice` / `--spa` (bare → true, or `=name1,name2` → string)
     // restrict `app:start` to modules of that type.
     api: values.api,
@@ -219,17 +230,46 @@ export const run = async (): Promise<void> => {
       method: values["route-method"] as HttpMethodType | undefined,
     },
   };
+};
+
+const logMissingCommand = (logger: TerminalLogger, commandName: string): never => {
+  logger.error(`No commands found for "${commandName}"\n`, undefined, {
+    showArrow: false,
+    showTimestamp: false,
+    showLevel: false,
+  });
+  process.exit(1);
+};
+
+const logCommandError = (logger: TerminalLogger, error: unknown): never => {
+  const exception: IException =
+    error instanceof Exception ? error : new Exception(error instanceof Error ? error : String(error));
+  logger.error(exception, undefined, {
+    showArrow: false,
+    showTimestamp: false,
+    showLevel: false,
+  });
+  process.exit(1);
+};
+
+export const run = async (): Promise<void> => {
+  await loadEnv();
+
+  const parsedArgs = parseCliArgs();
+  const logger = new TerminalLogger();
+  const commandName = resolveCommandName(parsedArgs);
+  const command = getCommand(commandName);
+
+  if (!command) {
+    logMissingCommand(logger, commandName);
+    return;
+  }
+
+  const parsedValues = buildParsedValues(parsedArgs);
 
   try {
     await command.run(parsedValues);
   } catch (error) {
-    const exception: IException =
-      error instanceof Exception ? error : new Exception(error instanceof Error ? error : String(error));
-    logger.error(exception, undefined, {
-      showArrow: false,
-      showTimestamp: false,
-      showLevel: false,
-    });
-    process.exit(1);
+    logCommandError(logger, error);
   }
 };
