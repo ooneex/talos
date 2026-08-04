@@ -5,7 +5,7 @@ import { YAML } from "bun";
 import { Translation, TranslationException } from "@/index";
 import type { TranslationDictType } from "@/types";
 
-const FIXTURE = join(import.meta.dir, "..", "src", "translations.yml");
+const FIXTURE = join(import.meta.dir, "fixtures", "translations.yml");
 
 class TestTranslation extends Translation {
   public getName(): string {
