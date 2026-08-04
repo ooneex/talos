@@ -2,11 +2,12 @@ import { type ChatMiddleware, toolDefinition } from "@tanstack/ai";
 import { type OpenRouterTextModelOptions, openRouterText } from "@tanstack/ai-openrouter";
 import type { ChatInputType, IMiddleware, ITool, MessageType } from "./types";
 
-/** Adapter created by {@link openRouterText}, used as the chat transport. */
-export type Adapter = ReturnType<typeof openRouterText>;
+/** AdapterType created by {@link openRouterText}, used as the chat transport. */
+export type AdapterType = ReturnType<typeof openRouterText>;
 
 /** Create the OpenRouter adapter for a `provider/model` identifier. */
-export const createAdapter = (model: string): Adapter => openRouterText(model as Parameters<typeof openRouterText>[0]);
+export const createAdapter = (model: string): AdapterType =>
+  openRouterText(model as Parameters<typeof openRouterText>[0]);
 
 /** Build the conversation messages, appending the prompt as a trailing user turn. */
 export const buildMessages = (input?: ChatInputType): MessageType[] => {

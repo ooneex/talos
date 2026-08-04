@@ -6,7 +6,7 @@ import { decorator } from "../decorators";
 import type { ITool } from "../types";
 
 /** How PubMed orders the matched articles. */
-export type PubMedSort = "relevance" | "pub_date";
+export type PubMedSortType = "relevance" | "pub_date";
 
 /** Arguments the model supplies when calling the PubMed search tool. */
 export type PubMedSearchInputType = {
@@ -15,7 +15,7 @@ export type PubMedSearchInputType = {
   /** Maximum number of articles to return. Defaults to {@link DEFAULT_LIMIT}. */
   limit?: number;
   /** Result ordering. `relevance` (default) or `pub_date` (most recent first). */
-  sort?: PubMedSort;
+  sort?: PubMedSortType;
 };
 
 /** Compact article projection returned by {@link PubMedSearchTool} — only model-useful fields. */

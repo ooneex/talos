@@ -9,7 +9,7 @@ import type { ITool } from "../types";
 export type ExaSearchType = "auto" | "fast" | "deep-lite" | "deep" | "deep-reasoning" | "instant";
 
 /** Data category Exa can bias the search toward. */
-export type ExaCategory =
+export type ExaCategoryType =
   | "company"
   | "research paper"
   | "news"
@@ -27,7 +27,7 @@ export type ExaSearchInputType = {
   /** Search strategy: `auto` (default) balances depth and latency; `fast`/`instant` minimize latency. */
   type?: ExaSearchType;
   /** Bias results toward a single data category. */
-  category?: ExaCategory;
+  category?: ExaCategoryType;
   /** Only return results from these domains. */
   includeDomains?: string[];
   /** Never return results from these domains. */

@@ -6,7 +6,7 @@ import { decorator } from "../decorators";
 import type { ITool } from "../types";
 
 /** Result source Firecrawl can search — web pages, news, or images. */
-export type FirecrawlSource = "web" | "news" | "images";
+export type FirecrawlSourceType = "web" | "news" | "images";
 
 /** Arguments the model supplies when calling the Firecrawl search tool. */
 export type FirecrawlSearchInputType = {
@@ -15,7 +15,7 @@ export type FirecrawlSearchInputType = {
   /** Maximum number of results to return. Defaults to {@link DEFAULT_LIMIT}. */
   limit?: number;
   /** Which result sources to search. Defaults to web results only. */
-  sources?: FirecrawlSource[];
+  sources?: FirecrawlSourceType[];
   /** Only return results from these domains. */
   includeDomains?: string[];
   /** Never return results from these domains. */
@@ -26,7 +26,7 @@ export type FirecrawlSearchInputType = {
 
 /** Compact result projection returned by {@link FirecrawlSearchTool} — only model-useful fields. */
 export type FirecrawlSearchResultType = {
-  source: FirecrawlSource;
+  source: FirecrawlSourceType;
   url?: string;
   title?: string;
   description?: string;
@@ -125,7 +125,7 @@ type RawResult = {
 };
 
 /** Project a raw Firecrawl result down to the source-tagged fields surfaced to the model. */
-const toResult = (source: FirecrawlSource, result: RawResult): FirecrawlSearchResultType => {
+const toResult = (source: FirecrawlSourceType, result: RawResult): FirecrawlSearchResultType => {
   const description = result.description ?? result.snippet;
   return {
     source,
