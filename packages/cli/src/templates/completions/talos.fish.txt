@@ -192,6 +192,8 @@ for cmd in oo talos
     complete -c $cmd -f -n __fish_use_subcommand -a admin:remove -d 'Remove an existing admin module'
     complete -c $cmd -f -n __fish_use_subcommand -a storybook:create -d 'Generate a new storybook module'
     complete -c $cmd -f -n __fish_use_subcommand -a storybook:remove -d 'Remove an existing storybook module'
+    complete -c $cmd -f -n __fish_use_subcommand -a swagger:create -d 'Generate a new swagger module from a target module\'s controllers'
+    complete -c $cmd -f -n __fish_use_subcommand -a swagger:remove -d 'Remove an existing swagger module'
     complete -c $cmd -f -n __fish_use_subcommand -a storage:create -d 'Generate a new storage class'
     complete -c $cmd -f -n __fish_use_subcommand -a storage:push -d 'Push a local file or folder to a Cloudflare R2, Bunny or S3 bucket'
     complete -c $cmd -f -n __fish_use_subcommand -a storage:pull -d 'Pull a Cloudflare R2, Bunny or S3 bucket path into a local folder'
@@ -417,7 +419,14 @@ for cmd in oo talos
     complete -c $cmd -n '__fish_seen_subcommand_from storybook:create' -l design -x -a '(__talos_design_modules)' -d 'Design module name'
     complete -c $cmd -n '__fish_seen_subcommand_from storybook:create' -l no-cache -d 'Ignore the cached skeleton and re-download it'
 
-    complete -c $cmd -n '__fish_seen_subcommand_from design:remove spa:remove storybook:remove microservice:remove module:remove admin:remove' -l name -x -a '(__talos_modules)' -d 'Module name'
+    complete -c $cmd -n '__fish_seen_subcommand_from swagger:create' -l name -x -d 'Name of the resource'
+    complete -c $cmd -n '__fish_seen_subcommand_from swagger:create' -l module -x -a '(__talos_modules)' -d 'Module name'
+    complete -c $cmd -n '__fish_seen_subcommand_from swagger:create' -l design -x -a '(__talos_design_modules)' -d 'Design module name'
+    complete -c $cmd -n '__fish_seen_subcommand_from swagger:create' -l prefix -x -d 'Route prefix the backend mounts controllers under'
+    complete -c $cmd -n '__fish_seen_subcommand_from swagger:create' -l force -d 'Reinstall the explorer, discarding local changes to it'
+    complete -c $cmd -n '__fish_seen_subcommand_from swagger:create' -l no-cache -d 'Ignore the cached skeleton and re-download it'
+
+    complete -c $cmd -n '__fish_seen_subcommand_from design:remove spa:remove storybook:remove swagger:remove microservice:remove module:remove admin:remove' -l name -x -a '(__talos_modules)' -d 'Module name'
 
     complete -c $cmd -n '__fish_seen_subcommand_from seed:create' -l name -x -d 'Name of the resource'
     complete -c $cmd -n '__fish_seen_subcommand_from seed:create' -l module -x -a '(__talos_modules)' -d 'Module name'

@@ -159,7 +159,7 @@ fn collect_used_ports_reads_every_port_flag_in_package_scripts() {
     dir.write("three/package.json", "not json");
     dir.write("four/package.json", r#"{"name": "no-scripts"}"#);
 
-    let used = collect_used_ports(dir.path());
+    let used = collect_used_ports(dir.path(), "admin");
 
     assert_eq!(used.into_iter().collect::<Vec<_>>(), [3030, 3031, 3040]);
 }

@@ -91,7 +91,7 @@ fn collect_used_ports_reads_port_flags_from_package_scripts() {
         r#"{"scripts": {"dev": "vite --port 3031"}}"#,
     );
 
-    assert!(collect_used_ports(dir.path()).contains(&3031));
+    assert!(collect_used_ports(dir.path(), "storybook").contains(&3031));
 }
 
 #[test]

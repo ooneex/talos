@@ -20,8 +20,11 @@ pub fn collect_design_modules(modules_dir: &std::path::Path) -> Vec<String> {
     collect_modules_by_type(modules_dir, &["design"])
 }
 
-pub fn collect_used_ports(modules_dir: &std::path::Path) -> std::collections::BTreeSet<u16> {
-    collect_used_ports_impl(modules_dir)
+pub fn collect_used_ports(
+    modules_dir: &std::path::Path,
+    exclude: &str,
+) -> std::collections::BTreeSet<u16> {
+    collect_used_ports_impl(modules_dir, exclude)
 }
 
 pub fn find_free_port(used_ports: &std::collections::BTreeSet<u16>) -> u16 {
@@ -71,7 +74,10 @@ pub fn run(args: &SpaCreateArgs) {
         target_kebab.as_deref(),
     );
 
-    let port = find_free_port_impl(DEFAULT_PORT, &collect_used_ports_impl(&modules_dir));
+    let port = find_free_port_impl(
+        DEFAULT_PORT,
+        &collect_used_ports_impl(&modules_dir, &kebab_name),
+    );
     let package_path = module_dir.join("package.json");
     let (deps, dev_deps) = rewrite_frontend_package(&package_path, &kebab_name, port);
 

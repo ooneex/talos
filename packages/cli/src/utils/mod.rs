@@ -49,8 +49,8 @@ pub use frontend_modules::{
     clone_frontend_template, collect_modules_by_type, collect_used_ports, ensure_design_module,
     ensure_shared_placeholder, finalize_module_yml, find_free_port, install_frontend_dependencies,
     normalize_module_name, prompt_design_module, prompt_target_module, rewrite_frontend_package,
-    rewrite_module_imports, rewrite_vite_alias, visit_files_recursive, with_design_field,
-    with_optional_yml_field, with_target_field,
+    rewrite_module_imports, rewrite_playwright_port, rewrite_vite_alias, visit_files_recursive,
+    with_design_field, with_optional_yml_field, with_target_field,
 };
 pub use git::{
     discover as discover_git_repo, origin_url as git_origin_url, toplevel as git_toplevel,

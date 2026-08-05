@@ -5,7 +5,7 @@ use crate::utils::{
     collect_used_ports as collect_used_ports_impl, current_dir, ensure_design_module,
     ensure_shared_placeholder, finalize_module_yml, find_free_port as find_free_port_impl,
     install_frontend_dependencies, normalize_module_name, prompt_design_module,
-    rewrite_frontend_package, rewrite_module_imports, rewrite_vite_alias,
+    rewrite_frontend_package, rewrite_module_imports, rewrite_playwright_port, rewrite_vite_alias,
     visit_files_recursive as visit_files_recursive_impl, with_optional_yml_field,
 };
 
@@ -41,8 +41,11 @@ pub fn collect_design_modules(modules_dir: &std::path::Path) -> Vec<String> {
     collect_modules_by_type(modules_dir, &["design"])
 }
 
-pub fn collect_used_ports(modules_dir: &std::path::Path) -> std::collections::BTreeSet<u16> {
-    collect_used_ports_impl(modules_dir)
+pub fn collect_used_ports(
+    modules_dir: &std::path::Path,
+    exclude: &str,
+) -> std::collections::BTreeSet<u16> {
+    collect_used_ports_impl(modules_dir, exclude)
 }
 
 pub fn find_free_port(used_ports: &std::collections::BTreeSet<u16>) -> u16 {
@@ -90,10 +93,14 @@ pub fn run(args: &StorybookCreateArgs) {
         None,
     );
 
-    let port = find_free_port_impl(DEFAULT_PORT, &collect_used_ports_impl(&modules_dir));
+    let port = find_free_port_impl(
+        DEFAULT_PORT,
+        &collect_used_ports_impl(&modules_dir, &kebab_name),
+    );
     let package_path = module_dir.join("package.json");
     let (deps, dev_deps) = rewrite_frontend_package(&package_path, &kebab_name, port);
 
+    rewrite_playwright_port(&module_dir.join("playwright.config.ts"), port);
     rewrite_module_imports(&src_dir, "storybook", &kebab_name);
     rewrite_vite_alias(&module_dir.join("vite.config.ts"), design_kebab.as_deref());
     ensure_shared_placeholder(&src_dir);

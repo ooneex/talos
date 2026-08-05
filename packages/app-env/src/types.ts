@@ -111,6 +111,9 @@ export interface IAppEnv {
   // Payment
   readonly POLAR_ACCESS_TOKEN: string | undefined;
   readonly POLAR_ENVIRONMENT: string | undefined;
+  readonly STRIPE_SECRET_KEY: string | undefined;
+  readonly STRIPE_API_VERSION: string | undefined;
+  readonly STRIPE_WEBHOOK_SECRET: string | undefined;
 
   // Authentication
   readonly AUTH_TOKEN: string | undefined;

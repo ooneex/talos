@@ -144,6 +144,9 @@ const buildScalarEnvValues = (
     OLLAMA_HOST: readString("OLLAMA_HOST"),
     POLAR_ACCESS_TOKEN: readString("POLAR_ACCESS_TOKEN"),
     POLAR_ENVIRONMENT: readString("POLAR_ENVIRONMENT"),
+    STRIPE_SECRET_KEY: readString("STRIPE_SECRET_KEY"),
+    STRIPE_API_VERSION: readString("STRIPE_API_VERSION"),
+    STRIPE_WEBHOOK_SECRET: readString("STRIPE_WEBHOOK_SECRET"),
     AUTH_TOKEN: readString("AUTH_TOKEN"),
     CLERK_SECRET_KEY: readString("CLERK_SECRET_KEY"),
     LINEAR_API_KEY: readString("LINEAR_API_KEY"),
@@ -249,6 +252,9 @@ export class AppEnv implements IAppEnv {
   // Payment
   public readonly POLAR_ACCESS_TOKEN: string | undefined;
   public readonly POLAR_ENVIRONMENT: string | undefined;
+  public readonly STRIPE_SECRET_KEY: string | undefined;
+  public readonly STRIPE_API_VERSION: string | undefined;
+  public readonly STRIPE_WEBHOOK_SECRET: string | undefined;
 
   // Authentication
   public readonly AUTH_TOKEN: string | undefined;

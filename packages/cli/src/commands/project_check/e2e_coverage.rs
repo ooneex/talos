@@ -16,7 +16,14 @@ use crate::commands::project_check::{
 };
 
 /// Module types a browser suite can drive.
-const TESTABLE_TYPES: [&str; 5] = ["spa", "admin", "storybook", "api", "microservice"];
+const TESTABLE_TYPES: [&str; 6] = [
+    "spa",
+    "admin",
+    "storybook",
+    "swagger",
+    "api",
+    "microservice",
+];
 
 /// The directory the generator writes specs into.
 const E2E_DIR: &str = "e2e";
@@ -57,6 +64,7 @@ pub fn serves(kind: Option<&str>, routes: usize) -> Option<String> {
     match kind {
         Some("spa") | Some("admin") => Some("an application".to_string()),
         Some("storybook") => Some("a component gallery".to_string()),
+        Some("swagger") => Some("an api explorer".to_string()),
         _ if routes > 0 => Some(format!(
             "{routes} route{}",
             if routes == 1 { "" } else { "s" }

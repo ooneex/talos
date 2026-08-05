@@ -243,7 +243,7 @@ fn every_skeleton_generator_lands_a_renamed_module_in_the_workspace() {
     assert!(read(&gallery.join("package.json")).contains("vite --port"));
 
     // Every front-end module gets its own port.
-    let ports = spa_create::collect_used_ports(&root.join("modules"));
+    let ports = spa_create::collect_used_ports(&root.join("modules"), "");
     assert!(
         ports.len() >= 3,
         "spa, admin and storybook each took a port: {ports:?}"

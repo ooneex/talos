@@ -119,19 +119,36 @@ const STORYBOOK_SHARED: &[&str] = &[
     "utils",
 ];
 
+/// A swagger's `shared/` is the explorer engine, so it holds `route/` — the
+/// route model, the registry, the request runner and the OpenAPI export — on
+/// top of the usual layers.
+const SWAGGER_SHARED: &[&str] = &[
+    "assets",
+    "components",
+    "hooks",
+    "layouts",
+    "route",
+    "services",
+    "store",
+    "styles",
+    "translations",
+    "types",
+    "utils",
+];
+
 /// Nothing at all: the level holds files and no folder.
 const NONE: &[&str] = &[];
 
 /// The layout a module's `type:` puts it under.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Layout {
-    /// `module`, `api`, `microservice`, `swagger` — everything the container
-    /// loads.
+    /// `module`, `api`, `microservice` — everything the container loads.
     Backend,
     Design,
     /// `spa` and `admin`, which share a runtime and a layout.
     Spa,
     Storybook,
+    Swagger,
     Sdk,
 }
 
@@ -142,12 +159,11 @@ impl Layout {
         match kind {
             // A module with no manifest type is a backend business domain,
             // which is what `module:create` produces.
-            None | Some("module") | Some("api") | Some("microservice") | Some("swagger") => {
-                Some(Layout::Backend)
-            }
+            None | Some("module") | Some("api") | Some("microservice") => Some(Layout::Backend),
             Some("design") => Some(Layout::Design),
             Some("spa") | Some("admin") => Some(Layout::Spa),
             Some("storybook") => Some(Layout::Storybook),
+            Some("swagger") => Some(Layout::Swagger),
             Some("sdk") => Some(Layout::Sdk),
             _ => None,
         }
@@ -159,6 +175,7 @@ impl Layout {
             Layout::Design => "design module",
             Layout::Spa => "spa module",
             Layout::Storybook => "storybook module",
+            Layout::Swagger => "swagger module",
             Layout::Sdk => "sdk module",
         }
     }
@@ -166,7 +183,7 @@ impl Layout {
     fn root(self) -> &'static [&'static str] {
         match self {
             Layout::Backend | Layout::Sdk => MODULE_ROOT,
-            Layout::Design | Layout::Spa | Layout::Storybook => FRONTEND_ROOT,
+            Layout::Design | Layout::Spa | Layout::Storybook | Layout::Swagger => FRONTEND_ROOT,
         }
     }
 }
@@ -214,7 +231,8 @@ pub fn classify(layout: Layout, segments: &[&str]) -> Verdict {
             Layout::Backend => backend(rest),
             Layout::Design => design(rest),
             Layout::Spa => spa(rest, FEATURE_LAYERS),
-            Layout::Storybook => storybook(rest),
+            Layout::Storybook => storybook(rest, STORYBOOK_SHARED),
+            Layout::Swagger => storybook(rest, SWAGGER_SHARED),
             // An SDK is one generated file per source module, side by side.
             Layout::Sdk => Verdict::Unexpected(NONE),
         },
@@ -272,12 +290,13 @@ fn spa(segments: &[&str], shared_layers: &'static [&'static str]) -> Verdict {
     }
 }
 
-fn storybook(segments: &[&str]) -> Verdict {
+/// The layout a storybook and a swagger share: a feature is a flat folder of
+/// declaration files — stories for one component, routes for one module — and
+/// the engine lives in `shared/`.
+fn storybook(segments: &[&str], shared_layers: &'static [&'static str]) -> Verdict {
     match segments {
-        // A storybook feature is a folder of story files for one component,
-        // with no layers of its own.
         ["features", _, ..] => Verdict::Free,
-        rest => spa(rest, STORYBOOK_SHARED),
+        rest => spa(rest, shared_layers),
     }
 }
 

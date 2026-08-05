@@ -120,7 +120,7 @@ fn collect_used_ports_reads_port_flags_from_package_scripts() {
     );
 
     assert_eq!(
-        collect_used_ports(dir.path())
+        collect_used_ports(dir.path(), "spa")
             .into_iter()
             .collect::<Vec<_>>(),
         [3030, 3040]

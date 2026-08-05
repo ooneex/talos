@@ -206,6 +206,8 @@ _talos() {
     'admin\:remove:Remove an existing admin module'
     'storybook\:create:Generate a new storybook module'
     'storybook\:remove:Remove an existing storybook module'
+    'swagger\:create:Generate a new swagger module from a target module'"'"'s controllers'
+    'swagger\:remove:Remove an existing swagger module'
     'storage\:create:Generate a new storage class'
     'translation\:create:Generate a new translation class'
     'vector-database\:create:Generate a new vector database class'
@@ -527,6 +529,15 @@ _talos() {
             '--design=[Design module name]:design:_talos_design_modules' \
             '--no-cache[Ignore the cached skeleton and re-download it]'
           ;;
+        swagger:create)
+          _arguments -s \
+            '--name=[Name of the resource]:name' \
+            '--module=[Module name]:module:_talos_modules' \
+            '--design=[Design module name]:design:_talos_design_modules' \
+            '--prefix=[Route prefix the backend mounts controllers under]:prefix' \
+            '--force[Reinstall the explorer, discarding local changes to it]' \
+            '--no-cache[Ignore the cached skeleton and re-download it]'
+          ;;
         admin:create)
           _arguments -s \
             '--name=[Name of the resource]:name' \
@@ -534,7 +545,7 @@ _talos() {
             '--target=[Target module name]:target:_talos_destination_modules' \
             '--no-cache[Ignore the cached skeleton and re-download it]'
           ;;
-        design:remove|spa:remove|storybook:remove|microservice:remove|module:remove|admin:remove)
+        design:remove|spa:remove|storybook:remove|swagger:remove|microservice:remove|module:remove|admin:remove)
           _arguments -s \
             '--name=[Module name]:name:_talos_modules'
           ;;
