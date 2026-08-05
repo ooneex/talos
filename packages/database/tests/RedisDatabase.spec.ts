@@ -658,7 +658,7 @@ describe("RedisDatabase", () => {
 
     test("should handle very long connection URLs", () => {
       const longUrl =
-        "redis://user:password@very-long-hostname-that-exceeds-normal-length.example.com:6379/database?param1=value1&param2=value2";
+        "redis://user:password@very-long-hostname-that-exceeds-normal-length.example.com:6379/0?param1=value1&param2=value2";
 
       adapter = new RedisDatabase(env, { url: longUrl });
 
