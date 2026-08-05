@@ -1,0 +1,12 @@
+[test]
+coverage = true
+coverageReporter = ["text", "lcov"]
+coverageDir = "coverage"
+coverageSkipTestFiles = true
+coveragePathIgnorePatterns = [
+  "../**",
+  "dist/**",
+  "src/types.ts",
+]
+# Thresholds are enforced per file, so they are pinned to the least-covered file.
+coverageThreshold = { lines = 0.99, functions = 0.99, statements = 0.99 }
