@@ -363,7 +363,7 @@ _talos() {
           ;;
         credentials:create)
           _arguments -s \
-            '--provider=[Credentials provider]:provider:(jira linear x instagram facebook linkedin tiktok threads whatsapp telegram messenger discord reddit medium cloudflare bunny s3)' \
+            '--provider=[Credentials provider]:provider:(jira linear x instagram facebook linkedin tiktok threads whatsapp telegram messenger discord reddit medium cloudflare bunny s3 openrouter)' \
             '--base-url=[Base URL]:baseUrl' \
             '--email=[Account email]:email' \
             '--token=[API token]:token' \
@@ -384,7 +384,8 @@ _talos() {
             '--endpoint=[Endpoint URL]:endpoint' \
             '--region=[Region]:region' \
             '--bucket=[Bucket name]:bucket' \
-            '--storage-zone=[Storage zone name]:storageZone'
+            '--storage-zone=[Storage zone name]:storageZone' \
+            '--api-key=[API key]:apiKey'
           ;;
         storage:push)
           _arguments -s \

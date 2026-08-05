@@ -290,7 +290,7 @@ for cmd in oo talos
     complete -c $cmd -n '__fish_seen_subcommand_from docker:publish' -l tag -x -d 'Image tag'
 
 
-    complete -c $cmd -n '__fish_seen_subcommand_from credentials:create' -l provider -x -a 'jira linear x instagram facebook linkedin tiktok threads whatsapp telegram messenger discord reddit medium cloudflare bunny s3' -d 'Credentials provider'
+    complete -c $cmd -n '__fish_seen_subcommand_from credentials:create' -l provider -x -a 'jira linear x instagram facebook linkedin tiktok threads whatsapp telegram messenger discord reddit medium cloudflare bunny s3 openrouter' -d 'Credentials provider'
     complete -c $cmd -n '__fish_seen_subcommand_from credentials:create' -l base-url -x -d 'Base URL'
     complete -c $cmd -n '__fish_seen_subcommand_from credentials:create' -l email -x -d 'Account email'
     complete -c $cmd -n '__fish_seen_subcommand_from credentials:create' -l token -x -d 'API token'
@@ -312,6 +312,7 @@ for cmd in oo talos
     complete -c $cmd -n '__fish_seen_subcommand_from credentials:create' -l region -x -d 'Region'
     complete -c $cmd -n '__fish_seen_subcommand_from credentials:create' -l bucket -x -d 'Bucket name'
     complete -c $cmd -n '__fish_seen_subcommand_from credentials:create' -l storage-zone -x -d 'Storage zone name'
+    complete -c $cmd -n '__fish_seen_subcommand_from credentials:create' -l api-key -x -d 'API key'
 
     complete -c $cmd -n '__fish_seen_subcommand_from npm:credentials:create' -l token -x -d 'npm Granular Access Token'
 

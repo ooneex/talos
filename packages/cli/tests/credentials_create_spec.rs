@@ -128,6 +128,7 @@ fn credentials_create_writes_a_profile_when_the_jira_flags_are_given() {
         region: None,
         bucket: None,
         storage_zone: None,
+        api_key: None,
         silent: true,
     });
 

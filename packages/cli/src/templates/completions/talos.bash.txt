@@ -257,9 +257,10 @@ seed:create seed:run"
     credentials:create)
       opts="--provider --base-url --email --token --client-id --client-secret --client-key \
 --access-token --app-id --app-secret --page-id --phone-number-id --application-id --bot-token \
---username --password --access-key --secret-key --endpoint --region --bucket --storage-zone"
+--username --password --access-key --secret-key --endpoint --region --bucket --storage-zone \
+--api-key"
       [[ $flag == --provider ]] && candidates="jira linear x instagram facebook linkedin tiktok \
-threads whatsapp telegram messenger discord reddit medium cloudflare bunny s3"
+threads whatsapp telegram messenger discord reddit medium cloudflare bunny s3 openrouter"
       ;;
     storage:push)
       opts="--provider --from --destination --zip"

@@ -26,6 +26,7 @@ pub enum CredentialsProvider {
     Cloudflare,
     Bunny,
     S3,
+    Openrouter,
 }
 
 pub const PROVIDERS: &[CredentialsProvider] = &[
@@ -46,6 +47,7 @@ pub const PROVIDERS: &[CredentialsProvider] = &[
     CredentialsProvider::Cloudflare,
     CredentialsProvider::Bunny,
     CredentialsProvider::S3,
+    CredentialsProvider::Openrouter,
 ];
 
 #[derive(Clone, Copy, Debug)]
@@ -185,6 +187,8 @@ const S3_FIELDS: &[Field] = &[
     with_default("region", "Enter S3 region", "us-east-1"),
 ];
 
+const OPENROUTER_FIELDS: &[Field] = &[secret("apiKey", "Enter OpenRouter API key")];
+
 impl CredentialsProvider {
     pub fn slug(self) -> &'static str {
         match self {
@@ -205,6 +209,7 @@ impl CredentialsProvider {
             Self::Cloudflare => "cloudflare",
             Self::Bunny => "bunny",
             Self::S3 => "s3",
+            Self::Openrouter => "openrouter",
         }
     }
 
@@ -227,6 +232,7 @@ impl CredentialsProvider {
             Self::Cloudflare => "Cloudflare R2",
             Self::Bunny => "Bunny",
             Self::S3 => "Amazon S3",
+            Self::Openrouter => "OpenRouter",
         }
     }
 
@@ -256,6 +262,7 @@ impl CredentialsProvider {
             Self::S3 => {
                 "Create an access key at https://console.aws.amazon.com/iam/home#/security_credentials"
             }
+            Self::Openrouter => "Create an API key at https://openrouter.ai/settings/keys",
         }
     }
 
@@ -278,6 +285,7 @@ impl CredentialsProvider {
             Self::Cloudflare => CLOUDFLARE_FIELDS,
             Self::Bunny => BUNNY_FIELDS,
             Self::S3 => S3_FIELDS,
+            Self::Openrouter => OPENROUTER_FIELDS,
         }
     }
 }
@@ -350,6 +358,9 @@ pub struct CredentialsCreateArgs {
     #[arg(long)]
     pub storage_zone: Option<String>,
 
+    #[arg(long)]
+    pub api_key: Option<String>,
+
     #[arg(long, default_value_t = false)]
     pub silent: bool,
 }
@@ -378,6 +389,7 @@ impl CredentialsCreateArgs {
             "region" => self.region.clone(),
             "bucket" => self.bucket.clone(),
             "storageZone" => self.storage_zone.clone(),
+            "apiKey" => self.api_key.clone(),
             _ => None,
         }
     }
