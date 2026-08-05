@@ -1,7 +1,12 @@
 [package]
-name = "cli"
+name = "talos-cli"
 version = "0.0.1"
 edition = "2024"
+description = "The talos dev CLI — scaffolds projects, modules, and artifacts"
+license = "MIT"
+repository = "https://github.com/ooneex/talos"
+keywords = ["talos", "cli", "scaffold", "codegen"]
+publish = false
 
 [lib]
 name = "cli"

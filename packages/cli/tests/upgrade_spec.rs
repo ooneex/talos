@@ -42,7 +42,7 @@ fn upgrade_rejects_unknown_flag() {
 
 #[test]
 fn parses_scoped_package_release_tag() {
-    assert_eq!(parse_version_from_tag("@talosjs/cli@1.2.3"), "1.2.3");
+    assert_eq!(parse_version_from_tag("@talos/cli@1.2.3"), "1.2.3");
 }
 
 #[test]
@@ -54,7 +54,7 @@ fn parses_v_prefixed_and_plain_tags() {
 #[test]
 fn reads_the_latest_version_from_a_release_payload() {
     assert_eq!(
-        parse_latest_version_value(&json!({ "tag_name": "@talosjs/cli@1.2.3" })).as_deref(),
+        parse_latest_version_value(&json!({ "tag_name": "@talos/cli@1.2.3" })).as_deref(),
         Some("1.2.3")
     );
     assert!(parse_latest_version_value(&json!({ "name": "no tag" })).is_none());
@@ -164,7 +164,7 @@ fn upgrade_reports_when_already_on_the_latest_version() {
 fn upgrade_runs_the_install_script_when_a_newer_version_exists() {
     let _guard = ENV_GUARD.lock().unwrap_or_else(|error| error.into_inner());
     let server = Server::start(|request| match request.path.as_str() {
-        "/release" => Reply::json(json!({ "tag_name": "@talosjs/cli@9.9.9" })),
+        "/release" => Reply::json(json!({ "tag_name": "@talos/cli@9.9.9" })),
         "/install.sh" => Reply::status(200, "#!/bin/sh\nexit 0\n"),
         _ => Reply::status(404, ""),
     });
@@ -187,7 +187,7 @@ fn upgrade_runs_the_install_script_when_a_newer_version_exists() {
 fn upgrade_reports_the_manual_command_when_the_install_script_fails() {
     let _guard = ENV_GUARD.lock().unwrap_or_else(|error| error.into_inner());
     let server = Server::start(|request| match request.path.as_str() {
-        "/release" => Reply::json(json!({ "tag_name": "@talosjs/cli@9.9.9" })),
+        "/release" => Reply::json(json!({ "tag_name": "@talos/cli@9.9.9" })),
         "/install.sh" => Reply::status(200, "#!/bin/sh\nexit 1\n"),
         _ => Reply::status(404, ""),
     });

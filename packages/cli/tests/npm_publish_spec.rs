@@ -127,6 +127,6 @@ fn percent_encode_leaves_unreserved_characters_alone() {
 
 #[test]
 fn percent_encode_escapes_everything_else() {
-    assert_eq!(percent_encode("@talosjs/cli"), "%40talosjs%2Fcli");
+    assert_eq!(percent_encode("@talos/cli"), "%40talos%2Fcli");
     assert_eq!(percent_encode("a b"), "a%20b");
 }

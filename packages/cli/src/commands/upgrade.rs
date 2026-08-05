@@ -6,7 +6,7 @@ use serde_json::Value;
 
 use crate::utils::{Spinner, current_dir, run_spinner_step};
 
-const CLI_PACKAGE_NAME: &str = "@talosjs/cli";
+const CLI_PACKAGE_NAME: &str = "@talos/cli";
 const LATEST_RELEASE_URL: &str = "https://api.github.com/repos/ooneex/talos/releases/latest";
 const INSTALL_SH_URL: &str =
     "https://raw.githubusercontent.com/ooneex/talos/main/packages/cli/scripts/install.sh";
@@ -36,7 +36,7 @@ fn fetch_latest_version() -> Option<String> {
     parse_latest_version_value(&value)
 }
 
-// Release tags look like `@talosjs/cli@1.2.3` (optionally `v`-prefixed); keep
+// Release tags look like `@talos/cli@1.2.3` (optionally `v`-prefixed); keep
 // only the semver part.
 pub fn parse_version_from_tag(tag: &str) -> String {
     tag.rsplit('@')
