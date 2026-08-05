@@ -254,8 +254,14 @@ fn run_suite(target: &Target) -> ModuleCoverage {
 
 /// Where the module's `lcov.info` goes, cleared first so a stale report from an
 /// earlier run can never be read as this one's.
+///
+/// The directory is created up front because `cargo llvm-cov` writes its report
+/// without creating the parent, and a module whose report never lands reads as
+/// one with no code to measure.
 fn prepare_lcov(target: &Target) -> PathBuf {
-    let lcov = target.dir.join(coverage_dir(&target.dir)).join("lcov.info");
+    let dir = target.dir.join(coverage_dir(&target.dir));
+    let _ = fs::create_dir_all(&dir);
+    let lcov = dir.join("lcov.info");
     let _ = fs::remove_file(&lcov);
     lcov
 }
