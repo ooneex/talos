@@ -515,8 +515,9 @@ logServerStart({ baseUrl: "http://localhost:3000", appEnv: "local", port: 3000, 
     });
     const output = result.stdout.toString();
 
-    // SGR foreground color sequence ([38;2;... truecolor or [38;5;... 256-color).
-    expect(output).toContain("[38;");
+    // SGR foreground color sequence: truecolor (\u001b[38;2;...), 256-color (\u001b[38;5;...)
+    // or the basic/bright 16-color codes Bun.color falls back to when the depth is limited.
+    expect(output).toMatch(/\u001b\[(?:38;[25];|3[0-7]m|9[0-7]m)/);
     // Still no bold/dim styles even when colors are active.
     expect(output).not.toContain("[1m");
     expect(output).not.toContain("[2m");
