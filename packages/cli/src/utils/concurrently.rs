@@ -196,11 +196,22 @@ mod tests {
         }
     }
 
+    /// A shell command pinned to a directory that is certain to outlive the run.
+    ///
+    /// `CommandBuilder` snapshots the environment when it is built and, with no
+    /// cwd of its own, spawns the child in `$HOME`. Another test in this binary
+    /// points `HOME` at a temp directory it then deletes, so a command left to
+    /// pick its own directory can fail to start for reasons of its own.
+    fn sh(script: &str) -> CommandBuilder {
+        let mut builder = CommandBuilder::new("sh");
+        builder.args(["-c", script]);
+        builder.cwd(std::env::temp_dir());
+        builder
+    }
+
     fn exit_with(name: &'static str, code: u8) -> ConcurrentCommand {
         ConcurrentCommand::new(name, format!("exit {code}"), move || {
-            let mut builder = CommandBuilder::new("sh");
-            builder.args(["-c", &format!("exit {code}")]);
-            builder
+            sh(&format!("exit {code}"))
         })
     }
 
@@ -247,11 +258,7 @@ mod tests {
 
     #[test]
     fn run_reports_a_start_failure_and_stops_started_commands() {
-        let long = ConcurrentCommand::new("long", "sleep 30", || {
-            let mut builder = CommandBuilder::new("sh");
-            builder.args(["-c", "sleep 30"]);
-            builder
-        });
+        let long = ConcurrentCommand::new("long", "sleep 30", || sh("sleep 30"));
         let missing = ConcurrentCommand::new("missing", "missing-binary", || {
             CommandBuilder::new("definitely-not-a-real-binary")
         });
@@ -265,11 +272,7 @@ mod tests {
 
     #[test]
     fn run_kills_other_processes_after_a_success_when_requested() {
-        let long = ConcurrentCommand::new("long", "sleep 30", || {
-            let mut builder = CommandBuilder::new("sh");
-            builder.args(["-c", "sleep 30"]);
-            builder
-        });
+        let long = ConcurrentCommand::new("long", "sleep 30", || sh("sleep 30"));
 
         let outcome = run(
             vec![exit_with("ok", 0), long],
@@ -287,11 +290,7 @@ mod tests {
 
     #[test]
     fn run_supports_raw_output() {
-        let command = ConcurrentCommand::new("echo", "printf hello", || {
-            let mut builder = CommandBuilder::new("sh");
-            builder.args(["-c", "printf 'hello\\n'"]);
-            builder
-        });
+        let command = ConcurrentCommand::new("echo", "printf hello", || sh("printf 'hello\\n'"));
 
         let outcome = run(
             vec![command],
@@ -308,11 +307,7 @@ mod tests {
 
     #[test]
     fn run_stops_the_startup_spinner_after_the_first_output() {
-        let command = ConcurrentCommand::new("echo", "printf ready", || {
-            let mut builder = CommandBuilder::new("sh");
-            builder.args(["-c", "printf 'ready\\n'"]);
-            builder
-        });
+        let command = ConcurrentCommand::new("echo", "printf ready", || sh("printf 'ready\\n'"));
 
         let outcome = run(
             vec![command],
@@ -336,9 +331,7 @@ mod tests {
             let attempts = attempts.clone();
             move || {
                 if attempts.fetch_add(1, Ordering::SeqCst) == 0 {
-                    let mut builder = CommandBuilder::new("sh");
-                    builder.args(["-c", "exit 1"]);
-                    builder
+                    sh("exit 1")
                 } else {
                     CommandBuilder::new("definitely-not-a-real-binary")
                 }

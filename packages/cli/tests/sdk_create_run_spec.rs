@@ -51,13 +51,16 @@ fn write(path: &Path, content: &str) {
     fs::write(path, content).expect("write file");
 }
 
-fn templates() -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("talos-sdk-templates-{}", std::process::id()));
-    let _ = fs::remove_dir_all(&dir);
+/// The module templates the generator scaffolds from. Every call gets its own
+/// directory: the tests in this file run in parallel, so a directory shared by
+/// name would be torn down and rebuilt under a test still writing into it.
+fn templates() -> (tempfile::TempDir, PathBuf) {
+    let dir = tempfile::tempdir().expect("create temp dir");
+    let root = dir.path().to_path_buf();
     for (name, body) in TEMPLATES {
-        write(&dir.join(name), body);
+        write(&root.join(name), body);
     }
-    dir
+    (dir, root)
 }
 
 /// A workspace with an api module carrying one controller.
@@ -221,7 +224,7 @@ fn merging_appends_only_the_routes_the_file_does_not_have_yet() {
 #[test]
 fn the_sdk_module_is_scaffolded_and_typed_as_an_sdk_pointing_at_its_target() {
     let (_dir, root) = workspace();
-    let templates = templates();
+    let (_templates, templates) = templates();
 
     talos(
         &root,
@@ -246,7 +249,7 @@ fn the_sdk_module_is_scaffolded_and_typed_as_an_sdk_pointing_at_its_target() {
 #[test]
 fn one_file_per_module_is_generated_and_re_exported_from_the_index() {
     let (_dir, root) = workspace();
-    let templates = templates();
+    let (_templates, templates) = templates();
 
     talos(
         &root,
@@ -266,7 +269,7 @@ fn one_file_per_module_is_generated_and_re_exported_from_the_index() {
 #[test]
 fn a_second_run_leaves_the_routes_it_already_generated_alone() {
     let (_dir, root) = workspace();
-    let templates = templates();
+    let (_templates, templates) = templates();
     talos(
         &root,
         &templates,
@@ -296,7 +299,7 @@ fn a_second_run_leaves_the_routes_it_already_generated_alone() {
 fn a_target_module_with_no_controller_generates_an_empty_sdk() {
     let dir = tempfile::tempdir().expect("create temp dir");
     let root = dir.path();
-    let templates = templates();
+    let (_templates, templates) = templates();
     write(&root.join("package.json"), "{ \"name\": \"scratch\" }\n");
     write(&root.join("modules/app/app.yml"), "type: \"api\"\n");
     write(
