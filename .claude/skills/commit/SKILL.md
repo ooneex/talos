@@ -6,7 +6,7 @@ model: haiku
 effort: low
 agent: general-purpose
 context: fork
-allowed-tools: Bash(gh:*)
+allowed-tools: Bash(git:*), Bash(gh:*)
 ---
 
 # Commit by Module
@@ -23,7 +23,11 @@ Create separate commits per modified module, following the project's conventiona
 2. **Group by module** — files under `modules/<name>/` → scope = module name; all others → scope `common`.
 3. **Screen for secrets** — before staging, skip anything credential-like (`.env*`, `*.pem`, `*.key`, `*credentials*`, private keys, tokens). Do **not** commit these; surface them to the user.
 4. **Commit each group** — stage the files, pick the type, commit as `type(scope): Subject`.
-5. **Push** — after all commits, push using **only** the `gh` cli (never `git push`/`git pull` or ssh/http). Use `gh auth switch` to find the active account. Never force-push unless the user explicitly asks.
+5. **Push** — after all commits, check the remote with `git remote get-url origin` and push accordingly:
+   - **SSH remote** (`git@host:owner/repo.git` or `ssh://…`) → push over ssh with `git push`.
+   - **HTTPS remote** (`https://…`) → push with the `gh` cli, and use `gh auth switch` to find the active account.
+
+   Never force-push unless the user explicitly asks.
 
 ## Message Format
 
