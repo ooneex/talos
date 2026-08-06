@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, test } from "bun:test";
 import { Container, EContainerScope } from "@talosjs/container";
 import type { AGUIEvent } from "@tanstack/ai";
 import { decorator } from "@/decorators";
-import type { ChatInputType, IChat, IMiddleware, ITool } from "@/types";
+import type { ChatInputType, IChat, IMiddleware, ISkill, ITool } from "@/types";
 
 class StubChat implements IChat {
   public run<T>(_input?: ChatInputType): Promise<T> {
@@ -13,6 +13,7 @@ class StubChat implements IChat {
   public getSystemPrompts = (): string[] => [];
   public getTools = () => [];
   public getMiddlewares = () => [];
+  public getSkills = () => [];
 }
 
 class StubTool implements ITool {
@@ -23,6 +24,14 @@ class StubTool implements ITool {
 
 class StubMiddleware implements IMiddleware {
   public getName = (): string => "stub";
+}
+
+class StubSkill implements ISkill {
+  public getName = (): string => "stub";
+  public getDescription = (): string => "stub skill";
+  public getWhenToUse = (): string => "never";
+  public getTools = () => [];
+  public getPrompt = (): string => "";
 }
 
 describe("decorator.chat", () => {
@@ -178,5 +187,54 @@ describe("decorator.middleware", () => {
     class VoidMiddleware extends StubMiddleware {}
 
     expect(decorator.middleware()(VoidMiddleware)).toBeUndefined();
+  });
+});
+
+describe("decorator.skill", () => {
+  let container: Container;
+
+  beforeEach(() => {
+    container = new Container();
+  });
+
+  test("should register a skill class with the default singleton scope", () => {
+    class DefaultSkill extends StubSkill {}
+
+    decorator.skill()(DefaultSkill);
+
+    const instance1 = container.get(DefaultSkill);
+    const instance2 = container.get(DefaultSkill);
+
+    expect(instance1).toBeInstanceOf(DefaultSkill);
+    expect(instance1).toBe(instance2);
+  });
+
+  test("should register a skill class with a transient scope", () => {
+    class TransientSkill extends StubSkill {}
+
+    decorator.skill(EContainerScope.Transient)(TransientSkill);
+
+    const instance1 = container.get(TransientSkill);
+    const instance2 = container.get(TransientSkill);
+
+    expect(instance1).not.toBe(instance2);
+  });
+
+  test("should allow retrieving the registered skill from the container", () => {
+    class RetrievableSkill extends StubSkill {
+      public override getName = (): string => "retrievable";
+    }
+
+    decorator.skill()(RetrievableSkill);
+
+    const instance = container.get(RetrievableSkill);
+    expect(instance).toBeInstanceOf(RetrievableSkill);
+    expect(instance.getName()).toBe("retrievable");
+  });
+
+  test("should return void", () => {
+    class VoidSkill extends StubSkill {}
+
+    expect(decorator.skill()(VoidSkill)).toBeUndefined();
   });
 });

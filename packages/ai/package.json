@@ -64,6 +64,12 @@
         "default": "./dist/src/tools/PubMedSearchTool.js"
       }
     },
+    "./tools/SkillsDiscoverTool": {
+      "import": {
+        "types": "./dist/src/tools/SkillsDiscoverTool.d.ts",
+        "default": "./dist/src/tools/SkillsDiscoverTool.js"
+      }
+    },
     "./tools/WikipediaSearchTool": {
       "import": {
         "types": "./dist/src/tools/WikipediaSearchTool.d.ts",

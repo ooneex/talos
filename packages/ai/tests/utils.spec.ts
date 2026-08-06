@@ -1,9 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import type { ChatMiddlewareConfig, ChatMiddlewareContext } from "@tanstack/ai";
-import type { IMiddleware, ITool, MessageType } from "@/types";
+import type { AiToolClassType, IMiddleware, ISkill, ITool, MessageType } from "@/types";
 import {
   buildMessages,
   buildModelOptions,
+  buildSkillCatalogue,
   composeOnConfig,
   createAdapter,
   toChatMiddleware,
@@ -78,6 +79,35 @@ describe("buildModelOptions", () => {
 
   test("should omit only the unset options", () => {
     expect(buildModelOptions({ prompt: "x", temperature: 1 })).toEqual({ temperature: 1 });
+  });
+});
+
+describe("buildSkillCatalogue", () => {
+  const makeSkill = (name: string): ISkill => ({
+    getName: () => name,
+    getDescription: () => `Do ${name}.`,
+    getWhenToUse: () => `The user asks for ${name}.`,
+    getTools: (): AiToolClassType[] => [],
+    getPrompt: () => `The long ${name} procedure.`,
+  });
+
+  test("should return nothing when there are no skills", () => {
+    expect(buildSkillCatalogue([])).toEqual([]);
+  });
+
+  test("should list every skill's routing surface in a single prompt", () => {
+    const [catalogue] = buildSkillCatalogue([makeSkill("refund"), makeSkill("onboard")]);
+
+    expect(buildSkillCatalogue([makeSkill("refund")])).toHaveLength(1);
+    expect(catalogue).toContain("- refund: Do refund. Use when: The user asks for refund.");
+    expect(catalogue).toContain("- onboard: Do onboard. Use when: The user asks for onboard.");
+  });
+
+  test("should withhold the procedures and point at the discovery tool", () => {
+    const [catalogue] = buildSkillCatalogue([makeSkill("refund")]);
+
+    expect(catalogue).not.toContain("The long refund procedure.");
+    expect(catalogue).toContain("`skills_discover`");
   });
 });
 

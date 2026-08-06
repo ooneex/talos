@@ -12,6 +12,7 @@ export default defineConfig({
     "src/tools/LinearIssueUpdateTool.ts",
     "src/tools/LinearSearchTool.ts",
     "src/tools/PubMedSearchTool.ts",
+    "src/tools/SkillsDiscoverTool.ts",
     "src/tools/WikipediaSearchTool.ts",
   ],
   target: "bun",

@@ -1,6 +1,6 @@
 import { type ChatMiddleware, toolDefinition } from "@tanstack/ai";
 import { type OpenRouterTextModelOptions, openRouterText } from "@tanstack/ai-openrouter";
-import type { ChatInputType, IMiddleware, ITool, MessageType } from "./types";
+import type { ChatInputType, IMiddleware, ISkill, ITool, MessageType } from "./types";
 
 /** AdapterType created by {@link openRouterText}, used as the chat transport. */
 export type AdapterType = ReturnType<typeof openRouterText>;
@@ -32,6 +32,31 @@ export const buildModelOptions = (input?: ChatInputType): OpenRouterTextModelOpt
   }
 
   return modelOptions;
+};
+
+/**
+ * Build the system prompt that advertises a chat's skills.
+ *
+ * Only the routing surface goes in — name, description, and when to use — so an
+ * unused skill costs three lines instead of its whole procedure. The procedures
+ * stay behind `skills_discover`, which the model calls once it has picked a
+ * name off this list. Returns an empty array when the chat declares no skills,
+ * leaving the prompt untouched.
+ */
+export const buildSkillCatalogue = (skills: ISkill[]): string[] => {
+  if (skills.length === 0) return [];
+
+  const entries = skills.map(
+    (skill) => `- ${skill.getName()}: ${skill.getDescription()} Use when: ${skill.getWhenToUse()}`,
+  );
+
+  return [
+    [
+      "You have skills available — named procedures, each with its own instructions and tools.",
+      ...entries,
+      "Call the `skills_discover` tool with the names of the skills that fit the request to load their full instructions, then follow them.",
+    ].join("\n"),
+  ];
 };
 
 /** Convert {@link ITool} instances into TanStack server tools. */

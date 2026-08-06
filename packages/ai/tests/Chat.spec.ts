@@ -36,13 +36,14 @@ mock.module("@tanstack/ai-openrouter", () => ({
 const { Chat } = await import("@/Chat");
 const { decorator } = await import("@/decorators");
 
-import type { AiMiddlewareClassType, AiToolClassType, IMiddleware, ITool } from "@/types";
+import type { AiMiddlewareClassType, AiSkillClassType, AiToolClassType, IMiddleware, ISkill, ITool } from "@/types";
 
 class TestChat extends Chat {
   public getModel = (): string => "anthropic/claude-sonnet-4.5";
   public getSystemPrompts = (): string[] => ["base prompt"];
   public getTools = (): AiToolClassType[] => [];
   public getMiddlewares = (): AiMiddlewareClassType[] => [];
+  public getSkills = (): AiSkillClassType[] => [];
 }
 
 // biome-ignore lint/suspicious/noExplicitAny: tests read arbitrary option keys off the recorded call
@@ -238,5 +239,96 @@ describe("Chat tool and middleware resolution", () => {
 
     const middleware = lastCall().middleware as Array<{ name: string }>;
     expect(middleware).toEqual([]);
+  });
+});
+
+describe("Chat skill resolution", () => {
+  class RefundTool implements ITool {
+    public getName = (): string => "refund_order";
+    public getDescription = (): string => "refunds an order";
+    public handler = (): unknown => null;
+  }
+  decorator.tool()(RefundTool);
+
+  class RefundSkill implements ISkill {
+    public getName = (): string => "order-refund";
+    public getDescription = (): string => "Issue refunds.";
+    public getWhenToUse = (): string => "The user wants money back.";
+    public getTools = (): AiToolClassType[] => [RefundTool];
+    public getPrompt = (): string => "Check the order, then refund it.";
+  }
+  decorator.skill()(RefundSkill);
+
+  class OnboardSkill implements ISkill {
+    public getName = (): string => "tenant-onboard";
+    public getDescription = (): string => "Set a tenant up.";
+    public getWhenToUse = (): string => "A new customer signs up.";
+    public getTools = (): AiToolClassType[] => [];
+    public getPrompt = (): string => "Create the workspace.";
+  }
+  decorator.skill()(OnboardSkill);
+
+  class WithSkill extends TestChat {
+    public override getSkills = (): AiSkillClassType[] => [RefundSkill];
+  }
+
+  const toolNames = () => (lastCall().tools as Array<{ name: string }>).map((tool) => tool.name);
+
+  test("should register the discovery tool and the skill's own tools", async () => {
+    await new WithSkill().run({ prompt: "hi" });
+
+    expect(toolNames()).toEqual(["refund_order", "skills_discover"]);
+  });
+
+  test("should advertise the skill catalogue without its procedure", async () => {
+    await new WithSkill().run({ prompt: "hi" });
+
+    const prompts = lastCall().systemPrompts as string[];
+    const catalogue = prompts[prompts.length - 1] ?? "";
+    expect(catalogue).toContain("order-refund: Issue refunds. Use when: The user wants money back.");
+    expect(catalogue).toContain("skills_discover");
+    expect(catalogue).not.toContain("Check the order, then refund it.");
+  });
+
+  test("should keep the chat and per-request system prompts ahead of the catalogue", async () => {
+    await new WithSkill().run({ prompt: "hi", systemPrompts: ["request prompt"] });
+
+    const prompts = lastCall().systemPrompts as string[];
+    expect(prompts.slice(0, 2)).toEqual(["base prompt", "request prompt"]);
+    expect(prompts).toHaveLength(3);
+  });
+
+  test("should merge per-request skills with the chat's own", async () => {
+    await new WithSkill().run({ prompt: "hi", skills: [OnboardSkill] });
+
+    const prompts = lastCall().systemPrompts as string[];
+    const catalogue = prompts[prompts.length - 1] ?? "";
+    expect(catalogue).toContain("order-refund");
+    expect(catalogue).toContain("tenant-onboard");
+  });
+
+  test("should register a tool shared by the chat and a skill only once", async () => {
+    class SharedToolChat extends WithSkill {
+      public override getTools = (): AiToolClassType[] => [RefundTool];
+    }
+
+    await new SharedToolChat().run({ prompt: "hi" });
+
+    expect(toolNames()).toEqual(["refund_order", "skills_discover"]);
+  });
+
+  test("should leave the prompts and tools untouched when no skill is declared", async () => {
+    await new TestChat().run({ prompt: "hi" });
+
+    expect(lastCall().systemPrompts).toEqual(["base prompt"]);
+    expect(toolNames()).toEqual([]);
+  });
+
+  test("should resolve skills for a streamed run too", async () => {
+    for await (const _event of new WithSkill().stream({ prompt: "hi" })) {
+      // drain
+    }
+
+    expect(toolNames()).toContain("skills_discover");
   });
 });

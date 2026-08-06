@@ -28,6 +28,9 @@ export type AiToolClassType = new (...args: any[]) => ITool;
 // biome-ignore lint/suspicious/noExplicitAny: trust me
 export type AiMiddlewareClassType = new (...args: any[]) => IMiddleware;
 
+// biome-ignore lint/suspicious/noExplicitAny: trust me
+export type AiSkillClassType = new (...args: any[]) => ISkill;
+
 export type ChatInputType = {
   /** User message prompt to send to the model. */
   prompt: string;
@@ -79,6 +82,12 @@ export type ChatInputType = {
   /** Middleware array for observing/transforming chat behavior. */
   middlewares?: AiMiddlewareClassType[];
   /**
+   * Skills available for this request, on top of the chat's own. Their
+   * catalogue entries are appended to the system prompts and their tools
+   * registered on the run; the model loads a procedure with `skills_discover`.
+   */
+  skills?: AiSkillClassType[];
+  /**
    * Runtime context: request-scoped application state made available to tools
    * and middleware hooks. Unlike {@link ChatInputType.metadata}, context is not part
    * of the request config and is never sent to the model — it carries live
@@ -118,6 +127,7 @@ export interface IChat {
   getSystemPrompts: () => string[];
   getTools: () => AiToolClassType[];
   getMiddlewares: () => AiMiddlewareClassType[];
+  getSkills: () => AiSkillClassType[];
 }
 
 export type MessageType = {
@@ -135,6 +145,41 @@ export interface ITool<P = unknown, R = unknown> {
     hookCtx: ToolCallHookContext,
   ) => BeforeToolCallDecision | Promise<BeforeToolCallDecision>;
   onAfterCall?: (ctx: ChatMiddlewareContext, info: AfterToolCallInfo) => void | Promise<void>;
+}
+
+/**
+ * A named capability a chat can draw on: a focused set of instructions plus the
+ * tools those instructions need.
+ *
+ * A skill packages know-how the model would otherwise have to be told on every
+ * request. {@link ISkill.getDescription} and {@link ISkill.getWhenToUse} are the
+ * routing surface — they tell the model what the skill covers and the situations
+ * that call for it — while {@link ISkill.getPrompt} carries the actual procedure
+ * and {@link ISkill.getTools} the classes it may call.
+ *
+ * @example
+ * ```ts
+ * @decorator.skill()
+ * class RefundSkill implements ISkill {
+ *   public getName = () => "refund";
+ *   public getDescription = () => "Issue and explain order refunds.";
+ *   public getWhenToUse = () => "The user asks to cancel an order or get money back.";
+ *   public getTools = () => [FindOrderTool, IssueRefundTool];
+ *   public getPrompt = () => "Look up the order, check it is refundable, then issue the refund.";
+ * }
+ * ```
+ */
+export interface ISkill {
+  /** Name used for identification and referencing the skill from a prompt. */
+  getName: () => string;
+  /** One-line summary of what the skill does. */
+  getDescription: () => string;
+  /** The situations that should trigger the skill, for the model to route on. */
+  getWhenToUse: () => string;
+  /** Tool classes the skill relies on, made available for function calling. */
+  getTools: () => AiToolClassType[];
+  /** Instructions describing how to carry the skill out. */
+  getPrompt: () => string;
 }
 
 /**

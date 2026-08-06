@@ -1,9 +1,20 @@
 import { container } from "@talosjs/container";
 import { type AGUIEvent, type ChatMiddleware, chat, createChatOptions } from "@tanstack/ai";
-import type { AiMiddlewareClassType, AiToolClassType, ChatInputType, IChat, IMiddleware, ITool } from "./types";
+import { SkillsDiscoverTool } from "./tools/SkillsDiscoverTool";
+import type {
+  AiMiddlewareClassType,
+  AiSkillClassType,
+  AiToolClassType,
+  ChatInputType,
+  IChat,
+  IMiddleware,
+  ISkill,
+  ITool,
+} from "./types";
 import {
   buildMessages,
   buildModelOptions,
+  buildSkillCatalogue,
   createAdapter,
   toChatMiddleware,
   toServerTools,
@@ -14,7 +25,7 @@ import {
  * Abstract chat driver built on top of TanStack AI's OpenRouter adapter.
  *
  * Subclasses describe *what* the chat is — its model, system prompts, tools,
- * and middleware — by implementing the four abstract getters. The base class
+ * middleware, and skills — by implementing the five abstract getters. The base class
  * owns the *how*: it wires those pieces into a {@link chat} call and exposes a
  * unified {@link Chat.run} (one-shot / structured output) and {@link Chat.stream}
  * (token streaming) surface.
@@ -34,6 +45,7 @@ import {
  *   public getSystemPrompts = () => ["You are a concise support agent."];
  *   public getTools = () => [];
  *   public getMiddlewares = () => [];
+ *   public getSkills = () => [];
  * }
  *
  * const reply = await container.get(SupportChat).run({ prompt: "Hi!" });
@@ -54,6 +66,9 @@ export abstract class Chat implements IChat {
 
   /** Middleware classes applied to every run, before per-request ones. */
   public abstract getMiddlewares(): AiMiddlewareClassType[];
+
+  /** Skill classes the chat can draw on — each a set of instructions plus its tools. */
+  public abstract getSkills(): AiSkillClassType[];
 
   /**
    * Run the chat to completion and return the result.
@@ -86,12 +101,13 @@ export abstract class Chat implements IChat {
 
   /** Assemble the shared {@link chat} options from the subclass and request input. */
   private buildOptions(input?: ChatInputType) {
-    const tools = this.resolveTools(input);
+    const skills = this.resolveSkills(input);
+    const tools = this.resolveTools(input, skills);
 
     return createChatOptions({
       adapter: createAdapter(this.getModel()),
       messages: buildMessages(input),
-      systemPrompts: [...this.getSystemPrompts(), ...(input?.systemPrompts ?? [])],
+      systemPrompts: [...this.getSystemPrompts(), ...(input?.systemPrompts ?? []), ...buildSkillCatalogue(skills)],
       tools: toServerTools(tools),
       middleware: this.resolveMiddlewares(input, tools),
       metadata: input?.metadata,
@@ -103,11 +119,32 @@ export abstract class Chat implements IChat {
     });
   }
 
-  /** Resolve the subclass and per-request tool classes to instances. */
-  private resolveTools(input?: ChatInputType): ITool[] {
-    const classes: AiToolClassType[] = [...this.getTools(), ...(input?.tools ?? [])];
+  /** Resolve the subclass and per-request skill classes to instances. */
+  private resolveSkills(input?: ChatInputType): ISkill[] {
+    const classes: AiSkillClassType[] = [...this.getSkills(), ...(input?.skills ?? [])];
 
-    return classes.map((Tool) => container.get<ITool>(Tool));
+    return [...new Set(classes)].map((Skill) => container.get<ISkill>(Skill));
+  }
+
+  /**
+   * Resolve the subclass and per-request tool classes to instances, along with
+   * the tools the resolved skills call — a skill's procedure is worthless if the
+   * model can't reach its tools once discovery hands the procedure over. Classes
+   * are deduplicated, so a tool listed both on the chat and inside a skill is
+   * registered once. {@link SkillsDiscoverTool} is appended when there is at
+   * least one skill to discover.
+   */
+  private resolveTools(input: ChatInputType | undefined, skills: ISkill[]): ITool[] {
+    const classes: AiToolClassType[] = [
+      ...this.getTools(),
+      ...(input?.tools ?? []),
+      ...skills.flatMap((skill) => skill.getTools()),
+    ];
+
+    const tools = [...new Set(classes)].map((Tool) => container.get<ITool>(Tool));
+    if (skills.length > 0) tools.push(new SkillsDiscoverTool(skills));
+
+    return tools;
   }
 
   /**
