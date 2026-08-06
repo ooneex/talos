@@ -83,8 +83,8 @@ export type ChatInputType = {
   middlewares?: AiMiddlewareClassType[];
   /**
    * Skills available for this request, on top of the chat's own. Their
-   * catalogue entries are appended to the system prompts and their tools
-   * registered on the run; the model loads a procedure with `skills_discover`.
+   * instructions are appended to the system prompts and their tools registered
+   * on the run. Typically the skills a prior `judge()` call picked out.
    */
   skills?: AiSkillClassType[];
   /**
@@ -123,6 +123,7 @@ export type ChatInputType = {
 export interface IChat {
   run: <T>(input?: ChatInputType) => Promise<T>;
   stream: (input?: ChatInputType) => AsyncIterable<AGUIEvent>;
+  judge: (input?: ChatInputType) => Promise<AiSkillClassType[]>;
   getModel: () => string;
   getSystemPrompts: () => string[];
   getTools: () => AiToolClassType[];

@@ -2,11 +2,14 @@ import { describe, expect, test } from "bun:test";
 import type { ChatMiddlewareConfig, ChatMiddlewareContext } from "@tanstack/ai";
 import type { AiToolClassType, IMiddleware, ISkill, ITool, MessageType } from "@/types";
 import {
+  buildJudgePrompt,
   buildMessages,
   buildModelOptions,
-  buildSkillCatalogue,
+  buildSkillPrompts,
   composeOnConfig,
   createAdapter,
+  isJudged,
+  skillJudgementSchema,
   toChatMiddleware,
   toServerTools,
   toToolHookMiddleware,
@@ -82,32 +85,70 @@ describe("buildModelOptions", () => {
   });
 });
 
-describe("buildSkillCatalogue", () => {
-  const makeSkill = (name: string): ISkill => ({
-    getName: () => name,
-    getDescription: () => `Do ${name}.`,
-    getWhenToUse: () => `The user asks for ${name}.`,
-    getTools: (): AiToolClassType[] => [],
-    getPrompt: () => `The long ${name} procedure.`,
-  });
+const makeSkill = (name: string): ISkill => ({
+  getName: () => name,
+  getDescription: () => `Do ${name}.`,
+  getWhenToUse: () => `The user asks for ${name}.`,
+  getTools: (): AiToolClassType[] => [],
+  getPrompt: () => `The long ${name} procedure.`,
+});
 
+describe("buildSkillPrompts", () => {
   test("should return nothing when there are no skills", () => {
-    expect(buildSkillCatalogue([])).toEqual([]);
+    expect(buildSkillPrompts([])).toEqual([]);
   });
 
-  test("should list every skill's routing surface in a single prompt", () => {
-    const [catalogue] = buildSkillCatalogue([makeSkill("refund"), makeSkill("onboard")]);
+  test("should carry every skill's routing surface and procedure in a single prompt", () => {
+    const [prompt] = buildSkillPrompts([makeSkill("refund"), makeSkill("onboard")]);
 
-    expect(buildSkillCatalogue([makeSkill("refund")])).toHaveLength(1);
-    expect(catalogue).toContain("- refund: Do refund. Use when: The user asks for refund.");
-    expect(catalogue).toContain("- onboard: Do onboard. Use when: The user asks for onboard.");
+    expect(buildSkillPrompts([makeSkill("refund")])).toHaveLength(1);
+    expect(prompt).toContain("## refund\nDo refund. Use when: The user asks for refund.");
+    expect(prompt).toContain("The long refund procedure.");
+    expect(prompt).toContain("## onboard\nDo onboard. Use when: The user asks for onboard.");
+    expect(prompt).toContain("The long onboard procedure.");
+  });
+});
+
+describe("buildJudgePrompt", () => {
+  test("should list each skill's name and when-to-use line only", () => {
+    const [prompt] = buildJudgePrompt([makeSkill("refund"), makeSkill("onboard")]);
+
+    expect(prompt).toContain("- refund: The user asks for refund.");
+    expect(prompt).toContain("- onboard: The user asks for onboard.");
+    expect(prompt).not.toContain("The long refund procedure.");
   });
 
-  test("should withhold the procedures and point at the discovery tool", () => {
-    const [catalogue] = buildSkillCatalogue([makeSkill("refund")]);
+  test("should tell the model it may pick nothing", () => {
+    const [prompt] = buildJudgePrompt([makeSkill("refund")]);
 
-    expect(catalogue).not.toContain("The long refund procedure.");
-    expect(catalogue).toContain("`skills_discover`");
+    expect(prompt).toContain("empty list");
+  });
+});
+
+describe("isJudged", () => {
+  test("should match a name the model copied exactly", () => {
+    expect(isJudged(makeSkill("refund"), ["onboard", "refund"])).toBe(true);
+  });
+
+  test("should match a name the model retyped with different casing and spacing", () => {
+    expect(isJudged(makeSkill("order-refund"), [" Order-Refund "])).toBe(true);
+  });
+
+  test("should not match a name the judgement left out", () => {
+    expect(isJudged(makeSkill("refund"), ["onboard"])).toBe(false);
+    expect(isJudged(makeSkill("refund"), [])).toBe(false);
+  });
+});
+
+describe("skillJudgementSchema", () => {
+  test("should accept a list of names", () => {
+    expect(skillJudgementSchema({ names: ["refund"] })).toEqual({ names: ["refund"] });
+  });
+
+  test("should reject an answer that is not a list of names", () => {
+    const result = skillJudgementSchema({ names: "refund" });
+
+    expect(result).toHaveProperty(" arkKind", "errors");
   });
 });
 

@@ -1,3 +1,4 @@
+import { Assert, type AssertSchemaType } from "@talosjs/validation";
 import { type ChatMiddleware, toolDefinition } from "@tanstack/ai";
 import { type OpenRouterTextModelOptions, openRouterText } from "@tanstack/ai-openrouter";
 import type { ChatInputType, IMiddleware, ISkill, ITool, MessageType } from "./types";
@@ -35,29 +36,60 @@ export const buildModelOptions = (input?: ChatInputType): OpenRouterTextModelOpt
 };
 
 /**
- * Build the system prompt that advertises a chat's skills.
+ * Build the system prompt carrying a chat's skills.
  *
- * Only the routing surface goes in — name, description, and when to use — so an
- * unused skill costs three lines instead of its whole procedure. The procedures
- * stay behind `skills_discover`, which the model calls once it has picked a
- * name off this list. Returns an empty array when the chat declares no skills,
- * leaving the prompt untouched.
+ * Each entry pairs the situations a skill is meant for with the procedure to
+ * follow, so a skill in play is one the model can actually carry out. Every
+ * skill passed in is paid for on every turn — narrow the list with a judgement
+ * call first when a chat declares more skills than a request needs. Returns an
+ * empty array when there are no skills, leaving the prompt untouched.
  */
-export const buildSkillCatalogue = (skills: ISkill[]): string[] => {
+export const buildSkillPrompts = (skills: ISkill[]): string[] => {
   if (skills.length === 0) return [];
 
-  const entries = skills.map(
-    (skill) => `- ${skill.getName()}: ${skill.getDescription()} Use when: ${skill.getWhenToUse()}`,
+  const entries = skills.map((skill) =>
+    [`## ${skill.getName()}`, `${skill.getDescription()} Use when: ${skill.getWhenToUse()}`, skill.getPrompt()].join(
+      "\n",
+    ),
   );
 
   return [
     [
       "You have skills available — named procedures, each with its own instructions and tools.",
       ...entries,
-      "Call the `skills_discover` tool with the names of the skills that fit the request to load their full instructions, then follow them.",
-    ].join("\n"),
+      "Follow the instructions of every skill whose situation matches the request.",
+    ].join("\n\n"),
   ];
 };
+
+/** The judgement call's structured answer — the skill names the model picked. */
+export type SkillJudgementType = { names: string[] };
+
+/** Forces the judgement call to answer with a plain list of skill names. */
+export const skillJudgementSchema: AssertSchemaType = Assert({ names: "string[]" });
+
+/**
+ * Build the system prompt for a skill judgement.
+ *
+ * Only the routing surface goes in — each skill's name and when-to-use line — so
+ * deciding costs two lines per skill instead of its whole procedure.
+ */
+export const buildJudgePrompt = (skills: ISkill[]): string[] => [
+  [
+    "Decide which of the skills below the user's request calls for.",
+    ...skills.map((skill) => `- ${skill.getName()}: ${skill.getWhenToUse()}`),
+    "Answer with the name of every skill that applies, copied exactly as written above. Answer with an empty list when none of them fit — do not stretch a skill to cover a request it was not written for.",
+  ].join("\n"),
+];
+
+/** Whether a judgement named this skill. Names are retyped by the model, so match them loosely. */
+export const isJudged = (skill: ISkill, names: string[]): boolean => {
+  const name = normalizeSkillName(skill.getName());
+
+  return names.some((judged) => normalizeSkillName(judged) === name);
+};
+
+const normalizeSkillName = (value: string): string => value.trim().toLowerCase();
 
 /** Convert {@link ITool} instances into TanStack server tools. */
 // biome-ignore lint/suspicious/noExplicitAny: server-tool generics depend on each tool's schema

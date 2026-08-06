@@ -2,13 +2,14 @@ import { beforeEach, describe, expect, test } from "bun:test";
 import { Container, EContainerScope } from "@talosjs/container";
 import type { AGUIEvent } from "@tanstack/ai";
 import { decorator } from "@/decorators";
-import type { ChatInputType, IChat, IMiddleware, ISkill, ITool } from "@/types";
+import type { AiSkillClassType, ChatInputType, IChat, IMiddleware, ISkill, ITool } from "@/types";
 
 class StubChat implements IChat {
   public run<T>(_input?: ChatInputType): Promise<T> {
     return Promise.resolve({} as T);
   }
   public async *stream(_input?: ChatInputType): AsyncIterable<AGUIEvent> {}
+  public judge = (_input?: ChatInputType): Promise<AiSkillClassType[]> => Promise.resolve([]);
   public getModel = (): string => "stub";
   public getSystemPrompts = (): string[] => [];
   public getTools = () => [];

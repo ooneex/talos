@@ -274,20 +274,20 @@ describe("Chat skill resolution", () => {
 
   const toolNames = () => (lastCall().tools as Array<{ name: string }>).map((tool) => tool.name);
 
-  test("should register the discovery tool and the skill's own tools", async () => {
+  test("should register the skill's own tools", async () => {
     await new WithSkill().run({ prompt: "hi" });
 
-    expect(toolNames()).toEqual(["refund_order", "skills_discover"]);
+    expect(toolNames()).toEqual(["refund_order"]);
   });
 
-  test("should advertise the skill catalogue without its procedure", async () => {
+  test("should append the skill's routing surface and its procedure", async () => {
     await new WithSkill().run({ prompt: "hi" });
 
     const prompts = lastCall().systemPrompts as string[];
     const catalogue = prompts[prompts.length - 1] ?? "";
-    expect(catalogue).toContain("order-refund: Issue refunds. Use when: The user wants money back.");
-    expect(catalogue).toContain("skills_discover");
-    expect(catalogue).not.toContain("Check the order, then refund it.");
+    expect(catalogue).toContain("## order-refund");
+    expect(catalogue).toContain("Issue refunds. Use when: The user wants money back.");
+    expect(catalogue).toContain("Check the order, then refund it.");
   });
 
   test("should keep the chat and per-request system prompts ahead of the catalogue", async () => {
@@ -314,7 +314,7 @@ describe("Chat skill resolution", () => {
 
     await new SharedToolChat().run({ prompt: "hi" });
 
-    expect(toolNames()).toEqual(["refund_order", "skills_discover"]);
+    expect(toolNames()).toEqual(["refund_order"]);
   });
 
   test("should leave the prompts and tools untouched when no skill is declared", async () => {
@@ -329,6 +329,100 @@ describe("Chat skill resolution", () => {
       // drain
     }
 
-    expect(toolNames()).toContain("skills_discover");
+    expect(toolNames()).toContain("refund_order");
+  });
+});
+
+describe("Chat.judge", () => {
+  class RefundSkill implements ISkill {
+    public getName = (): string => "order-refund";
+    public getDescription = (): string => "Issue refunds.";
+    public getWhenToUse = (): string => "The user wants money back.";
+    public getTools = (): AiToolClassType[] => [];
+    public getPrompt = (): string => "Check the order, then refund it.";
+  }
+  decorator.skill()(RefundSkill);
+
+  class OnboardSkill implements ISkill {
+    public getName = (): string => "tenant-onboard";
+    public getDescription = (): string => "Set a tenant up.";
+    public getWhenToUse = (): string => "A new customer signs up.";
+    public getTools = (): AiToolClassType[] => [];
+    public getPrompt = (): string => "Create the workspace.";
+  }
+  decorator.skill()(OnboardSkill);
+
+  class WithSkills extends TestChat {
+    public override getSkills = (): AiSkillClassType[] => [RefundSkill, OnboardSkill];
+  }
+
+  test("should return the skill classes the model named", async () => {
+    chatResult = { names: ["order-refund"] };
+
+    const skills = await new WithSkills().judge({ prompt: "I want my money back" });
+
+    expect(skills).toEqual([RefundSkill]);
+  });
+
+  test("should match a name the model retyped with different casing and spacing", async () => {
+    chatResult = { names: [" Order-Refund "] };
+
+    const skills = await new WithSkills().judge({ prompt: "refund me" });
+
+    expect(skills).toEqual([RefundSkill]);
+  });
+
+  test("should judge per-request skills alongside the chat's own", async () => {
+    class ExtraSkill implements ISkill {
+      public getName = (): string => "invoice-send";
+      public getDescription = (): string => "Send invoices.";
+      public getWhenToUse = (): string => "The user asks for an invoice.";
+      public getTools = (): AiToolClassType[] => [];
+      public getPrompt = (): string => "Render the invoice, then email it.";
+    }
+    decorator.skill()(ExtraSkill);
+    chatResult = { names: ["invoice-send"] };
+
+    const skills = await new WithSkills().judge({ prompt: "send me my invoice", skills: [ExtraSkill] });
+
+    expect(skills).toEqual([ExtraSkill]);
+  });
+
+  test("should send only the names and when-to-use lines, never the procedures", async () => {
+    chatResult = { names: [] };
+
+    await new WithSkills().judge({ prompt: "hello" });
+
+    const prompt = (lastCall().systemPrompts as string[]).join("\n");
+    expect(prompt).toContain("- order-refund: The user wants money back.");
+    expect(prompt).toContain("- tenant-onboard: A new customer signs up.");
+    expect(prompt).not.toContain("Check the order, then refund it.");
+  });
+
+  test("should judge with structured output and without tools or middleware", async () => {
+    chatResult = { names: [] };
+
+    await new WithSkills().judge({ prompt: "hello" });
+
+    const call = lastCall();
+    expect(call.stream).toBe(false);
+    expect(call.outputSchema).toBeDefined();
+    expect(call.tools).toBeUndefined();
+    expect(call.middleware).toBeUndefined();
+  });
+
+  test("should return nothing when the model names no skill", async () => {
+    chatResult = { names: [] };
+
+    const skills = await new WithSkills().judge({ prompt: "what time is it?" });
+
+    expect(skills).toEqual([]);
+  });
+
+  test("should skip the model call entirely when no skill is declared", async () => {
+    const skills = await new TestChat().judge({ prompt: "hi" });
+
+    expect(skills).toEqual([]);
+    expect(chatCalls).toHaveLength(0);
   });
 });
