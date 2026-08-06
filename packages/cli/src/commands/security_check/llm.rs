@@ -12,7 +12,8 @@
 //
 // Which files belong to which assistant is derived from the provider registry
 // in `templates::llm::assistants::ASSISTANTS`, so a newly supported assistant
-// is audited automatically.
+// is audited automatically — bar the ones whose configuration lives in a shared
+// directory, which are named path by path in `EXTRA_TARGETS`.
 
 use std::collections::{BTreeMap, HashSet};
 use std::fs;
@@ -66,6 +67,12 @@ const EXTRA_TARGETS: &[(&str, &str)] = &[
     ("GitHub Copilot", ".github/prompts"),
     ("VS Code", ".vscode/mcp.json"),
 ];
+
+/// Registry directories that hold far more than assistant instructions. Copilot
+/// reads a handful of paths inside `.github`, which is otherwise full of
+/// workflows and issue templates, so those paths are named in `EXTRA_TARGETS`
+/// and the directory itself is never walked whole.
+const SHARED_DIRS: &[&str] = &[".github"];
 
 #[path = "llm/rules.rs"]
 mod rules;
@@ -315,6 +322,7 @@ fn is_config_file(path: &Path) -> bool {
 fn targets() -> Vec<(&'static str, &'static str)> {
     let mut targets: Vec<(&'static str, &'static str)> = ASSISTANTS
         .iter()
+        .filter(|(_, dir, _)| !SHARED_DIRS.contains(dir))
         .map(|(name, dir, _)| (*name, *dir))
         .collect();
     targets.extend(EXTRA_TARGETS.iter().copied());

@@ -12,6 +12,9 @@
 //   * Roo Code  <https://docs.roocode.com/features/custom-modes> + /slash-commands
 //   * Continue  <https://docs.continue.dev/customize/deep-dives/prompts>
 //   * Zed       <https://zed.dev/docs/ai/skills> (SKILL.md in .agents/skills)
+//   * Copilot   <https://docs.github.com/en/copilot/reference/custom-agents-configuration>
+//               (.github/agents/*.agent.md) + <https://code.visualstudio.com/docs/copilot/customization/prompt-files>
+//               (.github/prompts/*.prompt.md)
 
 use std::path::{Path, PathBuf};
 
@@ -339,5 +342,6 @@ pub fn junie_adapter(input: &ScaffoldInput, _config_dir: &str) -> Vec<GeneratedF
 mod more;
 
 pub use more::{
-    ASSISTANTS, continue_adapter, default_config_dirs, resolve_adapter, roo_adapter, zed_adapter,
+    ASSISTANTS, continue_adapter, copilot_adapter, default_config_dirs, resolve_adapter,
+    roo_adapter, zed_adapter,
 };

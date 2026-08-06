@@ -53,8 +53,9 @@ fn every_registered_assistant_resolves_an_adapter_that_writes_agents_md() {
 use std::path::{Path, PathBuf};
 
 use cli::templates::llm::assistants::{
-    GeneratedFile, SkillInput, cline_adapter, codex_adapter, continue_adapter, cursor_adapter,
-    default_adapter, gemini_adapter, junie_adapter, roo_adapter, windsurf_adapter, zed_adapter,
+    GeneratedFile, SkillInput, cline_adapter, codex_adapter, continue_adapter, copilot_adapter,
+    cursor_adapter, default_adapter, gemini_adapter, junie_adapter, roo_adapter, windsurf_adapter,
+    zed_adapter,
 };
 
 /// An agent template in the shape the loader hands the adapters: Claude front
@@ -184,6 +185,7 @@ fn every_adapter_slugifies_a_dotted_skill_name() {
         roo_adapter,
         continue_adapter,
         zed_adapter,
+        copilot_adapter,
     ] {
         let files = adapter(&input, ".claude");
 
@@ -214,6 +216,7 @@ fn every_metadata_carrying_adapter_keeps_the_agent_description() {
         ("roo", roo_adapter),
         ("continue", continue_adapter),
         ("zed", zed_adapter),
+        ("copilot", copilot_adapter),
     ] {
         let files = adapter(&input, ".claude");
         let all: String = files.iter().map(|file| file.content.as_str()).collect();
@@ -270,6 +273,7 @@ fn every_adapter_carries_the_instruction_body_into_its_output() {
         roo_adapter,
         continue_adapter,
         zed_adapter,
+        copilot_adapter,
     ] {
         let files = adapter(&input, ".claude");
         let all: String = files.iter().map(|file| file.content.as_str()).collect();
@@ -313,6 +317,50 @@ fn roo_adapter_grants_write_access_only_to_agents_that_need_it() {
 }
 
 #[test]
+fn copilot_adapter_writes_agent_profiles_and_prompt_files() {
+    let files = copilot_adapter(&full_input(), ".github");
+
+    let paths = paths(&files);
+    assert!(paths.contains(&Path::new(".github/copilot-instructions.md").to_path_buf()));
+    assert!(paths.contains(&Path::new(".github/agents/api-issue-fixer.agent.md").to_path_buf()));
+    assert!(paths.contains(&Path::new(".github/prompts/talos-commit.prompt.md").to_path_buf()));
+
+    assert_eq!(
+        content_of(&files, ".github/copilot-instructions.md"),
+        "# Talos\n\nThe project guide.\n"
+    );
+
+    let prompt = content_of(&files, ".github/prompts/talos-commit.prompt.md");
+    assert!(prompt.contains("description: \"Create commit messages grouped by module.\""));
+    assert!(prompt.contains("agent: agent"));
+    assert!(prompt.contains("Group the changes, then write one commit per module."));
+}
+
+#[test]
+fn copilot_adapter_grants_the_editing_tools_only_to_agents_that_need_them() {
+    let read_only = ScaffoldInput {
+        agents_md: "# Talos\n".to_string(),
+        agents: vec![(
+            "reviewer".to_string(),
+            "---\nname: reviewer\ndescription: Reviews code.\ntools: Read, Grep\n---\n\nReview it.\n"
+                .to_string(),
+        )],
+        skills: Vec::new(),
+    };
+
+    let writer = copilot_adapter(&full_input(), ".github");
+    let reader = copilot_adapter(&read_only, ".github");
+
+    assert!(
+        content_of(&writer, ".github/agents/api-issue-fixer.agent.md")
+            .contains("tools: [read, search, edit, bash]")
+    );
+    assert!(
+        content_of(&reader, ".github/agents/reviewer.agent.md").contains("tools: [read, search]")
+    );
+}
+
+#[test]
 fn every_adapter_copes_with_nothing_to_render() {
     let empty = ScaffoldInput {
         agents_md: "# Talos\n".to_string(),
@@ -331,6 +379,7 @@ fn every_adapter_copes_with_nothing_to_render() {
         roo_adapter,
         continue_adapter,
         zed_adapter,
+        copilot_adapter,
     ] {
         let files = adapter(&empty, ".claude");
 
@@ -355,6 +404,7 @@ fn no_adapter_emits_the_same_path_twice() {
         roo_adapter,
         continue_adapter,
         zed_adapter,
+        copilot_adapter,
     ] {
         let mut paths = paths(&adapter(&input, ".claude"));
         let before = paths.len();

@@ -1,6 +1,6 @@
-// Adapters for Roo Code, Continue, and Zed, plus the assistant registry and
-// resolver — split out of the parent module to keep it under the file-size
-// budget.
+// Adapters for Roo Code, Continue, Zed, and GitHub Copilot, plus the assistant
+// registry and resolver — split out of the parent module to keep it under the
+// file-size budget.
 
 use std::path::{Path, PathBuf};
 
@@ -183,13 +183,79 @@ pub fn zed_adapter(input: &ScaffoldInput, _config_dir: &str) -> Vec<GeneratedFil
     files
 }
 
+/// The Copilot tool names an agent is given, derived from the Claude tool list:
+/// an agent that may modify files gets the editing and shell tools, one that may
+/// not is held to reading and searching.
+fn copilot_tools(source: &str) -> String {
+    if can_write_files(&parse_template(source).data) {
+        "[read, search, edit, bash]".to_string()
+    } else {
+        "[read, search]".to_string()
+    }
+}
+
+/// GitHub Copilot: repository-wide guidance in `.github/copilot-instructions.md`,
+/// agents as agent profiles under `.github/agents` (`*.agent.md`), and skills as
+/// prompt files under `.github/prompts` (`*.prompt.md`, invoked as `/name`).
+pub fn copilot_adapter(input: &ScaffoldInput, _config_dir: &str) -> Vec<GeneratedFile> {
+    let mut files = vec![
+        agents_md_file(input),
+        GeneratedFile {
+            path: Path::new(".github").join("copilot-instructions.md"),
+            content: input.agents_md.clone(),
+        },
+    ];
+
+    for (name, skill) in &input.skills {
+        let parsed = parse_template(&skill.source);
+        files.push(GeneratedFile {
+            path: Path::new(".github")
+                .join("prompts")
+                .join(format!("{}.prompt.md", slugify(name))),
+            content: markdown_with_front_matter(
+                &skill.source,
+                &[
+                    (
+                        "description",
+                        yaml_double_quoted(&merge_description(&parsed.data)),
+                    ),
+                    ("agent", "agent".to_string()),
+                ],
+            ),
+        });
+    }
+
+    for (name, content) in &input.agents {
+        let parsed = parse_template(content);
+        files.push(GeneratedFile {
+            path: Path::new(".github")
+                .join("agents")
+                .join(format!("{name}.agent.md")),
+            content: markdown_with_front_matter(
+                content,
+                &[
+                    ("name", yaml_double_quoted(&to_title_case(name))),
+                    (
+                        "description",
+                        yaml_double_quoted(&merge_description(&parsed.data)),
+                    ),
+                    ("tools", copilot_tools(content)),
+                ],
+            ),
+        });
+    }
+
+    files
+}
+
 /// Every assistant the scaffolder can target: display name, config directory,
 /// and whether it is enabled by default.
-pub const ASSISTANTS: [(&str, &str, bool); 10] = [
+pub const ASSISTANTS: [(&str, &str, bool); 11] = [
     ("Claude", ".claude", true),
     ("Codex", ".codex", true),
     ("Cursor", ".cursor", false),
     ("Gemini", ".gemini", false),
+    ("GitHub Copilot", ".github", false),
     ("Windsurf", ".windsurf", false),
     ("Cline", ".cline", false),
     ("JetBrains Junie", ".junie", false),
@@ -214,6 +280,7 @@ pub fn resolve_adapter(config_dir: &str) -> AssistantAdapter {
         ".codex" => codex_adapter,
         ".gemini" => gemini_adapter,
         ".cursor" => cursor_adapter,
+        ".github" => copilot_adapter,
         ".windsurf" => windsurf_adapter,
         ".cline" => cline_adapter,
         ".junie" => junie_adapter,
