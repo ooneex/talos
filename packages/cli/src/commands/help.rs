@@ -6,6 +6,7 @@ pub struct HelpArgs {}
 const COMMANDS: &[(&str, &str)] = &[
     ("ai:chat:create", "Generate a new AI chat class"),
     ("ai:middleware:create", "Generate a new AI middleware class"),
+    ("ai:skill:create", "Generate a new AI skill class"),
     ("ai:tool:create", "Generate a new AI tool class"),
     ("analytics:create", "Generate a new analytics class"),
     (

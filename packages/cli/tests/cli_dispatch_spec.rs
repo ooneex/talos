@@ -22,6 +22,7 @@ fn seed_home(home: &Path) {
     for name in [
         "ai-chat",
         "ai-middleware",
+        "ai-skill",
         "ai-tool",
         "analytics",
         "cache",
@@ -222,6 +223,10 @@ const GENERATORS: &[(&str, &str)] = &[
     (
         "ai:middleware:create",
         "modules/user/src/ai/middlewares/SupportMiddleware.ts",
+    ),
+    (
+        "ai:skill:create",
+        "modules/user/src/ai/skills/SupportSkill.ts",
     ),
     ("ai:tool:create", "modules/user/src/ai/tools/SupportTool.ts"),
     (

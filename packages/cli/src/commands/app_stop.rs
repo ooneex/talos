@@ -6,8 +6,8 @@ use clap::Args;
 use serde_json::Value;
 
 use crate::utils::{
-    RunnableModuleType, collect_runnable_modules, current_dir, ensure_bin, run_spinner_step,
-    select_runnable_modules,
+    ModulePort, RunnableModule, RunnableModuleType, collect_module_ports, collect_runnable_modules,
+    current_dir, ensure_bin, free_port, run_spinner_step, select_runnable_modules,
 };
 
 #[derive(Args, Debug)]
@@ -35,6 +35,26 @@ fn load_package_name(app_dir: &Path, fallback: &str) -> String {
         .unwrap_or_else(|| fallback.to_string())
 }
 
+/// Free every port the selected modules declare, and report the ones that were
+/// actually held by a process.
+fn free_module_ports(modules: &[RunnableModule]) -> usize {
+    let mut freed = 0;
+    for ModulePort { module, port } in collect_module_ports(modules) {
+        let pids = free_port(port);
+        if pids.is_empty() {
+            continue;
+        }
+        freed += 1;
+        let pids = pids
+            .iter()
+            .map(u32::to_string)
+            .collect::<Vec<_>>()
+            .join(", ");
+        crate::utils::success(format!("Freed port {port} of {module} (pid {pids})"));
+    }
+    freed
+}
+
 pub fn run(args: &AppStopArgs) {
     let cwd = args
         .cwd
@@ -46,13 +66,17 @@ pub fn run(args: &AppStopArgs) {
         crate::utils::error("Module app not found");
         std::process::exit(1);
     }
-    if !ensure_bin("docker") {
-        return;
-    }
 
     let modules = collect_runnable_modules(&cwd.join("modules"));
     let selected =
         select_runnable_modules(&modules, args.modules.as_deref(), args.packages.as_deref());
+    if selected.is_empty() {
+        crate::utils::error("No matching modules found");
+        std::process::exit(1);
+    }
+
+    let freed = free_module_ports(&selected);
+
     let needs_docker = selected.iter().any(|module| {
         matches!(
             module.r#type,
@@ -61,8 +85,14 @@ pub fn run(args: &AppStopArgs) {
     });
     let compose_exists = needs_docker && app_dir.join("docker-compose.yml").exists();
     if !compose_exists {
-        crate::utils::error("No matching Docker services to stop");
-        std::process::exit(1);
+        if freed == 0 {
+            crate::utils::error("Nothing to stop");
+            std::process::exit(1);
+        }
+        return;
+    }
+    if !ensure_bin("docker") {
+        return;
     }
 
     let name = load_package_name(&app_dir, "app");

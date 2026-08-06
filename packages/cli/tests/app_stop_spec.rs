@@ -127,8 +127,125 @@ fn app_stop_exits_when_the_app_module_is_missing() {
     assert!(text(&output).contains("Module app not found"));
 }
 
+/// A `lsof` that reports `pid` until the first call has been logged, so the
+/// process reads as gone once it has been asked to stop.
+fn write_stubborn_lsof(bin: &std::path::Path, log: &std::path::Path, pid: &str, stubborn: bool) {
+    let seen = if stubborn {
+        String::new()
+    } else {
+        format!(
+            "if [ -f \"{0}.seen\" ]; then exit 1; fi\n: > \"{0}.seen\"\n",
+            log.display()
+        )
+    };
+    write_executable(
+        &bin.join("lsof"),
+        &format!(
+            "#!/bin/sh\nprintf 'lsof:%s\\n' \"$*\" >> \"{}\"\n{seen}printf '{pid}\\n'\n",
+            log.display()
+        ),
+    );
+    write_executable(
+        &bin.join("kill"),
+        &format!(
+            "#!/bin/sh\nprintf 'kill:%s\\n' \"$*\" >> \"{}\"\n",
+            log.display()
+        ),
+    );
+}
+
 #[test]
-fn app_stop_exits_when_no_matching_docker_services_exist() {
+fn app_stop_frees_the_port_a_front_end_module_declares() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    std::fs::create_dir_all(dir.path().join("modules/app")).expect("app dir");
+    std::fs::create_dir_all(dir.path().join("modules/web")).expect("web dir");
+    std::fs::write(
+        dir.path().join("modules/app/package.json"),
+        r#"{"name": "@acme/app"}"#,
+    )
+    .expect("package");
+    std::fs::write(dir.path().join("modules/app/app.yml"), "type: \"api\"\n").expect("yml");
+    std::fs::write(dir.path().join("modules/web/web.yml"), "type: \"spa\"\n").expect("web yml");
+    std::fs::write(
+        dir.path().join("modules/web/package.json"),
+        r#"{"scripts":{"dev":"vite --port 3030"}}"#,
+    )
+    .expect("web package");
+    let bin = dir.path().join("bin");
+    std::fs::create_dir_all(&bin).expect("bin");
+    let log = dir.path().join("ports.log");
+    write_stubborn_lsof(&bin, &log, "4242", false);
+
+    let output = run_talos(
+        dir.path(),
+        &bin,
+        &[
+            "app:stop",
+            "--cwd",
+            dir.path().to_str().expect("utf8"),
+            "--modules",
+            "web",
+        ],
+    );
+
+    let output_text = text(&output);
+    assert!(output.status.success(), "{output_text}");
+    assert!(output_text.contains("Freed port 3030 of web (pid 4242)"));
+    let log_text = std::fs::read_to_string(&log).expect("log");
+    assert!(log_text.contains("kill:-TERM 4242"), "{log_text}");
+    assert!(!log_text.contains("-KILL"), "{log_text}");
+}
+
+#[test]
+fn app_stop_kills_a_process_that_keeps_holding_the_port() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    std::fs::create_dir_all(dir.path().join("modules/app")).expect("app dir");
+    std::fs::write(
+        dir.path().join("modules/app/package.json"),
+        r#"{"name": "@acme/app"}"#,
+    )
+    .expect("package");
+    std::fs::write(dir.path().join("modules/app/app.yml"), "type: \"api\"\n").expect("yml");
+    std::fs::write(
+        dir.path().join("modules/app/.env.yml"),
+        "app:\n  env: local\n  port: 8030\n\ncache:\n  redis:\n    port: 6379\n",
+    )
+    .expect("env");
+    std::fs::write(
+        dir.path().join("modules/app/docker-compose.yml"),
+        "services: {}\n",
+    )
+    .expect("compose");
+    let bin = dir.path().join("bin");
+    std::fs::create_dir_all(&bin).expect("bin");
+    let log = dir.path().join("ports.log");
+    write_stubborn_lsof(&bin, &log, "4242", true);
+    write_executable(
+        &bin.join("docker"),
+        &format!(
+            "#!/bin/sh\nprintf 'docker:%s\\n' \"$*\" >> \"{}\"\nexit 0\n",
+            log.display()
+        ),
+    );
+
+    let output = run_talos(
+        dir.path(),
+        &bin,
+        &["app:stop", "--cwd", dir.path().to_str().expect("utf8")],
+    );
+
+    let output_text = text(&output);
+    assert!(output.status.success(), "{output_text}");
+    assert!(output_text.contains("Freed port 8030 of app (pid 4242)"));
+    let log_text = std::fs::read_to_string(&log).expect("log");
+    assert!(log_text.contains("kill:-TERM 4242"), "{log_text}");
+    assert!(log_text.contains("kill:-KILL 4242"), "{log_text}");
+    assert!(log_text.contains("docker:compose down"), "{log_text}");
+    assert!(!log_text.contains("lsof:-nP -iTCP:6379"), "{log_text}");
+}
+
+#[test]
+fn app_stop_exits_when_there_is_nothing_left_to_stop() {
     let dir = tempfile::tempdir().expect("tempdir");
     std::fs::create_dir_all(dir.path().join("modules/app")).expect("app dir");
     std::fs::create_dir_all(dir.path().join("modules/web")).expect("web dir");
@@ -159,7 +276,7 @@ fn app_stop_exits_when_no_matching_docker_services_exist() {
     );
 
     assert!(!output.status.success());
-    assert!(text(&output).contains("No matching Docker services to stop"));
+    assert!(text(&output).contains("Nothing to stop"));
 }
 
 #[test]

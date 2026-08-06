@@ -19,6 +19,7 @@ pub mod monorepo_group;
 pub mod monorepo_scheduler;
 pub mod monorepo_task;
 mod parallel;
+mod ports;
 mod process;
 mod prompts;
 mod provider;
@@ -85,6 +86,10 @@ pub use monorepo_group::{INSTALL_COMMAND, build_group, build_install_group};
 pub(crate) use monorepo_scheduler::{SchedulerContext, run_group};
 pub use monorepo_task::{Task, TaskStatus, format_duration};
 pub use parallel::{Action, run_actions, run_actions_rendered};
+pub use ports::{
+    ModulePort, collect_module_ports, free_port, listening_pids, module_ports, parse_env_port,
+    parse_netstat_pids, parse_script_ports, parse_unix_pids,
+};
 pub use process::{ensure_bin, run_spinner_step, run_step};
 pub use prompts::{
     ask_confirm, ask_destination, ask_destination_module, ask_input, ask_input_with_default,

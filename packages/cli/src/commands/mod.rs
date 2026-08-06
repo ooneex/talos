@@ -3,6 +3,7 @@ pub mod admin_remove;
 pub mod agent_skills_create;
 pub mod ai_chat_create;
 pub mod ai_middleware_create;
+pub mod ai_skill_create;
 pub mod ai_tool_create;
 pub mod analytics_create;
 pub mod app_create;
@@ -122,6 +123,9 @@ pub enum Commands {
 
     #[command(name = "agent:skills:create")]
     AgentSkillsCreate(agent_skills_create::AgentSkillsCreateArgs),
+
+    #[command(name = "ai:skill:create")]
+    AiSkillCreate(ai_skill_create::AiSkillCreateArgs),
 
     #[command(name = "ai:tool:create")]
     AiToolCreate(ai_tool_create::AiToolCreateArgs),
@@ -405,6 +409,7 @@ impl Commands {
             Commands::AiChatCreate(args) => ai_chat_create::run(args),
             Commands::AiMiddlewareCreate(args) => ai_middleware_create::run(args),
             Commands::AgentSkillsCreate(args) => agent_skills_create::run(args),
+            Commands::AiSkillCreate(args) => ai_skill_create::run(args),
             Commands::AiToolCreate(args) => ai_tool_create::run(args),
             Commands::AnalyticsCreate(args) => analytics_create::run(args),
             Commands::CacheCreate(args) => cache_create::run(args),

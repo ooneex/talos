@@ -27,6 +27,11 @@ const TEMPLATES: &[(&str, &str)] = &[
         "ai-middleware.test.txt",
         "// {{NAME}}Middleware in {{MODULE}}\n",
     ),
+    (
+        "ai-skill.txt",
+        "export class {{NAME}}Skill {} // {{KEBAB}}\n",
+    ),
+    ("ai-skill.test.txt", "// {{NAME}}Skill in {{MODULE}}\n"),
     ("ai-tool.txt", "export class {{NAME}}Tool {} // {{SNAKE}}\n"),
     ("ai-tool.test.txt", "// {{NAME}}Tool in {{MODULE}}\n"),
     ("analytics.txt", "export class {{NAME}}Analytics {}\n"),
@@ -201,6 +206,22 @@ fn every_generator_writes_the_source_and_the_spec_its_template_describes() {
         source(&root, "ai/middlewares", "AuditMiddleware.ts"),
         "export class AuditMiddleware {} // audit\n",
         "the kebab-cased name is substituted alongside the pascal one"
+    );
+
+    commands::ai_skill_create::run(&commands::ai_skill_create::AiSkillCreateArgs {
+        no_cache: false,
+        name: Some("orderRefund".to_string()),
+        module: None,
+        r#override: false,
+    });
+    assert_eq!(
+        source(&root, "ai/skills", "OrderRefundSkill.ts"),
+        "export class OrderRefundSkill {} // order-refund\n",
+        "the kebab-cased name is substituted alongside the pascal one"
+    );
+    assert_eq!(
+        spec(&root, "ai/skills", "OrderRefundSkill.spec.ts"),
+        "// OrderRefundSkill in shared\n"
     );
 
     commands::ai_tool_create::run(&commands::ai_tool_create::AiToolCreateArgs {
