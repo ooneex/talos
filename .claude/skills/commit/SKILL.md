@@ -4,7 +4,6 @@ description: Create commit messages grouped by module. Analyzes git changes, gro
 when_to_use: Use when the user wants to commit changes — staging modified files, grouping them by module, writing conventional-commit messages, and pushing. Triggers on requests like "commit", "commit my changes", "create a commit", "push", or "commit and push".
 model: haiku
 effort: low
-context: fork
 allowed-tools: Bash(git:*), Bash(gh:*)
 ---
 
