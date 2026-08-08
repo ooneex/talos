@@ -1,6 +1,6 @@
 use clap::Parser;
 use cli::commands::workspace_check::{
-    CHECK_COMMANDS, WorkspaceCheckArgs, coverage_args, script_args,
+    CHECK_COMMANDS, WorkspaceCheckArgs, build_args, coverage_args, install_args, lint_args,
 };
 
 #[derive(Parser)]
@@ -53,9 +53,7 @@ fn workspace_check_defaults_are_empty() {
     assert!(cli.args.cwd.is_none());
 }
 
-/// The scripted half of the gate. `test` is absent on purpose: the suites are
-/// run by `coverage:check` afterwards, so scripting them here would run them
-/// twice.
+/// The package scripts `project:check` runs as its own workspace check.
 #[test]
 fn workspace_check_runs_the_scripted_gate_in_order() {
     assert_eq!(CHECK_COMMANDS, "install,build,fmt,lint");
@@ -67,7 +65,7 @@ fn workspace_check_rejects_unknown_flag() {
 }
 
 #[test]
-fn workspace_check_builds_the_scripted_gate_arguments() {
+fn workspace_check_builds_the_install_arguments() {
     let args = WorkspaceCheckArgs {
         packages: Some("core".to_string()),
         modules: Some("user".to_string()),
@@ -79,14 +77,57 @@ fn workspace_check_builds_the_scripted_gate_arguments() {
         cwd: Some("./here".to_string()),
     };
 
-    let scripted = script_args(&args);
+    let install = install_args(&args);
 
-    assert_eq!(scripted.commands.as_deref(), Some(CHECK_COMMANDS));
-    assert_eq!(scripted.packages.as_deref(), Some("core"));
-    assert_eq!(scripted.modules.as_deref(), Some("user"));
-    assert!(scripted.logs);
-    assert!(scripted.no_cache);
-    assert_eq!(scripted.cwd.as_deref(), Some("./here"));
+    assert!(!install.force);
+    assert!(install.audit_level.is_none());
+    assert!(!install.skip_audit);
+    assert!(install.no_cache);
+    assert_eq!(install.cwd.as_deref(), Some("./here"));
+}
+
+#[test]
+fn workspace_check_builds_the_build_arguments() {
+    let args = WorkspaceCheckArgs {
+        packages: Some("core".to_string()),
+        modules: Some("user".to_string()),
+        logs: true,
+        no_cache: true,
+        threshold: Some(85.0),
+        concurrency: Some(4),
+        strict: true,
+        cwd: Some("./here".to_string()),
+    };
+
+    let build = build_args(&args);
+
+    assert_eq!(build.packages.as_deref(), Some("core"));
+    assert_eq!(build.modules.as_deref(), Some("user"));
+    assert!(build.logs);
+    assert!(build.no_cache);
+    assert_eq!(build.cwd.as_deref(), Some("./here"));
+}
+
+#[test]
+fn workspace_check_builds_the_lint_arguments() {
+    let args = WorkspaceCheckArgs {
+        packages: Some("core".to_string()),
+        modules: Some("user".to_string()),
+        logs: true,
+        no_cache: true,
+        threshold: Some(85.0),
+        concurrency: Some(4),
+        strict: true,
+        cwd: Some("./here".to_string()),
+    };
+
+    let lint = lint_args(&args);
+
+    assert_eq!(lint.packages.as_deref(), Some("core"));
+    assert_eq!(lint.modules.as_deref(), Some("user"));
+    assert!(lint.logs);
+    assert!(lint.no_cache);
+    assert_eq!(lint.cwd.as_deref(), Some("./here"));
 }
 
 #[test]

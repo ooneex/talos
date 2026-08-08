@@ -10,9 +10,13 @@ use super::modules;
 use super::outcome::static_outcome;
 use super::types::CheckId;
 use super::{CheckOutcome, CheckStatus, E2E_COMMANDS, ERROR_DETAIL, ProjectCheckArgs};
+use crate::commands::build::{self, BuildArgs};
 use crate::commands::coverage_check::{
     self, CoverageAudit, ModuleCoverage, RunStatus, trim_percent,
 };
+use crate::commands::fmt::{self, FmtArgs};
+use crate::commands::install::{self, InstallArgs};
+use crate::commands::lint::{self, LintArgs};
 use crate::commands::workspace_check::{self, WorkspaceCheckArgs};
 use crate::commands::workspace_run::{self, WorkspaceRunArgs};
 
@@ -22,13 +26,17 @@ use crate::commands::workspace_run::{self, WorkspaceRunArgs};
 
 /// The package scripts `workspace:check` runs before it measures anything.
 ///
-/// The suites are not among them: they are the [coverage](check_coverage)
-/// check, which runs immediately after this one — the same two halves, in the
-/// same order, that `workspace:check` runs them in.
+/// Every one of them graduated to its own standalone command and cache, so
+/// each runs through that implementation directly — [`install`], [`build`],
+/// [`fmt`] and [`lint`] — rather than the generic per-target scheduler in
+/// [`workspace_run`], the same as `workspace:check` itself runs them. The
+/// suites are not among them: they are the [coverage](check_coverage) check,
+/// which runs immediately after this one — the same two halves, in the same
+/// order, that `workspace:check` runs them in.
 pub(super) fn check_workspace(args: &ProjectCheckArgs, root: &Path) -> CheckOutcome {
     let scope = workspace_check::CHECK_COMMANDS.replace(',', ", ");
 
-    match run_tasks(args, root, workspace_check::CHECK_COMMANDS) {
+    match run_workspace_commands(args, root) {
         Ok(true) => CheckOutcome::new(CheckId::Workspace, CheckStatus::Passed, scope),
         Ok(false) => CheckOutcome::new(CheckId::Workspace, CheckStatus::Failed, scope)
             .with_details(vec![format!(
@@ -38,6 +46,83 @@ pub(super) fn check_workspace(args: &ProjectCheckArgs, root: &Path) -> CheckOutc
         Err(message) => CheckOutcome::new(CheckId::Workspace, CheckStatus::Failed, scope)
             .with_details(vec![format!("{ERROR_DETAIL}{message}")]),
     }
+}
+
+/// Runs [`workspace_check::CHECK_COMMANDS`] in order, each through its own
+/// standalone command, stopping at the first that fails.
+fn run_workspace_commands(args: &ProjectCheckArgs, root: &Path) -> Result<bool, String> {
+    // In JSON mode the interactive runner would pollute stdout, so each
+    // command runs as its own child process and its logs are captured
+    // instead.
+    if args.json {
+        return run_workspace_commands_detached(args, root);
+    }
+
+    let cwd = Some(root.to_string_lossy().to_string());
+    for command in workspace_check::CHECK_COMMANDS.split(',') {
+        let ok = match command {
+            "install" => install::execute(&InstallArgs {
+                force: false,
+                audit_level: None,
+                skip_audit: false,
+                no_cache: args.no_cache,
+                cwd: cwd.clone(),
+            }),
+            "build" => build::execute(&BuildArgs {
+                packages: args.packages.clone(),
+                modules: args.modules.clone(),
+                logs: args.logs,
+                no_cache: args.no_cache,
+                cwd: cwd.clone(),
+            }),
+            "fmt" => fmt::execute(&FmtArgs {
+                packages: args.packages.clone(),
+                modules: args.modules.clone(),
+                logs: args.logs,
+                no_cache: args.no_cache,
+                cwd: cwd.clone(),
+            }),
+            "lint" => lint::execute(&LintArgs {
+                packages: args.packages.clone(),
+                modules: args.modules.clone(),
+                logs: args.logs,
+                no_cache: args.no_cache,
+                cwd: cwd.clone(),
+            }),
+            other => unreachable!("{other} is not part of CHECK_COMMANDS"),
+        };
+        if !ok {
+            return Ok(false);
+        }
+    }
+    Ok(true)
+}
+
+fn run_workspace_commands_detached(args: &ProjectCheckArgs, root: &Path) -> Result<bool, String> {
+    let Ok(exe) = std::env::current_exe() else {
+        return Err("Could not locate the talos executable to run the workspace tasks".to_string());
+    };
+
+    for command in workspace_check::CHECK_COMMANDS.split(',') {
+        let mut cmd = Command::new(&exe);
+        cmd.arg(command).arg("--logs").current_dir(root);
+        if let Some(packages) = &args.packages {
+            cmd.arg(format!("--packages={packages}"));
+        }
+        if let Some(modules) = &args.modules {
+            cmd.arg(format!("--modules={modules}"));
+        }
+        if args.no_cache {
+            cmd.arg("--no-cache");
+        }
+
+        match cmd.output() {
+            Ok(output) if output.status.success() => continue,
+            Ok(_) => return Ok(false),
+            Err(err) => return Err(format!("Could not run \"talos {command}\": {err}")),
+        }
+    }
+    Ok(true)
 }
 
 // ---------------------------------------------------------------------------

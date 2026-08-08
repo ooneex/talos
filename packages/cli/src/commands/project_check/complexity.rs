@@ -11,7 +11,9 @@ use std::sync::OnceLock;
 
 use regex::Regex;
 
-use super::modules::{TS_EXTENSIONS, collect_files, discover_modules, filter_modules, relative, wanted_names};
+use super::modules::{
+    TS_EXTENSIONS, collect_files, discover_modules, filter_modules, relative, wanted_names,
+};
 use crate::commands::project_check::{
     CheckId, CheckOutcome, CheckStatus, ProjectCheckArgs, static_outcome,
 };
@@ -102,8 +104,8 @@ pub fn deepest_nesting(content: &str) -> (usize, usize) {
 pub fn function_signature(line: &str) -> Option<(String, String)> {
     let trimmed = code_only(line);
     let keyword = ["function ", "public async ", "public "]
-    .iter()
-    .any(|keyword| trimmed.starts_with(keyword) || trimmed.contains(&format!(" {keyword}")));
+        .iter()
+        .any(|keyword| trimmed.starts_with(keyword) || trimmed.contains(&format!(" {keyword}")));
     // An arrow function is declared as a const, which is the shape the project
     // conventions ask for everywhere but class methods.
     let arrow = trimmed.contains("=> {") && (trimmed.contains("const ") || trimmed.contains('('));

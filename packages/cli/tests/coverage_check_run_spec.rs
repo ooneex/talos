@@ -384,4 +384,3 @@ fn issue_body(dir: &Path) -> String {
         .expect("one issue was written");
     fs::read_to_string(entry.path()).expect("read the issue")
 }
-

@@ -2286,7 +2286,10 @@ fn lockfile_reports_missing_root_lockfiles_and_nested_npm_locks() {
     write(&root.join("bun.lock"), "{}\n");
     let member_dir = root.join("packages/cli");
     write(&member_dir.join("package.json"), "{ \"name\": \"cli\" }\n");
-    write(&member_dir.join("src/index.ts"), "export const run = () => {};\n");
+    write(
+        &member_dir.join("src/index.ts"),
+        "export const run = () => {};\n",
+    );
     write(&member_dir.join("bun.lock"), "{}\n");
 
     let outcome = lockfile::run(&ProjectCheckArgs::default(), &root);

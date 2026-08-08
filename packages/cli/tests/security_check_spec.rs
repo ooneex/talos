@@ -404,10 +404,7 @@ fn collect_packages_merges_every_ecosystem_in_one_directory() {
         "package-lock.json",
         r#"{"packages": {"node_modules/left-pad": {"version": "1.3.0"}}}"#,
     );
-    dir.write(
-        "go.sum",
-        "github.com/pkg/errors v0.9.1 h1:aaa=\n",
-    );
+    dir.write("go.sum", "github.com/pkg/errors v0.9.1 h1:aaa=\n");
 
     let found = collect_packages(dir.path());
     let mut ecosystems: Vec<&str> = found.iter().map(|p| p.ecosystem.label()).collect();

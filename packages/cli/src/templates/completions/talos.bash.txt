@@ -139,6 +139,7 @@ issue:create issue:pull issue:push issue:convert issue:check ai:chat:create ai:t
 analytics:create cache:create command:create controller:create credentials:create cron:create database:create \
 design:create design:remove docker:create docker:credentials:create docker:publish \
 npm:credentials:create npm:publish workspace:run run workspace:check check build fmt lint test \
+install \
 security:check \
 coverage:check \
 project:check \
@@ -291,6 +292,10 @@ threads whatsapp telegram messenger discord reddit medium cloudflare bunny s3 op
       opts="--packages --modules --logs --no-cache"
       [[ $flag == --packages ]] && candidates="$(_talos_packages)"
       [[ $flag == --modules ]] && candidates="$(_talos_pkg_modules)"
+      ;;
+    install)
+      opts="--force --audit-level --skip-audit --no-cache --cwd"
+      [[ $flag == --audit-level ]] && candidates="low moderate high critical"
       ;;
     security:check)
       opts="--issues --modules --packages --audit-level --cwd"

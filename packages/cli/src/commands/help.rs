@@ -21,7 +21,10 @@ const COMMANDS: &[(&str, &str)] = &[
         "app:init",
         "Initialize a new application from the Talos skeleton",
     ),
-    ("build", "Alias for `workspace:run --commands=build`"),
+    (
+        "build",
+        "Run the build script across packages and modules with its own dedicated cache",
+    ),
     ("cache:create", "Generate a new cache class"),
     ("check", "Alias for `workspace:check`"),
     ("command:create", "Generate a new command class"),
@@ -66,8 +69,15 @@ const COMMANDS: &[(&str, &str)] = &[
     ("entity:create", "Generate a new TypeORM entity class"),
     ("event:create", "Generate a new event class"),
     ("flag:create", "Generate a new feature flag class"),
-    ("fmt", "Alias for `workspace:run --commands=fmt`"),
+    (
+        "fmt",
+        "Run the fmt script across packages and modules with its own dedicated cache",
+    ),
     ("help", "Show available commands"),
+    (
+        "install",
+        "Install dependencies with bun, auditing every package for known vulnerabilities first",
+    ),
     (
         "issue:check",
         "Validate every issue YAML file against the issue conventions",
@@ -88,7 +98,10 @@ const COMMANDS: &[(&str, &str)] = &[
         "issue:push",
         "Push one or more local issue YAML files to Linear (create or update)",
     ),
-    ("lint", "Alias for `workspace:run --commands=lint`"),
+    (
+        "lint",
+        "Run the lint script across packages and modules with its own dedicated cache",
+    ),
     ("logger:create", "Generate a new logger class"),
     ("mailer:create", "Generate a new mailer class"),
     (
@@ -175,7 +188,10 @@ const COMMANDS: &[(&str, &str)] = &[
         "Generate a new swagger module from a target module's controllers",
     ),
     ("swagger:remove", "Remove an existing swagger module"),
-    ("test", "Alias for `workspace:run --commands=test`"),
+    (
+        "test",
+        "Run the test script across packages and modules with its own dedicated cache",
+    ),
     ("translation:create", "Generate a new translation class"),
     ("upgrade", "Upgrade the CLI to its latest version"),
     (

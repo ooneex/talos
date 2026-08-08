@@ -5,12 +5,63 @@ use std::time::Instant;
 use clap::Args;
 use console::style;
 
+use crate::commands::build::{self, BuildArgs};
+use crate::commands::fmt::{self, FmtArgs};
+use crate::commands::lint::{self, LintArgs};
+use crate::commands::test::{self, TestArgs};
 use crate::utils::{
     FingerprintMemo, Footer, INSTALL_COMMAND, SchedulerContext, TargetType, Task, TaskStatus,
     WORKSPACE_CACHE_DIR, WorkspaceTarget, build_group, build_install_group, current_dir,
     discover_targets, format_duration, hash_root_inputs, is_git_workspace_root, load_cache_index,
     load_file_hash_cache, run_group, save_file_hash_cache, sort_targets_by_dependencies,
 };
+
+/// Commands that graduated to their own standalone command and cache
+/// (`talos build`, `talos fmt`, `talos lint`, `talos test`) run through that
+/// implementation directly, in the order requested, instead of the generic
+/// per-target scheduler below — so `workspace:run --commands=build,fmt,lint`
+/// behaves exactly like running each of them standalone, rather than
+/// drifting from them with a second, `var/cache/workspace`-backed copy of
+/// the same logic.
+const STANDALONE_COMMANDS: &[&str] = &["build", "fmt", "lint", "test"];
+
+fn is_standalone(command: &str) -> bool {
+    STANDALONE_COMMANDS.contains(&command)
+}
+
+fn run_standalone(command: &str, args: &WorkspaceRunArgs) -> bool {
+    match command {
+        "build" => build::execute(&BuildArgs {
+            packages: args.packages.clone(),
+            modules: args.modules.clone(),
+            logs: args.logs,
+            no_cache: args.no_cache,
+            cwd: args.cwd.clone(),
+        }),
+        "fmt" => fmt::execute(&FmtArgs {
+            packages: args.packages.clone(),
+            modules: args.modules.clone(),
+            logs: args.logs,
+            no_cache: args.no_cache,
+            cwd: args.cwd.clone(),
+        }),
+        "lint" => lint::execute(&LintArgs {
+            packages: args.packages.clone(),
+            modules: args.modules.clone(),
+            logs: args.logs,
+            no_cache: args.no_cache,
+            cwd: args.cwd.clone(),
+        }),
+        "test" => test::execute(&TestArgs {
+            packages: args.packages.clone(),
+            modules: args.modules.clone(),
+            logs: args.logs,
+            no_cache: args.no_cache,
+            cwd: args.cwd.clone(),
+        }),
+        other => unreachable!("{other} is not a standalone command"),
+    }
+}
 
 #[derive(Args, Debug, Default, Clone)]
 pub struct WorkspaceRunArgs {
@@ -219,6 +270,35 @@ pub fn execute(args: &WorkspaceRunArgs) -> bool {
         return false;
     }
 
+    // Standalone commands run one at a time, in place, between runs of the
+    // generic scheduler for whatever surrounds them — so the requested order
+    // (e.g. `install,build,fmt,lint`) is preserved end to end.
+    let mut index = 0;
+    while index < commands.len() {
+        if is_standalone(&commands[index]) {
+            if !run_standalone(&commands[index], args) {
+                return false;
+            }
+            index += 1;
+            continue;
+        }
+
+        let start = index;
+        while index < commands.len() && !is_standalone(&commands[index]) {
+            index += 1;
+        }
+        if !run_generic(&commands[start..index], args) {
+            return false;
+        }
+    }
+    true
+}
+
+/// Runs a contiguous slice of commands with no standalone implementation
+/// (`install`, or any other language/custom script a target declares)
+/// through the shared per-target scheduler and its `var/cache/workspace`
+/// cache.
+fn run_generic(commands: &[String], args: &WorkspaceRunArgs) -> bool {
     let root_dir = args
         .cwd
         .clone()
@@ -251,8 +331,7 @@ pub fn execute(args: &WorkspaceRunArgs) -> bool {
     // A command no target declares in its `package.json` scripts is skipped
     // instead of failing, so a shared command list stays usable across
     // workspaces where only some modules define every script.
-    let (ran_commands, mut groups) =
-        plan_task_groups(&commands, &sorted, &included_keys, &root_dir);
+    let (ran_commands, mut groups) = plan_task_groups(commands, &sorted, &included_keys, &root_dir);
     if groups.is_empty() {
         return true;
     }

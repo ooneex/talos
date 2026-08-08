@@ -57,7 +57,8 @@ pub(super) const DEFAULT_COVERAGE_DIR: &str = "coverage";
 pub(super) const MAX_CONCURRENCY: usize = 8;
 
 /// What a selection matching no measurable module is told.
-const NO_MODULE: &str = "No module found to run — a module needs a tests/ directory and a package.json";
+const NO_MODULE: &str =
+    "No module found to run — a module needs a tests/ directory and a package.json";
 
 #[derive(Args, Debug)]
 pub struct CoverageCheckArgs {

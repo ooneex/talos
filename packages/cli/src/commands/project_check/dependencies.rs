@@ -8,7 +8,9 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::Path;
 
-use super::modules::{WorkspaceModule, collect_files, discover_modules, filter_modules, read_json, wanted_names};
+use super::modules::{
+    WorkspaceModule, collect_files, discover_modules, filter_modules, read_json, wanted_names,
+};
 use crate::commands::project_check::{
     CheckId, CheckOutcome, CheckStatus, ProjectCheckArgs, static_outcome,
 };

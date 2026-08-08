@@ -215,7 +215,7 @@ pub struct Finding {
 
 /// A vulnerability exposed to other commands, free of the private types the
 /// audit uses internally.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct SecurityFinding {
     pub module: String,
     /// `npm`, `pypi`, … for a dependency, or the assistant name for an
@@ -224,7 +224,7 @@ pub struct SecurityFinding {
     /// The package name, or the `file:line` holding the risky instruction.
     pub subject: String,
     pub version: String,
-    pub severity: &'static str,
+    pub severity: String,
     pub id: String,
     pub title: String,
     pub url: String,
@@ -233,8 +233,9 @@ pub struct SecurityFinding {
 }
 
 /// Outcome of an audit, kept free of process exits and printing so it can be
-/// embedded in aggregated reports such as `project:check`.
-#[derive(Clone, Debug, Default)]
+/// embedded in aggregated reports such as `project:check`, or cached to disk
+/// by `install`.
+#[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
 pub struct SecurityAudit {
     pub findings: Vec<SecurityFinding>,
     pub modules: usize,
@@ -296,7 +297,7 @@ pub fn audit_at(
                 source: finding.origin.label(),
                 subject: finding.subject,
                 version: finding.version,
-                severity: finding.severity.label(),
+                severity: finding.severity.label().to_string(),
                 id: finding.id,
                 title: finding.title,
                 url: finding.url,
@@ -375,8 +376,8 @@ use findings::{collect_findings, collect_llm_findings};
 #[path = "security_check/lockfiles.rs"]
 mod lockfiles;
 pub use lockfiles::{
-    npm, parse_bun_lock, parse_composer_lock, parse_gemfile_lock, parse_go_sum,
-    parse_package_lock, split_name_version, unquote,
+    npm, parse_bun_lock, parse_composer_lock, parse_gemfile_lock, parse_go_sum, parse_package_lock,
+    split_name_version, unquote,
 };
 
 #[path = "security_check/osv.rs"]

@@ -178,10 +178,11 @@ _talos() {
     'security\:check:Audit dependencies for known vulnerabilities via OSV.dev'
     'coverage\:check:Run tests per module with coverage and report what is left uncovered'
     'project\:check:Run every health check — workspace, structure, conventions, env, deps, docker, migrations, a11y, translations, tests, docs, security, secrets, git, issues, commits, hygiene'
-    'build:Alias for workspace:run --commands=build — run the build script across packages and modules with granular caching'
-    'fmt:Alias for workspace:run --commands=fmt — run the fmt script across packages and modules with granular caching'
-    'lint:Alias for workspace:run --commands=lint — run the lint script across packages and modules with granular caching'
-    'test:Alias for workspace:run --commands=test — run the test script across packages and modules with granular caching'
+    'install:Install dependencies with bun, auditing every package for known vulnerabilities first'
+    'build:Run the build script across packages and modules with its own dedicated cache'
+    'fmt:Run the fmt script across packages and modules with its own dedicated cache'
+    'lint:Run the lint script across packages and modules with its own dedicated cache'
+    'test:Run the test script across packages and modules with its own dedicated cache'
     'e2e\:run:Alias for workspace:run --commands=e2e — run the e2e script across packages and modules with granular caching'
     'e2e\:create:Generate a new Playwright e2e test'
     'entity\:create:Generate a new entity class'
@@ -425,6 +426,14 @@ _talos() {
             '--modules=-[Module name(s), comma-separated (default: all)]::modules:_talos_publish_modules' \
             '--logs[Stream plain logs instead of the interactive view]' \
             '--no-cache[Skip reading and writing the task cache]'
+          ;;
+        install)
+          _arguments -s \
+            '--force[Install anyway even when the audit finds vulnerable dependencies]' \
+            '--audit-level=[Minimum severity that blocks the install]:level:(low moderate high critical)' \
+            '--skip-audit[Skip the vulnerability audit and install directly]' \
+            '--no-cache[Bypass the cached audit result and re-query OSV.dev]' \
+            '--cwd=[Working directory]:cwd:_files -/'
           ;;
         security:check)
           _arguments -s \

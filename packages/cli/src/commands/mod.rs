@@ -37,6 +37,7 @@ pub mod event_create;
 pub mod feature_flag_create;
 pub mod fmt;
 pub mod help;
+pub mod install;
 pub mod issue_check;
 pub mod issue_convert;
 pub mod issue_create;
@@ -302,6 +303,9 @@ pub enum Commands {
     #[command(name = "build")]
     Build(build::BuildArgs),
 
+    #[command(name = "install")]
+    Install(install::InstallArgs),
+
     #[command(name = "commitlint:check")]
     CommitlintCheck(commitlint_check::CommitlintCheckArgs),
 
@@ -478,6 +482,7 @@ impl Commands {
             Commands::WorkspaceRun(args) => workspace_run::run(args),
             Commands::Run(args) => run::run(args),
             Commands::Build(args) => build::run(args),
+            Commands::Install(args) => install::run(args),
             Commands::Upgrade(args) => upgrade::run(args),
             Commands::CommandRun(args) => command_run::run(args),
             _ => return false,

@@ -1,21 +1,30 @@
-//! `workspace:check` — the workspace gate: install, build, format, lint, then
-//! measure the tests.
+//! `workspace:check` — the workspace gate: install, build, then measure the
+//! tests and lint at once.
 //!
-//! The first four steps are package scripts, so they are run through
-//! [`workspace_run`]. The test step is not: running `bun test` per target says
-//! only that the suites pass, and a workspace gate is the place where how much
-//! they cover matters too. So the suites are run by [`coverage_check`] instead,
-//! which measures them once — with the same caching — and reports the modules
-//! ranked worst first alongside the files pulling them down.
+//! Each step is its own standalone command with its own cache — [`install`],
+//! [`build`], [`coverage_check`] and [`lint`] — run here directly rather than
+//! through [`workspace_run`]'s per-target scheduler, so the gate behaves
+//! exactly as running each of them alone would. Install and build run first,
+//! in order, because a suite can only be measured and sources can only be
+//! linted once the workspace resolved and compiled. Coverage and lint read
+//! disjoint parts of the tree from there on — one measures the suites, the
+//! other lints the sources — so they run at once instead of one after the
+//! other.
 
 use std::path::PathBuf;
+use std::time::Instant;
 
 use clap::Args;
 
+use crate::commands::build::{self, BuildArgs};
 use crate::commands::coverage_check::{self, CoverageAudit, CoverageCheckArgs};
-use crate::commands::workspace_run::{self, WorkspaceRunArgs};
+use crate::commands::install::{self, InstallArgs};
+use crate::commands::lint::{self, LintArgs};
 
-/// The package scripts run before the suites are measured, in order.
+/// The package scripts `project:check` runs before it measures the suites,
+/// in order. `workspace:check` itself runs [`install`] and [`build`] the same
+/// way, then [`coverage_check`] and [`lint`] at once instead of `fmt` and
+/// `lint` in sequence — see the module docs.
 pub const CHECK_COMMANDS: &str = "install,build,fmt,lint";
 
 #[derive(Args, Debug)]
@@ -67,9 +76,28 @@ pub fn measure(args: &WorkspaceCheckArgs, quiet: bool) -> Result<CoverageAudit, 
     )
 }
 
-pub fn script_args(args: &WorkspaceCheckArgs) -> WorkspaceRunArgs {
-    WorkspaceRunArgs {
-        commands: Some(CHECK_COMMANDS.to_string()),
+pub fn install_args(args: &WorkspaceCheckArgs) -> InstallArgs {
+    InstallArgs {
+        force: false,
+        audit_level: None,
+        skip_audit: false,
+        no_cache: args.no_cache,
+        cwd: args.cwd.clone(),
+    }
+}
+
+pub fn build_args(args: &WorkspaceCheckArgs) -> BuildArgs {
+    BuildArgs {
+        packages: args.packages.clone(),
+        modules: args.modules.clone(),
+        logs: args.logs,
+        no_cache: args.no_cache,
+        cwd: args.cwd.clone(),
+    }
+}
+
+pub fn lint_args(args: &WorkspaceCheckArgs) -> LintArgs {
+    LintArgs {
         packages: args.packages.clone(),
         modules: args.modules.clone(),
         logs: args.logs,
@@ -93,14 +121,49 @@ pub fn coverage_args(args: &WorkspaceCheckArgs) -> CoverageCheckArgs {
 }
 
 pub fn run(args: &WorkspaceCheckArgs) {
-    // The suites are only worth measuring against a workspace that installed,
-    // built, formatted and linted, so a failure here ends the gate — as
-    // `workspace_run::run` would, but before coverage is reached.
-    if !workspace_run::execute(&script_args(args)) {
+    // The suites are only worth measuring, and the sources only worth
+    // linting, against a workspace that installed and built cleanly, so a
+    // failure at either step ends the gate before either runs.
+    if !install::execute(&install_args(args)) {
+        std::process::exit(1);
+    }
+    if !build::execute(&build_args(args)) {
         std::process::exit(1);
     }
 
-    // Exits non-zero itself on a broken suite, and under `--strict` on a module
-    // that stayed under the threshold.
-    coverage_check::run(&coverage_args(args));
+    // Coverage and lint touch disjoint parts of the workspace, so they run on
+    // their own threads at once rather than one after the other.
+    let (coverage_failed, lint_passed) = std::thread::scope(|scope| {
+        let coverage = scope.spawn(|| run_coverage(args));
+        let lint = scope.spawn(|| lint::execute(&lint_args(args)));
+        (coverage.join().unwrap_or(true), lint.join().unwrap_or(false))
+    });
+
+    if coverage_failed || !lint_passed {
+        std::process::exit(1);
+    }
+}
+
+/// Measures and prints the coverage report the same way [`coverage_check::run`]
+/// would, but returns whether it failed instead of exiting the process — so
+/// [`run`] can join it against lint before deciding the gate's status.
+fn run_coverage(args: &WorkspaceCheckArgs) -> bool {
+    let started = Instant::now();
+
+    let audit = match measure(args, false) {
+        Ok(audit) => audit,
+        Err(message) => {
+            crate::utils::warn(message);
+            return false;
+        }
+    };
+
+    coverage_check::print_report(
+        &audit,
+        args.logs,
+        args.strict,
+        started.elapsed().as_millis() as u64,
+        false,
+    );
+    audit.is_failure(args.strict)
 }
