@@ -1,16 +1,16 @@
 use clap::Parser;
-use cli::commands::monorepo_check::{
-    CHECK_COMMANDS, MonorepoCheckArgs, coverage_args, script_args,
+use cli::commands::workspace_check::{
+    CHECK_COMMANDS, WorkspaceCheckArgs, coverage_args, script_args,
 };
 
 #[derive(Parser)]
 struct TestCli {
     #[command(flatten)]
-    args: MonorepoCheckArgs,
+    args: WorkspaceCheckArgs,
 }
 
 #[test]
-fn monorepo_check_parses_all_flags() {
+fn workspace_check_parses_all_flags() {
     let cli = TestCli::try_parse_from([
         "talos",
         "--packages",
@@ -40,7 +40,7 @@ fn monorepo_check_parses_all_flags() {
 }
 
 #[test]
-fn monorepo_check_defaults_are_empty() {
+fn workspace_check_defaults_are_empty() {
     let cli = TestCli::try_parse_from(["talos"]).expect("no arguments is valid");
 
     assert!(cli.args.packages.is_none());
@@ -57,18 +57,18 @@ fn monorepo_check_defaults_are_empty() {
 /// run by `coverage:check` afterwards, so scripting them here would run them
 /// twice.
 #[test]
-fn monorepo_check_runs_the_scripted_gate_in_order() {
+fn workspace_check_runs_the_scripted_gate_in_order() {
     assert_eq!(CHECK_COMMANDS, "install,build,fmt,lint");
 }
 
 #[test]
-fn monorepo_check_rejects_unknown_flag() {
+fn workspace_check_rejects_unknown_flag() {
     assert!(TestCli::try_parse_from(["talos", "--definitely-not-a-flag"]).is_err());
 }
 
 #[test]
-fn monorepo_check_builds_the_scripted_gate_arguments() {
-    let args = MonorepoCheckArgs {
+fn workspace_check_builds_the_scripted_gate_arguments() {
+    let args = WorkspaceCheckArgs {
         packages: Some("core".to_string()),
         modules: Some("user".to_string()),
         logs: true,
@@ -90,8 +90,8 @@ fn monorepo_check_builds_the_scripted_gate_arguments() {
 }
 
 #[test]
-fn monorepo_check_builds_the_coverage_arguments() {
-    let args = MonorepoCheckArgs {
+fn workspace_check_builds_the_coverage_arguments() {
+    let args = WorkspaceCheckArgs {
         packages: Some("core".to_string()),
         modules: Some("user".to_string()),
         logs: true,

@@ -34,7 +34,7 @@ dod: |
   - [ ] The endpoint returns 201 on success
   - [ ] Duplicate emails are rejected
 testing: |
-  1. [ ] Run `talos monorepo:check` — lint, types and tests pass.
+  1. [ ] Run `talos workspace:check` — lint, types and tests pass.
   2. [ ] POST `/users` with a new email — responds 201.
 dependencies: []
 "#;

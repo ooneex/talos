@@ -54,8 +54,6 @@ pub mod migration_down;
 pub mod migration_up;
 pub mod module_create;
 pub mod module_remove;
-pub mod monorepo_check;
-pub mod monorepo_run;
 pub mod npm_credentials_create;
 pub mod npm_publish;
 pub mod permission_create;
@@ -88,6 +86,8 @@ pub mod vector_database_create;
 pub mod version;
 pub mod workflow_create;
 pub mod workflow_transition_create;
+pub mod workspace_check;
+pub mod workspace_run;
 
 use clap::Subcommand;
 
@@ -293,8 +293,8 @@ pub enum Commands {
     #[command(name = "completion:zsh")]
     CompletionZsh(completion_zsh::CompletionZshArgs),
 
-    #[command(name = "monorepo:run")]
-    MonorepoRun(monorepo_run::MonorepoRunArgs),
+    #[command(name = "workspace:run")]
+    WorkspaceRun(workspace_run::WorkspaceRunArgs),
 
     #[command(name = "run")]
     Run(run::RunArgs),
@@ -347,8 +347,8 @@ pub enum Commands {
     #[command(name = "swagger:remove")]
     SwaggerRemove(swagger_remove::SwaggerRemoveArgs),
 
-    #[command(name = "monorepo:check")]
-    MonorepoCheck(monorepo_check::MonorepoCheckArgs),
+    #[command(name = "workspace:check")]
+    WorkspaceCheck(workspace_check::WorkspaceCheckArgs),
 
     #[command(name = "check")]
     Check(check::CheckArgs),
@@ -386,7 +386,7 @@ impl Commands {
         }
 
         match self {
-            Commands::MonorepoCheck(args) => monorepo_check::run(args),
+            Commands::WorkspaceCheck(args) => workspace_check::run(args),
             Commands::Check(args) => check::run(args),
             Commands::SecurityCheck(args) => security_check::run(args),
             Commands::CoverageCheck(args) => coverage_check::run(args),
@@ -475,7 +475,7 @@ impl Commands {
 
     fn run_utility_commands(&self) -> bool {
         match self {
-            Commands::MonorepoRun(args) => monorepo_run::run(args),
+            Commands::WorkspaceRun(args) => workspace_run::run(args),
             Commands::Run(args) => run::run(args),
             Commands::Build(args) => build::run(args),
             Commands::Upgrade(args) => upgrade::run(args),

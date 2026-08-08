@@ -3,8 +3,8 @@
 
 use std::path::PathBuf;
 
-use cli::utils::monorepo_scheduler::{failure_excerpt, finish_lines};
-use cli::utils::monorepo_task::{Task, TaskStatus};
+use cli::utils::workspace_scheduler::{failure_excerpt, finish_lines};
+use cli::utils::workspace_task::{Task, TaskStatus};
 
 fn task(status: TaskStatus, output: &str, exit_code: Option<i32>) -> Task {
     Task {

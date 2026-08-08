@@ -1,6 +1,6 @@
 use clap::Args;
 
-use crate::commands::monorepo_check::{self, MonorepoCheckArgs};
+use crate::commands::workspace_check::{self, WorkspaceCheckArgs};
 
 #[derive(Args, Debug)]
 pub struct CheckArgs {
@@ -25,8 +25,8 @@ pub struct CheckArgs {
     pub cwd: Option<String>,
 }
 
-pub fn forwarded_args(args: &CheckArgs) -> MonorepoCheckArgs {
-    MonorepoCheckArgs {
+pub fn forwarded_args(args: &CheckArgs) -> WorkspaceCheckArgs {
+    WorkspaceCheckArgs {
         packages: args.packages.clone(),
         modules: args.modules.clone(),
         logs: args.logs,
@@ -39,5 +39,5 @@ pub fn forwarded_args(args: &CheckArgs) -> MonorepoCheckArgs {
 }
 
 pub fn run(args: &CheckArgs) {
-    monorepo_check::run(&forwarded_args(args));
+    workspace_check::run(&forwarded_args(args));
 }

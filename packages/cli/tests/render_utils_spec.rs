@@ -8,7 +8,7 @@
 use std::collections::BTreeSet;
 
 use cli::utils::linear::priority_name;
-use cli::utils::monorepo_scheduler::{failure_excerpt, finish_lines};
+use cli::utils::workspace_scheduler::{failure_excerpt, finish_lines};
 use cli::utils::{
     FooterState, LoaderRow, Task, TaskStatus, build_footer_lines, error, info, step, success, warn,
 };

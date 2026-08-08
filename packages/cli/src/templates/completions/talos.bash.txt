@@ -138,7 +138,7 @@ command:run completion:zsh completion:bash completion:fish help version upgrade 
 issue:create issue:pull issue:push issue:convert issue:check ai:chat:create ai:tool:create ai:middleware:create \
 analytics:create cache:create command:create controller:create credentials:create cron:create database:create \
 design:create design:remove docker:create docker:credentials:create docker:publish \
-npm:credentials:create npm:publish monorepo:run run monorepo:check check build fmt lint test \
+npm:credentials:create npm:publish workspace:run run workspace:check check build fmt lint test \
 security:check \
 coverage:check \
 project:check \
@@ -281,13 +281,13 @@ threads whatsapp telegram messenger discord reddit medium cloudflare bunny s3 op
       [[ $flag == --modules ]] && candidates="$(_talos_pkg_modules)"
       [[ $flag == --access ]] && candidates="public restricted"
       ;;
-    monorepo:run | run)
+    workspace:run | run)
       opts="--commands --packages --modules --logs --no-cache"
       [[ $flag == --commands ]] && candidates="$(_talos_run_commands)"
       [[ $flag == --packages ]] && candidates="$(_talos_packages)"
       [[ $flag == --modules ]] && candidates="$(_talos_pkg_modules)"
       ;;
-    monorepo:check | check | build | fmt | lint | test)
+    workspace:check | check | build | fmt | lint | test)
       opts="--packages --modules --logs --no-cache"
       [[ $flag == --packages ]] && candidates="$(_talos_packages)"
       [[ $flag == --modules ]] && candidates="$(_talos_pkg_modules)"

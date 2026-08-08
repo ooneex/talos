@@ -59,7 +59,7 @@ _talos_custom_commands() {
 _talos_run_commands() {
   local -a pkgfiles cmds
   pkgfiles=(modules/*/package.json(N) packages/*/package.json(N))
-  # `install` is a built-in monorepo:run command, not a package.json script.
+  # `install` is a built-in workspace:run command, not a package.json script.
   cmds=(install)
   if (( ${#pkgfiles} )); then
     cmds+=(${(f)"$(command awk '
@@ -171,18 +171,18 @@ _talos() {
     'storage\:pull:Pull a Cloudflare R2, Bunny or S3 bucket path into a local folder'
     'npm\:credentials\:create:Save an npm Granular Access Token under the user config'
     'npm\:publish:Publish a package or module to npm'
-    'monorepo\:run:Run package.json scripts across packages and modules with granular caching'
-    'run:Alias for monorepo:run — run package.json scripts across packages and modules with granular caching'
-    'monorepo\:check:Run install, build, lint and test across packages and modules with granular caching'
-    'check:Alias for monorepo:check — run install, build, fmt, lint and test across packages and modules with granular caching'
+    'workspace\:run:Run package.json scripts across packages and modules with granular caching'
+    'run:Alias for workspace:run — run package.json scripts across packages and modules with granular caching'
+    'workspace\:check:Run install, build, lint and test across packages and modules with granular caching'
+    'check:Alias for workspace:check — run install, build, fmt, lint and test across packages and modules with granular caching'
     'security\:check:Audit dependencies for known vulnerabilities via OSV.dev'
     'coverage\:check:Run tests per module with coverage and report what is left uncovered'
     'project\:check:Run every health check — workspace, structure, conventions, env, deps, docker, migrations, a11y, translations, tests, docs, security, secrets, git, issues, commits, hygiene'
-    'build:Alias for monorepo:run --commands=build — run the build script across packages and modules with granular caching'
-    'fmt:Alias for monorepo:run --commands=fmt — run the fmt script across packages and modules with granular caching'
-    'lint:Alias for monorepo:run --commands=lint — run the lint script across packages and modules with granular caching'
-    'test:Alias for monorepo:run --commands=test — run the test script across packages and modules with granular caching'
-    'e2e\:run:Alias for monorepo:run --commands=e2e — run the e2e script across packages and modules with granular caching'
+    'build:Alias for workspace:run --commands=build — run the build script across packages and modules with granular caching'
+    'fmt:Alias for workspace:run --commands=fmt — run the fmt script across packages and modules with granular caching'
+    'lint:Alias for workspace:run --commands=lint — run the lint script across packages and modules with granular caching'
+    'test:Alias for workspace:run --commands=test — run the test script across packages and modules with granular caching'
+    'e2e\:run:Alias for workspace:run --commands=e2e — run the e2e script across packages and modules with granular caching'
     'e2e\:create:Generate a new Playwright e2e test'
     'entity\:create:Generate a new entity class'
     'flag\:create:Generate a new feature flag class'
@@ -411,7 +411,7 @@ _talos() {
             '--modules=-[Module name(s), comma-separated (default: all)]::modules:_talos_publish_modules' \
             '--access=[Registry access level]:access:(public restricted)'
           ;;
-        monorepo:run|run)
+        workspace:run|run)
           _arguments -s \
             '--commands=[Command name(s), comma-separated (required)]:commands:_talos_run_commands' \
             '--packages=-[Package name(s), comma-separated (default: all)]::packages:_talos_publish_packages' \
@@ -419,7 +419,7 @@ _talos() {
             '--logs[Stream plain logs instead of the interactive view]' \
             '--no-cache[Skip reading and writing the task cache]'
           ;;
-        monorepo:check|check|build|fmt|lint|test|e2e:run)
+        workspace:check|check|build|fmt|lint|test|e2e:run)
           _arguments -s \
             '--packages=-[Package name(s), comma-separated (default: all)]::packages:_talos_publish_packages' \
             '--modules=-[Module name(s), comma-separated (default: all)]::modules:_talos_publish_modules' \

@@ -21,9 +21,9 @@ const COMMANDS: &[(&str, &str)] = &[
         "app:init",
         "Initialize a new application from the Talos skeleton",
     ),
-    ("build", "Alias for `monorepo:run --commands=build`"),
+    ("build", "Alias for `workspace:run --commands=build`"),
     ("cache:create", "Generate a new cache class"),
-    ("check", "Alias for `monorepo:check`"),
+    ("check", "Alias for `workspace:check`"),
     ("command:create", "Generate a new command class"),
     ("command:run", "Run a custom command from a module"),
     ("controller:create", "Generate a new controller class"),
@@ -62,11 +62,11 @@ const COMMANDS: &[(&str, &str)] = &[
         "docker:credentials:create",
         "Save a Docker registry access token under the user config",
     ),
-    ("e2e:run", "Alias for `monorepo:run --commands=e2e`"),
+    ("e2e:run", "Alias for `workspace:run --commands=e2e`"),
     ("entity:create", "Generate a new TypeORM entity class"),
     ("event:create", "Generate a new event class"),
     ("flag:create", "Generate a new feature flag class"),
-    ("fmt", "Alias for `monorepo:run --commands=fmt`"),
+    ("fmt", "Alias for `workspace:run --commands=fmt`"),
     ("help", "Show available commands"),
     (
         "issue:check",
@@ -88,7 +88,7 @@ const COMMANDS: &[(&str, &str)] = &[
         "issue:push",
         "Push one or more local issue YAML files to Linear (create or update)",
     ),
-    ("lint", "Alias for `monorepo:run --commands=lint`"),
+    ("lint", "Alias for `workspace:run --commands=lint`"),
     ("logger:create", "Generate a new logger class"),
     ("mailer:create", "Generate a new mailer class"),
     (
@@ -109,11 +109,11 @@ const COMMANDS: &[(&str, &str)] = &[
     ("module:create", "Generate a new module"),
     ("module:remove", "Remove an existing module"),
     (
-        "monorepo:check",
+        "workspace:check",
         "Run the full verification pipeline: install, build, fmt, lint, test",
     ),
     (
-        "monorepo:run",
+        "workspace:run",
         "Run one or more scripts across every discovered module/package, with caching",
     ),
     (
@@ -140,7 +140,7 @@ const COMMANDS: &[(&str, &str)] = &[
     ("migration:create", "Generate a new migration file"),
     (
         "run",
-        "Alias for `monorepo:run`, forwarding every option untouched",
+        "Alias for `workspace:run`, forwarding every option untouched",
     ),
     (
         "security:check",
@@ -175,7 +175,7 @@ const COMMANDS: &[(&str, &str)] = &[
         "Generate a new swagger module from a target module's controllers",
     ),
     ("swagger:remove", "Remove an existing swagger module"),
-    ("test", "Alias for `monorepo:run --commands=test`"),
+    ("test", "Alias for `workspace:run --commands=test`"),
     ("translation:create", "Generate a new translation class"),
     ("upgrade", "Upgrade the CLI to its latest version"),
     (

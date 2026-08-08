@@ -2,7 +2,7 @@
 // single, readable report.
 //
 // The command is a thin orchestrator: each check reuses the very same code the
-// dedicated command uses (`monorepo:check`, `security:check`, `issue:check`,
+// dedicated command uses (`workspace:check`, `security:check`, `issue:check`,
 // `commitlint:check`), so a project can never drift between `project:check`
 // and the individual commands. The checks that only read the repository live
 // in the submodules next to this file.

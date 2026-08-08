@@ -1,6 +1,6 @@
 use clap::Args;
 
-use crate::commands::monorepo_run::{self, MonorepoRunArgs};
+use crate::commands::workspace_run::{self, WorkspaceRunArgs};
 
 #[derive(Args, Debug)]
 pub struct E2eRunArgs {
@@ -17,7 +17,7 @@ pub struct E2eRunArgs {
 }
 
 pub fn run(args: &E2eRunArgs) {
-    monorepo_run::run(&MonorepoRunArgs {
+    workspace_run::run(&WorkspaceRunArgs {
         commands: Some("e2e".to_string()),
         packages: args.packages.clone(),
         modules: args.modules.clone(),

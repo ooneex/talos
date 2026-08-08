@@ -11,8 +11,8 @@ pub use cache::{
     save_file_hash_cache, write_cache_entry,
 };
 
-pub const MONOREPO_CACHE_VERSION: u32 = 2;
-pub const MONOREPO_CACHE_DIR: &str = "var/cache/monorepo";
+pub const WORKSPACE_CACHE_VERSION: u32 = 2;
+pub const WORKSPACE_CACHE_DIR: &str = "var/cache/workspace";
 
 const TARGET_ROOTS: &[(&str, TargetType)] = &[
     ("packages", TargetType::Package),
@@ -92,7 +92,7 @@ impl TargetType {
 }
 
 #[derive(Clone, Debug)]
-pub struct MonorepoTarget {
+pub struct WorkspaceTarget {
     pub key: String,
     pub name: String,
     pub target_type: TargetType,
@@ -130,7 +130,7 @@ fn build_target(
     dir_name: &'static str,
     target_type: TargetType,
     name: String,
-) -> Option<(MonorepoTarget, Option<String>, Vec<String>)> {
+) -> Option<(WorkspaceTarget, Option<String>, Vec<String>)> {
     let dir = root_dir.join(dir_name).join(&name);
     let is_rust = dir.join("Cargo.toml").is_file();
     let python_scripts = python_scripts(&dir);
@@ -169,7 +169,7 @@ fn build_target(
     }
 
     Some((
-        MonorepoTarget {
+        WorkspaceTarget {
             key,
             name,
             target_type,
@@ -183,8 +183,8 @@ fn build_target(
     ))
 }
 
-pub fn discover_targets(root_dir: &Path) -> Vec<MonorepoTarget> {
-    let mut targets: Vec<MonorepoTarget> = Vec::new();
+pub fn discover_targets(root_dir: &Path) -> Vec<WorkspaceTarget> {
+    let mut targets: Vec<WorkspaceTarget> = Vec::new();
     let mut key_by_package_name: HashMap<String, String> = HashMap::new();
     let mut declared_deps: HashMap<String, Vec<String>> = HashMap::new();
 
@@ -228,19 +228,19 @@ pub fn discover_targets(root_dir: &Path) -> Vec<MonorepoTarget> {
     targets
 }
 
-pub fn sort_targets_by_dependencies(targets: &[MonorepoTarget]) -> Vec<MonorepoTarget> {
-    let by_key: HashMap<&str, &MonorepoTarget> =
+pub fn sort_targets_by_dependencies(targets: &[WorkspaceTarget]) -> Vec<WorkspaceTarget> {
+    let by_key: HashMap<&str, &WorkspaceTarget> =
         targets.iter().map(|t| (t.key.as_str(), t)).collect();
     let mut visited: std::collections::HashSet<String> = std::collections::HashSet::new();
     let mut visiting: std::collections::HashSet<String> = std::collections::HashSet::new();
-    let mut sorted: Vec<MonorepoTarget> = Vec::new();
+    let mut sorted: Vec<WorkspaceTarget> = Vec::new();
 
     fn visit(
-        target: &MonorepoTarget,
-        by_key: &HashMap<&str, &MonorepoTarget>,
+        target: &WorkspaceTarget,
+        by_key: &HashMap<&str, &WorkspaceTarget>,
         visited: &mut std::collections::HashSet<String>,
         visiting: &mut std::collections::HashSet<String>,
-        sorted: &mut Vec<MonorepoTarget>,
+        sorted: &mut Vec<WorkspaceTarget>,
     ) {
         if visited.contains(&target.key) || visiting.contains(&target.key) {
             return;

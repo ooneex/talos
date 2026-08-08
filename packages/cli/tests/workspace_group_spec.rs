@@ -2,10 +2,10 @@ use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
 use cli::utils::{INSTALL_COMMAND, build_install_group};
-use cli::utils::{MonorepoTarget, TargetType, TaskStatus, build_group};
+use cli::utils::{TargetType, TaskStatus, WorkspaceTarget, build_group};
 
-fn target(name: &str, scripts: &[&str], workspace_deps: &[&str]) -> MonorepoTarget {
-    MonorepoTarget {
+fn target(name: &str, scripts: &[&str], workspace_deps: &[&str]) -> WorkspaceTarget {
+    WorkspaceTarget {
         key: format!("packages/{name}"),
         name: name.to_string(),
         target_type: TargetType::Package,
@@ -19,13 +19,13 @@ fn target(name: &str, scripts: &[&str], workspace_deps: &[&str]) -> MonorepoTarg
     }
 }
 
-fn target_in(dir: &Path, name: &str, scripts: &[&str]) -> MonorepoTarget {
+fn target_in(dir: &Path, name: &str, scripts: &[&str]) -> WorkspaceTarget {
     let mut t = target(name, scripts, &[]);
     t.dir = dir.to_path_buf();
     t
 }
 
-fn included(targets: &[MonorepoTarget]) -> HashSet<String> {
+fn included(targets: &[WorkspaceTarget]) -> HashSet<String> {
     targets.iter().map(|t| t.key.clone()).collect()
 }
 

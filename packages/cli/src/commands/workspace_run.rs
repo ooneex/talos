@@ -6,14 +6,14 @@ use clap::Args;
 use console::style;
 
 use crate::utils::{
-    FingerprintMemo, Footer, INSTALL_COMMAND, MONOREPO_CACHE_DIR, MonorepoTarget, SchedulerContext,
-    TargetType, Task, TaskStatus, build_group, build_install_group, current_dir, discover_targets,
-    format_duration, hash_root_inputs, is_git_workspace_root, load_cache_index,
+    FingerprintMemo, Footer, INSTALL_COMMAND, SchedulerContext, TargetType, Task, TaskStatus,
+    WORKSPACE_CACHE_DIR, WorkspaceTarget, build_group, build_install_group, current_dir,
+    discover_targets, format_duration, hash_root_inputs, is_git_workspace_root, load_cache_index,
     load_file_hash_cache, run_group, save_file_hash_cache, sort_targets_by_dependencies,
 };
 
 #[derive(Args, Debug, Default, Clone)]
-pub struct MonorepoRunArgs {
+pub struct WorkspaceRunArgs {
     #[arg(long)]
     pub commands: Option<String>,
 
@@ -33,7 +33,7 @@ pub struct MonorepoRunArgs {
     pub cwd: Option<String>,
 }
 
-pub fn run(args: &MonorepoRunArgs) {
+pub fn run(args: &WorkspaceRunArgs) {
     if !execute(args) {
         std::process::exit(1);
     }
@@ -43,7 +43,7 @@ fn load_workspace_state(
     root_dir: &std::path::Path,
     cache_dir: &std::path::Path,
 ) -> (
-    Vec<MonorepoTarget>,
+    Vec<WorkspaceTarget>,
     String,
     bool,
     crate::utils::FileHashCache,
@@ -86,7 +86,7 @@ fn load_workspace_state(
 /// any command no target declares a script for.
 fn plan_task_groups(
     commands: &[String],
-    sorted: &[MonorepoTarget],
+    sorted: &[WorkspaceTarget],
     included_keys: &HashSet<String>,
     root_dir: &std::path::Path,
 ) -> (Vec<String>, Vec<Vec<Task>>) {
@@ -174,7 +174,7 @@ fn print_run_header(ran_commands: &[String], total_tasks: usize, target_count: u
 #[allow(clippy::too_many_arguments)]
 fn run_all_groups(
     groups: &mut [Vec<Task>],
-    all_targets: &[MonorepoTarget],
+    all_targets: &[WorkspaceTarget],
     root_dir: &std::path::Path,
     root_hash: &str,
     cache_dir: &std::path::Path,
@@ -212,7 +212,7 @@ fn run_all_groups(
     any_failed
 }
 
-pub fn execute(args: &MonorepoRunArgs) -> bool {
+pub fn execute(args: &WorkspaceRunArgs) -> bool {
     let commands: Vec<String> = split_csv(args.commands.as_deref());
     if commands.is_empty() {
         crate::utils::error("The --commands option is required (e.g. --commands=build,lint)");
@@ -224,7 +224,7 @@ pub fn execute(args: &MonorepoRunArgs) -> bool {
         .clone()
         .map(PathBuf::from)
         .unwrap_or_else(current_dir);
-    let cache_dir = root_dir.join(MONOREPO_CACHE_DIR);
+    let cache_dir = root_dir.join(WORKSPACE_CACHE_DIR);
 
     let spinner = crate::utils::Spinner::start("Analyzing workspace");
     let (all_targets, root_hash, use_git, file_hash_cache, cache_index) =
@@ -300,10 +300,10 @@ fn split_csv(value: Option<&str>) -> Vec<String> {
 }
 
 fn filter_targets(
-    targets: &[MonorepoTarget],
+    targets: &[WorkspaceTarget],
     packages: Option<&str>,
     modules: Option<&str>,
-) -> Option<Vec<MonorepoTarget>> {
+) -> Option<Vec<WorkspaceTarget>> {
     if packages.is_none() && modules.is_none() {
         return Some(targets.to_vec());
     }

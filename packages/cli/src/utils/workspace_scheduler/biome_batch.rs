@@ -1,5 +1,5 @@
 // Batching biome invocations across targets that share the same fixable
-// arguments, so `monorepo:run` calls biome once per argument set instead
+// arguments, so `workspace:run` calls biome once per argument set instead
 // of once per target — split out of the parent module to keep it under
 // the file-size budget.
 
@@ -8,12 +8,12 @@ use std::process::Command;
 use std::time::Instant;
 
 use super::{SchedulerContext, report_finish};
-use crate::utils::monorepo_batch::{
+use crate::utils::workspace_batch::{
     parse_biome_script, section_has_error, split_biome_output_by_target,
 };
-use crate::utils::monorepo_task::{Task, TaskStatus};
+use crate::utils::workspace_task::{Task, TaskStatus};
 use crate::utils::{
-    CacheEntryMeta, MONOREPO_CACHE_VERSION, compute_task_hash, read_cache_entry,
+    CacheEntryMeta, WORKSPACE_CACHE_VERSION, compute_task_hash, read_cache_entry,
     resolve_biome_command, write_cache_entry,
 };
 
@@ -195,7 +195,7 @@ fn cache_batched_success(
         ctx.cache_dir,
         ctx.cache_index,
         &CacheEntryMeta {
-            version: MONOREPO_CACHE_VERSION,
+            version: WORKSPACE_CACHE_VERSION,
             target: target.key.clone(),
             command: task.command.clone(),
             hash,

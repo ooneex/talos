@@ -415,7 +415,7 @@ fn the_read_only_commands_answer_without_touching_the_workspace() {
 fn the_workspace_runners_all_route_at_the_same_task_runner() {
     let sandbox = sandbox();
 
-    // `check` and `monorepo:check` are left out: they install the workspace
+    // `check` and `workspace:check` are left out: they install the workspace
     // first, which is the one step that cannot run offline.
     for args in [
         vec!["fmt", "--no-cache"],

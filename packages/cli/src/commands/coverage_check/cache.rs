@@ -18,7 +18,7 @@
 // it would cost more than the cache ever saves.
 //
 // Entries live in `var/cache/coverage/<module>.json`, next to the project and
-// monorepo caches, and `--no-cache` bypasses both reading and writing. Only a
+// workspace caches, and `--no-cache` bypasses both reading and writing. Only a
 // suite that actually reported is stored: a run that could not start is a
 // transient failure, not an answer.
 

@@ -1,8 +1,8 @@
-//! `monorepo:check` — the workspace gate: install, build, format, lint, then
+//! `workspace:check` — the workspace gate: install, build, format, lint, then
 //! measure the tests.
 //!
 //! The first four steps are package scripts, so they are run through
-//! [`monorepo_run`]. The test step is not: running `bun test` per target says
+//! [`workspace_run`]. The test step is not: running `bun test` per target says
 //! only that the suites pass, and a workspace gate is the place where how much
 //! they cover matters too. So the suites are run by [`coverage_check`] instead,
 //! which measures them once — with the same caching — and reports the modules
@@ -13,13 +13,13 @@ use std::path::PathBuf;
 use clap::Args;
 
 use crate::commands::coverage_check::{self, CoverageAudit, CoverageCheckArgs};
-use crate::commands::monorepo_run::{self, MonorepoRunArgs};
+use crate::commands::workspace_run::{self, WorkspaceRunArgs};
 
 /// The package scripts run before the suites are measured, in order.
 pub const CHECK_COMMANDS: &str = "install,build,fmt,lint";
 
 #[derive(Args, Debug)]
-pub struct MonorepoCheckArgs {
+pub struct WorkspaceCheckArgs {
     #[arg(long)]
     pub packages: Option<String>,
     #[arg(long)]
@@ -49,7 +49,7 @@ pub struct MonorepoCheckArgs {
 /// itself and then asks here for the same coverage [`run`] would have printed.
 /// The suites still draw their loader while they run, unless `quiet` says the
 /// caller is holding stdout for a report of its own.
-pub fn measure(args: &MonorepoCheckArgs, quiet: bool) -> Result<CoverageAudit, String> {
+pub fn measure(args: &WorkspaceCheckArgs, quiet: bool) -> Result<CoverageAudit, String> {
     let root = args
         .cwd
         .clone()
@@ -67,8 +67,8 @@ pub fn measure(args: &MonorepoCheckArgs, quiet: bool) -> Result<CoverageAudit, S
     )
 }
 
-pub fn script_args(args: &MonorepoCheckArgs) -> MonorepoRunArgs {
-    MonorepoRunArgs {
+pub fn script_args(args: &WorkspaceCheckArgs) -> WorkspaceRunArgs {
+    WorkspaceRunArgs {
         commands: Some(CHECK_COMMANDS.to_string()),
         packages: args.packages.clone(),
         modules: args.modules.clone(),
@@ -78,7 +78,7 @@ pub fn script_args(args: &MonorepoCheckArgs) -> MonorepoRunArgs {
     }
 }
 
-pub fn coverage_args(args: &MonorepoCheckArgs) -> CoverageCheckArgs {
+pub fn coverage_args(args: &WorkspaceCheckArgs) -> CoverageCheckArgs {
     CoverageCheckArgs {
         issues: false,
         modules: args.modules.clone(),
@@ -92,11 +92,11 @@ pub fn coverage_args(args: &MonorepoCheckArgs) -> CoverageCheckArgs {
     }
 }
 
-pub fn run(args: &MonorepoCheckArgs) {
+pub fn run(args: &WorkspaceCheckArgs) {
     // The suites are only worth measuring against a workspace that installed,
     // built, formatted and linted, so a failure here ends the gate — as
-    // `monorepo_run::run` would, but before coverage is reached.
-    if !monorepo_run::execute(&script_args(args)) {
+    // `workspace_run::run` would, but before coverage is reached.
+    if !workspace_run::execute(&script_args(args)) {
         std::process::exit(1);
     }
 

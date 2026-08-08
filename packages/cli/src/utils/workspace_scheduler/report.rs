@@ -6,7 +6,7 @@ use console::style;
 use regex::Regex;
 
 use crate::utils::Footer;
-use crate::utils::monorepo_task::{Task, TaskStatus, format_duration};
+use crate::utils::workspace_task::{Task, TaskStatus, format_duration};
 
 pub(super) fn report_finish(task: &Task, footer: &Footer) {
     let (lines, is_error) = finish_lines(task);

@@ -5,8 +5,8 @@ use std::process::Command;
 use clap::Args;
 use serde_json::Value;
 
-use crate::commands::monorepo_run::{self, MonorepoRunArgs};
 use crate::commands::npm_publish::{self, NpmPublishArgs};
+use crate::commands::workspace_run::{self, WorkspaceRunArgs};
 use crate::utils::{ask_confirm, run_spinner_step};
 
 #[derive(Clone)]
@@ -221,7 +221,7 @@ pub fn run(args: &ReleaseCreateArgs) {
         );
         std::process::exit(1);
     }
-    if !monorepo_run::execute(&MonorepoRunArgs {
+    if !workspace_run::execute(&WorkspaceRunArgs {
         commands: Some("build,fmt,lint,test".to_string()),
         packages: args.packages.clone(),
         modules: args.modules.clone(),

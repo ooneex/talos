@@ -130,7 +130,7 @@ impl CheckId {
     /// Resolve a user-provided name, accepting the obvious aliases.
     pub fn from_key(value: &str) -> Option<Self> {
         match value.trim().to_ascii_lowercase().as_str() {
-            "workspace" | "monorepo" | "build" | "lint" => Some(CheckId::Workspace),
+            "workspace" | "build" | "lint" => Some(CheckId::Workspace),
             "structure" | "layout" | "modules" => Some(CheckId::Structure),
             "folders" | "folder" | "tree" | "directories" => Some(CheckId::Folders),
             "tsconfig" | "typescript" | "compiler" => Some(CheckId::Tsconfig),

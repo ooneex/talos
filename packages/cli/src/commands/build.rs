@@ -1,6 +1,6 @@
 use clap::Args;
 
-use crate::commands::monorepo_run::{self, MonorepoRunArgs};
+use crate::commands::workspace_run::{self, WorkspaceRunArgs};
 
 #[derive(Args, Debug)]
 pub struct BuildArgs {
@@ -17,7 +17,7 @@ pub struct BuildArgs {
 }
 
 pub fn run(args: &BuildArgs) {
-    monorepo_run::run(&MonorepoRunArgs {
+    workspace_run::run(&WorkspaceRunArgs {
         commands: Some("build".to_string()),
         packages: args.packages.clone(),
         modules: args.modules.clone(),

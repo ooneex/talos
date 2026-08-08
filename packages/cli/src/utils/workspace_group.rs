@@ -1,8 +1,8 @@
 use std::collections::HashSet;
 use std::path::Path;
 
-use super::monorepo_task::{Task, TaskStatus};
-use crate::utils::MonorepoTarget;
+use super::workspace_task::{Task, TaskStatus};
+use crate::utils::WorkspaceTarget;
 
 pub const INSTALL_COMMAND: &str = "install";
 pub const TEST_COMMAND: &str = "test";
@@ -32,7 +32,7 @@ fn tests_dir_is_empty(dir: &Path) -> bool {
 
 /// `bun run <command>` only works for a script `package.json` actually
 /// declares; a language default has no such entry, so it is invoked directly.
-fn script_argv(target: &MonorepoTarget, command: &str) -> Vec<String> {
+fn script_argv(target: &WorkspaceTarget, command: &str) -> Vec<String> {
     if !target.direct_scripts {
         return vec!["bun".to_string(), "run".to_string(), command.to_string()];
     }
@@ -44,7 +44,7 @@ fn script_argv(target: &MonorepoTarget, command: &str) -> Vec<String> {
 }
 
 pub fn build_group(
-    targets: &[MonorepoTarget],
+    targets: &[WorkspaceTarget],
     included_keys: &HashSet<String>,
     command: &str,
 ) -> Vec<Task> {

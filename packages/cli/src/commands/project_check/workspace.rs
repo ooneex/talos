@@ -1,4 +1,4 @@
-//! Workspace, coverage and end-to-end checks — the `monorepo:check` gate,
+//! Workspace, coverage and end-to-end checks — the `workspace:check` gate,
 //! the suites it builds, measured straight after, and the opt-in browser
 //! suite that boots the application.
 
@@ -13,22 +13,22 @@ use super::{CheckOutcome, CheckStatus, E2E_COMMANDS, ERROR_DETAIL, ProjectCheckA
 use crate::commands::coverage_check::{
     self, CoverageAudit, ModuleCoverage, RunStatus, trim_percent,
 };
-use crate::commands::monorepo_check::{self, MonorepoCheckArgs};
-use crate::commands::monorepo_run::{self, MonorepoRunArgs};
+use crate::commands::workspace_check::{self, WorkspaceCheckArgs};
+use crate::commands::workspace_run::{self, WorkspaceRunArgs};
 
 // ---------------------------------------------------------------------------
-// Workspace — the `monorepo:check` gate: install, build, fmt, lint
+// Workspace — the `workspace:check` gate: install, build, fmt, lint
 // ---------------------------------------------------------------------------
 
-/// The package scripts `monorepo:check` runs before it measures anything.
+/// The package scripts `workspace:check` runs before it measures anything.
 ///
 /// The suites are not among them: they are the [coverage](check_coverage)
 /// check, which runs immediately after this one — the same two halves, in the
-/// same order, that `monorepo:check` runs them in.
+/// same order, that `workspace:check` runs them in.
 pub(super) fn check_workspace(args: &ProjectCheckArgs, root: &Path) -> CheckOutcome {
-    let scope = monorepo_check::CHECK_COMMANDS.replace(',', ", ");
+    let scope = workspace_check::CHECK_COMMANDS.replace(',', ", ");
 
-    match run_tasks(args, root, monorepo_check::CHECK_COMMANDS) {
+    match run_tasks(args, root, workspace_check::CHECK_COMMANDS) {
         Ok(true) => CheckOutcome::new(CheckId::Workspace, CheckStatus::Passed, scope),
         Ok(false) => CheckOutcome::new(CheckId::Workspace, CheckStatus::Failed, scope)
             .with_details(vec![format!(
@@ -46,7 +46,7 @@ pub(super) fn check_workspace(args: &ProjectCheckArgs, root: &Path) -> CheckOutc
 
 /// Run every suite through `coverage:check` and report what it covers.
 ///
-/// This is the second half of the `monorepo:check` gate, and it runs where that
+/// This is the second half of the `workspace:check` gate, and it runs where that
 /// gate runs it: right after the package scripts, on the tree they just built.
 /// The measured report is printed in full — ranked worst first, with the files
 /// pulling a module down — because a rate is only actionable next to the file
@@ -54,8 +54,8 @@ pub(super) fn check_workspace(args: &ProjectCheckArgs, root: &Path) -> CheckOutc
 /// nothing is printed and the same findings travel as details.
 pub(super) fn check_coverage(args: &ProjectCheckArgs, root: &Path) -> CheckOutcome {
     let started_at = Instant::now();
-    let audit = match monorepo_check::measure(
-        &MonorepoCheckArgs {
+    let audit = match workspace_check::measure(
+        &WorkspaceCheckArgs {
             packages: args.packages.clone(),
             modules: args.modules.clone(),
             logs: args.logs,
@@ -159,7 +159,7 @@ fn run_tasks(args: &ProjectCheckArgs, root: &Path, commands: &str) -> Result<boo
         return run_tasks_detached(args, root, commands);
     }
 
-    Ok(monorepo_run::execute(&MonorepoRunArgs {
+    Ok(workspace_run::execute(&WorkspaceRunArgs {
         commands: Some(commands.to_string()),
         packages: args.packages.clone(),
         modules: args.modules.clone(),
@@ -180,7 +180,7 @@ fn run_tasks_detached(
 
     let mut command = Command::new(exe);
     command
-        .arg("monorepo:run")
+        .arg("workspace:run")
         .arg(format!("--commands={commands}"))
         .arg("--logs")
         .current_dir(root);
@@ -204,7 +204,7 @@ fn run_tasks_detached(
 // End-to-end — the browser suite, opt-in because it boots the application
 // ---------------------------------------------------------------------------
 
-/// Modules declaring an `e2e` script, which is what `monorepo:run` would run.
+/// Modules declaring an `e2e` script, which is what `workspace:run` would run.
 pub fn modules_with_e2e(root: &Path) -> Vec<String> {
     modules::discover_modules(root)
         .into_iter()

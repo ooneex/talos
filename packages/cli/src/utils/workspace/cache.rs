@@ -1,4 +1,4 @@
-//! File hashing, fingerprinting and cache-entry persistence for monorepo task caching.
+//! File hashing, fingerprinting and cache-entry persistence for workspace task caching.
 
 use std::collections::HashMap;
 use std::fs;
@@ -10,7 +10,8 @@ use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use super::{
-    MONOREPO_CACHE_VERSION, MonorepoTarget, ROOT_INPUT_FILES, collect_files, collect_files_with_git,
+    ROOT_INPUT_FILES, WORKSPACE_CACHE_VERSION, WorkspaceTarget, collect_files,
+    collect_files_with_git,
 };
 
 fn hash_file(path: &Path) -> Option<String> {
@@ -142,7 +143,7 @@ pub fn fingerprint_dir(dir: &Path, use_git: bool, file_hash_cache: &FileHashCach
 }
 
 pub fn fingerprint_target(
-    target: &MonorepoTarget,
+    target: &WorkspaceTarget,
     memo: &FingerprintMemo,
     use_git: bool,
     file_hash_cache: &FileHashCache,
@@ -166,9 +167,9 @@ pub fn hash_root_inputs(root_dir: &Path) -> String {
 }
 
 fn transitive_deps<'a>(
-    target: &MonorepoTarget,
-    by_key: &HashMap<&str, &'a MonorepoTarget>,
-) -> Vec<&'a MonorepoTarget> {
+    target: &WorkspaceTarget,
+    by_key: &HashMap<&str, &'a WorkspaceTarget>,
+) -> Vec<&'a WorkspaceTarget> {
     let mut seen: std::collections::HashSet<String> =
         std::collections::HashSet::from([target.key.clone()]);
     let mut queue: Vec<String> = target.workspace_deps.clone();
@@ -189,15 +190,15 @@ fn transitive_deps<'a>(
 }
 
 pub fn compute_task_hash(
-    target: &MonorepoTarget,
+    target: &WorkspaceTarget,
     command: &str,
-    targets: &[MonorepoTarget],
+    targets: &[WorkspaceTarget],
     root_hash: &str,
     memo: &FingerprintMemo,
     use_git: bool,
     file_hash_cache: &FileHashCache,
 ) -> String {
-    let by_key: HashMap<&str, &MonorepoTarget> =
+    let by_key: HashMap<&str, &WorkspaceTarget> =
         targets.iter().map(|t| (t.key.as_str(), t)).collect();
     let deps = transitive_deps(target, &by_key);
     let mut dep_lines: Vec<String> = deps
@@ -216,7 +217,7 @@ pub fn compute_task_hash(
     let script = target.scripts.get(command).cloned().unwrap_or_default();
 
     let mut lines = vec![
-        format!("version={MONOREPO_CACHE_VERSION}"),
+        format!("version={WORKSPACE_CACHE_VERSION}"),
         format!("target={}", target.key),
         format!("command={command}"),
         format!("script={script}"),

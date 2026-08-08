@@ -90,7 +90,7 @@ impl Progress {
     /// A check that owns the terminal announces itself the old way.
     ///
     /// It keeps the terminal until [`released`](Self::released): the workspace
-    /// and end-to-end checks hand off to `monorepo:run`, which draws a live
+    /// and end-to-end checks hand off to `workspace:run`, which draws a live
     /// display of its own that the loader would otherwise overwrite.
     fn announce(&self, id: CheckId) {
         self.loader.pause();
@@ -248,7 +248,7 @@ pub fn execute(args: &ProjectCheckArgs, checks: &[CheckId]) -> ProjectReport {
     let progress = Progress::start(checks, args.json);
 
     // The workspace gate first, on its own and with the terminal to itself,
-    // then the suites it built — `monorepo:check`, in the order it runs.
+    // then the suites it built — `workspace:check`, in the order it runs.
     run_serial_group(
         args,
         &root,

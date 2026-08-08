@@ -4,10 +4,10 @@ use std::process::Command;
 use std::sync::mpsc::channel;
 use std::time::Instant;
 
-use super::monorepo_task::{Task, TaskStatus};
+use super::workspace_task::{Task, TaskStatus};
 use crate::utils::{
-    CacheEntryMeta, CacheIndex, FileHashCache, FingerprintMemo, Footer, MONOREPO_CACHE_VERSION,
-    MonorepoTarget, compute_task_hash, read_cache_entry, write_cache_entry,
+    CacheEntryMeta, CacheIndex, FileHashCache, FingerprintMemo, Footer, WORKSPACE_CACHE_VERSION,
+    WorkspaceTarget, compute_task_hash, read_cache_entry, write_cache_entry,
 };
 
 enum TaskOutcome {
@@ -30,7 +30,7 @@ enum TaskOutcome {
 /// repeating the same eleven-parameter signature.
 #[derive(Clone, Copy)]
 pub(crate) struct SchedulerContext<'a> {
-    pub all_targets: &'a [MonorepoTarget],
+    pub all_targets: &'a [WorkspaceTarget],
     pub root_dir: &'a Path,
     pub root_hash: &'a str,
     pub cache_dir: &'a Path,
@@ -161,7 +161,7 @@ fn cache_successful_task(task: &Task, ctx: SchedulerContext) {
         ctx.cache_dir,
         ctx.cache_index,
         &CacheEntryMeta {
-            version: MONOREPO_CACHE_VERSION,
+            version: WORKSPACE_CACHE_VERSION,
             target: target.key.clone(),
             command: task.command.clone(),
             hash: hash.clone(),
@@ -251,7 +251,7 @@ pub(crate) fn run_group(tasks: &mut [Task], ctx: SchedulerContext) -> bool {
 /// Groups the still-pending tasks by their biome argument signature and, for any
 /// group with more than one target, runs a single batched biome process over all
 /// dirty targets. Returns `true` if any batched target failed.
-#[path = "monorepo_scheduler/biome_batch.rs"]
+#[path = "workspace_scheduler/biome_batch.rs"]
 mod biome_batch;
 use biome_batch::run_biome_batch_pass;
 
@@ -268,7 +268,7 @@ struct CacheHit {
 fn try_cache_hit(
     target_key: Option<&str>,
     command: &str,
-    all_targets: &[MonorepoTarget],
+    all_targets: &[WorkspaceTarget],
     root_hash: &str,
     cache_dir: &Path,
     fingerprint_memo: &FingerprintMemo,
@@ -296,7 +296,7 @@ fn try_cache_hit(
     Some(TaskHashResult { hash, hit })
 }
 
-#[path = "monorepo_scheduler/report.rs"]
+#[path = "workspace_scheduler/report.rs"]
 mod report;
 use report::report_finish;
 pub use report::{failure_excerpt, finish_lines};
@@ -327,10 +327,10 @@ mod tests {
         }
     }
 
-    fn make_target(root: &Path, key: &str, name: &str) -> MonorepoTarget {
+    fn make_target(root: &Path, key: &str, name: &str) -> WorkspaceTarget {
         let mut scripts = HashMap::new();
         scripts.insert("fmt".to_string(), "biome check --write".to_string());
-        MonorepoTarget {
+        WorkspaceTarget {
             key: key.to_string(),
             name: name.to_string(),
             target_type: crate::utils::TargetType::Module,

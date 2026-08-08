@@ -1,6 +1,6 @@
-//! Runs the workspace task runner over a scratch monorepo.
+//! Runs the workspace task runner over a scratch workspace.
 //!
-//! `monorepo:run` — and the `build` / `fmt` / `lint` / `test` aliases on top of
+//! `workspace:run` — and the `build` / `fmt` / `lint` / `test` aliases on top of
 //! it — discovers the members, orders them by dependency, runs their scripts and
 //! caches the result. The fixture's scripts are `echo` and `exit`, so a whole
 //! run finishes in milliseconds and the outcome is whatever the fixture asked
@@ -161,7 +161,7 @@ fn running_a_script_every_member_declares_succeeds_and_names_them_all() {
 
     let output = talos(
         &root,
-        &["monorepo:run", "--commands=build", "--logs", "--no-cache"],
+        &["workspace:run", "--commands=build", "--logs", "--no-cache"],
     );
 
     let report = text(&output);
@@ -177,7 +177,7 @@ fn a_failing_script_ends_the_run_non_zero_and_prints_what_it_printed() {
 
     let output = talos(
         &root,
-        &["monorepo:run", "--commands=test", "--logs", "--no-cache"],
+        &["workspace:run", "--commands=test", "--logs", "--no-cache"],
     );
 
     assert!(!output.status.success());
@@ -195,7 +195,7 @@ fn restricting_the_run_to_one_member_leaves_the_failing_one_out() {
     let output = talos(
         &root,
         &[
-            "monorepo:run",
+            "workspace:run",
             "--commands=test",
             "--packages=core",
             "--logs",
@@ -216,7 +216,7 @@ fn asking_for_a_member_that_is_not_there_is_an_error() {
     let output = talos(
         &root,
         &[
-            "monorepo:run",
+            "workspace:run",
             "--commands=build",
             "--packages=nowhere",
             "--no-cache",
@@ -231,7 +231,7 @@ fn asking_for_a_member_that_is_not_there_is_an_error() {
 fn the_commands_option_is_required() {
     let (_dir, root) = workspace();
 
-    let output = talos(&root, &["monorepo:run"]);
+    let output = talos(&root, &["workspace:run"]);
 
     assert!(!output.status.success());
     assert!(text(&output).contains("--commands"), "{}", text(&output));
@@ -244,7 +244,7 @@ fn several_commands_run_in_the_order_they_were_given() {
     let output = talos(
         &root,
         &[
-            "monorepo:run",
+            "workspace:run",
             "--commands=build,test",
             "--packages=core,app",
             "--logs",
@@ -270,11 +270,11 @@ fn the_second_run_of_an_unchanged_member_is_served_from_the_cache() {
 
     talos(
         &root,
-        &["monorepo:run", "--commands=build", "--packages=core"],
+        &["workspace:run", "--commands=build", "--packages=core"],
     );
     let warm = text(&talos(
         &root,
-        &["monorepo:run", "--commands=build", "--packages=core"],
+        &["workspace:run", "--commands=build", "--packages=core"],
     ));
 
     assert!(warm.contains("1 cached"), "{warm}");
@@ -285,12 +285,12 @@ fn editing_a_source_file_retires_the_cached_result() {
     let (_dir, root) = workspace();
     talos(
         &root,
-        &["monorepo:run", "--commands=build", "--packages=core"],
+        &["workspace:run", "--commands=build", "--packages=core"],
     );
     assert!(
         text(&talos(
             &root,
-            &["monorepo:run", "--commands=build", "--packages=core"]
+            &["workspace:run", "--commands=build", "--packages=core"]
         ))
         .contains("1 cached")
     );
@@ -302,7 +302,7 @@ fn editing_a_source_file_retires_the_cached_result() {
 
     let after = text(&talos(
         &root,
-        &["monorepo:run", "--commands=build", "--packages=core"],
+        &["workspace:run", "--commands=build", "--packages=core"],
     ));
     assert!(after.contains("0 cached"), "{after}");
 }
@@ -312,13 +312,13 @@ fn no_cache_runs_the_script_again_even_when_nothing_moved() {
     let (_dir, root) = workspace();
     talos(
         &root,
-        &["monorepo:run", "--commands=build", "--packages=core"],
+        &["workspace:run", "--commands=build", "--packages=core"],
     );
 
     let again = text(&talos(
         &root,
         &[
-            "monorepo:run",
+            "workspace:run",
             "--commands=build",
             "--packages=core",
             "--no-cache",
@@ -373,7 +373,7 @@ fn a_member_without_the_script_being_asked_for_is_simply_not_run() {
     let output = talos(
         &root,
         &[
-            "monorepo:run",
+            "workspace:run",
             "--commands=test",
             "--packages=docs",
             "--no-cache",
@@ -397,7 +397,7 @@ fn a_workspace_with_no_member_at_all_is_an_error_rather_than_a_silent_success() 
 
     let output = talos(
         dir.path(),
-        &["monorepo:run", "--commands=build", "--no-cache"],
+        &["workspace:run", "--commands=build", "--no-cache"],
     );
 
     assert!(!output.status.success());

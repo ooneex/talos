@@ -11,7 +11,7 @@
 //! So an entry records one fingerprint per module and package it consumed, plus
 //! one for everything outside them, and is reused only when every single one
 //! still matches. Entries live in `var/cache/project/<check>.json` next to the
-//! monorepo task cache, and `--no-cache` bypasses both reading and writing.
+//! workspace task cache, and `--no-cache` bypasses both reading and writing.
 //!
 //! The checks that are *not* a function of the tree stay out of it: the ones
 //! that run the workspace tasks, the ones that ask the network, and the ones

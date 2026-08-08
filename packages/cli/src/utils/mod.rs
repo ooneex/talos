@@ -12,12 +12,6 @@ mod marketing;
 mod migration_version;
 mod module_registry;
 mod module_removal;
-mod monorepo;
-mod monorepo_batch;
-mod monorepo_footer;
-pub mod monorepo_group;
-pub mod monorepo_scheduler;
-pub mod monorepo_task;
 mod parallel;
 mod ports;
 mod process;
@@ -32,6 +26,12 @@ mod scaffold;
 mod skeleton;
 pub mod storage;
 mod style;
+mod workspace;
+mod workspace_batch;
+mod workspace_footer;
+pub mod workspace_group;
+pub mod workspace_scheduler;
+pub mod workspace_task;
 mod yaml;
 
 pub use case::{pluralize, to_kebab_case, to_pascal_case, to_snake_case};
@@ -73,18 +73,6 @@ pub use module_removal::{
     remove_block, remove_from_app_yml, remove_microservice_app_blocks,
     remove_standard_module_references, resolve_cwd, resolve_module_identity,
 };
-pub use monorepo::{
-    CacheEntryMeta, CacheIndex, FileHashCache, FingerprintMemo, MONOREPO_CACHE_DIR,
-    MONOREPO_CACHE_VERSION, MonorepoTarget, TargetType, compute_task_hash, discover_targets,
-    fingerprint_target, hash_root_inputs, is_git_workspace_root, load_cache_index,
-    load_file_hash_cache, read_cache_entry, resolve_biome_command, resolve_tsc_command,
-    save_file_hash_cache, sort_targets_by_dependencies, write_cache_entry,
-};
-pub(crate) use monorepo_footer::Footer;
-pub use monorepo_footer::{BAR_WIDTH, FooterState, build_footer_lines};
-pub use monorepo_group::{INSTALL_COMMAND, build_group, build_install_group};
-pub(crate) use monorepo_scheduler::{SchedulerContext, run_group};
-pub use monorepo_task::{Task, TaskStatus, format_duration};
 pub use parallel::{Action, run_actions, run_actions_rendered};
 pub use ports::{
     ModulePort, collect_module_ports, free_port, listening_pids, module_ports, parse_env_port,
@@ -115,6 +103,18 @@ pub use skeleton::{
     SKELETON_CACHE_MAX_AGE, SKELETON_REPO_URL, TEMPLATES_DIR_ENV, clone_skeleton, is_cache_stale,
     read_template, skeleton_templates_dir,
 };
+pub use workspace::{
+    CacheEntryMeta, CacheIndex, FileHashCache, FingerprintMemo, TargetType, WORKSPACE_CACHE_DIR,
+    WORKSPACE_CACHE_VERSION, WorkspaceTarget, compute_task_hash, discover_targets,
+    fingerprint_target, hash_root_inputs, is_git_workspace_root, load_cache_index,
+    load_file_hash_cache, read_cache_entry, resolve_biome_command, resolve_tsc_command,
+    save_file_hash_cache, sort_targets_by_dependencies, write_cache_entry,
+};
+pub(crate) use workspace_footer::Footer;
+pub use workspace_footer::{BAR_WIDTH, FooterState, build_footer_lines};
+pub use workspace_group::{INSTALL_COMMAND, build_group, build_install_group};
+pub(crate) use workspace_scheduler::{SchedulerContext, run_group};
+pub use workspace_task::{Task, TaskStatus, format_duration};
 
 pub use style::{
     BAR_EMPTY, BAR_FILLED, LOADER_WIDTH, Loader, LoaderGroup, LoaderRow, Spinner, error, info,

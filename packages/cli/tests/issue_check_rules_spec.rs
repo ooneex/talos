@@ -25,7 +25,7 @@ goal: |
 dod: |
   - [ ] The endpoint returns 201 on success
 testing: |
-  1. [ ] Run `talos monorepo:check` — lint, types and tests pass.
+  1. [ ] Run `talos workspace:check` — lint, types and tests pass.
 dependencies: []
 "#;
 
@@ -502,7 +502,7 @@ fn testing_steps_must_be_numbered_checkboxes_in_order() {
         &root,
         "ABC-100000",
         &PLANNED.replace(
-            "  1. [ ] Run `talos monorepo:check` — lint, types and tests pass.\n",
+            "  1. [ ] Run `talos workspace:check` — lint, types and tests pass.\n",
             "  - [ ] Not a numbered step\n",
         ),
     );
@@ -517,7 +517,7 @@ fn testing_steps_must_be_numbered_checkboxes_in_order() {
         &root,
         "ABC-100000",
         &PLANNED.replace(
-            "  1. [ ] Run `talos monorepo:check` — lint, types and tests pass.\n",
+            "  1. [ ] Run `talos workspace:check` — lint, types and tests pass.\n",
             "  1. [ ] First step\n  3. [ ] Third step\n",
         ),
     );
@@ -553,7 +553,7 @@ fn an_indented_line_continues_the_step_above_it() {
         &root,
         "ABC-100000",
         &PLANNED.replace(
-            "  1. [ ] Run `talos monorepo:check` — lint, types and tests pass.\n",
+            "  1. [ ] Run `talos workspace:check` — lint, types and tests pass.\n",
             "  1. [ ] Run the suite\n     with the module flag set.\n",
         ),
     );

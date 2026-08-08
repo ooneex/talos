@@ -2,12 +2,12 @@ use std::fs;
 use std::path::Path;
 
 use clap::Parser;
-use cli::commands::monorepo_run::{MonorepoRunArgs, execute};
+use cli::commands::workspace_run::{WorkspaceRunArgs, execute};
 
 #[derive(Parser)]
 struct TestCli {
     #[command(flatten)]
-    args: MonorepoRunArgs,
+    args: WorkspaceRunArgs,
 }
 
 fn write_module(root: &Path, name: &str, scripts: &str) {
@@ -21,7 +21,7 @@ fn write_module(root: &Path, name: &str, scripts: &str) {
 }
 
 #[test]
-fn monorepo_run_parses_all_flags() {
+fn workspace_run_parses_all_flags() {
     let cli = TestCli::try_parse_from([
         "talos",
         "--commands",
@@ -46,7 +46,7 @@ fn monorepo_run_parses_all_flags() {
 }
 
 #[test]
-fn monorepo_run_defaults_are_empty() {
+fn workspace_run_defaults_are_empty() {
     let cli = TestCli::try_parse_from(["talos"]).expect("no arguments is valid");
 
     assert!(cli.args.commands.is_none());
@@ -58,7 +58,7 @@ fn monorepo_run_defaults_are_empty() {
 }
 
 #[test]
-fn monorepo_run_rejects_unknown_flag() {
+fn workspace_run_rejects_unknown_flag() {
     assert!(TestCli::try_parse_from(["talos", "--definitely-not-a-flag"]).is_err());
 }
 
@@ -67,7 +67,7 @@ fn execute_skips_commands_missing_from_every_package_json() {
     let tmp = tempfile::tempdir().expect("tempdir");
     write_module(tmp.path(), "alpha", "{\"build\":\"exit 0\"}");
 
-    assert!(execute(&MonorepoRunArgs {
+    assert!(execute(&WorkspaceRunArgs {
         commands: Some("nope,build".to_string()),
         no_cache: true,
         cwd: Some(tmp.path().display().to_string()),
@@ -80,7 +80,7 @@ fn execute_succeeds_when_no_command_matches_any_script() {
     let tmp = tempfile::tempdir().expect("tempdir");
     write_module(tmp.path(), "alpha", "{\"build\":\"exit 0\"}");
 
-    assert!(execute(&MonorepoRunArgs {
+    assert!(execute(&WorkspaceRunArgs {
         commands: Some("nope".to_string()),
         no_cache: true,
         cwd: Some(tmp.path().display().to_string()),
@@ -94,7 +94,7 @@ fn execute_runs_only_the_targets_that_declare_the_script() {
     write_module(tmp.path(), "alpha", "{\"build\":\"exit 0\"}");
     write_module(tmp.path(), "beta", "{\"lint\":\"exit 0\"}");
 
-    assert!(execute(&MonorepoRunArgs {
+    assert!(execute(&WorkspaceRunArgs {
         commands: Some("build".to_string()),
         no_cache: true,
         cwd: Some(tmp.path().display().to_string()),

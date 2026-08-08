@@ -442,14 +442,14 @@ fn issue_convert_bundles_the_modules_issues_into_one_file() {
 }
 
 #[test]
-fn monorepo_run_over_a_workspace_with_no_matching_script_succeeds() {
-    let (home, root) = sandbox("monorepo-run");
+fn workspace_run_over_a_workspace_with_no_matching_script_succeeds() {
+    let (home, root) = sandbox("workspace-run");
 
     let output = talos(
         root.path(),
         home.path(),
         &[
-            "monorepo:run",
+            "workspace:run",
             "--commands=definitely-not-a-script",
             "--logs",
             "--no-cache",

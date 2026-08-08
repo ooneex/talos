@@ -57,7 +57,7 @@ fn check_rejects_unknown_flag() {
 }
 
 #[test]
-fn check_forwards_all_flags_to_monorepo_check() {
+fn check_forwards_all_flags_to_workspace_check() {
     let args = CheckArgs {
         packages: Some("core".to_string()),
         modules: Some("user".to_string()),

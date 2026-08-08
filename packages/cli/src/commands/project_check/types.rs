@@ -164,7 +164,7 @@ impl Category {
     /// and `supply-chain` and the bare words keep meaning what they always did.
     pub fn from_key(value: &str) -> Option<Self> {
         match value.trim().to_ascii_lowercase().as_str() {
-            "foundation" | "workspace-group" | "monorepo-group" => Some(Category::Foundation),
+            "foundation" | "workspace-group" => Some(Category::Foundation),
             "architecture" | "arch" | "layers" => Some(Category::Architecture),
             "api" | "http" | "endpoints-group" => Some(Category::Api),
             "data" | "database" | "persistence" => Some(Category::Data),
