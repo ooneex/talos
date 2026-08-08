@@ -22,8 +22,8 @@ Create separate commits per modified module, following the project's conventiona
 3. **Screen for secrets** — before staging, skip anything credential-like (`.env*`, `*.pem`, `*.key`, `*credentials*`, private keys, tokens). Do **not** commit these; surface them to the user.
 4. **Commit each group** — stage the files, pick the type, commit as `type(scope): Subject`.
 5. **Push** — after all commits, check the remote with `git remote get-url origin` and push accordingly:
-   - **SSH remote** (`git@host:owner/repo.git` or `ssh://…`) → push over ssh with `git push`.
-   - **HTTPS remote** (`https://…`) → push with the `gh` cli, and use `gh auth switch` to find the active account.
+   - **SSH remote** (`git@host:owner/repo.git` or an `ssh://` URL) → push over ssh with `git push`.
+   - **HTTPS remote** (an `https://` URL) → push with the `gh` cli, and use `gh auth switch` to find the active account.
 
    Never force-push unless the user explicitly asks.
 
