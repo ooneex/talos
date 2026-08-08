@@ -10,7 +10,7 @@ use std::time::Instant;
 use crate::commands::project_check::modules::{
     WorkspaceModule, discover_modules, filter_modules, wanted_names,
 };
-use crate::utils::Loader;
+use crate::utils::{Loader, is_rust_module};
 
 use super::cache;
 use super::parsing::{CoverageReport, parse_counts, parse_lcov, parse_table};
@@ -67,8 +67,12 @@ pub fn runner(_module: &WorkspaceModule) -> Runner {
 }
 
 /// Why a module holds no suite to measure. A module without a `tests/`
-/// directory has nothing to measure.
+/// directory has nothing to measure, and a Rust module carries its own
+/// coverage tooling (`sh scripts/coverage.sh`) rather than a bun suite.
 pub fn skip_reason(module: &WorkspaceModule) -> Option<String> {
+    if is_rust_module(&module.dir) {
+        return Some("rust module — run `sh scripts/coverage.sh` instead".to_string());
+    }
     if !module.package_json_path().is_file() {
         return Some("no package.json".to_string());
     }

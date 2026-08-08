@@ -1,6 +1,6 @@
 use clap::Parser;
 use cli::commands::workspace_check::{
-    CHECK_COMMANDS, WorkspaceCheckArgs, build_args, coverage_args, install_args, lint_args,
+    WorkspaceCheckArgs, build_args, coverage_args, install_args, lint_args,
 };
 
 #[derive(Parser)]
@@ -51,12 +51,6 @@ fn workspace_check_defaults_are_empty() {
     assert!(cli.args.concurrency.is_none());
     assert!(!cli.args.strict);
     assert!(cli.args.cwd.is_none());
-}
-
-/// The package scripts `project:check` runs as its own workspace check.
-#[test]
-fn workspace_check_runs_the_scripted_gate_in_order() {
-    assert_eq!(CHECK_COMMANDS, "install,build,fmt,lint");
 }
 
 #[test]

@@ -21,12 +21,6 @@ use crate::commands::coverage_check::{self, CoverageAudit, CoverageCheckArgs};
 use crate::commands::install::{self, InstallArgs};
 use crate::commands::lint::{self, LintArgs};
 
-/// The package scripts `project:check` runs before it measures the suites,
-/// in order. `workspace:check` itself runs [`install`] and [`build`] the same
-/// way, then [`coverage_check`] and [`lint`] at once instead of `fmt` and
-/// `lint` in sequence — see the module docs.
-pub const CHECK_COMMANDS: &str = "install,build,fmt,lint";
-
 #[derive(Args, Debug)]
 pub struct WorkspaceCheckArgs {
     #[arg(long)]
@@ -61,7 +55,7 @@ pub struct WorkspaceCheckArgs {
 /// Measure the gate's suites without reporting them or ending the process.
 ///
 /// `project:check` runs this very gate as its workspace check, but owns the
-/// report it prints and the status it exits with, so it runs [`CHECK_COMMANDS`]
+/// report it prints and the status it exits with, so it runs its own commands
 /// itself and then asks here for the same coverage [`run`] would have printed.
 /// The suites still draw their loader while they run, unless `quiet` says the
 /// caller is holding stdout for a report of its own.

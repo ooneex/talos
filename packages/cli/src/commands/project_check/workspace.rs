@@ -17,24 +17,32 @@ use crate::commands::coverage_check::{
 use crate::commands::fmt::{self, FmtArgs};
 use crate::commands::install::{self, InstallArgs};
 use crate::commands::lint::{self, LintArgs};
+use crate::commands::test::{self, TestArgs};
 use crate::commands::workspace_check::{self, WorkspaceCheckArgs};
 use crate::commands::workspace_run::{self, WorkspaceRunArgs};
 
 // ---------------------------------------------------------------------------
-// Workspace — the `workspace:check` gate: install, build, fmt, lint
+// Workspace — the `workspace:check` gate: install, build, fmt, lint, test
 // ---------------------------------------------------------------------------
+
+/// The package scripts `project:check` runs before it measures the suites,
+/// in order. `workspace:check` itself runs [`install`] and [`build`] the same
+/// way, then [`coverage_check`] and [`lint`] at once instead of `fmt`, `lint`
+/// and `test` in sequence — see this module's docs below.
+const CHECK_COMMANDS: &str = "install,build,fmt,lint,test";
 
 /// The package scripts `workspace:check` runs before it measures anything.
 ///
 /// Every one of them graduated to its own standalone command and cache, so
 /// each runs through that implementation directly — [`install`], [`build`],
-/// [`fmt`] and [`lint`] — rather than the generic per-target scheduler in
-/// [`workspace_run`], the same as `workspace:check` itself runs them. The
-/// suites are not among them: they are the [coverage](check_coverage) check,
-/// which runs immediately after this one — the same two halves, in the same
-/// order, that `workspace:check` runs them in.
+/// [`fmt`], [`lint`] and [`test`] — rather than the generic per-target
+/// scheduler in [`workspace_run`], the same as `workspace:check` itself runs
+/// them. `test` runs the suites [coverage](check_coverage) skips — a Rust
+/// module measures its own coverage with `sh scripts/coverage.sh` rather than
+/// through `bun test --coverage`, so `cargo test` here is the only place its
+/// suite actually runs.
 pub(super) fn check_workspace(args: &ProjectCheckArgs, root: &Path) -> CheckOutcome {
-    let scope = workspace_check::CHECK_COMMANDS.replace(',', ", ");
+    let scope = CHECK_COMMANDS.replace(',', ", ");
 
     match run_workspace_commands(args, root) {
         Ok(true) => CheckOutcome::new(CheckId::Workspace, CheckStatus::Passed, scope),
@@ -48,8 +56,8 @@ pub(super) fn check_workspace(args: &ProjectCheckArgs, root: &Path) -> CheckOutc
     }
 }
 
-/// Runs [`workspace_check::CHECK_COMMANDS`] in order, each through its own
-/// standalone command, stopping at the first that fails.
+/// Runs [`CHECK_COMMANDS`] in order, each through its own standalone
+/// command, stopping at the first that fails.
 fn run_workspace_commands(args: &ProjectCheckArgs, root: &Path) -> Result<bool, String> {
     // In JSON mode the interactive runner would pollute stdout, so each
     // command runs as its own child process and its logs are captured
@@ -59,7 +67,7 @@ fn run_workspace_commands(args: &ProjectCheckArgs, root: &Path) -> Result<bool, 
     }
 
     let cwd = Some(root.to_string_lossy().to_string());
-    for command in workspace_check::CHECK_COMMANDS.split(',') {
+    for command in CHECK_COMMANDS.split(',') {
         let ok = match command {
             "install" => install::execute(&InstallArgs {
                 force: false,
@@ -89,6 +97,13 @@ fn run_workspace_commands(args: &ProjectCheckArgs, root: &Path) -> Result<bool, 
                 no_cache: args.no_cache,
                 cwd: cwd.clone(),
             }),
+            "test" => test::execute(&TestArgs {
+                packages: args.packages.clone(),
+                modules: args.modules.clone(),
+                logs: args.logs,
+                no_cache: args.no_cache,
+                cwd: cwd.clone(),
+            }),
             other => unreachable!("{other} is not part of CHECK_COMMANDS"),
         };
         if !ok {
@@ -103,7 +118,7 @@ fn run_workspace_commands_detached(args: &ProjectCheckArgs, root: &Path) -> Resu
         return Err("Could not locate the talos executable to run the workspace tasks".to_string());
     };
 
-    for command in workspace_check::CHECK_COMMANDS.split(',') {
+    for command in CHECK_COMMANDS.split(',') {
         let mut cmd = Command::new(&exe);
         cmd.arg(command).arg("--logs").current_dir(root);
         if let Some(packages) = &args.packages {
@@ -327,6 +342,19 @@ pub(super) fn check_e2e(args: &ProjectCheckArgs, root: &Path) -> CheckOutcome {
             .with_hint("Re-run alone with `talos e2e:run --modules=<name> --logs`"),
         Err(message) => CheckOutcome::new(CheckId::E2e, CheckStatus::Failed, summary)
             .with_details(vec![message]),
+    }
+}
+
+#[cfg(test)]
+mod check_commands_tests {
+    use super::*;
+
+    /// The gate runs the package scripts in this order, plus `test` — the
+    /// only place a Rust module's own suite runs, since [`check_coverage`]
+    /// skips it.
+    #[test]
+    fn check_commands_runs_the_scripted_gate_in_order() {
+        assert_eq!(CHECK_COMMANDS, "install,build,fmt,lint,test");
     }
 }
 
