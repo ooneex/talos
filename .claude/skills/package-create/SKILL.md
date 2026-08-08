@@ -1,15 +1,15 @@
 ---
 name: package-create
-description: Scaffold a new package under packages/<name>/ following the Talos monorepo conventions — package.json, tsconfig.json, bunup.config.ts, LICENSE, README.md, and empty src/index.ts and src/types.ts. Use when the user asks to create, add, or scaffold a new package.
+description: Scaffold a new package under packages/<name>/ following the Talos workspace conventions — package.json, tsconfig.json, bunup.config.ts, LICENSE, README.md, and empty src/index.ts and src/types.ts. Use when the user asks to create, add, or scaffold a new package.
 ---
 
 # Package Create
 
-Scaffold a new `@talosjs/<name>` package under `packages/<name>/` with the standard monorepo conventions.
+Scaffold a new `@talosjs/<name>` package under `packages/<name>/` with the standard workspace conventions.
 
 ## Important
 
-Always work from the **root of the monorepo**. Packages are picked up automatically by the `packages/*` workspace glob in the root `package.json` — no workspace registration is needed.
+Always work from the **root of the workspace**. Packages are picked up automatically by the `packages/*` workspace glob in the root `package.json` — no workspace registration is needed.
 
 ## Workflow
 

@@ -9,7 +9,7 @@ Locate the issue YAML file for the provided package and ID, then implement it.
 
 ## Important
 
-Always run all commands from the **root of the monorepo**, not from inside individual packages.
+Always run all commands from the **root of the workspace**, not from inside individual packages.
 
 ## Steps
 

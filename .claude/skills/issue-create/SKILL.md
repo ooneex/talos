@@ -9,7 +9,7 @@ Gather issue details from the user and write a new YAML issue file to `packages/
 
 ## Important
 
-Always work from the **root of the monorepo**. Issue files are plain YAML written directly with the Write tool — no external command is needed.
+Always work from the **root of the workspace**. Issue files are plain YAML written directly with the Write tool — no external command is needed.
 
 ## Workflow
 

@@ -9,7 +9,7 @@ Optimize a module's codebase for quality, performance, and clean conventions.
 
 ## Important
 
-Always run all commands from the **root of the project** (the monorepo root), not from inside individual packages.
+Always run all commands from the **root of the project** (the workspace root), not from inside individual packages.
 
 ## Coding Conventions
 
@@ -166,6 +166,7 @@ Scan and fix across all files:
 
 ### 6. Optimize tests
 
+- Always create test files in the `tests` folder, mirroring the `src/` structure
 - Remove trivial tests (class name checks, method existence) unless they are smoke tests for generated code
 - Keep and improve tests that verify actual business logic, edge cases, error handling
 - Consolidate redundant test cases into parameterized patterns
@@ -179,7 +180,7 @@ Scan and fix across all files:
 ### 8. Check
 
 ```bash
-talos monorepo:check
+talos workspace:check
 ```
 
 Fix any failures before completing.
