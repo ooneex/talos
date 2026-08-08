@@ -89,6 +89,10 @@ pub fn execute(args: &BuildArgs) -> bool {
     ) else {
         return false;
     };
+    if selected.is_empty() {
+        error("No packages or modules found to run");
+        return false;
+    }
 
     let buildable: Vec<WorkspaceTarget> = sort_targets_by_dependencies(&selected)
         .into_iter()

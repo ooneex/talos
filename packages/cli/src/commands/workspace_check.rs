@@ -137,7 +137,10 @@ pub fn run(args: &WorkspaceCheckArgs) {
     let (coverage_failed, lint_passed) = std::thread::scope(|scope| {
         let coverage = scope.spawn(|| run_coverage(args));
         let lint = scope.spawn(|| lint::execute(&lint_args(args)));
-        (coverage.join().unwrap_or(true), lint.join().unwrap_or(false))
+        (
+            coverage.join().unwrap_or(true),
+            lint.join().unwrap_or(false),
+        )
     });
 
     if coverage_failed || !lint_passed {
