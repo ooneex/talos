@@ -14,7 +14,9 @@ use console::style;
 use serde::{Deserialize, Serialize};
 
 use crate::commands::security_check::{self, SecurityAudit, Severity};
-use crate::utils::{Spinner, current_dir, ensure_bin, error, success, warn};
+use crate::utils::{
+    Loader, LoaderGroup, Spinner, current_dir, ensure_bin, error, step, success, warn,
+};
 
 /// How long a cached audit is trusted before it is re-queried from OSV.dev,
 /// even when the lockfile it was computed from hasn't changed.
@@ -76,16 +78,22 @@ pub fn execute(args: &InstallArgs) -> bool {
         return false;
     }
 
-    if !args.skip_audit && !resolve_and_audit(&root, args) {
+    let steps = if args.skip_audit { 1 } else { 3 };
+    let loader = Loader::start(vec![LoaderGroup::new("Install", steps)]);
+
+    if !args.skip_audit && !resolve_and_audit(&root, args, &loader) {
         return false;
     }
 
-    let spinner = Spinner::start("Installing dependencies");
+    loader.pause();
+    step("Installing dependencies");
     let status = Command::new("bun")
         .arg("install")
         .current_dir(&root)
         .status();
-    spinner.stop();
+    loader.resume();
+    loader.advance(0);
+    loader.stop();
 
     match status {
         Ok(status) if status.success() => {
@@ -108,13 +116,16 @@ pub fn execute(args: &InstallArgs) -> bool {
 
 /// Resolves the dependency graph without touching `node_modules`, audits it,
 /// and reports whether the install should proceed.
-fn resolve_and_audit(root: &Path, args: &InstallArgs) -> bool {
+fn resolve_and_audit(root: &Path, args: &InstallArgs, loader: &Loader) -> bool {
+    loader.pause();
     let spinner = Spinner::start("Resolving dependency graph");
     let resolved = Command::new("bun")
         .args(["install", "--lockfile-only"])
         .current_dir(root)
         .output();
     spinner.stop();
+    loader.resume();
+    loader.advance(0);
 
     match resolved {
         Ok(output) if output.status.success() => {}
@@ -144,7 +155,7 @@ fn resolve_and_audit(root: &Path, args: &InstallArgs) -> bool {
         .map(Severity::from_label)
         .unwrap_or(Severity::High);
 
-    let Some(audit) = load_or_run_audit(root, args, min_severity.label()) else {
+    let Some(audit) = load_or_run_audit(root, args, min_severity.label(), loader) else {
         if args.force {
             warn("Could not complete the vulnerability audit — installing anyway (--force)");
             return true;
@@ -153,10 +164,12 @@ fn resolve_and_audit(root: &Path, args: &InstallArgs) -> bool {
         return false;
     };
 
+    loader.pause();
     print_audit_report(&audit);
 
     if audit.findings.is_empty() {
         success("No known vulnerabilities found");
+        loader.resume();
         return true;
     }
 
@@ -170,6 +183,7 @@ fn resolve_and_audit(root: &Path, args: &InstallArgs) -> bool {
                 "ies"
             }
         ));
+        loader.resume();
         return true;
     }
 
@@ -179,7 +193,12 @@ fn resolve_and_audit(root: &Path, args: &InstallArgs) -> bool {
 
 /// Reuses a fresh cached audit for the same lockfile and audit level when
 /// available, otherwise queries OSV.dev and caches the result.
-fn load_or_run_audit(root: &Path, args: &InstallArgs, audit_level: &str) -> Option<SecurityAudit> {
+fn load_or_run_audit(
+    root: &Path,
+    args: &InstallArgs,
+    audit_level: &str,
+    loader: &Loader,
+) -> Option<SecurityAudit> {
     let cache_path = root.join(AUDIT_CACHE_PATH);
     let lockfile_hash = hash_lockfile(root);
 
@@ -187,12 +206,16 @@ fn load_or_run_audit(root: &Path, args: &InstallArgs, audit_level: &str) -> Opti
         && let Some(hash) = lockfile_hash.as_deref()
         && let Some(cached) = read_cache(&cache_path, hash, audit_level)
     {
+        loader.advance(0);
         return Some(cached);
     }
 
+    loader.pause();
     let spinner = Spinner::start("Auditing dependencies for known vulnerabilities");
     let audit = security_check::audit(root, None, None, Some(audit_level));
     spinner.stop();
+    loader.resume();
+    loader.advance(0);
 
     let audit = match audit {
         Ok(audit) => audit,

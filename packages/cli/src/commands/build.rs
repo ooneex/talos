@@ -23,7 +23,7 @@ use clap::Args;
 use console::style;
 
 use crate::utils::{
-    FileHashCache, FingerprintMemo, Footer, TargetType, WorkspaceTarget, current_dir,
+    FileHashCache, FingerprintMemo, Footer, Spinner, TargetType, WorkspaceTarget, current_dir,
     discover_targets, error, fingerprint_target, format_duration, hash_root_inputs,
     is_git_workspace_root, sort_targets_by_dependencies, split_csv, warn,
 };
@@ -48,13 +48,39 @@ pub fn run(args: &BuildArgs) {
     }
 }
 
+/// Discovers the workspace and fingerprints its root inputs in parallel,
+/// under one spinner — the only stretch of a build where nothing is drawn
+/// otherwise.
+fn load_build_state(root_dir: &std::path::Path) -> (Vec<WorkspaceTarget>, String, bool) {
+    let spinner = Spinner::start("Analyzing workspace");
+    let result = std::thread::scope(|scope| {
+        let targets_handle = scope.spawn(|| discover_targets(root_dir));
+        let root_hash_handle = scope.spawn(|| hash_root_inputs(root_dir));
+        let use_git_handle = scope.spawn(|| is_git_workspace_root(root_dir));
+
+        let all_targets = targets_handle
+            .join()
+            .unwrap_or_else(|_| discover_targets(root_dir));
+        let root_hash = root_hash_handle
+            .join()
+            .unwrap_or_else(|_| hash_root_inputs(root_dir));
+        let use_git = use_git_handle
+            .join()
+            .unwrap_or_else(|_| is_git_workspace_root(root_dir));
+
+        (all_targets, root_hash, use_git)
+    });
+    spinner.stop();
+    result
+}
+
 pub fn execute(args: &BuildArgs) -> bool {
     let root_dir = args
         .cwd
         .clone()
         .map(PathBuf::from)
         .unwrap_or_else(current_dir);
-    let all_targets = discover_targets(&root_dir);
+    let (all_targets, root_hash, use_git) = load_build_state(&root_dir);
 
     let Some(selected) = filter_targets(
         &all_targets,
@@ -86,8 +112,6 @@ pub fn execute(args: &BuildArgs) -> bool {
         .bold()
     );
 
-    let root_hash = hash_root_inputs(&root_dir);
-    let use_git = is_git_workspace_root(&root_dir);
     let file_hash_cache = FileHashCache::new();
     let fingerprint_memo = FingerprintMemo::new();
 
