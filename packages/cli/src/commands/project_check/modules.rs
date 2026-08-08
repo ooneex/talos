@@ -19,12 +19,6 @@ pub const MODULE_GROUPS: [&str; 2] = ["modules", "packages"];
 /// Extensions holding TypeScript sources.
 pub const TS_EXTENSIONS: &[&str] = &["ts", "tsx"];
 
-/// Extension holding Rust sources.
-pub const RUST_EXTENSIONS: &[&str] = &["rs"];
-
-/// Extension holding Python sources.
-pub const PYTHON_EXTENSIONS: &[&str] = &["py"];
-
 /// Every module type the generators can produce.
 pub const MODULE_TYPES: &[&str] = &[
     "api",
@@ -68,102 +62,6 @@ impl WorkspaceModule {
     pub fn package_json(&self) -> Option<Value> {
         read_json(&self.package_json_path())
     }
-
-    pub fn cargo_toml_path(&self) -> PathBuf {
-        self.dir.join("Cargo.toml")
-    }
-
-    /// A Rust crate: it is `Cargo.toml` that makes it buildable, whether or not
-    /// it also carries a `package.json` wrapping the cargo commands.
-    pub fn is_rust(&self) -> bool {
-        crate::utils::is_rust_module(&self.dir)
-    }
-
-    /// A module whose only manifest is `Cargo.toml`, so the npm-side rules
-    /// (workspaces globs, path aliases, `package.json` name) do not apply.
-    pub fn is_rust_only(&self) -> bool {
-        self.is_rust() && !self.package_json_path().is_file()
-    }
-
-    /// The parsed `Cargo.toml`, or `None` when it is missing or invalid.
-    pub fn cargo_toml(&self) -> Option<CargoManifest> {
-        read_cargo_manifest(&self.cargo_toml_path())
-    }
-
-    pub fn pyproject_path(&self) -> PathBuf {
-        self.dir.join("pyproject.toml")
-    }
-
-    /// A Python distribution. `pyproject.toml` is the modern manifest, but a
-    /// package predating it is still Python and still has to be checked.
-    pub fn is_python(&self) -> bool {
-        self.pyproject_path().is_file()
-            || self.dir.join("setup.py").is_file()
-            || self.dir.join("setup.cfg").is_file()
-            || self.dir.join("requirements.txt").is_file()
-    }
-
-    /// A module whose only manifest is a Python one, so the npm-side rules do
-    /// not apply.
-    pub fn is_python_only(&self) -> bool {
-        self.is_python() && !self.package_json_path().is_file() && !self.is_rust()
-    }
-
-    /// The parsed `pyproject.toml`, falling back to a bare `requirements.txt`
-    /// for a package that never adopted one.
-    pub fn pyproject(&self) -> Option<PythonManifest> {
-        match read_python_manifest(&self.pyproject_path()) {
-            Some(manifest) => Some(manifest),
-            None if self.pyproject_path().is_file() => None,
-            None => {
-                let requirements = self.dir.join("requirements.txt");
-                let content = fs::read_to_string(&requirements).ok()?;
-                Some(PythonManifest {
-                    // `requirements.txt` names no distribution of its own.
-                    name: None,
-                    dependencies: parse_requirements(&content),
-                    workspace_members: Vec::new(),
-                    is_workspace: false,
-                })
-            }
-        }
-    }
-}
-
-#[path = "modules/manifests.rs"]
-mod manifests;
-
-pub use manifests::{
-    CargoManifest, PythonManifest, normalize_distribution, parse_cargo_manifest,
-    parse_python_manifest, parse_requirement, parse_requirements, read_cargo_manifest,
-    read_python_manifest,
-};
-
-/// The directories holding a Python package's sources. `src/` is the layout the
-/// generators produce, but a package using the flat layout keeps its code in a
-/// top-level directory carrying an `__init__.py`.
-pub fn python_source_dirs(module: &WorkspaceModule) -> Vec<PathBuf> {
-    let src = module.dir.join("src");
-    if src.is_dir() {
-        return vec![src];
-    }
-
-    let Ok(entries) = fs::read_dir(&module.dir) else {
-        return Vec::new();
-    };
-    let mut dirs: Vec<PathBuf> = entries
-        .flatten()
-        .map(|entry| entry.path())
-        .filter(|path| path.is_dir() && path.join("__init__.py").is_file())
-        .filter(|path| {
-            path.file_name()
-                .and_then(|name| name.to_str())
-                .map(|name| name != "tests" && !name.starts_with('.'))
-                .unwrap_or(false)
-        })
-        .collect();
-    dirs.sort();
-    dirs
 }
 
 /// Read a JSON or JSONC file, tolerating comments and trailing commas.
@@ -183,9 +81,8 @@ pub fn read_module_type(dir: &Path, name: &str) -> Option<String> {
 }
 
 /// Every workspace member. A directory counts as one as soon as it carries a
-/// `package.json`, a `Cargo.toml`, a `pyproject.toml`, a `<name>.yml` manifest
-/// or a `src/` folder, so that a module missing one of them is reported rather
-/// than silently ignored.
+/// `package.json`, a `<name>.yml` manifest or a `src/` folder, so that a
+/// module missing one of them is reported rather than silently ignored.
 pub fn discover_modules(root: &Path) -> Vec<WorkspaceModule> {
     let mut modules = Vec::new();
 
@@ -208,15 +105,7 @@ pub fn discover_modules(root: &Path) -> Vec<WorkspaceModule> {
                 continue;
             }
             let has_manifest = dir.join(format!("{name}.yml")).is_file();
-            let has_python_manifest = ["pyproject.toml", "setup.py", "setup.cfg"]
-                .iter()
-                .any(|manifest| dir.join(manifest).is_file());
-            if !dir.join("package.json").is_file()
-                && !dir.join("Cargo.toml").is_file()
-                && !has_python_manifest
-                && !has_manifest
-                && !dir.join("src").is_dir()
-            {
+            if !dir.join("package.json").is_file() && !has_manifest && !dir.join("src").is_dir() {
                 continue;
             }
             modules.push(WorkspaceModule {

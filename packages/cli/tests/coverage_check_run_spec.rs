@@ -68,17 +68,6 @@ fn workspace() -> (tempfile::TempDir, PathBuf) {
         "export const noop = (): void => {};\n",
     );
 
-    // A Python distribution is measured by a toolchain this command never drives.
-    let py = root.join("packages/analysis");
-    write(
-        &py.join("pyproject.toml"),
-        "[project]\nname = \"analysis\"\n",
-    );
-    write(
-        &py.join("tests/test_it.py"),
-        "def test_it():\n    assert True\n",
-    );
-
     (dir, root)
 }
 
@@ -149,16 +138,6 @@ fn a_module_with_no_suite_is_skipped_with_the_reason_it_was_skipped_for() {
         matches!(&bare.status, RunStatus::Skipped(reason) if reason.contains("test")),
         "{:?}",
         bare.status
-    );
-
-    let python = report
-        .modules
-        .iter()
-        .find(|module| module.name == "analysis")
-        .expect("the python package is reported");
-    assert_eq!(
-        python.status,
-        RunStatus::Skipped("python package".to_string())
     );
 }
 
@@ -406,127 +385,3 @@ fn issue_body(dir: &Path) -> String {
     fs::read_to_string(entry.path()).expect("read the issue")
 }
 
-// ---------------------------------------------------------------------------
-// The cargo runner
-// ---------------------------------------------------------------------------
-
-/// A directory holding a `cargo` script that answers `llvm-cov` the way the
-/// real one does: a `test result:` line on stderr and an lcov report at the
-/// `--output-path` it was given.
-fn stub_cargo(tag: &str, lcov_body: Option<&str>) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("talos-cargo-{tag}-{}", std::process::id()));
-    let _ = fs::remove_dir_all(&dir);
-    fs::create_dir_all(&dir).expect("create stub dir");
-
-    let write_report = match lcov_body {
-        Some(body) => {
-            format!("mkdir -p \"$(dirname \"$4\")\"\ncat > \"$4\" <<'LCOV'\n{body}\nLCOV")
-        }
-        None => String::new(),
-    };
-    let script = format!(
-        r#"#!/bin/sh
-if [ "$1" != "llvm-cov" ]; then
-  echo "no such command: $1" >&2
-  exit 1
-fi
-{write_report}
-echo "test result: ok. 3 passed; 0 failed; 0 ignored"
-exit 0
-"#
-    );
-    let path = dir.join("cargo");
-    fs::write(&path, script).expect("write the stub");
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).expect("make it executable");
-    }
-    dir
-}
-
-/// A workspace holding a single Rust crate.
-fn rust_workspace() -> (tempfile::TempDir, PathBuf) {
-    let dir = tempfile::tempdir().expect("create temp dir");
-    let root = dir.path().to_path_buf();
-    write(&root.join("package.json"), "{ \"name\": \"scratch\" }\n");
-    let crate_dir = root.join("packages/engine");
-    write(&crate_dir.join("engine.yml"), "type: \"module\"\n");
-    write(
-        &crate_dir.join("Cargo.toml"),
-        "[package]\nname = \"engine\"\nversion = \"0.1.0\"\nedition = \"2021\"\n",
-    );
-    write(&crate_dir.join("src/lib.rs"), "pub fn add() -> u8 { 1 }\n");
-    write(
-        &crate_dir.join("tests/add_spec.rs"),
-        "#[test]\nfn adds() {}\n",
-    );
-    (dir, root)
-}
-
-fn talos_with_path(root: &Path, path: &str, args: &[&str]) -> Output {
-    Command::new(env!("CARGO_BIN_EXE_talos"))
-        .args(args)
-        .arg(format!("--cwd={}", root.display()))
-        .env("PATH", path)
-        .env("NO_COLOR", "1")
-        .stdin(Stdio::null())
-        .output()
-        .expect("the talos binary should run")
-}
-
-#[test]
-fn a_crate_is_measured_from_the_lcov_report_cargo_writes() {
-    let (_dir, root) = rust_workspace();
-    let lcov = format!(
-        "SF:{}/src/lib.rs\nFN:1,add\nFNDA:1,add\nFNF:1\nFNH:1\nDA:1,1\nDA:2,1\nLF:2\nLH:2\nend_of_record\n",
-        root.join("packages/engine").display()
-    );
-    let stub = stub_cargo("measured", Some(&lcov));
-
-    let output = talos_with_path(
-        &root,
-        &format!("{}:/usr/bin:/bin", stub.display()),
-        &["coverage:check", "--no-cache", "--threshold=90"],
-    );
-
-    let report = text(&output);
-    assert!(output.status.success(), "{report}");
-    assert!(report.contains("packages/engine"), "{report}");
-    assert!(report.contains("3 passed"), "{report}");
-    assert!(
-        report.contains("src/lib.rs") || report.contains("100"),
-        "the absolute paths are cut back to the crate: {report}"
-    );
-}
-
-#[test]
-fn a_crate_whose_report_measures_nothing_is_reported_as_unmeasured() {
-    let (_dir, root) = rust_workspace();
-    let stub = stub_cargo("unmeasured", None);
-
-    let output = talos_with_path(
-        &root,
-        &format!("{}:/usr/bin:/bin", stub.display()),
-        &["coverage:check", "--no-cache"],
-    );
-
-    let report = text(&output);
-    assert!(output.status.success(), "{report}");
-    assert!(report.contains("no code measured"), "{report}");
-}
-
-#[test]
-fn a_crate_measured_without_cargo_reports_no_suite_rather_than_zero_coverage() {
-    let (_dir, root) = rust_workspace();
-
-    let output = talos_with_path(&root, "/nonexistent", &["coverage:check", "--no-cache"]);
-
-    let report = text(&output);
-    // The crate is named under the failures rather than drawn as a 0% row —
-    // a toolchain that never ran measured nothing, which is not zero coverage.
-    assert!(report.contains("Failing suites"), "{report}");
-    assert!(report.contains("packages/engine"), "{report}");
-    assert!(report.contains("nothing measured"), "{report}");
-    assert!(!report.contains("0% lines"), "{report}");
-}

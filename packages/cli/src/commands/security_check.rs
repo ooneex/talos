@@ -9,8 +9,8 @@ use crate::utils::{Spinner, current_dir, error, warn};
 pub mod llm;
 
 /// Universal, always-online vulnerability database. A single API covers every
-/// ecosystem (npm/react/typescript/node, PyPI, crates.io, Go, RubyGems, …), so
-/// no per-language audit binary has to be installed locally.
+/// ecosystem (npm/react/typescript/node, Go, RubyGems, …), so no per-language
+/// audit binary has to be installed locally.
 pub(super) const OSV_QUERY_BATCH_URL: &str = "https://api.osv.dev/v1/querybatch";
 pub(super) const OSV_VULN_URL: &str = "https://api.osv.dev/v1/vulns";
 pub(super) const OSV_BATCH_SIZE: usize = 1000;
@@ -26,21 +26,11 @@ pub(super) const EXCLUDED_DIRS: &[&str] = &[
     "target",
     "var",
     "coverage",
-    "__pycache__",
-    "site-packages",
-    "venv",
     ".git",
     ".temp",
     ".turbo",
     ".cache",
     "vendor",
-    ".venv",
-    ".tox",
-    ".pytest_cache",
-    ".mypy_cache",
-    ".ruff_cache",
-    "venv",
-    "__pycache__",
 ];
 
 pub(super) const MAX_DEPTH: usize = 6;
@@ -139,8 +129,6 @@ impl Severity {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Ecosystem {
     Npm,
-    PyPI,
-    Crates,
     Go,
     RubyGems,
     Packagist,
@@ -151,8 +139,6 @@ impl Ecosystem {
     pub fn osv(&self) -> &'static str {
         match self {
             Ecosystem::Npm => "npm",
-            Ecosystem::PyPI => "PyPI",
-            Ecosystem::Crates => "crates.io",
             Ecosystem::Go => "Go",
             Ecosystem::RubyGems => "RubyGems",
             Ecosystem::Packagist => "Packagist",
@@ -163,8 +149,6 @@ impl Ecosystem {
     pub fn label(&self) -> &'static str {
         match self {
             Ecosystem::Npm => "npm",
-            Ecosystem::PyPI => "pypi",
-            Ecosystem::Crates => "crates.io",
             Ecosystem::Go => "go",
             Ecosystem::RubyGems => "rubygems",
             Ecosystem::Packagist => "packagist",
@@ -391,9 +375,8 @@ use findings::{collect_findings, collect_llm_findings};
 #[path = "security_check/lockfiles.rs"]
 mod lockfiles;
 pub use lockfiles::{
-    npm, parse_bun_lock, parse_cargo_lock, parse_composer_lock, parse_gemfile_lock, parse_go_sum,
-    parse_package_lock, parse_pep_lock, parse_pipfile_lock, parse_poetry_lock,
-    parse_requirements_txt, parse_uv_lock, split_name_version, unquote,
+    npm, parse_bun_lock, parse_composer_lock, parse_gemfile_lock, parse_go_sum,
+    parse_package_lock, split_name_version, unquote,
 };
 
 #[path = "security_check/osv.rs"]

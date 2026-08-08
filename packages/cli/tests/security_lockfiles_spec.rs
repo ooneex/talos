@@ -1,6 +1,6 @@
 //! The lockfile readers behind `security:check`.
 //!
-//! Ten ecosystems, ten formats, one job: turn a lockfile into the
+//! Several ecosystems, several formats, one job: turn a lockfile into the
 //! `(ecosystem, name, version)` tuples the audit queries. None of it needs the
 //! network, so each format gets a fixture and a reading.
 
@@ -8,9 +8,8 @@ use std::fs;
 use std::path::Path;
 
 use cli::commands::security_check::{
-    Ecosystem, PackageKey, collect_packages, parse_bun_lock, parse_cargo_lock, parse_composer_lock,
-    parse_gemfile_lock, parse_go_sum, parse_package_lock, parse_pipfile_lock, parse_poetry_lock,
-    parse_requirements_txt, parse_uv_lock, target_name, unquote,
+    Ecosystem, PackageKey, collect_packages, parse_bun_lock, parse_composer_lock,
+    parse_gemfile_lock, parse_go_sum, parse_package_lock, target_name, unquote,
 };
 
 /// A directory holding one lockfile.
@@ -94,110 +93,7 @@ fn a_directory_with_no_lockfile_yields_nothing() {
 
     assert!(parse_bun_lock(dir.path()).is_empty());
     assert!(parse_package_lock(dir.path()).is_empty());
-    assert!(parse_cargo_lock(dir.path()).is_empty());
     assert!(parse_go_sum(dir.path()).is_empty());
-}
-
-// ---------------------------------------------------------------------------
-// crates.io
-// ---------------------------------------------------------------------------
-
-#[test]
-fn cargo_lock_pairs_each_name_with_the_version_that_follows_it() {
-    let dir = with(
-        "Cargo.lock",
-        r#"version = 4
-
-[[package]]
-name = "serde"
-version = "1.0.200"
-
-[[package]]
-name = "regex"
-version = "1.13.1"
-dependencies = ["memchr"]
-"#,
-    );
-
-    let packages = parse_cargo_lock(dir.path());
-
-    assert_eq!(
-        pairs(&packages),
-        vec![("serde", "1.0.200"), ("regex", "1.13.1")]
-    );
-    assert!(
-        packages
-            .iter()
-            .all(|key| key.ecosystem == Ecosystem::Crates)
-    );
-}
-
-// ---------------------------------------------------------------------------
-// PyPI
-// ---------------------------------------------------------------------------
-
-#[test]
-fn requirements_only_yields_the_fully_pinned_lines() {
-    let dir = with(
-        "requirements.txt",
-        "# a comment\n\ndjango==5.0.1\nrequests[security]==2.31.0\nflask>=3.0\n-r other.txt\nnumpy==1.26.0 ; python_version > \"3.9\"\n",
-    );
-
-    assert_eq!(
-        pairs(&parse_requirements_txt(dir.path())),
-        vec![
-            ("django", "5.0.1"),
-            ("requests", "2.31.0"),
-            ("numpy", "1.26.0")
-        ],
-        "a range, a comment and an include are all skipped"
-    );
-}
-
-#[test]
-fn pipfile_lock_reads_both_the_default_and_the_develop_sections() {
-    let dir = with(
-        "Pipfile.lock",
-        r#"{
-  "default": { "django": { "version": "==5.0.1" }, "no-version": {} },
-  "develop": { "pytest": { "version": "==8.0.0" } }
-}"#,
-    );
-
-    let parsed = parse_pipfile_lock(dir.path());
-    let mut packages = pairs(&parsed);
-    packages.sort();
-
-    assert_eq!(packages, vec![("django", "5.0.1"), ("pytest", "8.0.0")]);
-}
-
-#[test]
-fn poetry_and_uv_share_the_package_block_layout() {
-    let body = r#"version = 1
-
-[[package]]
-name = "django"
-version = "5.0.1"
-
-[[package]]
-name = "pytest"
-version = "8.0.0"
-
-[metadata]
-name = "not-a-package"
-version = "0.0.0"
-"#;
-
-    let poetry = with("poetry.lock", body);
-    let uv = with("uv.lock", body);
-
-    let expected = vec![("django", "5.0.1"), ("pytest", "8.0.0")];
-    assert_eq!(pairs(&parse_poetry_lock(poetry.path())), expected);
-    assert_eq!(
-        pairs(&parse_uv_lock(uv.path())),
-        expected,
-        "the metadata table is not read as a package"
-    );
 }
 
 // ---------------------------------------------------------------------------
@@ -264,11 +160,6 @@ fn a_directory_holding_several_lockfiles_yields_every_ecosystem_in_it() {
         "bun.lock",
         "{ \"packages\": { \"left-pad\": [\"left-pad@1.3.0\", {}, \"sha\"] } }",
     );
-    write(
-        "Cargo.lock",
-        "[[package]]\nname = \"serde\"\nversion = \"1.0.200\"\n",
-    );
-    write("requirements.txt", "django==5.0.1\n");
     write("go.sum", "golang.org/x/net v0.20.0 h1:abc=\n");
     write("Gemfile.lock", "GEM\n  specs:\n    rake (13.1.0)\n");
     write(
@@ -281,8 +172,6 @@ fn a_directory_holding_several_lockfiles_yields_every_ecosystem_in_it() {
     let ecosystems: Vec<Ecosystem> = packages.iter().map(|key| key.ecosystem).collect();
     for ecosystem in [
         Ecosystem::Npm,
-        Ecosystem::Crates,
-        Ecosystem::PyPI,
         Ecosystem::Go,
         Ecosystem::RubyGems,
         Ecosystem::Packagist,

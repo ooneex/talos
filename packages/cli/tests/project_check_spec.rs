@@ -23,7 +23,6 @@ use cli::commands::project_check::{
     render_report, restricted, roles, routes, scan_source, sdk, secrets, select_checks, sql,
     stories, structure, transactions, translations, tsconfig, validation,
 };
-use filetime::{FileTime, set_file_mtime};
 
 #[derive(Parser)]
 struct TestCli {
@@ -2250,15 +2249,12 @@ fn a_nested_npm_lockfile_shadows_the_workspace_one() {
 }
 
 #[test]
-fn lockfile_helpers_cover_managers_missing_entries_and_staleness() {
+fn lockfile_helpers_cover_managers_and_missing_entries() {
     let (_guard, root) = root();
     write(&root.join("bun.lock"), "{}\n");
-    write(&root.join("Cargo.lock"), "{}\n");
-    write(&root.join("pdm.lock"), "{}\n");
 
     let found = lockfile::lockfiles_in(&root);
     assert!(found.contains(&"bun.lock".to_string()));
-    assert!(found.contains(&"Cargo.lock".to_string()));
     assert_eq!(lockfile::managers(&found), ["bun"].into_iter().collect());
 
     let manifest = serde_json::json!({
@@ -2269,24 +2265,10 @@ fn lockfile_helpers_cover_managers_missing_entries_and_staleness() {
     let missing =
         lockfile::missing_from_lock(&manifest, "\"left-pad@1.0.0\"\nnode_modules/react\n");
     assert_eq!(missing, vec!["typescript".to_string()]);
-
-    write(
-        &root.join("pyproject.toml"),
-        "[project]\nname = \"tooling\"\n",
-    );
-    write(&root.join("uv.lock"), "version = 1\n");
-    let old = FileTime::from_unix_time(1, 0);
-    let new = FileTime::from_unix_time(2, 0);
-    set_file_mtime(root.join("uv.lock"), old).expect("set lock mtime");
-    set_file_mtime(root.join("pyproject.toml"), new).expect("set manifest mtime");
-    assert!(lockfile::is_stale(
-        &root.join("pyproject.toml"),
-        &root.join("uv.lock")
-    ));
 }
 
 #[test]
-fn lockfile_reports_missing_root_lockfiles_and_nested_cargo_locks() {
+fn lockfile_reports_missing_root_lockfiles_and_nested_npm_locks() {
     let (_guard, root) = root();
     write(
         &root.join("package.json"),
@@ -2301,22 +2283,18 @@ fn lockfile_reports_missing_root_lockfiles_and_nested_cargo_locks() {
             .any(|detail| detail.contains("no npm lockfile at the root"))
     );
 
-    write(
-        &root.join("Cargo.toml"),
-        "[workspace]\nmembers = [\"packages/*\"]\n",
-    );
-    write(&root.join("Cargo.lock"), "version = 3\n");
-    let crate_dir = root.join("packages/cli");
-    write(&crate_dir.join("Cargo.toml"), "[package]\nname = \"cli\"\n");
-    write(&crate_dir.join("src/lib.rs"), "pub fn run() {}\n");
-    write(&crate_dir.join("Cargo.lock"), "version = 3\n");
+    write(&root.join("bun.lock"), "{}\n");
+    let member_dir = root.join("packages/cli");
+    write(&member_dir.join("package.json"), "{ \"name\": \"cli\" }\n");
+    write(&member_dir.join("src/index.ts"), "export const run = () => {};\n");
+    write(&member_dir.join("bun.lock"), "{}\n");
 
     let outcome = lockfile::run(&ProjectCheckArgs::default(), &root);
     assert!(
         outcome
             .details
             .iter()
-            .any(|detail| detail.contains("Cargo.lock is nested inside a workspace member"))
+            .any(|detail| detail.contains("shadows the workspace lockfile"))
     );
 }
 
@@ -2330,38 +2308,19 @@ fn lockfile_is_skipped_without_a_manifest_or_lockfile() {
 }
 
 #[test]
-fn lockfile_run_warns_for_stale_foreign_locks_and_ignores_invalid_module_manifests() {
+fn lockfile_run_ignores_invalid_module_manifests() {
     let (_guard, root) = root();
     write(
         &root.join("package.json"),
         "{ \"workspaces\": [\"modules/*\"] }\n",
     );
     write(&root.join("bun.lock"), "{}\n");
-    write(
-        &root.join("pyproject.toml"),
-        "[project]\nname = \"tooling\"\n",
-    );
-    write(&root.join("uv.lock"), "version = 1\n");
-    let old = FileTime::from_unix_time(1, 0);
-    let new = FileTime::from_unix_time(2, 0);
-    set_file_mtime(root.join("uv.lock"), old).expect("set lock mtime");
-    set_file_mtime(root.join("pyproject.toml"), new).expect("set manifest mtime");
-    assert!(!lockfile::is_stale(
-        Path::new("nope"),
-        &root.join("uv.lock")
-    ));
 
     let module = workspace(&root, "user", "module");
     write(&module.join("package.json"), "{ nope\n");
 
     let outcome = lockfile::run(&ProjectCheckArgs::default(), &root);
-    assert_eq!(outcome.status, CheckStatus::Warned);
-    assert!(
-        outcome
-            .details
-            .iter()
-            .any(|detail| detail.contains("pyproject.toml is newer than uv.lock"))
-    );
+    assert_eq!(outcome.status, CheckStatus::Passed);
 }
 
 // ---------------------------------------------------------------------------
@@ -2769,20 +2728,10 @@ fn only_a_major_gap_counts_as_behind() {
 #[test]
 fn each_registry_reads_its_own_response_shape() {
     let npm = serde_json::json!({ "version": "1.2.3" });
-    let crates = serde_json::json!({ "crate": { "max_stable_version": "4.5.6" } });
-    let pypi = serde_json::json!({ "info": { "version": "7.8.9" } });
 
     assert_eq!(
         outdated::Registry::Npm.latest(&npm),
         Some("1.2.3".to_string())
-    );
-    assert_eq!(
-        outdated::Registry::Crates.latest(&crates),
-        Some("4.5.6".to_string())
-    );
-    assert_eq!(
-        outdated::Registry::PyPI.latest(&pypi),
-        Some("7.8.9".to_string())
     );
 }
 

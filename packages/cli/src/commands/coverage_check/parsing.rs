@@ -51,37 +51,6 @@ pub fn parse_counts(text: &str) -> (usize, usize) {
     (passed, failed)
 }
 
-/// How many tests passed and failed, read from cargo's
-/// `test result: ok. 42 passed; 0 failed; 0 ignored; ...` line.
-///
-/// A crate runs one test binary per target — unit tests, each integration file,
-/// the doctests — and each prints its own line, so the tallies are summed.
-pub fn parse_cargo_counts(text: &str) -> (usize, usize) {
-    let (mut passed, mut failed) = (0usize, 0usize);
-    for line in text.lines() {
-        let Some(result) = line.trim().strip_prefix("test result:") else {
-            continue;
-        };
-        // `ok. 42 passed`, ` 0 failed`, ` 3 filtered out` — the count is always
-        // the token before the word, whatever else the field carries.
-        for field in result.split(';') {
-            let tokens: Vec<&str> = field.split_whitespace().collect();
-            let [.., count, word] = tokens.as_slice() else {
-                continue;
-            };
-            let Ok(count) = count.parse::<usize>() else {
-                continue;
-            };
-            match *word {
-                "passed" => passed += count,
-                "failed" => failed += count,
-                _ => {}
-            }
-        }
-    }
-    (passed, failed)
-}
-
 /// The table `bun test --coverage` prints:
 ///
 /// ```text

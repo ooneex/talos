@@ -11,10 +11,7 @@ use std::sync::OnceLock;
 
 use regex::Regex;
 
-use super::modules::{
-    PYTHON_EXTENSIONS, RUST_EXTENSIONS, TS_EXTENSIONS, collect_files, discover_modules,
-    filter_modules, relative, wanted_names,
-};
+use super::modules::{TS_EXTENSIONS, collect_files, discover_modules, filter_modules, relative, wanted_names};
 use crate::commands::project_check::{
     CheckId, CheckOutcome, CheckStatus, ProjectCheckArgs, static_outcome,
 };
@@ -32,8 +29,8 @@ const MAX_PARAMETERS: usize = 5;
 const MAX_DEPTH: usize = 5;
 
 /// Words that decorate a declaration rather than name it.
-const DECLARATION_KEYWORDS: [&str; 11] = [
-    "export", "default", "const", "let", "var", "async", "function", "fn", "def", "pub", "public",
+const DECLARATION_KEYWORDS: [&str; 8] = [
+    "export", "default", "const", "let", "var", "async", "function", "public",
 ];
 
 /// One budget a file went over.
@@ -48,7 +45,7 @@ pub struct Overrun {
 /// string literals. Only the shape of the file matters here.
 fn code_only(line: &str) -> &str {
     let line = line.trim();
-    if line.starts_with("//") || line.starts_with('#') || line.starts_with('*') {
+    if line.starts_with("//") || line.starts_with('*') {
         return "";
     }
     line
@@ -62,74 +59,12 @@ fn string_literal_pattern() -> &'static Regex {
     })
 }
 
-/// Whether `line[i..]` opens a raw string, returning the number of `#`
-/// delimiters and the index its content starts at.
-fn raw_string_open(chars: &[char], i: usize) -> Option<(usize, usize)> {
-    if chars[i] != 'r' {
-        return None;
-    }
-    let mut hashes = 0;
-    let mut cursor = i + 1;
-    while chars.get(cursor) == Some(&'#') {
-        hashes += 1;
-        cursor += 1;
-    }
-    (chars.get(cursor) == Some(&'"')).then_some((hashes, cursor + 1))
-}
-
-/// The index of the `"` that closes a raw string opened with `hashes` `#`
-/// delimiters, searching from its content start.
-fn raw_string_close(chars: &[char], content_start: usize, hashes: usize) -> Option<usize> {
-    (content_start..chars.len()).find(|&candidate| {
-        chars[candidate] == '"'
-            && (0..hashes).all(|offset| chars.get(candidate + 1 + offset) == Some(&'#'))
-    })
-}
-
-/// Masks a Rust raw string literal (`r"…"`, `r#"…"#`, `r##"…"##`, …), whose
-/// content is exempt from backslash escaping and so may hold an unescaped
-/// quote that would otherwise desynchronize the plain quote-pair matcher
-/// below — a regex character class like `r#"[^"]*"#` is exactly this shape.
-fn mask_raw_strings(line: &str) -> String {
-    let chars: Vec<char> = line.chars().collect();
-    let mut out = String::with_capacity(chars.len());
-    let mut i = 0;
-    while i < chars.len() {
-        let opened = raw_string_open(&chars, i).and_then(|(hashes, content_start)| {
-            raw_string_close(&chars, content_start, hashes)
-                .map(|close| (hashes, content_start, close))
-        });
-        let Some((hashes, content_start, close)) = opened else {
-            out.push(chars[i]);
-            i += 1;
-            continue;
-        };
-        out.push('r');
-        for _ in 0..hashes {
-            out.push('#');
-        }
-        out.push('"');
-        for _ in content_start..close {
-            out.push(' ');
-        }
-        out.push('"');
-        for _ in 0..hashes {
-            out.push('#');
-        }
-        i = close + hashes + 1;
-    }
-    out
-}
-
 /// Masks the contents of quoted literals so a stray `{` or `}` inside a
 /// regex pattern, a format string, or a character class is never mistaken
-/// for a block boundary. A lone lifetime apostrophe (`&'a str`) has no
-/// partner quote on the line, so the pattern never matches it and the
-/// brace it precedes is still counted.
+/// for a block boundary.
 pub(super) fn without_string_contents(line: &str) -> String {
-    let raw_masked = mask_raw_strings(line);
     string_literal_pattern()
-        .replace_all(&raw_masked, |captured: &regex::Captures| {
+        .replace_all(line, |captured: &regex::Captures| {
             " ".repeat(captured[0].chars().count())
         })
         .into_owned()
@@ -166,14 +101,7 @@ pub fn deepest_nesting(content: &str) -> (usize, usize) {
 /// Whether a line opens a function, and the parameter list it declares.
 pub fn function_signature(line: &str) -> Option<(String, String)> {
     let trimmed = code_only(line);
-    let keyword = [
-        "function ",
-        "def ",
-        "fn ",
-        "async fn ",
-        "public async ",
-        "public ",
-    ]
+    let keyword = ["function ", "public async ", "public "]
     .iter()
     .any(|keyword| trimmed.starts_with(keyword) || trimmed.contains(&format!(" {keyword}")));
     // An arrow function is declared as a const, which is the shape the project
@@ -318,12 +246,7 @@ pub fn run(args: &ProjectCheckArgs, root: &Path) -> CheckOutcome {
         &wanted_names(args.modules.as_deref(), args.packages.as_deref()),
     );
 
-    let extensions: Vec<&str> = TS_EXTENSIONS
-        .iter()
-        .chain(RUST_EXTENSIONS)
-        .chain(PYTHON_EXTENSIONS)
-        .copied()
-        .collect();
+    let extensions: Vec<&str> = TS_EXTENSIONS.to_vec();
 
     let mut warnings = Vec::new();
     let mut counted = 0;

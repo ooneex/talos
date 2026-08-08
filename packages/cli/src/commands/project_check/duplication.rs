@@ -14,8 +14,7 @@ use std::hash::{Hash, Hasher};
 use std::path::Path;
 
 use super::modules::{
-    PYTHON_EXTENSIONS, RUST_EXTENSIONS, TS_EXTENSIONS, collect_files, discover_modules,
-    filter_modules, relative, wanted_names,
+    TS_EXTENSIONS, collect_files, discover_modules, filter_modules, relative, wanted_names,
 };
 use crate::commands::project_check::{
     CheckId, CheckOutcome, CheckStatus, ProjectCheckArgs, static_outcome,
@@ -334,12 +333,7 @@ pub fn run(args: &ProjectCheckArgs, root: &Path) -> CheckOutcome {
         &wanted_names(args.modules.as_deref(), args.packages.as_deref()),
     );
 
-    let extensions: Vec<&str> = TS_EXTENSIONS
-        .iter()
-        .chain(RUST_EXTENSIONS)
-        .chain(PYTHON_EXTENSIONS)
-        .copied()
-        .collect();
+    let extensions: Vec<&str> = TS_EXTENSIONS.to_vec();
 
     let mut files = Vec::new();
     for module in &modules {

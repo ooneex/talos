@@ -59,8 +59,6 @@ fn answers(
 #[test]
 fn registry_labels_itself_by_its_public_name() {
     assert_eq!(Registry::Npm.label(), "npm");
-    assert_eq!(Registry::Crates.label(), "crates.io");
-    assert_eq!(Registry::PyPI.label(), "PyPI");
 }
 
 #[test]
@@ -69,14 +67,6 @@ fn registry_points_at_the_public_host_by_default() {
         Registry::Npm.url("left-pad"),
         "https://registry.npmjs.org/left-pad/latest"
     );
-    assert_eq!(
-        Registry::Crates.url("serde"),
-        "https://crates.io/api/v1/crates/serde"
-    );
-    assert_eq!(
-        Registry::PyPI.url("requests"),
-        "https://pypi.org/pypi/requests/json"
-    );
 }
 
 #[test]
@@ -84,10 +74,6 @@ fn registry_keeps_its_path_when_pointed_at_another_host() {
     assert_eq!(
         Registry::Npm.url_at("http://mirror.test/", "left-pad"),
         "http://mirror.test/left-pad/latest"
-    );
-    assert_eq!(
-        Registry::Crates.url_at("http://mirror.test", "serde"),
-        "http://mirror.test/api/v1/crates/serde"
     );
 }
 
@@ -99,18 +85,6 @@ fn registry_reads_the_latest_version_out_of_its_own_response_shape() {
             .as_deref(),
         Some("3.1.0")
     );
-    assert_eq!(
-        Registry::Crates
-            .latest(&json!({ "crate": { "max_stable_version": "1.0.2" } }))
-            .as_deref(),
-        Some("1.0.2")
-    );
-    assert_eq!(
-        Registry::PyPI
-            .latest(&json!({ "info": { "version": "2.32.0" } }))
-            .as_deref(),
-        Some("2.32.0")
-    );
 }
 
 #[test]
@@ -120,8 +94,6 @@ fn registry_reads_no_version_out_of_an_unexpected_response() {
             .latest(&json!({ "error": "Not found" }))
             .is_none()
     );
-    assert!(Registry::Crates.latest(&json!({ "crate": {} })).is_none());
-    assert!(Registry::PyPI.latest(&json!({ "version": 3 })).is_none());
 }
 
 // ---------------------------------------------------------------------------
@@ -144,18 +116,18 @@ fn fetch_latest_reads_the_version_the_registry_publishes() {
 
 #[test]
 fn fetch_latest_asks_the_path_the_registry_expects() {
-    let server = Server::always(json!({ "crate": { "max_stable_version": "1.0.2" } }));
-    let dependency = dependency("serde", Registry::Crates, "0.9.0", &["root"]);
+    let server = Server::always(json!({ "version": "1.0.2" }));
+    let dependency = dependency("left-pad", Registry::Npm, "0.9.0", &["root"]);
 
     fetch_latest(&agent(), &dependency, Some(server.base()));
 
-    assert_eq!(server.requests()[0].path, "/api/v1/crates/serde");
+    assert_eq!(server.requests()[0].path, "/left-pad/latest");
 }
 
 #[test]
-fn fetch_latest_identifies_itself_because_crates_io_demands_it() {
-    let server = Server::always(json!({ "crate": { "max_stable_version": "1.0.2" } }));
-    let dependency = dependency("serde", Registry::Crates, "0.9.0", &["root"]);
+fn fetch_latest_identifies_itself_to_the_registry() {
+    let server = Server::always(json!({ "version": "1.0.2" }));
+    let dependency = dependency("left-pad", Registry::Npm, "0.9.0", &["root"]);
 
     fetch_latest(&agent(), &dependency, Some(server.base()));
 
@@ -227,33 +199,6 @@ fn collect_reads_dev_dependencies_too() {
         found
             .iter()
             .any(|dependency| dependency.name == "typescript")
-    );
-}
-
-#[test]
-fn collect_reads_cargo_and_python_manifests() {
-    let (_dir, root) = workspace();
-    write(
-        &root.join("packages/engine/Cargo.toml"),
-        "[package]\nname = \"engine\"\n\n[dependencies]\nserde = \"1.0\"\n",
-    );
-    write(
-        &root.join("packages/tooling/pyproject.toml"),
-        "[project]\nname = \"tooling\"\ndependencies = [\"Requests-Toolbelt>=1.0\"]\n",
-    );
-
-    let found = collect(&discover_modules(&root), &root);
-
-    assert!(
-        found
-            .iter()
-            .any(|d| d.name == "serde" && d.registry == Registry::Crates)
-    );
-    // Python distribution names are normalised before they are looked up.
-    assert!(
-        found
-            .iter()
-            .any(|d| d.name == "requests-toolbelt" && d.registry == Registry::PyPI)
     );
 }
 
@@ -370,10 +315,10 @@ fn report_fails_when_a_dependency_left_the_registry() {
 #[test]
 fn report_ignores_a_dependency_the_lookup_never_covered() {
     let react = dependency("react", Registry::Npm, "17.0.0", &["root"]);
-    let serde = dependency("serde", Registry::Crates, "0.9.0", &["root"]);
-    // Only react was looked up; serde carries no answer either way.
+    let typescript = dependency("typescript", Registry::Npm, "5.0.0", &["root"]);
+    // Only react was looked up; typescript carries no answer either way.
     let outcome = report(
-        &[react.clone(), serde],
+        &[react.clone(), typescript],
         &answers(&[(&react, Some("19.0.0"))]),
     );
 

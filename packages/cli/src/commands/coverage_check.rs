@@ -9,11 +9,6 @@
 // under the threshold named with their uncovered lines, and the failing suites
 // called out separately from the merely under-covered ones.
 //
-// A workspace member is not always a bun package. A Rust crate keeps its tests
-// in cargo, so it is measured with `cargo llvm-cov` instead and read back from
-// the `lcov.info` that writes — the same report, from the toolchain that can
-// actually produce it. See [`Runner`].
-//
 // Running suites is expensive, so a report a module's sources have not moved
 // since is replayed from [`cache`] rather than measured again, and `--no-cache`
 // turns that off. A failing suite always ends the run in a non-zero status;
@@ -29,13 +24,11 @@ mod runner;
 
 use issues::create_issues;
 pub use issues::{build_issue_description, build_issue_title, label, priority};
-pub use parsing::{
-    collapse_ranges, mean, parse_cargo_counts, parse_counts, parse_lcov, parse_table, percent,
-};
+pub use parsing::{collapse_ranges, mean, parse_counts, parse_lcov, parse_table, percent};
 pub use report::{bar, print_report, rate, tail, trim_percent, truncate};
 use runner::{Cache, collect_targets, run_suites, workspace};
 pub use runner::{
-    Runner, coverage_dir, rank, relativize, resolve_concurrency, runner, skip_reason, sort_modules,
+    Runner, coverage_dir, rank, resolve_concurrency, runner, skip_reason, sort_modules,
 };
 
 use std::path::{Path, PathBuf};
@@ -64,13 +57,7 @@ pub(super) const DEFAULT_COVERAGE_DIR: &str = "coverage";
 pub(super) const MAX_CONCURRENCY: usize = 8;
 
 /// What a selection matching no measurable module is told.
-const NO_MODULE: &str = "No module found to run — a module needs a tests/ directory, and a package.json unless it is a crate";
-
-/// What `cargo llvm-cov` prints when the subcommand is not installed, and what
-/// to tell the reader to run when it is missing.
-pub(super) const LLVM_COV_MISSING: &str = "no such command";
-pub(super) const LLVM_COV_INSTALL: &str =
-    "cargo-llvm-cov is not installed — run: cargo install cargo-llvm-cov --locked";
+const NO_MODULE: &str = "No module found to run — a module needs a tests/ directory and a package.json";
 
 #[derive(Args, Debug)]
 pub struct CoverageCheckArgs {

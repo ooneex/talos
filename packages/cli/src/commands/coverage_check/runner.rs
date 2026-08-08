@@ -1,6 +1,5 @@
-//! Workspace discovery and suite execution — deciding which toolchain owns a
-//! module's tests, running them (bun or `cargo llvm-cov`), and turning their
-//! output into a [`super::ModuleCoverage`].
+//! Workspace discovery and suite execution — running a module's tests under
+//! `bun test --coverage` and turning their output into a [`super::ModuleCoverage`].
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -14,11 +13,8 @@ use crate::commands::project_check::modules::{
 use crate::utils::Loader;
 
 use super::cache;
-use super::parsing::{CoverageReport, parse_cargo_counts, parse_counts, parse_lcov, parse_table};
-use super::{
-    DEFAULT_COVERAGE_DIR, LLVM_COV_INSTALL, LLVM_COV_MISSING, MAX_CONCURRENCY, ModuleCoverage,
-    RunStatus,
-};
+use super::parsing::{CoverageReport, parse_counts, parse_lcov, parse_table};
+use super::{DEFAULT_COVERAGE_DIR, MAX_CONCURRENCY, ModuleCoverage, RunStatus};
 
 // ---------------------------------------------------------------------------
 // Module discovery
@@ -30,8 +26,6 @@ use super::{
 pub enum Runner {
     /// `bun test --coverage`, read from the table it prints.
     Bun,
-    /// `cargo llvm-cov`, read from the `lcov.info` it writes.
-    Cargo,
 }
 
 /// A workspace member the run knows how to handle, plus why it is being left
@@ -67,27 +61,15 @@ pub(super) fn collect_targets(modules: &[WorkspaceModule]) -> Vec<Target> {
         .collect()
 }
 
-/// Which toolchain measures a module. `Cargo.toml` decides it even when a
-/// `package.json` sits beside it wrapping the cargo commands: the tests it
-/// wraps are still cargo's, and `bun test` would find none of them.
-pub fn runner(module: &WorkspaceModule) -> Runner {
-    if module.is_rust() {
-        Runner::Cargo
-    } else {
-        Runner::Bun
-    }
+/// Which toolchain measures a module.
+pub fn runner(_module: &WorkspaceModule) -> Runner {
+    Runner::Bun
 }
 
-/// Why a module holds no suite to measure. Python distributions carry their
-/// coverage in a toolchain this command does not drive, and a module without a
-/// `tests/` directory has nothing to measure whichever runner owns it.
+/// Why a module holds no suite to measure. A module without a `tests/`
+/// directory has nothing to measure.
 pub fn skip_reason(module: &WorkspaceModule) -> Option<String> {
-    if module.is_python_only() {
-        return Some("python package".to_string());
-    }
-    // A crate is buildable from `Cargo.toml` alone, so a `package.json` is only
-    // required of the modules bun runs.
-    if runner(module) == Runner::Bun && !module.package_json_path().is_file() {
+    if !module.package_json_path().is_file() {
         return Some("no package.json".to_string());
     }
     if !module.dir.join("tests").is_dir() {
@@ -244,20 +226,15 @@ fn skipped_module(target: &Target, reason: String) -> ModuleCoverage {
     }
 }
 
-/// Run one module's suite with coverage on, under whichever toolchain owns it.
+/// Run one module's suite with coverage on.
 fn run_suite(target: &Target) -> ModuleCoverage {
     match target.runner {
         Runner::Bun => run_bun_suite(target),
-        Runner::Cargo => run_cargo_suite(target),
     }
 }
 
 /// Where the module's `lcov.info` goes, cleared first so a stale report from an
 /// earlier run can never be read as this one's.
-///
-/// The directory is created up front because `cargo llvm-cov` writes its report
-/// without creating the parent, and a module whose report never lands reads as
-/// one with no code to measure.
 fn prepare_lcov(target: &Target) -> PathBuf {
     let dir = target.dir.join(coverage_dir(&target.dir));
     let _ = fs::create_dir_all(&dir);
@@ -317,78 +294,9 @@ fn run_bun_suite(target: &Target) -> ModuleCoverage {
     measured(target, passed, failed, report, text, duration_ms)
 }
 
-/// Run one crate's tests under `cargo llvm-cov` and read the report it wrote.
-///
-/// cargo prints no coverage table of its own, so the `lcov.info` is the whole
-/// measurement rather than a fallback, and its `SF:` paths are absolute — they
-/// are cut back to the crate so a Rust row reads like every other one.
-fn run_cargo_suite(target: &Target) -> ModuleCoverage {
-    let started = Instant::now();
-    let lcov = prepare_lcov(target);
-
-    let output = Command::new("cargo")
-        .args(["llvm-cov", "--lcov", "--output-path"])
-        .arg(&lcov)
-        .current_dir(&target.dir)
-        .output();
-
-    let duration_ms = started.elapsed().as_millis() as u64;
-    let output = match output {
-        Ok(output) => output,
-        Err(err) => {
-            return errored(
-                target,
-                format!("could not run cargo: {err}"),
-                String::new(),
-                duration_ms,
-            );
-        }
-    };
-
-    let text = format!(
-        "{}{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
-    // Nothing downstream can be trusted when the subcommand itself is absent:
-    // cargo wrote no report, so a missing one would be read as an empty suite.
-    if !output.status.success() && text.contains(LLVM_COV_MISSING) {
-        return errored(target, LLVM_COV_INSTALL.to_string(), text, duration_ms);
-    }
-
-    let (passed, failed) = parse_cargo_counts(&text);
-    let report = fs::read_to_string(&lcov)
-        .ok()
-        .and_then(|content| parse_lcov(&content))
-        .map(|report| relativize(report, &target.dir));
-
-    let Some(report) = report else {
-        // A crate whose tests all passed but that instrumented nothing has
-        // nothing to report, which is not a failure. One that ran no test is.
-        if passed > 0 && failed == 0 {
-            return unmeasured(target, passed, text, duration_ms);
-        }
-        return errored(target, "no test ran".to_string(), text, duration_ms);
-    };
-
-    measured(target, passed, failed, report, text, duration_ms)
-}
-
-/// Cut absolute `SF:` paths back to the module they belong to, leaving the ones
-/// already relative alone.
-pub fn relativize(mut report: CoverageReport, dir: &Path) -> CoverageReport {
-    for file in &mut report.files {
-        if let Ok(relative) = Path::new(&file.path).strip_prefix(dir) {
-            file.path = relative.to_string_lossy().replace('\\', "/");
-        }
-    }
-    report
-}
-
-/// Builds the coverage result for a suite that ran and reported real numbers,
-/// shared by the bun and cargo runners: a non-zero exit with every test green
-/// is the module's own coverage gate, which this report states rather than
-/// repeats.
+/// Builds the coverage result for a suite that ran and reported real numbers:
+/// a non-zero exit with every test green is the module's own coverage gate,
+/// which this report states rather than repeats.
 fn measured(
     target: &Target,
     passed: usize,

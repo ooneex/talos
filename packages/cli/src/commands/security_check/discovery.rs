@@ -8,9 +8,7 @@ use std::path::Path;
 use serde_json::Value;
 
 use super::lockfiles::{
-    parse_bun_lock, parse_cargo_lock, parse_composer_lock, parse_gemfile_lock, parse_go_sum,
-    parse_package_lock, parse_pipfile_lock, parse_poetry_lock, parse_requirements_txt,
-    parse_uv_lock,
+    parse_bun_lock, parse_composer_lock, parse_gemfile_lock, parse_go_sum, parse_package_lock,
 };
 use super::{EXCLUDED_DIRS, MAX_DEPTH, ModuleReport, PackageKey};
 
@@ -64,11 +62,6 @@ pub fn collect_packages(dir: &Path) -> Vec<PackageKey> {
     let mut packages = Vec::new();
     packages.extend(parse_bun_lock(dir));
     packages.extend(parse_package_lock(dir));
-    packages.extend(parse_cargo_lock(dir));
-    packages.extend(parse_requirements_txt(dir));
-    packages.extend(parse_pipfile_lock(dir));
-    packages.extend(parse_poetry_lock(dir));
-    packages.extend(parse_uv_lock(dir));
     packages.extend(parse_go_sum(dir));
     packages.extend(parse_gemfile_lock(dir));
     packages.extend(parse_composer_lock(dir));

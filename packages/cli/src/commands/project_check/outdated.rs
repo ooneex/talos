@@ -12,9 +12,7 @@ use std::sync::Mutex;
 
 use serde_json::Value;
 
-use super::modules::{
-    WorkspaceModule, discover_modules, filter_modules, normalize_distribution, wanted_names,
-};
+use super::modules::{WorkspaceModule, discover_modules, filter_modules, wanted_names};
 use crate::commands::project_check::{
     CheckId, CheckOutcome, CheckStatus, ProjectCheckArgs, static_outcome,
 };
@@ -30,16 +28,12 @@ const UNPINNED: [&str; 4] = ["*", "latest", "x", ""];
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Registry {
     Npm,
-    Crates,
-    PyPI,
 }
 
 impl Registry {
     pub fn label(self) -> &'static str {
         match self {
             Registry::Npm => "npm",
-            Registry::Crates => "crates.io",
-            Registry::PyPI => "PyPI",
         }
     }
 
@@ -47,8 +41,6 @@ impl Registry {
     pub fn base(self) -> &'static str {
         match self {
             Registry::Npm => "https://registry.npmjs.org",
-            Registry::Crates => "https://crates.io",
-            Registry::PyPI => "https://pypi.org",
         }
     }
 
@@ -56,8 +48,6 @@ impl Registry {
     pub fn path(self, name: &str) -> String {
         match self {
             Registry::Npm => format!("/{name}/latest"),
-            Registry::Crates => format!("/api/v1/crates/{name}"),
-            Registry::PyPI => format!("/pypi/{name}/json"),
         }
     }
 
@@ -76,8 +66,6 @@ impl Registry {
     pub fn latest(self, response: &Value) -> Option<String> {
         let version = match self {
             Registry::Npm => response.get("version"),
-            Registry::Crates => response.pointer("/crate/max_stable_version"),
-            Registry::PyPI => response.pointer("/info/version"),
         };
         version.and_then(Value::as_str).map(str::to_string)
     }
@@ -181,25 +169,6 @@ pub fn collect(modules: &[WorkspaceModule], root: &Path) -> Vec<Dependency> {
                     continue;
                 };
                 record(Registry::Npm, name, range, &owner);
-            }
-        }
-    }
-
-    for module in modules {
-        let owner = module.label();
-        if let Some(cargo) = module.cargo_toml() {
-            for (name, requirement) in &cargo.dependencies {
-                record(Registry::Crates, name, requirement, &owner);
-            }
-        }
-        if let Some(python) = module.pyproject() {
-            for (name, specifier) in &python.dependencies {
-                record(
-                    Registry::PyPI,
-                    &normalize_distribution(name),
-                    specifier,
-                    &owner,
-                );
             }
         }
     }
@@ -322,7 +291,7 @@ pub fn report(
             CheckStatus::Skipped,
             "the registries could not be reached",
         )
-        .with_hint("The check needs network access to npm, crates.io and PyPI");
+        .with_hint("The check needs network access to npm");
     }
 
     let mut errors = Vec::new();

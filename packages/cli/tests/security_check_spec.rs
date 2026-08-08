@@ -7,10 +7,9 @@ use serde_json::json;
 use cli::commands::security_check::{
     Ecosystem, Finding, ModuleReport, Origin, PackageKey, SecurityCheckArgs, Severity,
     build_filter, build_finding, build_issue_description, build_issue_title, collect_modules,
-    collect_packages, cvss3_base_score, fixed_versions, parse_bun_lock, parse_cargo_lock,
-    parse_composer_lock, parse_gemfile_lock, parse_go_sum, parse_package_lock, parse_pipfile_lock,
-    parse_poetry_lock, parse_requirements_txt, parse_uv_lock, root_package_name,
-    severity_from_record, sort_findings, split_name_version, target_name, truncate, unquote,
+    collect_packages, cvss3_base_score, fixed_versions, parse_bun_lock, parse_composer_lock,
+    parse_gemfile_lock, parse_go_sum, parse_package_lock, root_package_name, severity_from_record,
+    sort_findings, split_name_version, target_name, truncate, unquote,
 };
 
 #[derive(Parser)]
@@ -223,8 +222,6 @@ fn severity_styled_contains_the_label() {
 #[test]
 fn ecosystem_osv_names_match_what_the_api_expects() {
     assert_eq!(Ecosystem::Npm.osv(), "npm");
-    assert_eq!(Ecosystem::PyPI.osv(), "PyPI");
-    assert_eq!(Ecosystem::Crates.osv(), "crates.io");
     assert_eq!(Ecosystem::Go.osv(), "Go");
     assert_eq!(Ecosystem::RubyGems.osv(), "RubyGems");
     assert_eq!(Ecosystem::Packagist.osv(), "Packagist");
@@ -232,14 +229,13 @@ fn ecosystem_osv_names_match_what_the_api_expects() {
 
 #[test]
 fn ecosystem_report_labels_are_lower_case() {
-    assert_eq!(Ecosystem::PyPI.label(), "pypi");
     assert_eq!(Ecosystem::Go.label(), "go");
     assert_eq!(Ecosystem::RubyGems.label(), "rubygems");
 }
 
 #[test]
 fn origin_label_lowercases_the_assistant_name() {
-    assert_eq!(Origin::Dependency(Ecosystem::Crates).label(), "crates.io");
+    assert_eq!(Origin::Dependency(Ecosystem::Go).label(), "go");
     assert_eq!(Origin::Assistant("Claude".to_string()).label(), "claude");
 }
 
@@ -330,132 +326,6 @@ fn parse_package_lock_tags_packages_as_npm() {
 }
 
 #[test]
-fn parse_cargo_lock_reads_package_blocks() {
-    let dir = TempDir::new("cargo");
-    dir.write(
-        "Cargo.lock",
-        r#"version = 4
-
-[[package]]
-name = "serde"
-version = "1.0.200"
-
-[[package]]
-name = "regex"
-version = "1.11.1"
-dependencies = ["memchr"]
-"#,
-    );
-
-    let found = parse_cargo_lock(dir.path());
-
-    assert_eq!(
-        names(&found),
-        pairs([("serde", "1.0.200"), ("regex", "1.11.1")])
-    );
-    assert!(found.iter().all(|p| p.ecosystem == Ecosystem::Crates));
-}
-
-#[test]
-fn parse_cargo_lock_ignores_a_block_without_a_name() {
-    let dir = TempDir::new("cargo-nameless");
-    dir.write(
-        "Cargo.lock",
-        "[[package]]\nversion = \"1.0.0\"\n\n[[package]]\nname = \"ok\"\nversion = \"2.0.0\"\n",
-    );
-
-    assert_eq!(
-        names(&parse_cargo_lock(dir.path())),
-        pairs([("ok", "2.0.0")])
-    );
-}
-
-#[test]
-fn parse_requirements_txt_only_takes_pinned_versions() {
-    let dir = TempDir::new("pip");
-    dir.write(
-        "requirements.txt",
-        r#"# a comment
-django==4.2.11
-requests==2.31.0  # trailing comment
-urllib3>=2.0.0
-flask[async]==3.0.0
-pytest==8.0.0 ; python_version >= "3.9"
--r other.txt
---index-url https://example.test
-
-"#,
-    );
-
-    let mut found = names(&parse_requirements_txt(dir.path()));
-    found.sort();
-
-    assert_eq!(
-        found,
-        pairs([
-            ("django", "4.2.11"),
-            ("flask", "3.0.0"),
-            ("pytest", "8.0.0"),
-            ("requests", "2.31.0"),
-        ])
-    );
-}
-
-#[test]
-fn parse_requirements_txt_tags_packages_as_pypi() {
-    let dir = TempDir::new("pip-eco");
-    dir.write("requirements.txt", "django==4.2.11\n");
-
-    assert_eq!(
-        parse_requirements_txt(dir.path())[0].ecosystem,
-        Ecosystem::PyPI
-    );
-}
-
-#[test]
-fn parse_pipfile_lock_reads_default_and_develop() {
-    let dir = TempDir::new("pipfile");
-    dir.write(
-        "Pipfile.lock",
-        r#"{
-  "default": { "django": { "version": "==4.2.11" } },
-  "develop": { "pytest": { "version": "==8.0.0" }, "black": {} }
-}"#,
-    );
-
-    let mut found = names(&parse_pipfile_lock(dir.path()));
-    found.sort();
-
-    // The `==` prefix is stripped and an entry without a version is skipped.
-    assert_eq!(found, pairs([("django", "4.2.11"), ("pytest", "8.0.0")]));
-}
-
-#[test]
-fn parse_poetry_and_uv_locks_share_the_pep_layout() {
-    let dir = TempDir::new("pep");
-    let content = r#"[[package]]
-name = "django"
-version = "4.2.11"
-
-[package.dependencies]
-name = "not-a-package"
-version = "0.0.0"
-
-[[package]]
-name = "requests"
-version = "2.31.0"
-"#;
-    dir.write("poetry.lock", content);
-    dir.write("uv.lock", content);
-
-    let expected = pairs([("django", "4.2.11"), ("requests", "2.31.0")]);
-
-    // A `[package.dependencies]` table must not be read as another package.
-    assert_eq!(names(&parse_poetry_lock(dir.path())), expected);
-    assert_eq!(names(&parse_uv_lock(dir.path())), expected);
-}
-
-#[test]
 fn parse_go_sum_strips_go_mod_and_dedupes() {
     let dir = TempDir::new("go");
     dir.write(
@@ -535,17 +405,16 @@ fn collect_packages_merges_every_ecosystem_in_one_directory() {
         r#"{"packages": {"node_modules/left-pad": {"version": "1.3.0"}}}"#,
     );
     dir.write(
-        "Cargo.lock",
-        "[[package]]\nname = \"serde\"\nversion = \"1.0.0\"\n",
+        "go.sum",
+        "github.com/pkg/errors v0.9.1 h1:aaa=\n",
     );
-    dir.write("requirements.txt", "django==4.2.11\n");
 
     let found = collect_packages(dir.path());
     let mut ecosystems: Vec<&str> = found.iter().map(|p| p.ecosystem.label()).collect();
     ecosystems.sort();
 
-    assert_eq!(found.len(), 3);
-    assert_eq!(ecosystems, ["crates.io", "npm", "pypi"]);
+    assert_eq!(found.len(), 2);
+    assert_eq!(ecosystems, ["go", "npm"]);
 }
 
 #[test]
@@ -640,8 +509,8 @@ fn collect_modules_walks_the_workspace_and_names_each_module() {
         r#"{"packages": {"node_modules/left-pad": {"version": "1.3.0"}}}"#,
     );
     dir.write(
-        "packages/cli/Cargo.lock",
-        "[[package]]\nname = \"serde\"\nversion = \"1.0.0\"\n",
+        "packages/cli/go.sum",
+        "github.com/pkg/errors v0.9.1 h1:aaa=\n",
     );
 
     let modules = collect_modules(dir.path());

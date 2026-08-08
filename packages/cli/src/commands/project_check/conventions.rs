@@ -3,8 +3,6 @@
 // A class whose name disagrees with its decorator throws a `ContainerException`
 // on boot, and a service reading `process.env` directly bypasses the typed
 // `AppEnv`. Both are cheap to spot statically and expensive to discover late.
-// Rust and Python sources are held to the equivalent rules of their own
-// language: what panics a binary, and what silently changes behaviour.
 
 use std::fs;
 use std::path::Path;
@@ -13,8 +11,7 @@ use std::sync::OnceLock;
 use regex::Regex;
 
 use super::modules::{
-    PYTHON_EXTENSIONS, RUST_EXTENSIONS, WorkspaceModule, collect_files, discover_modules,
-    filter_modules, python_source_dirs, relative, wanted_names,
+    WorkspaceModule, collect_files, discover_modules, filter_modules, relative, wanted_names,
 };
 use crate::commands::project_check::{
     CheckId, CheckOutcome, CheckStatus, ProjectCheckArgs, static_outcome,
@@ -209,11 +206,6 @@ fn check_non_null_assertion(line: &str, number: usize) -> Option<ConventionFindi
     })
 }
 
-#[path = "conventions/languages.rs"]
-mod languages;
-
-pub use languages::{inspect_python, inspect_rust, strip_string_literals};
-
 /// `IUser` counts, `Item` does not: the character after the `I` must be upper.
 fn starts_with_interface_prefix(name: &str) -> bool {
     let mut characters = name.chars();
@@ -249,12 +241,6 @@ pub fn run(args: &ProjectCheckArgs, root: &Path) -> CheckOutcome {
 
     for module in &modules {
         inspected += inspect_ts_files(module, root, &mut errors, &mut warnings);
-        if module.is_rust() {
-            inspected += inspect_rust_files(module, root, &mut errors, &mut warnings);
-        }
-        if module.is_python() {
-            inspected += inspect_python_files(module, root, &mut errors, &mut warnings);
-        }
     }
 
     if inspected == 0 {
@@ -320,53 +306,6 @@ fn inspect_ts_files(
         inspected += 1;
         let label = relative(root, &path);
         record_findings(&label, inspect(&label, &content), errors, warnings);
-    }
-    inspected
-}
-
-/// Inspects a Rust module's sources. Returns the number of files inspected.
-fn inspect_rust_files(
-    module: &WorkspaceModule,
-    root: &Path,
-    errors: &mut Vec<String>,
-    warnings: &mut Vec<String>,
-) -> usize {
-    let mut inspected = 0;
-    for path in collect_files(&module.dir.join("src"), RUST_EXTENSIONS, 8) {
-        let Ok(content) = fs::read_to_string(&path) else {
-            continue;
-        };
-        if is_generated(&content) {
-            continue;
-        }
-        inspected += 1;
-        let label = relative(root, &path);
-        record_findings(&label, inspect_rust(&content), errors, warnings);
-    }
-    inspected
-}
-
-/// Inspects a Python module's sources across every source root. Returns the
-/// number of files inspected.
-fn inspect_python_files(
-    module: &WorkspaceModule,
-    root: &Path,
-    errors: &mut Vec<String>,
-    warnings: &mut Vec<String>,
-) -> usize {
-    let mut inspected = 0;
-    for root_dir in python_source_dirs(module) {
-        for path in collect_files(&root_dir, PYTHON_EXTENSIONS, 8) {
-            let Ok(content) = fs::read_to_string(&path) else {
-                continue;
-            };
-            if is_generated(&content) {
-                continue;
-            }
-            inspected += 1;
-            let label = relative(root, &path);
-            record_findings(&label, inspect_python(&content), errors, warnings);
-        }
     }
     inspected
 }

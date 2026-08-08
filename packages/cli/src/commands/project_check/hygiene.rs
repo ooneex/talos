@@ -32,13 +32,9 @@ pub fn scan_source(path: &str, content: &str) -> Vec<HygieneFinding> {
     // The needles are assembled at runtime so this very file never matches.
     let conflict_start = "<".repeat(7);
     let conflict_end = ">".repeat(7);
-    // Assembled for the same reason: this file describes the rule.
-    let debug_macro = format!("{}!(", "dbg");
     let test_keywords = ["describe", "it", "test"];
     let extension = path.rsplit('.').next().unwrap_or_default();
     let is_source = matches!(extension, "ts" | "tsx" | "js" | "jsx" | "mjs" | "cjs");
-    let is_rust = extension == "rs";
-    let is_python = extension == "py";
     // Prose legitimately quotes markers such as `// TODO`, so documentation is
     // only scanned for conflict markers.
     let is_prose = matches!(extension, "md" | "mdx");
@@ -57,18 +53,6 @@ pub fn scan_source(path: &str, content: &str) -> Vec<HygieneFinding> {
 
         if is_source {
             findings.extend(js_test_findings(path, number, line, &test_keywords));
-        }
-        if is_rust {
-            findings.extend(rust_hygiene_findings(
-                path,
-                number,
-                trimmed,
-                line,
-                &debug_macro,
-            ));
-        }
-        if is_python {
-            findings.extend(python_hygiene_findings(path, number, trimmed, line));
         }
         if let Some(finding) = bare_todo_finding(
             path,
@@ -131,72 +115,6 @@ fn js_test_findings(
                 message: format!("`{keyword}.skip` silently disables a test"),
             });
         }
-    }
-    findings
-}
-
-/// `#[ignore]` and leftover `dbg!` calls in a Rust source file.
-fn rust_hygiene_findings(
-    path: &str,
-    number: usize,
-    trimmed: &str,
-    line: &str,
-    debug_macro: &str,
-) -> Vec<HygieneFinding> {
-    let mut findings = Vec::new();
-    // `#[ignore]` is the Rust way of skipping a test, and a `dbg!` is a
-    // print statement that survived a debugging session.
-    if trimmed.starts_with("#[ignore") {
-        findings.push(HygieneFinding {
-            file: path.to_string(),
-            line: number,
-            rule: "hygiene.skipped-test",
-            severity: HygieneSeverity::Warning,
-            message: "`#[ignore]` silently disables a test".to_string(),
-        });
-    }
-    if line.contains(debug_macro) && !trimmed.starts_with("//") {
-        findings.push(HygieneFinding {
-            file: path.to_string(),
-            line: number,
-            rule: "hygiene.debug-print",
-            severity: HygieneSeverity::Warning,
-            message: "`dbg!` left behind — remove it or use the logger".to_string(),
-        });
-    }
-    findings
-}
-
-/// Skip markers and a leftover debugger call in a Python source file.
-fn python_hygiene_findings(
-    path: &str,
-    number: usize,
-    trimmed: &str,
-    line: &str,
-) -> Vec<HygieneFinding> {
-    let mut findings = Vec::new();
-    // `skip`/`skipif` markers and a debugger call that outlived the
-    // session it was added for.
-    if trimmed.starts_with("@pytest.mark.skip")
-        || trimmed.starts_with("@unittest.skip")
-        || trimmed.starts_with("pytest.skip(")
-    {
-        findings.push(HygieneFinding {
-            file: path.to_string(),
-            line: number,
-            rule: "hygiene.skipped-test",
-            severity: HygieneSeverity::Warning,
-            message: "skip marker silently disables a test".to_string(),
-        });
-    }
-    if trimmed.starts_with("breakpoint()") || line.contains("pdb.set_trace()") {
-        findings.push(HygieneFinding {
-            file: path.to_string(),
-            line: number,
-            rule: "hygiene.debug-print",
-            severity: HygieneSeverity::Warning,
-            message: "debugger call left behind — remove it".to_string(),
-        });
     }
     findings
 }
