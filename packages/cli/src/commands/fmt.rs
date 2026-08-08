@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -135,12 +135,15 @@ pub fn execute(args: &FmtArgs) -> bool {
         .dim()
     );
 
+    let by_key: HashMap<&str, &WorkspaceTarget> =
+        all_targets.iter().map(|t| (t.key.as_str(), t)).collect();
+
     let started_at = Instant::now();
     let footer = Footer::start(group.len());
     let any_failed = run_group(
         &mut group,
         SchedulerContext {
-            all_targets: &all_targets,
+            by_key: &by_key,
             root_dir: &root_dir,
             root_hash: &root_hash,
             cache_dir: &cache_dir,

@@ -192,15 +192,13 @@ fn transitive_deps<'a>(
 pub fn compute_task_hash(
     target: &WorkspaceTarget,
     command: &str,
-    targets: &[WorkspaceTarget],
+    by_key: &HashMap<&str, &WorkspaceTarget>,
     root_hash: &str,
     memo: &FingerprintMemo,
     use_git: bool,
     file_hash_cache: &FileHashCache,
 ) -> String {
-    let by_key: HashMap<&str, &WorkspaceTarget> =
-        targets.iter().map(|t| (t.key.as_str(), t)).collect();
-    let deps = transitive_deps(target, &by_key);
+    let deps = transitive_deps(target, by_key);
     let mut dep_lines: Vec<String> = deps
         .par_iter()
         .map(|dep| {

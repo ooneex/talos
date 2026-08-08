@@ -66,37 +66,41 @@ pub fn add_class_to_module(
     let mut content = fs::read_to_string(module_path).map_err(|e| e.to_string())?;
     let import_line = format!("import {{ {class_name} }} from \"./{import_dir}/{class_name}\";\n");
 
-    let last_import_index = content.rfind("import ").unwrap_or(0);
-    let line_end = content[last_import_index..]
-        .find('\n')
-        .map(|i| last_import_index + i)
-        .unwrap_or(content.len().saturating_sub(1));
-    content = format!(
-        "{}{import_line}{}",
-        &content[..=line_end.min(content.len().saturating_sub(1))],
-        &content[(line_end + 1).min(content.len())..]
-    );
+    if !content.contains(&import_line) {
+        let last_import_index = content.rfind("import ").unwrap_or(0);
+        let line_end = content[last_import_index..]
+            .find('\n')
+            .map(|i| last_import_index + i)
+            .unwrap_or(content.len().saturating_sub(1));
+        content = format!(
+            "{}{import_line}{}",
+            &content[..=line_end.min(content.len().saturating_sub(1))],
+            &content[(line_end + 1).min(content.len())..]
+        );
+    }
 
     if let Ok(re) = Regex::new(&format!(r"(?s)({field}:\s*\[)([^\]]*)"))
         && let Some(caps) = re.captures(&content)
     {
         let existing = caps.get(2).map(|m| m.as_str().trim()).unwrap_or("");
-        let new_value = if existing.is_empty() {
-            class_name.to_string()
-        } else {
-            format!("{existing}, {class_name}")
-        };
-        let whole = caps
-            .get(0)
-            .expect("the full match is always present")
-            .as_str()
-            .to_string();
-        let prefix = caps
-            .get(1)
-            .expect("the field prefix capture is always present")
-            .as_str()
-            .to_string();
-        content = content.replacen(&whole, &format!("{prefix}{new_value}"), 1);
+        if !existing.contains(class_name) {
+            let new_value = if existing.is_empty() {
+                class_name.to_string()
+            } else {
+                format!("{existing}, {class_name}")
+            };
+            let whole = caps
+                .get(0)
+                .expect("the full match is always present")
+                .as_str()
+                .to_string();
+            let prefix = caps
+                .get(1)
+                .expect("the field prefix capture is always present")
+                .as_str()
+                .to_string();
+            content = content.replacen(&whole, &format!("{prefix}{new_value}"), 1);
+        }
     }
 
     fs::write(module_path, content).map_err(|e| e.to_string())

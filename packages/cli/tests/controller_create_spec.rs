@@ -70,8 +70,7 @@ fn controller_create_rejects_unknown_flag() {
 
 mod support;
 
-use cli::commands::controller_create::{add_class_to_module, normalize_route_path};
-use support::TempDir;
+use cli::commands::controller_create::normalize_route_path;
 
 #[test]
 fn normalize_route_path_kebab_cases_each_segment() {
@@ -94,29 +93,9 @@ fn normalize_route_path_collapses_slashes_and_keeps_root() {
     assert_eq!(normalize_route_path("//users//list//"), "/users/list");
 }
 
-#[test]
-fn add_class_to_module_imports_and_registers_the_controller() {
-    let dir = TempDir::new("controller-module");
-    let path = dir.write(
-        "user.module.ts",
-        "import { Module } from \"@talosjs/module\";\n\nexport const UserModule = {\n  controllers: [],\n};\n",
-    );
-
-    add_class_to_module(&path, "UserFindController").expect("the class should be registered");
-
-    let out = dir.read("user.module.ts");
-    assert!(
-        out.contains(r#"import { UserFindController } from "./controllers/UserFindController";"#)
-    );
-    assert!(out.contains("UserFindController"));
-}
-
-#[test]
-fn add_class_to_module_reports_a_missing_module_file() {
-    let dir = TempDir::new("controller-module-missing");
-
-    assert!(add_class_to_module(&dir.path().join("nope.ts"), "XController").is_err());
-}
+// Module-registration coverage (import insertion, array append, and the
+// missing-file error path) now lives with the shared
+// `utils::scaffold::add_class_to_module` it delegates to.
 
 #[test]
 fn controller_create_writes_source_test_and_module_registration() {

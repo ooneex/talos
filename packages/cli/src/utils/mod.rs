@@ -96,8 +96,8 @@ pub use runnable_modules::{
 };
 pub use rust_module::is_rust_module;
 pub use scaffold::{
-    ScaffoldConfig, ScaffoldOptions, current_dir, ensure_module, install_dependency,
-    resolve_scaffold_module, scaffold_resource,
+    ScaffoldConfig, ScaffoldOptions, add_class_to_module, current_dir, ensure_module,
+    install_dependency, resolve_scaffold_module, scaffold_resource,
 };
 pub use skeleton::{
     SKELETON_CACHE_MAX_AGE, SKELETON_REPO_URL, TEMPLATES_DIR_ENV, clone_skeleton, is_cache_stale,

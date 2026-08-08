@@ -7,10 +7,9 @@ use std::time::{Duration, Instant};
 
 use console::{Term, style};
 
-use super::style::{BAR_EMPTY, BAR_FILLED};
+use super::style::{BAR_EMPTY, BAR_FILLED, SPINNER_FRAMES as FRAMES};
 use super::workspace_task::format_duration;
 
-const FRAMES: [&str; 10] = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 const TICK: Duration = Duration::from_millis(80);
 pub const BAR_WIDTH: usize = 22;
 

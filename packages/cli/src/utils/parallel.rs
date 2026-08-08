@@ -6,7 +6,8 @@ use std::time::Duration;
 
 use console::{Term, style};
 
-const SPINNER_FRAMES: [&str; 10] = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+use super::style::SPINNER_FRAMES;
+
 const SPINNER_INTERVAL: Duration = Duration::from_millis(80);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

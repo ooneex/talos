@@ -26,7 +26,7 @@ pub(super) fn run_biome_batch_pass(tasks: &mut [Task], ctx: SchedulerContext) ->
         let Some(target_key) = task.target_key.as_deref() else {
             continue;
         };
-        let Some(target) = ctx.all_targets.iter().find(|t| t.key == target_key) else {
+        let Some(target) = ctx.by_key.get(target_key) else {
             continue;
         };
         let Some(script) = target.scripts.get(&task.command) else {
@@ -62,20 +62,17 @@ fn run_one_biome_batch(
     for &index in indices {
         let hash = if tasks[index].cacheable && !ctx.no_cache {
             tasks[index].target_key.as_ref().and_then(|key| {
-                ctx.all_targets
-                    .iter()
-                    .find(|t| &t.key == key)
-                    .map(|target| {
-                        compute_task_hash(
-                            target,
-                            &tasks[index].command,
-                            ctx.all_targets,
-                            ctx.root_hash,
-                            ctx.fingerprint_memo,
-                            ctx.use_git,
-                            ctx.file_hash_cache,
-                        )
-                    })
+                ctx.by_key.get(key.as_str()).map(|target| {
+                    compute_task_hash(
+                        target,
+                        &tasks[index].command,
+                        ctx.by_key,
+                        ctx.root_hash,
+                        ctx.fingerprint_memo,
+                        ctx.use_git,
+                        ctx.file_hash_cache,
+                    )
+                })
             })
         } else {
             None
@@ -188,7 +185,7 @@ fn cache_batched_success(
     duration_ms: u64,
     ctx: SchedulerContext,
 ) {
-    let Some(target) = ctx.all_targets.iter().find(|t| t.key == key) else {
+    let Some(target) = ctx.by_key.get(key) else {
         return;
     };
     write_cache_entry(

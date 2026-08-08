@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -225,7 +225,7 @@ fn print_run_header(ran_commands: &[String], total_tasks: usize, target_count: u
 #[allow(clippy::too_many_arguments)]
 fn run_all_groups(
     groups: &mut [Vec<Task>],
-    all_targets: &[WorkspaceTarget],
+    by_key: &HashMap<&str, &WorkspaceTarget>,
     root_dir: &std::path::Path,
     root_hash: &str,
     cache_dir: &std::path::Path,
@@ -244,7 +244,7 @@ fn run_all_groups(
         let group_failed = run_group(
             group,
             SchedulerContext {
-                all_targets,
+                by_key,
                 root_dir,
                 root_hash,
                 cache_dir,
@@ -339,11 +339,14 @@ fn run_generic(commands: &[String], args: &WorkspaceRunArgs) -> bool {
     let total_tasks: usize = groups.iter().map(|g| g.len()).sum();
     print_run_header(&ran_commands, total_tasks, sorted.len());
 
+    let by_key: HashMap<&str, &WorkspaceTarget> =
+        all_targets.iter().map(|t| (t.key.as_str(), t)).collect();
+
     let started_at = Instant::now();
     let footer = Footer::start(total_tasks);
     let any_failed = run_all_groups(
         &mut groups,
-        &all_targets,
+        &by_key,
         &root_dir,
         &root_hash,
         &cache_dir,

@@ -1,5 +1,6 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::mpsc::channel;
 
 pub struct RunModuleScriptsOptions<'a> {
     pub bin_path: &'a [&'a str],
@@ -85,14 +86,15 @@ fn build_script_args(options: &RunModuleScriptsOptions, dir: &Path, cwd: &Path) 
     args
 }
 
-/// Runs the built script for one module, exiting the process on failure.
+/// Runs the built script for one module, reporting success/failure and
+/// returning whether it succeeded.
 fn run_module_script(
     name: &str,
     dir: &Path,
     cwd: &Path,
     options: &RunModuleScriptsOptions,
     titled_label: &str,
-) {
+) -> bool {
     let args = build_script_args(options, dir, cwd);
 
     super::style::step(format!("Running {} for {name}...", options.label));
@@ -106,17 +108,18 @@ fn run_module_script(
     match status {
         Ok(status) if status.success() => {
             super::style::success(format!("{titled_label} completed for {name}"));
+            true
         }
         Ok(status) => {
             super::style::error(format!(
                 "{titled_label} failed for {name} (exit code: {})",
                 status.code().unwrap_or(1)
             ));
-            std::process::exit(1);
+            false
         }
         Err(error) => {
             super::style::error(format!("{titled_label} failed for {name}: {error}"));
-            std::process::exit(1);
+            false
         }
     }
 }
@@ -143,7 +146,49 @@ pub fn run_module_scripts(cwd: &Path, options: RunModuleScriptsOptions) {
         return;
     }
 
-    for (name, dir) in modules {
-        run_module_script(&name, &dir, cwd, &options, &titled_label);
+    // Run every module's script concurrently, bounded by the number of
+    // available CPUs, instead of blocking on one `bun` process at a time.
+    let limit = std::thread::available_parallelism()
+        .map(|n| n.get())
+        .unwrap_or(1)
+        .max(1);
+    let mut any_failed = false;
+
+    let options = &options;
+    let titled_label = &titled_label;
+
+    std::thread::scope(|scope| {
+        let (tx, rx) = channel::<bool>();
+        let mut pending = modules.iter();
+        let mut inflight = 0usize;
+
+        loop {
+            while inflight < limit {
+                let Some((name, dir)) = pending.next() else {
+                    break;
+                };
+                inflight += 1;
+                let tx = tx.clone();
+                scope.spawn(move || {
+                    let ok = run_module_script(name, dir, cwd, options, titled_label);
+                    let _ = tx.send(ok);
+                });
+            }
+
+            if inflight == 0 {
+                break;
+            }
+
+            let Ok(ok) = rx.recv() else {
+                any_failed = true;
+                break;
+            };
+            inflight -= 1;
+            any_failed |= !ok;
+        }
+    });
+
+    if any_failed {
+        std::process::exit(1);
     }
 }

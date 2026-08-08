@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::process::Command;
 use std::sync::mpsc::channel;
@@ -30,7 +30,10 @@ enum TaskOutcome {
 /// repeating the same eleven-parameter signature.
 #[derive(Clone, Copy)]
 pub(crate) struct SchedulerContext<'a> {
-    pub all_targets: &'a [WorkspaceTarget],
+    /// All workspace targets, keyed by `WorkspaceTarget::key` and built once
+    /// per run, so target lookups (cache hits, dependency resolution) are
+    /// O(1) instead of re-scanning the full target list per task.
+    pub by_key: &'a HashMap<&'a str, &'a WorkspaceTarget>,
     pub root_dir: &'a Path,
     pub root_hash: &'a str,
     pub cache_dir: &'a Path,
@@ -58,7 +61,7 @@ fn execute_task(
         try_cache_hit(
             target_key.as_deref(),
             &command,
-            ctx.all_targets,
+            ctx.by_key,
             ctx.root_hash,
             ctx.cache_dir,
             ctx.fingerprint_memo,
@@ -153,7 +156,7 @@ fn cache_successful_task(task: &Task, ctx: SchedulerContext) {
     let Some(target_key) = &task.target_key else {
         return;
     };
-    let Some(target) = ctx.all_targets.iter().find(|t| &t.key == target_key) else {
+    let Some(target) = ctx.by_key.get(target_key.as_str()) else {
         return;
     };
 
@@ -268,7 +271,7 @@ struct CacheHit {
 fn try_cache_hit(
     target_key: Option<&str>,
     command: &str,
-    all_targets: &[WorkspaceTarget],
+    by_key: &HashMap<&str, &WorkspaceTarget>,
     root_hash: &str,
     cache_dir: &Path,
     fingerprint_memo: &FingerprintMemo,
@@ -277,12 +280,12 @@ fn try_cache_hit(
     cache_index: &CacheIndex,
 ) -> Option<TaskHashResult> {
     let target_key = target_key?;
-    let target = all_targets.iter().find(|t| t.key == target_key)?;
+    let target = *by_key.get(target_key)?;
 
     let hash = compute_task_hash(
         target,
         command,
-        all_targets,
+        by_key,
         root_hash,
         fingerprint_memo,
         use_git,
@@ -365,12 +368,14 @@ mod tests {
             make_target(root, "modules/app", "app"),
             make_target(root, "modules/web", "web"),
         ];
+        let by_key: HashMap<&str, &WorkspaceTarget> =
+            targets.iter().map(|t| (t.key.as_str(), t)).collect();
         let footer = Footer::start(tasks.len());
 
         let failed = run_biome_batch_pass(
             &mut tasks,
             SchedulerContext {
-                all_targets: &targets,
+                by_key: &by_key,
                 root_dir: root,
                 root_hash: "root-hash",
                 cache_dir: cache,

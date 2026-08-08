@@ -1,12 +1,11 @@
 use std::path::Path;
 
 use clap::Args;
-use regex::Regex;
 
 use crate::utils::{
-    ask_confirm, ask_input, ask_route_method, ask_route_name, ask_route_path, current_dir,
-    ensure_module, install_dependency, read_template, skeleton_templates_dir, to_kebab_case,
-    to_pascal_case,
+    add_class_to_module, ask_confirm, ask_input, ask_route_method, ask_route_name, ask_route_path,
+    current_dir, ensure_module, install_dependency, read_template, skeleton_templates_dir,
+    to_kebab_case, to_pascal_case,
 };
 
 #[derive(Args, Debug)]
@@ -64,52 +63,6 @@ pub fn normalize_route_path(route_path: &str) -> String {
         .join("/");
 
     format!("/{normalized}")
-}
-
-pub fn add_class_to_module(module_path: &std::path::Path, class_name: &str) -> Result<(), String> {
-    let mut content = std::fs::read_to_string(module_path).map_err(|error| error.to_string())?;
-    let import_line = format!("import {{ {class_name} }} from \"./controllers/{class_name}\";\n");
-
-    if !content.contains(&import_line) {
-        let last_import_index = content.rfind("import ").unwrap_or(0);
-        let line_end = content[last_import_index..]
-            .find('\n')
-            .map(|index| last_import_index + index)
-            .unwrap_or(content.len().saturating_sub(1));
-        content = format!(
-            "{}{import_line}{}",
-            &content[..=line_end.min(content.len().saturating_sub(1))],
-            &content[(line_end + 1).min(content.len())..]
-        );
-    }
-
-    let Ok(re) = Regex::new(r"(?s)(controllers:\s*\[)([^\]]*)") else {
-        return std::fs::write(module_path, content).map_err(|error| error.to_string());
-    };
-
-    if let Some(caps) = re.captures(&content) {
-        let existing = caps.get(2).map(|m| m.as_str().trim()).unwrap_or("");
-        if !existing.contains(class_name) {
-            let new_value = if existing.is_empty() {
-                class_name.to_string()
-            } else {
-                format!("{existing}, {class_name}")
-            };
-            let whole = caps
-                .get(0)
-                .map(|m| m.as_str())
-                .unwrap_or_default()
-                .to_string();
-            let prefix = caps
-                .get(1)
-                .map(|m| m.as_str())
-                .unwrap_or_default()
-                .to_string();
-            content = content.replacen(&whole, &format!("{prefix}{new_value}"), 1);
-        }
-    }
-
-    std::fs::write(module_path, content).map_err(|error| error.to_string())
 }
 
 /// The values resolved from flags or prompts before any file is touched.
@@ -269,7 +222,12 @@ pub fn run(args: &ControllerCreateArgs) {
         .join("src")
         .join(format!("{module_pascal_name}Module.ts"));
     if module_path.exists() {
-        let _ = add_class_to_module(&module_path, &format!("{name}Controller"));
+        let _ = add_class_to_module(
+            &module_path,
+            &format!("{name}Controller"),
+            "controllers",
+            "controllers",
+        );
     }
 
     crate::utils::success(format!("{} created successfully", file_path.display()));
