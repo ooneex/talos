@@ -17,7 +17,7 @@ export class VectorDatabase extends AbstractVectorDatabase<DataType> {
   }
 
   public getEmbeddingModel(): { provider: EmbeddingProviderType; model: EmbeddingModelType["model"] } {
-    return { provider: "openai", model: "text-embedding-ada-002" };
+    return { provider: "qwen", model: "qwen3-embedding-8b" };
   }
 
   public getSchema(): { [K in keyof DataType]: FieldValueType } {

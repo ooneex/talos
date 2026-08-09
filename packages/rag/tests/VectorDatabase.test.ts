@@ -26,10 +26,10 @@ describe("VectorDatabase", () => {
     expect(new VectorDatabase().getDatabaseUri()).toBe("");
   });
 
-  test("should embed with the openai ada model", () => {
+  test("should embed with the qwen3 embedding model", () => {
     expect(new VectorDatabase().getEmbeddingModel()).toEqual({
-      provider: "openai",
-      model: "text-embedding-ada-002",
+      provider: "qwen",
+      model: "qwen3-embedding-8b",
     });
   });
 

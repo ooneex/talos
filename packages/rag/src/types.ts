@@ -55,21 +55,24 @@ export type ConvertorType = {
   ) => AsyncGenerator<ChunkType, { json: ConvertorFileType; markdown: ConvertorFileType }>;
 };
 
-export type VectorDatabaseType<DataType extends { metadata: Record<string, unknown> }> = {
+export interface IVectorDatabase<DataType extends { metadata: Record<string, unknown> }> {
   getDatabaseUri: () => string;
   connect: () => Promise<void>;
   getDatabase: () => Connection;
   getEmbeddingModel: () => { provider: EmbeddingProviderType; model: EmbeddingModelType["model"] };
   getSchema: () => { [K in keyof DataType]: FieldValueType };
   open: (name: string, options?: { mode?: "create" | "overwrite" }) => Promise<VectorTable<DataType>>;
-};
+}
 
 export type OpenAIModelType = "text-embedding-ada-002" | "text-embedding-3-small" | "text-embedding-3-large";
 
-export type EmbeddingProviderType = "openai";
+export type QwenModelType = "qwen3-embedding-8b";
+
+export type EmbeddingProviderType = "openai" | "qwen";
 
 export type EmbeddingModelMapType = {
   openai: OpenAIModelType;
+  qwen: QwenModelType;
 };
 
 export type EmbeddingModelType<P extends EmbeddingProviderType = EmbeddingProviderType> = {
@@ -101,7 +104,7 @@ export type FieldValueType =
   | EmbeddingFunction;
 
 // biome-ignore lint/suspicious/noExplicitAny: trust me
-export type VectorDatabaseClassType = new (...args: any[]) => VectorDatabaseType<any>;
+export type VectorDatabaseClassType = new (...args: any[]) => IVectorDatabase<any>;
 
 export type FilterFieldType<T extends { metadata: Record<string, unknown> }> = keyof T["metadata"] | "id" | "text";
 
