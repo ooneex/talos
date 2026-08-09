@@ -102,11 +102,6 @@ export interface IAppEnv {
 
   // AI
   readonly OPENROUTER_API_KEY: string | undefined;
-  readonly OPENAI_API_KEY: string | undefined;
-  readonly ANTHROPIC_API_KEY: string | undefined;
-  readonly GEMINI_API_KEY: string | undefined;
-  readonly GROQ_API_KEY: string | undefined;
-  readonly OLLAMA_HOST: string | undefined;
 
   // Payment
   readonly POLAR_ACCESS_TOKEN: string | undefined;

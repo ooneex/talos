@@ -139,11 +139,6 @@ const buildScalarEnvValues = (
     RESEND_API_KEY: readString("RESEND_API_KEY"),
     JWT_SECRET: readString("JWT_SECRET"),
     OPENROUTER_API_KEY: readString("OPENROUTER_API_KEY"),
-    OPENAI_API_KEY: readString("OPENAI_API_KEY"),
-    ANTHROPIC_API_KEY: readString("ANTHROPIC_API_KEY"),
-    GEMINI_API_KEY: readString("GEMINI_API_KEY"),
-    GROQ_API_KEY: readString("GROQ_API_KEY"),
-    OLLAMA_HOST: readString("OLLAMA_HOST"),
     POLAR_ACCESS_TOKEN: readString("POLAR_ACCESS_TOKEN"),
     POLAR_ENVIRONMENT: readString("POLAR_ENVIRONMENT"),
     STRIPE_SECRET_KEY: readString("STRIPE_SECRET_KEY"),
@@ -245,11 +240,6 @@ export class AppEnv implements IAppEnv {
 
   // AI
   public readonly OPENROUTER_API_KEY: string | undefined;
-  public readonly OPENAI_API_KEY: string | undefined;
-  public readonly ANTHROPIC_API_KEY: string | undefined;
-  public readonly GEMINI_API_KEY: string | undefined;
-  public readonly GROQ_API_KEY: string | undefined;
-  public readonly OLLAMA_HOST: string | undefined;
 
   // Payment
   public readonly POLAR_ACCESS_TOKEN: string | undefined;

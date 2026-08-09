@@ -617,11 +617,7 @@ describe("AppEnv", () => {
       delete Bun.env.MAILER_SENDER_ADDRESS;
       delete Bun.env.RESEND_API_KEY;
       delete Bun.env.JWT_SECRET;
-      delete Bun.env.OPENAI_API_KEY;
-      delete Bun.env.ANTHROPIC_API_KEY;
-      delete Bun.env.GEMINI_API_KEY;
-      delete Bun.env.GROQ_API_KEY;
-      delete Bun.env.OLLAMA_HOST;
+      delete Bun.env.OPENROUTER_API_KEY;
       delete Bun.env.POLAR_ACCESS_TOKEN;
       delete Bun.env.POLAR_ENVIRONMENT;
       delete Bun.env.STRIPE_SECRET_KEY;
@@ -700,11 +696,7 @@ describe("AppEnv", () => {
       expect(appEnv.MAILER_SENDER_ADDRESS).toBeUndefined();
       expect(appEnv.RESEND_API_KEY).toBeUndefined();
       expect(appEnv.JWT_SECRET).toBeUndefined();
-      expect(appEnv.OPENAI_API_KEY).toBeUndefined();
-      expect(appEnv.ANTHROPIC_API_KEY).toBeUndefined();
-      expect(appEnv.GEMINI_API_KEY).toBeUndefined();
-      expect(appEnv.GROQ_API_KEY).toBeUndefined();
-      expect(appEnv.OLLAMA_HOST).toBeUndefined();
+      expect(appEnv.OPENROUTER_API_KEY).toBeUndefined();
       expect(appEnv.POLAR_ACCESS_TOKEN).toBeUndefined();
       expect(appEnv.POLAR_ENVIRONMENT).toBeUndefined();
       expect(appEnv.STRIPE_SECRET_KEY).toBeUndefined();
@@ -744,7 +736,7 @@ describe("AppEnv", () => {
       Bun.env.CACHE_UPSTASH_REDIS_REST_TOKEN = "upstash-token";
       Bun.env.DATABASE_URL = "postgres://db";
       Bun.env.JWT_SECRET = "secret123";
-      Bun.env.ANTHROPIC_API_KEY = "sk-ant-123";
+      Bun.env.OPENROUTER_API_KEY = "sk-or-123";
       Bun.env.AUTH_TOKEN = "tok_abc123";
       Bun.env.CLERK_SECRET_KEY = "sk_clerk_123";
 
@@ -756,7 +748,7 @@ describe("AppEnv", () => {
       expect(appEnv.CACHE_UPSTASH_REDIS_REST_TOKEN).toBe("upstash-token");
       expect(appEnv.DATABASE_URL).toBe("postgres://db");
       expect(appEnv.JWT_SECRET).toBe("secret123");
-      expect(appEnv.ANTHROPIC_API_KEY).toBe("sk-ant-123");
+      expect(appEnv.OPENROUTER_API_KEY).toBe("sk-or-123");
       expect(appEnv.AUTH_TOKEN).toBe("tok_abc123");
       expect(appEnv.CLERK_SECRET_KEY).toBe("sk_clerk_123");
     });
@@ -826,19 +818,11 @@ describe("AppEnv", () => {
     });
 
     test("should read AI env vars", () => {
-      Bun.env.OPENAI_API_KEY = "sk-openai";
-      Bun.env.ANTHROPIC_API_KEY = "sk-ant";
-      Bun.env.GEMINI_API_KEY = "gemini-key";
-      Bun.env.GROQ_API_KEY = "groq-key";
-      Bun.env.OLLAMA_HOST = "http://localhost:11434";
+      Bun.env.OPENROUTER_API_KEY = "sk-or-123";
 
       const appEnv = new AppEnv();
 
-      expect(appEnv.OPENAI_API_KEY).toBe("sk-openai");
-      expect(appEnv.ANTHROPIC_API_KEY).toBe("sk-ant");
-      expect(appEnv.GEMINI_API_KEY).toBe("gemini-key");
-      expect(appEnv.GROQ_API_KEY).toBe("groq-key");
-      expect(appEnv.OLLAMA_HOST).toBe("http://localhost:11434");
+      expect(appEnv.OPENROUTER_API_KEY).toBe("sk-or-123");
     });
 
     test("should read payment env vars", () => {
@@ -1064,19 +1048,11 @@ describe("AppEnv", () => {
     });
 
     test("should trim AI env vars", () => {
-      Bun.env.OPENAI_API_KEY = "  sk-openai  ";
-      Bun.env.ANTHROPIC_API_KEY = "  sk-ant  ";
-      Bun.env.GEMINI_API_KEY = "  gemini-key  ";
-      Bun.env.GROQ_API_KEY = "  groq-key  ";
-      Bun.env.OLLAMA_HOST = "  http://localhost:11434  ";
+      Bun.env.OPENROUTER_API_KEY = "  sk-or-123  ";
 
       const appEnv = new AppEnv();
 
-      expect(appEnv.OPENAI_API_KEY).toBe("sk-openai");
-      expect(appEnv.ANTHROPIC_API_KEY).toBe("sk-ant");
-      expect(appEnv.GEMINI_API_KEY).toBe("gemini-key");
-      expect(appEnv.GROQ_API_KEY).toBe("groq-key");
-      expect(appEnv.OLLAMA_HOST).toBe("http://localhost:11434");
+      expect(appEnv.OPENROUTER_API_KEY).toBe("sk-or-123");
     });
 
     test("should trim payment env vars", () => {
