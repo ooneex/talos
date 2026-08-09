@@ -410,3 +410,9 @@
 
 - Sync Cargo.lock talos-cli version with Cargo.toml (0.1.0)|The chore(release) commit bumped Cargo.toml to 0.1.0 without updating — Franck ([de1f9a78](https///github.com/ooneex/talos/commit/de1f9a78))
 
+## [0.1.2](https///github.com/ooneex/talos/releases/tag/@talos/cli@0.1.2) - 2026-08-09
+
+### Fixed
+
+- Skip npm publish when a release has no publishable targets| — Franck ([ef1226b8](https///github.com/ooneex/talos/commit/ef1226b8))
+
