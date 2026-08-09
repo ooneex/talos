@@ -1,36 +1,24 @@
 {
-  "name": "@talosjs/exception",
+  "dependencies": {
+    "@talosjs/http-status": "workspace:^"
+  },
   "description": "Structured exception handling with HTTP status code mapping, typed error data, and JSON-formatted stack traces for consistent error reporting",
-  "version": "1.1.2",
-  "type": "module",
+  "devDependencies": {},
+  "exports": {
+    ".": {
+      "import": {
+        "default": "./dist/index.js",
+        "types": "./dist/index.d.ts"
+      }
+    },
+    "./package.json": "./package.json"
+  },
   "files": [
     "dist",
     "LICENSE",
     "README.md",
     "package.json"
   ],
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "import": {
-        "types": "./dist/index.d.ts",
-        "default": "./dist/index.js"
-      }
-    },
-    "./package.json": "./package.json"
-  },
-  "license": "MIT",
-  "scripts": {
-    "test": "bun test tests",
-    "build": "bunup",
-    "fmt": "bunx biome check --write",
-    "lint": "tsc --noEmit && bunx biome lint"
-  },
-  "dependencies": {
-    "@talosjs/http-status": "workspace:^"
-  },
-  "devDependencies": {},
   "keywords": [
     "bun",
     "error",
@@ -38,5 +26,17 @@
     "exception",
     "talos",
     "typescript"
-  ]
+  ],
+  "license": "MIT",
+  "module": "./dist/index.js",
+  "name": "@talosjs/exception",
+  "scripts": {
+    "build": "bunup",
+    "fmt": "bunx biome check --write",
+    "lint": "tsc --noEmit && bunx biome lint",
+    "test": "bun test tests"
+  },
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "version": "1.1.3"
 }
