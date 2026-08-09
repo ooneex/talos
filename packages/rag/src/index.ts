@@ -1,6 +1,4 @@
 export { AbstractVectorDatabase } from "./AbstractVectorDatabase";
-export { Convertor } from "./Convertor";
-export { ConvertorException } from "./ConvertorException";
 export { decorator } from "./decorators";
 export { OpenrouterEmbeddingFunction } from "./OpenrouterEmbeddingFunction";
 export { RAG } from "./RAG";

@@ -25,31 +25,6 @@ import type {
 } from "apache-arrow";
 import type { VectorTable } from "./VectorTable.ts";
 
-export type ConvertorOptionsType = {
-  /** Directory where converted files (JSON, Markdown, extracted images) are written. */
-  outputDir?: string;
-  /** Password used to unlock encrypted PDF sources before conversion. */
-  password?: string;
-  /** File format used when extracting images from the source document. */
-  imageFormat?: "png" | "jpeg";
-  /** Page selection to convert (e.g. "1,3-5"); when omitted, the whole document is processed. */
-  pages?: string;
-  /** Suppress progress and informational output from the underlying converter. */
-  quiet?: boolean;
-};
-
-export type ChunkType = {
-  text: string;
-  metadata: {
-    heading: string | null;
-    page: number | null;
-    pages: number[];
-    source: string | null;
-  };
-};
-
-export type ConvertorFileType = { name: string; path: string };
-
 export type RAGOptionsType = {
   /** OpenRouter API key used to OCR scanned pages; defaults to `OPENROUTER_API_KEY`. */
   apiKey?: string;
@@ -70,12 +45,6 @@ export type RAGExtractResultType = IPDFExtractResult & {
 export interface IRAG {
   extract: (options?: IPDFExtractOptions) => Promise<RAGExtractResultType>;
 }
-
-export type ConvertorType = {
-  convert: (
-    options?: ConvertorOptionsType,
-  ) => AsyncGenerator<ChunkType, { json: ConvertorFileType; markdown: ConvertorFileType }>;
-};
 
 export interface IVectorDatabase<DataType extends { metadata: Record<string, unknown> }> {
   getDatabaseUri: () => string;
