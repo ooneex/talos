@@ -84,7 +84,7 @@ export abstract class Chat implements IChat {
    * collected assistant text is returned as a string.
    */
   public async run<T>(input?: ChatInputType): Promise<T> {
-    const options = this.buildOptions(input);
+    const options = await this.buildOptions(input);
 
     if (input?.outputSchema) {
       const result = await chat({ ...options, outputSchema: input.outputSchema, stream: false });
@@ -101,7 +101,7 @@ export abstract class Chat implements IChat {
    * `event.type` to handle the chunks they care about.
    */
   public async *stream(input?: ChatInputType): AsyncIterable<AGUIEvent> {
-    const options = this.buildOptions(input);
+    const options = await this.buildOptions(input);
     yield* chat({ ...options, stream: true });
   }
 
@@ -110,9 +110,10 @@ export abstract class Chat implements IChat {
    *
    * Only the routing surface is sent — each skill's {@link ISkill.getName} and
    * {@link ISkill.getWhenToUse} — so the judgement costs two lines per skill
-   * instead of every procedure. What comes back are the skill classes worth
-   * putting in play: hand them to {@link Chat.run} or {@link Chat.stream} as
-   * `skills` and only their instructions and tools are paid for on the run.
+   * instead of every procedure. {@link Chat.run} and {@link Chat.stream} call this
+   * automatically before every request, so only the skills it names have their
+   * instructions and tools paid for on the actual run. Exposed publicly too, for
+   * callers that want to see the routing decision ahead of time.
    *
    * The judgement is its own call — no tools, no middleware, no per-request
    * sampling options — so nothing the chat does on a real run can steer it.
@@ -121,50 +122,45 @@ export abstract class Chat implements IChat {
    *
    * @example
    * ```ts
-   * const skills = await chat.judge({ prompt });
-   * const reply = await chat.run({ prompt, skills });
+   * const skills = await chat.judge({ prompt }); // optional: preview the routing
+   * const reply = await chat.run({ prompt }); // judged automatically either way
    * ```
    */
   public async judge(input?: ChatInputType): Promise<AiSkillClassType[]> {
-    const entries = this.resolveSkillEntries(input);
-    if (entries.length === 0) return [];
-
-    const options = createChatOptions({
-      adapter: createAdapter(this.getModel()),
-      messages: buildMessages(input),
-      systemPrompts: buildJudgePrompt(entries.map(({ skill }) => skill)),
-      conversationId: input?.conversationId,
-      abortController: input?.abortController,
-      context: input?.context,
-    });
-
-    const { names } = (await chat({
-      ...options,
-      outputSchema: skillJudgementSchema,
-      stream: false,
-    })) as SkillJudgementType;
-
-    return entries.filter(({ skill }) => isJudged(skill, names)).map(({ Skill }) => Skill);
+    const entries = await this.judgeSkillEntries(this.resolveSkillEntries(input), input);
+    return entries.map(({ Skill }) => Skill);
   }
 
   /** Assemble the shared {@link chat} options from the subclass and request input. */
-  private buildOptions(input?: ChatInputType) {
-    const skills = this.resolveSkills(input);
+  private async buildOptions(input?: ChatInputType) {
+    const skills = await this.resolveSkills(input);
     const tools = this.resolveTools(input, skills);
 
     return createChatOptions({
-      adapter: createAdapter(this.getModel()),
-      messages: buildMessages(input),
+      ...this.buildBaseOptions(input),
       systemPrompts: [...this.getSystemPrompts(), ...(input?.systemPrompts ?? []), ...buildSkillPrompts(skills)],
       tools: toServerTools(tools),
       middleware: this.resolveMiddlewares(input, tools),
       metadata: input?.metadata,
       modelOptions: buildModelOptions(input),
       agentLoopStrategy: input?.agentLoopStrategy,
+    });
+  }
+
+  /**
+   * Assemble the options every {@link chat} call needs regardless of what
+   * runs — the adapter, messages, and conversation wiring — so {@link buildOptions}
+   * and {@link judge} each layer their own `systemPrompts` (and, for a real run,
+   * tools/middleware) on top without repeating this plumbing.
+   */
+  private buildBaseOptions(input?: ChatInputType) {
+    return {
+      adapter: createAdapter(this.getModel()),
+      messages: buildMessages(input),
       conversationId: input?.conversationId,
       abortController: input?.abortController,
       context: input?.context,
-    });
+    };
   }
 
   /** Resolve the subclass and per-request skill classes, keeping each class next to its instance. */
@@ -174,9 +170,33 @@ export abstract class Chat implements IChat {
     return [...new Set(classes)].map((Skill) => ({ Skill, skill: container.get<ISkill>(Skill) }));
   }
 
-  /** Resolve the subclass and per-request skill classes to instances. */
-  private resolveSkills(input?: ChatInputType): ISkill[] {
-    return this.resolveSkillEntries(input).map(({ skill }) => skill);
+  /** Resolve the subclass and per-request skill classes to instances, narrowed down to what {@link judge} picks. */
+  private async resolveSkills(input?: ChatInputType): Promise<ISkill[]> {
+    const entries = await this.judgeSkillEntries(this.resolveSkillEntries(input), input);
+    return entries.map(({ skill }) => skill);
+  }
+
+  /**
+   * Ask the model which of the given skill entries a request calls for, sending
+   * only each skill's {@link ISkill.getName} and {@link ISkill.getWhenToUse} —
+   * shared by {@link Chat.judge} (manual preview) and {@link Chat.resolveSkills}
+   * (the automatic call every {@link Chat.run} / {@link Chat.stream} makes).
+   */
+  private async judgeSkillEntries(entries: SkillEntryType[], input?: ChatInputType): Promise<SkillEntryType[]> {
+    if (entries.length === 0) return [];
+
+    const options = createChatOptions({
+      ...this.buildBaseOptions(input),
+      systemPrompts: buildJudgePrompt(entries.map(({ skill }) => skill)),
+    });
+
+    const { names } = (await chat({
+      ...options,
+      outputSchema: skillJudgementSchema,
+      stream: false,
+    })) as SkillJudgementType;
+
+    return entries.filter(({ skill }) => isJudged(skill, names));
   }
 
   /**

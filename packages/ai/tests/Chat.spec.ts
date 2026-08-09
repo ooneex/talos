@@ -2,14 +2,23 @@ import { beforeEach, describe, expect, mock, test } from "bun:test";
 import type { AGUIEvent } from "@tanstack/ai";
 
 // Records every `chat()` invocation so assertions can inspect the assembled
-// options. Non-stream calls resolve to `chatResult`; stream calls replay
-// `streamEvents`. Both are reset per-test below.
+// options. `run`/`stream` now judge automatically before the real call, so a
+// judgement request (recognisable by its `outputSchema`) is answered from
+// `judgeResult` — defaulting to every skill named in its prompt, i.e. "let
+// them all through" — while the real call still resolves to `chatResult`.
 const chatCalls: Array<Record<string, unknown>> = [];
 let chatResult: unknown = "";
+let judgeResult: { names: string[] } | null = null;
 let streamEvents: AGUIEvent[] = [];
 
 const chatMock = mock((options: Record<string, unknown>) => {
   chatCalls.push(options);
+  if (options.outputSchema === skillJudgementSchema) {
+    if (judgeResult) return Promise.resolve(judgeResult);
+    const prompt = (options.systemPrompts as string[]).join("\n");
+    const names = [...prompt.matchAll(/^- (.+?):/gm)].map((match) => match[1] as string);
+    return Promise.resolve({ names });
+  }
   if (options.stream) {
     return (async function* () {
       for (const event of streamEvents) yield event;
@@ -35,6 +44,7 @@ mock.module("@tanstack/ai-openrouter", () => ({
 
 const { Chat } = await import("@/Chat");
 const { decorator } = await import("@/decorators");
+const { skillJudgementSchema } = await import("@/utils");
 
 import type { AiMiddlewareClassType, AiSkillClassType, AiToolClassType, IMiddleware, ISkill, ITool } from "@/types";
 
@@ -52,6 +62,7 @@ const lastCall = () => chatCalls[chatCalls.length - 1] as Record<string, any>;
 beforeEach(() => {
   chatCalls.length = 0;
   chatResult = "";
+  judgeResult = null;
   streamEvents = [];
 });
 
@@ -331,6 +342,25 @@ describe("Chat skill resolution", () => {
 
     expect(toolNames()).toContain("refund_order");
   });
+
+  test("should judge automatically and drop a skill the model didn't name", async () => {
+    judgeResult = { names: ["tenant-onboard"] };
+
+    await new WithSkill().run({ prompt: "hi", skills: [OnboardSkill] });
+
+    expect(toolNames()).toEqual([]);
+    const prompts = lastCall().systemPrompts as string[];
+    const catalogue = prompts[prompts.length - 1] ?? "";
+    expect(catalogue).toContain("tenant-onboard");
+    expect(catalogue).not.toContain("order-refund");
+  });
+
+  test("should skip the judge call entirely when no skill is declared", async () => {
+    await new TestChat().run({ prompt: "hi" });
+
+    expect(chatCalls).toHaveLength(1);
+    expect(chatCalls[0]?.outputSchema).toBeUndefined();
+  });
 });
 
 describe("Chat.judge", () => {
@@ -357,7 +387,7 @@ describe("Chat.judge", () => {
   }
 
   test("should return the skill classes the model named", async () => {
-    chatResult = { names: ["order-refund"] };
+    judgeResult = { names: ["order-refund"] };
 
     const skills = await new WithSkills().judge({ prompt: "I want my money back" });
 
@@ -365,7 +395,7 @@ describe("Chat.judge", () => {
   });
 
   test("should match a name the model retyped with different casing and spacing", async () => {
-    chatResult = { names: [" Order-Refund "] };
+    judgeResult = { names: [" Order-Refund "] };
 
     const skills = await new WithSkills().judge({ prompt: "refund me" });
 
@@ -381,7 +411,7 @@ describe("Chat.judge", () => {
       public getPrompt = (): string => "Render the invoice, then email it.";
     }
     decorator.skill()(ExtraSkill);
-    chatResult = { names: ["invoice-send"] };
+    judgeResult = { names: ["invoice-send"] };
 
     const skills = await new WithSkills().judge({ prompt: "send me my invoice", skills: [ExtraSkill] });
 
@@ -389,7 +419,7 @@ describe("Chat.judge", () => {
   });
 
   test("should send only the names and when-to-use lines, never the procedures", async () => {
-    chatResult = { names: [] };
+    judgeResult = { names: [] };
 
     await new WithSkills().judge({ prompt: "hello" });
 
@@ -400,7 +430,7 @@ describe("Chat.judge", () => {
   });
 
   test("should judge with structured output and without tools or middleware", async () => {
-    chatResult = { names: [] };
+    judgeResult = { names: [] };
 
     await new WithSkills().judge({ prompt: "hello" });
 
@@ -412,7 +442,7 @@ describe("Chat.judge", () => {
   });
 
   test("should return nothing when the model names no skill", async () => {
-    chatResult = { names: [] };
+    judgeResult = { names: [] };
 
     const skills = await new WithSkills().judge({ prompt: "what time is it?" });
 
