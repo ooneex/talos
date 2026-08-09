@@ -30,3 +30,12 @@
 
 - Refine package description| — Franck ([4dd7e77f](https://github.com/ooneex/talos/commit/4dd7e77f))
 
+## [1.1.4](https///github.com/ooneex/talos/releases/tag/@talosjs/workflow@1.1.4) - 2026-08-09
+
+### Changed
+
+- Reduce complexity and clean up conventions| — Franck ([834d8010](https///github.com/ooneex/talos/commit/834d8010))
+- Add explicit constructors and biome-ignore comments for Bun's coverage tool|This commit adds explicit constructors to abstract classes and utility functions — Franck ([4d33ff04](https///github.com/ooneex/talos/commit/4d33ff04))
+- Raise coverage thresholds to 99% across all packages| — Franck ([14db3019](https///github.com/ooneex/talos/commit/14db3019))
+- Enable coverage thresholds in every package's bunfig.toml| — Franck ([e19e3785](https///github.com/ooneex/talos/commit/e19e3785))
+
