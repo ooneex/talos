@@ -22,3 +22,12 @@
 
 - Add fs package| — Franck ([e21353c2](https://github.com/ooneex/talos/commit/e21353c2))
 
+## [1.1.3](https///github.com/ooneex/talos/releases/tag/@talosjs/fs@1.1.3) - 2026-08-09
+
+### Changed
+
+- Extract crossFactories helpers and reduce complexity| — Franck ([e1f1be4e](https///github.com/ooneex/talos/commit/e1f1be4e))
+- Raise coverage thresholds to 99% across all packages| — Franck ([14db3019](https///github.com/ooneex/talos/commit/14db3019))
+- Enable coverage thresholds in every package's bunfig.toml| — Franck ([e19e3785](https///github.com/ooneex/talos/commit/e19e3785))
+- Use a unique temp directory name to avoid collisions| — Franck ([a63c50e9](https///github.com/ooneex/talos/commit/a63c50e9))
+

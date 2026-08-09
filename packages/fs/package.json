@@ -1,36 +1,24 @@
 {
-  "name": "@talosjs/fs",
+  "dependencies": {
+    "@talosjs/exception": "workspace:^",
+    "@talosjs/http-status": "workspace:^"
+  },
   "description": "Async file system utilities for reading, writing, copying, and watching files and directories with type-safe error handling and stream support",
-  "version": "1.1.2",
-  "type": "module",
+  "exports": {
+    ".": {
+      "import": {
+        "default": "./dist/index.js",
+        "types": "./dist/index.d.ts"
+      }
+    },
+    "./package.json": "./package.json"
+  },
   "files": [
     "dist",
     "LICENSE",
     "README.md",
     "package.json"
   ],
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "import": {
-        "types": "./dist/index.d.ts",
-        "default": "./dist/index.js"
-      }
-    },
-    "./package.json": "./package.json"
-  },
-  "license": "MIT",
-  "scripts": {
-    "build": "bunup",
-    "fmt": "bunx biome check --write",
-    "lint": "tsc --noEmit && bunx biome lint",
-    "test": "bun test tests"
-  },
-  "dependencies": {
-    "@talosjs/exception": "workspace:^",
-    "@talosjs/http-status": "workspace:^"
-  },
   "keywords": [
     "bun",
     "file",
@@ -39,5 +27,17 @@
     "io",
     "talos",
     "typescript"
-  ]
+  ],
+  "license": "MIT",
+  "module": "./dist/index.js",
+  "name": "@talosjs/fs",
+  "scripts": {
+    "build": "bunup",
+    "fmt": "bunx biome check --write",
+    "lint": "tsc --noEmit && bunx biome lint",
+    "test": "bun test tests"
+  },
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "version": "1.1.3"
 }
