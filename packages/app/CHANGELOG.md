@@ -71,3 +71,23 @@
 
 - Update validation constraint imports to per-file entry points| — Franck ([879b91b1](https://github.com/ooneex/talos/commit/879b91b1))
 
+## [1.3.0](https///github.com/ooneex/talos/releases/tag/@talosjs/app@1.3.0) - 2026-08-09
+
+### Added
+
+- Add configurable websocket options to App| — Franck ([9e9fb16b](https///github.com/ooneex/talos/commit/9e9fb16b))
+
+### Changed
+
+- Update logging test to handle 16-color fallback in output| — Franck ([04abddeb](https///github.com/ooneex/talos/commit/04abddeb))
+- Reduce complexity and clean up conventions| — Franck ([e5c9c529](https///github.com/ooneex/talos/commit/e5c9c529))
+- Use validateAssert guard for route constraint validation|Replace the inline constraint-shape detection in validateConstraint — Franck ([68d5f642](https///github.com/ooneex/talos/commit/68d5f642))
+- Add explicit constructors and biome-ignore comments for Bun's coverage tool|This commit adds explicit constructors to abstract classes and utility functions — Franck ([4d33ff04](https///github.com/ooneex/talos/commit/4d33ff04))
+- Raise coverage thresholds to 99% across all packages| — Franck ([14db3019](https///github.com/ooneex/talos/commit/14db3019))
+- Enable coverage thresholds in every package's bunfig.toml| — Franck ([e19e3785](https///github.com/ooneex/talos/commit/e19e3785))
+- Use Cache helpers from @talosjs/cache for route keys| — Franck ([1e492faa](https///github.com/ooneex/talos/commit/1e492faa))
+
+### Fixed
+
+- Resolve roles.yml fallback from the running module, not shared|The fallback path was hardcoded to modules/shared/src/roles.yml, so any — Franck ([6e84dbf1](https///github.com/ooneex/talos/commit/6e84dbf1))
+
