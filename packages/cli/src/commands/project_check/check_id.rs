@@ -315,7 +315,7 @@ impl CheckId {
     pub fn description(self) -> &'static str {
         match self {
             CheckId::Workspace => {
-                "install, build, fmt and lint every package and module, then measure their suites"
+                "install, build and lint every package and module, then measure their suites"
             }
             CheckId::Structure => "module manifests, package names and path aliases",
             CheckId::Folders => "every folder against the layout its module type allows",

@@ -370,7 +370,7 @@ mod tests {
         ];
         let by_key: HashMap<&str, &WorkspaceTarget> =
             targets.iter().map(|t| (t.key.as_str(), t)).collect();
-        let footer = Footer::start(tasks.len());
+        let footer = Footer::start(tasks.len(), false);
 
         let failed = run_biome_batch_pass(
             &mut tasks,

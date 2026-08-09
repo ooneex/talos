@@ -139,7 +139,11 @@ pub fn execute(args: &FmtArgs) -> bool {
         all_targets.iter().map(|t| (t.key.as_str(), t)).collect();
 
     let started_at = Instant::now();
-    let footer = Footer::start(group.len());
+    // fmt always streams plain, sequential task logs — no animated progress
+    // bar — since some terminals accept its ANSI cursor moves without
+    // applying them, turning each redraw into a new stacked block instead of
+    // an in-place update.
+    let footer = Footer::start(group.len(), true);
     let any_failed = run_group(
         &mut group,
         SchedulerContext {

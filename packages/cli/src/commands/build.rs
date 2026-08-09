@@ -120,7 +120,7 @@ pub fn execute(args: &BuildArgs) -> bool {
     let fingerprint_memo = FingerprintMemo::new();
 
     let started_at = Instant::now();
-    let footer = Footer::start(buildable.len());
+    let footer = Footer::start(buildable.len(), false);
 
     let mut ran = 0usize;
     let mut cached = 0usize;

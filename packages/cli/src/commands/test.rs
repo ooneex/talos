@@ -139,7 +139,7 @@ pub fn execute(args: &TestArgs) -> bool {
         all_targets.iter().map(|t| (t.key.as_str(), t)).collect();
 
     let started_at = Instant::now();
-    let footer = Footer::start(group.len());
+    let footer = Footer::start(group.len(), false);
     let any_failed = run_group(
         &mut group,
         SchedulerContext {

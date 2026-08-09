@@ -37,7 +37,13 @@ pub(crate) struct Footer {
 }
 
 impl Footer {
-    pub(crate) fn start(total: usize) -> Self {
+    /// `plain` forces the sequential, non-animated log path used for
+    /// unattended terminals even when stdout reports as attended — an escape
+    /// hatch for terminals (some multiplexers, IDE panes, log collectors)
+    /// that accept ANSI cursor moves but don't actually apply them, which
+    /// turns every redraw into a new stacked block instead of an in-place
+    /// update.
+    pub(crate) fn start(total: usize, plain: bool) -> Self {
         let inner = Arc::new(FooterInner {
             state: Mutex::new(FooterState {
                 total,
@@ -50,7 +56,7 @@ impl Footer {
             started_at: Instant::now(),
         });
 
-        if !Term::stdout().features().is_attended() {
+        if plain || !Term::stdout().features().is_attended() {
             return Self {
                 inner,
                 handle: None,

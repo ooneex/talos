@@ -343,7 +343,7 @@ fn run_generic(commands: &[String], args: &WorkspaceRunArgs) -> bool {
         all_targets.iter().map(|t| (t.key.as_str(), t)).collect();
 
     let started_at = Instant::now();
-    let footer = Footer::start(total_tasks);
+    let footer = Footer::start(total_tasks, args.logs);
     let any_failed = run_all_groups(
         &mut groups,
         &by_key,

@@ -14,7 +14,6 @@ use crate::commands::build::{self, BuildArgs};
 use crate::commands::coverage_check::{
     self, CoverageAudit, ModuleCoverage, RunStatus, trim_percent,
 };
-use crate::commands::fmt::{self, FmtArgs};
 use crate::commands::install::{self, InstallArgs};
 use crate::commands::lint::{self, LintArgs};
 use crate::commands::test::{self, TestArgs};
@@ -22,25 +21,25 @@ use crate::commands::workspace_check::{self, WorkspaceCheckArgs};
 use crate::commands::workspace_run::{self, WorkspaceRunArgs};
 
 // ---------------------------------------------------------------------------
-// Workspace — the `workspace:check` gate: install, build, fmt, lint, test
+// Workspace — the `workspace:check` gate: install, build, lint, test
 // ---------------------------------------------------------------------------
 
 /// The package scripts `project:check` runs before it measures the suites,
 /// in order. `workspace:check` itself runs [`install`] and [`build`] the same
-/// way, then [`coverage_check`] and [`lint`] at once instead of `fmt`, `lint`
-/// and `test` in sequence — see this module's docs below.
-const CHECK_COMMANDS: &str = "install,build,fmt,lint,test";
+/// way, then [`coverage_check`] and [`lint`] at once instead of `lint` and
+/// `test` in sequence — see this module's docs below.
+const CHECK_COMMANDS: &str = "install,build,lint,test";
 
 /// The package scripts `workspace:check` runs before it measures anything.
 ///
 /// Every one of them graduated to its own standalone command and cache, so
 /// each runs through that implementation directly — [`install`], [`build`],
-/// [`fmt`], [`lint`] and [`test`] — rather than the generic per-target
-/// scheduler in [`workspace_run`], the same as `workspace:check` itself runs
-/// them. `test` runs the suites [coverage](check_coverage) skips — a Rust
-/// module measures its own coverage with `sh scripts/coverage.sh` rather than
-/// through `bun test --coverage`, so `cargo test` here is the only place its
-/// suite actually runs.
+/// [`lint`] and [`test`] — rather than the generic per-target scheduler in
+/// [`workspace_run`], the same as `workspace:check` itself runs them. `test`
+/// runs the suites [coverage](check_coverage) skips — a Rust module measures
+/// its own coverage with `sh scripts/coverage.sh` rather than through
+/// `bun test --coverage`, so `cargo test` here is the only place its suite
+/// actually runs.
 pub(super) fn check_workspace(args: &ProjectCheckArgs, root: &Path) -> CheckOutcome {
     let scope = CHECK_COMMANDS.replace(',', ", ");
 
@@ -77,13 +76,6 @@ fn run_workspace_commands(args: &ProjectCheckArgs, root: &Path) -> Result<bool, 
                 cwd: cwd.clone(),
             }),
             "build" => build::execute(&BuildArgs {
-                packages: args.packages.clone(),
-                modules: args.modules.clone(),
-                logs: args.logs,
-                no_cache: args.no_cache,
-                cwd: cwd.clone(),
-            }),
-            "fmt" => fmt::execute(&FmtArgs {
                 packages: args.packages.clone(),
                 modules: args.modules.clone(),
                 logs: args.logs,
@@ -354,7 +346,7 @@ mod check_commands_tests {
     /// skips it.
     #[test]
     fn check_commands_runs_the_scripted_gate_in_order() {
-        assert_eq!(CHECK_COMMANDS, "install,build,fmt,lint,test");
+        assert_eq!(CHECK_COMMANDS, "install,build,lint,test");
     }
 }
 

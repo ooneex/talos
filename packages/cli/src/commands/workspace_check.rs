@@ -9,17 +9,21 @@
 //! linted once the workspace resolved and compiled. Coverage and lint read
 //! disjoint parts of the tree from there on — one measures the suites, the
 //! other lints the sources — so they run at once instead of one after the
-//! other.
+//! other, but quietly: each draws its own live progress bar, and two loaders
+//! writing to the same terminal at once would corrupt each other's output.
+//! Their reports are printed one after the other, under a single header,
+//! once both are back.
 
 use std::path::PathBuf;
 use std::time::Instant;
 
 use clap::Args;
+use console::style;
 
 use crate::commands::build::{self, BuildArgs};
 use crate::commands::coverage_check::{self, CoverageAudit, CoverageCheckArgs};
 use crate::commands::install::{self, InstallArgs};
-use crate::commands::lint::{self, LintArgs};
+use crate::commands::lint::{self, LintArgs, LintAudit};
 
 #[derive(Args, Debug)]
 pub struct WorkspaceCheckArgs {
@@ -132,42 +136,77 @@ pub fn run(args: &WorkspaceCheckArgs) {
         std::process::exit(1);
     }
 
-    // Coverage and lint touch disjoint parts of the workspace, so they run on
-    // their own threads at once rather than one after the other.
-    let (coverage_failed, lint_passed) = std::thread::scope(|scope| {
-        let coverage = scope.spawn(|| run_coverage(args));
-        let lint = scope.spawn(|| lint::execute(&lint_args(args)));
-        (
-            coverage.join().unwrap_or(true),
-            lint.join().unwrap_or(false),
-        )
+    // Coverage and lint touch disjoint parts of the workspace, so they are
+    // measured on their own threads at once — quietly, so neither draws a
+    // live progress bar over the other — and only reported once both are
+    // back, so the two reports print whole instead of interleaved mid-line.
+    let started = Instant::now();
+    let root = args
+        .cwd
+        .clone()
+        .map(PathBuf::from)
+        .unwrap_or_else(crate::utils::current_dir);
+
+    let (coverage, lint) = std::thread::scope(|scope| {
+        let coverage = scope.spawn(|| measure(args, true));
+        let lint = scope.spawn(|| {
+            lint::audit(
+                &root,
+                args.modules.as_deref(),
+                args.packages.as_deref(),
+                args.no_cache,
+                true,
+            )
+        });
+        (coverage.join(), lint.join())
     });
+    let elapsed_ms = started.elapsed().as_millis() as u64;
+
+    let (coverage_failed, lint_passed) = print_check_report(
+        args,
+        coverage.unwrap_or_else(|_| Err("coverage panicked".to_string())),
+        lint.unwrap_or_else(|_| Err("lint panicked".to_string())),
+        elapsed_ms,
+    );
 
     if coverage_failed || !lint_passed {
         std::process::exit(1);
     }
 }
 
-/// Measures and prints the coverage report the same way [`coverage_check::run`]
-/// would, but returns whether it failed instead of exiting the process — so
-/// [`run`] can join it against lint before deciding the gate's status.
-fn run_coverage(args: &WorkspaceCheckArgs) -> bool {
-    let started = Instant::now();
+/// Prints coverage and lint as one gate report instead of the two each would
+/// draw alone, then returns whether coverage failed and whether lint passed
+/// so [`run`] can decide the gate's status.
+fn print_check_report(
+    args: &WorkspaceCheckArgs,
+    coverage: Result<CoverageAudit, String>,
+    lint: Result<LintAudit, String>,
+    elapsed_ms: u64,
+) -> (bool, bool) {
+    println!();
+    println!("{}", style("▸ Workspace check").magenta().bold());
 
-    let audit = match measure(args, false) {
-        Ok(audit) => audit,
+    let coverage_failed = match coverage {
+        Ok(audit) => {
+            coverage_check::print_report(&audit, args.logs, args.strict, elapsed_ms, true);
+            audit.is_failure(args.strict)
+        }
         Err(message) => {
             crate::utils::warn(message);
-            return false;
+            true
         }
     };
 
-    coverage_check::print_report(
-        &audit,
-        args.logs,
-        args.strict,
-        started.elapsed().as_millis() as u64,
-        false,
-    );
-    audit.is_failure(args.strict)
+    let lint_passed = match lint {
+        Ok(audit) => {
+            lint::print_report(&audit, args.logs, elapsed_ms);
+            !audit.is_failure()
+        }
+        Err(message) => {
+            crate::utils::error(message);
+            false
+        }
+    };
+
+    (coverage_failed, lint_passed)
 }
