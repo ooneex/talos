@@ -404,3 +404,9 @@
 - Pack with bun and publish resolved tarball via npm| — Franck ([6a47ac90](https///github.com/ooneex/talos/commit/6a47ac90))
 - Publish with npm instead of bun| — Franck ([0544c925](https///github.com/ooneex/talos/commit/0544c925))
 
+## [0.1.1](https///github.com/ooneex/talos/releases/tag/@talos/cli@0.1.1) - 2026-08-09
+
+### Fixed
+
+- Sync Cargo.lock talos-cli version with Cargo.toml (0.1.0)|The chore(release) commit bumped Cargo.toml to 0.1.0 without updating — Franck ([de1f9a78](https///github.com/ooneex/talos/commit/de1f9a78))
+
