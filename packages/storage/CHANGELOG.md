@@ -21,3 +21,16 @@
 
 - Add storage package| — Franck ([e89cdb17](https://github.com/ooneex/talos/commit/e89cdb17))
 
+## [1.1.3](https///github.com/ooneex/talos/releases/tag/@talosjs/storage@1.1.3) - 2026-08-09
+
+### Changed
+
+- Simplify S3 mock write to only handle raw byte input| — Franck ([1de04560](https///github.com/ooneex/talos/commit/1de04560))
+- Add explicit constructors and biome-ignore comments for Bun's coverage tool|This commit adds explicit constructors to abstract classes and utility functions — Franck ([4d33ff04](https///github.com/ooneex/talos/commit/4d33ff04))
+- Raise coverage thresholds to 99% across all packages| — Franck ([14db3019](https///github.com/ooneex/talos/commit/14db3019))
+- Enable coverage thresholds in every package's bunfig.toml| — Franck ([e19e3785](https///github.com/ooneex/talos/commit/e19e3785))
+
+### Fixed
+
+- Resolve exactOptionalPropertyTypes lint failure in putDir|Only includes the filter property in the recursive putDir options when — Franck ([e2e9748d](https///github.com/ooneex/talos/commit/e2e9748d))
+
