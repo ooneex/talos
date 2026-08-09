@@ -1,5 +1,9 @@
 import type { FilterType } from "./types.ts";
 
+// Columns "id" and "text" live at the table root; every other field is nested under "metadata".
+export const toColumnName = (field: string): string =>
+  field === "id" || field === "text" ? field : `metadata.${field}`;
+
 export const buildFilter = <T extends { metadata: Record<string, unknown> }>(filter: FilterType<T>): string => {
   if ("AND" in filter) {
     return `(${filter.AND.map(buildFilter).join(" AND ")})`;
@@ -11,8 +15,7 @@ export const buildFilter = <T extends { metadata: Record<string, unknown> }>(fil
     return `NOT (${buildFilter(filter.NOT)})`;
   }
 
-  const fieldStr = String(filter.field);
-  const col = fieldStr === "id" || fieldStr === "text" ? fieldStr : `metadata.${fieldStr}`;
+  const col = toColumnName(String(filter.field));
 
   if (
     filter.op === "IS NULL" ||
@@ -34,9 +37,7 @@ export const buildFilter = <T extends { metadata: Record<string, unknown> }>(fil
     return `${col} ${filter.op} '${filter.value}'`;
   }
 
-  if (filter.op === ">" || filter.op === ">=" || filter.op === "<" || filter.op === "<=" || filter.op === "=") {
-    return `${col} ${filter.op} ${typeof filter.value === "string" ? `'${filter.value}'` : filter.value}`;
-  }
-
+  // Comparison operators (>, >=, <, <=, =) and any forward-compatible unsupported operator
+  // share the same "<col> <op> <value>" shape.
   return `${col} ${filter.op} ${typeof filter.value === "string" ? `'${filter.value}'` : filter.value}`;
 };

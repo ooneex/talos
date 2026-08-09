@@ -1,5 +1,5 @@
 import path from "node:path";
-import { convert } from "@opendataloader/pdf";
+import { type ConvertOptions, convert } from "@opendataloader/pdf";
 import { random } from "@talosjs/utils/random";
 import { ConvertorException } from "./ConvertorException";
 import type { ChunkType, ConvertorFileType, ConvertorOptionsType, ConvertorType } from "./types";
@@ -156,7 +156,7 @@ export class Convertor implements ConvertorType {
     }
   }
 
-  private buildConvertOptions(outputDir: string, options: ConvertorOptionsType) {
+  private buildConvertOptions(outputDir: string, options: ConvertorOptionsType): ConvertOptions {
     const { password, imageFormat, quiet, pages } = options;
 
     return {

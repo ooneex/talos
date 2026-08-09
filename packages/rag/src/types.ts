@@ -59,7 +59,7 @@ export interface IVectorDatabase<DataType extends { metadata: Record<string, unk
   getDatabaseUri: () => string;
   connect: () => Promise<void>;
   getDatabase: () => Connection;
-  getEmbeddingModel: () => { provider: EmbeddingProviderType; model: EmbeddingModelType["model"] };
+  getEmbeddingModel: () => EmbeddingModelType;
   getSchema: () => { [K in keyof DataType]: FieldValueType };
   open: (name: string, options?: { mode?: "create" | "overwrite" }) => Promise<VectorTable<DataType>>;
 }
@@ -67,6 +67,11 @@ export interface IVectorDatabase<DataType extends { metadata: Record<string, unk
 export type OpenAIModelType = "text-embedding-ada-002" | "text-embedding-3-small" | "text-embedding-3-large";
 
 export type QwenModelType = "qwen3-embedding-8b";
+
+export type QwenEmbeddingOptionsType = {
+  apiKey: string;
+  model: QwenModelType;
+};
 
 export type EmbeddingProviderType = "openai" | "qwen";
 

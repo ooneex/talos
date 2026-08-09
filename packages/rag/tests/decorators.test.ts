@@ -3,26 +3,26 @@ import { container, EContainerScope } from "@talosjs/container";
 import { decorator, type IVectorDatabase } from "@/index";
 
 class MockVectorDatabase implements IVectorDatabase<{ metadata: Record<string, unknown> }> {
-  getDatabaseUri() {
+  public getDatabaseUri() {
     return "mock://db";
   }
-  connect(): Promise<void> {
+  public connect(): Promise<void> {
     return Promise.resolve();
   }
   // biome-ignore lint/suspicious/noExplicitAny: test mock
-  getDatabase(): any {
+  public getDatabase(): any {
     return null;
   }
   // biome-ignore lint/suspicious/noExplicitAny: test mock
-  getEmbeddingModel(): any {
+  public getEmbeddingModel(): any {
     return { provider: "openai", model: "text-embedding-3-small" };
   }
   // biome-ignore lint/suspicious/noExplicitAny: test mock
-  getSchema(): any {
+  public getSchema(): any {
     return {};
   }
   // biome-ignore lint/suspicious/noExplicitAny: test mock
-  open(): any {
+  public open(): any {
     return Promise.resolve(null);
   }
 }

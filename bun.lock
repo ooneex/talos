@@ -512,6 +512,7 @@
         "@talosjs/http-status": "workspace:^",
         "@talosjs/utils": "workspace:^",
         "apache-arrow": "^21.1.0",
+        "openai": "^5.23.2",
       },
       "devDependencies": {
         "@talosjs/types": "workspace:^",

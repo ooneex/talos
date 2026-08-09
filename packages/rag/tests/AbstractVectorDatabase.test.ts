@@ -1,6 +1,6 @@
 import { describe, expect, mock, test } from "bun:test";
 import { Utf8 } from "apache-arrow";
-import type { EmbeddingModelType, EmbeddingProviderType, FieldValueType } from "@/index";
+import type { EmbeddingModelType, FieldValueType } from "@/index";
 import { VectorDatabaseException, VectorTable } from "@/index";
 import { AbstractVectorDatabase } from "../src/AbstractVectorDatabase.ts";
 
@@ -46,15 +46,15 @@ mock.module("@lancedb/lancedb", () => ({
 type TestData = { metadata: { category: string } };
 
 class TestVectorDatabase extends AbstractVectorDatabase<TestData> {
-  getDatabaseUri(): string {
+  public constructor(embeddingModel: EmbeddingModelType = { provider: "openai", model: "text-embedding-3-small" }) {
+    super(embeddingModel);
+  }
+
+  public getDatabaseUri(): string {
     return "/tmp/test-lancedb";
   }
 
-  getEmbeddingModel(): { provider: EmbeddingProviderType; model: EmbeddingModelType["model"] } {
-    return { provider: "openai", model: "text-embedding-3-small" };
-  }
-
-  getSchema(): { [K in keyof TestData]: FieldValueType } {
+  public getSchema(): { [K in keyof TestData]: FieldValueType } {
     return { metadata: new Utf8() };
   }
 }
@@ -83,6 +83,14 @@ describe("AbstractVectorDatabase", () => {
     expect(db.getEmbeddingModel()).toEqual({
       provider: "openai",
       model: "text-embedding-3-small",
+    });
+  });
+
+  test("should accept a different embedding provider", () => {
+    const db = new TestVectorDatabase({ provider: "qwen", model: "qwen3-embedding-8b" });
+    expect(db.getEmbeddingModel()).toEqual({
+      provider: "qwen",
+      model: "qwen3-embedding-8b",
     });
   });
 

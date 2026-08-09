@@ -1,6 +1,11 @@
 import * as lancedb from "@lancedb/lancedb";
 import type { FilterType } from "./types.ts";
-import { buildFilter } from "./utils.ts";
+import { buildFilter, toColumnName } from "./utils.ts";
+
+type SelectFieldType<DataType extends { metadata: Record<string, unknown> }> =
+  | keyof DataType["metadata"]
+  | "id"
+  | "text";
 
 export class VectorTable<DataType extends { metadata: Record<string, unknown> }> {
   private table: lancedb.Table;
@@ -8,6 +13,24 @@ export class VectorTable<DataType extends { metadata: Record<string, unknown> }>
 
   constructor(table: lancedb.Table) {
     this.table = table;
+  }
+
+  // Always keep "id" selected, and namespace every other field under "metadata" unless it's "text".
+  private buildSelectColumns(select: SelectFieldType<DataType>[]): string[] {
+    return [...new Set(["id", ...select.map((field) => toColumnName(String(field)))])];
+  }
+
+  private async getReranker(): Promise<Awaited<ReturnType<typeof lancedb.rerankers.RRFReranker.create>>> {
+    this.reranker ??= await lancedb.rerankers.RRFReranker.create();
+
+    return this.reranker;
+  }
+
+  // Start a reranked hybrid (full-text + vector) search query for the given text and result limit.
+  private async startHybridQuery(query: string, limit: number): Promise<lancedb.VectorQuery> {
+    const reranker = await this.getReranker();
+
+    return (this.table.search(query, "hybrid", "text") as lancedb.VectorQuery).rerank(reranker).limit(limit);
   }
 
   public async add(data: ({ id: string; text: string } & DataType)[]): Promise<this> {
@@ -19,7 +42,7 @@ export class VectorTable<DataType extends { metadata: Record<string, unknown> }>
   public async findById(
     id: string,
     options?: {
-      select?: (keyof DataType["metadata"] | "id" | "text")[];
+      select?: SelectFieldType<DataType>[];
     },
   ): Promise<({ id: string } & DataType) | null> {
     const { select } = options ?? {};
@@ -28,16 +51,7 @@ export class VectorTable<DataType extends { metadata: Record<string, unknown> }>
     let query = this.table.query().where(`id = '${escaped}'`).limit(1);
 
     if (select) {
-      const cols = [
-        ...new Set([
-          "id",
-          ...select.map((f) => {
-            const s = String(f);
-            return s === "id" || s === "text" ? s : `metadata.${s}`;
-          }),
-        ]),
-      ];
-      query = query.select(cols);
+      query = query.select(this.buildSelectColumns(select));
     }
 
     const results = await query.toArray();
@@ -49,7 +63,7 @@ export class VectorTable<DataType extends { metadata: Record<string, unknown> }>
     filter: { [K in keyof DataType["metadata"]]?: DataType["metadata"][K] | undefined },
     options?: {
       limit?: number;
-      select?: (keyof DataType["metadata"] | "id" | "text")[];
+      select?: SelectFieldType<DataType>[];
     },
   ): Promise<({ id: string } & DataType)[]> {
     const { limit = 10, select } = options ?? {};
@@ -64,16 +78,7 @@ export class VectorTable<DataType extends { metadata: Record<string, unknown> }>
     let query = this.table.query().where(conditions.join(" AND ")).limit(limit);
 
     if (select) {
-      const cols = [
-        ...new Set([
-          "id",
-          ...select.map((f) => {
-            const s = String(f);
-            return s === "id" || s === "text" ? s : `metadata.${s}`;
-          }),
-        ]),
-      ];
-      query = query.select(cols);
+      query = query.select(this.buildSelectColumns(select));
     }
 
     return query.toArray() as Promise<({ id: string } & DataType)[]>;
@@ -82,7 +87,7 @@ export class VectorTable<DataType extends { metadata: Record<string, unknown> }>
   public async findOneBy(
     filter: { [K in keyof DataType["metadata"]]?: DataType["metadata"][K] | undefined },
     options?: {
-      select?: (keyof DataType["metadata"] | "id" | "text")[];
+      select?: SelectFieldType<DataType>[];
     },
   ): Promise<({ id: string } & DataType) | null> {
     const results = await this.findBy(filter, { ...options, limit: 1 });
@@ -119,7 +124,7 @@ export class VectorTable<DataType extends { metadata: Record<string, unknown> }>
     query: string,
     options?: {
       limit?: number;
-      select?: (keyof DataType["metadata"] | "id" | "text")[];
+      select?: SelectFieldType<DataType>[];
       filter?: FilterType<DataType>;
       // Number of IVF partitions to search. Higher values improve recall but reduce speed.
       nprobes?: number;
@@ -131,13 +136,7 @@ export class VectorTable<DataType extends { metadata: Record<string, unknown> }>
   ): Promise<({ id: string } & DataType)[]> {
     const { limit = 10, select, filter, nprobes, refineFactor, fastSearch = true } = options ?? {};
 
-    if (!this.reranker) {
-      this.reranker = await lancedb.rerankers.RRFReranker.create();
-    }
-
-    let vectorQuery = (this.table.search(query, "hybrid", "text") as lancedb.VectorQuery)
-      .rerank(this.reranker)
-      .limit(limit);
+    let vectorQuery = await this.startHybridQuery(query, limit);
 
     if (nprobes) {
       vectorQuery = vectorQuery.nprobes(nprobes);
@@ -152,16 +151,7 @@ export class VectorTable<DataType extends { metadata: Record<string, unknown> }>
     }
 
     if (select) {
-      const cols = [
-        ...new Set([
-          "id",
-          ...select.map((f) => {
-            const s = String(f);
-            return s === "id" || s === "text" ? s : `metadata.${s}`;
-          }),
-        ]),
-      ];
-      vectorQuery = vectorQuery.select(cols);
+      vectorQuery = vectorQuery.select(this.buildSelectColumns(select));
     }
 
     if (filter) {
@@ -182,13 +172,7 @@ export class VectorTable<DataType extends { metadata: Record<string, unknown> }>
   ): Promise<string> {
     const { limit = 10, filter, verbose = true } = options ?? {};
 
-    if (!this.reranker) {
-      this.reranker = await lancedb.rerankers.RRFReranker.create();
-    }
-
-    let vectorQuery = (this.table.search(query, "hybrid", "text") as lancedb.VectorQuery)
-      .rerank(this.reranker)
-      .limit(limit);
+    let vectorQuery = await this.startHybridQuery(query, limit);
 
     if (filter) {
       vectorQuery = vectorQuery.where(buildFilter(filter));
@@ -207,13 +191,7 @@ export class VectorTable<DataType extends { metadata: Record<string, unknown> }>
   ): Promise<string> {
     const { limit = 10, filter } = options ?? {};
 
-    if (!this.reranker) {
-      this.reranker = await lancedb.rerankers.RRFReranker.create();
-    }
-
-    let vectorQuery = (this.table.search(query, "hybrid", "text") as lancedb.VectorQuery)
-      .rerank(this.reranker)
-      .limit(limit);
+    let vectorQuery = await this.startHybridQuery(query, limit);
 
     if (filter) {
       vectorQuery = vectorQuery.where(buildFilter(filter));

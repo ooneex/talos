@@ -3,7 +3,8 @@ import "@lancedb/lancedb/embedding/openai";
 import type { EmbeddingFunction } from "@lancedb/lancedb/embedding";
 import { getRegistry, LanceSchema } from "@lancedb/lancedb/embedding";
 import { Utf8 } from "apache-arrow";
-import type { EmbeddingModelType, EmbeddingProviderType, FieldValueType, IVectorDatabase } from "./types.ts";
+import "./QwenEmbeddingFunction.ts";
+import type { EmbeddingModelType, FieldValueType, IVectorDatabase } from "./types.ts";
 import { VectorDatabaseException } from "./VectorDatabaseException.ts";
 import { VectorTable } from "./VectorTable.ts";
 
@@ -11,16 +12,23 @@ export abstract class AbstractVectorDatabase<DataType extends { metadata: Record
   implements IVectorDatabase<DataType>
 {
   private db: lancedb.Connection | null = null;
-  private embedding: EmbeddingFunction;
+  private readonly embeddingModel: EmbeddingModelType;
+  private readonly embedding: EmbeddingFunction;
 
-  constructor() {
-    const { provider, model } = this.getEmbeddingModel();
-    this.embedding = getRegistry().get(provider)?.create({ model }) as EmbeddingFunction;
+  // Both the "openai" and "qwen" providers are registered above, so subclasses can pick either.
+  protected constructor(embeddingModel: EmbeddingModelType) {
+    this.embeddingModel = embeddingModel;
+    this.embedding = getRegistry()
+      .get(embeddingModel.provider)
+      ?.create({ model: embeddingModel.model }) as EmbeddingFunction;
   }
 
   public abstract getDatabaseUri(): string;
-  public abstract getEmbeddingModel(): { provider: EmbeddingProviderType; model: EmbeddingModelType["model"] };
   public abstract getSchema(): { [K in keyof DataType]: FieldValueType };
+
+  public getEmbeddingModel(): EmbeddingModelType {
+    return this.embeddingModel;
+  }
 
   public async connect(): Promise<void> {
     this.db = await lancedb.connect(this.getDatabaseUri());
