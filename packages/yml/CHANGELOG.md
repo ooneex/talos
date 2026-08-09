@@ -21,3 +21,11 @@
 
 - Add yml package| — Franck ([2dd5f199](https://github.com/ooneex/talos/commit/2dd5f199))
 
+## [1.1.3](https///github.com/ooneex/talos/releases/tag/@talosjs/yml@1.1.3) - 2026-08-09
+
+### Changed
+
+- Reduce complexity and clean up conventions| — Franck ([f9f3220f](https///github.com/ooneex/talos/commit/f9f3220f))
+- Raise coverage thresholds to 99% across all packages| — Franck ([14db3019](https///github.com/ooneex/talos/commit/14db3019))
+- Enable coverage thresholds in every package's bunfig.toml| — Franck ([e19e3785](https///github.com/ooneex/talos/commit/e19e3785))
+
