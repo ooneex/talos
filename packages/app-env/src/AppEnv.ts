@@ -5,7 +5,9 @@ import type { EnvironmentNameType, IAppEnv } from "./types";
 type MutableAppEnvType = { -readonly [K in keyof IAppEnv]: IAppEnv[K] };
 
 const readString = (key: keyof typeof Bun.env): string | undefined => {
-  return Bun.env[key]?.trim();
+  const value = Bun.env[key]?.trim();
+
+  return value && value !== "undefined" ? value : undefined;
 };
 
 const readStringList = (key: keyof typeof Bun.env): string[] => {
@@ -98,7 +100,7 @@ const buildScalarEnvValues = (
 ): Omit<IAppEnv, keyof ReturnType<typeof buildEnvironmentFlags> | keyof ReturnType<typeof buildAllowedUsers>> => {
   return {
     APP_ENV: appEnv,
-    PORT: Bun.env.PORT ? parseString<number>(Bun.env.PORT.trim()) : 3000,
+    PORT: readString("PORT") ? parseString<number>(readString("PORT") as string) : 3000,
     HOST_NAME: readString("HOST_NAME") || "0.0.0.0",
     LOGS_DATABASE_URL: readString("LOGS_DATABASE_URL"),
     BETTERSTACK_LOGGER_SOURCE_TOKEN: readString("BETTERSTACK_LOGGER_SOURCE_TOKEN"),
