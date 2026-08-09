@@ -1,38 +1,26 @@
 {
-  "name": "@talosjs/repository",
+  "dependencies": {
+    "@talosjs/container": "workspace:^"
+  },
   "description": "Data access layer with decorator-based repository registration, query abstraction, and dependency injection for clean persistence patterns",
-  "version": "1.1.2",
-  "type": "module",
+  "devDependencies": {
+    "@talosjs/types": "workspace:^"
+  },
+  "exports": {
+    ".": {
+      "import": {
+        "default": "./dist/index.js",
+        "types": "./dist/index.d.ts"
+      }
+    },
+    "./package.json": "./package.json"
+  },
   "files": [
     "dist",
     "LICENSE",
     "README.md",
     "package.json"
   ],
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "import": {
-        "types": "./dist/index.d.ts",
-        "default": "./dist/index.js"
-      }
-    },
-    "./package.json": "./package.json"
-  },
-  "license": "MIT",
-  "scripts": {
-    "test": "bun test tests",
-    "build": "bunup",
-    "fmt": "bunx biome check --write",
-    "lint": "tsc --noEmit && bunx biome lint"
-  },
-  "dependencies": {
-    "@talosjs/container": "workspace:^"
-  },
-  "devDependencies": {
-    "@talosjs/types": "workspace:^"
-  },
   "keywords": [
     "bun",
     "dao",
@@ -42,5 +30,17 @@
     "pattern",
     "repository",
     "typescript"
-  ]
+  ],
+  "license": "MIT",
+  "module": "./dist/index.js",
+  "name": "@talosjs/repository",
+  "scripts": {
+    "build": "bunup",
+    "fmt": "bunx biome check --write",
+    "lint": "tsc --noEmit && bunx biome lint",
+    "test": "bun test tests"
+  },
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "version": "1.1.3"
 }
