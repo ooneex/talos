@@ -262,6 +262,19 @@ pub fn scaffold_destination(
         fs::write(&package_json_path, updated).map_err(|e| e.to_string())?;
     }
 
+    let docker_compose_path = destination
+        .join("modules")
+        .join("app")
+        .join("docker-compose.yml");
+    if let Ok(docker_compose) = fs::read_to_string(&docker_compose_path) {
+        let snake_name = crate::utils::to_snake_case(kebab_name);
+        fs::write(
+            &docker_compose_path,
+            docker_compose.replace("skeleton", &snake_name),
+        )
+        .map_err(|e| e.to_string())?;
+    }
+
     match app_type {
         Some(AppType::Cli) => {
             let modules_dir = destination.join("modules");

@@ -57,6 +57,12 @@ fn build_fake_skeleton(root: &Path) {
         "KEY: value\n",
     )
     .unwrap();
+
+    fs::write(
+        root.join("modules").join("app").join("docker-compose.yml"),
+        "services:\n  postgres:\n    container_name: skeleton_db\nvolumes:\n  skeleton_db_data:\n",
+    )
+    .unwrap();
 }
 
 #[test]
@@ -90,6 +96,16 @@ fn scaffold_destination_rewrites_env_and_readme() {
     assert_eq!(
         fs::read_to_string(destination_path.join("README.md")).unwrap(),
         "# my-app\n\nSome description."
+    );
+    assert_eq!(
+        fs::read_to_string(
+            destination_path
+                .join("modules")
+                .join("app")
+                .join("docker-compose.yml")
+        )
+        .unwrap(),
+        "services:\n  postgres:\n    container_name: my_app_db\nvolumes:\n  my_app_db_data:\n"
     );
 }
 
