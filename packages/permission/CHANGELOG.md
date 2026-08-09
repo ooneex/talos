@@ -21,3 +21,11 @@
 
 - Add permission package| — Franck ([9e3357d8](https://github.com/ooneex/talos/commit/9e3357d8))
 
+## [1.1.3](https///github.com/ooneex/talos/releases/tag/@talosjs/permission@1.1.3) - 2026-08-09
+
+### Changed
+
+- Reduce complexity and clean up conventions| — Franck ([6ecc9786](https///github.com/ooneex/talos/commit/6ecc9786))
+- Raise coverage thresholds to 99% across all packages| — Franck ([14db3019](https///github.com/ooneex/talos/commit/14db3019))
+- Enable coverage thresholds in every package's bunfig.toml| — Franck ([e19e3785](https///github.com/ooneex/talos/commit/e19e3785))
+
