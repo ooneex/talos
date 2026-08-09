@@ -1,41 +1,29 @@
 {
-  "name": "@talosjs/middleware",
+  "dependencies": {
+    "@talosjs/app-env": "workspace:^",
+    "@talosjs/container": "workspace:^"
+  },
   "description": "Middleware pipeline framework with decorator-based registration for processing HTTP requests, responses, and WebSocket events in sequence",
-  "version": "1.1.2",
-  "type": "module",
+  "devDependencies": {
+    "@talosjs/controller": "workspace:^",
+    "@talosjs/socket": "workspace:^",
+    "@talosjs/types": "workspace:^"
+  },
+  "exports": {
+    ".": {
+      "import": {
+        "default": "./dist/index.js",
+        "types": "./dist/index.d.ts"
+      }
+    },
+    "./package.json": "./package.json"
+  },
   "files": [
     "dist",
     "LICENSE",
     "README.md",
     "package.json"
   ],
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "import": {
-        "types": "./dist/index.d.ts",
-        "default": "./dist/index.js"
-      }
-    },
-    "./package.json": "./package.json"
-  },
-  "license": "MIT",
-  "scripts": {
-    "test": "bun test tests",
-    "build": "bunup",
-    "fmt": "bunx biome check --write",
-    "lint": "tsc --noEmit && bunx biome lint"
-  },
-  "dependencies": {
-    "@talosjs/app-env": "workspace:^",
-    "@talosjs/container": "workspace:^"
-  },
-  "devDependencies": {
-    "@talosjs/controller": "workspace:^",
-    "@talosjs/types": "workspace:^",
-    "@talosjs/socket": "workspace:^"
-  },
   "keywords": [
     "bun",
     "decorator",
@@ -45,5 +33,17 @@
     "talos",
     "pipeline",
     "typescript"
-  ]
+  ],
+  "license": "MIT",
+  "module": "./dist/index.js",
+  "name": "@talosjs/middleware",
+  "scripts": {
+    "build": "bunup",
+    "fmt": "bunx biome check --write",
+    "lint": "tsc --noEmit && bunx biome lint",
+    "test": "bun test tests"
+  },
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "version": "1.1.3"
 }
