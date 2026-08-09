@@ -1,6 +1,6 @@
 import { processPdf } from "@firecrawl/pdf-inspector";
 import { PDFException } from "./PDFException";
-import type { IPDF, IPDFExtractOptions, IPDFExtractResult, PDFType } from "./types";
+import type { IPDF, PDFExtractOptionsType, PDFExtractResultType, PDFType } from "./types";
 
 export class PDF implements IPDF {
   private readonly source: string;
@@ -9,7 +9,7 @@ export class PDF implements IPDF {
     this.source = source;
   }
 
-  public async extract(options: IPDFExtractOptions = {}): Promise<IPDFExtractResult> {
+  public async extract(options: PDFExtractOptionsType = {}): Promise<PDFExtractResultType> {
     try {
       const buffer = Buffer.from(await Bun.file(this.source).arrayBuffer());
       const result = processPdf(buffer, options.pages);

@@ -1,5 +1,5 @@
 import { describe, expect, spyOn, test } from "bun:test";
-import type { IPDF, IPDFExtractOptions, IPDFExtractResult, IPDFPageOcrReasons } from "@/index";
+import type { IPDF, PDFExtractOptionsType, PDFExtractResultType, PDFPageOcrReasonsType } from "@/index";
 import { PDF, PDFException, PDFType } from "@/index";
 
 describe("PDF", () => {
@@ -10,15 +10,15 @@ describe("PDF", () => {
       expect(typeof pdfInstance.extract).toBe("function");
     });
 
-    test("should export IPDFExtractOptions", () => {
-      const options: IPDFExtractOptions = {
+    test("should export PDFExtractOptionsType", () => {
+      const options: PDFExtractOptionsType = {
         pages: [0, 1],
       };
       expect(options.pages).toEqual([0, 1]);
     });
 
-    test("should export IPDFPageOcrReasons", () => {
-      const reasons: IPDFPageOcrReasons = {
+    test("should export PDFPageOcrReasonsType", () => {
+      const reasons: PDFPageOcrReasonsType = {
         page: 1,
         reasons: ["empty_text"],
       };
@@ -26,8 +26,8 @@ describe("PDF", () => {
       expect(reasons.reasons).toEqual(["empty_text"]);
     });
 
-    test("should export IPDFExtractResult", () => {
-      const result: IPDFExtractResult = {
+    test("should export PDFExtractResultType", () => {
+      const result: PDFExtractResultType = {
         pdfType: PDFType.TextBased,
         markdown: "# Title",
         pageCount: 4,

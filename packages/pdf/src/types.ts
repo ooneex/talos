@@ -13,7 +13,7 @@ export type PDFType = (typeof PDFType)[keyof typeof PDFType];
 /**
  * OCR reasons for a single 1-indexed page
  */
-export interface IPDFPageOcrReasons {
+export type PDFPageOcrReasonsType = {
   /**
    * 1-indexed page number
    */
@@ -22,23 +22,23 @@ export interface IPDFPageOcrReasons {
    * Machine-readable OCR reasons for this page
    */
   reasons: string[];
-}
+};
 
 /**
  * Options for extracting content from a PDF
  */
-export interface IPDFExtractOptions {
+export type PDFExtractOptionsType = {
   /**
    * 0-indexed page numbers to extract, in caller-supplied order.
    * If not provided, extracts every page in document order
    */
   pages?: number[];
-}
+};
 
 /**
  * Result of extracting content from a PDF
  */
-export interface IPDFExtractResult {
+export type PDFExtractResultType = {
   /**
    * Detected PDF document type
    */
@@ -62,7 +62,7 @@ export interface IPDFExtractResult {
   /**
    * Machine-readable OCR reasons by 1-indexed page
    */
-  ocrReasonsByPage: IPDFPageOcrReasons[];
+  ocrReasonsByPage: PDFPageOcrReasonsType[];
   /**
    * Title of the PDF document, if available
    */
@@ -87,7 +87,7 @@ export interface IPDFExtractResult {
    * Whether the document has font encoding issues
    */
   hasEncodingIssues: boolean;
-}
+};
 
 /**
  * Interface for PDF class
@@ -98,5 +98,5 @@ export interface IPDF {
    * @param options - Optional extraction options
    * @returns Extraction result including markdown, classification, and OCR routing metadata
    */
-  extract(options?: IPDFExtractOptions): Promise<IPDFExtractResult>;
+  extract(options?: PDFExtractOptionsType): Promise<PDFExtractResultType>;
 }
