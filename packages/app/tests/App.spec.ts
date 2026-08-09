@@ -937,5 +937,73 @@ hierarchy:
       serveSpy.mockRestore();
       exitSpy.mockRestore();
     });
+
+    test("defaults perMessageDeflate to true when no websocket config is provided", async () => {
+      const serveSpy = spyOn(Bun, "serve").mockReturnValue({
+        ...fakeServer,
+        publish: mock(() => {}),
+      } as unknown as ReturnType<typeof Bun.serve>);
+      const exitSpy = spyOn(process, "exit").mockImplementation((() => undefined) as never);
+
+      const app = new App(createMockConfig());
+      await app.run();
+
+      const serveOptions = (serveSpy.mock.calls as unknown[][])[0]?.[0] as {
+        websocket: { perMessageDeflate: boolean };
+      };
+
+      expect(serveOptions.websocket.perMessageDeflate).toBe(true);
+
+      serveSpy.mockRestore();
+      exitSpy.mockRestore();
+    });
+
+    test("passes websocket config options through to Bun.serve", async () => {
+      const serveSpy = spyOn(Bun, "serve").mockReturnValue({
+        ...fakeServer,
+        publish: mock(() => {}),
+      } as unknown as ReturnType<typeof Bun.serve>);
+      const exitSpy = spyOn(process, "exit").mockImplementation((() => undefined) as never);
+
+      const app = new App(
+        createMockConfig({
+          websocket: {
+            idleTimeout: 60,
+            maxPayloadLength: 1024,
+            backpressureLimit: 2048,
+            closeOnBackpressureLimit: true,
+            publishToSelf: true,
+            sendPings: false,
+            perMessageDeflate: false,
+          },
+        }),
+      );
+      await app.run();
+
+      const serveOptions = (serveSpy.mock.calls as unknown[][])[0]?.[0] as {
+        websocket: {
+          idleTimeout: number;
+          maxPayloadLength: number;
+          backpressureLimit: number;
+          closeOnBackpressureLimit: boolean;
+          publishToSelf: boolean;
+          sendPings: boolean;
+          perMessageDeflate: boolean;
+        };
+      };
+
+      expect(serveOptions.websocket).toMatchObject({
+        idleTimeout: 60,
+        maxPayloadLength: 1024,
+        backpressureLimit: 2048,
+        closeOnBackpressureLimit: true,
+        publishToSelf: true,
+        sendPings: false,
+        perMessageDeflate: false,
+      });
+
+      serveSpy.mockRestore();
+      exitSpy.mockRestore();
+    });
   });
 });

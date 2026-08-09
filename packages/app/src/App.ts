@@ -241,6 +241,7 @@ export class App {
   private buildWebsocketHandlers(getServer: () => Server<unknown>, middlewares: MiddlewareClassType[]) {
     return {
       perMessageDeflate: true,
+      ...this.config.websocket,
       message: async (ws: ServerWebSocket<{ id: string }>, message: string) => {
         await socketRouteHandler({
           message,
