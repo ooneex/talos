@@ -24,3 +24,12 @@
 
 - Expand README and refine package description| — Franck ([c2bdd71e](https://github.com/ooneex/talos/commit/c2bdd71e))
 
+## [1.1.3](https///github.com/ooneex/talos/releases/tag/@talosjs/queue@1.1.3) - 2026-08-09
+
+### Changed
+
+- Add explicit constructors and biome-ignore comments for Bun's coverage tool|This commit adds explicit constructors to abstract classes and utility functions — Franck ([4d33ff04](https///github.com/ooneex/talos/commit/4d33ff04))
+- Raise coverage thresholds to 99% across all packages| — Franck ([14db3019](https///github.com/ooneex/talos/commit/14db3019))
+- Expand Queue spec coverage| — Franck ([ef47ec2f](https///github.com/ooneex/talos/commit/ef47ec2f))
+- Enable coverage thresholds in every package's bunfig.toml| — Franck ([e19e3785](https///github.com/ooneex/talos/commit/e19e3785))
+
