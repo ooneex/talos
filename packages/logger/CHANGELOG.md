@@ -27,3 +27,12 @@
 
 - Add logger package| — Franck ([04094869](https://github.com/ooneex/talos/commit/04094869))
 
+## [1.1.4](https///github.com/ooneex/talos/releases/tag/@talosjs/logger@1.1.4) - 2026-08-09
+
+### Changed
+
+- Reduce complexity and clean up conventions| — Franck ([68cf74a9](https///github.com/ooneex/talos/commit/68cf74a9))
+- Add explicit constructors and biome-ignore comments for Bun's coverage tool|This commit adds explicit constructors to abstract classes and utility functions — Franck ([4d33ff04](https///github.com/ooneex/talos/commit/4d33ff04))
+- Raise coverage thresholds to 99% across all packages| — Franck ([14db3019](https///github.com/ooneex/talos/commit/14db3019))
+- Enable coverage thresholds in every package's bunfig.toml| — Franck ([e19e3785](https///github.com/ooneex/talos/commit/e19e3785))
+
