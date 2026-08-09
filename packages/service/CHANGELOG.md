@@ -21,3 +21,10 @@
 
 - Add service package| — Franck ([16f4b3eb](https://github.com/ooneex/talos/commit/16f4b3eb))
 
+## [1.1.3](https///github.com/ooneex/talos/releases/tag/@talosjs/service@1.1.3) - 2026-08-09
+
+### Changed
+
+- Raise coverage thresholds to 99% across all packages| — Franck ([14db3019](https///github.com/ooneex/talos/commit/14db3019))
+- Enable coverage thresholds in every package's bunfig.toml| — Franck ([e19e3785](https///github.com/ooneex/talos/commit/e19e3785))
+
