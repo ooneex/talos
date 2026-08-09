@@ -62,7 +62,7 @@ jobs:
           key: ${{ matrix.target }}-cargo-${{ hashFiles('packages/cli/Cargo.lock') }}
 
       - name: Sync Cargo.lock package version
-        run: cargo update -p talos-cli --offline
+        run: cargo update -p talos-cli
 
       - name: Build release binary
         run: cargo build --release --locked --target ${{ matrix.target }}
