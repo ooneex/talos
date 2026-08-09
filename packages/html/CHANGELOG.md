@@ -21,3 +21,11 @@
 
 - Add html package| — Franck ([98f718e2](https://github.com/ooneex/talos/commit/98f718e2))
 
+## [1.1.3](https///github.com/ooneex/talos/releases/tag/@talosjs/html@1.1.3) - 2026-08-09
+
+### Changed
+
+- Reduce complexity and clean up conventions| — Franck ([d88f1cca](https///github.com/ooneex/talos/commit/d88f1cca))
+- Raise coverage thresholds to 99% across all packages| — Franck ([14db3019](https///github.com/ooneex/talos/commit/14db3019))
+- Enable coverage thresholds in every package's bunfig.toml| — Franck ([e19e3785](https///github.com/ooneex/talos/commit/e19e3785))
+
