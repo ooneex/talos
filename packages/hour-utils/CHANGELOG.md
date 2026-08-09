@@ -20,3 +20,13 @@
 
 - Add hour utils package| — Franck ([e30f5c9c](https://github.com/ooneex/talos/commit/e30f5c9c))
 
+## [1.1.3](https///github.com/ooneex/talos/releases/tag/@talosjs/hour-utils@1.1.3) - 2026-08-09
+
+### Changed
+
+- Reduce complexity and clean up conventions| — Franck ([4609dbb6](https///github.com/ooneex/talos/commit/4609dbb6))
+- Add explicit constructors and biome-ignore comments for Bun's coverage tool|This commit adds explicit constructors to abstract classes and utility functions — Franck ([4d33ff04](https///github.com/ooneex/talos/commit/4d33ff04))
+- Raise coverage thresholds to 99% across all packages| — Franck ([14db3019](https///github.com/ooneex/talos/commit/14db3019))
+- Reach full function and line coverage|Replace the static-only Hour/Millisecond/Minute/Second classes with — Franck ([242331e1](https///github.com/ooneex/talos/commit/242331e1))
+- Enable coverage thresholds in every package's bunfig.toml| — Franck ([e19e3785](https///github.com/ooneex/talos/commit/e19e3785))
+
