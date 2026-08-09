@@ -5,8 +5,8 @@ use std::process::Command;
 use clap::Args;
 use serde_json::Value;
 
+use crate::commands::check::{self, CheckArgs};
 use crate::commands::npm_publish::{self, NpmPublishArgs};
-use crate::commands::workspace_run::{self, WorkspaceRunArgs};
 use crate::utils::{ask_confirm, run_spinner_step};
 
 #[derive(Clone)]
@@ -221,19 +221,18 @@ pub fn run(args: &ReleaseCreateArgs) {
         );
         std::process::exit(1);
     }
-    if !workspace_run::execute(&WorkspaceRunArgs {
-        commands: Some("build,fmt,lint,test".to_string()),
+    let target_dirs = discover_target_dirs(&cwd, args);
+    check::run(&CheckArgs {
         packages: args.packages.clone(),
         modules: args.modules.clone(),
         logs: false,
         no_cache: false,
+        threshold: None,
+        concurrency: None,
+        strict: false,
         cwd: Some(cwd.to_string_lossy().to_string()),
-    }) {
-        crate::utils::error("build, fmt, lint or test failed. Aborting release");
-        std::process::exit(1);
-    }
+    });
 
-    let target_dirs = discover_target_dirs(&cwd, args);
     let repo_url = get_repo_url(&cwd);
     let plans = build_release_plans(&cwd, &target_dirs);
     if plans.is_empty() {
@@ -296,7 +295,11 @@ fn discover_target_dirs(cwd: &Path, args: &ReleaseCreateArgs) -> Vec<TargetDir> 
             .collect()
     };
     if target_dirs.is_empty() {
-        crate::utils::error("No requested packages or modules found");
+        let requested = package_names.iter().chain(module_names.iter()).cloned();
+        crate::utils::error(format!(
+            "No requested packages or modules found: {}",
+            requested.collect::<Vec<_>>().join(", ")
+        ));
         std::process::exit(1);
     }
     target_dirs
@@ -460,6 +463,18 @@ fn push_to_remote(cwd: &Path) {
     );
     let _ = git(cwd, &["add", "bun.lock"]);
     let _ = git(cwd, &["commit", "-m", "chore(common): Update bun.lock"]);
+
+    // An `https://` origin needs a credential helper to push non-interactively;
+    // `gh auth setup-git` wires git to use the CLI's stored token for that.
+    // An `ssh://`/`git@` origin already authenticates through the user's SSH
+    // key, so a plain push is enough.
+    if crate::utils::git_origin_url(cwd).is_some_and(|url| url.starts_with("https://")) {
+        let _ = Command::new("gh")
+            .args(["auth", "setup-git"])
+            .current_dir(cwd)
+            .status();
+    }
+
     let pushed = git(cwd, &["push"]) && git(cwd, &["push", "--tags"]);
     if !pushed {
         crate::utils::error("Failed to push to remote");
