@@ -21,3 +21,11 @@
 
 - Add youtube package| — Franck ([03b3e68c](https://github.com/ooneex/talos/commit/03b3e68c))
 
+## [1.1.3](https///github.com/ooneex/talos/releases/tag/@talosjs/youtube@1.1.3) - 2026-08-09
+
+### Changed
+
+- Raise coverage thresholds to 99% across all packages| — Franck ([14db3019](https///github.com/ooneex/talos/commit/14db3019))
+- Expand Youtube spec coverage| — Franck ([3e1d8a97](https///github.com/ooneex/talos/commit/3e1d8a97))
+- Enable coverage thresholds in every package's bunfig.toml| — Franck ([e19e3785](https///github.com/ooneex/talos/commit/e19e3785))
+
