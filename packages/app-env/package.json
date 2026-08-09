@@ -1,39 +1,27 @@
 {
-  "name": "@talosjs/app-env",
+  "dependencies": {
+    "@talosjs/container": "workspace:^",
+    "@talosjs/exception": "workspace:^",
+    "@talosjs/http-status": "workspace:^",
+    "@talosjs/utils": "workspace:^"
+  },
   "description": "Environment detection and configuration management for Talos applications — supports development, staging, production, and testing environments",
-  "version": "1.2.3",
-  "type": "module",
+  "devDependencies": {},
+  "exports": {
+    ".": {
+      "import": {
+        "default": "./dist/index.js",
+        "types": "./dist/index.d.ts"
+      }
+    },
+    "./package.json": "./package.json"
+  },
   "files": [
     "dist",
     "LICENSE",
     "README.md",
     "package.json"
   ],
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "import": {
-        "types": "./dist/index.d.ts",
-        "default": "./dist/index.js"
-      }
-    },
-    "./package.json": "./package.json"
-  },
-  "license": "MIT",
-  "scripts": {
-    "test": "bun test tests",
-    "build": "bunup",
-    "fmt": "bunx biome check --write",
-    "lint": "tsc --noEmit && bunx biome lint"
-  },
-  "dependencies": {
-    "@talosjs/utils": "workspace:^",
-    "@talosjs/container": "workspace:^",
-    "@talosjs/exception": "workspace:^",
-    "@talosjs/http-status": "workspace:^"
-  },
-  "devDependencies": {},
   "keywords": [
     "bun",
     "config",
@@ -42,5 +30,17 @@
     "environment",
     "talos",
     "typescript"
-  ]
+  ],
+  "license": "MIT",
+  "module": "./dist/index.js",
+  "name": "@talosjs/app-env",
+  "scripts": {
+    "build": "bunup",
+    "fmt": "bunx biome check --write",
+    "lint": "tsc --noEmit && bunx biome lint",
+    "test": "bun test tests"
+  },
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "version": "1.3.0"
 }

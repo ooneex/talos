@@ -49,3 +49,21 @@
 
 - Update AppEnv tests| — Franck ([46021ccc](https://github.com/ooneex/talos/commit/46021ccc))
 
+## [1.3.0](https///github.com/ooneex/talos/releases/tag/@talosjs/app-env@1.3.0) - 2026-08-09
+
+### Added
+
+- Add Stripe environment variable configuration|Extends AppEnv to support Stripe configuration with STRIPE_SECRET_KEY, STRIPE_API_VERSION, and STRIPE_WEBHOOK_SECRET variables. Updates environment schema and adds corresponding test coverage. — Julien ([373eaf49](https///github.com/ooneex/talos/commit/373eaf49))
+
+### Changed
+
+- Consolidate AI provider keys into OPENROUTER_API_KEY| — Franck ([8d40cd7c](https///github.com/ooneex/talos/commit/8d40cd7c))
+- Reduce complexity and clean up conventions| — Franck ([d0970535](https///github.com/ooneex/talos/commit/d0970535))
+- Raise coverage thresholds to 99% across all packages| — Franck ([14db3019](https///github.com/ooneex/talos/commit/14db3019))
+- Enable coverage thresholds in every package's bunfig.toml| — Franck ([e19e3785](https///github.com/ooneex/talos/commit/e19e3785))
+- Rename the loadEnv fallback fixture from shared to app|Keep the test module name aligned with the app module (not a special — Franck ([57240445](https///github.com/ooneex/talos/commit/57240445))
+
+### Fixed
+
+- Ignore literal undefined values when reading env vars| — Franck ([495cd387](https///github.com/ooneex/talos/commit/495cd387))
+
