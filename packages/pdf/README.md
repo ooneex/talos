@@ -1,6 +1,6 @@
 # @talosjs/pdf
 
-PDF document toolkit for generating, editing, merging, splitting, and converting PDF files to images with page-level content extraction
+PDF content extraction toolkit built on `@firecrawl/pdf-inspector` — classifies a PDF (text-based, scanned, image-based, or mixed) and converts it to Markdown
 
 ## Installation
 

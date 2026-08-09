@@ -1,6 +1,6 @@
 {
   "name": "@talosjs/pdf",
-  "description": "PDF document toolkit for generating, editing, merging, splitting, and converting PDF files to images with page-level content extraction",
+  "description": "PDF content extraction toolkit that classifies PDFs and converts them to Markdown",
   "version": "1.1.2",
   "type": "module",
   "files": [
@@ -28,20 +28,17 @@
     "lint": "tsc --noEmit && bunx biome lint"
   },
   "dependencies": {
+    "@firecrawl/pdf-inspector": "^1.12.0",
     "@talosjs/exception": "workspace:^",
-    "@talosjs/http-status": "workspace:^",
-    "pdf-lib": "^1.17.1",
-    "pdf-to-img": "^5.0.0",
-    "sharp": "^0.35.0",
-    "unpdf": "^1.4.0"
+    "@talosjs/http-status": "workspace:^"
   },
   "keywords": [
     "bun",
     "document",
-    "generator",
+    "extraction",
+    "markdown",
     "talos",
     "pdf",
-    "pdf-lib",
     "typescript"
   ]
 }
