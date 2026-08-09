@@ -1,130 +1,120 @@
 {
-  "name": "@talosjs/utils",
+  "dependencies": {
+    "nanoid": "^5.1.6"
+  },
   "description": "General-purpose utility functions including unique ID generation with nanoid, type guards, and common helper methods",
-  "version": "1.1.2",
-  "type": "module",
+  "devDependencies": {},
+  "exports": {
+    "./capitalize": {
+      "import": {
+        "default": "./dist/src/capitalize.js",
+        "types": "./dist/src/capitalize.d.ts"
+      }
+    },
+    "./dataURLtoFile": {
+      "import": {
+        "default": "./dist/src/dataURLtoFile.js",
+        "types": "./dist/src/dataURLtoFile.d.ts"
+      }
+    },
+    "./formatRelativeNumber": {
+      "import": {
+        "default": "./dist/src/formatRelativeNumber.js",
+        "types": "./dist/src/formatRelativeNumber.d.ts"
+      }
+    },
+    "./millisecondsToHMS": {
+      "import": {
+        "default": "./dist/src/millisecondsToHMS.js",
+        "types": "./dist/src/millisecondsToHMS.d.ts"
+      }
+    },
+    "./package.json": "./package.json",
+    "./parseEnvVars": {
+      "import": {
+        "default": "./dist/src/parseEnvVars.js",
+        "types": "./dist/src/parseEnvVars.d.ts"
+      }
+    },
+    "./parseString": {
+      "import": {
+        "default": "./dist/src/parseString.js",
+        "types": "./dist/src/parseString.d.ts"
+      }
+    },
+    "./random": {
+      "import": {
+        "default": "./dist/src/random.js",
+        "types": "./dist/src/random.d.ts"
+      }
+    },
+    "./secondsToHMS": {
+      "import": {
+        "default": "./dist/src/secondsToHMS.js",
+        "types": "./dist/src/secondsToHMS.d.ts"
+      }
+    },
+    "./secondsToMS": {
+      "import": {
+        "default": "./dist/src/secondsToMS.js",
+        "types": "./dist/src/secondsToMS.d.ts"
+      }
+    },
+    "./sleep": {
+      "import": {
+        "default": "./dist/src/sleep.js",
+        "types": "./dist/src/sleep.d.ts"
+      }
+    },
+    "./splitToWords": {
+      "import": {
+        "default": "./dist/src/splitToWords.js",
+        "types": "./dist/src/splitToWords.d.ts"
+      }
+    },
+    "./toCamelCase": {
+      "import": {
+        "default": "./dist/src/toCamelCase.js",
+        "types": "./dist/src/toCamelCase.d.ts"
+      }
+    },
+    "./toKebabCase": {
+      "import": {
+        "default": "./dist/src/toKebabCase.js",
+        "types": "./dist/src/toKebabCase.d.ts"
+      }
+    },
+    "./toPascalCase": {
+      "import": {
+        "default": "./dist/src/toPascalCase.js",
+        "types": "./dist/src/toPascalCase.d.ts"
+      }
+    },
+    "./toSnakeCase": {
+      "import": {
+        "default": "./dist/src/toSnakeCase.js",
+        "types": "./dist/src/toSnakeCase.d.ts"
+      }
+    },
+    "./trans": {
+      "import": {
+        "default": "./dist/src/trans.js",
+        "types": "./dist/src/trans.d.ts"
+      }
+    },
+    "./trim": {
+      "import": {
+        "default": "./dist/src/trim.js",
+        "types": "./dist/src/trim.d.ts"
+      }
+    }
+  },
   "files": [
     "dist",
     "LICENSE",
     "README.md",
     "package.json"
   ],
-  "exports": {
-    "./capitalize": {
-      "import": {
-        "types": "./dist/src/capitalize.d.ts",
-        "default": "./dist/src/capitalize.js"
-      }
-    },
-    "./dataURLtoFile": {
-      "import": {
-        "types": "./dist/src/dataURLtoFile.d.ts",
-        "default": "./dist/src/dataURLtoFile.js"
-      }
-    },
-    "./formatRelativeNumber": {
-      "import": {
-        "types": "./dist/src/formatRelativeNumber.d.ts",
-        "default": "./dist/src/formatRelativeNumber.js"
-      }
-    },
-    "./millisecondsToHMS": {
-      "import": {
-        "types": "./dist/src/millisecondsToHMS.d.ts",
-        "default": "./dist/src/millisecondsToHMS.js"
-      }
-    },
-    "./parseEnvVars": {
-      "import": {
-        "types": "./dist/src/parseEnvVars.d.ts",
-        "default": "./dist/src/parseEnvVars.js"
-      }
-    },
-    "./parseString": {
-      "import": {
-        "types": "./dist/src/parseString.d.ts",
-        "default": "./dist/src/parseString.js"
-      }
-    },
-    "./random": {
-      "import": {
-        "types": "./dist/src/random.d.ts",
-        "default": "./dist/src/random.js"
-      }
-    },
-    "./secondsToHMS": {
-      "import": {
-        "types": "./dist/src/secondsToHMS.d.ts",
-        "default": "./dist/src/secondsToHMS.js"
-      }
-    },
-    "./secondsToMS": {
-      "import": {
-        "types": "./dist/src/secondsToMS.d.ts",
-        "default": "./dist/src/secondsToMS.js"
-      }
-    },
-    "./sleep": {
-      "import": {
-        "types": "./dist/src/sleep.d.ts",
-        "default": "./dist/src/sleep.js"
-      }
-    },
-    "./splitToWords": {
-      "import": {
-        "types": "./dist/src/splitToWords.d.ts",
-        "default": "./dist/src/splitToWords.js"
-      }
-    },
-    "./toCamelCase": {
-      "import": {
-        "types": "./dist/src/toCamelCase.d.ts",
-        "default": "./dist/src/toCamelCase.js"
-      }
-    },
-    "./toKebabCase": {
-      "import": {
-        "types": "./dist/src/toKebabCase.d.ts",
-        "default": "./dist/src/toKebabCase.js"
-      }
-    },
-    "./toPascalCase": {
-      "import": {
-        "types": "./dist/src/toPascalCase.d.ts",
-        "default": "./dist/src/toPascalCase.js"
-      }
-    },
-    "./toSnakeCase": {
-      "import": {
-        "types": "./dist/src/toSnakeCase.d.ts",
-        "default": "./dist/src/toSnakeCase.js"
-      }
-    },
-    "./trans": {
-      "import": {
-        "types": "./dist/src/trans.d.ts",
-        "default": "./dist/src/trans.js"
-      }
-    },
-    "./trim": {
-      "import": {
-        "types": "./dist/src/trim.d.ts",
-        "default": "./dist/src/trim.js"
-      }
-    },
-    "./package.json": "./package.json"
-  },
-  "license": "MIT",
-  "scripts": {
-    "test": "bun test tests",
-    "build": "bunup",
-    "fmt": "bunx biome check --write",
-    "lint": "tsc --noEmit && bunx biome lint"
-  },
-  "dependencies": {
-    "nanoid": "^5.1.6"
-  },
-  "devDependencies": {},
   "keywords": [
     "bun",
     "helpers",
@@ -134,5 +124,15 @@
     "typescript",
     "utilities",
     "utils"
-  ]
+  ],
+  "license": "MIT",
+  "name": "@talosjs/utils",
+  "scripts": {
+    "build": "bunup",
+    "fmt": "bunx biome check --write",
+    "lint": "tsc --noEmit && bunx biome lint",
+    "test": "bun test tests"
+  },
+  "type": "module",
+  "version": "1.1.3"
 }
