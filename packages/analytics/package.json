@@ -1,7 +1,4 @@
 {
-  "name": "@talosjs/analytics",
-  "version": "1.1.2",
-  "module": "./dist/index.js",
   "dependencies": {
     "@talosjs/app-env": "workspace:^",
     "@talosjs/container": "workspace:^",
@@ -9,16 +6,16 @@
     "@talosjs/http-status": "workspace:^",
     "posthog-node": "^5.11.0"
   },
+  "description": "PostHog-powered analytics integration for tracking user behavior, product events, and feature usage with decorator-based service registration",
   "exports": {
     ".": {
       "import": {
-        "types": "./dist/index.d.ts",
-        "default": "./dist/index.js"
+        "default": "./dist/index.js",
+        "types": "./dist/index.d.ts"
       }
     },
     "./package.json": "./package.json"
   },
-  "description": "PostHog-powered analytics integration for tracking user behavior, product events, and feature usage with decorator-based service registration",
   "files": [
     "dist",
     "LICENSE",
@@ -36,12 +33,15 @@
     "typescript"
   ],
   "license": "MIT",
+  "module": "./dist/index.js",
+  "name": "@talosjs/analytics",
   "scripts": {
-    "test": "bun test tests",
     "build": "bunup",
     "fmt": "bunx biome check --write",
-    "lint": "tsc --noEmit && bunx biome lint"
+    "lint": "tsc --noEmit && bunx biome lint",
+    "test": "bun test tests"
   },
   "type": "module",
-  "types": "./dist/index.d.ts"
+  "types": "./dist/index.d.ts",
+  "version": "1.1.3"
 }
