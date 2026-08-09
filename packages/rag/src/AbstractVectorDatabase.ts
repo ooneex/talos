@@ -2,8 +2,7 @@ import * as lancedb from "@lancedb/lancedb";
 import type { EmbeddingFunction } from "@lancedb/lancedb/embedding";
 import { getRegistry, LanceSchema } from "@lancedb/lancedb/embedding";
 import { Utf8 } from "apache-arrow";
-import "./OpenAIEmbeddingFunction.ts";
-import "./QwenEmbeddingFunction.ts";
+import "./OpenrouterEmbeddingFunction.ts";
 import type { EmbeddingModelType, FieldValueType, IVectorDatabase } from "./types.ts";
 import { VectorDatabaseException } from "./VectorDatabaseException.ts";
 import { VectorTable } from "./VectorTable.ts";
@@ -15,12 +14,10 @@ export abstract class AbstractVectorDatabase<DataType extends { metadata: Record
   private readonly embeddingModel: EmbeddingModelType;
   private readonly embedding: EmbeddingFunction;
 
-  // Both the "openai" and "qwen" providers are registered above (both served through OpenRouter), so subclasses can pick either.
+  // The "openrouter" provider is registered above and serves both OpenAI and Qwen embedding models.
   protected constructor(embeddingModel: EmbeddingModelType) {
     this.embeddingModel = embeddingModel;
-    this.embedding = getRegistry()
-      .get(embeddingModel.provider)
-      ?.create({ model: embeddingModel.model }) as EmbeddingFunction;
+    this.embedding = getRegistry().get("openrouter")?.create({ model: embeddingModel.model }) as EmbeddingFunction;
   }
 
   public abstract getDatabaseUri(): string;

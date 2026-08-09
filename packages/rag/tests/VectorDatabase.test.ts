@@ -28,15 +28,13 @@ describe("VectorDatabase", () => {
 
   test("should default to the qwen3 embedding model", () => {
     expect(new VectorDatabase().getEmbeddingModel()).toEqual({
-      provider: "qwen",
       model: "qwen3-embedding-8b",
     });
   });
 
   test("should embed with openai when an embedding model override is passed", () => {
-    const db = new VectorDatabase({ provider: "openai", model: "text-embedding-3-small" });
+    const db = new VectorDatabase({ model: "text-embedding-3-small" });
     expect(db.getEmbeddingModel()).toEqual({
-      provider: "openai",
       model: "text-embedding-3-small",
     });
   });

@@ -46,7 +46,7 @@ mock.module("@lancedb/lancedb", () => ({
 type TestData = { metadata: { category: string } };
 
 class TestVectorDatabase extends AbstractVectorDatabase<TestData> {
-  public constructor(embeddingModel: EmbeddingModelType = { provider: "openai", model: "text-embedding-3-small" }) {
+  public constructor(embeddingModel: EmbeddingModelType = { model: "text-embedding-3-small" }) {
     super(embeddingModel);
   }
 
@@ -81,15 +81,13 @@ describe("AbstractVectorDatabase", () => {
   test("should return correct embedding model", () => {
     const db = new TestVectorDatabase();
     expect(db.getEmbeddingModel()).toEqual({
-      provider: "openai",
       model: "text-embedding-3-small",
     });
   });
 
-  test("should accept a different embedding provider", () => {
-    const db = new TestVectorDatabase({ provider: "qwen", model: "qwen3-embedding-8b" });
+  test("should accept a different embedding model", () => {
+    const db = new TestVectorDatabase({ model: "qwen3-embedding-8b" });
     expect(db.getEmbeddingModel()).toEqual({
-      provider: "qwen",
       model: "qwen3-embedding-8b",
     });
   });

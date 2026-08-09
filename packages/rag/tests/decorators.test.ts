@@ -15,7 +15,7 @@ class MockVectorDatabase implements IVectorDatabase<{ metadata: Record<string, u
   }
   // biome-ignore lint/suspicious/noExplicitAny: test mock
   public getEmbeddingModel(): any {
-    return { provider: "openai", model: "text-embedding-3-small" };
+    return { model: "text-embedding-3-small" };
   }
   // biome-ignore lint/suspicious/noExplicitAny: test mock
   public getSchema(): any {

@@ -6,10 +6,10 @@ type DataType = {
   metadata: Record<string, unknown>;
 };
 
-const DEFAULT_EMBEDDING_MODEL: EmbeddingModelType = { provider: "qwen", model: "qwen3-embedding-8b" };
+const DEFAULT_EMBEDDING_MODEL: EmbeddingModelType = { model: "qwen3-embedding-8b" };
 
 export class VectorDatabase extends AbstractVectorDatabase<DataType> {
-  // Defaults to qwen (via OpenRouter); pass an openai model to use OpenAI's embeddings via OpenRouter instead.
+  // Defaults to Qwen's embedding model; pass an OpenAI model to use OpenAI's embeddings via OpenRouter instead.
   public constructor(embeddingModel: EmbeddingModelType = DEFAULT_EMBEDDING_MODEL) {
     super(embeddingModel);
   }
