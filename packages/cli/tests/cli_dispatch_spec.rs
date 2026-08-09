@@ -18,7 +18,7 @@ fn write(path: &Path, content: &str) {
 /// Every template the generators read, so a `*:create` run gets past the
 /// resolver and into the command itself.
 fn seed_home(home: &Path) {
-    let templates = home.join(".talos/skeleton/templates");
+    let templates = home.join(".talos/skeleton/modules/templates");
     for name in [
         "ai-chat",
         "ai-middleware",

@@ -269,9 +269,10 @@ pub fn scaffold_destination(
             fs::create_dir_all(&modules_dir).map_err(|e| e.to_string())?;
             let _ = fs::remove_file(destination.join(".dockerignore"));
         }
-        Some(AppType::Api) | None => {
+        Some(AppType::Api) => {
             keep_only_app_and_shared_modules(destination)?;
         }
+        None => {}
     }
 
     Ok(())

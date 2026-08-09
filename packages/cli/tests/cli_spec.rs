@@ -48,7 +48,7 @@ impl Drop for Scratch {
 /// A home directory whose skeleton cache is already populated, so nothing the
 /// binary runs reaches for the network.
 fn seed_home(home: &Path) {
-    let skeleton = home.join(".talos/skeleton");
+    let skeleton = home.join(".talos/skeleton/modules");
     write(
         &skeleton.join("templates/module/module.txt"),
         "export const {{NAME}}Module = {};\n",
