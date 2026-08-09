@@ -66,6 +66,11 @@ export interface IVectorDatabase<DataType extends { metadata: Record<string, unk
 
 export type OpenAIModelType = "text-embedding-ada-002" | "text-embedding-3-small" | "text-embedding-3-large";
 
+export type OpenAIEmbeddingOptionsType = {
+  apiKey: string;
+  model: OpenAIModelType;
+};
+
 export type QwenModelType = "qwen3-embedding-8b";
 
 export type QwenEmbeddingOptionsType = {

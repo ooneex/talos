@@ -2,6 +2,7 @@ export { AbstractVectorDatabase } from "./AbstractVectorDatabase";
 export { Convertor } from "./Convertor";
 export { ConvertorException } from "./ConvertorException";
 export { decorator } from "./decorators";
+export { OpenAIEmbeddingFunction } from "./OpenAIEmbeddingFunction";
 export { QwenEmbeddingFunction } from "./QwenEmbeddingFunction";
 export * from "./types";
 export { VectorDatabase } from "./VectorDatabase";
