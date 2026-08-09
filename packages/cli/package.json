@@ -1,13 +1,13 @@
 {
-  "name": "@talos/cli",
   "description": "",
-  "version": "0.0.1",
-  "type": "module",
+  "keywords": [],
   "license": "MIT",
+  "name": "@talos/cli",
   "scripts": {
-    "test": "sh scripts/coverage.sh",
     "fmt": "cargo fmt",
-    "lint": "cargo clippy --all-targets --quiet"
+    "lint": "cargo clippy --all-targets --quiet",
+    "test": "sh scripts/coverage.sh"
   },
-  "keywords": []
+  "type": "module",
+  "version": "0.1.0"
 }
