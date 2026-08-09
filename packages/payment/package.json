@@ -1,42 +1,31 @@
 {
-  "name": "@talosjs/payment",
+  "dependencies": {
+    "@polar-sh/sdk": "^0.30.0",
+    "@talosjs/app-env": "workspace:^",
+    "@talosjs/container": "workspace:^",
+    "@talosjs/exception": "workspace:^",
+    "@talosjs/http-status": "workspace:^"
+  },
   "description": "Payment and pricing type definitions with currency handling, product categorization, and billing metadata for e-commerce integrations",
-  "version": "1.1.3",
-  "type": "module",
+  "devDependencies": {
+    "@talosjs/currencies": "workspace:^",
+    "@talosjs/types": "workspace:^"
+  },
+  "exports": {
+    ".": {
+      "import": {
+        "default": "./dist/index.js",
+        "types": "./dist/index.d.ts"
+      }
+    },
+    "./package.json": "./package.json"
+  },
   "files": [
     "dist",
     "LICENSE",
     "README.md",
     "package.json"
   ],
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "import": {
-        "types": "./dist/index.d.ts",
-        "default": "./dist/index.js"
-      }
-    },
-    "./package.json": "./package.json"
-  },
-  "license": "MIT",
-  "scripts": {
-    "build": "bunup",
-    "fmt": "bunx biome check --write",
-    "lint": "tsc --noEmit && bunx biome lint"
-  },
-  "dependencies": {
-    "@talosjs/app-env": "workspace:^",
-    "@talosjs/container": "workspace:^",
-    "@talosjs/exception": "workspace:^",
-    "@talosjs/http-status": "workspace:^",
-    "@polar-sh/sdk": "^0.30.0"
-  },
-  "devDependencies": {
-    "@talosjs/currencies": "workspace:^",
-    "@talosjs/types": "workspace:^"
-  },
   "keywords": [
     "billing",
     "bun",
@@ -46,5 +35,16 @@
     "payments",
     "pricing",
     "typescript"
-  ]
+  ],
+  "license": "MIT",
+  "module": "./dist/index.js",
+  "name": "@talosjs/payment",
+  "scripts": {
+    "build": "bunup",
+    "fmt": "bunx biome check --write",
+    "lint": "tsc --noEmit && bunx biome lint"
+  },
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "version": "1.1.4"
 }
