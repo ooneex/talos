@@ -435,4 +435,558 @@ mod tests {
                 .all(|task| task.output.contains("global failure"))
         );
     }
+
+    /// A `SchedulerContext` wired to the given fixtures, with `no_cache` set so
+    /// tests that do not care about caching do not have to think about it.
+    #[allow(clippy::too_many_arguments)]
+    fn make_ctx<'a>(
+        root: &'a Path,
+        cache: &'a Path,
+        by_key: &'a HashMap<&'a str, &'a WorkspaceTarget>,
+        cache_index: &'a CacheIndex,
+        memo: &'a FingerprintMemo,
+        file_hash_cache: &'a FileHashCache,
+        loader: &'a Loader,
+        no_cache: bool,
+    ) -> SchedulerContext<'a> {
+        SchedulerContext {
+            by_key,
+            root_dir: root,
+            root_hash: "root-hash",
+            cache_dir: cache,
+            fingerprint_memo: memo,
+            use_git: false,
+            no_cache,
+            file_hash_cache,
+            cache_index,
+            loader,
+            loader_group: 0,
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // try_cache_hit
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn try_cache_hit_returns_none_without_a_target_key() {
+        let by_key: HashMap<&str, &WorkspaceTarget> = HashMap::new();
+        let cache = tempfile::tempdir().expect("tempdir");
+
+        let result = try_cache_hit(
+            None,
+            "fmt",
+            &by_key,
+            "root-hash",
+            cache.path(),
+            &FingerprintMemo::new(),
+            false,
+            &FileHashCache::new(),
+            &CacheIndex::new(),
+        );
+
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn try_cache_hit_returns_none_for_an_unknown_target() {
+        let by_key: HashMap<&str, &WorkspaceTarget> = HashMap::new();
+        let cache = tempfile::tempdir().expect("tempdir");
+
+        let result = try_cache_hit(
+            Some("modules/missing"),
+            "fmt",
+            &by_key,
+            "root-hash",
+            cache.path(),
+            &FingerprintMemo::new(),
+            false,
+            &FileHashCache::new(),
+            &CacheIndex::new(),
+        );
+
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn try_cache_hit_reports_a_miss_then_a_hit_once_the_entry_is_written() {
+        let root = tempfile::tempdir().expect("tempdir");
+        let cache = tempfile::tempdir().expect("tempdir");
+        fs::create_dir_all(root.path().join("modules/app")).expect("module dir");
+        fs::write(root.path().join("modules/app/file.txt"), "hello").expect("write file");
+
+        let target = make_target(root.path(), "modules/app", "app");
+        let by_key: HashMap<&str, &WorkspaceTarget> =
+            HashMap::from([(target.key.as_str(), &target)]);
+        let memo = FingerprintMemo::new();
+        let file_hash_cache = FileHashCache::new();
+        let cache_index = CacheIndex::new();
+
+        let miss = try_cache_hit(
+            Some("modules/app"),
+            "fmt",
+            &by_key,
+            "root-hash",
+            cache.path(),
+            &memo,
+            false,
+            &file_hash_cache,
+            &cache_index,
+        )
+        .expect("a resolvable target always returns its hash");
+        assert!(miss.hit.is_none());
+
+        write_cache_entry(
+            cache.path(),
+            &cache_index,
+            &CacheEntryMeta {
+                version: WORKSPACE_CACHE_VERSION,
+                target: target.key.clone(),
+                command: "fmt".to_string(),
+                hash: miss.hash.clone(),
+                created_at: chrono::Utc::now().to_rfc3339(),
+                duration_ms: 42,
+            },
+        );
+
+        let hit = try_cache_hit(
+            Some("modules/app"),
+            "fmt",
+            &by_key,
+            "root-hash",
+            cache.path(),
+            &memo,
+            false,
+            &file_hash_cache,
+            &cache_index,
+        )
+        .expect("a resolvable target always returns its hash");
+        assert_eq!(hit.hit.map(|h| h.duration_ms), Some(42));
+    }
+
+    // -----------------------------------------------------------------------
+    // execute_task
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn execute_task_returns_a_cached_outcome_when_the_cache_hits() {
+        let root = tempfile::tempdir().expect("tempdir");
+        let cache = tempfile::tempdir().expect("tempdir");
+        fs::create_dir_all(root.path().join("modules/app")).expect("module dir");
+        fs::write(root.path().join("modules/app/file.txt"), "hello").expect("write file");
+
+        let target = make_target(root.path(), "modules/app", "app");
+        let by_key: HashMap<&str, &WorkspaceTarget> =
+            HashMap::from([(target.key.as_str(), &target)]);
+        let memo = FingerprintMemo::new();
+        let file_hash_cache = FileHashCache::new();
+        let cache_index = CacheIndex::new();
+
+        let hash = compute_task_hash(
+            &target,
+            "fmt",
+            &by_key,
+            "root-hash",
+            &memo,
+            false,
+            &file_hash_cache,
+        );
+        write_cache_entry(
+            cache.path(),
+            &cache_index,
+            &CacheEntryMeta {
+                version: WORKSPACE_CACHE_VERSION,
+                target: target.key.clone(),
+                command: "fmt".to_string(),
+                hash: hash.clone(),
+                created_at: chrono::Utc::now().to_rfc3339(),
+                duration_ms: 77,
+            },
+        );
+
+        let loader = Loader::hidden();
+        let ctx = make_ctx(
+            root.path(),
+            cache.path(),
+            &by_key,
+            &cache_index,
+            &memo,
+            &file_hash_cache,
+            &loader,
+            false,
+        );
+
+        let outcome = execute_task(
+            vec!["sh".to_string(), "-c".to_string(), "exit 0".to_string()],
+            root.path().join("modules/app"),
+            true,
+            "fmt".to_string(),
+            Some("modules/app".to_string()),
+            ctx,
+        );
+
+        match outcome {
+            TaskOutcome::Cached {
+                hash: got_hash,
+                duration_ms,
+            } => {
+                assert_eq!(got_hash, hash);
+                assert_eq!(duration_ms, 77);
+            }
+            TaskOutcome::Ran { .. } => panic!("expected a cache hit"),
+        }
+    }
+
+    #[test]
+    fn execute_task_reports_failure_when_the_command_cannot_be_spawned() {
+        let root = tempfile::tempdir().expect("tempdir");
+        let cache = tempfile::tempdir().expect("tempdir");
+        let by_key: HashMap<&str, &WorkspaceTarget> = HashMap::new();
+        let cache_index = CacheIndex::new();
+        let memo = FingerprintMemo::new();
+        let file_hash_cache = FileHashCache::new();
+        let loader = Loader::hidden();
+        let ctx = make_ctx(
+            root.path(),
+            cache.path(),
+            &by_key,
+            &cache_index,
+            &memo,
+            &file_hash_cache,
+            &loader,
+            true,
+        );
+
+        let outcome = execute_task(
+            vec!["/nonexistent/talos-test-binary-xyz".to_string()],
+            root.path().to_path_buf(),
+            false,
+            "fmt".to_string(),
+            None,
+            ctx,
+        );
+
+        match outcome {
+            TaskOutcome::Ran {
+                success,
+                exit_code,
+                output,
+                ..
+            } => {
+                assert!(!success);
+                assert_eq!(exit_code, Some(1));
+                assert!(!output.is_empty());
+            }
+            TaskOutcome::Cached { .. } => panic!("expected the spawn failure to be reported"),
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // apply_outcome
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn apply_outcome_applies_a_cached_result() {
+        let mut task = make_task("app#fmt", "modules/app");
+        let root = tempfile::tempdir().expect("tempdir");
+        let cache = tempfile::tempdir().expect("tempdir");
+        let by_key: HashMap<&str, &WorkspaceTarget> = HashMap::new();
+        let cache_index = CacheIndex::new();
+        let memo = FingerprintMemo::new();
+        let file_hash_cache = FileHashCache::new();
+        let loader = Loader::hidden();
+        let ctx = make_ctx(
+            root.path(),
+            cache.path(),
+            &by_key,
+            &cache_index,
+            &memo,
+            &file_hash_cache,
+            &loader,
+            true,
+        );
+        let mut failed = false;
+
+        apply_outcome(
+            &mut task,
+            TaskOutcome::Cached {
+                hash: "abc".to_string(),
+                duration_ms: 5,
+            },
+            ctx,
+            &mut failed,
+        );
+
+        assert_eq!(task.status, TaskStatus::Cached);
+        assert_eq!(task.hash, Some("abc".to_string()));
+        assert_eq!(task.duration_ms, 5);
+        assert!(!failed);
+    }
+
+    #[test]
+    fn apply_outcome_marks_the_run_failed_on_a_failing_task() {
+        let mut task = make_task("app#fmt", "modules/app");
+        let root = tempfile::tempdir().expect("tempdir");
+        let cache = tempfile::tempdir().expect("tempdir");
+        let by_key: HashMap<&str, &WorkspaceTarget> = HashMap::new();
+        let cache_index = CacheIndex::new();
+        let memo = FingerprintMemo::new();
+        let file_hash_cache = FileHashCache::new();
+        let loader = Loader::hidden();
+        let ctx = make_ctx(
+            root.path(),
+            cache.path(),
+            &by_key,
+            &cache_index,
+            &memo,
+            &file_hash_cache,
+            &loader,
+            true,
+        );
+        let mut failed = false;
+
+        apply_outcome(
+            &mut task,
+            TaskOutcome::Ran {
+                hash: None,
+                output: "boom".to_string(),
+                exit_code: Some(1),
+                success: false,
+                duration_ms: 9,
+            },
+            ctx,
+            &mut failed,
+        );
+
+        assert_eq!(task.status, TaskStatus::Failed);
+        assert!(failed);
+    }
+
+    // -----------------------------------------------------------------------
+    // cache_successful_task
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn cache_successful_task_skips_a_task_that_is_not_cacheable() {
+        let mut task = make_task("app#fmt", "modules/app");
+        task.cacheable = false;
+        task.hash = Some("abc".to_string());
+        let root = tempfile::tempdir().expect("tempdir");
+        let cache = tempfile::tempdir().expect("tempdir");
+        let by_key: HashMap<&str, &WorkspaceTarget> = HashMap::new();
+        let cache_index = CacheIndex::new();
+        let memo = FingerprintMemo::new();
+        let file_hash_cache = FileHashCache::new();
+        let loader = Loader::hidden();
+        let ctx = make_ctx(
+            root.path(),
+            cache.path(),
+            &by_key,
+            &cache_index,
+            &memo,
+            &file_hash_cache,
+            &loader,
+            true,
+        );
+
+        cache_successful_task(&task, ctx);
+
+        assert!(cache_index.is_empty());
+    }
+
+    #[test]
+    fn cache_successful_task_skips_a_task_without_a_hash() {
+        let mut task = make_task("app#fmt", "modules/app");
+        task.cacheable = true;
+        task.hash = None;
+        let root = tempfile::tempdir().expect("tempdir");
+        let cache = tempfile::tempdir().expect("tempdir");
+        let by_key: HashMap<&str, &WorkspaceTarget> = HashMap::new();
+        let cache_index = CacheIndex::new();
+        let memo = FingerprintMemo::new();
+        let file_hash_cache = FileHashCache::new();
+        let loader = Loader::hidden();
+        let ctx = make_ctx(
+            root.path(),
+            cache.path(),
+            &by_key,
+            &cache_index,
+            &memo,
+            &file_hash_cache,
+            &loader,
+            true,
+        );
+
+        cache_successful_task(&task, ctx);
+
+        assert!(cache_index.is_empty());
+    }
+
+    #[test]
+    fn cache_successful_task_skips_a_task_without_a_target_key() {
+        let mut task = make_task("app#fmt", "modules/app");
+        task.cacheable = true;
+        task.hash = Some("abc".to_string());
+        task.target_key = None;
+        let root = tempfile::tempdir().expect("tempdir");
+        let cache = tempfile::tempdir().expect("tempdir");
+        let by_key: HashMap<&str, &WorkspaceTarget> = HashMap::new();
+        let cache_index = CacheIndex::new();
+        let memo = FingerprintMemo::new();
+        let file_hash_cache = FileHashCache::new();
+        let loader = Loader::hidden();
+        let ctx = make_ctx(
+            root.path(),
+            cache.path(),
+            &by_key,
+            &cache_index,
+            &memo,
+            &file_hash_cache,
+            &loader,
+            true,
+        );
+
+        cache_successful_task(&task, ctx);
+
+        assert!(cache_index.is_empty());
+    }
+
+    #[test]
+    fn cache_successful_task_skips_when_the_target_cannot_be_resolved() {
+        let mut task = make_task("app#fmt", "modules/app");
+        task.cacheable = true;
+        task.hash = Some("abc".to_string());
+        let root = tempfile::tempdir().expect("tempdir");
+        let cache = tempfile::tempdir().expect("tempdir");
+        let by_key: HashMap<&str, &WorkspaceTarget> = HashMap::new();
+        let cache_index = CacheIndex::new();
+        let memo = FingerprintMemo::new();
+        let file_hash_cache = FileHashCache::new();
+        let loader = Loader::hidden();
+        let ctx = make_ctx(
+            root.path(),
+            cache.path(),
+            &by_key,
+            &cache_index,
+            &memo,
+            &file_hash_cache,
+            &loader,
+            true,
+        );
+
+        cache_successful_task(&task, ctx);
+
+        assert!(cache_index.is_empty());
+    }
+
+    #[test]
+    fn cache_successful_task_writes_a_cache_entry_when_everything_resolves() {
+        let mut task = make_task("app#fmt", "modules/app");
+        task.cacheable = true;
+        task.hash = Some("abc123".to_string());
+        task.duration_ms = 55;
+        let root = tempfile::tempdir().expect("tempdir");
+        let cache = tempfile::tempdir().expect("tempdir");
+        let target = make_target(root.path(), "modules/app", "app");
+        let by_key: HashMap<&str, &WorkspaceTarget> =
+            HashMap::from([(target.key.as_str(), &target)]);
+        let cache_index = CacheIndex::new();
+        let memo = FingerprintMemo::new();
+        let file_hash_cache = FileHashCache::new();
+        let loader = Loader::hidden();
+        let ctx = make_ctx(
+            root.path(),
+            cache.path(),
+            &by_key,
+            &cache_index,
+            &memo,
+            &file_hash_cache,
+            &loader,
+            true,
+        );
+
+        cache_successful_task(&task, ctx);
+
+        let entry = read_cache_entry(cache.path(), &cache_index, "abc123").expect("entry written");
+        assert_eq!(entry.duration_ms, 55);
+        assert_eq!(entry.target, "modules/app");
+    }
+
+    // -----------------------------------------------------------------------
+    // run_group
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn run_group_counts_skipped_tasks_without_running_them() {
+        let root = tempfile::tempdir().expect("tempdir");
+        let cache = tempfile::tempdir().expect("tempdir");
+
+        let mut skipped = make_task("skip#fmt", "modules/skip");
+        skipped.status = TaskStatus::Skipped;
+        let mut runnable = make_task("app#fmt", "modules/app");
+        runnable.cwd = root.path().to_path_buf();
+        runnable.argv = vec!["sh".to_string(), "-c".to_string(), "exit 0".to_string()];
+        let mut tasks = vec![skipped, runnable];
+
+        let by_key: HashMap<&str, &WorkspaceTarget> = HashMap::new();
+        let cache_index = CacheIndex::new();
+        let memo = FingerprintMemo::new();
+        let file_hash_cache = FileHashCache::new();
+        let loader = Loader::hidden();
+        let ctx = make_ctx(
+            root.path(),
+            cache.path(),
+            &by_key,
+            &cache_index,
+            &memo,
+            &file_hash_cache,
+            &loader,
+            true,
+        );
+
+        let failed = run_group(&mut tasks, ctx);
+
+        assert!(!failed);
+        assert_eq!(tasks[0].status, TaskStatus::Skipped);
+        assert_eq!(tasks[1].status, TaskStatus::Success);
+    }
+
+    #[test]
+    fn run_group_runs_dependents_after_their_dependency_and_flags_failures() {
+        let root = tempfile::tempdir().expect("tempdir");
+        let cache = tempfile::tempdir().expect("tempdir");
+
+        let mut first = make_task("app#build", "modules/app");
+        first.cwd = root.path().to_path_buf();
+        first.argv = vec!["sh".to_string(), "-c".to_string(), "exit 0".to_string()];
+
+        let mut second = make_task("app#test", "modules/app");
+        second.cwd = root.path().to_path_buf();
+        second.argv = vec!["sh".to_string(), "-c".to_string(), "exit 1".to_string()];
+        second.deps = vec!["app#build".to_string()];
+
+        let mut tasks = vec![first, second];
+
+        let by_key: HashMap<&str, &WorkspaceTarget> = HashMap::new();
+        let cache_index = CacheIndex::new();
+        let memo = FingerprintMemo::new();
+        let file_hash_cache = FileHashCache::new();
+        let loader = Loader::hidden();
+        let ctx = make_ctx(
+            root.path(),
+            cache.path(),
+            &by_key,
+            &cache_index,
+            &memo,
+            &file_hash_cache,
+            &loader,
+            true,
+        );
+
+        let failed = run_group(&mut tasks, ctx);
+
+        assert!(failed);
+        assert_eq!(tasks[0].status, TaskStatus::Success);
+        assert_eq!(tasks[1].status, TaskStatus::Failed);
+    }
 }

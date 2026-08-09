@@ -1,5 +1,8 @@
+use std::fs;
+use std::path::Path;
+
 use clap::Parser;
-use cli::commands::fmt::FmtArgs;
+use cli::commands::fmt::{FmtArgs, execute};
 
 #[derive(Parser)]
 struct TestCli {
@@ -43,4 +46,112 @@ fn fmt_defaults_are_empty() {
 #[test]
 fn fmt_rejects_unknown_flag() {
     assert!(TestCli::try_parse_from(["talos", "--definitely-not-a-flag"]).is_err());
+}
+
+fn write_module(root: &Path, name: &str, scripts: &str) {
+    let dir = root.join("modules").join(name);
+    fs::create_dir_all(&dir).expect("module dir");
+    fs::write(
+        dir.join("package.json"),
+        format!("{{\"name\":\"{name}\",\"scripts\":{scripts}}}"),
+    )
+    .expect("package.json");
+}
+
+fn args(cwd: &Path) -> FmtArgs {
+    FmtArgs {
+        packages: None,
+        modules: None,
+        logs: false,
+        no_cache: true,
+        cwd: Some(cwd.display().to_string()),
+    }
+}
+
+#[test]
+fn execute_errors_when_no_packages_or_modules_are_found() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+
+    assert!(!execute(&args(tmp.path())));
+}
+
+#[test]
+fn execute_errors_for_an_unknown_named_package() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    write_module(tmp.path(), "alpha", "{\"fmt\":\"true\"}");
+
+    assert!(!execute(&FmtArgs {
+        packages: Some("does-not-exist".to_string()),
+        ..args(tmp.path())
+    }));
+}
+
+#[test]
+fn execute_errors_for_an_unknown_named_module() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    write_module(tmp.path(), "alpha", "{\"fmt\":\"true\"}");
+
+    assert!(!execute(&FmtArgs {
+        modules: Some("does-not-exist".to_string()),
+        ..args(tmp.path())
+    }));
+}
+
+#[test]
+fn execute_skips_when_no_target_declares_a_fmt_script() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    write_module(tmp.path(), "alpha", "{\"build\":\"true\"}");
+
+    assert!(execute(&args(tmp.path())));
+}
+
+#[test]
+fn execute_runs_a_single_target_with_a_fmt_script() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    write_module(tmp.path(), "alpha", "{\"fmt\":\"true\"}");
+
+    assert!(execute(&FmtArgs {
+        no_cache: false,
+        ..args(tmp.path())
+    }));
+}
+
+#[test]
+fn execute_runs_multiple_targets_with_fmt_scripts() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    write_module(tmp.path(), "alpha", "{\"fmt\":\"true\"}");
+    write_module(tmp.path(), "beta", "{\"fmt\":\"true\"}");
+
+    assert!(execute(&args(tmp.path())));
+}
+
+#[test]
+fn execute_with_no_cache_true_still_succeeds() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    write_module(tmp.path(), "alpha", "{\"fmt\":\"true\"}");
+
+    assert!(execute(&FmtArgs {
+        no_cache: true,
+        ..args(tmp.path())
+    }));
+}
+
+#[test]
+fn execute_reports_failure_when_the_fmt_script_fails() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    write_module(tmp.path(), "alpha", "{\"fmt\":\"exit 1\"}");
+
+    assert!(!execute(&args(tmp.path())));
+}
+
+#[test]
+fn execute_filters_to_the_named_package_only() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    write_module(tmp.path(), "alpha", "{\"fmt\":\"true\"}");
+    write_module(tmp.path(), "beta", "{\"fmt\":\"exit 1\"}");
+
+    assert!(execute(&FmtArgs {
+        modules: Some("alpha".to_string()),
+        ..args(tmp.path())
+    }));
 }

@@ -128,6 +128,26 @@ fn failure_excerpt_of_empty_output_is_empty() {
 }
 
 #[test]
+fn failure_excerpt_trims_blank_lines_from_the_edges_of_a_run() {
+    let output = "\n\nerror: boom\n\n\nfine\n";
+
+    let excerpt = failure_excerpt(output);
+
+    assert!(!excerpt.first().is_some_and(|line| line.trim().is_empty()));
+    assert!(!excerpt.last().is_some_and(|line| line.trim().is_empty()));
+    assert!(excerpt.contains(&"error: boom".to_string()));
+}
+
+#[test]
+fn failure_excerpt_trims_trailing_blank_lines_when_the_run_ends_the_output() {
+    let output = "error: boom\n\n\n";
+
+    let excerpt = failure_excerpt(output);
+
+    assert_eq!(excerpt, vec!["error: boom".to_string()]);
+}
+
+#[test]
 fn failure_excerpt_is_capped() {
     let mut output = String::new();
     for i in 0..500 {

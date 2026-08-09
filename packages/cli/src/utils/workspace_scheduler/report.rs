@@ -246,3 +246,91 @@ fn print_summary(ran: &[&Task], skipped: usize) {
     );
     println!("{} {}", style("✖").red().bold(), style(message).red());
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    fn task(status: TaskStatus) -> Task {
+        Task {
+            key: "user#test".to_string(),
+            label: "user test".to_string(),
+            target_key: Some("user".to_string()),
+            command: "bun test".to_string(),
+            cwd: PathBuf::from("/repo/modules/user"),
+            argv: vec!["bun".to_string(), "test".to_string()],
+            cacheable: true,
+            deps: Vec::new(),
+            status,
+            output: String::new(),
+            exit_code: None,
+            duration_ms: 10,
+            hash: None,
+        }
+    }
+
+    #[test]
+    fn print_rows_does_nothing_when_no_task_ran() {
+        print_rows(&[]);
+    }
+
+    #[test]
+    fn print_rows_skips_pending_and_skipped_tasks_and_labels_cached_ones() {
+        let pending = task(TaskStatus::Pending);
+        let skipped = task(TaskStatus::Skipped);
+        let success = task(TaskStatus::Success);
+        let cached = task(TaskStatus::Cached);
+        let failed = task(TaskStatus::Failed);
+
+        // Exercises every arm of `print_rows`'s match, including the two
+        // statuses that never reach it through `print_task_report`'s own
+        // filtering.
+        print_rows(&[&pending, &skipped, &success, &cached, &failed]);
+    }
+
+    #[test]
+    fn print_failures_is_a_noop_without_any_failing_task() {
+        let success = task(TaskStatus::Success);
+        print_failures(&[&success], true);
+    }
+
+    #[test]
+    fn print_failures_hints_at_the_logs_flag_without_it() {
+        let failed = task(TaskStatus::Failed);
+        print_failures(&[&failed], false);
+    }
+
+    #[test]
+    fn print_failures_prints_the_excerpt_with_logs() {
+        let mut failed = task(TaskStatus::Failed);
+        failed.output = "fine\nerror: broke\nfine\n".to_string();
+        print_failures(&[&failed], true);
+    }
+
+    #[test]
+    fn print_summary_reports_skipped_tasks() {
+        let success = task(TaskStatus::Success);
+        print_summary(&[&success], 2);
+    }
+
+    #[test]
+    fn print_summary_reports_failing_tasks() {
+        let failed = task(TaskStatus::Failed);
+        print_summary(&[&failed], 0);
+    }
+
+    #[test]
+    fn print_task_report_covers_every_status_and_the_logs_hint() {
+        let tasks = vec![
+            task(TaskStatus::Success),
+            task(TaskStatus::Cached),
+            task(TaskStatus::Failed),
+            task(TaskStatus::Skipped),
+            task(TaskStatus::Pending),
+        ];
+
+        print_task_report("workspace:run", &tasks, false, 4200);
+        print_task_report("workspace:run", &tasks, true, 4200);
+    }
+}

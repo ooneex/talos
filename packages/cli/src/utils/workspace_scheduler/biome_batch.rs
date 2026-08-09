@@ -204,3 +204,577 @@ fn cache_batched_success(
         },
     );
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::utils::{
+        CacheIndex, FileHashCache, FingerprintMemo, Loader, TargetType, WorkspaceTarget,
+    };
+    use std::collections::HashMap;
+    use std::fs;
+    use std::os::unix::fs::PermissionsExt;
+    use std::path::{Path, PathBuf};
+
+    fn make_task(key: &str, target_key: &str, command: &str) -> Task {
+        Task {
+            key: key.to_string(),
+            label: key.to_string(),
+            target_key: Some(target_key.to_string()),
+            command: command.to_string(),
+            cwd: PathBuf::from("/repo"),
+            argv: vec!["bun".to_string(), "run".to_string(), command.to_string()],
+            cacheable: false,
+            deps: Vec::new(),
+            status: TaskStatus::Pending,
+            output: String::new(),
+            exit_code: None,
+            duration_ms: 0,
+            hash: None,
+        }
+    }
+
+    fn make_target(
+        root: &Path,
+        key: &str,
+        name: &str,
+        command: &str,
+        script: &str,
+    ) -> WorkspaceTarget {
+        let mut scripts = HashMap::new();
+        scripts.insert(command.to_string(), script.to_string());
+        WorkspaceTarget {
+            key: key.to_string(),
+            name: name.to_string(),
+            target_type: TargetType::Module,
+            dir: root.join(key),
+            scripts,
+            direct_scripts: false,
+            workspace_deps: Vec::new(),
+        }
+    }
+
+    fn write_executable(path: &Path, content: &str) {
+        fs::create_dir_all(path.parent().expect("parent")).expect("create parent");
+        fs::write(path, content).expect("write script");
+        let mut permissions = fs::metadata(path).expect("metadata").permissions();
+        permissions.set_mode(0o755);
+        fs::set_permissions(path, permissions).expect("permissions");
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn base_ctx<'a>(
+        root: &'a Path,
+        cache: &'a Path,
+        by_key: &'a HashMap<&'a str, &'a WorkspaceTarget>,
+        cache_index: &'a CacheIndex,
+        memo: &'a FingerprintMemo,
+        file_hash_cache: &'a FileHashCache,
+        loader: &'a Loader,
+        no_cache: bool,
+    ) -> SchedulerContext<'a> {
+        SchedulerContext {
+            by_key,
+            root_dir: root,
+            root_hash: "root-hash",
+            cache_dir: cache,
+            fingerprint_memo: memo,
+            use_git: false,
+            no_cache,
+            file_hash_cache,
+            cache_index,
+            loader,
+            loader_group: 0,
+        }
+    }
+
+    // -------------------------------------------------------------------
+    // run_biome_batch_pass grouping guards
+    // -------------------------------------------------------------------
+
+    #[test]
+    fn run_biome_batch_pass_ignores_tasks_that_are_not_pending_and_leaves_lone_targets_alone() {
+        let root = tempfile::tempdir().expect("tempdir");
+        let cache = tempfile::tempdir().expect("tempdir");
+        write_executable(
+            &root.path().join("node_modules/.bin/biome"),
+            "#!/bin/sh\nexit 0\n",
+        );
+        fs::create_dir_all(root.path().join("modules/app")).expect("dir");
+        fs::create_dir_all(root.path().join("modules/web")).expect("dir");
+
+        let mut app = make_task("app#fmt", "modules/app", "fmt");
+        app.status = TaskStatus::Success;
+        let web = make_task("web#fmt", "modules/web", "fmt");
+        let mut tasks = vec![app, web];
+
+        let targets = vec![
+            make_target(
+                root.path(),
+                "modules/app",
+                "app",
+                "fmt",
+                "biome check --write",
+            ),
+            make_target(
+                root.path(),
+                "modules/web",
+                "web",
+                "fmt",
+                "biome check --write",
+            ),
+        ];
+        let by_key: HashMap<&str, &WorkspaceTarget> =
+            targets.iter().map(|t| (t.key.as_str(), t)).collect();
+        let cache_index = CacheIndex::new();
+        let memo = FingerprintMemo::new();
+        let file_hash_cache = FileHashCache::new();
+        let loader = Loader::hidden();
+        let ctx = base_ctx(
+            root.path(),
+            cache.path(),
+            &by_key,
+            &cache_index,
+            &memo,
+            &file_hash_cache,
+            &loader,
+            true,
+        );
+
+        let failed = run_biome_batch_pass(&mut tasks, ctx);
+
+        assert!(!failed);
+        assert_eq!(tasks[0].status, TaskStatus::Success);
+        // Only one pending target remains once the already-finished one is
+        // excluded, so the group is too small to batch and is left for the
+        // scheduler loop instead.
+        assert_eq!(tasks[1].status, TaskStatus::Pending);
+    }
+
+    #[test]
+    fn run_biome_batch_pass_ignores_tasks_without_a_target_key() {
+        let root = tempfile::tempdir().expect("tempdir");
+        let cache = tempfile::tempdir().expect("tempdir");
+        let mut task = make_task("solo#fmt", "modules/solo", "fmt");
+        task.target_key = None;
+        let mut tasks = vec![task];
+        let by_key: HashMap<&str, &WorkspaceTarget> = HashMap::new();
+        let cache_index = CacheIndex::new();
+        let memo = FingerprintMemo::new();
+        let file_hash_cache = FileHashCache::new();
+        let loader = Loader::hidden();
+        let ctx = base_ctx(
+            root.path(),
+            cache.path(),
+            &by_key,
+            &cache_index,
+            &memo,
+            &file_hash_cache,
+            &loader,
+            true,
+        );
+
+        let failed = run_biome_batch_pass(&mut tasks, ctx);
+
+        assert!(!failed);
+        assert_eq!(tasks[0].status, TaskStatus::Pending);
+    }
+
+    #[test]
+    fn run_biome_batch_pass_ignores_tasks_whose_target_cannot_be_resolved() {
+        let root = tempfile::tempdir().expect("tempdir");
+        let cache = tempfile::tempdir().expect("tempdir");
+        let mut tasks = vec![make_task("app#fmt", "modules/app", "fmt")];
+        let by_key: HashMap<&str, &WorkspaceTarget> = HashMap::new();
+        let cache_index = CacheIndex::new();
+        let memo = FingerprintMemo::new();
+        let file_hash_cache = FileHashCache::new();
+        let loader = Loader::hidden();
+        let ctx = base_ctx(
+            root.path(),
+            cache.path(),
+            &by_key,
+            &cache_index,
+            &memo,
+            &file_hash_cache,
+            &loader,
+            true,
+        );
+
+        let failed = run_biome_batch_pass(&mut tasks, ctx);
+
+        assert!(!failed);
+        assert_eq!(tasks[0].status, TaskStatus::Pending);
+    }
+
+    #[test]
+    fn run_biome_batch_pass_ignores_tasks_whose_target_has_no_matching_script() {
+        let root = tempfile::tempdir().expect("tempdir");
+        let cache = tempfile::tempdir().expect("tempdir");
+        let mut tasks = vec![make_task("app#fmt", "modules/app", "fmt")];
+        let target = make_target(root.path(), "modules/app", "app", "test", "bun test");
+        let by_key: HashMap<&str, &WorkspaceTarget> =
+            HashMap::from([(target.key.as_str(), &target)]);
+        let cache_index = CacheIndex::new();
+        let memo = FingerprintMemo::new();
+        let file_hash_cache = FileHashCache::new();
+        let loader = Loader::hidden();
+        let ctx = base_ctx(
+            root.path(),
+            cache.path(),
+            &by_key,
+            &cache_index,
+            &memo,
+            &file_hash_cache,
+            &loader,
+            true,
+        );
+
+        let failed = run_biome_batch_pass(&mut tasks, ctx);
+
+        assert!(!failed);
+        assert_eq!(tasks[0].status, TaskStatus::Pending);
+    }
+
+    #[test]
+    fn run_biome_batch_pass_ignores_non_biome_scripts() {
+        let root = tempfile::tempdir().expect("tempdir");
+        let cache = tempfile::tempdir().expect("tempdir");
+        let mut tasks = vec![make_task("app#fmt", "modules/app", "fmt")];
+        let target = make_target(
+            root.path(),
+            "modules/app",
+            "app",
+            "fmt",
+            "bun run something-else",
+        );
+        let by_key: HashMap<&str, &WorkspaceTarget> =
+            HashMap::from([(target.key.as_str(), &target)]);
+        let cache_index = CacheIndex::new();
+        let memo = FingerprintMemo::new();
+        let file_hash_cache = FileHashCache::new();
+        let loader = Loader::hidden();
+        let ctx = base_ctx(
+            root.path(),
+            cache.path(),
+            &by_key,
+            &cache_index,
+            &memo,
+            &file_hash_cache,
+            &loader,
+            true,
+        );
+
+        let failed = run_biome_batch_pass(&mut tasks, ctx);
+
+        assert!(!failed);
+        assert_eq!(tasks[0].status, TaskStatus::Pending);
+    }
+
+    // -------------------------------------------------------------------
+    // run_one_biome_batch caching behaviour
+    // -------------------------------------------------------------------
+
+    #[test]
+    fn run_one_biome_batch_uses_cache_hits_and_caches_new_misses() {
+        let root = tempfile::tempdir().expect("tempdir");
+        let cache = tempfile::tempdir().expect("tempdir");
+        write_executable(
+            &root.path().join("node_modules/.bin/biome"),
+            &format!(
+                "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"{}\"\nexit 0\n",
+                root.path().join("biome.log").display()
+            ),
+        );
+        fs::create_dir_all(root.path().join("modules/app")).expect("dir");
+        fs::create_dir_all(root.path().join("modules/web")).expect("dir");
+        fs::write(root.path().join("modules/app/a.txt"), "a").expect("write");
+        fs::write(root.path().join("modules/web/b.txt"), "b").expect("write");
+
+        let targets = vec![
+            make_target(
+                root.path(),
+                "modules/app",
+                "app",
+                "fmt",
+                "biome check --write",
+            ),
+            make_target(
+                root.path(),
+                "modules/web",
+                "web",
+                "fmt",
+                "biome check --write",
+            ),
+        ];
+        let by_key: HashMap<&str, &WorkspaceTarget> =
+            targets.iter().map(|t| (t.key.as_str(), t)).collect();
+        let memo = FingerprintMemo::new();
+        let file_hash_cache = FileHashCache::new();
+
+        let app_hash = compute_task_hash(
+            by_key["modules/app"],
+            "fmt",
+            &by_key,
+            "root-hash",
+            &memo,
+            false,
+            &file_hash_cache,
+        );
+        let cache_index = CacheIndex::new();
+        write_cache_entry(
+            cache.path(),
+            &cache_index,
+            &CacheEntryMeta {
+                version: WORKSPACE_CACHE_VERSION,
+                target: "modules/app".to_string(),
+                command: "fmt".to_string(),
+                hash: app_hash,
+                created_at: chrono::Utc::now().to_rfc3339(),
+                duration_ms: 33,
+            },
+        );
+
+        let mut app_task = make_task("app#fmt", "modules/app", "fmt");
+        app_task.cacheable = true;
+        let mut web_task = make_task("web#fmt", "modules/web", "fmt");
+        web_task.cacheable = true;
+        let mut tasks = vec![app_task, web_task];
+
+        let loader = Loader::hidden();
+        let ctx = base_ctx(
+            root.path(),
+            cache.path(),
+            &by_key,
+            &cache_index,
+            &memo,
+            &file_hash_cache,
+            &loader,
+            false,
+        );
+
+        let failed = run_biome_batch_pass(&mut tasks, ctx);
+
+        assert!(!failed);
+        assert_eq!(tasks[0].status, TaskStatus::Cached);
+        assert_eq!(tasks[0].duration_ms, 33);
+        assert_eq!(tasks[1].status, TaskStatus::Success);
+        assert!(tasks[1].hash.is_some());
+
+        // The "app" cache hit short-circuits before spawning biome, so only
+        // "web" is passed to the batched invocation.
+        let log = fs::read_to_string(root.path().join("biome.log")).expect("log");
+        assert!(log.contains("modules/web"));
+        assert!(!log.contains("modules/app"));
+
+        let web_hash = tasks[1].hash.clone().expect("web task was hashed");
+        let entry =
+            read_cache_entry(cache.path(), &cache_index, &web_hash).expect("cache entry written");
+        assert_eq!(entry.target, "modules/web");
+    }
+
+    #[test]
+    fn run_one_biome_batch_returns_early_when_every_target_is_a_cache_hit() {
+        let root = tempfile::tempdir().expect("tempdir");
+        let cache = tempfile::tempdir().expect("tempdir");
+        // Deliberately no biome binary — if the batch spawned a process
+        // despite every target being a cache hit, this test would fail loudly.
+        fs::create_dir_all(root.path().join("modules/app")).expect("dir");
+        fs::create_dir_all(root.path().join("modules/web")).expect("dir");
+
+        let targets = vec![
+            make_target(
+                root.path(),
+                "modules/app",
+                "app",
+                "fmt",
+                "biome check --write",
+            ),
+            make_target(
+                root.path(),
+                "modules/web",
+                "web",
+                "fmt",
+                "biome check --write",
+            ),
+        ];
+        let by_key: HashMap<&str, &WorkspaceTarget> =
+            targets.iter().map(|t| (t.key.as_str(), t)).collect();
+        let memo = FingerprintMemo::new();
+        let file_hash_cache = FileHashCache::new();
+        let cache_index = CacheIndex::new();
+
+        for key in ["modules/app", "modules/web"] {
+            let hash = compute_task_hash(
+                by_key[key],
+                "fmt",
+                &by_key,
+                "root-hash",
+                &memo,
+                false,
+                &file_hash_cache,
+            );
+            write_cache_entry(
+                cache.path(),
+                &cache_index,
+                &CacheEntryMeta {
+                    version: WORKSPACE_CACHE_VERSION,
+                    target: key.to_string(),
+                    command: "fmt".to_string(),
+                    hash,
+                    created_at: chrono::Utc::now().to_rfc3339(),
+                    duration_ms: 10,
+                },
+            );
+        }
+
+        let mut app_task = make_task("app#fmt", "modules/app", "fmt");
+        app_task.cacheable = true;
+        let mut web_task = make_task("web#fmt", "modules/web", "fmt");
+        web_task.cacheable = true;
+        let mut tasks = vec![app_task, web_task];
+
+        let loader = Loader::hidden();
+        let ctx = base_ctx(
+            root.path(),
+            cache.path(),
+            &by_key,
+            &cache_index,
+            &memo,
+            &file_hash_cache,
+            &loader,
+            false,
+        );
+
+        let failed = run_biome_batch_pass(&mut tasks, ctx);
+
+        assert!(!failed);
+        assert!(tasks.iter().all(|t| t.status == TaskStatus::Cached));
+        assert!(!root.path().join("biome.log").exists());
+    }
+
+    #[test]
+    fn run_one_biome_batch_reports_a_spawn_failure_as_output() {
+        let root = tempfile::tempdir().expect("tempdir");
+        let cache = tempfile::tempdir().expect("tempdir");
+        let biome_path = root.path().join("node_modules/.bin/biome");
+        fs::create_dir_all(biome_path.parent().expect("parent")).expect("create parent");
+        fs::write(&biome_path, "#!/bin/sh\nexit 0\n").expect("write biome");
+        // Deliberately not executable, so spawning it fails.
+        let mut permissions = fs::metadata(&biome_path).expect("metadata").permissions();
+        permissions.set_mode(0o644);
+        fs::set_permissions(&biome_path, permissions).expect("permissions");
+
+        fs::create_dir_all(root.path().join("modules/app")).expect("dir");
+        fs::create_dir_all(root.path().join("modules/web")).expect("dir");
+
+        let mut tasks = vec![
+            make_task("app#fmt", "modules/app", "fmt"),
+            make_task("web#fmt", "modules/web", "fmt"),
+        ];
+        let targets = vec![
+            make_target(
+                root.path(),
+                "modules/app",
+                "app",
+                "fmt",
+                "biome check --write",
+            ),
+            make_target(
+                root.path(),
+                "modules/web",
+                "web",
+                "fmt",
+                "biome check --write",
+            ),
+        ];
+        let by_key: HashMap<&str, &WorkspaceTarget> =
+            targets.iter().map(|t| (t.key.as_str(), t)).collect();
+        let cache_index = CacheIndex::new();
+        let memo = FingerprintMemo::new();
+        let file_hash_cache = FileHashCache::new();
+        let loader = Loader::hidden();
+        let ctx = base_ctx(
+            root.path(),
+            cache.path(),
+            &by_key,
+            &cache_index,
+            &memo,
+            &file_hash_cache,
+            &loader,
+            true,
+        );
+
+        let failed = run_biome_batch_pass(&mut tasks, ctx);
+
+        assert!(failed);
+        assert!(tasks.iter().all(|t| t.status == TaskStatus::Failed));
+        assert!(tasks.iter().all(|t| !t.output.is_empty()));
+    }
+
+    // -------------------------------------------------------------------
+    // cache_batched_success
+    // -------------------------------------------------------------------
+
+    #[test]
+    fn cache_batched_success_skips_when_the_target_cannot_be_resolved() {
+        let root = tempfile::tempdir().expect("tempdir");
+        let cache = tempfile::tempdir().expect("tempdir");
+        let task = make_task("app#fmt", "modules/app", "fmt");
+        let by_key: HashMap<&str, &WorkspaceTarget> = HashMap::new();
+        let cache_index = CacheIndex::new();
+        let memo = FingerprintMemo::new();
+        let file_hash_cache = FileHashCache::new();
+        let loader = Loader::hidden();
+        let ctx = base_ctx(
+            root.path(),
+            cache.path(),
+            &by_key,
+            &cache_index,
+            &memo,
+            &file_hash_cache,
+            &loader,
+            true,
+        );
+
+        cache_batched_success(&task, "modules/app", "hash".to_string(), 10, ctx);
+
+        assert!(cache_index.is_empty());
+    }
+
+    #[test]
+    fn cache_batched_success_writes_an_entry_when_the_target_resolves() {
+        let root = tempfile::tempdir().expect("tempdir");
+        let cache = tempfile::tempdir().expect("tempdir");
+        let task = make_task("app#fmt", "modules/app", "fmt");
+        let target = make_target(
+            root.path(),
+            "modules/app",
+            "app",
+            "fmt",
+            "biome check --write",
+        );
+        let by_key: HashMap<&str, &WorkspaceTarget> =
+            HashMap::from([(target.key.as_str(), &target)]);
+        let cache_index = CacheIndex::new();
+        let memo = FingerprintMemo::new();
+        let file_hash_cache = FileHashCache::new();
+        let loader = Loader::hidden();
+        let ctx = base_ctx(
+            root.path(),
+            cache.path(),
+            &by_key,
+            &cache_index,
+            &memo,
+            &file_hash_cache,
+            &loader,
+            true,
+        );
+
+        cache_batched_success(&task, "modules/app", "hash-1".to_string(), 40, ctx);
+
+        let entry = read_cache_entry(cache.path(), &cache_index, "hash-1").expect("entry written");
+        assert_eq!(entry.duration_ms, 40);
+        assert_eq!(entry.target, "modules/app");
+    }
+}

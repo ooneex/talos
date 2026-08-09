@@ -472,3 +472,251 @@ fn tail(output: &str, lines: usize) -> Vec<&str> {
     let start = all.len().saturating_sub(lines);
     all[start..].to_vec()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn target(name: &str, target_type: TargetType, dir: PathBuf) -> WorkspaceTarget {
+        WorkspaceTarget {
+            key: format!(
+                "{}/{name}",
+                match target_type {
+                    TargetType::Package => "packages",
+                    TargetType::Module => "modules",
+                }
+            ),
+            name: name.to_string(),
+            target_type,
+            dir,
+            scripts: HashMap::new(),
+            direct_scripts: false,
+            workspace_deps: Vec::new(),
+        }
+    }
+
+    // -- tail --------------------------------------------------------
+
+    #[test]
+    fn tail_keeps_everything_when_under_the_limit() {
+        let output = "one\ntwo\nthree";
+        assert_eq!(tail(output, 40), vec!["one", "two", "three"]);
+    }
+
+    #[test]
+    fn tail_drops_blank_lines_and_truncates_to_the_last_n() {
+        let mut lines: Vec<String> = (1..=50).map(|n| format!("line-{n}")).collect();
+        // Sprinkle blank lines through the output — they must not count
+        // toward the 40-line budget or show up in the result.
+        lines.insert(10, String::new());
+        lines.insert(20, "   ".to_string());
+        let output = lines.join("\n");
+
+        let tailed = tail(&output, LOG_TAIL_LINES);
+
+        assert_eq!(tailed.len(), LOG_TAIL_LINES);
+        assert!(tailed.iter().all(|line| !line.trim().is_empty()));
+        assert_eq!(tailed.last(), Some(&"line-50"));
+        assert_eq!(tailed.first(), Some(&"line-11"));
+    }
+
+    // -- build_argv ----------------------------------------------------
+
+    #[test]
+    fn build_argv_always_runs_bun_when_the_target_has_a_package_json() {
+        let mut t = target("alpha", TargetType::Package, PathBuf::from("."));
+        t.direct_scripts = false;
+        t.scripts
+            .insert("build".to_string(), "whatever this is".to_string());
+
+        assert_eq!(
+            build_argv(&t),
+            vec!["bun".to_string(), "run".to_string(), "build".to_string()]
+        );
+    }
+
+    #[test]
+    fn build_argv_splits_the_declared_script_for_a_direct_target() {
+        let mut t = target("crate-a", TargetType::Package, PathBuf::from("."));
+        t.direct_scripts = true;
+        t.scripts
+            .insert("build".to_string(), "cargo build --release".to_string());
+
+        assert_eq!(
+            build_argv(&t),
+            vec![
+                "cargo".to_string(),
+                "build".to_string(),
+                "--release".to_string()
+            ]
+        );
+    }
+
+    #[test]
+    fn build_argv_is_empty_when_a_direct_target_declares_no_build_script() {
+        let mut t = target("crate-a", TargetType::Package, PathBuf::from("."));
+        t.direct_scripts = true;
+
+        assert!(build_argv(&t).is_empty());
+    }
+
+    // -- run_build -------------------------------------------------------
+
+    #[test]
+    fn run_build_reports_no_script_declared_when_argv_is_empty() {
+        let mut t = target("crate-a", TargetType::Package, PathBuf::from("."));
+        t.direct_scripts = true;
+        t.scripts.insert("build".to_string(), String::new());
+
+        let (success_flag, output, duration_ms) = run_build(&t);
+
+        assert!(!success_flag);
+        assert_eq!(output, "no build script declared");
+        assert_eq!(duration_ms, 0);
+    }
+
+    #[test]
+    fn run_build_reports_the_spawn_error_when_the_binary_does_not_exist() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let mut t = target("crate-a", TargetType::Package, dir.path().to_path_buf());
+        t.direct_scripts = true;
+        t.scripts.insert(
+            "build".to_string(),
+            "totally-nonexistent-binary-xyz-123".to_string(),
+        );
+
+        let (success_flag, output, _duration_ms) = run_build(&t);
+
+        assert!(!success_flag);
+        assert!(!output.is_empty());
+    }
+
+    #[test]
+    fn run_build_reports_success_and_failure_from_a_real_process() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let mut ok = target("crate-a", TargetType::Package, dir.path().to_path_buf());
+        ok.direct_scripts = true;
+        ok.scripts.insert("build".to_string(), "true".to_string());
+        let (success_flag, _output, _duration_ms) = run_build(&ok);
+        assert!(success_flag);
+
+        let mut failing = target("crate-b", TargetType::Package, dir.path().to_path_buf());
+        failing.direct_scripts = true;
+        failing
+            .scripts
+            .insert("build".to_string(), "false".to_string());
+        let (success_flag, _output, _duration_ms) = run_build(&failing);
+        assert!(!success_flag);
+    }
+
+    // -- filter_targets ----------------------------------------------
+
+    #[test]
+    fn filter_targets_returns_everything_when_nothing_is_named() {
+        let targets = vec![target("alpha", TargetType::Package, PathBuf::from("."))];
+        let selected = filter_targets(&targets, None, None).expect("some");
+        assert_eq!(selected.len(), 1);
+    }
+
+    #[test]
+    fn filter_targets_selects_the_named_package_and_module() {
+        let targets = vec![
+            target("alpha", TargetType::Package, PathBuf::from(".")),
+            target("beta", TargetType::Module, PathBuf::from(".")),
+            target("gamma", TargetType::Package, PathBuf::from(".")),
+        ];
+        let selected = filter_targets(&targets, Some("alpha"), Some("beta")).expect("some");
+        let names: Vec<&str> = selected.iter().map(|t| t.name.as_str()).collect();
+        assert_eq!(names, vec!["alpha", "beta"]);
+    }
+
+    #[test]
+    fn filter_targets_reports_a_missing_named_package() {
+        let targets = vec![target("alpha", TargetType::Package, PathBuf::from("."))];
+        assert!(filter_targets(&targets, Some("ghost"), None).is_none());
+    }
+
+    #[test]
+    fn filter_targets_returns_an_empty_list_when_every_selector_is_blank() {
+        let targets = vec![target("alpha", TargetType::Package, PathBuf::from("."))];
+        let selected = filter_targets(&targets, Some(""), None).expect("some");
+        assert!(selected.is_empty());
+    }
+
+    // -- transitive_deps ------------------------------------------------
+
+    #[test]
+    fn transitive_deps_dedupes_a_diamond_shaped_dependency_graph() {
+        let mut a = target("a", TargetType::Package, PathBuf::from("."));
+        let mut b = target("b", TargetType::Package, PathBuf::from("."));
+        let mut c = target("c", TargetType::Package, PathBuf::from("."));
+        let d = target("d", TargetType::Package, PathBuf::from("."));
+
+        a.workspace_deps = vec![b.key.clone(), c.key.clone()];
+        b.workspace_deps = vec![d.key.clone()];
+        c.workspace_deps = vec![d.key.clone()];
+
+        let by_key: HashMap<&str, &WorkspaceTarget> = [&b, &c, &d]
+            .into_iter()
+            .map(|t| (t.key.as_str(), t))
+            .collect();
+
+        let deps = transitive_deps(&a, &by_key);
+        let keys: HashSet<&str> = deps.iter().map(|t| t.key.as_str()).collect();
+
+        // d is reachable through both b and c, but is only visited once.
+        assert_eq!(deps.len(), 3);
+        assert!(keys.contains(b.key.as_str()));
+        assert!(keys.contains(c.key.as_str()));
+        assert!(keys.contains(d.key.as_str()));
+    }
+
+    // -- print_* (smoke — exercised for line coverage of the report layout) --
+
+    #[test]
+    fn print_report_functions_do_not_panic_across_every_shape_of_result() {
+        let empty: Vec<TargetBuild> = Vec::new();
+        print_rows(&empty);
+        print_failures(&empty, false);
+        print_summary(&empty, 0, 0);
+
+        let passed = TargetBuild {
+            label: "alpha:build".to_string(),
+            status: BuildStatus::Passed,
+            duration_ms: 12,
+            output: String::new(),
+            cached: false,
+        };
+        let cached = TargetBuild {
+            label: "beta:build".to_string(),
+            status: BuildStatus::Passed,
+            duration_ms: 0,
+            output: String::new(),
+            cached: true,
+        };
+        let failed_one = TargetBuild {
+            label: "gamma:build".to_string(),
+            status: BuildStatus::Failed,
+            duration_ms: 8,
+            output: "boom\n\nsecond line".to_string(),
+            cached: false,
+        };
+        let failed_two = TargetBuild {
+            label: "delta:build".to_string(),
+            status: BuildStatus::Failed,
+            duration_ms: 3,
+            output: String::new(),
+            cached: false,
+        };
+
+        let mixed = vec![passed, cached, failed_one, failed_two];
+        print_rows(&mixed);
+        print_failures(&mixed, false);
+        print_failures(&mixed, true);
+        // Two failures pluralizes "targets failing" — unreachable through
+        // `execute()` itself (it stops at the first failure) but still a
+        // real code path this drives directly.
+        print_summary(&mixed, 2, 1);
+        print_report(&mixed, true, 100, 2, 1);
+    }
+}
