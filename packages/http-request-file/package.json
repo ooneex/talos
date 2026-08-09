@@ -1,37 +1,25 @@
 {
-  "name": "@talosjs/http-request-file",
+  "dependencies": {
+    "@talosjs/http-mimes": "workspace:^",
+    "@talosjs/utils": "workspace:^"
+  },
   "description": "Multipart file upload handler with MIME type validation, size constraints, and temporary file management for HTTP request processing",
-  "version": "1.1.2",
-  "type": "module",
+  "devDependencies": {},
+  "exports": {
+    ".": {
+      "import": {
+        "default": "./dist/index.js",
+        "types": "./dist/index.d.ts"
+      }
+    },
+    "./package.json": "./package.json"
+  },
   "files": [
     "dist",
     "LICENSE",
     "README.md",
     "package.json"
   ],
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "import": {
-        "types": "./dist/index.d.ts",
-        "default": "./dist/index.js"
-      }
-    },
-    "./package.json": "./package.json"
-  },
-  "license": "MIT",
-  "scripts": {
-    "test": "bun test tests",
-    "build": "bunup",
-    "fmt": "bunx biome check --write",
-    "lint": "tsc --noEmit && bunx biome lint"
-  },
-  "dependencies": {
-    "@talosjs/http-mimes": "workspace:^",
-    "@talosjs/utils": "workspace:^"
-  },
-  "devDependencies": {},
   "keywords": [
     "bun",
     "file-upload",
@@ -40,5 +28,17 @@
     "multipart",
     "talos",
     "typescript"
-  ]
+  ],
+  "license": "MIT",
+  "module": "./dist/index.js",
+  "name": "@talosjs/http-request-file",
+  "scripts": {
+    "build": "bunup",
+    "fmt": "bunx biome check --write",
+    "lint": "tsc --noEmit && bunx biome lint",
+    "test": "bun test tests"
+  },
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "version": "1.1.3"
 }
