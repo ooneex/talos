@@ -140,6 +140,8 @@ analytics:create cache:create command:create controller:create credentials:creat
 design:create design:remove docker:create docker:credentials:create docker:publish \
 npm:credentials:create npm:publish workspace:run run workspace:check check build fmt lint test \
 install \
+update \
+add \
 security:check \
 coverage:check \
 project:check \
@@ -295,6 +297,14 @@ threads whatsapp telegram messenger discord reddit medium cloudflare bunny s3 op
       ;;
     install)
       opts="--force --audit-level --skip-audit --no-cache --cwd"
+      [[ $flag == --audit-level ]] && candidates="low moderate high critical"
+      ;;
+    update)
+      opts="--deps --latest --force --audit-level --skip-audit --no-cache --cwd"
+      [[ $flag == --audit-level ]] && candidates="low moderate high critical"
+      ;;
+    add)
+      opts="--deps --dev --optional --peer --exact --force --audit-level --skip-audit --no-cache --cwd"
       [[ $flag == --audit-level ]] && candidates="low moderate high critical"
       ;;
     security:check)

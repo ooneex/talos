@@ -163,7 +163,7 @@ pub fn execute(args: &BuildArgs) -> bool {
                 &success_lines(&label, duration_ms, false),
             );
             if args.logs && !output.trim().is_empty() {
-                for line in output.lines() {
+                for line in tail_lines(&output, MAX_SUCCESS_LOG_LINES) {
                     println!("{} {line}", style("┃").dim());
                 }
             }
@@ -379,6 +379,23 @@ fn success_lines(label: &str, duration_ms: u64, cached: bool) -> Vec<String> {
         ))
         .dim()
     )]
+}
+
+/// Succeeded builds only ever show a tail this long under `--logs`, so a
+/// noisy build doesn't drown the summary the way an unbounded dump would.
+const MAX_SUCCESS_LOG_LINES: usize = 1;
+
+/// The last `max` non-blank lines of a target's output, ignoring trailing
+/// `$ <command>` echoes some build tools (e.g. bunup) print after finishing.
+fn tail_lines(output: &str, max: usize) -> Vec<&str> {
+    let body: Vec<&str> = output
+        .lines()
+        .filter(|l| {
+            let trimmed = l.trim();
+            !trimmed.is_empty() && !trimmed.starts_with("$ ")
+        })
+        .collect();
+    body[body.len().saturating_sub(max)..].to_vec()
 }
 
 /// The last 20 non-blank lines of a failed target's output, or every line

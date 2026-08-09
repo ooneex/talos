@@ -179,6 +179,8 @@ _talos() {
     'coverage\:check:Run tests per module with coverage and report what is left uncovered'
     'project\:check:Run every health check — workspace, structure, conventions, env, deps, docker, migrations, a11y, translations, tests, docs, security, secrets, git, issues, commits, hygiene'
     'install:Install dependencies with bun, auditing every package for known vulnerabilities first'
+    'update:Update dependencies with bun, auditing the resolved versions for known vulnerabilities first'
+    'add:Add new dependencies with bun, auditing the resolved versions for known vulnerabilities first'
     'build:Run the build script across packages and modules with its own dedicated cache'
     'fmt:Run the fmt script across packages and modules with its own dedicated cache'
     'lint:Run the lint script across packages and modules with its own dedicated cache'
@@ -432,6 +434,29 @@ _talos() {
             '--force[Install anyway even when the audit finds vulnerable dependencies]' \
             '--audit-level=[Minimum severity that blocks the install]:level:(low moderate high critical)' \
             '--skip-audit[Skip the vulnerability audit and install directly]' \
+            '--no-cache[Bypass the cached audit result and re-query OSV.dev]' \
+            '--cwd=[Working directory]:cwd:_files -/'
+          ;;
+        update)
+          _arguments -s \
+            '--deps=[Dependencies to update, comma-separated (default: all)]:deps:' \
+            '--latest[Update to the latest version, ignoring the range in package.json]' \
+            '--force[Update anyway even when the audit finds vulnerable dependencies]' \
+            '--audit-level=[Minimum severity that blocks the update]:level:(low moderate high critical)' \
+            '--skip-audit[Skip the vulnerability audit and update directly]' \
+            '--no-cache[Bypass the cached audit result and re-query OSV.dev]' \
+            '--cwd=[Working directory]:cwd:_files -/'
+          ;;
+        add)
+          _arguments -s \
+            '--deps=[Dependencies to add, comma-separated]:deps:' \
+            '--dev[Add the dependencies to devDependencies]' \
+            '--optional[Add the dependencies to optionalDependencies]' \
+            '--peer[Add the dependencies to peerDependencies]' \
+            '--exact[Add the exact version instead of a ^range]' \
+            '--force[Add anyway even when the audit finds vulnerable dependencies]' \
+            '--audit-level=[Minimum severity that blocks the add]:level:(low moderate high critical)' \
+            '--skip-audit[Skip the vulnerability audit and add directly]' \
             '--no-cache[Bypass the cached audit result and re-query OSV.dev]' \
             '--cwd=[Working directory]:cwd:_files -/'
           ;;

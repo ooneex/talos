@@ -287,7 +287,10 @@ pub fn write_cache(path: &Path, lockfile_hash: &str, audit_level: &str, audit: &
     }
 }
 
-fn print_audit_report(audit: &SecurityAudit) {
+/// Prints the audit report. Shared with [`update`](crate::commands::update),
+/// which runs the same audit against a resolved (but not yet installed)
+/// dependency graph.
+pub fn print_audit_report(audit: &SecurityAudit) {
     println!(
         "{}{}",
         style("▸ Security audit").magenta().bold(),

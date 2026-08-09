@@ -1,3 +1,4 @@
+pub mod add;
 pub mod admin_create;
 pub mod admin_remove;
 pub mod agent_skills_create;
@@ -82,6 +83,7 @@ pub mod swagger_create;
 pub mod swagger_remove;
 pub mod test;
 pub mod translation_create;
+pub mod update;
 pub mod upgrade;
 pub mod vector_database_create;
 pub mod version;
@@ -306,6 +308,12 @@ pub enum Commands {
     #[command(name = "install")]
     Install(install::InstallArgs),
 
+    #[command(name = "update")]
+    Update(update::UpdateArgs),
+
+    #[command(name = "add")]
+    Add(add::AddArgs),
+
     #[command(name = "commitlint:check")]
     CommitlintCheck(commitlint_check::CommitlintCheckArgs),
 
@@ -483,6 +491,8 @@ impl Commands {
             Commands::Run(args) => run::run(args),
             Commands::Build(args) => build::run(args),
             Commands::Install(args) => install::run(args),
+            Commands::Update(args) => update::run(args),
+            Commands::Add(args) => add::run(args),
             Commands::Upgrade(args) => upgrade::run(args),
             Commands::CommandRun(args) => command_run::run(args),
             _ => return false,

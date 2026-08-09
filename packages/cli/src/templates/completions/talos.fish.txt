@@ -168,6 +168,8 @@ for cmd in oo talos
     complete -c $cmd -f -n __fish_use_subcommand -a coverage:check -d 'Run tests per module with coverage and report what is left uncovered'
     complete -c $cmd -f -n __fish_use_subcommand -a project:check -d 'Run every health check: structure, conventions, imports, boundaries, container, routes, validation, roles, entities, sql, async, complexity, duplication, orphans, deps, docker, migrations, a11y, contrast, translations, stories, sdk, tests, e2e, docs, bundle, security, secrets, git, issues, branches, commits, hygiene'
     complete -c $cmd -f -n __fish_use_subcommand -a install -d 'Install dependencies with bun, auditing every package for known vulnerabilities first'
+    complete -c $cmd -f -n __fish_use_subcommand -a update -d 'Update dependencies with bun, auditing the resolved versions for known vulnerabilities first'
+    complete -c $cmd -f -n __fish_use_subcommand -a add -d 'Add new dependencies with bun, auditing the resolved versions for known vulnerabilities first'
     complete -c $cmd -f -n __fish_use_subcommand -a build -d 'Run the build script across packages and modules with its own dedicated cache'
     complete -c $cmd -f -n __fish_use_subcommand -a fmt -d 'Run the fmt script across packages and modules with its own dedicated cache'
     complete -c $cmd -f -n __fish_use_subcommand -a lint -d 'Run the lint script across packages and modules with its own dedicated cache'
