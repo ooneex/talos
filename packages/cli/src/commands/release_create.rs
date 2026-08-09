@@ -209,6 +209,25 @@ fn git(cwd: &Path, args: &[&str]) -> bool {
         .unwrap_or(false)
 }
 
+/// Turns the released package/module base names into `NpmPublishArgs`
+/// `packages`/`modules` filters, or `None` when neither list has anything
+/// npm-publishable (e.g. a release that only touched Rust crates). Leaving
+/// both filters unset would make `resolve_publish_targets` fall back to
+/// discovering every package and module in the workspace, publishing things
+/// this release never touched.
+pub fn publish_args_for(
+    released_packages: &[String],
+    released_modules: &[String],
+) -> Option<(Option<String>, Option<String>)> {
+    if released_packages.is_empty() && released_modules.is_empty() {
+        return None;
+    }
+    Some((
+        (!released_packages.is_empty()).then(|| released_packages.join(",")),
+        (!released_modules.is_empty()).then(|| released_modules.join(",")),
+    ))
+}
+
 pub fn run(args: &ReleaseCreateArgs) {
     let cwd = args
         .cwd
@@ -248,13 +267,20 @@ pub fn run(args: &ReleaseCreateArgs) {
         push_to_remote(&cwd);
     }
     if args.publish {
-        npm_publish::run(&NpmPublishArgs {
-            packages: (!released_packages.is_empty()).then(|| released_packages.join(",")),
-            modules: (!released_modules.is_empty()).then(|| released_modules.join(",")),
-            access: "public".to_string(),
-            silent: false,
-            cwd: Some(cwd.to_string_lossy().to_string()),
-        });
+        match publish_args_for(&released_packages, &released_modules) {
+            Some((packages, modules)) => {
+                npm_publish::run(&NpmPublishArgs {
+                    packages,
+                    modules,
+                    access: "public".to_string(),
+                    silent: false,
+                    cwd: Some(cwd.to_string_lossy().to_string()),
+                });
+            }
+            None => {
+                println!("No npm-publishable packages or modules were released");
+            }
+        }
     }
 }
 

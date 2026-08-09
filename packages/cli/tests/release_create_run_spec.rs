@@ -11,7 +11,8 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 
 use cli::commands::release_create::{
-    CommitInfo, bump_version, determine_bump_type, update_cargo_version, update_changelog,
+    CommitInfo, bump_version, determine_bump_type, publish_args_for, update_cargo_version,
+    update_changelog,
 };
 
 fn write(path: &Path, content: &str) {
@@ -181,6 +182,35 @@ fn bumping_resets_the_parts_below_the_one_it_raised() {
         "a missing part reads as zero"
     );
     assert_eq!(bump_version("not-a-version", "minor"), "0.1.0");
+}
+
+// ---------------------------------------------------------------------------
+// The publish filter
+// ---------------------------------------------------------------------------
+
+#[test]
+fn publish_args_scope_to_the_released_packages_and_modules() {
+    assert_eq!(
+        publish_args_for(&["core".to_string()], &[]),
+        Some((Some("core".to_string()), None)),
+    );
+    assert_eq!(
+        publish_args_for(&[], &["billing".to_string()]),
+        Some((None, Some("billing".to_string()))),
+    );
+    assert_eq!(
+        publish_args_for(&["core".to_string()], &["billing".to_string()]),
+        Some((Some("core".to_string()), Some("billing".to_string()))),
+    );
+}
+
+#[test]
+fn a_release_of_rust_only_crates_skips_publishing_instead_of_publishing_everything() {
+    // A release where every plan is a Rust crate (excluded from npm publishing)
+    // leaves both lists empty. Passing `None, None` through to npm:publish would
+    // fall back to "discover every package and module", publishing things this
+    // release never touched — so this must signal "nothing to publish" instead.
+    assert_eq!(publish_args_for(&[], &[]), None);
 }
 
 // ---------------------------------------------------------------------------
