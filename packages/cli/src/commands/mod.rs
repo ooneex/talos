@@ -22,7 +22,7 @@ pub mod completion_bash;
 pub mod completion_fish;
 pub mod completion_zsh;
 pub mod controller_create;
-pub mod coverage_check;
+pub mod coverage;
 pub mod credentials_create;
 pub mod cron_create;
 pub mod database_create;
@@ -370,8 +370,8 @@ pub enum Commands {
     SecurityCheck(security_check::SecurityCheckArgs),
 
     /// Run every module's tests with coverage and report what is left uncovered
-    #[command(name = "coverage:check")]
-    CoverageCheck(coverage_check::CoverageCheckArgs),
+    #[command(name = "coverage")]
+    Coverage(coverage::CoverageArgs),
 
     /// Run every health check (workspace, structure, conventions, env, dependencies, docker, migrations, accessibility, translations, tests, docs, security, secrets, git, issues, commits, hygiene)
     #[command(name = "project:check")]
@@ -401,7 +401,7 @@ impl Commands {
             Commands::WorkspaceCheck(args) => workspace_check::run(args),
             Commands::Check(args) => check::run(args),
             Commands::SecurityCheck(args) => security_check::run(args),
-            Commands::CoverageCheck(args) => coverage_check::run(args),
+            Commands::Coverage(args) => coverage::run(args),
             Commands::ProjectCheck(args) => project_check::run(args),
             Commands::MigrationUp(args) => migration_up::run(args),
             Commands::MigrationDown(args) => migration_down::run(args),

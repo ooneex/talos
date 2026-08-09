@@ -365,7 +365,7 @@ fn project_check_rejects_a_check_it_does_not_know() {
 }
 
 #[test]
-fn coverage_check_says_so_when_no_module_carries_a_suite() {
+fn coverage_says_so_when_no_module_carries_a_suite() {
     let home = Scratch::new("coverage-home");
     let root = Scratch::new("coverage-root");
     seed_home(home.path());
@@ -374,7 +374,7 @@ fn coverage_check_says_so_when_no_module_carries_a_suite() {
         "{ \"name\": \"empty\" }\n",
     );
 
-    let output = talos(root.path(), home.path(), &["coverage:check", "--no-cache"]);
+    let output = talos(root.path(), home.path(), &["coverage", "--no-cache"]);
 
     assert!(output.status.success(), "{output:?}");
     let text = format!(

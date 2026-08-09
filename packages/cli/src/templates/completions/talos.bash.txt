@@ -143,7 +143,7 @@ install \
 update \
 add \
 security:check \
-coverage:check \
+coverage \
 project:check \
 entity:create flag:create logger:create mailer:create marketing:create middleware:create permission:create \
 queue:create rate-limit:create event:create release:create repository:create sdk:create \
@@ -313,7 +313,7 @@ threads whatsapp telegram messenger discord reddit medium cloudflare bunny s3 op
       [[ $flag == --packages ]] && candidates="$(_talos_packages)"
       [[ $flag == --audit-level ]] && candidates="low moderate high critical"
       ;;
-    coverage:check)
+    coverage)
       opts="--issues --modules --packages --threshold --logs --concurrency --no-cache --strict --cwd"
       [[ $flag == --modules ]] && candidates="$(_talos_pkg_modules)"
       [[ $flag == --packages ]] && candidates="$(_talos_packages)"

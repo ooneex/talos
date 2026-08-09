@@ -11,7 +11,7 @@ use super::outcome::static_outcome;
 use super::types::CheckId;
 use super::{CheckOutcome, CheckStatus, E2E_COMMANDS, ERROR_DETAIL, ProjectCheckArgs};
 use crate::commands::build::{self, BuildArgs};
-use crate::commands::coverage_check::{
+use crate::commands::coverage::{
     self, CoverageAudit, ModuleCoverage, RunStatus, trim_percent,
 };
 use crate::commands::install::{self, InstallArgs};
@@ -26,7 +26,7 @@ use crate::commands::workspace_run::{self, WorkspaceRunArgs};
 
 /// The package scripts `project:check` runs before it measures the suites,
 /// in order. `workspace:check` itself runs [`install`] and [`build`] the same
-/// way, then [`coverage_check`] and [`lint`] at once instead of `lint` and
+/// way, then [`coverage`] and [`lint`] at once instead of `lint` and
 /// `test` in sequence — see this module's docs below.
 const CHECK_COMMANDS: &str = "install,build,lint,test";
 
@@ -136,7 +136,7 @@ fn run_workspace_commands_detached(args: &ProjectCheckArgs, root: &Path) -> Resu
 // Coverage — the suites, measured, straight after the gate that built them
 // ---------------------------------------------------------------------------
 
-/// Run every suite through `coverage:check` and report what it covers.
+/// Run every suite through `coverage` and report what it covers.
 ///
 /// This is the second half of the `workspace:check` gate, and it runs where that
 /// gate runs it: right after the package scripts, on the tree they just built.
@@ -167,12 +167,12 @@ pub(super) fn check_coverage(args: &ProjectCheckArgs, root: &Path) -> CheckOutco
     };
 
     if !args.json {
-        coverage_check::print_report(
+        coverage::print_report(
             &audit,
             args.logs,
             args.strict,
             started_at.elapsed().as_millis() as u64,
-            // Only what needs work: the full table belongs to `coverage:check`,
+            // Only what needs work: the full table belongs to `coverage`,
             // where it is the whole point, not to a report of sixty checks.
             true,
         );
@@ -211,11 +211,11 @@ fn coverage_scope(audit: &CoverageAudit) -> String {
 fn coverage_hint(audit: &CoverageAudit) -> String {
     let broken = audit.broken();
     if broken.is_empty() {
-        return "Inspect every module with `talos coverage:check`".to_string();
+        return "Inspect every module with `talos coverage`".to_string();
     }
 
     format!(
-        "Re-run the failing suite alone with `talos coverage:check --modules={} --logs`",
+        "Re-run the failing suite alone with `talos coverage --modules={} --logs`",
         broken
             .iter()
             .map(|module| module.name.as_str())
@@ -420,7 +420,7 @@ mod coverage_helpers_tests {
 
         assert_eq!(
             coverage_hint(&audit),
-            "Inspect every module with `talos coverage:check`"
+            "Inspect every module with `talos coverage`"
         );
     }
 
@@ -443,7 +443,7 @@ mod coverage_helpers_tests {
 
         assert_eq!(
             coverage_hint(&audit),
-            "Re-run the failing suite alone with `talos coverage:check --modules=user,cli --logs`"
+            "Re-run the failing suite alone with `talos coverage --modules=user,cli --logs`"
         );
     }
 

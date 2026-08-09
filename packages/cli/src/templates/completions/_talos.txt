@@ -176,7 +176,7 @@ _talos() {
     'workspace\:check:Run install, build, lint and test across packages and modules with granular caching'
     'check:Alias for workspace:check — run install, build, fmt, lint and test across packages and modules with granular caching'
     'security\:check:Audit dependencies for known vulnerabilities via OSV.dev'
-    'coverage\:check:Run tests per module with coverage and report what is left uncovered'
+    'coverage:Run tests per module with coverage and report what is left uncovered'
     'project\:check:Run every health check — workspace, structure, conventions, env, deps, docker, migrations, a11y, translations, tests, docs, security, secrets, git, issues, commits, hygiene'
     'install:Install dependencies with bun, auditing every package for known vulnerabilities first'
     'update:Update dependencies with bun, auditing the resolved versions for known vulnerabilities first'
@@ -468,7 +468,7 @@ _talos() {
             '--audit-level=[Minimum severity to report]:level:(low moderate high critical)' \
             '--cwd=[Working directory]:cwd:_files -/'
           ;;
-        coverage:check)
+        coverage)
           _arguments -s \
             '--issues[Create a YAML issue per under-covered module instead of printing the report]' \
             '--modules=-[Module name(s), comma-separated (default: all)]::modules:_talos_publish_modules' \

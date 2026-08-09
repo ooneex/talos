@@ -2,7 +2,7 @@
 //! tests and lint at once.
 //!
 //! Each step is its own standalone command with its own cache — [`install`],
-//! [`build`], [`coverage_check`] and [`lint`] — run here directly rather than
+//! [`build`], [`coverage`] and [`lint`] — run here directly rather than
 //! through [`workspace_run`]'s per-target scheduler, so the gate behaves
 //! exactly as running each of them alone would. Install and build run first,
 //! in order, because a suite can only be measured and sources can only be
@@ -18,10 +18,9 @@ use std::path::PathBuf;
 use std::time::Instant;
 
 use clap::Args;
-use console::style;
 
 use crate::commands::build::{self, BuildArgs};
-use crate::commands::coverage_check::{self, CoverageAudit, CoverageCheckArgs};
+use crate::commands::coverage::{self, CoverageArgs, CoverageAudit};
 use crate::commands::install::{self, InstallArgs};
 use crate::commands::lint::{self, LintArgs, LintAudit};
 
@@ -70,7 +69,7 @@ pub fn measure(args: &WorkspaceCheckArgs, quiet: bool) -> Result<CoverageAudit, 
         .map(PathBuf::from)
         .unwrap_or_else(crate::utils::current_dir);
 
-    coverage_check::audit(
+    coverage::audit(
         &root,
         args.modules.as_deref(),
         args.packages.as_deref(),
@@ -111,8 +110,8 @@ pub fn lint_args(args: &WorkspaceCheckArgs) -> LintArgs {
     }
 }
 
-pub fn coverage_args(args: &WorkspaceCheckArgs) -> CoverageCheckArgs {
-    CoverageCheckArgs {
+pub fn coverage_args(args: &WorkspaceCheckArgs) -> CoverageArgs {
+    CoverageArgs {
         issues: false,
         modules: args.modules.clone(),
         packages: args.packages.clone(),
@@ -137,9 +136,11 @@ pub fn run(args: &WorkspaceCheckArgs) {
     }
 
     // Coverage and lint touch disjoint parts of the workspace, so they are
-    // measured on their own threads at once — quietly, so neither draws a
-    // live progress bar over the other — and only reported once both are
-    // back, so the two reports print whole instead of interleaved mid-line.
+    // measured on their own threads at once. Suites are the slower of the
+    // two, so coverage draws the live loader; lint runs quietly beside it —
+    // two loaders writing to the same terminal at once would corrupt each
+    // other's output — and both reports print once both are back, so they
+    // print whole instead of interleaved mid-line.
     let started = Instant::now();
     let root = args
         .cwd
@@ -148,7 +149,7 @@ pub fn run(args: &WorkspaceCheckArgs) {
         .unwrap_or_else(crate::utils::current_dir);
 
     let (coverage, lint) = std::thread::scope(|scope| {
-        let coverage = scope.spawn(|| measure(args, true));
+        let coverage = scope.spawn(|| measure(args, false));
         let lint = scope.spawn(|| {
             lint::audit(
                 &root,
@@ -183,12 +184,9 @@ fn print_check_report(
     lint: Result<LintAudit, String>,
     elapsed_ms: u64,
 ) -> (bool, bool) {
-    println!();
-    println!("{}", style("▸ Workspace check").magenta().bold());
-
     let coverage_failed = match coverage {
         Ok(audit) => {
-            coverage_check::print_report(&audit, args.logs, args.strict, elapsed_ms, true);
+            coverage::print_report(&audit, args.logs, args.strict, elapsed_ms, true);
             audit.is_failure(args.strict)
         }
         Err(message) => {
