@@ -22,3 +22,11 @@
 
 - Add country package| — Franck ([75ef9c7a](https://github.com/ooneex/talos/commit/75ef9c7a))
 
+## [1.1.3](https///github.com/ooneex/talos/releases/tag/@talosjs/country@1.1.3) - 2026-08-09
+
+### Changed
+
+- Reduce complexity and clean up conventions| — Franck ([ca28398d](https///github.com/ooneex/talos/commit/ca28398d))
+- Raise coverage thresholds to 99% across all packages| — Franck ([14db3019](https///github.com/ooneex/talos/commit/14db3019))
+- Enable coverage thresholds in every package's bunfig.toml| — Franck ([e19e3785](https///github.com/ooneex/talos/commit/e19e3785))
+

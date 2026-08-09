@@ -1,56 +1,44 @@
 {
-  "name": "@talosjs/country",
+  "dependencies": {
+    "@vvo/tzdb": "^6.198.0"
+  },
   "description": "Country metadata library providing timezone data, ISO codes, and multi-language localization support for internationalized applications",
-  "version": "1.1.2",
-  "type": "module",
+  "devDependencies": {
+    "@talosjs/translation": "workspace:^"
+  },
+  "exports": {
+    ".": {
+      "import": {
+        "default": "./dist/index.js",
+        "types": "./dist/index.d.ts"
+      }
+    },
+    "./en": {
+      "import": {
+        "default": "./dist/en.js",
+        "types": "./dist/en.d.ts"
+      }
+    },
+    "./fr": {
+      "import": {
+        "default": "./dist/fr.js",
+        "types": "./dist/fr.d.ts"
+      }
+    },
+    "./package.json": "./package.json",
+    "./ro": {
+      "import": {
+        "default": "./dist/ro.js",
+        "types": "./dist/ro.d.ts"
+      }
+    }
+  },
   "files": [
     "dist",
     "LICENSE",
     "README.md",
     "package.json"
   ],
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "import": {
-        "types": "./dist/index.d.ts",
-        "default": "./dist/index.js"
-      }
-    },
-    "./en": {
-      "import": {
-        "types": "./dist/en.d.ts",
-        "default": "./dist/en.js"
-      }
-    },
-    "./fr": {
-      "import": {
-        "types": "./dist/fr.d.ts",
-        "default": "./dist/fr.js"
-      }
-    },
-    "./ro": {
-      "import": {
-        "types": "./dist/ro.d.ts",
-        "default": "./dist/ro.js"
-      }
-    },
-    "./package.json": "./package.json"
-  },
-  "license": "MIT",
-  "scripts": {
-    "build": "bunup",
-    "fmt": "bunx biome check --write",
-    "lint": "tsc --noEmit && bunx biome lint",
-    "test": "bun test tests"
-  },
-  "dependencies": {
-    "@vvo/tzdb": "^6.198.0"
-  },
-  "devDependencies": {
-    "@talosjs/translation": "workspace:^"
-  },
   "keywords": [
     "bun",
     "countries",
@@ -60,5 +48,17 @@
     "talos",
     "timezone",
     "typescript"
-  ]
+  ],
+  "license": "MIT",
+  "module": "./dist/index.js",
+  "name": "@talosjs/country",
+  "scripts": {
+    "build": "bunup",
+    "fmt": "bunx biome check --write",
+    "lint": "tsc --noEmit && bunx biome lint",
+    "test": "bun test tests"
+  },
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "version": "1.1.3"
 }
