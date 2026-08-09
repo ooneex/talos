@@ -21,3 +21,11 @@
 
 - Add csv package| — Franck ([f3366915](https://github.com/ooneex/talos/commit/f3366915))
 
+## [1.1.3](https///github.com/ooneex/talos/releases/tag/@talosjs/csv@1.1.3) - 2026-08-09
+
+### Changed
+
+- Reduce complexity and clean up conventions| — Franck ([f2959889](https///github.com/ooneex/talos/commit/f2959889))
+- Raise coverage thresholds to 99% across all packages| — Franck ([14db3019](https///github.com/ooneex/talos/commit/14db3019))
+- Enable coverage thresholds in every package's bunfig.toml| — Franck ([e19e3785](https///github.com/ooneex/talos/commit/e19e3785))
+
