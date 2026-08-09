@@ -21,3 +21,11 @@
 
 - Add currencies package| — Franck ([ae2c5b02](https://github.com/ooneex/talos/commit/ae2c5b02))
 
+## [1.1.3](https///github.com/ooneex/talos/releases/tag/@talosjs/currencies@1.1.3) - 2026-08-09
+
+### Changed
+
+- Raise coverage thresholds to 99% across all packages| — Franck ([14db3019](https///github.com/ooneex/talos/commit/14db3019))
+- Add converter spec| — Franck ([f0d54b0c](https///github.com/ooneex/talos/commit/f0d54b0c))
+- Enable coverage thresholds in every package's bunfig.toml| — Franck ([e19e3785](https///github.com/ooneex/talos/commit/e19e3785))
+
