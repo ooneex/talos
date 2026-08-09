@@ -10,10 +10,11 @@ use crate::commands::fmt::{self, FmtArgs};
 use crate::commands::lint::{self, LintArgs};
 use crate::commands::test::{self, TestArgs};
 use crate::utils::{
-    FingerprintMemo, Footer, INSTALL_COMMAND, SchedulerContext, TargetType, Task, TaskStatus,
+    FingerprintMemo, INSTALL_COMMAND, Loader, LoaderGroup, SchedulerContext, TargetType, Task,
     WORKSPACE_CACHE_DIR, WorkspaceTarget, build_group, build_install_group, current_dir,
-    discover_targets, format_duration, hash_root_inputs, is_git_workspace_root, load_cache_index,
-    load_file_hash_cache, run_group, save_file_hash_cache, sort_targets_by_dependencies,
+    discover_targets, hash_root_inputs, is_git_workspace_root, load_cache_index,
+    load_file_hash_cache, print_task_report, run_group, save_file_hash_cache,
+    sort_targets_by_dependencies,
 };
 
 /// Commands that graduated to their own standalone command and cache
@@ -171,38 +172,6 @@ fn plan_task_groups(
     planned.into_iter().unzip()
 }
 
-/// Prints the closing "✔ Ran ..." line summarizing how many tasks ran,
-/// were cached, or were skipped, and how long the run took.
-fn print_completion_summary(ran_commands: &[String], groups: &[Vec<Task>], started_at: Instant) {
-    let all_tasks: Vec<&Task> = groups.iter().flatten().collect();
-    let completed = all_tasks
-        .iter()
-        .filter(|t| t.status == TaskStatus::Success)
-        .count();
-    let cached = all_tasks
-        .iter()
-        .filter(|t| t.status == TaskStatus::Cached)
-        .count();
-    let skipped = all_tasks
-        .iter()
-        .filter(|t| t.status == TaskStatus::Skipped)
-        .count();
-    let mut parts = vec![format!("{completed} run"), format!("{cached} cached")];
-    if skipped > 0 {
-        parts.push(format!("{skipped} skipped"));
-    }
-    println!(
-        "{}{}",
-        style(format!("✔ Ran {}", ran_commands.join(", "))).green(),
-        style(format!(
-            "  {}  in {}",
-            parts.join(" · "),
-            format_duration(started_at.elapsed().as_millis() as u64)
-        ))
-        .dim()
-    );
-}
-
 /// Prints the "▸ commands  N tasks across M targets" header line.
 fn print_run_header(ran_commands: &[String], total_tasks: usize, target_count: usize) {
     println!(
@@ -220,7 +189,8 @@ fn print_run_header(ran_commands: &[String], total_tasks: usize, target_count: u
     );
 }
 
-/// Runs every task group in order, stopping at the first failed group.
+/// Runs every task group in order, stopping at the first failed group. Each
+/// command gets its own row on the shared `loader`, in the order given.
 /// Returns whether any group failed.
 #[allow(clippy::too_many_arguments)]
 fn run_all_groups(
@@ -233,11 +203,11 @@ fn run_all_groups(
     no_cache: bool,
     file_hash_cache: &crate::utils::FileHashCache,
     cache_index: &crate::utils::CacheIndex,
-    footer: &Footer,
+    loader: &Loader,
 ) -> bool {
     let mut any_failed = false;
     let fingerprint_memo = FingerprintMemo::new();
-    for group in groups.iter_mut() {
+    for (index, group) in groups.iter_mut().enumerate() {
         if any_failed {
             break;
         }
@@ -253,7 +223,8 @@ fn run_all_groups(
                 no_cache,
                 file_hash_cache,
                 cache_index,
-                footer,
+                loader,
+                loader_group: index,
             },
         );
         if group_failed {
@@ -343,7 +314,12 @@ fn run_generic(commands: &[String], args: &WorkspaceRunArgs) -> bool {
         all_targets.iter().map(|t| (t.key.as_str(), t)).collect();
 
     let started_at = Instant::now();
-    let footer = Footer::start(total_tasks, args.logs);
+    let loader_groups = ran_commands
+        .iter()
+        .zip(&groups)
+        .map(|(command, group)| LoaderGroup::new(command.clone(), group.len()))
+        .collect();
+    let loader = Loader::start(loader_groups);
     let any_failed = run_all_groups(
         &mut groups,
         &by_key,
@@ -354,20 +330,23 @@ fn run_generic(commands: &[String], args: &WorkspaceRunArgs) -> bool {
         args.no_cache,
         &file_hash_cache,
         &cache_index,
-        &footer,
+        &loader,
     );
-    footer.stop();
+    loader.stop();
 
     if !args.no_cache && file_hash_cache.len() != file_hash_entries_before {
         save_file_hash_cache(&cache_dir, &file_hash_cache);
     }
 
-    if any_failed {
-        return false;
-    }
+    let tasks: Vec<Task> = groups.into_iter().flatten().collect();
+    print_task_report(
+        &format!("{} report", ran_commands.join(", ")),
+        &tasks,
+        args.logs,
+        started_at.elapsed().as_millis() as u64,
+    );
 
-    print_completion_summary(&ran_commands, &groups, started_at);
-    true
+    !any_failed
 }
 
 fn split_csv(value: Option<&str>) -> Vec<String> {

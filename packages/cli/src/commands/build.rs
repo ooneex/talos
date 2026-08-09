@@ -23,10 +23,13 @@ use clap::Args;
 use console::style;
 
 use crate::utils::{
-    FileHashCache, FingerprintMemo, Footer, Spinner, TargetType, WorkspaceTarget, current_dir,
-    discover_targets, error, fingerprint_target, format_duration, hash_root_inputs,
-    is_git_workspace_root, sort_targets_by_dependencies, split_csv, warn,
+    FileHashCache, FingerprintMemo, Loader, LoaderGroup, Spinner, TargetType, WorkspaceTarget,
+    current_dir, discover_targets, error, fingerprint_target, format_duration, hash_root_inputs,
+    is_git_workspace_root, sort_targets_by_dependencies, split_csv, success, warn,
 };
+
+/// How many lines a failed target's output shows before it is truncated.
+const LOG_TAIL_LINES: usize = 40;
 
 #[derive(Args, Debug)]
 pub struct BuildArgs {
@@ -42,18 +45,31 @@ pub struct BuildArgs {
     pub cwd: Option<String>,
 }
 
+/// How one target's build ended.
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum BuildStatus {
+    Passed,
+    Failed,
+}
+
+/// One target's build: how it ended, how long it took, and what it printed.
+struct TargetBuild {
+    label: String,
+    status: BuildStatus,
+    duration_ms: u64,
+    output: String,
+    cached: bool,
+}
+
 pub fn run(args: &BuildArgs) {
     if !execute(args) {
         std::process::exit(1);
     }
 }
 
-/// Discovers the workspace and fingerprints its root inputs in parallel,
-/// under one spinner — the only stretch of a build where nothing is drawn
-/// otherwise.
+/// Discovers the workspace and fingerprints its root inputs in parallel.
 fn load_build_state(root_dir: &std::path::Path) -> (Vec<WorkspaceTarget>, String, bool) {
-    let spinner = Spinner::start("Analyzing workspace");
-    let result = std::thread::scope(|scope| {
+    std::thread::scope(|scope| {
         let targets_handle = scope.spawn(|| discover_targets(root_dir));
         let root_hash_handle = scope.spawn(|| hash_root_inputs(root_dir));
         let use_git_handle = scope.spawn(|| is_git_workspace_root(root_dir));
@@ -69,9 +85,7 @@ fn load_build_state(root_dir: &std::path::Path) -> (Vec<WorkspaceTarget>, String
             .unwrap_or_else(|_| is_git_workspace_root(root_dir));
 
         (all_targets, root_hash, use_git)
-    });
-    spinner.stop();
-    result
+    })
 }
 
 pub fn execute(args: &BuildArgs) -> bool {
@@ -80,7 +94,14 @@ pub fn execute(args: &BuildArgs) -> bool {
         .clone()
         .map(PathBuf::from)
         .unwrap_or_else(current_dir);
+
+    // Fingerprinting only earns its own walk when the run could spare a
+    // build off it, and it is the one stretch before the loader where
+    // nothing is printed, so it gets a spinner of its own — same as lint's
+    // workspace fingerprint.
+    let spinner = Spinner::start("Fingerprinting the workspace...");
     let (all_targets, root_hash, use_git) = load_build_state(&root_dir);
+    spinner.stop();
 
     let Some(selected) = filter_targets(
         &all_targets,
@@ -104,24 +125,13 @@ pub fn execute(args: &BuildArgs) -> bool {
         return true;
     }
 
-    println!(
-        "{}{}",
-        style("▸ ").magenta(),
-        style(format!(
-            "build  {} target{}",
-            buildable.len(),
-            if buildable.len() == 1 { "" } else { "s" }
-        ))
-        .magenta()
-        .bold()
-    );
-
     let file_hash_cache = FileHashCache::new();
     let fingerprint_memo = FingerprintMemo::new();
-
     let started_at = Instant::now();
-    let footer = Footer::start(buildable.len(), false);
 
+    let loader = Loader::start(vec![LoaderGroup::new("Build", buildable.len())]);
+
+    let mut results: Vec<TargetBuild> = Vec::new();
     let mut ran = 0usize;
     let mut cached = 0usize;
     let mut any_failed = false;
@@ -142,62 +152,59 @@ pub fn execute(args: &BuildArgs) -> bool {
             && entry.matches(&target.key, &hash)
         {
             cached += 1;
-            report(
-                &footer,
-                &label,
-                false,
-                &success_lines(&label, entry.duration_ms, true),
-            );
+            // A cache hit is not work in flight, so it is counted rather
+            // than named as running.
+            loader.advance(0);
+            results.push(TargetBuild {
+                label,
+                status: BuildStatus::Passed,
+                duration_ms: 0,
+                output: String::new(),
+                cached: true,
+            });
             continue;
         }
 
-        footer.task_started(&label);
-        let (success, output, duration_ms) = run_build(target);
+        loader.entered(0, label.clone());
+        let (success_flag, output, duration_ms) = run_build(target);
+        loader.left(0, &label);
 
-        if success {
+        if success_flag {
             ran += 1;
-            report(
-                &footer,
-                &label,
-                false,
-                &success_lines(&label, duration_ms, false),
-            );
-            if args.logs && !output.trim().is_empty() {
-                for line in tail_lines(&output, MAX_SUCCESS_LOG_LINES) {
-                    println!("{} {line}", style("┃").dim());
-                }
-            }
             if !args.no_cache {
                 cache::write(&root_dir, &target.key, &hash, duration_ms, &output);
             }
+            results.push(TargetBuild {
+                label,
+                status: BuildStatus::Passed,
+                duration_ms,
+                output,
+                cached: false,
+            });
         } else {
-            report(
-                &footer,
-                &label,
-                true,
-                &failure_lines(&label, duration_ms, &output, args.logs),
-            );
             any_failed = true;
+            results.push(TargetBuild {
+                label,
+                status: BuildStatus::Failed,
+                duration_ms,
+                output,
+                cached: false,
+            });
             break;
         }
     }
 
-    footer.stop();
+    loader.stop();
 
-    if any_failed {
-        return false;
-    }
-
-    println!(
-        "{}{}",
-        style("✔ Built").green(),
-        style(format!(
-            "  {ran} run · {cached} cached  in {}",
-            format_duration(started_at.elapsed().as_millis() as u64)
-        ))
-        .dim()
+    print_report(
+        &results,
+        args.logs,
+        started_at.elapsed().as_millis() as u64,
+        ran,
+        cached,
     );
-    true
+
+    !any_failed
 }
 
 /// Resolves `--packages`/`--modules` into the targets they name, or `None`
@@ -349,72 +356,119 @@ fn run_build(target: &WorkspaceTarget) -> (bool, String, u64) {
     }
 }
 
-/// Prints (or hands to the footer) a target's finish line. A footer that is
-/// not attended to a terminal draws nothing, so its disabled path is printed
-/// directly here instead.
-fn report(footer: &Footer, label: &str, failed: bool, lines: &[String]) {
-    if footer.enabled() {
-        footer.task_finished(label, failed, lines);
+/// Print the build results — one row per target and the output of every one
+/// that failed, laid out the same way `lint`'s report is.
+fn print_report(results: &[TargetBuild], logs: bool, elapsed_ms: u64, ran: usize, cached: usize) {
+    let scope = format!(
+        "{} target{} · {}",
+        results.len(),
+        if results.len() == 1 { "" } else { "s" },
+        format_duration(elapsed_ms)
+    );
+
+    println!();
+    println!(
+        "{}{}",
+        style("▸ Build report").magenta().bold(),
+        style(format!("  {scope}")).dim()
+    );
+
+    print_rows(results);
+    print_failures(results, logs);
+    println!();
+    print_summary(results, ran, cached);
+}
+
+fn print_rows(results: &[TargetBuild]) {
+    if results.is_empty() {
         return;
     }
-    if failed {
-        for line in lines {
-            eprintln!("{line}");
+
+    let width = results
+        .iter()
+        .map(|result| result.label.chars().count())
+        .max()
+        .unwrap_or(0);
+
+    println!();
+    for result in results {
+        let (icon, detail) = match result.status {
+            BuildStatus::Passed => (
+                style("✔").green().bold().to_string(),
+                style(format_duration(result.duration_ms)).dim().to_string(),
+            ),
+            BuildStatus::Failed => (
+                style("✖").red().bold().to_string(),
+                style(format_duration(result.duration_ms)).red().to_string(),
+            ),
+        };
+        let cached = if result.cached {
+            style(" cached").dim().to_string()
+        } else {
+            String::new()
+        };
+        println!(
+            "{icon} {}  {detail}{cached}",
+            style(format!("{:<width$}", result.label)).bold(),
+        );
+    }
+}
+
+/// The targets that failed, with their output under `--logs`.
+fn print_failures(results: &[TargetBuild], logs: bool) {
+    let broken: Vec<&TargetBuild> = results
+        .iter()
+        .filter(|result| result.status == BuildStatus::Failed)
+        .collect();
+    if broken.is_empty() {
+        return;
+    }
+
+    println!();
+    println!("{}", style("Failing targets").red().bold());
+    for result in broken {
+        println!();
+        println!(
+            "{}  {}",
+            style(&result.label).bold().underlined(),
+            style("build failed").red()
+        );
+
+        if !logs {
+            println!("  {}", style("re-run with --logs to see the output").dim());
+            continue;
         }
-    } else {
-        for line in lines {
-            println!("{line}");
+        for line in tail(&result.output, LOG_TAIL_LINES) {
+            println!("  {}", style(line).dim());
         }
     }
 }
 
-fn success_lines(label: &str, duration_ms: u64, cached: bool) -> Vec<String> {
-    vec![format!(
-        "{} {label}{}",
-        style("✔").green(),
-        style(format!(
-            "  {}{}",
-            if cached { "cached · " } else { "" },
-            format_duration(duration_ms)
-        ))
-        .dim()
-    )]
-}
+fn print_summary(results: &[TargetBuild], ran: usize, cached: usize) {
+    let broken = results
+        .iter()
+        .filter(|result| result.status == BuildStatus::Failed)
+        .count();
 
-/// Succeeded builds only ever show a tail this long under `--logs`, so a
-/// noisy build doesn't drown the summary the way an unbounded dump would.
-const MAX_SUCCESS_LOG_LINES: usize = 1;
+    let detail = format!("{ran} run · {cached} cached");
 
-/// The last `max` non-blank lines of a target's output, ignoring trailing
-/// `$ <command>` echoes some build tools (e.g. bunup) print after finishing.
-fn tail_lines(output: &str, max: usize) -> Vec<&str> {
-    let body: Vec<&str> = output
-        .lines()
-        .filter(|l| {
-            let trimmed = l.trim();
-            !trimmed.is_empty() && !trimmed.starts_with("$ ")
-        })
-        .collect();
-    body[body.len().saturating_sub(max)..].to_vec()
-}
+    if broken == 0 {
+        success(format!("Built — {detail}"));
+        return;
+    }
 
-/// The last 20 non-blank lines of a failed target's output, or every line
-/// under `--logs`.
-fn failure_lines(label: &str, duration_ms: u64, output: &str, show_logs: bool) -> Vec<String> {
-    let mut lines = vec![format!(
-        "{} {label}{}",
-        style("✖").red(),
-        style(format!("  failed  {}", format_duration(duration_ms))).red()
-    )];
-    let body: Vec<&str> = output.lines().filter(|l| !l.trim().is_empty()).collect();
-    let tail: &[&str] = if show_logs {
-        &body
-    } else {
-        &body[body.len().saturating_sub(20)..]
-    };
-    lines.extend(
-        tail.iter()
-            .map(|line| format!("{} {line}", style("┃").red())),
+    let message = format!(
+        "{broken} target{} failing — {detail}",
+        if broken == 1 { "" } else { "s" }
     );
-    lines
+    println!("{} {}", style("✖").red().bold(), style(message).red());
+}
+
+fn tail(output: &str, lines: usize) -> Vec<&str> {
+    let all: Vec<&str> = output
+        .lines()
+        .filter(|line| !line.trim().is_empty())
+        .collect();
+    let start = all.len().saturating_sub(lines);
+    all[start..].to_vec()
 }

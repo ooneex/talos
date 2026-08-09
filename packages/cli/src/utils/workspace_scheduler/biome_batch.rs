@@ -7,7 +7,7 @@ use std::collections::{HashMap, HashSet};
 use std::process::Command;
 use std::time::Instant;
 
-use super::{SchedulerContext, report_finish};
+use super::SchedulerContext;
 use crate::utils::workspace_batch::{
     parse_biome_script, section_has_error, split_biome_output_by_target,
 };
@@ -84,7 +84,9 @@ fn run_one_biome_batch(
             tasks[index].hash = Some(hash.clone());
             tasks[index].duration_ms = meta.duration_ms;
             tasks[index].status = TaskStatus::Cached;
-            report_finish(&tasks[index], ctx.footer);
+            // A cache hit is not work in flight, so it is counted rather
+            // than named as running.
+            ctx.loader.advance(ctx.loader_group);
             continue;
         }
 
@@ -99,7 +101,8 @@ fn run_one_biome_batch(
     }
 
     for &index in &miss_indices {
-        ctx.footer.task_started(&tasks[index].label);
+        ctx.loader
+            .entered(ctx.loader_group, tasks[index].label.clone());
     }
 
     let keys: Vec<String> = miss_indices
@@ -171,7 +174,7 @@ fn run_one_biome_batch(
                 cache_batched_success(&tasks[index], &key, hash, duration_ms, ctx);
             }
         }
-        report_finish(&tasks[index], ctx.footer);
+        ctx.loader.left(ctx.loader_group, &tasks[index].label);
     }
 
     any_failed

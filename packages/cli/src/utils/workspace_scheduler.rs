@@ -6,7 +6,7 @@ use std::time::Instant;
 
 use super::workspace_task::{Task, TaskStatus};
 use crate::utils::{
-    CacheEntryMeta, CacheIndex, FileHashCache, FingerprintMemo, Footer, WORKSPACE_CACHE_VERSION,
+    CacheEntryMeta, CacheIndex, FileHashCache, FingerprintMemo, Loader, WORKSPACE_CACHE_VERSION,
     WorkspaceTarget, compute_task_hash, read_cache_entry, write_cache_entry,
 };
 
@@ -42,7 +42,11 @@ pub(crate) struct SchedulerContext<'a> {
     pub no_cache: bool,
     pub file_hash_cache: &'a FileHashCache,
     pub cache_index: &'a CacheIndex,
-    pub footer: &'a Footer,
+    /// The bar this run reports its progress through, and which of its rows
+    /// belongs to this group of tasks — `workspace:run` gives every command
+    /// its own row, so one `Loader` can show several at once.
+    pub loader: &'a Loader,
+    pub loader_group: usize,
 }
 
 /// Runs one task to completion: checks the cache when eligible, otherwise
@@ -177,7 +181,9 @@ fn cache_successful_task(task: &Task, ctx: SchedulerContext) {
 pub(crate) fn run_group(tasks: &mut [Task], ctx: SchedulerContext) -> bool {
     for task in tasks.iter() {
         if task.status == TaskStatus::Skipped {
-            report_finish(task, ctx.footer);
+            // A skipped task never runs, so it is counted rather than named
+            // as running.
+            ctx.loader.advance(ctx.loader_group);
         }
     }
 
@@ -213,7 +219,8 @@ pub(crate) fn run_group(tasks: &mut [Task], ctx: SchedulerContext) -> bool {
 
                 launched[index] = true;
                 inflight += 1;
-                ctx.footer.task_started(&tasks[index].label);
+                ctx.loader
+                    .entered(ctx.loader_group, tasks[index].label.clone());
 
                 let argv = tasks[index].argv.clone();
                 let cwd = tasks[index].cwd.clone();
@@ -244,7 +251,7 @@ pub(crate) fn run_group(tasks: &mut [Task], ctx: SchedulerContext) -> bool {
             }
 
             done.insert(tasks[index].key.clone());
-            report_finish(&tasks[index], ctx.footer);
+            ctx.loader.left(ctx.loader_group, &tasks[index].label);
         }
     });
 
@@ -301,8 +308,7 @@ fn try_cache_hit(
 
 #[path = "workspace_scheduler/report.rs"]
 mod report;
-use report::report_finish;
-pub use report::{failure_excerpt, finish_lines};
+pub use report::{failure_excerpt, finish_lines, print_task_report};
 
 #[cfg(test)]
 mod tests {
@@ -370,7 +376,7 @@ mod tests {
         ];
         let by_key: HashMap<&str, &WorkspaceTarget> =
             targets.iter().map(|t| (t.key.as_str(), t)).collect();
-        let footer = Footer::start(tasks.len(), false);
+        let loader = Loader::start(vec![crate::utils::LoaderGroup::new("fmt", tasks.len())]);
 
         let failed = run_biome_batch_pass(
             &mut tasks,
@@ -384,7 +390,8 @@ mod tests {
                 no_cache: true,
                 file_hash_cache: &FileHashCache::new(),
                 cache_index: &CacheIndex::new(),
-                footer: &footer,
+                loader: &loader,
+                loader_group: 0,
             },
         );
 

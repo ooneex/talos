@@ -110,10 +110,9 @@ pub use workspace::{
     load_file_hash_cache, read_cache_entry, resolve_biome_command, resolve_tsc_command,
     save_file_hash_cache, sort_targets_by_dependencies, write_cache_entry,
 };
-pub(crate) use workspace_footer::Footer;
 pub use workspace_footer::{BAR_WIDTH, FooterState, build_footer_lines};
 pub use workspace_group::{INSTALL_COMMAND, build_group, build_install_group};
-pub(crate) use workspace_scheduler::{SchedulerContext, run_group};
+pub(crate) use workspace_scheduler::{SchedulerContext, print_task_report, run_group};
 pub use workspace_task::{Task, TaskStatus, format_duration};
 
 pub use style::{

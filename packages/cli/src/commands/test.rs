@@ -6,9 +6,9 @@ use clap::Args;
 use console::style;
 
 use crate::utils::{
-    Footer, SchedulerContext, TargetType, WorkspaceTarget, build_group, current_dir,
-    discover_targets, error, format_duration, hash_root_inputs, is_git_workspace_root,
-    load_cache_index, load_file_hash_cache, run_group, save_file_hash_cache,
+    Loader, LoaderGroup, SchedulerContext, TargetType, WorkspaceTarget, build_group, current_dir,
+    discover_targets, error, hash_root_inputs, is_git_workspace_root, load_cache_index,
+    load_file_hash_cache, print_task_report, run_group, save_file_hash_cache,
     sort_targets_by_dependencies,
 };
 
@@ -139,7 +139,7 @@ pub fn execute(args: &TestArgs) -> bool {
         all_targets.iter().map(|t| (t.key.as_str(), t)).collect();
 
     let started_at = Instant::now();
-    let footer = Footer::start(group.len(), false);
+    let loader = Loader::start(vec![LoaderGroup::new("Test", group.len())]);
     let any_failed = run_group(
         &mut group,
         SchedulerContext {
@@ -152,52 +152,24 @@ pub fn execute(args: &TestArgs) -> bool {
             no_cache: args.no_cache,
             file_hash_cache: &file_hash_cache,
             cache_index: &cache_index,
-            footer: &footer,
+            loader: &loader,
+            loader_group: 0,
         },
     );
-    footer.stop();
+    loader.stop();
 
     if !args.no_cache && file_hash_cache.len() != file_hash_entries_before {
         save_file_hash_cache(&cache_dir, &file_hash_cache);
     }
 
-    if any_failed {
-        return false;
-    }
-
-    print_completion_summary(&group, started_at);
-    true
-}
-
-fn print_completion_summary(tasks: &[crate::utils::Task], started_at: Instant) {
-    use crate::utils::TaskStatus;
-
-    let completed = tasks
-        .iter()
-        .filter(|t| t.status == TaskStatus::Success)
-        .count();
-    let cached = tasks
-        .iter()
-        .filter(|t| t.status == TaskStatus::Cached)
-        .count();
-    let skipped = tasks
-        .iter()
-        .filter(|t| t.status == TaskStatus::Skipped)
-        .count();
-    let mut parts = vec![format!("{completed} run"), format!("{cached} cached")];
-    if skipped > 0 {
-        parts.push(format!("{skipped} skipped"));
-    }
-    println!(
-        "{}{}",
-        style("✔ Ran test").green(),
-        style(format!(
-            "  {}  in {}",
-            parts.join(" · "),
-            format_duration(started_at.elapsed().as_millis() as u64)
-        ))
-        .dim()
+    print_task_report(
+        "Test report",
+        &group,
+        args.logs,
+        started_at.elapsed().as_millis() as u64,
     );
+
+    !any_failed
 }
 
 fn split_csv(value: Option<&str>) -> Vec<String> {

@@ -1,31 +1,13 @@
-// Rendering a task's finish line and extracting the failure excerpt shown
-// for a failed task's output — split out of the parent module to keep it
-// under the file-size budget.
+// Rendering a task's finish line, extracting the failure excerpt shown for a
+// failed task's output, and the static report printed once a `Loader`-driven
+// run finishes — split out of the parent module to keep it under the
+// file-size budget.
 
 use console::style;
 use regex::Regex;
 
-use crate::utils::Footer;
+use crate::utils::success;
 use crate::utils::workspace_task::{Task, TaskStatus, format_duration};
-
-pub(super) fn report_finish(task: &Task, footer: &Footer) {
-    let (lines, is_error) = finish_lines(task);
-
-    if footer.enabled() {
-        footer.task_finished(&task.label, is_error, &lines);
-        return;
-    }
-
-    if is_error {
-        for line in &lines {
-            eprintln!("{line}");
-        }
-    } else {
-        for line in &lines {
-            println!("{line}");
-        }
-    }
-}
 
 pub fn finish_lines(task: &Task) -> (Vec<String>, bool) {
     match task.status {
@@ -128,4 +110,139 @@ pub fn failure_excerpt(output: &str) -> Vec<String> {
     flush(&mut run, &mut excerpt);
     excerpt.truncate(max_lines);
     excerpt
+}
+
+/// Print a scheduler run's results — one row per task and the output of
+/// every one that failed — laid out the same way `lint`'s report is.
+pub fn print_task_report(title: &str, tasks: &[Task], logs: bool, elapsed_ms: u64) {
+    let ran: Vec<&Task> = tasks
+        .iter()
+        .filter(|task| {
+            matches!(
+                task.status,
+                TaskStatus::Success | TaskStatus::Cached | TaskStatus::Failed
+            )
+        })
+        .collect();
+    let skipped = tasks
+        .iter()
+        .filter(|task| task.status == TaskStatus::Skipped)
+        .count();
+
+    let scope = format!(
+        "{} task{} · {}",
+        ran.len(),
+        if ran.len() == 1 { "" } else { "s" },
+        format_duration(elapsed_ms)
+    );
+
+    println!();
+    println!(
+        "{}{}",
+        style(format!("▸ {title}")).magenta().bold(),
+        style(format!("  {scope}")).dim()
+    );
+
+    print_rows(&ran);
+    print_failures(&ran, logs);
+    println!();
+    print_summary(&ran, skipped);
+}
+
+fn print_rows(ran: &[&Task]) {
+    if ran.is_empty() {
+        return;
+    }
+
+    let width = ran
+        .iter()
+        .map(|task| task.label.chars().count())
+        .max()
+        .unwrap_or(0);
+
+    println!();
+    for task in ran {
+        let (icon, detail) = match task.status {
+            TaskStatus::Success | TaskStatus::Cached => (
+                style("✔").green().bold().to_string(),
+                style(format_duration(task.duration_ms)).dim().to_string(),
+            ),
+            TaskStatus::Failed => (
+                style("✖").red().bold().to_string(),
+                style(format_duration(task.duration_ms)).red().to_string(),
+            ),
+            TaskStatus::Skipped | TaskStatus::Pending => continue,
+        };
+        let cached = if task.status == TaskStatus::Cached {
+            style(" cached").dim().to_string()
+        } else {
+            String::new()
+        };
+        println!(
+            "{icon} {}  {detail}{cached}",
+            style(format!("{:<width$}", task.label)).bold(),
+        );
+    }
+}
+
+/// The tasks that failed, with their output under `--logs`.
+fn print_failures(ran: &[&Task], logs: bool) {
+    let broken: Vec<&&Task> = ran
+        .iter()
+        .filter(|task| task.status == TaskStatus::Failed)
+        .collect();
+    if broken.is_empty() {
+        return;
+    }
+
+    println!();
+    println!("{}", style("Failing tasks").red().bold());
+    for task in broken {
+        println!();
+        println!(
+            "{}  {}",
+            style(&task.label).bold().underlined(),
+            style(format!("failed  exit {}", task.exit_code.unwrap_or(1))).red()
+        );
+
+        if !logs {
+            println!("  {}", style("re-run with --logs to see the output").dim());
+            continue;
+        }
+        for line in failure_excerpt(&task.output) {
+            println!("  {}", style(line).dim());
+        }
+    }
+}
+
+fn print_summary(ran: &[&Task], skipped: usize) {
+    let completed = ran
+        .iter()
+        .filter(|task| task.status == TaskStatus::Success)
+        .count();
+    let cached = ran
+        .iter()
+        .filter(|task| task.status == TaskStatus::Cached)
+        .count();
+    let broken = ran
+        .iter()
+        .filter(|task| task.status == TaskStatus::Failed)
+        .count();
+
+    let mut parts = vec![format!("{completed} run"), format!("{cached} cached")];
+    if skipped > 0 {
+        parts.push(format!("{skipped} skipped"));
+    }
+    let detail = parts.join(" · ");
+
+    if broken == 0 {
+        success(format!("Every task ran clean — {detail}"));
+        return;
+    }
+
+    let message = format!(
+        "{broken} task{} failing — {detail}",
+        if broken == 1 { "" } else { "s" }
+    );
+    println!("{} {}", style("✖").red().bold(), style(message).red());
 }

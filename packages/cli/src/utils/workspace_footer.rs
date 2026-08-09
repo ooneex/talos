@@ -1,162 +1,18 @@
-use std::io::{Write, stdout};
-use std::sync::Arc;
-use std::sync::Mutex;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::thread::{self, JoinHandle};
-use std::time::{Duration, Instant};
-
-use console::{Term, style};
+use console::style;
 
 use super::style::{BAR_EMPTY, BAR_FILLED, SPINNER_FRAMES as FRAMES};
 use super::workspace_task::format_duration;
 
-const TICK: Duration = Duration::from_millis(80);
 pub const BAR_WIDTH: usize = 22;
 
-/// How far along the run is. Public alongside [`build_footer_lines`], which
-/// draws it: the two together are the whole display, and neither needs a
-/// terminal to be exercised.
+/// How far along the run is — a pure snapshot [`build_footer_lines`] draws
+/// from, kept separate so the render can be exercised without a terminal.
 pub struct FooterState {
     pub total: usize,
     pub finished: usize,
     pub failed: usize,
     pub running: Vec<String>,
     pub frame: usize,
-}
-
-struct FooterInner {
-    state: Mutex<FooterState>,
-    stop: AtomicBool,
-    started_at: Instant,
-}
-
-pub(crate) struct Footer {
-    inner: Arc<FooterInner>,
-    handle: Option<JoinHandle<()>>,
-    enabled: bool,
-}
-
-impl Footer {
-    /// `plain` forces the sequential, non-animated log path used for
-    /// unattended terminals even when stdout reports as attended — an escape
-    /// hatch for terminals (some multiplexers, IDE panes, log collectors)
-    /// that accept ANSI cursor moves but don't actually apply them, which
-    /// turns every redraw into a new stacked block instead of an in-place
-    /// update.
-    pub(crate) fn start(total: usize, plain: bool) -> Self {
-        let inner = Arc::new(FooterInner {
-            state: Mutex::new(FooterState {
-                total,
-                finished: 0,
-                failed: 0,
-                running: Vec::new(),
-                frame: 0,
-            }),
-            stop: AtomicBool::new(false),
-            started_at: Instant::now(),
-        });
-
-        if plain || !Term::stdout().features().is_attended() {
-            return Self {
-                inner,
-                handle: None,
-                enabled: false,
-            };
-        }
-        Self::start_attended(inner)
-    }
-
-    fn start_attended(inner: Arc<FooterInner>) -> Self {
-        print!("\u{1b}[?25l");
-        let _ = stdout().flush();
-
-        let thread_inner = inner.clone();
-        let handle = thread::spawn(move || {
-            while !thread_inner.stop.load(Ordering::Relaxed) {
-                let cols = usize::from(Term::stdout().size().1);
-                let elapsed = thread_inner.started_at.elapsed().as_millis() as u64;
-                {
-                    let mut state = thread_inner.state.lock().unwrap();
-                    let mut buf = String::new();
-                    paint_footer(&state, cols, elapsed, &mut buf);
-                    state.frame = state.frame.wrapping_add(1);
-                    print!("{buf}");
-                    let _ = stdout().flush();
-                }
-                thread::sleep(TICK);
-            }
-        });
-
-        Self {
-            inner,
-            handle: Some(handle),
-            enabled: true,
-        }
-    }
-
-    pub(crate) fn enabled(&self) -> bool {
-        self.enabled
-    }
-
-    pub(crate) fn task_started(&self, label: &str) {
-        if !self.enabled {
-            return;
-        }
-        let mut state = self.inner.state.lock().unwrap();
-        state.running.push(label.to_string());
-    }
-
-    pub(crate) fn task_finished(&self, label: &str, failed: bool, scrollback: &[String]) {
-        if !self.enabled {
-            return;
-        }
-        let cols = usize::from(Term::stdout().size().1);
-        let elapsed = self.inner.started_at.elapsed().as_millis() as u64;
-        let mut state = self.inner.state.lock().unwrap();
-        if let Some(pos) = state.running.iter().position(|l| l == label) {
-            state.running.remove(pos);
-        }
-        state.finished += 1;
-        if failed {
-            state.failed += 1;
-        }
-
-        let mut buf = String::new();
-        buf.push_str("\u{1b}[0J");
-        for line in scrollback {
-            buf.push_str(line);
-            buf.push('\n');
-        }
-        paint_footer(&state, cols, elapsed, &mut buf);
-        print!("{buf}");
-        let _ = stdout().flush();
-    }
-
-    pub(crate) fn stop(self) {}
-}
-
-impl Drop for Footer {
-    fn drop(&mut self) {
-        self.inner.stop.store(true, Ordering::Relaxed);
-        if let Some(handle) = self.handle.take() {
-            let _ = handle.join();
-            print!("\u{1b}[0J\u{1b}[?25h");
-            let _ = stdout().flush();
-        }
-    }
-}
-
-fn paint_footer(state: &FooterState, cols: usize, elapsed_ms: u64, buf: &mut String) {
-    buf.push_str("\u{1b}[0J");
-    let lines = build_footer_lines(state, cols, elapsed_ms);
-    for line in &lines {
-        buf.push_str(line);
-        buf.push('\n');
-    }
-    if !lines.is_empty() {
-        buf.push_str(&format!("\u{1b}[{}A", lines.len()));
-    }
-    buf.push('\r');
 }
 
 /// A blank line, the bar with its counts, then one spinning line per task that
@@ -219,51 +75,6 @@ fn truncate(label: &str, max: usize) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    fn attended_footer(total: usize) -> Footer {
-        Footer::start_attended(Arc::new(FooterInner {
-            state: Mutex::new(FooterState {
-                total,
-                finished: 0,
-                failed: 0,
-                running: Vec::new(),
-                frame: 0,
-            }),
-            stop: AtomicBool::new(false),
-            started_at: Instant::now(),
-        }))
-    }
-
-    #[test]
-    fn attended_footer_updates_running_and_finished_counts() {
-        let footer = attended_footer(2);
-
-        assert!(footer.enabled());
-        footer.task_started("lint");
-        footer.task_finished("lint", true, &["detail".to_string()]);
-        footer.stop();
-    }
-
-    #[test]
-    fn paint_footer_clears_the_terminal_and_moves_back_up() {
-        let mut buf = String::new();
-        paint_footer(
-            &FooterState {
-                total: 1,
-                finished: 1,
-                failed: 0,
-                running: vec!["lint".to_string()],
-                frame: 0,
-            },
-            120,
-            500,
-            &mut buf,
-        );
-
-        assert!(buf.contains("\u{1b}[0J"));
-        assert!(buf.contains("\u{1b}["));
-        assert!(buf.ends_with('\r'));
-    }
 
     #[test]
     fn truncate_returns_empty_for_zero_width() {
