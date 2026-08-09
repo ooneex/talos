@@ -7,7 +7,7 @@ import type { ChunkType, ConvertorFileType, ConvertorOptionsType, ConvertorType 
 export class Convertor implements ConvertorType {
   private readonly source: string;
 
-  constructor(source: string) {
+  public constructor(source: string) {
     this.source = path.join(...source.split(/[/\\]/));
   }
 

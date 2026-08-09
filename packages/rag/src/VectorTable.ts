@@ -1,22 +1,17 @@
 import * as lancedb from "@lancedb/lancedb";
-import type { FilterType } from "./types.ts";
+import type { FilterFieldType, FilterType } from "./types.ts";
 import { buildFilter, toColumnName } from "./utils.ts";
 
-type SelectFieldType<DataType extends { metadata: Record<string, unknown> }> =
-  | keyof DataType["metadata"]
-  | "id"
-  | "text";
-
 export class VectorTable<DataType extends { metadata: Record<string, unknown> }> {
-  private table: lancedb.Table;
+  private readonly table: lancedb.Table;
   private reranker: Awaited<ReturnType<typeof lancedb.rerankers.RRFReranker.create>> | null = null;
 
-  constructor(table: lancedb.Table) {
+  public constructor(table: lancedb.Table) {
     this.table = table;
   }
 
   // Always keep "id" selected, and namespace every other field under "metadata" unless it's "text".
-  private buildSelectColumns(select: SelectFieldType<DataType>[]): string[] {
+  private buildSelectColumns(select: FilterFieldType<DataType>[]): string[] {
     return [...new Set(["id", ...select.map((field) => toColumnName(String(field)))])];
   }
 
@@ -42,7 +37,7 @@ export class VectorTable<DataType extends { metadata: Record<string, unknown> }>
   public async findById(
     id: string,
     options?: {
-      select?: SelectFieldType<DataType>[];
+      select?: FilterFieldType<DataType>[];
     },
   ): Promise<({ id: string } & DataType) | null> {
     const { select } = options ?? {};
@@ -63,7 +58,7 @@ export class VectorTable<DataType extends { metadata: Record<string, unknown> }>
     filter: { [K in keyof DataType["metadata"]]?: DataType["metadata"][K] | undefined },
     options?: {
       limit?: number;
-      select?: SelectFieldType<DataType>[];
+      select?: FilterFieldType<DataType>[];
     },
   ): Promise<({ id: string } & DataType)[]> {
     const { limit = 10, select } = options ?? {};
@@ -87,7 +82,7 @@ export class VectorTable<DataType extends { metadata: Record<string, unknown> }>
   public async findOneBy(
     filter: { [K in keyof DataType["metadata"]]?: DataType["metadata"][K] | undefined },
     options?: {
-      select?: SelectFieldType<DataType>[];
+      select?: FilterFieldType<DataType>[];
     },
   ): Promise<({ id: string } & DataType) | null> {
     const results = await this.findBy(filter, { ...options, limit: 1 });
@@ -124,7 +119,7 @@ export class VectorTable<DataType extends { metadata: Record<string, unknown> }>
     query: string,
     options?: {
       limit?: number;
-      select?: SelectFieldType<DataType>[];
+      select?: FilterFieldType<DataType>[];
       filter?: FilterType<DataType>;
       // Number of IVF partitions to search. Higher values improve recall but reduce speed.
       nprobes?: number;

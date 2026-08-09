@@ -1,5 +1,6 @@
 import type { Connection } from "@lancedb/lancedb";
 import type { EmbeddingFunction } from "@lancedb/lancedb/embedding";
+import type { IPDFExtractOptions, IPDFExtractResult } from "@talosjs/pdf";
 import type {
   Binary,
   Bool,
@@ -48,6 +49,27 @@ export type ChunkType = {
 };
 
 export type ConvertorFileType = { name: string; path: string };
+
+export type RAGOptionsType = {
+  /** OpenRouter API key used to OCR scanned pages; defaults to `OPENROUTER_API_KEY`. */
+  apiKey?: string;
+};
+
+export type RAGOcrPageType = {
+  /** 1-indexed page number that was OCR'd. */
+  page: number;
+  /** Markdown transcribed from the page image. */
+  markdown: string;
+};
+
+export type RAGExtractResultType = IPDFExtractResult & {
+  /** OCR results for pages that needed image-based extraction, in ascending page order. */
+  ocrPages: RAGOcrPageType[];
+};
+
+export interface IRAG {
+  extract: (options?: IPDFExtractOptions) => Promise<RAGExtractResultType>;
+}
 
 export type ConvertorType = {
   convert: (
