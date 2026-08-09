@@ -244,12 +244,7 @@ fn a_workspace_that_clears_the_threshold_exits_zero() {
 
     let output = talos(
         &root,
-        &[
-            "coverage",
-            "--no-cache",
-            "--modules=covered",
-            "--strict",
-        ],
+        &["coverage", "--no-cache", "--modules=covered", "--strict"],
     );
 
     assert!(output.status.success(), "{}", text(&output));

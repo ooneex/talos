@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use clap::Parser;
 use cli::commands::coverage::cache::{Fingerprints, read, write};
 use cli::commands::coverage::{
-    CoverageAudit, CoverageArgs, FileCoverage, ModuleCoverage, RunStatus, Runner, audit,
+    CoverageArgs, CoverageAudit, FileCoverage, ModuleCoverage, RunStatus, Runner, audit,
     parse_counts, parse_lcov, parse_table, runner, skip_reason,
 };
 use cli::commands::project_check::cache::FileHashes;

@@ -287,7 +287,11 @@ fn set_package_json_name(package_json: &str, kebab_name: &str) -> String {
             let trimmed = line.trim_start();
             if !replaced && trimmed.starts_with("\"name\"") && line.contains(':') {
                 let indent = &line[..line.len() - trimmed.len()];
-                let trailing = if line.trim_end().ends_with(',') { "," } else { "" };
+                let trailing = if line.trim_end().ends_with(',') {
+                    ","
+                } else {
+                    ""
+                };
                 replaced = true;
                 return format!("{indent}\"name\": \"{kebab_name}\"{trailing}");
             }

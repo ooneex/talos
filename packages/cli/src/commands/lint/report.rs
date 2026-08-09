@@ -45,6 +45,12 @@ pub fn print_report(audit: &LintAudit, logs: bool, elapsed_ms: u64) {
     print_summary(audit, skipped);
 }
 
+/// How a module's lint is named in a report line — `name:lint`, matching the
+/// `bun run` invocation rather than the `label`'s cache-facing `group/name`.
+fn script_label(module: &ModuleLint) -> String {
+    format!("{}:lint", module.name)
+}
+
 fn print_rows(ran: &[&ModuleLint]) {
     if ran.is_empty() {
         return;
@@ -52,7 +58,7 @@ fn print_rows(ran: &[&ModuleLint]) {
 
     let width = ran
         .iter()
-        .map(|module| module.label.chars().count())
+        .map(|module| script_label(module).chars().count())
         .max()
         .unwrap_or(0);
 
@@ -76,7 +82,7 @@ fn print_rows(ran: &[&ModuleLint]) {
         };
         println!(
             "{icon} {}  {detail}{cached}",
-            style(format!("{:<width$}", module.label)).bold(),
+            style(format!("{:<width$}", script_label(module))).bold(),
         );
     }
 }
@@ -98,7 +104,7 @@ fn print_failures(audit: &LintAudit, logs: bool) {
         println!();
         println!(
             "{}  {}",
-            style(&module.label).bold().underlined(),
+            style(script_label(module)).bold().underlined(),
             style(detail).red()
         );
 

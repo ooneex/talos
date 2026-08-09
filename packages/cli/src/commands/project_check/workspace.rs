@@ -11,9 +11,7 @@ use super::outcome::static_outcome;
 use super::types::CheckId;
 use super::{CheckOutcome, CheckStatus, E2E_COMMANDS, ERROR_DETAIL, ProjectCheckArgs};
 use crate::commands::build::{self, BuildArgs};
-use crate::commands::coverage::{
-    self, CoverageAudit, ModuleCoverage, RunStatus, trim_percent,
-};
+use crate::commands::coverage::{self, CoverageAudit, ModuleCoverage, RunStatus, trim_percent};
 use crate::commands::install::{self, InstallArgs};
 use crate::commands::lint::{self, LintArgs};
 use crate::commands::test::{self, TestArgs};
