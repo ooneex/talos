@@ -34,12 +34,21 @@ pub fn run(args: &AppCreateArgs) {
         return;
     };
 
+    let create_ci_cd = ask_confirm("Create CI/CD files?", true);
+    let provider = if create_ci_cd {
+        ask_select("Choose CI/CD provider", &CI_PROVIDERS)
+            .map(|provider_index| CI_PROVIDERS[provider_index])
+    } else {
+        None
+    };
+
     let Some(destination) = app_init::execute(AppInitOptions {
         name: name.clone(),
         destination,
-        silent: true,
+        silent: false,
         app_type: Some(AppType::Api),
         no_cache: args.no_cache,
+        announce: false,
     }) else {
         return;
     };
@@ -53,15 +62,9 @@ pub fn run(args: &AppCreateArgs) {
     println!("\nStart the app:\n  talos app:start");
     println!("Stop the app:\n  talos app:stop");
 
-    let create_ci_cd = ask_confirm("Create CI/CD files?", true);
-    if !create_ci_cd {
-        return;
-    }
-
-    let Some(provider_index) = ask_select("Choose CI/CD provider", &CI_PROVIDERS) else {
+    let Some(provider) = provider else {
         return;
     };
-    let provider = CI_PROVIDERS[provider_index];
 
     let Some(templates_dir) = skeleton_templates_dir(false, !args.no_cache) else {
         return;

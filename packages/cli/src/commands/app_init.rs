@@ -48,6 +48,11 @@ pub struct AppInitOptions {
     pub silent: bool,
     pub app_type: Option<AppType>,
     pub no_cache: bool,
+    /// Whether `execute` prints its own "initialized successfully" message.
+    /// Callers that print their own closing summary (e.g. `app_create`) set
+    /// this to `false` to avoid a duplicate message, while still letting
+    /// `silent` control prompt suppression independently.
+    pub announce: bool,
 }
 
 pub fn run(args: &AppInitArgs) {
@@ -63,6 +68,7 @@ pub fn run(args: &AppInitArgs) {
         silent: args.silent,
         app_type: None,
         no_cache: args.no_cache,
+        announce: !args.silent,
     });
 }
 
@@ -136,6 +142,7 @@ pub fn execute(options: AppInitOptions) -> Option<PathBuf> {
         silent,
         app_type,
         no_cache,
+        announce,
     } = options;
     let kebab_name = crate::utils::to_kebab_case(&name);
 
@@ -177,7 +184,7 @@ pub fn execute(options: AppInitOptions) -> Option<PathBuf> {
         return None;
     }
 
-    if !silent {
+    if announce {
         crate::utils::success(format!(
             "{kebab_name} initialized successfully at {}",
             destination.display()
@@ -249,6 +256,12 @@ pub fn scaffold_destination(
         fs::write(&readme_path, updated.join("\n")).map_err(|e| e.to_string())?;
     }
 
+    let package_json_path = destination.join("package.json");
+    if let Ok(package_json) = fs::read_to_string(&package_json_path) {
+        let updated = set_package_json_name(&package_json, kebab_name);
+        fs::write(&package_json_path, updated).map_err(|e| e.to_string())?;
+    }
+
     match app_type {
         Some(AppType::Cli) => {
             let modules_dir = destination.join("modules");
@@ -256,25 +269,51 @@ pub fn scaffold_destination(
             fs::create_dir_all(&modules_dir).map_err(|e| e.to_string())?;
             let _ = fs::remove_file(destination.join(".dockerignore"));
         }
-        Some(AppType::Api) => {
-            let modules_dir = destination.join("modules");
-            let kept_modules = ["app", "shared"];
-            for entry in fs::read_dir(&modules_dir)
-                .map_err(|e| e.to_string())?
-                .flatten()
-            {
-                let is_kept_module = entry
-                    .file_name()
-                    .to_str()
-                    .is_some_and(|name| kept_modules.contains(&name));
-                if entry.path().is_dir() && !is_kept_module {
-                    fs::remove_dir_all(entry.path()).map_err(|e| e.to_string())?;
-                }
-            }
+        Some(AppType::Api) | None => {
+            keep_only_app_and_shared_modules(destination)?;
         }
-        None => {}
     }
 
+    Ok(())
+}
+
+/// Replaces the value of the top-level `"name"` field in `package.json` with
+/// `kebab_name`, leaving every other line untouched so formatting survives.
+fn set_package_json_name(package_json: &str, kebab_name: &str) -> String {
+    let mut replaced = false;
+    package_json
+        .lines()
+        .map(|line| {
+            let trimmed = line.trim_start();
+            if !replaced && trimmed.starts_with("\"name\"") && line.contains(':') {
+                let indent = &line[..line.len() - trimmed.len()];
+                let trailing = if line.trim_end().ends_with(',') { "," } else { "" };
+                replaced = true;
+                return format!("{indent}\"name\": \"{kebab_name}\"{trailing}");
+            }
+            line.to_string()
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+/// Removes every module under `modules/` except `app` and `shared`, which
+/// every scaffolded project (init or create) keeps as its baseline.
+fn keep_only_app_and_shared_modules(destination: &Path) -> Result<(), String> {
+    let modules_dir = destination.join("modules");
+    let kept_modules = ["app", "shared"];
+    for entry in fs::read_dir(&modules_dir)
+        .map_err(|e| e.to_string())?
+        .flatten()
+    {
+        let is_kept_module = entry
+            .file_name()
+            .to_str()
+            .is_some_and(|name| kept_modules.contains(&name));
+        if entry.path().is_dir() && !is_kept_module {
+            fs::remove_dir_all(entry.path()).map_err(|e| e.to_string())?;
+        }
+    }
     Ok(())
 }
 

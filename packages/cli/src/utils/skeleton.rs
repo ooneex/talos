@@ -138,7 +138,7 @@ pub fn skeleton_templates_dir(silent: bool, use_cache: bool) -> Option<PathBuf> 
         spinner.stop();
         repo
     };
-    repo.map(|dir| dir.join("templates"))
+    repo.map(|dir| dir.join("modules").join("templates"))
 }
 
 pub fn read_template(dir: &Path, name: &str) -> Option<String> {

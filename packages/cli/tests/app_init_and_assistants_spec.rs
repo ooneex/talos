@@ -174,6 +174,7 @@ fn initializing_a_project_lands_a_git_repository_carrying_the_skeleton() {
         silent: true,
         app_type: None,
         no_cache: false,
+        announce: true,
     })
     .expect("the project was initialized");
 
