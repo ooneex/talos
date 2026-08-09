@@ -1,134 +1,4 @@
 {
-  "name": "@talosjs/validation",
-  "description": "Type-safe validation framework powered by ArkType — define schemas with built-in constraints, custom rules, and JSON Schema generation",
-  "version": "1.1.2",
-  "type": "module",
-  "files": [
-    "dist",
-    "LICENSE",
-    "README.md",
-    "package.json"
-  ],
-  "module": "./dist/src/index.js",
-  "types": "./dist/src/index.d.ts",
-  "exports": {
-    ".": {
-      "import": {
-        "types": "./dist/src/index.d.ts",
-        "default": "./dist/src/index.js"
-      }
-    },
-    "./constraints/AssertAppEnv": {
-      "import": {
-        "types": "./dist/src/constraints/AssertAppEnv.d.ts",
-        "default": "./dist/src/constraints/AssertAppEnv.js"
-      }
-    },
-    "./constraints/AssertChatQuery": {
-      "import": {
-        "types": "./dist/src/constraints/AssertChatQuery.d.ts",
-        "default": "./dist/src/constraints/AssertChatQuery.js"
-      }
-    },
-    "./constraints/AssertCountryCode": {
-      "import": {
-        "types": "./dist/src/constraints/AssertCountryCode.d.ts",
-        "default": "./dist/src/constraints/AssertCountryCode.js"
-      }
-    },
-    "./constraints/AssertCurrency": {
-      "import": {
-        "types": "./dist/src/constraints/AssertCurrency.d.ts",
-        "default": "./dist/src/constraints/AssertCurrency.js"
-      }
-    },
-    "./constraints/AssertDescription": {
-      "import": {
-        "types": "./dist/src/constraints/AssertDescription.d.ts",
-        "default": "./dist/src/constraints/AssertDescription.js"
-      }
-    },
-    "./constraints/AssertEmail": {
-      "import": {
-        "types": "./dist/src/constraints/AssertEmail.d.ts",
-        "default": "./dist/src/constraints/AssertEmail.js"
-      }
-    },
-    "./constraints/AssertFile": {
-      "import": {
-        "types": "./dist/src/constraints/AssertFile.d.ts",
-        "default": "./dist/src/constraints/AssertFile.js"
-      }
-    },
-    "./constraints/AssertFirstName": {
-      "import": {
-        "types": "./dist/src/constraints/AssertFirstName.d.ts",
-        "default": "./dist/src/constraints/AssertFirstName.js"
-      }
-    },
-    "./constraints/AssertHexaColor": {
-      "import": {
-        "types": "./dist/src/constraints/AssertHexaColor.d.ts",
-        "default": "./dist/src/constraints/AssertHexaColor.js"
-      }
-    },
-    "./constraints/AssertHostname": {
-      "import": {
-        "types": "./dist/src/constraints/AssertHostname.d.ts",
-        "default": "./dist/src/constraints/AssertHostname.js"
-      }
-    },
-    "./constraints/AssertId": {
-      "import": {
-        "types": "./dist/src/constraints/AssertId.d.ts",
-        "default": "./dist/src/constraints/AssertId.js"
-      }
-    },
-    "./constraints/AssertLastName": {
-      "import": {
-        "types": "./dist/src/constraints/AssertLastName.d.ts",
-        "default": "./dist/src/constraints/AssertLastName.js"
-      }
-    },
-    "./constraints/AssertLocale": {
-      "import": {
-        "types": "./dist/src/constraints/AssertLocale.d.ts",
-        "default": "./dist/src/constraints/AssertLocale.js"
-      }
-    },
-    "./constraints/AssertName": {
-      "import": {
-        "types": "./dist/src/constraints/AssertName.d.ts",
-        "default": "./dist/src/constraints/AssertName.js"
-      }
-    },
-    "./constraints/AssertPort": {
-      "import": {
-        "types": "./dist/src/constraints/AssertPort.d.ts",
-        "default": "./dist/src/constraints/AssertPort.js"
-      }
-    },
-    "./constraints/AssertUrl": {
-      "import": {
-        "types": "./dist/src/constraints/AssertUrl.d.ts",
-        "default": "./dist/src/constraints/AssertUrl.js"
-      }
-    },
-    "./constraints/AssertYoutubeUrl": {
-      "import": {
-        "types": "./dist/src/constraints/AssertYoutubeUrl.d.ts",
-        "default": "./dist/src/constraints/AssertYoutubeUrl.js"
-      }
-    },
-    "./package.json": "./package.json"
-  },
-  "license": "MIT",
-  "scripts": {
-    "test": "bun test tests",
-    "build": "bunup",
-    "fmt": "bunx biome check --write",
-    "lint": "tsc --noEmit && bunx biome lint"
-  },
   "dependencies": {
     "@talosjs/app-env": "workspace:^",
     "@talosjs/currencies": "workspace:^",
@@ -136,6 +6,124 @@
     "@talosjs/translation": "workspace:^",
     "arktype": "^2.1.29"
   },
+  "description": "Type-safe validation framework powered by ArkType — define schemas with built-in constraints, custom rules, and JSON Schema generation",
+  "exports": {
+    ".": {
+      "import": {
+        "default": "./dist/src/index.js",
+        "types": "./dist/src/index.d.ts"
+      }
+    },
+    "./constraints/AssertAppEnv": {
+      "import": {
+        "default": "./dist/src/constraints/AssertAppEnv.js",
+        "types": "./dist/src/constraints/AssertAppEnv.d.ts"
+      }
+    },
+    "./constraints/AssertChatQuery": {
+      "import": {
+        "default": "./dist/src/constraints/AssertChatQuery.js",
+        "types": "./dist/src/constraints/AssertChatQuery.d.ts"
+      }
+    },
+    "./constraints/AssertCountryCode": {
+      "import": {
+        "default": "./dist/src/constraints/AssertCountryCode.js",
+        "types": "./dist/src/constraints/AssertCountryCode.d.ts"
+      }
+    },
+    "./constraints/AssertCurrency": {
+      "import": {
+        "default": "./dist/src/constraints/AssertCurrency.js",
+        "types": "./dist/src/constraints/AssertCurrency.d.ts"
+      }
+    },
+    "./constraints/AssertDescription": {
+      "import": {
+        "default": "./dist/src/constraints/AssertDescription.js",
+        "types": "./dist/src/constraints/AssertDescription.d.ts"
+      }
+    },
+    "./constraints/AssertEmail": {
+      "import": {
+        "default": "./dist/src/constraints/AssertEmail.js",
+        "types": "./dist/src/constraints/AssertEmail.d.ts"
+      }
+    },
+    "./constraints/AssertFile": {
+      "import": {
+        "default": "./dist/src/constraints/AssertFile.js",
+        "types": "./dist/src/constraints/AssertFile.d.ts"
+      }
+    },
+    "./constraints/AssertFirstName": {
+      "import": {
+        "default": "./dist/src/constraints/AssertFirstName.js",
+        "types": "./dist/src/constraints/AssertFirstName.d.ts"
+      }
+    },
+    "./constraints/AssertHexaColor": {
+      "import": {
+        "default": "./dist/src/constraints/AssertHexaColor.js",
+        "types": "./dist/src/constraints/AssertHexaColor.d.ts"
+      }
+    },
+    "./constraints/AssertHostname": {
+      "import": {
+        "default": "./dist/src/constraints/AssertHostname.js",
+        "types": "./dist/src/constraints/AssertHostname.d.ts"
+      }
+    },
+    "./constraints/AssertId": {
+      "import": {
+        "default": "./dist/src/constraints/AssertId.js",
+        "types": "./dist/src/constraints/AssertId.d.ts"
+      }
+    },
+    "./constraints/AssertLastName": {
+      "import": {
+        "default": "./dist/src/constraints/AssertLastName.js",
+        "types": "./dist/src/constraints/AssertLastName.d.ts"
+      }
+    },
+    "./constraints/AssertLocale": {
+      "import": {
+        "default": "./dist/src/constraints/AssertLocale.js",
+        "types": "./dist/src/constraints/AssertLocale.d.ts"
+      }
+    },
+    "./constraints/AssertName": {
+      "import": {
+        "default": "./dist/src/constraints/AssertName.js",
+        "types": "./dist/src/constraints/AssertName.d.ts"
+      }
+    },
+    "./constraints/AssertPort": {
+      "import": {
+        "default": "./dist/src/constraints/AssertPort.js",
+        "types": "./dist/src/constraints/AssertPort.d.ts"
+      }
+    },
+    "./constraints/AssertUrl": {
+      "import": {
+        "default": "./dist/src/constraints/AssertUrl.js",
+        "types": "./dist/src/constraints/AssertUrl.d.ts"
+      }
+    },
+    "./constraints/AssertYoutubeUrl": {
+      "import": {
+        "default": "./dist/src/constraints/AssertYoutubeUrl.js",
+        "types": "./dist/src/constraints/AssertYoutubeUrl.d.ts"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md",
+    "package.json"
+  ],
   "keywords": [
     "arktype",
     "bun",
@@ -145,5 +133,17 @@
     "typescript",
     "validation",
     "validator"
-  ]
+  ],
+  "license": "MIT",
+  "module": "./dist/src/index.js",
+  "name": "@talosjs/validation",
+  "scripts": {
+    "build": "bunup",
+    "fmt": "bunx biome check --write",
+    "lint": "tsc --noEmit && bunx biome lint",
+    "test": "bun test tests"
+  },
+  "type": "module",
+  "types": "./dist/src/index.d.ts",
+  "version": "1.2.0"
 }
