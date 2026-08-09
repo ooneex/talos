@@ -21,3 +21,12 @@
 
 - Add http mimes package| — Franck ([194b6753](https://github.com/ooneex/talos/commit/194b6753))
 
+## [1.1.3](https///github.com/ooneex/talos/releases/tag/@talosjs/http-mimes@1.1.3) - 2026-08-09
+
+### Changed
+
+- Split MIME list and fix dist type declaration|Splits the 2765-line MIME array into six part files to satisfy the — Franck ([5554e4ca](https///github.com/ooneex/talos/commit/5554e4ca))
+- Add explicit constructors and biome-ignore comments for Bun's coverage tool|This commit adds explicit constructors to abstract classes and utility functions — Franck ([4d33ff04](https///github.com/ooneex/talos/commit/4d33ff04))
+- Raise coverage thresholds to 99% across all packages| — Franck ([14db3019](https///github.com/ooneex/talos/commit/14db3019))
+- Enable coverage thresholds in every package's bunfig.toml| — Franck ([e19e3785](https///github.com/ooneex/talos/commit/e19e3785))
+
