@@ -21,3 +21,12 @@
 
 - Add http header package| — Franck ([e9b452b3](https://github.com/ooneex/talos/commit/e9b452b3))
 
+## [1.1.3](https///github.com/ooneex/talos/releases/tag/@talosjs/http-header@1.1.3) - 2026-08-09
+
+### Changed
+
+- Split HEADERS constants and fix dist type declaration|Splits the 1190-line HEADERS array into three part files to satisfy the — Franck ([dd41185a](https///github.com/ooneex/talos/commit/dd41185a))
+- Add explicit constructors and biome-ignore comments for Bun's coverage tool|This commit adds explicit constructors to abstract classes and utility functions — Franck ([4d33ff04](https///github.com/ooneex/talos/commit/4d33ff04))
+- Raise coverage thresholds to 99% across all packages| — Franck ([14db3019](https///github.com/ooneex/talos/commit/14db3019))
+- Enable coverage thresholds in every package's bunfig.toml| — Franck ([e19e3785](https///github.com/ooneex/talos/commit/e19e3785))
+
