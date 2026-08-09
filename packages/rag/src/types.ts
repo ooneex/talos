@@ -1,6 +1,6 @@
 import type { Connection } from "@lancedb/lancedb";
 import type { EmbeddingFunction } from "@lancedb/lancedb/embedding";
-import type { IPDFExtractOptions, IPDFExtractResult } from "@talosjs/pdf";
+import type { PDFExtractOptionsType, PDFExtractResultType } from "@talosjs/pdf";
 import type {
   Binary,
   Bool,
@@ -37,13 +37,13 @@ export type RAGOcrPageType = {
   markdown: string;
 };
 
-export type RAGExtractResultType = IPDFExtractResult & {
+export type RAGExtractResultType = PDFExtractResultType & {
   /** OCR results for pages that needed image-based extraction, in ascending page order. */
   ocrPages: RAGOcrPageType[];
 };
 
 export interface IRAG {
-  extract: (options?: IPDFExtractOptions) => Promise<RAGExtractResultType>;
+  extract: (options?: PDFExtractOptionsType) => Promise<RAGExtractResultType>;
 }
 
 export interface IVectorDatabase<DataType extends { metadata: Record<string, unknown> }> {

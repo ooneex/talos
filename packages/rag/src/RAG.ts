@@ -1,4 +1,4 @@
-import type { IPDFExtractOptions, IPDFExtractResult } from "@talosjs/pdf";
+import type { PDFExtractOptionsType, PDFExtractResultType } from "@talosjs/pdf";
 import { PDF } from "@talosjs/pdf";
 import OpenAI from "openai";
 import type { Pdf as PdfImageDocument } from "pdf-to-img";
@@ -23,7 +23,7 @@ export class RAG implements IRAG {
     this.apiKey = options.apiKey ?? process.env.OPENROUTER_API_KEY;
   }
 
-  public async extract(options?: IPDFExtractOptions): Promise<RAGExtractResultType> {
+  public async extract(options?: PDFExtractOptionsType): Promise<RAGExtractResultType> {
     const result = await this.extractPdf(options);
     if (result.pagesNeedingOcr.length === 0) {
       return { ...result, ocrPages: [] };
@@ -33,7 +33,7 @@ export class RAG implements IRAG {
     return { ...result, markdown: this.mergeMarkdown(result.markdown, ocrPages), ocrPages };
   }
 
-  protected extractPdf(options?: IPDFExtractOptions): Promise<IPDFExtractResult> {
+  protected extractPdf(options?: PDFExtractOptionsType): Promise<PDFExtractResultType> {
     return this.pdf.extract(options);
   }
 

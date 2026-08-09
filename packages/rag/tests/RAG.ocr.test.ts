@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
-import type { IPDFExtractOptions, IPDFExtractResult } from "@talosjs/pdf";
+import type { PDFExtractOptionsType, PDFExtractResultType } from "@talosjs/pdf";
 import type OpenAI from "openai";
 import type { Pdf as PdfImageDocument } from "pdf-to-img";
 import { RAG, RAGException } from "@/index";
 
-const baseExtractResult: IPDFExtractResult = {
-  pdfType: "Mixed" as IPDFExtractResult["pdfType"],
+const baseExtractResult: PDFExtractResultType = {
+  pdfType: "Mixed" as PDFExtractResultType["pdfType"],
   pageCount: 3,
   processingTimeMs: 10,
   pagesNeedingOcr: [],
@@ -26,9 +26,9 @@ const chatCreate = mock(() =>
 const createClient = mock((apiKey: string) => ({ apiKey, chat: { completions: { create: chatCreate } } }));
 
 class TestRAG extends RAG {
-  public extractPdfResult: IPDFExtractResult = { ...baseExtractResult };
+  public extractPdfResult: PDFExtractResultType = { ...baseExtractResult };
 
-  protected override extractPdf(_options?: IPDFExtractOptions): Promise<IPDFExtractResult> {
+  protected override extractPdf(_options?: PDFExtractOptionsType): Promise<PDFExtractResultType> {
     return Promise.resolve(this.extractPdfResult);
   }
 

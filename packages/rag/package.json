@@ -30,12 +30,10 @@
   "keywords": [],
   "dependencies": {
     "@lancedb/lancedb": "^0.27.1",
-    "@opendataloader/pdf": "^2.0.2",
     "@talosjs/container": "workspace:^",
     "@talosjs/exception": "workspace:^",
     "@talosjs/http-status": "workspace:^",
     "@talosjs/pdf": "workspace:^",
-    "@talosjs/utils": "workspace:^",
     "apache-arrow": "^21.1.0",
     "openai": "^5.23.2",
     "pdf-to-img": "^6.2.0"
