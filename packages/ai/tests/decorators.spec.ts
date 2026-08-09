@@ -9,7 +9,7 @@ class StubChat implements IChat {
     return Promise.resolve({} as T);
   }
   public async *stream(_input?: ChatInputType): AsyncIterable<AGUIEvent> {}
-  public judge = (_input?: ChatInputType): Promise<AiSkillClassType[]> => Promise.resolve([]);
+  public judgeSkills = (_input?: ChatInputType): Promise<AiSkillClassType[]> => Promise.resolve([]);
   public getModel = (): string => "stub";
   public getSystemPrompts = (): string[] => [];
   public getTools = () => [];

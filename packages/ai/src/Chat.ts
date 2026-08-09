@@ -34,7 +34,7 @@ type SkillEntryType = { Skill: AiSkillClassType; skill: ISkill };
  * middleware, and skills — by implementing the five abstract getters. The base class
  * owns the *how*: it wires those pieces into a {@link chat} call and exposes a
  * unified {@link Chat.run} (one-shot / structured output), {@link Chat.stream}
- * (token streaming), and {@link Chat.judge} (skill routing) surface.
+ * (token streaming), and {@link Chat.judgeSkills} (skill routing) surface.
  *
  * Tools and middleware are container-managed classes resolved on demand, so
  * subclasses only ever return the class references. A tool's optional
@@ -122,11 +122,11 @@ export abstract class Chat implements IChat {
    *
    * @example
    * ```ts
-   * const skills = await chat.judge({ prompt }); // optional: preview the routing
+   * const skills = await chat.judgeSkills({ prompt }); // optional: preview the routing
    * const reply = await chat.run({ prompt }); // judged automatically either way
    * ```
    */
-  public async judge(input?: ChatInputType): Promise<AiSkillClassType[]> {
+  public async judgeSkills(input?: ChatInputType): Promise<AiSkillClassType[]> {
     const entries = await this.judgeSkillEntries(this.resolveSkillEntries(input), input);
     return entries.map(({ Skill }) => Skill);
   }
@@ -150,7 +150,7 @@ export abstract class Chat implements IChat {
   /**
    * Assemble the options every {@link chat} call needs regardless of what
    * runs — the adapter, messages, and conversation wiring — so {@link buildOptions}
-   * and {@link judge} each layer their own `systemPrompts` (and, for a real run,
+   * and {@link judgeSkills} each layer their own `systemPrompts` (and, for a real run,
    * tools/middleware) on top without repeating this plumbing.
    */
   private buildBaseOptions(input?: ChatInputType) {
@@ -170,7 +170,7 @@ export abstract class Chat implements IChat {
     return [...new Set(classes)].map((Skill) => ({ Skill, skill: container.get<ISkill>(Skill) }));
   }
 
-  /** Resolve the subclass and per-request skill classes to instances, narrowed down to what {@link judge} picks. */
+  /** Resolve the subclass and per-request skill classes to instances, narrowed down to what {@link judgeSkills} picks. */
   private async resolveSkills(input?: ChatInputType): Promise<ISkill[]> {
     const entries = await this.judgeSkillEntries(this.resolveSkillEntries(input), input);
     return entries.map(({ skill }) => skill);
@@ -179,7 +179,7 @@ export abstract class Chat implements IChat {
   /**
    * Ask the model which of the given skill entries a request calls for, sending
    * only each skill's {@link ISkill.getName} and {@link ISkill.getWhenToUse} —
-   * shared by {@link Chat.judge} (manual preview) and {@link Chat.resolveSkills}
+   * shared by {@link Chat.judgeSkills} (manual preview) and {@link Chat.resolveSkills}
    * (the automatic call every {@link Chat.run} / {@link Chat.stream} makes).
    */
   private async judgeSkillEntries(entries: SkillEntryType[], input?: ChatInputType): Promise<SkillEntryType[]> {

@@ -389,7 +389,7 @@ describe("Chat.judge", () => {
   test("should return the skill classes the model named", async () => {
     judgeResult = { names: ["order-refund"] };
 
-    const skills = await new WithSkills().judge({ prompt: "I want my money back" });
+    const skills = await new WithSkills().judgeSkills({ prompt: "I want my money back" });
 
     expect(skills).toEqual([RefundSkill]);
   });
@@ -397,7 +397,7 @@ describe("Chat.judge", () => {
   test("should match a name the model retyped with different casing and spacing", async () => {
     judgeResult = { names: [" Order-Refund "] };
 
-    const skills = await new WithSkills().judge({ prompt: "refund me" });
+    const skills = await new WithSkills().judgeSkills({ prompt: "refund me" });
 
     expect(skills).toEqual([RefundSkill]);
   });
@@ -413,7 +413,7 @@ describe("Chat.judge", () => {
     decorator.skill()(ExtraSkill);
     judgeResult = { names: ["invoice-send"] };
 
-    const skills = await new WithSkills().judge({ prompt: "send me my invoice", skills: [ExtraSkill] });
+    const skills = await new WithSkills().judgeSkills({ prompt: "send me my invoice", skills: [ExtraSkill] });
 
     expect(skills).toEqual([ExtraSkill]);
   });
@@ -421,7 +421,7 @@ describe("Chat.judge", () => {
   test("should send only the names and when-to-use lines, never the procedures", async () => {
     judgeResult = { names: [] };
 
-    await new WithSkills().judge({ prompt: "hello" });
+    await new WithSkills().judgeSkills({ prompt: "hello" });
 
     const prompt = (lastCall().systemPrompts as string[]).join("\n");
     expect(prompt).toContain("- order-refund: The user wants money back.");
@@ -432,7 +432,7 @@ describe("Chat.judge", () => {
   test("should judge with structured output and without tools or middleware", async () => {
     judgeResult = { names: [] };
 
-    await new WithSkills().judge({ prompt: "hello" });
+    await new WithSkills().judgeSkills({ prompt: "hello" });
 
     const call = lastCall();
     expect(call.stream).toBe(false);
@@ -444,13 +444,13 @@ describe("Chat.judge", () => {
   test("should return nothing when the model names no skill", async () => {
     judgeResult = { names: [] };
 
-    const skills = await new WithSkills().judge({ prompt: "what time is it?" });
+    const skills = await new WithSkills().judgeSkills({ prompt: "what time is it?" });
 
     expect(skills).toEqual([]);
   });
 
   test("should skip the model call entirely when no skill is declared", async () => {
-    const skills = await new TestChat().judge({ prompt: "hi" });
+    const skills = await new TestChat().judgeSkills({ prompt: "hi" });
 
     expect(skills).toEqual([]);
     expect(chatCalls).toHaveLength(0);
