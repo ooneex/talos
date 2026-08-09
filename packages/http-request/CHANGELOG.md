@@ -20,3 +20,15 @@
 
 - Add http request package| — Franck ([c4fadc49](https://github.com/ooneex/talos/commit/c4fadc49))
 
+## [1.1.3](https///github.com/ooneex/talos/releases/tag/@talosjs/http-request@1.1.3) - 2026-08-09
+
+### Changed
+
+- Raise coverage thresholds to 99% across all packages| — Franck ([14db3019](https///github.com/ooneex/talos/commit/14db3019))
+- Enable coverage thresholds in every package's bunfig.toml| — Franck ([e19e3785](https///github.com/ooneex/talos/commit/e19e3785))
+- Restore the real accept-language-parser after mocking|Bun's mock.module is global and persists across test files in the same — Franck ([681eb5fe](https///github.com/ooneex/talos/commit/681eb5fe))
+
+### Fixed
+
+- Fall back to default language only when header is empty| — Franck ([97b053fa](https///github.com/ooneex/talos/commit/97b053fa))
+
