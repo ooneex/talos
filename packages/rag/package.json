@@ -1,33 +1,4 @@
 {
-  "name": "@talosjs/rag",
-  "description": "Retrieval-Augmented Generation toolkit with vector database integration, document embedding, and semantic search for AI-powered knowledge retrieval",
-  "version": "1.1.4",
-  "type": "module",
-  "files": [
-    "dist",
-    "LICENSE",
-    "README.md",
-    "package.json"
-  ],
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "import": {
-        "types": "./dist/index.d.ts",
-        "default": "./dist/index.js"
-      }
-    },
-    "./package.json": "./package.json"
-  },
-  "license": "MIT",
-  "scripts": {
-    "test": "bun test tests",
-    "build": "bunup",
-    "fmt": "bunx biome check --write",
-    "lint": "tsc --noEmit && bunx biome lint"
-  },
-  "keywords": [],
   "dependencies": {
     "@lancedb/lancedb": "^0.27.1",
     "@talosjs/container": "workspace:^",
@@ -38,7 +9,36 @@
     "openai": "^5.23.2",
     "pdf-to-img": "^6.2.0"
   },
+  "description": "Retrieval-Augmented Generation toolkit with vector database integration, document embedding, and semantic search for AI-powered knowledge retrieval",
   "devDependencies": {
     "@talosjs/types": "workspace:^"
-  }
+  },
+  "exports": {
+    ".": {
+      "import": {
+        "default": "./dist/index.js",
+        "types": "./dist/index.d.ts"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md",
+    "package.json"
+  ],
+  "keywords": [],
+  "license": "MIT",
+  "module": "./dist/index.js",
+  "name": "@talosjs/rag",
+  "scripts": {
+    "build": "bunup",
+    "fmt": "bunx biome check --write",
+    "lint": "tsc --noEmit && bunx biome lint",
+    "test": "bun test tests"
+  },
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "version": "1.2.0"
 }

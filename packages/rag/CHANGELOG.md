@@ -33,3 +33,24 @@
 
 - Add rag package| — Franck ([8cae6b44](https://github.com/ooneex/talos/commit/8cae6b44))
 
+## [1.2.0](https///github.com/ooneex/talos/releases/tag/@talosjs/rag@1.2.0) - 2026-08-09
+
+### Added
+
+- Add RAG PDF extraction with OCR fallback via OpenRouter| — Franck ([0f330c80](https///github.com/ooneex/talos/commit/0f330c80))
+- Add OpenAI embedding function| — Franck ([2e0c60df](https///github.com/ooneex/talos/commit/2e0c60df))
+- Add Qwen embedding function via OpenRouter| — Franck ([f0ee0864](https///github.com/ooneex/talos/commit/f0ee0864))
+- Switch default embedding model to qwen3 and rename VectorDatabaseType| — Franck ([b2ad2ea9](https///github.com/ooneex/talos/commit/b2ad2ea9))
+
+### Changed
+
+- Drop unused deps and adopt pdf's renamed types| — Franck ([d848bbb5](https///github.com/ooneex/talos/commit/d848bbb5))
+- Remove Convertor in favor of RAG| — Franck ([e69b6432](https///github.com/ooneex/talos/commit/e69b6432))
+- Unify embedding functions into OpenrouterEmbeddingFunction| — Franck ([1736ecec](https///github.com/ooneex/talos/commit/1736ecec))
+- Reduce complexity and clean up conventions| — Franck ([b931578f](https///github.com/ooneex/talos/commit/b931578f))
+- Add explicit constructors and biome-ignore comments for Bun's coverage tool|This commit adds explicit constructors to abstract classes and utility functions — Franck ([4d33ff04](https///github.com/ooneex/talos/commit/4d33ff04))
+- Raise coverage thresholds to 99% across all packages| — Franck ([14db3019](https///github.com/ooneex/talos/commit/14db3019))
+- Add VectorDatabase spec| — Franck ([74053ba8](https///github.com/ooneex/talos/commit/74053ba8))
+- Enable coverage thresholds in every package's bunfig.toml| — Franck ([e19e3785](https///github.com/ooneex/talos/commit/e19e3785))
+- Clean up temp output directory after conversion test| — Franck ([89f6e46c](https///github.com/ooneex/talos/commit/89f6e46c))
+
