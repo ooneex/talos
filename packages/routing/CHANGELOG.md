@@ -21,3 +21,13 @@
 
 - Add routing package| — Franck ([e6758044](https://github.com/ooneex/talos/commit/e6758044))
 
+## [1.1.3](https///github.com/ooneex/talos/releases/tag/@talosjs/routing@1.1.3) - 2026-08-09
+
+### Changed
+
+- Reduce complexity and clean up conventions| — Franck ([a0ab3d87](https///github.com/ooneex/talos/commit/a0ab3d87))
+- Simplify route utils and update decorators/types|Update decorators.ts and types.ts for the validation package split, — Franck ([c80e5e33](https///github.com/ooneex/talos/commit/c80e5e33))
+- Add explicit constructors and biome-ignore comments for Bun's coverage tool|This commit adds explicit constructors to abstract classes and utility functions — Franck ([4d33ff04](https///github.com/ooneex/talos/commit/4d33ff04))
+- Raise coverage thresholds to 99% across all packages| — Franck ([14db3019](https///github.com/ooneex/talos/commit/14db3019))
+- Enable coverage thresholds in every package's bunfig.toml| — Franck ([e19e3785](https///github.com/ooneex/talos/commit/e19e3785))
+
