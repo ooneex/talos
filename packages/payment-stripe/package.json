@@ -1,39 +1,27 @@
 {
-  "name": "@talosjs/payment-stripe",
-  "description": "Stripe payment abstractions — injectable services for checkout sessions, webhooks, customers, billing portal, discounts, products, prices, and revenue analytics",
-  "version": "0.0.1",
-  "type": "module",
-  "files": [
-    "dist",
-    "LICENSE",
-    "README.md",
-    "package.json"
-  ],
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "import": {
-        "types": "./dist/index.d.ts",
-        "default": "./dist/index.js"
-      }
-    },
-    "./package.json": "./package.json"
-  },
-  "license": "MIT",
-  "scripts": {
-    "test": "bun test tests",
-    "build": "bunup",
-    "fmt": "bunx biome check --write",
-    "lint": "tsc --noEmit && bunx biome lint"
-  },
   "dependencies": {
     "@talosjs/app-env": "workspace:^",
     "@talosjs/container": "workspace:^",
     "@talosjs/payment": "workspace:^",
     "stripe": "^17.7.0"
   },
+  "description": "Stripe payment abstractions — injectable services for checkout sessions, webhooks, customers, billing portal, discounts, products, prices, and revenue analytics",
   "devDependencies": {},
+  "exports": {
+    ".": {
+      "import": {
+        "default": "./dist/index.js",
+        "types": "./dist/index.d.ts"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md",
+    "package.json"
+  ],
   "keywords": [
     "billing",
     "bun",
@@ -44,5 +32,17 @@
     "talos",
     "typescript",
     "webhook"
-  ]
+  ],
+  "license": "MIT",
+  "module": "./dist/index.js",
+  "name": "@talosjs/payment-stripe",
+  "scripts": {
+    "build": "bunup",
+    "fmt": "bunx biome check --write",
+    "lint": "tsc --noEmit && bunx biome lint",
+    "test": "bun test tests"
+  },
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "version": "0.1.0"
 }
