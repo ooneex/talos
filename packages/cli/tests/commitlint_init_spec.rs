@@ -1,8 +1,9 @@
 use clap::Parser;
 use cli::commands::commitlint_init::{CommitlintInitArgs, run};
 use std::fs;
-use std::os::unix::fs::PermissionsExt;
-use std::process::{Command, Output};
+use std::process::Command;
+#[cfg(unix)]
+use std::process::Output;
 use std::sync::Mutex;
 use tempfile::tempdir;
 
@@ -57,6 +58,7 @@ fn commitlint_init_installs_hook_inside_a_git_repository() {
     assert!(content.contains("talos commitlint:check"));
 }
 
+#[cfg(unix)]
 fn talos(args: &[&str], path: &std::path::Path) -> Output {
     Command::new(env!("CARGO_BIN_EXE_talos"))
         .args(args)
@@ -66,6 +68,7 @@ fn talos(args: &[&str], path: &std::path::Path) -> Output {
         .expect("talos should run")
 }
 
+#[cfg(unix)]
 fn text(output: &Output) -> String {
     format!(
         "{}{}",
@@ -100,8 +103,12 @@ fn commitlint_init_returns_cleanly_when_git_is_missing() {
     assert!(!dir.path().join(".git/hooks/commit-msg").exists());
 }
 
+/// The `git` stand-in is a shell script, so this one is unix-only.
+#[cfg(unix)]
 #[test]
 fn commitlint_init_exits_with_an_error_outside_a_git_repository() {
+    use std::os::unix::fs::PermissionsExt;
+
     let _guard = ENV_GUARD.lock().unwrap_or_else(|error| error.into_inner());
     let dir = tempdir().unwrap();
     let bin = dir.path().join("bin");

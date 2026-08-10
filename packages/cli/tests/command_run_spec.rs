@@ -1,6 +1,5 @@
 use clap::Parser;
 use cli::commands::command_run::CommandRunArgs;
-use std::os::unix::fs::PermissionsExt;
 use std::process::{Command, Output};
 
 #[derive(Parser)]
@@ -106,6 +105,7 @@ fn visit_command_files_is_empty_for_a_missing_directory() {
     assert!(files.is_empty());
 }
 
+#[cfg(unix)]
 fn write(path: &std::path::Path, content: &str) {
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent).expect("parent");
@@ -113,7 +113,12 @@ fn write(path: &std::path::Path, content: &str) {
     std::fs::write(path, content).expect("file");
 }
 
+/// The `bun` stand-in is a shell script, so the tests that lean on it are
+/// unix-only.
+#[cfg(unix)]
 fn executable(path: &std::path::Path, content: &str) {
+    use std::os::unix::fs::PermissionsExt;
+
     write(path, content);
     let mut permissions = std::fs::metadata(path).expect("metadata").permissions();
     permissions.set_mode(0o755);
@@ -158,6 +163,7 @@ fn command_run_warns_when_no_modules_directory_exists() {
     assert!(text(&output).contains("not found in any module"));
 }
 
+#[cfg(unix)]
 #[test]
 fn command_run_executes_the_matching_module_command() {
     let dir = tempfile::tempdir().expect("tempdir");
@@ -202,6 +208,7 @@ fn command_run_executes_the_matching_module_command() {
     assert!(log.contains("--flag"), "{log}");
 }
 
+#[cfg(unix)]
 #[test]
 fn command_run_exits_when_the_confirmed_command_fails() {
     let dir = tempfile::tempdir().expect("tempdir");
@@ -236,6 +243,7 @@ fn command_run_exits_when_the_confirmed_command_fails() {
     assert!(output_text.contains("boom"), "{output_text}");
 }
 
+#[cfg(unix)]
 #[test]
 fn command_run_reports_when_no_module_declares_the_command() {
     let dir = tempfile::tempdir().expect("tempdir");

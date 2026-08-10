@@ -45,7 +45,6 @@ fn app_start_rejects_unknown_flag() {
 
 mod support;
 
-use std::os::unix::fs::PermissionsExt;
 use std::process::{Command, Output};
 
 use cli::commands::app_start::{command_line, load_app_module_name};
@@ -109,7 +108,10 @@ fn command_line_hot_reloads_the_entry_point_for_back_end_modules() {
     }
 }
 
+#[cfg(unix)]
 fn write_executable(path: &std::path::Path, content: &str) {
+    use std::os::unix::fs::PermissionsExt;
+
     std::fs::write(path, content).expect("script should be writable");
     let mut permissions = std::fs::metadata(path).expect("metadata").permissions();
     permissions.set_mode(0o755);
@@ -134,6 +136,7 @@ fn text(output: &Output) -> String {
     )
 }
 
+#[cfg(unix)]
 #[test]
 fn app_start_runs_selected_back_end_modules_and_starts_docker_when_needed() {
     let dir = TempDir::new("app-start-run");

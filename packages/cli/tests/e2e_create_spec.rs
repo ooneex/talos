@@ -1,6 +1,5 @@
 use clap::Parser;
 use cli::commands::e2e_create::{E2eCreateArgs, run};
-use std::os::unix::fs::PermissionsExt;
 use std::sync::Mutex;
 
 static ENV_GUARD: Mutex<()> = Mutex::new(());
@@ -46,13 +45,17 @@ fn e2e_create_rejects_unknown_flag() {
     assert!(TestCli::try_parse_from(["talos", "--definitely-not-a-flag"]).is_err());
 }
 
+#[cfg(unix)]
 fn write_executable(path: &std::path::Path, content: &str) {
+    use std::os::unix::fs::PermissionsExt;
+
     std::fs::write(path, content).expect("script should be writable");
     let mut permissions = std::fs::metadata(path).expect("metadata").permissions();
     permissions.set_mode(0o755);
     std::fs::set_permissions(path, permissions).expect("permissions");
 }
 
+#[cfg(unix)]
 #[test]
 fn e2e_create_writes_the_spec_updates_scripts_and_uses_bunx() {
     let _guard = ENV_GUARD.lock().unwrap_or_else(|error| error.into_inner());
@@ -132,6 +135,7 @@ fn e2e_create_writes_the_spec_updates_scripts_and_uses_bunx() {
     assert!(package_json.contains("\"e2e\": \"bunx playwright test\""));
 }
 
+#[cfg(unix)]
 #[test]
 fn e2e_create_strips_suffixes_and_preserves_existing_config_and_script() {
     let _guard = ENV_GUARD.lock().unwrap_or_else(|error| error.into_inner());

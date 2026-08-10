@@ -1,5 +1,4 @@
 use std::fs;
-use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use std::process::Command;
 
@@ -45,7 +44,10 @@ fn write_broken_rust_module(root: &Path, name: &str) {
 /// A module whose build script is an executable shell file, so it can print
 /// many lines (and blank ones) without fighting `run_build`'s whitespace-only
 /// argv splitting.
+#[cfg(unix)]
 fn write_scripted_module(root: &Path, name: &str, script_body: &str) {
+    use std::os::unix::fs::PermissionsExt;
+
     let dir = root.join("modules").join(name);
     fs::create_dir_all(&dir).expect("module dir");
     fs::write(
@@ -174,6 +176,7 @@ fn execute_reports_a_single_failure_without_logs_and_stops_before_later_targets(
     assert!(!tmp.path().join("modules/zeta/ran.marker").exists());
 }
 
+#[cfg(unix)]
 #[test]
 fn execute_reports_a_failure_with_logs_and_prints_the_tail_of_the_output() {
     let tmp = tempfile::tempdir().expect("tempdir");

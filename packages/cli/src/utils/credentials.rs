@@ -1,13 +1,32 @@
 use std::fs;
-use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 
 use super::yaml::{credentials_to_yaml, parse_default_profile};
 
 /// Credential files hold API tokens in clear text, so they stay readable by
-/// their owner only.
+/// their owner only. Windows has no mode bits — the files inherit the ACL of
+/// the user profile directory instead.
+#[cfg(unix)]
 const DIR_MODE: u32 = 0o700;
+#[cfg(unix)]
 const FILE_MODE: u32 = 0o600;
+
+#[cfg(unix)]
+fn restrict(path: &Path, mode: u32) -> Result<(), String> {
+    use std::os::unix::fs::PermissionsExt;
+
+    fs::set_permissions(path, fs::Permissions::from_mode(mode)).map_err(|e| e.to_string())
+}
+
+#[cfg(not(unix))]
+fn restrict(_path: &Path, _mode: u32) -> Result<(), String> {
+    Ok(())
+}
+
+#[cfg(not(unix))]
+const DIR_MODE: u32 = 0;
+#[cfg(not(unix))]
+const FILE_MODE: u32 = 0;
 
 fn credentials_path(file_name: &str) -> Option<PathBuf> {
     let home = dirs_home()?;
@@ -47,12 +66,11 @@ pub fn save_credentials(
 fn write_credentials(path: &Path, profile: &[(String, String)]) -> Result<(), String> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).map_err(|e| e.to_string())?;
-        fs::set_permissions(parent, fs::Permissions::from_mode(DIR_MODE))
-            .map_err(|e| e.to_string())?;
+        restrict(parent, DIR_MODE)?;
     }
 
     fs::write(path, credentials_to_yaml(profile)).map_err(|e| e.to_string())?;
-    fs::set_permissions(path, fs::Permissions::from_mode(FILE_MODE)).map_err(|e| e.to_string())
+    restrict(path, FILE_MODE)
 }
 
 pub fn read_credentials(file_name: &str) -> Option<Vec<(String, String)>> {

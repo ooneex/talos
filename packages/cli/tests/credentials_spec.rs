@@ -1,4 +1,3 @@
-use std::os::unix::fs::PermissionsExt;
 use std::sync::Mutex;
 
 use cli::utils::{read_credentials, save_credentials};
@@ -79,8 +78,12 @@ fn save_credentials_round_trips_values_needing_yaml_quoting() {
     });
 }
 
+/// Mode bits only exist on unix; Windows leans on the profile directory's ACL.
+#[cfg(unix)]
 #[test]
 fn saved_credentials_are_readable_by_their_owner_only() {
+    use std::os::unix::fs::PermissionsExt;
+
     with_temp_home(|| {
         let path = save_credentials(
             "modes.yml",

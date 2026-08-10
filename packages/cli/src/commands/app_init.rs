@@ -1,5 +1,4 @@
 use std::fs;
-use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -358,10 +357,23 @@ fn write_commitlint_hook(destination: &Path) -> Result<PathBuf, String> {
 # Talos commit-message linter — installed by `talos commitlint:init`.\n\
 exec talos commitlint:check --file \"$1\"\n";
     fs::write(&hook_path, hook_content).map_err(|e| e.to_string())?;
-    fs::set_permissions(&hook_path, fs::Permissions::from_mode(0o755))
-        .map_err(|e| e.to_string())?;
+    make_executable(&hook_path)?;
 
     Ok(hook_path)
+}
+
+/// Git for Windows runs hooks through its bundled shell, which ignores mode
+/// bits, so the executable flag is only meaningful on unix.
+#[cfg(unix)]
+fn make_executable(path: &Path) -> Result<(), String> {
+    use std::os::unix::fs::PermissionsExt;
+
+    fs::set_permissions(path, fs::Permissions::from_mode(0o755)).map_err(|e| e.to_string())
+}
+
+#[cfg(not(unix))]
+fn make_executable(_path: &Path) -> Result<(), String> {
+    Ok(())
 }
 
 fn resolve_agent_dirs(silent: bool) -> Vec<String> {

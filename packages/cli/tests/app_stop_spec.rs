@@ -1,6 +1,5 @@
 use clap::Parser;
 use cli::commands::app_stop::AppStopArgs;
-use std::os::unix::fs::PermissionsExt;
 use std::process::{Command, Output};
 
 #[derive(Parser)]
@@ -41,7 +40,10 @@ fn app_stop_rejects_unknown_flag() {
     assert!(TestCli::try_parse_from(["talos", "--definitely-not-a-flag"]).is_err());
 }
 
+#[cfg(unix)]
 fn write_executable(path: &std::path::Path, content: &str) {
+    use std::os::unix::fs::PermissionsExt;
+
     std::fs::write(path, content).expect("script should be writable");
     let mut permissions = std::fs::metadata(path).expect("metadata").permissions();
     permissions.set_mode(0o755);
@@ -66,6 +68,7 @@ fn text(output: &Output) -> String {
     )
 }
 
+#[cfg(unix)]
 #[test]
 fn app_stop_stops_docker_for_selected_back_end_modules() {
     let dir = tempfile::tempdir().expect("tempdir");
@@ -129,6 +132,7 @@ fn app_stop_exits_when_the_app_module_is_missing() {
 
 /// A `lsof` that reports `pid` until the first call has been logged, so the
 /// process reads as gone once it has been asked to stop.
+#[cfg(unix)]
 fn write_stubborn_lsof(bin: &std::path::Path, log: &std::path::Path, pid: &str, stubborn: bool) {
     let seen = if stubborn {
         String::new()
@@ -154,6 +158,7 @@ fn write_stubborn_lsof(bin: &std::path::Path, log: &std::path::Path, pid: &str, 
     );
 }
 
+#[cfg(unix)]
 #[test]
 fn app_stop_frees_the_port_a_front_end_module_declares() {
     let dir = tempfile::tempdir().expect("tempdir");
@@ -196,6 +201,7 @@ fn app_stop_frees_the_port_a_front_end_module_declares() {
     assert!(!log_text.contains("-KILL"), "{log_text}");
 }
 
+#[cfg(unix)]
 #[test]
 fn app_stop_kills_a_process_that_keeps_holding_the_port() {
     let dir = tempfile::tempdir().expect("tempdir");
@@ -244,6 +250,7 @@ fn app_stop_kills_a_process_that_keeps_holding_the_port() {
     assert!(!log_text.contains("lsof:-nP -iTCP:6379"), "{log_text}");
 }
 
+#[cfg(unix)]
 #[test]
 fn app_stop_exits_when_there_is_nothing_left_to_stop() {
     let dir = tempfile::tempdir().expect("tempdir");
@@ -279,6 +286,7 @@ fn app_stop_exits_when_there_is_nothing_left_to_stop() {
     assert!(text(&output).contains("Nothing to stop"));
 }
 
+#[cfg(unix)]
 #[test]
 fn app_stop_falls_back_to_app_when_package_name_is_missing() {
     let dir = tempfile::tempdir().expect("tempdir");

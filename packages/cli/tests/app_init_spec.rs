@@ -1,5 +1,4 @@
 use std::fs;
-use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use std::process::Command;
 
@@ -183,8 +182,13 @@ fn install_commitlint_hook_writes_an_executable_hook() {
     let content = fs::read_to_string(&hook_path).unwrap();
     assert!(content.contains("talos commitlint:check"));
 
-    let mode = fs::metadata(&hook_path).unwrap().permissions().mode();
-    assert_eq!(mode & 0o111, 0o111, "hook file should be executable");
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+
+        let mode = fs::metadata(&hook_path).unwrap().permissions().mode();
+        assert_eq!(mode & 0o111, 0o111, "hook file should be executable");
+    }
 }
 
 #[test]

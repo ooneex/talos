@@ -1,6 +1,5 @@
 use clap::Parser;
 use cli::commands::design_create::{DesignCreateArgs, run};
-use std::os::unix::fs::PermissionsExt;
 use std::sync::Mutex;
 
 #[derive(Parser)]
@@ -85,6 +84,7 @@ fn visit_files_recursive_ignores_an_unreadable_directory() {
     assert_eq!(count, 0);
 }
 
+#[cfg(unix)]
 fn write(path: &std::path::Path, content: &str) {
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent).expect("parent");
@@ -92,8 +92,12 @@ fn write(path: &std::path::Path, content: &str) {
     std::fs::write(path, content).expect("file");
 }
 
+/// The `bun`/`git` stand-in is a shell script, so this one is unix-only.
+#[cfg(unix)]
 #[test]
 fn design_create_scaffolds_a_module_and_updates_aliases() {
+    use std::os::unix::fs::PermissionsExt;
+
     let _guard = ENV_GUARD.lock().unwrap_or_else(|error| error.into_inner());
     let home = tempfile::tempdir().expect("home");
     let cwd = tempfile::tempdir().expect("cwd");

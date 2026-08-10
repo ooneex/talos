@@ -1,6 +1,5 @@
 use clap::Parser;
 use cli::commands::admin_create::{AdminCreateArgs, run};
-use std::os::unix::fs::PermissionsExt;
 use std::sync::Mutex;
 
 #[derive(Parser)]
@@ -196,6 +195,7 @@ fn visit_files_recursive_reaches_every_file_but_no_directory() {
     assert_eq!(seen, ["a.txt", "b.txt", "c.txt"]);
 }
 
+#[cfg(unix)]
 fn write(path: &std::path::Path, content: &str) {
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent).expect("parent");
@@ -203,8 +203,12 @@ fn write(path: &std::path::Path, content: &str) {
     std::fs::write(path, content).expect("file");
 }
 
+/// The `bun`/`git` stand-in is a shell script, so this one is unix-only.
+#[cfg(unix)]
 #[test]
 fn admin_create_scaffolds_the_admin_and_missing_design_modules() {
+    use std::os::unix::fs::PermissionsExt;
+
     let _guard = ENV_GUARD.lock().unwrap_or_else(|error| error.into_inner());
     let home = tempfile::tempdir().expect("home");
     let cwd = tempfile::tempdir().expect("cwd");

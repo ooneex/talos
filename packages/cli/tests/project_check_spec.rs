@@ -1,6 +1,5 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
-use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 
 use clap::Parser;
@@ -1488,8 +1487,13 @@ fn docker_is_skipped_without_any_compose_file_and_fails_on_invalid_yaml() {
     );
 }
 
+/// Mode `0o000` is the only portable way to make a file unreadable, and it
+/// has no Windows equivalent.
+#[cfg(unix)]
 #[test]
 fn docker_reports_an_unreadable_compose_file() {
+    use std::os::unix::fs::PermissionsExt;
+
     let (_guard, root) = root();
     let compose = root.join("docker-compose.yml");
     write(
@@ -2575,8 +2579,13 @@ fn an_sdk_without_a_target_or_with_a_target_without_routes_is_reported() {
     );
 }
 
+/// Mode `0o000` is the only portable way to make a file unreadable, and it
+/// has no Windows equivalent.
+#[cfg(unix)]
 #[test]
 fn sdk_surface_skips_unreadable_files_and_ignores_unnamed_routes() {
+    use std::os::unix::fs::PermissionsExt;
+
     let (_guard, root) = root();
     let sdk_dir = root.join("modules/sdk");
     fs::create_dir_all(sdk_dir.join("src")).expect("create src");
@@ -2769,8 +2778,13 @@ fn validation_detects_typed_sections_without_schemas_and_skips_when_no_contract_
     );
 }
 
+/// Mode `0o000` is the only portable way to make a file unreadable, and it
+/// has no Windows equivalent.
+#[cfg(unix)]
 #[test]
 fn validation_skips_unreadable_controller_files() {
+    use std::os::unix::fs::PermissionsExt;
+
     let (_guard, root) = root();
     let dir = workspace(&root, "user", "module");
     let controller = dir.join("src/controllers/UserController.ts");
@@ -2970,8 +2984,13 @@ fn secrets_run_warns_in_fixtures_and_skips_empty_trees() {
     );
 }
 
+/// Mode `0o000` is the only portable way to make a file unreadable, and it
+/// has no Windows equivalent.
+#[cfg(unix)]
 #[test]
 fn secrets_run_reports_real_secrets_and_skips_unreadable_files() {
+    use std::os::unix::fs::PermissionsExt;
+
     let (_guard, root) = root();
     assert!(secrets::is_secret_file("id_rsa"));
     let src = root.join("src");
