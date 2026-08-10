@@ -1,6 +1,6 @@
 use clap::Parser;
 use cli::commands::workspace_check::{
-    WorkspaceCheckArgs, build_args, coverage_args, install_args, lint_args,
+    WorkspaceCheckArgs, build_args, coverage_args, install_args, lint_args, performance_args, score,
 };
 
 #[derive(Parser)]
@@ -148,4 +148,85 @@ fn workspace_check_builds_the_coverage_arguments() {
     assert_eq!(coverage.concurrency, Some(4));
     assert!(coverage.strict);
     assert_eq!(coverage.cwd.as_deref(), Some("./here"));
+}
+
+#[test]
+fn workspace_check_builds_the_performance_arguments() {
+    let args = WorkspaceCheckArgs {
+        packages: Some("core".to_string()),
+        modules: Some("user".to_string()),
+        logs: true,
+        no_cache: true,
+        threshold: Some(85.0),
+        concurrency: Some(4),
+        strict: true,
+        cwd: Some("./here".to_string()),
+    };
+
+    let performance = performance_args(&args);
+
+    assert!(!performance.issues);
+    assert_eq!(performance.packages.as_deref(), Some("core"));
+    assert_eq!(performance.modules.as_deref(), Some("user"));
+    assert!(performance.logs);
+    assert!(performance.strict);
+    assert_eq!(performance.cwd.as_deref(), Some("./here"));
+    // The gate's --threshold is a coverage rate, so it is never spent on the
+    // performance score — that one keeps its own default.
+    assert!(performance.threshold.is_none());
+    assert!(performance.min_severity.is_none());
+}
+
+#[test]
+fn workspace_check_scores_the_sources_it_is_pointed_at() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let module = dir.path().join("modules/user/src");
+    std::fs::create_dir_all(&module).expect("module");
+    std::fs::write(
+        module.join("user.service.ts"),
+        "export class UserService {\n  \
+         public async syncAll(ids: string[]): Promise<void> {\n    \
+         for (const id of ids) {\n      \
+         await this.userRepository.findOne(id);\n    \
+         }\n  }\n}\n",
+    )
+    .expect("source");
+
+    let args = WorkspaceCheckArgs {
+        packages: None,
+        modules: None,
+        logs: false,
+        no_cache: false,
+        threshold: None,
+        concurrency: None,
+        strict: false,
+        cwd: Some(dir.path().to_string_lossy().to_string()),
+    };
+
+    let audit = score(&args, true).expect("the sources are scored");
+
+    let module = audit
+        .scanned()
+        .into_iter()
+        .find(|module| module.name == "user")
+        .expect("the module is scanned");
+    assert!(module.score() < audit.threshold);
+    assert_eq!(module.hotspots(audit.threshold).len(), 1);
+}
+
+#[test]
+fn workspace_check_reports_a_workspace_with_nothing_to_score() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let args = WorkspaceCheckArgs {
+        packages: None,
+        modules: None,
+        logs: false,
+        no_cache: false,
+        threshold: None,
+        concurrency: None,
+        strict: false,
+        cwd: Some(dir.path().to_string_lossy().to_string()),
+    };
+
+    assert!(score(&args, true).is_err());
 }

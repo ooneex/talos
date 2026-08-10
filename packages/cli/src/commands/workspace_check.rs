@@ -1,18 +1,25 @@
 //! `workspace:check` — the workspace gate: install, build, then measure the
-//! tests and lint at once.
+//! tests, lint and score the sources at once.
 //!
 //! Each step is its own standalone command with its own cache — [`install`],
-//! [`build`], [`coverage`] and [`lint`] — run here directly rather than
-//! through [`workspace_run`]'s per-target scheduler, so the gate behaves
-//! exactly as running each of them alone would. Install and build run first,
-//! in order, because a suite can only be measured and sources can only be
-//! linted once the workspace resolved and compiled. Coverage and lint read
-//! disjoint parts of the tree from there on — one measures the suites, the
-//! other lints the sources — so they run at once instead of one after the
-//! other, but quietly: each draws its own live progress bar, and two loaders
-//! writing to the same terminal at once would corrupt each other's output.
-//! Their reports are printed one after the other, under a single header,
-//! once both are back.
+//! [`build`], [`coverage`], [`lint`] and [`performance_check`] — run here
+//! directly rather than through [`workspace_run`]'s per-target scheduler, so
+//! the gate behaves exactly as running each of them alone would. Install and
+//! build run first, in order, because a suite can only be measured and
+//! sources can only be linted once the workspace resolved and compiled. The
+//! three that follow read disjoint parts of the tree — one measures the
+//! suites, one lints the sources, one scores them — so they run at once
+//! instead of one after the other, but quietly: each draws its own live
+//! progress bar alone, and two loaders writing to the same terminal at once
+//! would corrupt each other's output. Suites are much the slowest of the
+//! three, so coverage is the one that draws. Their reports are printed one
+//! after the other, under a single header, once all three are back.
+//!
+//! The performance score is the one advisory step: a rule there fires on a
+//! shape rather than on a measurement, so it reports last and only fails the
+//! gate under `--strict` — the same thing `performance:check` does when it is
+//! run alone. It is scored against its own default threshold rather than the
+//! gate's `--threshold`, which is the coverage rate and means something else.
 
 use std::path::PathBuf;
 use std::time::Instant;
@@ -23,6 +30,7 @@ use crate::commands::build::{self, BuildArgs};
 use crate::commands::coverage::{self, CoverageArgs, CoverageAudit};
 use crate::commands::install::{self, InstallArgs};
 use crate::commands::lint::{self, LintArgs, LintAudit};
+use crate::commands::performance_check::{self, PerformanceAudit, PerformanceCheckArgs};
 
 #[derive(Args, Debug)]
 pub struct WorkspaceCheckArgs {
@@ -124,6 +132,44 @@ pub fn coverage_args(args: &WorkspaceCheckArgs) -> CoverageArgs {
     }
 }
 
+/// The gate's `performance:check`.
+///
+/// `threshold` is deliberately left unset: the gate's own `--threshold` is a
+/// coverage rate, and spending it on a second, unrelated score would mean one
+/// number quietly deciding two different things.
+pub fn performance_args(args: &WorkspaceCheckArgs) -> PerformanceCheckArgs {
+    PerformanceCheckArgs {
+        issues: false,
+        modules: args.modules.clone(),
+        packages: args.packages.clone(),
+        threshold: None,
+        min_severity: None,
+        logs: args.logs,
+        strict: args.strict,
+        cwd: args.cwd.clone(),
+    }
+}
+
+/// Score the gate's sources without reporting them or ending the process —
+/// the same audit [`run`] prints, for a caller that owns its own report.
+pub fn score(args: &WorkspaceCheckArgs, quiet: bool) -> Result<PerformanceAudit, String> {
+    let root = args
+        .cwd
+        .clone()
+        .map(PathBuf::from)
+        .unwrap_or_else(crate::utils::current_dir);
+    let performance = performance_args(args);
+
+    performance_check::audit(
+        &root,
+        performance.modules.as_deref(),
+        performance.packages.as_deref(),
+        performance.threshold,
+        performance.min_severity.as_deref(),
+        quiet,
+    )
+}
+
 pub fn run(args: &WorkspaceCheckArgs) {
     // The suites are only worth measuring, and the sources only worth
     // linting, against a workspace that installed and built cleanly, so a
@@ -135,12 +181,13 @@ pub fn run(args: &WorkspaceCheckArgs) {
         std::process::exit(1);
     }
 
-    // Coverage and lint touch disjoint parts of the workspace, so they are
-    // measured on their own threads at once. Suites are the slower of the
-    // two, so coverage draws the live loader; lint runs quietly beside it —
-    // two loaders writing to the same terminal at once would corrupt each
-    // other's output — and both reports print once both are back, so they
-    // print whole instead of interleaved mid-line.
+    // Coverage, lint and the performance score touch disjoint parts of the
+    // workspace, so they run on their own threads at once. Suites are much
+    // the slowest of the three, so coverage draws the live loader; the other
+    // two run quietly beside it — two loaders writing to the same terminal at
+    // once would corrupt each other's output — and all three reports print
+    // once all three are back, so they print whole instead of interleaved
+    // mid-line.
     let started = Instant::now();
     let root = args
         .cwd
@@ -148,7 +195,7 @@ pub fn run(args: &WorkspaceCheckArgs) {
         .map(PathBuf::from)
         .unwrap_or_else(crate::utils::current_dir);
 
-    let (coverage, lint) = std::thread::scope(|scope| {
+    let (coverage, lint, performance) = std::thread::scope(|scope| {
         let coverage = scope.spawn(|| measure(args, false));
         let lint = scope.spawn(|| {
             lint::audit(
@@ -159,39 +206,46 @@ pub fn run(args: &WorkspaceCheckArgs) {
                 true,
             )
         });
-        (coverage.join(), lint.join())
+        let performance = scope.spawn(|| score(args, true));
+        (coverage.join(), lint.join(), performance.join())
     });
     let elapsed_ms = started.elapsed().as_millis() as u64;
 
-    let (coverage_failed, lint_passed) = print_check_report(
+    let passed = print_check_report(
         args,
         coverage.unwrap_or_else(|_| Err("coverage panicked".to_string())),
         lint.unwrap_or_else(|_| Err("lint panicked".to_string())),
+        performance.unwrap_or_else(|_| Err("the performance score panicked".to_string())),
         elapsed_ms,
     );
 
-    if coverage_failed || !lint_passed {
+    if !passed {
         std::process::exit(1);
     }
 }
 
-/// Prints coverage and lint as one gate report instead of the two each would
-/// draw alone, then returns whether coverage failed and whether lint passed
-/// so [`run`] can decide the gate's status.
+/// Prints coverage, lint and the performance score as one gate report instead
+/// of the three each would draw alone, then returns whether the gate passed so
+/// [`run`] can decide the status once.
+///
+/// Every report is printed whatever the others found — a gate that stopped at
+/// the first failure would hide the other two, and the point of running them
+/// together is seeing all three at once.
 fn print_check_report(
     args: &WorkspaceCheckArgs,
     coverage: Result<CoverageAudit, String>,
     lint: Result<LintAudit, String>,
+    performance: Result<PerformanceAudit, String>,
     elapsed_ms: u64,
-) -> (bool, bool) {
-    let coverage_failed = match coverage {
+) -> bool {
+    let coverage_passed = match coverage {
         Ok(audit) => {
             coverage::print_report(&audit, args.logs, args.strict, elapsed_ms, true);
-            audit.is_failure(args.strict)
+            !audit.is_failure(args.strict)
         }
         Err(message) => {
             crate::utils::warn(message);
-            true
+            false
         }
     };
 
@@ -206,5 +260,19 @@ fn print_check_report(
         }
     };
 
-    (coverage_failed, lint_passed)
+    // A workspace with no TypeScript to score is not a failing gate, so this
+    // one warns where the others error: nothing to score is an absence, not a
+    // verdict.
+    let performance_passed = match performance {
+        Ok(audit) => {
+            performance_check::print_report(&audit, args.logs, args.strict, elapsed_ms, true);
+            !audit.is_failure(args.strict)
+        }
+        Err(message) => {
+            crate::utils::warn(message);
+            true
+        }
+    };
+
+    coverage_passed && lint_passed && performance_passed
 }

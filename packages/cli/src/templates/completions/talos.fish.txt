@@ -166,6 +166,7 @@ for cmd in oo talos
     complete -c $cmd -f -n __fish_use_subcommand -a check -d 'Alias for workspace:check'
     complete -c $cmd -f -n __fish_use_subcommand -a security:check -d 'Audit dependencies for known vulnerabilities via OSV.dev'
     complete -c $cmd -f -n __fish_use_subcommand -a coverage -d 'Run tests per module with coverage and report what is left uncovered'
+    complete -c $cmd -f -n __fish_use_subcommand -a performance:check -d 'Score every function, method and class on what it will cost as the data grows'
     complete -c $cmd -f -n __fish_use_subcommand -a project:check -d 'Run every health check: structure, conventions, imports, boundaries, container, routes, validation, roles, entities, sql, async, complexity, duplication, orphans, deps, docker, migrations, a11y, contrast, translations, stories, sdk, tests, e2e, docs, bundle, security, secrets, git, issues, branches, commits, hygiene'
     complete -c $cmd -f -n __fish_use_subcommand -a install -d 'Install dependencies with bun, auditing every package for known vulnerabilities first'
     complete -c $cmd -f -n __fish_use_subcommand -a update -d 'Update dependencies with bun, auditing the resolved versions for known vulnerabilities first'
@@ -359,6 +360,15 @@ for cmd in oo talos
     complete -c $cmd -n '__fish_seen_subcommand_from coverage' -l no-cache -d 'Skip reading and writing the coverage cache'
     complete -c $cmd -n '__fish_seen_subcommand_from coverage' -l strict -d 'Fail when a module stays under the threshold'
     complete -c $cmd -n '__fish_seen_subcommand_from coverage' -l cwd -d 'Working directory'
+
+    complete -c $cmd -n '__fish_seen_subcommand_from performance:check' -l issues -d 'Create a YAML issue per module under the threshold instead of printing the report'
+    complete -c $cmd -n '__fish_seen_subcommand_from performance:check' -l modules -a '(__talos_pkg_modules)' -d 'Module name(s), comma-separated'
+    complete -c $cmd -n '__fish_seen_subcommand_from performance:check' -l packages -a '(__talos_packages)' -d 'Alias for --modules, comma-separated'
+    complete -c $cmd -n '__fish_seen_subcommand_from performance:check' -l threshold -d 'Minimum score a module must reach, out of 100'
+    complete -c $cmd -n '__fish_seen_subcommand_from performance:check' -l min-severity -x -a 'low moderate high critical' -d 'Minimum severity to report'
+    complete -c $cmd -n '__fish_seen_subcommand_from performance:check' -l logs -d 'Print every hotspot and every rule, each with what to do about it'
+    complete -c $cmd -n '__fish_seen_subcommand_from performance:check' -l strict -d 'Fail when a module stays under the threshold'
+    complete -c $cmd -n '__fish_seen_subcommand_from performance:check' -l cwd -d 'Working directory'
 
     complete -c $cmd -n '__fish_seen_subcommand_from project:check' -l only -x -a 'workspace structure tsconfig lockfile conventions imports boundaries restricted container registration routes validation roles entities sql async complexity duplication orphans env dependencies outdated docker migrations accessibility contrast translations stories sdk tests coverage e2e-coverage docs bundle security secrets git issues branches commits hygiene e2e' -d 'Only run these checks, comma-separated'
     complete -c $cmd -n '__fish_seen_subcommand_from project:check' -l skip -x -a 'workspace structure tsconfig lockfile conventions imports boundaries restricted container registration routes validation roles entities sql async complexity duplication orphans env dependencies outdated docker migrations accessibility contrast translations stories sdk tests coverage e2e-coverage docs bundle security secrets git issues branches commits hygiene e2e' -d 'Skip these checks, comma-separated'

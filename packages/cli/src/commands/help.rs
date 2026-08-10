@@ -134,6 +134,10 @@ const COMMANDS: &[(&str, &str)] = &[
         "Save an npm Granular Access Token under the user config",
     ),
     ("npm:publish", "Publish a package or module to npm"),
+    (
+        "performance:check",
+        "Score every function, method and class on what it will cost as the data grows",
+    ),
     ("permission:create", "Generate a new permission class"),
     (
         "project:check",

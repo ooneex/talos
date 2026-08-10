@@ -177,6 +177,7 @@ _talos() {
     'check:Alias for workspace:check — run install, build, fmt, lint and test across packages and modules with granular caching'
     'security\:check:Audit dependencies for known vulnerabilities via OSV.dev'
     'coverage:Run tests per module with coverage and report what is left uncovered'
+    'performance\:check:Score every function, method and class on what it will cost as the data grows'
     'project\:check:Run every health check — workspace, structure, conventions, env, deps, docker, migrations, a11y, translations, tests, docs, security, secrets, git, issues, commits, hygiene'
     'install:Install dependencies with bun, auditing every package for known vulnerabilities first'
     'update:Update dependencies with bun, auditing the resolved versions for known vulnerabilities first'
@@ -477,6 +478,17 @@ _talos() {
             '--logs[Print the output of every suite that fails]' \
             '--concurrency=[How many suites run at once]:concurrency:(1 2 4 8)' \
             '--no-cache[Skip reading and writing the coverage cache]' \
+            '--strict[Fail when a module stays under the threshold]' \
+            '--cwd=[Working directory]:cwd:_files -/'
+          ;;
+        performance:check)
+          _arguments -s \
+            '--issues[Create a YAML issue per module under the threshold instead of printing the report]' \
+            '--modules=-[Module name(s), comma-separated (default: all)]::modules:_talos_publish_modules' \
+            '--packages=-[Alias for --modules, comma-separated (default: all)]::packages:_talos_publish_packages' \
+            '--threshold=[Minimum score a module must reach, out of 100]:threshold:(70 75 80 85 90 95 100)' \
+            '--min-severity=[Minimum severity to report]:level:(low moderate high critical)' \
+            '--logs[Print every hotspot and every rule, each with what to do about it]' \
             '--strict[Fail when a module stays under the threshold]' \
             '--cwd=[Working directory]:cwd:_files -/'
           ;;

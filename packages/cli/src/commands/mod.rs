@@ -58,6 +58,7 @@ pub mod module_create;
 pub mod module_remove;
 pub mod npm_credentials_create;
 pub mod npm_publish;
+pub mod performance_check;
 pub mod permission_create;
 pub mod project_check;
 pub mod queue_create;
@@ -373,6 +374,10 @@ pub enum Commands {
     #[command(name = "coverage")]
     Coverage(coverage::CoverageArgs),
 
+    /// Score every function, method and class on what it will cost as the data grows
+    #[command(name = "performance:check")]
+    PerformanceCheck(performance_check::PerformanceCheckArgs),
+
     /// Run every health check (workspace, structure, conventions, env, dependencies, docker, migrations, accessibility, translations, tests, docs, security, secrets, git, issues, commits, hygiene)
     #[command(name = "project:check")]
     ProjectCheck(project_check::ProjectCheckArgs),
@@ -402,6 +407,7 @@ impl Commands {
             Commands::Check(args) => check::run(args),
             Commands::SecurityCheck(args) => security_check::run(args),
             Commands::Coverage(args) => coverage::run(args),
+            Commands::PerformanceCheck(args) => performance_check::run(args),
             Commands::ProjectCheck(args) => project_check::run(args),
             Commands::MigrationUp(args) => migration_up::run(args),
             Commands::MigrationDown(args) => migration_down::run(args),
