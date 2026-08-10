@@ -154,14 +154,21 @@ pub fn run(args: &AgentSkillsCreateArgs) {
 
     for config_dir in &agent_dirs {
         let adapter = resolve_adapter(config_dir);
+        let mut written = 0usize;
         for file in adapter(&input, config_dir) {
             let dest = cwd.join(&file.path);
             if let Some(parent) = dest.parent() {
                 let _ = fs::create_dir_all(parent);
             }
-            if fs::write(&dest, &file.content).is_ok() && !args.silent {
-                crate::utils::success(format!("{} created successfully", dest.display()));
+            if fs::write(&dest, &file.content).is_ok() {
+                written += 1;
             }
+        }
+        if written > 0 && !args.silent {
+            let label = if written == 1 { "file" } else { "files" };
+            crate::utils::success(format!(
+                "{config_dir} created successfully ({written} {label})"
+            ));
         }
     }
 }
