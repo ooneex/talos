@@ -18,7 +18,7 @@
   <p align="center">
     <strong>A modular TypeScript framework for Bun, built around Spec-Driven Development.</strong>
     <br />
-    60+ independent packages covering HTTP, data, security, real-time, and AI.
+    62 independent packages covering HTTP, data, security, real-time, and AI.
     <br />
     <br />
     <a href="https://docs.talosjs.com/getting-started"><strong>Explore the docs »</strong></a>
@@ -56,7 +56,6 @@
       <a href="#development">Development</a>
       <ul>
         <li><a href="#working-on-the-monorepo">Working on the Monorepo</a></li>
-        <li><a href="#commands">Commands</a></li>
         <li><a href="#commit-conventions">Commit Conventions</a></li>
       </ul>
     </li>
@@ -75,7 +74,7 @@
 
 <br />
 
-Talos is a modular TypeScript framework built on [Bun](https://bun.sh). It ships as 60+ independent packages under the `@talosjs` namespace, each versioned on its own, covering HTTP, data, security, real-time, AI, and general utilities. You install only the packages you need.
+Talos is a modular TypeScript framework built on [Bun](https://bun.sh). It ships as 62 independent packages under the `@talosjs` namespace, each versioned on its own, covering HTTP, data, security, real-time, AI, and general utilities, plus the `talos` CLI that scaffolds and runs it all. You install only the packages you need.
 
 Its distinguishing feature is Spec-Driven Development. Instead of prompting an AI agent from scratch, you describe work as structured specs — YAML files with context, goals, and a definition of done — that agents can read, plan against, and implement using your module's existing conventions. The same codebase scales from a side project to a multi-service platform without a rewrite.
 
@@ -111,46 +110,50 @@ A few commands take you from an empty machine to a running Talos app with its fi
 
 ### Prerequisites
 
-The CLI runs on [Bun](https://bun.sh). Install it first:
+Your app and every generated module run on [Bun](https://bun.sh). Install it first:
 
 ```sh
 curl -fsSL https://bun.sh/install | bash
-```
-
-Verify the install:
-
-```sh
 bun --version
 ```
 
 ### Create your app
 
-1. **Install the CLI globally.** It exposes two interchangeable binaries, `talos` and its short alias `oo`.
+1. **Install the CLI.** It's a self-contained native binary — no Node or Bun needed to run it. The installer drops it in `~/.talos/bin`, adds that to your `PATH`, symlinks the short alias `oo`, and installs shell completions.
 
    ```sh
-   bun add -g @talosjs/cli
-   talos help
+   curl -fsSL https://raw.githubusercontent.com/ooneex/talos/main/packages/cli/scripts/install.sh | bash
    ```
 
-   > Prefer not to install globally? Run any command through `bunx`, e.g. `bunx @talosjs/cli@latest app:create`.
+   On Windows:
 
-2. **Scaffold a complete application.** This creates the `app` and `shared` modules, the entrypoint, the shared database, roles, Docker files, and config, then installs dependencies.
+   ```powershell
+   powershell -c "irm https://raw.githubusercontent.com/ooneex/talos/main/packages/cli/scripts/install.ps1 | iex"
+   ```
+
+   Then open a new shell and check it:
+
+   ```sh
+   talos help     # or: oo help
+   ```
+
+   > `talos` and `oo` are the same binary — use whichever you prefer. `talos upgrade` pulls the latest release later on.
+
+2. **Scaffold a complete application.** This creates the `app` and `shared` modules, the entrypoint, the shared database, roles, Docker files, and config, then installs dependencies. You'll be asked whether to add CI/CD files for GitHub, GitLab, or Bitbucket.
 
    ```sh
    talos app:create --name=MovieApp --destination=movie-app
    cd movie-app
    ```
 
-3. **Start the development environment.** `app:start` brings up the shared Docker stack, then runs every `api`, `microservice`, and `spa` module concurrently with hot reload. Pass a type flag to narrow what runs.
+3. **Start the development environment.** `app:start` brings up the shared Docker stack, then runs every runnable module — `api`, `microservice`, `spa`, `admin`, `storybook`, and `swagger` — concurrently with hot reload. Narrow it with `--modules` or `--packages`.
 
    ```sh
-   talos app:start                            # everything
-   talos app:start --api                      # only the api modules
-   talos app:start --spa                      # only the spa modules
-   talos app:start --microservice=billing     # only the named microservice
+   talos app:start                          # everything
+   talos app:start --modules=app,billing    # only the named modules
    ```
 
-   Stop it again with `talos app:stop`.
+   Stop everything again with `talos app:stop`.
 
    > The environment file is generated at `modules/shared/.env.yml`. Edit it to point at your database, Redis, and other services before starting.
 
@@ -173,8 +176,10 @@ talos repository:create --name=Movie --module=movie
 # 4. Controller — one route per controller; repeat per endpoint
 talos controller:create \
   --name=MovieList --module=movie \
-  --route-name=movie.list --route-path=/movies --route-method=get
+  --route.name=movie.list --route.path=/movies --route.method=get
 ```
+
+Run any generator with no flags and it prompts for what it needs.
 
 Prefer an AI agent? Scaffold the skills once with `talos agent:skills:create` — it sets up the shared `AGENTS.md`, agent files, and skills for Claude, Codex, Cursor, Gemini, and more — then describe the whole `Movie` domain in a single prompt. The agent runs the same `module:create`, `entity:create`, `repository:create`, and `controller:create` generators and writes the tests. See [Create your app](https://docs.talosjs.com/getting-started/create-app) for the full walkthrough.
 
@@ -196,8 +201,20 @@ To develop the framework packages themselves:
 
 ```sh
 git clone https://github.com/ooneex/talos.git
-cd Talos
-talos monorepo:check
+cd talos
+talos install     # audits every dependency for known vulnerabilities, then installs
+talos check       # install, build, fmt, lint, test across every package
+```
+
+`talos check` is the full gate. During day-to-day work the individual steps each keep their own cache, so re-running one only redoes the packages that changed:
+
+```sh
+talos fmt                        # format
+talos lint                       # Biome + TypeScript
+talos test                       # test suites
+talos build                      # build every package
+talos coverage                   # tests with coverage, reporting what's uncovered
+talos run --commands=lint,test   # run arbitrary scripts across packages
 ```
 
 ### Commit Conventions
@@ -250,7 +267,9 @@ Distributed under the MIT License. See [`LICENSE`](LICENSE) for more information
 - [TypeORM](https://typeorm.io/) — ORM for TypeScript and JavaScript
 - [ArkType](https://arktype.io/) — TypeScript's 1:1 validator
 - [Biome](https://biomejs.dev/) — Fast formatter and linter
-- [bunup](https://github.com/nicepkg/bunup) — Bun-native bundler
+- [bunup](https://bunup.dev) — Bun-native bundler
+- [CASL](https://casl.js.org/) — Isomorphic authorization library
+- [OpenRouter](https://openrouter.ai/) — Unified API across 300+ AI models
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
