@@ -441,3 +441,9 @@
 - Add performance checks to project:check| — Franck ([aa6b279f](https///github.com/ooneex/talos/commit/aa6b279f))
 - Add performance:check command and sync completions| — Franck ([5c5c64df](https///github.com/ooneex/talos/commit/5c5c64df))
 
+## [0.2.1](https///github.com/ooneex/talos/releases/tag/@talos/cli@0.2.1) - 2026-08-10
+
+### Changed
+
+- Sync Cargo.lock with talos-cli 0.2.0| — Franck ([9bb834e5](https///github.com/ooneex/talos/commit/9bb834e5))
+
