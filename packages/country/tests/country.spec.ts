@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { getCountry } from "@/country";
+import { getCities, getCountry } from "@/country";
 import type { CountryLangType, CountryType } from "../src/types";
 
 describe("@talosjs/country - getCountry", () => {
@@ -29,5 +29,30 @@ describe("@talosjs/country - getCountry", () => {
 
   test("should return the same reference on repeated lookups", () => {
     expect(getCountry("IT", "it")).toBe(getCountry("IT", "it"));
+  });
+});
+
+describe("@talosjs/country - getCities", () => {
+  test("should return the cities of the country", () => {
+    expect(getCities("MC")).toContain("Monte-Carlo");
+    expect(getCities("FR")).toContain("Paris");
+    expect(getCities("JP")).toContain("Tokyo");
+  });
+
+  test("should resolve codes whose english name differs from the dataset", () => {
+    expect(getCities("RU")).toContain("Moscow");
+    expect(getCities("VN")).toContain("Bắc Giang");
+    expect(getCities("KP")).toContain("Pyongyang");
+    expect(getCities("KR")).toContain("Seoul");
+  });
+
+  test("should not confuse the two Congos", () => {
+    expect(getCities("CG")).toContain("Brazzaville");
+    expect(getCities("CD")).toContain("Kinshasa");
+    expect(getCities("CD")).not.toContain("Brazzaville");
+  });
+
+  test("should return an empty list for an unknown code", () => {
+    expect(getCities("XX" as CountryType)).toEqual([]);
   });
 });
