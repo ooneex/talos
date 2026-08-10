@@ -15,7 +15,8 @@ use crate::commands::project_check::modules::{
 use crate::utils::{Loader, is_rust_module};
 
 use super::rules::{Severity, inspect, score};
-use super::symbols::{Symbol, SymbolKind, extract};
+use super::suppressions::{Suppression, apply, collect};
+use super::symbols::{Symbol, SymbolKind, extract, mask};
 use super::{ModulePerformance, ScanStatus, SymbolPerformance};
 
 /// How deep a module's `src/` is walked.
@@ -142,9 +143,10 @@ pub fn score_file(
     floor: Option<Severity>,
 ) -> Vec<SymbolPerformance> {
     let declared = extract(content);
+    let suppressions = collect(content, &mask(content));
     let mut scored: Vec<SymbolPerformance> = declared
         .iter()
-        .map(|symbol| leaf(file, symbol, markup, floor))
+        .map(|symbol| leaf(file, symbol, markup, floor, &suppressions))
         .collect();
 
     for (index, symbol) in declared.iter().enumerate() {
@@ -166,11 +168,20 @@ pub fn score_file(
     scored
 }
 
-fn leaf(file: &str, symbol: &Symbol, markup: bool, floor: Option<Severity>) -> SymbolPerformance {
-    let findings: Vec<_> = inspect(symbol, markup)
+fn leaf(
+    file: &str,
+    symbol: &Symbol,
+    markup: bool,
+    floor: Option<Severity>,
+    suppressions: &[Suppression],
+) -> SymbolPerformance {
+    let found: Vec<_> = inspect(symbol, markup)
         .into_iter()
         .filter(|finding| floor.is_none_or(|floor| finding.rule.severity >= floor))
         .collect();
+    // Suppressing after the floor so the count reports what the run would
+    // otherwise have shown, not what a `--min-severity` had already dropped.
+    let (findings, suppressed) = apply(found, suppressions);
 
     SymbolPerformance {
         kind: symbol.kind,
@@ -180,6 +191,7 @@ fn leaf(file: &str, symbol: &Symbol, markup: bool, floor: Option<Severity>) -> S
         span: symbol.span(),
         score: score(&findings),
         findings,
+        suppressed,
     }
 }
 
@@ -287,6 +299,7 @@ export class UserService {
                 line: 1,
                 span: 1,
                 findings: Vec::new(),
+                suppressed: 0,
                 score,
             }],
             files: 1,

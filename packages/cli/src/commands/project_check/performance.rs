@@ -126,6 +126,7 @@ mod tests {
             line: 44,
             span: 30,
             findings,
+            suppressed: 0,
             score,
         }
     }

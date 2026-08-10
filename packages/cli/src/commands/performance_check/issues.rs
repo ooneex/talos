@@ -176,6 +176,7 @@ mod tests {
                 span: 12,
                 score: 38.0,
                 findings,
+                suppressed: 0,
             }],
             files: 3,
             duration_ms: 8,

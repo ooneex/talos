@@ -393,6 +393,13 @@ fn print_summary(audit: &PerformanceAudit, skipped: usize, strict: bool) {
     if skipped > 0 {
         parts.push(format!("{skipped} skipped"));
     }
+    // A suppressed finding costs nothing and so appears nowhere else in the
+    // report. Saying how many there were is what keeps a directive from being
+    // a quiet way to make the run look clean.
+    let suppressed = audit.suppressed();
+    if suppressed > 0 {
+        parts.push(format!("{suppressed} suppressed"));
+    }
     let detail = parts.join(" · ");
 
     if under == 0 {
@@ -451,6 +458,7 @@ mod tests {
             line: 44,
             span: 20,
             findings,
+            suppressed: 0,
             score,
         }
     }

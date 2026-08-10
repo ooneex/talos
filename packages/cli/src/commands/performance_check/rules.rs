@@ -245,7 +245,7 @@ pub const RULES: &[Rule] = &[
     },
 ];
 
-fn rule(id: &str) -> Rule {
+pub fn rule(id: &str) -> Rule {
     *RULES
         .iter()
         .find(|rule| rule.id == id)

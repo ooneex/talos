@@ -26,6 +26,7 @@ mod issues;
 mod report;
 pub mod rules;
 mod runner;
+pub mod suppressions;
 pub mod symbols;
 
 use std::path::{Path, PathBuf};
@@ -112,6 +113,9 @@ pub struct SymbolPerformance {
     pub span: usize,
     /// Every rule it trips. Always empty for a class.
     pub findings: Vec<Finding>,
+    /// How many findings an inline `talos-ignore` directive took out. They
+    /// cost the symbol nothing, but the run still says they were there.
+    pub suppressed: usize,
     /// Out of 100 — for a class, the mean of its methods.
     pub score: f64,
 }
@@ -178,6 +182,11 @@ impl ModulePerformance {
         self.leaves().map(|symbol| symbol.findings.len()).sum()
     }
 
+    /// How many findings inline directives took out of this module.
+    pub fn suppressed(&self) -> usize {
+        self.leaves().map(|symbol| symbol.suppressed).sum()
+    }
+
     /// How many findings of one severity the module carries.
     pub fn count(&self, severity: Severity) -> usize {
         self.leaves()
@@ -229,6 +238,14 @@ impl PerformanceAudit {
 
     pub fn findings(&self) -> usize {
         self.scanned().iter().map(|module| module.findings()).sum()
+    }
+
+    /// How many findings inline directives took out across the run.
+    pub fn suppressed(&self) -> usize {
+        self.scanned()
+            .iter()
+            .map(|module| module.suppressed())
+            .sum()
     }
 
     pub fn count(&self, severity: Severity) -> usize {
@@ -380,6 +397,7 @@ mod tests {
             line: 12,
             span: 30,
             findings,
+            suppressed: 0,
             score,
         }
     }
