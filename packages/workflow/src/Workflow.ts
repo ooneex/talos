@@ -23,6 +23,7 @@ export abstract class Workflow<Data extends Record<string, unknown> = Record<str
     const executed: ITransition[] = [];
     let output: Output = undefined as Output;
 
+    // talos-ignore perf.await-in-loop: a workflow is a sequential saga — each transition reads what the one before it wrote, and the failure path has to know exactly how far the run got before it can unwind. Awaiting these together would run every transition against the same starting data.
     for (const transition of activeTransitions) {
       try {
         await transition.onStart(data, context);
@@ -49,6 +50,7 @@ export abstract class Workflow<Data extends Record<string, unknown> = Record<str
   }
 
   private async rollback<Context = unknown>(executed: ITransition[], data: Data, context?: Context): Promise<void> {
+    // talos-ignore perf.await-in-loop: unwinding is ordered by construction — the last transition to commit is the first to undo, and a rollback that ran in parallel could restore a value the step below it is still reverting.
     for (const transition of [...executed].reverse()) {
       await transition.rollback(data, context);
     }
