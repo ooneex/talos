@@ -416,3 +416,13 @@
 
 - Skip npm publish when a release has no publishable targets| — Franck ([ef1226b8](https///github.com/ooneex/talos/commit/ef1226b8))
 
+## [0.1.3](https///github.com/ooneex/talos/releases/tag/@talos/cli@0.1.3) - 2026-08-10
+
+### Changed
+
+- Unblock the CLI release so install scripts find a published build|The darwin-x64 job targeted macos-13, a retired runner image, so it queued — Franck ([c3d5747e](https///github.com/ooneex/talos/commit/c3d5747e))
+
+### Fixed
+
+- Gate unix permission handling behind cfg(unix) for Windows builds| — Franck ([ec2c71ac](https///github.com/ooneex/talos/commit/ec2c71ac))
+
