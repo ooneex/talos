@@ -426,3 +426,10 @@
 
 - Gate unix permission handling behind cfg(unix) for Windows builds| — Franck ([ec2c71ac](https///github.com/ooneex/talos/commit/ec2c71ac))
 
+## [0.1.4](https///github.com/ooneex/talos/releases/tag/@talos/cli@0.1.4) - 2026-08-10
+
+### Changed
+
+- Add timing columns and script labels to the coverage report| — Franck ([5c5d8c00](https///github.com/ooneex/talos/commit/5c5d8c00))
+- Sync Cargo.lock to 0.1.3|Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com> — Franck ([332702b7](https///github.com/ooneex/talos/commit/332702b7))
+
