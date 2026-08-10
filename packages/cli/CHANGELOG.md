@@ -458,3 +458,13 @@
 - Summarize agent skill writes per config dir instead of per file| — Franck ([0a134a44](https///github.com/ooneex/talos/commit/0a134a44))
 - Sync Cargo.lock with talos-cli 0.2.1| — Franck ([98d63850](https///github.com/ooneex/talos/commit/98d63850))
 
+## [0.4.0](https///github.com/ooneex/talos/releases/tag/@talos/cli@0.4.0) - 2026-08-10
+
+### Added
+
+- Drop the skeleton's remotion.config.ts from scaffolded apps| — Franck ([99fd6355](https///github.com/ooneex/talos/commit/99fd6355))
+
+### Changed
+
+- Sync Cargo.lock with talos-cli 0.3.0| — Franck ([d633cd7f](https///github.com/ooneex/talos/commit/d633cd7f))
+
