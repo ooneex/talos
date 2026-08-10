@@ -207,9 +207,11 @@ fn the_report_draws_a_row_per_module_and_names_the_least_covered_files() {
     let output = talos(&root, &["coverage", "--no-cache", "--threshold=90"]);
 
     let report = text(&output);
-    assert!(report.contains("modules/covered"), "{report}");
-    assert!(report.contains("modules/thin"), "{report}");
-    assert!(report.contains("modules/broken"), "{report}");
+    // Rows are named for what was run — `name:coverage`, the way `lint` names
+    // its own — rather than for the module's `group/name` label.
+    assert!(report.contains("covered:coverage"), "{report}");
+    assert!(report.contains("thin:coverage"), "{report}");
+    assert!(report.contains("broken:coverage"), "{report}");
     assert!(report.contains("Coverage report"), "{report}");
     assert!(
         report.contains("src/index.ts"),

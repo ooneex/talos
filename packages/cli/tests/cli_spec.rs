@@ -376,7 +376,9 @@ fn coverage_says_so_when_no_module_carries_a_suite() {
 
     let output = talos(root.path(), home.path(), &["coverage", "--no-cache"]);
 
-    assert!(output.status.success(), "{output:?}");
+    // Nothing measured is a failure, not a warning: a coverage run that found
+    // no suite to measure cannot vouch for the workspace it was pointed at.
+    assert!(!output.status.success(), "{output:?}");
     let text = format!(
         "{}{}",
         stdout(&output),

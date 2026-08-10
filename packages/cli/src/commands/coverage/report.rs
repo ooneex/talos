@@ -90,31 +90,76 @@ pub fn print_report(
 /// one: a red cross where the warning sign was, so the report never contradicts
 /// the status the run exits with.
 /// The header line above the module table.
-fn print_rows_header(width: usize) {
+fn print_rows_header(width: usize, tests_width: usize) {
     println!();
     println!(
-        "  {}  {}  {}  {}  {}",
+        "  {}  {}  {}  {}  {}  {}",
         style(format!("{:<width$}", "Module")).dim(),
         style(format!("{:<LOADER_WIDTH$}", "")).dim(),
         style(format!("{:>7}", "Lines")).dim(),
         style(format!("{:>7}", "Funcs")).dim(),
-        style("Tests").dim()
+        style(format!("{:<tests_width$}", "Tests")).dim(),
+        style("Time").dim()
     );
+}
+
+/// How a module's suite is named in a report line — `name:coverage`, matching
+/// what was run rather than the `label`'s cache-facing `group/name`, the same
+/// way `lint` names its rows `name:lint`.
+fn script_label(module: &ModuleCoverage) -> String {
+    format!("{}:coverage", module.name)
+}
+
+/// How a module's tests are counted in its row — the failures when there are
+/// any, since those are what the row is read for.
+fn tests_text(module: &ModuleCoverage) -> String {
+    match module.status {
+        RunStatus::Failed => format!("{} failed", module.failed),
+        _ => format!("{} passed", module.passed),
+    }
 }
 
 /// One module's coverage row, including the unmeasured case where there is
 /// no rate to draw.
-fn print_module_row(audit: &CoverageAudit, module: &ModuleCoverage, width: usize, strict: bool) {
-    let passed = style(format!("{} passed", module.passed)).dim().to_string();
+fn print_module_row(
+    audit: &CoverageAudit,
+    module: &ModuleCoverage,
+    width: usize,
+    tests_width: usize,
+    strict: bool,
+) {
+    let counts = format!("{:<tests_width$}", tests_text(module));
     let (icon, tests) = match &module.status {
         RunStatus::Failed => (
             style("✖").red().bold().to_string(),
-            style(format!("{} failed", module.failed)).red().to_string(),
+            style(counts).red().to_string(),
         ),
-        RunStatus::Unmeasured => (style("·").dim().to_string(), passed),
-        _ if module.is_covered(audit.threshold) => (style("✔").green().bold().to_string(), passed),
-        _ if strict => (style("✖").red().bold().to_string(), passed),
-        _ => (style("⚠").yellow().bold().to_string(), passed),
+        RunStatus::Unmeasured => (
+            style("·").dim().to_string(),
+            style(counts).dim().to_string(),
+        ),
+        _ if module.is_covered(audit.threshold) => (
+            style("✔").green().bold().to_string(),
+            style(counts).dim().to_string(),
+        ),
+        _ if strict => (
+            style("✖").red().bold().to_string(),
+            style(counts).dim().to_string(),
+        ),
+        _ => (
+            style("⚠").yellow().bold().to_string(),
+            style(counts).dim().to_string(),
+        ),
+    };
+
+    // A suite replayed from the cache still reports the time it took when it
+    // was measured, so the row says where the number came from — the same
+    // marker `lint` and `build` draw.
+    let timing = style(format_duration(module.duration_ms)).dim();
+    let cached = if module.cached {
+        style(" cached").dim().to_string()
+    } else {
+        String::new()
     };
 
     // A module bun measured nothing in carries no rate to draw — saying so
@@ -123,20 +168,19 @@ fn print_module_row(audit: &CoverageAudit, module: &ModuleCoverage, width: usize
         // The bar and both rate columns, so the tests column stays aligned.
         let span = LOADER_WIDTH + 18;
         println!(
-            "{icon} {}  {}  {tests}",
-            style(format!("{:<width$}", module.label)).bold(),
+            "{icon} {}  {}  {tests}  {timing}{cached}",
+            style(format!("{:<width$}", script_label(module))).bold(),
             style(format!("{:<span$}", "no code measured")).dim(),
         );
         return;
     }
 
     println!(
-        "{icon} {}  {}  {}  {}  {}",
-        style(format!("{:<width$}", module.label)).bold(),
+        "{icon} {}  {}  {}  {}  {tests}  {timing}{cached}",
+        style(format!("{:<width$}", script_label(module))).bold(),
         bar(module.lines, audit.threshold),
         rate(module.lines, audit.threshold),
         rate(module.functions, audit.threshold),
-        tests
     );
 }
 
@@ -147,26 +191,43 @@ fn print_rows(audit: &CoverageAudit, rows: &[&ModuleCoverage], hidden: usize, st
         return;
     }
 
+    // The errored modules are drawn under the table against the same label
+    // column, so they are measured for it too.
+    let errored = || {
+        audit
+            .modules
+            .iter()
+            .filter(|module| matches!(module.status, RunStatus::Errored(_)))
+    };
     let width = rows
         .iter()
-        .map(|module| module.label.chars().count())
+        .copied()
+        .chain(errored())
+        .map(|module| script_label(module).chars().count())
         .max()
         .unwrap_or(0);
 
-    print_rows_header(width);
+    let tests_width = rows
+        .iter()
+        .map(|module| tests_text(module).chars().count())
+        .chain(std::iter::once("Tests".len()))
+        .max()
+        .unwrap_or(0);
+
+    print_rows_header(width, tests_width);
 
     for module in rows {
-        print_module_row(audit, module, width, strict);
+        print_module_row(audit, module, width, tests_width, strict);
     }
 
-    for module in &audit.modules {
+    for module in errored() {
         let RunStatus::Errored(reason) = &module.status else {
             continue;
         };
         println!(
             "{} {}  {}",
             style("✖").red().bold(),
-            style(format!("{:<width$}", module.label)).bold(),
+            style(format!("{:<width$}", script_label(module))).bold(),
             style(reason).red()
         );
     }
@@ -207,7 +268,7 @@ fn print_low_files(audit: &CoverageAudit, strict: bool) {
         println!();
         println!(
             "{}  {}",
-            style(&module.label).bold().underlined(),
+            style(script_label(module)).bold().underlined(),
             style(format!(
                 "{}% lines · {}% functions",
                 trim_percent(module.lines),
@@ -287,7 +348,7 @@ fn print_failures(audit: &CoverageAudit, logs: bool) {
         println!();
         println!(
             "{}  {}",
-            style(&module.label).bold().underlined(),
+            style(script_label(module)).bold().underlined(),
             style(detail).red()
         );
 

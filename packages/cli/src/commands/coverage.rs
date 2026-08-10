@@ -37,7 +37,7 @@ use std::time::Instant;
 use clap::Args;
 
 use crate::commands::project_check::cache::FileHashes;
-use crate::utils::{Loader, LoaderGroup, Spinner, warn};
+use crate::utils::{Loader, LoaderGroup, Spinner};
 
 /// Coverage a module is expected to reach, in percent, when `--threshold` says
 /// nothing else.
@@ -322,6 +322,15 @@ pub fn audit(
 }
 
 pub fn run(args: &CoverageArgs) {
+    if !execute(args) {
+        std::process::exit(1);
+    }
+}
+
+/// Measure every selected module and print the report, returning whether the
+/// run succeeded — so a caller that owns the process exit, like `run`, decides
+/// the status once rather than the command exiting from under it.
+pub fn execute(args: &CoverageArgs) -> bool {
     let root = args
         .cwd
         .clone()
@@ -340,14 +349,14 @@ pub fn run(args: &CoverageArgs) {
     ) {
         Ok(audit) => audit,
         Err(message) => {
-            warn(message);
-            return;
+            crate::utils::error(message);
+            return false;
         }
     };
 
     if args.issues {
         create_issues(&audit);
-        return;
+        return true;
     }
 
     print_report(
@@ -357,7 +366,5 @@ pub fn run(args: &CoverageArgs) {
         started.elapsed().as_millis() as u64,
         false,
     );
-    if audit.is_failure(args.strict) {
-        std::process::exit(1);
-    }
+    !audit.is_failure(args.strict)
 }
