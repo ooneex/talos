@@ -8,7 +8,7 @@ use fs_extra::dir::{CopyOptions, copy as copy_dir};
 use crate::commands::agent_skills_create::AgentSkillsCreateArgs;
 use crate::templates::llm::assistants::ASSISTANTS;
 use crate::utils::{
-    Action, Spinner, ask_confirm, ask_multiselect, clone_skeleton, ensure_bin,
+    Action, Spinner, ask_confirm, ask_multiselect, clone_skeleton, ensure_bin, print_onboarding,
     resolve_name_and_destination, run_actions,
 };
 
@@ -188,6 +188,7 @@ pub fn execute(options: AppInitOptions) -> Option<PathBuf> {
             "{kebab_name} initialized successfully at {}",
             destination.display()
         ));
+        print_onboarding(&destination);
     }
 
     Some(destination)

@@ -12,6 +12,7 @@ mod marketing;
 mod migration_version;
 mod module_registry;
 mod module_removal;
+mod onboarding;
 mod parallel;
 mod ports;
 mod process;
@@ -73,6 +74,7 @@ pub use module_removal::{
     remove_block, remove_from_app_yml, remove_microservice_app_blocks,
     remove_standard_module_references, resolve_cwd, resolve_module_identity,
 };
+pub use onboarding::print_onboarding;
 pub use parallel::{Action, run_actions, run_actions_rendered};
 pub use ports::{
     ModulePort, collect_module_ports, free_port, listening_pids, module_ports, parse_env_port,

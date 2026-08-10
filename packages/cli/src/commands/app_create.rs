@@ -5,8 +5,8 @@ use clap::Args;
 
 use crate::commands::app_init::{self, AppInitOptions, AppType};
 use crate::utils::{
-    ask_confirm, ask_select, read_template, resolve_name_and_destination, skeleton_templates_dir,
-    to_snake_case,
+    ask_confirm, ask_select, print_onboarding, read_template, resolve_name_and_destination,
+    skeleton_templates_dir, to_snake_case,
 };
 
 pub const CI_PROVIDERS: [&str; 3] = ["github", "gitlab", "bitbucket"];
@@ -54,33 +54,37 @@ pub fn run(args: &AppCreateArgs) {
     };
     let snake_name = to_snake_case(&name);
 
+    if let Some(provider) = provider {
+        create_ci_cd_files(provider, &destination, &snake_name, args.no_cache);
+    }
+
     crate::utils::success(format!(
         "{kebab_name} created successfully at {}",
         destination.display()
     ));
-    println!("\nGet started:\n  cd {}", destination.display());
-    println!("\nStart the app:\n  talos app:start");
-    println!("Stop the app:\n  talos app:stop");
+    print_onboarding(&destination);
+}
 
-    let Some(provider) = provider else {
-        return;
-    };
-
-    let Some(templates_dir) = skeleton_templates_dir(false, !args.no_cache) else {
+/// Writes the chosen provider's CI/CD files and reports the outcome. A failure
+/// here is reported but never aborts the run: the app itself is already
+/// scaffolded, so the closing summary still applies.
+fn create_ci_cd_files(provider: &str, destination: &Path, snake_name: &str, no_cache: bool) {
+    let Some(templates_dir) = skeleton_templates_dir(false, !no_cache) else {
         return;
     };
 
     let spinner = crate::utils::Spinner::start(format!("Writing {provider} CI/CD files..."));
-    let written = write_ci_cd_files(&templates_dir, &destination, provider, &snake_name);
+    let written = write_ci_cd_files(&templates_dir, destination, provider, snake_name);
     spinner.stop();
-    if let Err(error) = written {
-        if !error.is_empty() {
-            crate::utils::error(&error);
-        }
-        return;
-    }
 
-    crate::utils::success(format!("{provider} CI/CD files created"));
+    match written {
+        Ok(()) => crate::utils::success(format!("{provider} CI/CD files created")),
+        Err(error) => {
+            if !error.is_empty() {
+                crate::utils::error(&error);
+            }
+        }
+    }
 }
 
 pub fn write_named(path: &Path, template: &str, snake_name: &str) -> Result<(), String> {
