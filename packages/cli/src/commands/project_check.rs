@@ -2,9 +2,9 @@
 // single, readable report.
 //
 // The command is a thin orchestrator: each check reuses the very same code the
-// dedicated command uses (`workspace:check`, `security:check`, `issue:check`,
-// `commitlint:check`), so a project can never drift between `project:check`
-// and the individual commands. The checks that only read the repository live
+// dedicated command uses (`workspace:check`, `performance:check`,
+// `security:check`, `issue:check`, `commitlint:check`), so a project can never
+// drift between `project:check` and the individual commands. The checks that only read the repository live
 // in the submodules next to this file.
 
 #[path = "project_check/artifacts.rs"]
@@ -176,7 +176,7 @@ pub(super) const MAX_SCANNED_FILE_BYTES: u64 = 512 * 1024;
 
 #[derive(Args, Debug, Default, Clone)]
 pub struct ProjectCheckArgs {
-    /// Only run these checks (comma-separated). Accepts a category — foundation, architecture, api, data, runtime, frontend, quality, supply-chain, process — or a check: workspace, structure, folders, tsconfig, lockfile, conventions, imports, boundaries, restricted, container, registration, middlewares, routes, openapi, pagination, validation, roles, permissions, entities, indexes, repositories, transactions, sql, async, exceptions, logging, complexity, duplication, orphans, events, queues, crons, workflows, mailers, flags, env, dependencies, outdated, docker, migrations, accessibility, contrast, tokens, assets, translations, stories, router, queries, sdk, tests, coverage, e2e-coverage, docs, bundle, security, secrets, git, issues, todos, branches, commits, hygiene, e2e.
+    /// Only run these checks (comma-separated). Accepts a category — foundation, architecture, api, data, runtime, frontend, quality, supply-chain, process — or a check: workspace, structure, folders, tsconfig, lockfile, conventions, imports, boundaries, restricted, container, registration, middlewares, routes, openapi, pagination, validation, roles, permissions, entities, indexes, repositories, transactions, sql, async, exceptions, logging, complexity, duplication, orphans, events, queues, crons, workflows, mailers, flags, env, dependencies, outdated, docker, migrations, accessibility, contrast, tokens, assets, translations, stories, router, queries, sdk, tests, coverage, performance, e2e-coverage, docs, bundle, security, secrets, git, issues, todos, branches, commits, hygiene, e2e.
     #[arg(long)]
     pub only: Option<String>,
 
@@ -241,6 +241,7 @@ mod commits;
 mod hygiene;
 mod orchestrate;
 mod outcome;
+mod performance;
 mod render;
 mod security_issues;
 mod types;

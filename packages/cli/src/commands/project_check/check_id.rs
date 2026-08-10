@@ -8,7 +8,7 @@ impl CheckId {
     /// Every check, in execution order. The workspace runs first because the
     /// install it performs is what makes the other tools available, and the
     /// end-to-end suite runs last because it needs the build they produce.
-    pub const ALL: [CheckId; 64] = [
+    pub const ALL: [CheckId; 65] = [
         CheckId::Workspace,
         CheckId::Structure,
         CheckId::Folders,
@@ -61,6 +61,7 @@ impl CheckId {
         CheckId::Sdk,
         CheckId::Tests,
         CheckId::Coverage,
+        CheckId::Performance,
         CheckId::E2eCoverage,
         CheckId::Docs,
         CheckId::Bundle,
@@ -80,11 +81,11 @@ impl CheckId {
     /// drift apart. The end-to-end suite is opt-in because it boots the
     /// application, and the outdated check because it queries the public
     /// registries for every dependency.
-    pub const DEFAULT: [CheckId; 62] = Self::default_checks();
+    pub const DEFAULT: [CheckId; 63] = Self::default_checks();
 
     /// Builds `DEFAULT` from `ALL` at compile time.
-    const fn default_checks() -> [CheckId; 62] {
-        let mut result = [CheckId::Workspace; 62];
+    const fn default_checks() -> [CheckId; 63] {
+        let mut result = [CheckId::Workspace; 63];
         let mut source = 0;
         let mut target = 0;
         while source < CheckId::ALL.len() {
@@ -161,6 +162,7 @@ impl CheckId {
 
             CheckId::Tests
             | CheckId::Coverage
+            | CheckId::Performance
             | CheckId::E2eCoverage
             | CheckId::Docs
             | CheckId::Hygiene
@@ -227,6 +229,7 @@ impl CheckId {
             CheckId::Sdk => "sdk",
             CheckId::Tests => "tests",
             CheckId::Coverage => "coverage",
+            CheckId::Performance => "performance",
             CheckId::E2eCoverage => "e2e-coverage",
             CheckId::Docs => "docs",
             CheckId::Bundle => "bundle",
@@ -296,6 +299,7 @@ impl CheckId {
             CheckId::Sdk => "SDK",
             CheckId::Tests => "Tests",
             CheckId::Coverage => "Coverage",
+            CheckId::Performance => "Performance",
             CheckId::E2eCoverage => "E2E coverage",
             CheckId::Docs => "Docs",
             CheckId::Bundle => "Bundle",
@@ -368,6 +372,7 @@ impl CheckId {
             CheckId::Sdk => "generated clients against the controllers they wrap",
             CheckId::Tests => "a spec file in every module that carries tests/",
             CheckId::Coverage => "every suite, and how much of its module it covers",
+            CheckId::Performance => "every function and method, scored on what it costs at scale",
             CheckId::E2eCoverage => "an end-to-end suite for every module that serves",
             CheckId::Docs => "relative links in every markdown document",
             CheckId::Bundle => "shipped source maps and stale build output",

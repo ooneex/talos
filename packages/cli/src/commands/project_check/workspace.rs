@@ -1,6 +1,9 @@
 //! Workspace, coverage and end-to-end checks — the `workspace:check` gate,
 //! the suites it builds, measured straight after, and the opt-in browser
 //! suite that boots the application.
+//!
+//! The score that gate runs beside its suites lives in [`super::performance`],
+//! and is asked for with the very same [`gate_args`].
 
 use std::path::Path;
 use std::process::Command;
@@ -142,21 +145,28 @@ fn run_workspace_commands_detached(args: &ProjectCheckArgs, root: &Path) -> Resu
 /// pulling a module down — because a rate is only actionable next to the file
 /// that earned it; the row in the summary block then indexes it. Under `--json`
 /// nothing is printed and the same findings travel as details.
+/// This run's flags, as the gate that owns them reads them.
+///
+/// Coverage and the performance score are both halves of `workspace:check`,
+/// and both are asked for through this: one place to translate the flags, so
+/// the suites can never be measured under one set of options and the sources
+/// scored under another.
+pub(super) fn gate_args(args: &ProjectCheckArgs, root: &Path) -> WorkspaceCheckArgs {
+    WorkspaceCheckArgs {
+        packages: args.packages.clone(),
+        modules: args.modules.clone(),
+        logs: args.logs,
+        no_cache: args.no_cache,
+        threshold: args.threshold,
+        concurrency: args.concurrency,
+        strict: args.strict,
+        cwd: Some(root.to_string_lossy().to_string()),
+    }
+}
+
 pub(super) fn check_coverage(args: &ProjectCheckArgs, root: &Path) -> CheckOutcome {
     let started_at = Instant::now();
-    let audit = match workspace_check::measure(
-        &WorkspaceCheckArgs {
-            packages: args.packages.clone(),
-            modules: args.modules.clone(),
-            logs: args.logs,
-            no_cache: args.no_cache,
-            threshold: args.threshold,
-            concurrency: args.concurrency,
-            strict: args.strict,
-            cwd: Some(root.to_string_lossy().to_string()),
-        },
-        args.json,
-    ) {
+    let audit = match workspace_check::measure(&gate_args(args, root), args.json) {
         Ok(audit) => audit,
         Err(message) => {
             return CheckOutcome::new(CheckId::Coverage, CheckStatus::Skipped, message)

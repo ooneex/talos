@@ -60,6 +60,7 @@ pub enum CheckId {
     Sdk,
     Tests,
     Coverage,
+    Performance,
     E2eCoverage,
     Docs,
     Bundle,

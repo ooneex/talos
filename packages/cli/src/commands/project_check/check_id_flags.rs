@@ -102,6 +102,7 @@ impl CheckId {
             | CheckId::Sdk
             | CheckId::Tests
             | CheckId::Coverage
+            | CheckId::Performance
             | CheckId::E2eCoverage
             | CheckId::Docs
             | CheckId::Bundle
@@ -182,6 +183,7 @@ impl CheckId {
             "sdk" | "client" => Some(CheckId::Sdk),
             "tests" | "test" | "specs" => Some(CheckId::Tests),
             "coverage" | "cov" | "suites" => Some(CheckId::Coverage),
+            "performance" | "perf" | "hotspots" => Some(CheckId::Performance),
             "e2e-coverage" | "e2e-specs" | "browser-coverage" => Some(CheckId::E2eCoverage),
             "docs" | "doc" | "documentation" | "markdown" => Some(CheckId::Docs),
             "bundle" | "bundles" | "dist" => Some(CheckId::Bundle),

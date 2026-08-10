@@ -327,7 +327,7 @@ threads whatsapp telegram messenger discord reddit medium cloudflare bunny s3 op
       ;;
     project:check)
       opts="--only --skip --packages --modules --audit-level --threshold --concurrency --e2e --outdated --logs --no-cache --strict --json --cwd"
-      [[ $flag == --only || $flag == --skip ]] && candidates="workspace structure tsconfig lockfile conventions imports boundaries restricted container registration routes validation roles entities sql async complexity duplication orphans env dependencies outdated docker migrations accessibility contrast translations stories sdk tests coverage e2e-coverage docs bundle security secrets git issues branches commits hygiene e2e"
+      [[ $flag == --only || $flag == --skip ]] && candidates="workspace structure tsconfig lockfile conventions imports boundaries restricted container registration routes validation roles entities sql async complexity duplication orphans env dependencies outdated docker migrations accessibility contrast translations stories sdk tests coverage performance e2e-coverage docs bundle security secrets git issues branches commits hygiene e2e"
       [[ $flag == --packages ]] && candidates="$(_talos_packages)"
       [[ $flag == --modules ]] && candidates="$(_talos_pkg_modules)"
       [[ $flag == --audit-level ]] && candidates="low moderate high critical"
