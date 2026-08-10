@@ -30,3 +30,13 @@
 - Raise coverage thresholds to 99% across all packages| — Franck ([14db3019](https///github.com/ooneex/talos/commit/14db3019))
 - Enable coverage thresholds in every package's bunfig.toml| — Franck ([e19e3785](https///github.com/ooneex/talos/commit/e19e3785))
 
+## [1.2.0](https///github.com/ooneex/talos/releases/tag/@talosjs/country@1.2.0) - 2026-08-10
+
+### Added
+
+- Add getCities lookup backed by the cities dataset| — Franck ([4398c71f](https///github.com/ooneex/talos/commit/4398c71f))
+
+### Changed
+
+- Replace per-language modules with a single localized dataset| — Franck ([bf98c81a](https///github.com/ooneex/talos/commit/bf98c81a))
+
