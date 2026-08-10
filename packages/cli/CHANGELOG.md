@@ -447,3 +447,14 @@
 
 - Sync Cargo.lock with talos-cli 0.2.0| — Franck ([9bb834e5](https///github.com/ooneex/talos/commit/9bb834e5))
 
+## [0.3.0](https///github.com/ooneex/talos/releases/tag/@talos/cli@0.3.0) - 2026-08-10
+
+### Added
+
+- Close app:create and app:init on a next-steps onboarding panel| — Franck ([ef7e5333](https///github.com/ooneex/talos/commit/ef7e5333))
+
+### Changed
+
+- Summarize agent skill writes per config dir instead of per file| — Franck ([0a134a44](https///github.com/ooneex/talos/commit/0a134a44))
+- Sync Cargo.lock with talos-cli 0.2.1| — Franck ([98d63850](https///github.com/ooneex/talos/commit/98d63850))
+
