@@ -45,6 +45,7 @@ fn build_fake_skeleton(root: &Path) {
     fs::write(root.join("bun.lock"), "{}").unwrap();
     fs::write(root.join("README.md"), "# skeleton\n\nSome description.\n").unwrap();
     fs::write(root.join(".dockerignore"), "node_modules\n").unwrap();
+    fs::write(root.join("remotion.config.ts"), "export {};\n").unwrap();
 
     for module in ["app", "shared", "billing"] {
         fs::create_dir_all(root.join("modules").join(module)).unwrap();
@@ -75,6 +76,7 @@ fn scaffold_destination_rewrites_env_and_readme() {
 
     assert!(!destination_path.join(".git").exists());
     assert!(!destination_path.join("bun.lock").exists());
+    assert!(!destination_path.join("remotion.config.ts").exists());
     assert!(
         !destination_path
             .join("modules")

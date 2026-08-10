@@ -225,6 +225,10 @@ pub fn scaffold_destination(
 
     let _ = fs::remove_dir_all(destination.join(".git"));
     let _ = fs::remove_file(destination.join("bun.lock"));
+    // The skeleton's Remotion config only exists to render its own marketing
+    // media, and it works around that repo's TypeScript pin — a scaffolded
+    // project inherits neither.
+    let _ = fs::remove_file(destination.join("remotion.config.ts"));
 
     let env_example_path = destination
         .join("modules")
