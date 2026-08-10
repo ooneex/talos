@@ -130,7 +130,7 @@
     },
     "packages/cli": {
       "name": "@talos/cli",
-      "version": "0.1.4",
+      "version": "0.2.0",
     },
     "packages/color": {
       "name": "@talosjs/color",
@@ -675,7 +675,7 @@
     },
     "packages/workflow": {
       "name": "@talosjs/workflow",
-      "version": "1.1.4",
+      "version": "1.1.5",
       "dependencies": {
         "@talosjs/container": "workspace:^",
         "@talosjs/exception": "workspace:^",
