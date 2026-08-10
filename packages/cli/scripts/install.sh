@@ -53,11 +53,21 @@ esac
 target="${BINARY}-${os}-${arch}"
 asset="${target}.tar.gz"
 
+TAG_PREFIX="@talos/cli@"
+
 version="${TALOS_VERSION:-latest}"
 if [ "${version}" = "latest" ]; then
   download_url="https://github.com/${GITHUB_REPO}/releases/latest/download/${asset}"
 else
-  download_url="https://github.com/${GITHUB_REPO}/releases/download/${version}/${asset}"
+  # Accept both a bare version ('0.1.3') and a full tag ('@talos/cli@0.1.3').
+  tag="${version}"
+  case "${tag}" in
+    "${TAG_PREFIX}"*) ;;
+    *) tag="${TAG_PREFIX}${tag}" ;;
+  esac
+  # The tag contains a '/', which must be percent-encoded to stay a single path segment.
+  encoded_tag="$(printf '%s' "${tag}" | sed 's|/|%2F|g')"
+  download_url="https://github.com/${GITHUB_REPO}/releases/download/${encoded_tag}/${asset}"
 fi
 
 install_dir="${TALOS_INSTALL:-${HOME}/.talos}"

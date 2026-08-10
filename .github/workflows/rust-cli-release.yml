@@ -28,8 +28,9 @@ jobs:
           - name: talos-darwin-arm64
             os: macos-14
             target: aarch64-apple-darwin
+          # Cross-compiled from the arm64 runner: the Intel macOS images are retired.
           - name: talos-darwin-x64
-            os: macos-13
+            os: macos-14
             target: x86_64-apple-darwin
           - name: talos-linux-x64
             os: ubuntu-latest
@@ -40,6 +41,9 @@ jobs:
           - name: talos-windows-x64
             os: windows-latest
             target: x86_64-pc-windows-msvc
+          - name: talos-windows-arm64
+            os: windows-11-arm
+            target: aarch64-pc-windows-msvc
     steps:
       - uses: actions/checkout@v6
 
@@ -47,10 +51,6 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
-          components: llvm-tools-preview
-
-      - name: Install cargo-llvm-cov
-        uses: taiki-e/install-action@cargo-llvm-cov
 
       - name: Cache cargo
         uses: actions/cache@v4

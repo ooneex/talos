@@ -23,11 +23,17 @@ $arch = switch ($env:PROCESSOR_ARCHITECTURE) {
 $target = "$Binary-windows-$arch"
 $asset = "$target.zip"
 
+$TagPrefix = "@talos/cli@"
+
 $version = if ($env:TALOS_VERSION) { $env:TALOS_VERSION } else { "latest" }
 $downloadUrl = if ($version -eq "latest") {
   "https://github.com/$GithubRepo/releases/latest/download/$asset"
 } else {
-  "https://github.com/$GithubRepo/releases/download/$version/$asset"
+  # Accept both a bare version ('0.1.3') and a full tag ('@talos/cli@0.1.3'), then
+  # percent-encode the '/' so the tag stays a single path segment.
+  $tag = if ($version.StartsWith($TagPrefix)) { $version } else { "$TagPrefix$version" }
+  $encodedTag = $tag.Replace("/", "%2F")
+  "https://github.com/$GithubRepo/releases/download/$encodedTag/$asset"
 }
 
 $installDir = if ($env:TALOS_INSTALL) { $env:TALOS_INSTALL } else { "$HOME\.talos" }
