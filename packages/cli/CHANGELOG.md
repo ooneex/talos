@@ -433,3 +433,11 @@
 - Add timing columns and script labels to the coverage report| — Franck ([5c5d8c00](https///github.com/ooneex/talos/commit/5c5d8c00))
 - Sync Cargo.lock to 0.1.3|Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com> — Franck ([332702b7](https///github.com/ooneex/talos/commit/332702b7))
 
+## [0.2.0](https///github.com/ooneex/talos/releases/tag/@talos/cli@0.2.0) - 2026-08-10
+
+### Added
+
+- Add inline talos-ignore suppressions to performance:check| — Franck ([df9a993c](https///github.com/ooneex/talos/commit/df9a993c))
+- Add performance checks to project:check| — Franck ([aa6b279f](https///github.com/ooneex/talos/commit/aa6b279f))
+- Add performance:check command and sync completions| — Franck ([5c5c64df](https///github.com/ooneex/talos/commit/5c5c64df))
+
