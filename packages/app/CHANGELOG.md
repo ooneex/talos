@@ -97,3 +97,9 @@
 
 - Update tests for RoleType role changes| — Franck ([c358dd77](https///github.com/ooneex/talos/commit/c358dd77))
 
+## [1.4.0](https///github.com/ooneex/talos/releases/tag/@talosjs/app@1.4.0) - 2026-08-11
+
+### Added
+
+- Treat ROLE_GUEST routes as public in validateRouteAccess| — Franck ([3978c5a1](https///github.com/ooneex/talos/commit/3978c5a1))
+
