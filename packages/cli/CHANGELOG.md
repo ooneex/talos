@@ -468,3 +468,13 @@
 
 - Sync Cargo.lock with talos-cli 0.3.0| — Franck ([d633cd7f](https///github.com/ooneex/talos/commit/d633cd7f))
 
+## [0.5.0](https///github.com/ooneex/talos/releases/tag/@talos/cli@0.5.0) - 2026-08-11
+
+### Added
+
+- Rename app module and rewrite tsconfig paths on app init| — Franck ([d0ef90b6](https///github.com/ooneex/talos/commit/d0ef90b6))
+
+### Changed
+
+- Update Cargo.lock| — Franck ([b1f865fa](https///github.com/ooneex/talos/commit/b1f865fa))
+
