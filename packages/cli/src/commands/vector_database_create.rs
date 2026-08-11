@@ -10,7 +10,7 @@ pub struct VectorDatabaseCreateArgs {
     #[arg(
         long,
         default_value_t = false,
-        help = "Bypass the skeleton cache and re-download templates (the cache otherwise auto-refreshes after 24h)"
+        help = "Bypass the skeleton template cache and re-download templates (auto-refreshes after 24h); does not update the installed talos CLI binary itself — rerun the install script for that"
     )]
     pub no_cache: bool,
 
