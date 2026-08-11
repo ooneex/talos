@@ -36,3 +36,9 @@
 
 - Use RoleType instead of Uppercase<string> for roles| — Franck ([acb72f8d](https///github.com/ooneex/talos/commit/acb72f8d))
 
+## [1.2.1](https///github.com/ooneex/talos/releases/tag/@talosjs/auth@1.2.1) - 2026-08-11
+
+### Changed
+
+- Use GUEST_ROLE constant instead of string literal| — Franck ([caa43772](https///github.com/ooneex/talos/commit/caa43772))
+
