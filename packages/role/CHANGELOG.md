@@ -36,3 +36,9 @@
 
 - Add RoleType branded type for role strings| — Franck ([13e8712d](https///github.com/ooneex/talos/commit/13e8712d))
 
+## [1.3.0](https///github.com/ooneex/talos/releases/tag/@talosjs/role@1.3.0) - 2026-08-11
+
+### Added
+
+- Export GUEST_ROLE constant| — Franck ([794d2442](https///github.com/ooneex/talos/commit/794d2442))
+
