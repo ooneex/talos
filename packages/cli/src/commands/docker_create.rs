@@ -3,7 +3,10 @@ use std::path::Path;
 use clap::Args;
 use serde_json::{Map, Value};
 
-use crate::utils::{ask_select, current_dir, read_template, skeleton_templates_dir};
+use crate::utils::{
+    ask_select, collect_runnable_modules, current_dir, find_app_module, read_template,
+    skeleton_templates_dir,
+};
 
 const DOCKER_SERVICES: &[&str] = &[
     "clickhouse",
@@ -210,7 +213,12 @@ pub fn run(args: &DockerCreateArgs) {
         .map(std::path::PathBuf::from)
         .unwrap_or_else(current_dir);
 
-    let base = cwd.join("modules").join("app");
+    let modules = collect_runnable_modules(&cwd.join("modules"));
+    let Some(app_module) = find_app_module(&modules) else {
+        crate::utils::error("Module app not found");
+        return;
+    };
+    let base = app_module.dir.clone();
     let compose_path = base.join("docker-compose.yml");
 
     if compose_path.exists() {

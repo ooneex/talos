@@ -94,7 +94,8 @@ pub use publish_targets::{
 };
 pub use run_module_scripts::{RunModuleScriptsOptions, run_module_scripts};
 pub use runnable_modules::{
-    RunnableModule, RunnableModuleType, collect_runnable_modules, select_runnable_modules,
+    RunnableModule, RunnableModuleType, collect_runnable_modules, find_app_module,
+    find_app_module_name, select_runnable_modules,
 };
 pub use rust_module::is_rust_module;
 pub use scaffold::{

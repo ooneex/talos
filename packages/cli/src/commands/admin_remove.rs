@@ -29,7 +29,7 @@ pub fn run(args: &AdminRemoveArgs) {
 
     let cwd = resolve_cwd(args.cwd.as_deref());
     let identity = resolve_module_identity(&cwd, &name);
-    if !ensure_removable(&identity, "Admin", args.silent)
+    if !ensure_removable(&cwd, &identity, "Admin", args.silent)
         || !ensure_expected_type(&identity, "admin", "admin module", args.silent)
         || !crate::utils::confirm_removal(&identity.kebab_name, "admin", args.silent)
     {

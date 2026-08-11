@@ -62,6 +62,23 @@ pub fn collect_runnable_modules(modules_dir: &Path) -> Vec<RunnableModule> {
     modules
 }
 
+/// The project's main API module — the one every scaffolded project keeps,
+/// found by its declared type rather than a literal directory name, since
+/// the directory is renamed to the project's name during scaffolding.
+pub fn find_app_module(modules: &[RunnableModule]) -> Option<&RunnableModule> {
+    modules
+        .iter()
+        .find(|module| module.r#type == RunnableModuleType::Api)
+}
+
+/// The app module's directory name, resolved the same way as
+/// [`find_app_module`] but from a project root rather than an
+/// already-collected module list.
+pub fn find_app_module_name(cwd: &Path) -> Option<String> {
+    find_app_module(&collect_runnable_modules(&cwd.join("modules")))
+        .map(|module| module.name.clone())
+}
+
 pub fn select_runnable_modules(
     modules: &[RunnableModule],
     modules_flag: Option<&str>,

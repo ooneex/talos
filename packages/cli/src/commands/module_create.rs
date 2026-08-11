@@ -4,8 +4,8 @@ use clap::Args;
 
 use crate::utils::{
     add_path_alias, add_to_app_module, add_to_microservice_module, add_to_shared_module,
-    ask_destination_module, ask_input, current_dir, read_template, skeleton_templates_dir,
-    to_kebab_case, to_pascal_case,
+    ask_destination_module, ask_input, current_dir, find_app_module_name, read_template,
+    skeleton_templates_dir, to_kebab_case, to_pascal_case,
 };
 
 #[derive(Args, Debug)]
@@ -93,10 +93,10 @@ fn wire_module_into_destination(
         return;
     }
 
-    if destination_kebab == "app" {
+    if Some(destination_kebab) == find_app_module_name(cwd).as_deref() {
         let app_module_path = cwd
             .join("modules")
-            .join("app")
+            .join(destination_kebab)
             .join("src")
             .join("AppModule.ts");
         if app_module_path.exists() {
@@ -187,7 +187,7 @@ pub fn execute(options: ModuleCreateOptions) {
 
     let destination = destination.unwrap_or_else(|| {
         if silent {
-            "app".to_string()
+            find_app_module_name(&cwd).unwrap_or_else(|| "app".to_string())
         } else {
             ask_destination_module(&cwd, "Select destination module")
         }

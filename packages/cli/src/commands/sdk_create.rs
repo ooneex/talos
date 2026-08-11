@@ -14,8 +14,8 @@ pub use controller::{
 
 use crate::commands::module_create::{self, ModuleCreateOptions};
 use crate::utils::{
-    current_dir, remove_from_app_module, remove_from_shared_module, run_spinner_step,
-    to_kebab_case, to_pascal_case,
+    current_dir, find_app_module_name, remove_from_app_module, remove_from_shared_module,
+    run_spinner_step, to_kebab_case, to_pascal_case,
 };
 
 #[derive(Args, Debug)]
@@ -74,9 +74,10 @@ fn scaffold_sdk_module(
         no_cache,
     });
     let pascal_name = to_pascal_case(sdk_name);
+    let app_module_name = find_app_module_name(cwd).unwrap_or_else(|| "app".to_string());
     let _ = remove_from_app_module(
         &cwd.join("modules")
-            .join("app")
+            .join(&app_module_name)
             .join("src")
             .join("AppModule.ts"),
         &pascal_name,
@@ -248,12 +249,16 @@ fn install_sdk_dependencies(sdk_dir: &std::path::Path, silent: bool) -> bool {
 
 pub fn run(args: &SdkCreateArgs) {
     let name = args.name.clone().unwrap_or_else(|| "sdk".to_string());
-    let module = args.module.clone().unwrap_or_else(|| "app".to_string());
     let cwd = args
         .cwd
         .clone()
         .map(PathBuf::from)
         .unwrap_or_else(current_dir);
+    let module = args
+        .module
+        .clone()
+        .or_else(|| find_app_module_name(&cwd))
+        .unwrap_or_else(|| "app".to_string());
     let silent = args.silent;
 
     let pascal_name = to_pascal_case(&name)

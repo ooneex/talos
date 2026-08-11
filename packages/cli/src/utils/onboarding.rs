@@ -15,6 +15,7 @@ use std::path::Path;
 
 use console::{Term, style};
 
+use super::find_app_module_name;
 use super::ports::parse_env_port;
 
 /// The port the skeleton's `modules/app` declares, used when the scaffolded
@@ -42,9 +43,10 @@ const EXTRAS: [(&str, &str); 3] = [
     ("talos help", "Every command, with what it does"),
 ];
 
-/// The port `modules/app` will boot on.
+/// The port the app module will boot on.
 fn app_port(destination: &Path) -> u16 {
-    fs::read_to_string(destination.join("modules").join("app").join(".env.yml"))
+    let app_name = find_app_module_name(destination).unwrap_or_else(|| "app".to_string());
+    fs::read_to_string(destination.join("modules").join(app_name).join(".env.yml"))
         .ok()
         .as_deref()
         .and_then(parse_env_port)

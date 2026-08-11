@@ -4,8 +4,8 @@ use std::path::{Path, PathBuf};
 use regex::Regex;
 
 use super::{
-    ask_confirm, current_dir, remove_from_app_module, remove_from_shared_module, remove_path_alias,
-    to_kebab_case, to_pascal_case,
+    ask_confirm, current_dir, find_app_module_name, remove_from_app_module,
+    remove_from_shared_module, remove_path_alias, to_kebab_case, to_pascal_case,
 };
 
 pub struct ModuleIdentity {
@@ -33,8 +33,18 @@ pub fn resolve_cwd(cwd: Option<&str>) -> PathBuf {
     cwd.map(PathBuf::from).unwrap_or_else(current_dir)
 }
 
-pub fn ensure_removable(identity: &ModuleIdentity, missing_label: &str, silent: bool) -> bool {
-    if identity.kebab_name == "app" || identity.kebab_name == "shared" {
+pub fn ensure_removable(
+    cwd: &Path,
+    identity: &ModuleIdentity,
+    missing_label: &str,
+    silent: bool,
+) -> bool {
+    // The literal "app" is always protected, even if the app module's yml
+    // can't be read — the dynamic check additionally covers it once it's
+    // renamed to the project's name.
+    let is_app_module = identity.kebab_name == "app"
+        || find_app_module_name(cwd).as_deref() == Some(identity.kebab_name.as_str());
+    if is_app_module || identity.kebab_name == "shared" {
         if !silent {
             crate::utils::error(format!(
                 "Cannot remove the \"{}\" module",
@@ -96,9 +106,10 @@ pub fn confirm_removal(kebab_name: &str, label: &str, silent: bool) -> bool {
 }
 
 pub fn remove_standard_module_references(cwd: &Path, pascal_name: &str, kebab_name: &str) {
+    let app_name = find_app_module_name(cwd).unwrap_or_else(|| "app".to_string());
     let app_module_path = cwd
         .join("modules")
-        .join("app")
+        .join(&app_name)
         .join("src")
         .join("AppModule.ts");
     let _ = remove_from_app_module(&app_module_path, pascal_name, kebab_name);
@@ -115,19 +126,21 @@ pub fn remove_standard_module_references(cwd: &Path, pascal_name: &str, kebab_na
 }
 
 pub fn remove_microservice_app_blocks(cwd: &Path, kebab_name: &str) {
+    let app_name = find_app_module_name(cwd).unwrap_or_else(|| "app".to_string());
+    let app_dir = cwd.join("modules").join(&app_name);
     let esc = regex::escape(kebab_name);
     remove_block(
-        &cwd.join("modules").join("app").join("app.yml"),
+        &app_dir.join(format!("{app_name}.yml")),
         &format!(
             r#"(?m)(?:^[ \t]*# {esc} microservice[^\n]*\n)?^  - name: "{esc}"\n(?:^ {{4,}}[^\n]*\n)*"#
         ),
     );
     remove_block(
-        &cwd.join("modules").join("app").join(".env.yml"),
+        &app_dir.join(".env.yml"),
         &format!(r"(?m)^  {esc}:\n(?:^ {{4,}}[^\n]*\n)*"),
     );
     remove_block(
-        &cwd.join("modules").join("app").join("docker-compose.yml"),
+        &app_dir.join("docker-compose.yml"),
         &format!(r#"(?m)(?:^[ \t]*# {esc} microservice[^\n]*\n)?^  {esc}:\n(?:^ {{4,}}[^\n]*\n)*"#),
     );
 }

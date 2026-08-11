@@ -322,6 +322,19 @@ pub fn scaffold_destination(
     // the tsconfig rewrite above already pointed at.
     let app_module_dir = destination.join("modules").join("app");
     if app_module_dir.is_dir() {
+        // Every module's config file is named after its own directory
+        // (`shared.yml`, `billing.yml`, …); the app module is no exception,
+        // and other commands (`app:start`, `module:create`, …) rely on that
+        // convention to find it once it's no longer literally "app".
+        let app_yml_path = app_module_dir.join("app.yml");
+        if app_yml_path.is_file() {
+            fs::rename(
+                &app_yml_path,
+                app_module_dir.join(format!("{kebab_name}.yml")),
+            )
+            .map_err(|e| e.to_string())?;
+        }
+
         fs::rename(
             &app_module_dir,
             destination.join("modules").join(kebab_name),

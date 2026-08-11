@@ -9,7 +9,8 @@ use serde_json::Value;
 use crate::utils::{
     ConcurrentCommand, ConcurrentlyOptions, KillCondition, PrefixColor, PrefixStyle,
     RunnableModule, RunnableModuleType, StartupNotice, SuccessCondition, collect_runnable_modules,
-    current_dir, ensure_bin, run_concurrently, run_spinner_step, select_runnable_modules,
+    current_dir, ensure_bin, find_app_module, run_concurrently, run_spinner_step,
+    select_runnable_modules,
 };
 
 #[derive(Args, Debug)]
@@ -95,17 +96,14 @@ pub fn run(args: &AppStartArgs) {
         .clone()
         .map(std::path::PathBuf::from)
         .unwrap_or_else(current_dir);
-    let app_dir = cwd.join("modules").join("app");
-    let Some(name) = load_app_module_name(&app_dir, "app") else {
+    let modules = collect_runnable_modules(&cwd.join("modules"));
+    let Some(app_module) = find_app_module(&modules) else {
         crate::utils::error("Module app not found");
         return;
     };
-
-    let modules = collect_runnable_modules(&cwd.join("modules"));
-    if modules.is_empty() {
-        crate::utils::error("No runnable modules found");
-        return;
-    }
+    let app_dir = app_module.dir.clone();
+    let name =
+        load_app_module_name(&app_dir, &app_module.name).unwrap_or_else(|| app_module.name.clone());
 
     let selected =
         select_runnable_modules(&modules, args.modules.as_deref(), args.packages.as_deref());

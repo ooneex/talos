@@ -7,7 +7,7 @@ use serde_json::Value;
 
 use crate::utils::{
     ModulePort, RunnableModule, RunnableModuleType, collect_module_ports, collect_runnable_modules,
-    current_dir, ensure_bin, free_port, run_spinner_step, select_runnable_modules,
+    current_dir, ensure_bin, find_app_module, free_port, run_spinner_step, select_runnable_modules,
 };
 
 #[derive(Args, Debug)]
@@ -61,13 +61,13 @@ pub fn run(args: &AppStopArgs) {
         .clone()
         .map(std::path::PathBuf::from)
         .unwrap_or_else(current_dir);
-    let app_dir = cwd.join("modules").join("app");
-    if !app_dir.join("package.json").exists() {
+    let modules = collect_runnable_modules(&cwd.join("modules"));
+    let Some(app_module) = find_app_module(&modules) else {
         crate::utils::error("Module app not found");
         std::process::exit(1);
-    }
+    };
+    let app_dir = app_module.dir.clone();
 
-    let modules = collect_runnable_modules(&cwd.join("modules"));
     let selected =
         select_runnable_modules(&modules, args.modules.as_deref(), args.packages.as_deref());
     if selected.is_empty() {
@@ -95,7 +95,7 @@ pub fn run(args: &AppStopArgs) {
         return;
     }
 
-    let name = load_package_name(&app_dir, "app");
+    let name = load_package_name(&app_dir, &app_module.name);
     run_spinner_step(
         false,
         &format!("Stopping Docker services for {name}"),

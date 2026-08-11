@@ -6,8 +6,8 @@ use fs_extra::dir::{CopyOptions, copy as copy_dir};
 use serde_json::Value;
 
 use crate::utils::{
-    add_path_alias, ask_input, clone_skeleton, current_dir, read_template, to_kebab_case,
-    to_pascal_case, to_snake_case,
+    add_path_alias, ask_input, clone_skeleton, collect_runnable_modules, current_dir,
+    find_app_module, read_template, to_kebab_case, to_pascal_case, to_snake_case,
 };
 
 #[derive(Args, Debug)]
@@ -303,8 +303,12 @@ fn finalize_microservice_module(
         .unwrap_or(env_example);
     let _ = fs::write(module_dir.join(".env.yml"), env_content);
 
-    if kebab_name != "app" {
-        let env_yml_path = cwd.join("modules").join("app").join(".env.yml");
+    let runnable_modules = collect_runnable_modules(&cwd.join("modules"));
+    let app_module = find_app_module(&runnable_modules);
+    if kebab_name != "app"
+        && let Some(app_module) = app_module
+    {
+        let env_yml_path = app_module.dir.join(".env.yml");
         if env_yml_path.exists() {
             add_to_env_yml(&env_yml_path, kebab_name, port);
         }

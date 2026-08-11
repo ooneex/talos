@@ -29,7 +29,7 @@ pub fn run(args: &MicroserviceRemoveArgs) {
 
     let cwd = resolve_cwd(args.cwd.as_deref());
     let identity = resolve_module_identity(&cwd, &name);
-    if !ensure_removable(&identity, "Microservice", args.silent)
+    if !ensure_removable(&cwd, &identity, "Microservice", args.silent)
         || !crate::utils::confirm_removal(&identity.kebab_name, "microservice", args.silent)
     {
         return;

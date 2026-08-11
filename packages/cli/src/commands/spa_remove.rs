@@ -29,7 +29,7 @@ pub fn run(args: &SpaRemoveArgs) {
 
     let cwd = resolve_cwd(args.cwd.as_deref());
     let identity = resolve_module_identity(&cwd, &name);
-    if !ensure_removable(&identity, "Spa", args.silent)
+    if !ensure_removable(&cwd, &identity, "Spa", args.silent)
         || !ensure_expected_type(&identity, "spa", "spa module", args.silent)
         || !crate::utils::confirm_removal(&identity.kebab_name, "spa", args.silent)
     {

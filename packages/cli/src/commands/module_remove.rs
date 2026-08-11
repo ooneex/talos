@@ -1,8 +1,8 @@
 use clap::Args;
 
 use crate::utils::{
-    ask_input, declared_module_type, remove_from_app_yml, remove_standard_module_references,
-    resolve_cwd, resolve_module_identity,
+    ask_input, declared_module_type, find_app_module_name, remove_from_app_yml,
+    remove_standard_module_references, resolve_cwd, resolve_module_identity,
 };
 
 #[derive(Args, Debug)]
@@ -33,7 +33,7 @@ pub fn run(args: &ModuleRemoveArgs) {
     let silent = args.silent;
     let identity = resolve_module_identity(&cwd, &name);
 
-    if !crate::utils::ensure_removable(&identity, "Module", silent)
+    if !crate::utils::ensure_removable(&cwd, &identity, "Module", silent)
         || !crate::utils::confirm_removal(&identity.kebab_name, "module", silent)
     {
         return;
@@ -44,7 +44,11 @@ pub fn run(args: &ModuleRemoveArgs) {
     if read_module_type(&identity.module_dir, &identity.kebab_name).as_deref()
         == Some("microservice")
     {
-        let app_yml_path = cwd.join("modules").join("app").join("app.yml");
+        let app_name = find_app_module_name(&cwd).unwrap_or_else(|| "app".to_string());
+        let app_yml_path = cwd
+            .join("modules")
+            .join(&app_name)
+            .join(format!("{app_name}.yml"));
         remove_from_app_yml(&app_yml_path, &identity.kebab_name);
     }
 

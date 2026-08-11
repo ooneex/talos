@@ -29,7 +29,7 @@ pub fn run(args: &SwaggerRemoveArgs) {
 
     let cwd = resolve_cwd(args.cwd.as_deref());
     let identity = resolve_module_identity(&cwd, &name);
-    if !ensure_removable(&identity, "Swagger", args.silent)
+    if !ensure_removable(&cwd, &identity, "Swagger", args.silent)
         || !ensure_expected_type(&identity, "swagger", "swagger module", args.silent)
         || !crate::utils::confirm_removal(&identity.kebab_name, "swagger", args.silent)
     {

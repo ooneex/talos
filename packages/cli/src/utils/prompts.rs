@@ -228,11 +228,15 @@ pub fn find_destination_modules(cwd: &std::path::Path) -> Vec<String> {
 
 pub fn ask_destination_module(cwd: &std::path::Path, message: &str) -> String {
     let choices = find_destination_modules(cwd);
+    let app_name = super::find_app_module_name(cwd);
     if choices.is_empty() {
-        return "app".to_string();
+        return app_name.unwrap_or_else(|| "app".to_string());
     }
 
-    let default_index = choices.iter().position(|c| c == "app").unwrap_or(0);
+    let default_index = app_name
+        .as_deref()
+        .and_then(|name| choices.iter().position(|c| c == name))
+        .unwrap_or(0);
     Select::with_theme(&ColorfulTheme::default())
         .with_prompt(message)
         .items(&choices)
@@ -240,7 +244,7 @@ pub fn ask_destination_module(cwd: &std::path::Path, message: &str) -> String {
         .interact()
         .ok()
         .and_then(|index| choices.get(index).cloned())
-        .unwrap_or_else(|| "app".to_string())
+        .unwrap_or_else(|| app_name.unwrap_or_else(|| "app".to_string()))
 }
 
 pub fn resolve_name_and_destination(

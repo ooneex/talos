@@ -29,7 +29,7 @@ pub fn run(args: &StorybookRemoveArgs) {
 
     let cwd = resolve_cwd(args.cwd.as_deref());
     let identity = resolve_module_identity(&cwd, &name);
-    if !ensure_removable(&identity, "Storybook", args.silent)
+    if !ensure_removable(&cwd, &identity, "Storybook", args.silent)
         || !ensure_expected_type(&identity, "storybook", "storybook module", args.silent)
         || !crate::utils::confirm_removal(&identity.kebab_name, "storybook", args.silent)
     {

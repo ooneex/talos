@@ -124,6 +124,7 @@ fn docker_create_writes_a_new_compose_file_from_a_template() {
         "{\n  \"name\": \"@module/app\",\n  \"scripts\": {}\n}\n",
     )
     .expect("package");
+    std::fs::write(cwd.path().join("modules/app/app.yml"), "type: \"api\"\n").expect("app yml");
 
     let previous = std::env::var_os(cli::utils::TEMPLATES_DIR_ENV);
     unsafe {
@@ -162,6 +163,7 @@ fn docker_create_leaves_an_existing_service_alone() {
     let compose_path = cwd.path().join("modules/app/docker-compose.yml");
     std::fs::write(&compose_path, "services:\n  redis:\n    image: redis:6\n").expect("compose");
     std::fs::write(cwd.path().join("modules/app/package.json"), "{}\n").expect("package");
+    std::fs::write(cwd.path().join("modules/app/app.yml"), "type: \"api\"\n").expect("app yml");
     let previous = std::env::var_os(cli::utils::TEMPLATES_DIR_ENV);
     unsafe {
         std::env::set_var(cli::utils::TEMPLATES_DIR_ENV, templates.path());
