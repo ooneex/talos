@@ -110,13 +110,17 @@ fn scaffolding_copies_the_skeleton_and_renames_what_carries_the_project_name() {
         "the lockfile is left for the install to write"
     );
     assert_eq!(
-        read(&destination.join("modules/app/.env.yml")),
+        read(&destination.join("modules/my-app/.env.yml")),
         "server:\n  port: 3000\n",
         "the example environment becomes the real one"
     );
     assert!(
-        !destination.join("modules/app/.env.example.yml").exists(),
+        !destination.join("modules/my-app/.env.example.yml").exists(),
         "and the example is removed"
+    );
+    assert!(
+        !destination.join("modules/app").exists(),
+        "the app module directory is renamed to the project's name"
     );
     assert!(
         read(&destination.join("README.md")).starts_with("# my-app"),

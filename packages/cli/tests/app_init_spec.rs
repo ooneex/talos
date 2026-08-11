@@ -71,6 +71,12 @@ fn build_fake_skeleton(root: &Path) {
     .unwrap();
 
     fs::write(
+        root.join("modules").join("app").join("Dockerfile"),
+        "COPY modules/app/package.json modules/app/tsconfig.json ./modules/app/\nCOPY modules/app/src ./modules/app/src\nCMD [\"bun\", \"run\", \"modules/app/src/index.ts\"]\n",
+    )
+    .unwrap();
+
+    fs::write(
         root.join("tsconfig.json"),
         "{\n  \"compilerOptions\": {\n    \"paths\": {\n      \"@module/app/*\": [\n        \"./modules/app/src/*\"\n      ],\n      \"@module/shared/*\": [\n        \"./modules/shared/src/*\"\n      ],\n      \"@module/design/*\": [\n        \"./modules/design/src/*\"\n      ],\n      \"@module/sdk/*\": [\n        \"./modules/sdk/src/*\"\n      ],\n      \"@module/microservice/*\": [\n        \"./modules/microservice/src/*\"\n      ]\n    },\n    \"types\": [\n      \"bun\"\n    ]\n  }\n}\n",
     )
@@ -89,10 +95,11 @@ fn scaffold_destination_rewrites_env_and_readme() {
     assert!(!destination_path.join(".git").exists());
     assert!(!destination_path.join("bun.lock").exists());
     assert!(!destination_path.join("remotion.config.ts").exists());
+    assert!(!destination_path.join("modules").join("app").exists());
     assert!(
         !destination_path
             .join("modules")
-            .join("app")
+            .join("my-app")
             .join(".env.example.yml")
             .exists()
     );
@@ -100,7 +107,7 @@ fn scaffold_destination_rewrites_env_and_readme() {
         fs::read_to_string(
             destination_path
                 .join("modules")
-                .join("app")
+                .join("my-app")
                 .join(".env.yml")
         )
         .unwrap(),
@@ -114,12 +121,35 @@ fn scaffold_destination_rewrites_env_and_readme() {
         fs::read_to_string(
             destination_path
                 .join("modules")
-                .join("app")
+                .join("my-app")
                 .join("docker-compose.yml")
         )
         .unwrap(),
         "services:\n  postgres:\n    container_name: my_app_db\nvolumes:\n  my_app_db_data:\n"
     );
+}
+
+#[test]
+fn scaffold_destination_renames_app_module_dir_and_rewrites_dockerfile() {
+    let skeleton = tempdir().unwrap();
+    build_fake_skeleton(skeleton.path());
+    let destination = tempdir().unwrap();
+    let destination_path = destination.path().join("app");
+
+    scaffold_destination(skeleton.path(), &destination_path, "my-app", None).unwrap();
+
+    assert!(!destination_path.join("modules").join("app").exists());
+    assert!(destination_path.join("modules").join("my-app").is_dir());
+
+    let dockerfile = fs::read_to_string(
+        destination_path
+            .join("modules")
+            .join("my-app")
+            .join("Dockerfile"),
+    )
+    .unwrap();
+    assert!(dockerfile.contains("modules/my-app"));
+    assert!(!dockerfile.contains("modules/app"));
 }
 
 #[test]
@@ -156,7 +186,7 @@ fn scaffold_destination_renames_the_app_module_package() {
     let app_package_json = fs::read_to_string(
         destination_path
             .join("modules")
-            .join("app")
+            .join("my-app")
             .join("package.json"),
     )
     .unwrap();
@@ -175,9 +205,11 @@ fn scaffold_destination_without_app_type_keeps_all_modules() {
 
     scaffold_destination(skeleton.path(), &destination_path, "my-app", None).unwrap();
 
-    for module in ["app", "shared", "billing"] {
+    assert!(destination_path.join("modules").join("my-app").is_dir());
+    for module in ["shared", "billing"] {
         assert!(destination_path.join("modules").join(module).is_dir());
     }
+    assert!(!destination_path.join("modules").join("app").exists());
     assert!(destination_path.join(".dockerignore").exists());
 }
 
@@ -196,7 +228,8 @@ fn scaffold_destination_with_api_app_type_keeps_only_app_and_shared_modules() {
     )
     .unwrap();
 
-    assert!(destination_path.join("modules").join("app").is_dir());
+    assert!(!destination_path.join("modules").join("app").exists());
+    assert!(destination_path.join("modules").join("my-app").is_dir());
     assert!(destination_path.join("modules").join("shared").is_dir());
     assert!(!destination_path.join("modules").join("billing").exists());
 }

@@ -294,6 +294,15 @@ pub fn scaffold_destination(
         .map_err(|e| e.to_string())?;
     }
 
+    let dockerfile_path = destination.join("modules").join("app").join("Dockerfile");
+    if let Ok(dockerfile) = fs::read_to_string(&dockerfile_path) {
+        fs::write(
+            &dockerfile_path,
+            dockerfile.replace("modules/app", &format!("modules/{kebab_name}")),
+        )
+        .map_err(|e| e.to_string())?;
+    }
+
     match app_type {
         Some(AppType::Cli) => {
             let modules_dir = destination.join("modules");
@@ -305,6 +314,19 @@ pub fn scaffold_destination(
             keep_only_app_and_shared_modules(destination)?;
         }
         None => {}
+    }
+
+    // Renamed last, once `keep_only_app_and_shared_modules` (which matches
+    // on the skeleton's original "app" name) has already run, so the app
+    // module directory ends up matching the `@module/{kebab_name}` alias
+    // the tsconfig rewrite above already pointed at.
+    let app_module_dir = destination.join("modules").join("app");
+    if app_module_dir.is_dir() {
+        fs::rename(
+            &app_module_dir,
+            destination.join("modules").join(kebab_name),
+        )
+        .map_err(|e| e.to_string())?;
     }
 
     Ok(())
