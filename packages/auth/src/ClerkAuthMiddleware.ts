@@ -3,7 +3,7 @@ import { container, inject } from "@talosjs/container";
 import type { ContextConfigType, ContextType } from "@talosjs/controller";
 import { HttpStatus } from "@talosjs/http-status";
 import type { IMiddleware } from "@talosjs/middleware";
-import type { IRolesConfig, RoleType } from "@talosjs/role";
+import { GUEST_ROLE, type IRolesConfig, type RoleType } from "@talosjs/role";
 import type { IUser } from "@talosjs/user";
 import { AuthException } from "./AuthException";
 import { ClerkAuth } from "./ClerkAuth";
@@ -23,7 +23,7 @@ export class ClerkAuthMiddleware implements IMiddleware, IAuth {
 
     const rolesConfig = container.hasConstant("app.roles") ? container.getConstant<IRolesConfig>("app.roles") : null;
 
-    const guestRole = rolesConfig?.roles.GUEST ?? "ROLE_GUEST";
+    const guestRole = rolesConfig?.roles.GUEST ?? GUEST_ROLE;
     const routeRoles = context.route?.roles ?? [];
     const isGuestOnly = routeRoles.length === 0 || (routeRoles.length === 1 && routeRoles[0] === guestRole);
 
