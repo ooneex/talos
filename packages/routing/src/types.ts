@@ -2,6 +2,7 @@ import type { EnvironmentNameType } from "@talosjs/app-env";
 import type { ControllerClassType } from "@talosjs/controller";
 import type { FeatureFlagClassType } from "@talosjs/feature-flag";
 import type { PermissionClassType } from "@talosjs/permission";
+import type { RoleType } from "@talosjs/role";
 import type { HttpMethodType } from "@talosjs/types";
 import type { AssertRecordType, AssertType, IAssert } from "@talosjs/validation";
 import type { AssertFile } from "@talosjs/validation/constraints/AssertFile";
@@ -21,7 +22,7 @@ export type RouteConfigType = {
   env?: EnvironmentNameType[];
   ip?: string[];
   host?: string[];
-  roles?: Uppercase<string>[];
+  roles?: RoleType[];
   permission?: PermissionClassType;
   featureFlag?: FeatureFlagClassType;
   cache?: string;
