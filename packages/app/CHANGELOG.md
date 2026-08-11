@@ -91,3 +91,9 @@
 
 - Resolve roles.yml fallback from the running module, not shared|The fallback path was hardcoded to modules/shared/src/roles.yml, so any — Franck ([6e84dbf1](https///github.com/ooneex/talos/commit/6e84dbf1))
 
+## [1.3.1](https///github.com/ooneex/talos/releases/tag/@talosjs/app@1.3.1) - 2026-08-11
+
+### Changed
+
+- Update tests for RoleType role changes| — Franck ([c358dd77](https///github.com/ooneex/talos/commit/c358dd77))
+
