@@ -37,3 +37,9 @@
 
 - Use RoleType for route config roles| — Franck ([02cff630](https///github.com/ooneex/talos/commit/02cff630))
 
+## [1.3.0](https///github.com/ooneex/talos/releases/tag/@talosjs/routing@1.3.0) - 2026-08-11
+
+### Added
+
+- Default route roles to GUEST_ROLE when unset| — Franck ([a2ad7f82](https///github.com/ooneex/talos/commit/a2ad7f82))
+
