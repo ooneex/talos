@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { IResponse } from "@talosjs/http-response";
+import type { RoleType } from "@talosjs/role";
 import type { ContextConfigType, ContextType, IController } from "@/index";
 
 const expectType = <T>(_value: T): void => {};
@@ -31,7 +32,7 @@ class ProductController implements IController<ProductContextConfigType> {
     expectType<ContextType<ProductContextConfigType>["rateLimiter"]>(context.rateLimiter);
 
     if (context.route?.roles) {
-      expectType<Uppercase<string>[]>(context.route.roles);
+      expectType<RoleType[]>(context.route.roles);
     }
 
     return context.response.json({ ok: true, id: context.params.id });

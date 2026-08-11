@@ -7,6 +7,7 @@ import type { IResponse } from "@talosjs/http-response";
 import type { ILogger, LogDataType } from "@talosjs/logger";
 import type { IPermission } from "@talosjs/permission";
 import type { IRateLimiter } from "@talosjs/rate-limit";
+import type { RoleType } from "@talosjs/role";
 import type { LocaleInfoType } from "@talosjs/translation";
 import type { HttpMethodType, ScalarType } from "@talosjs/types";
 import type { IUser } from "@talosjs/user";
@@ -34,7 +35,7 @@ export type ContextType<T extends ContextConfigType = ContextConfigType> = {
     method: HttpMethodType;
     version: number;
     description: string;
-    roles?: Uppercase<string>[];
+    roles?: RoleType[];
   } | null;
   env: IAppEnv;
   response: IResponse<T["response"]>;
