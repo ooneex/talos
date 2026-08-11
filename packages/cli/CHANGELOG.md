@@ -478,3 +478,14 @@
 
 - Update Cargo.lock| — Franck ([b1f865fa](https///github.com/ooneex/talos/commit/b1f865fa))
 
+## [0.6.0](https///github.com/ooneex/talos/releases/tag/@talos/cli@0.6.0) - 2026-08-11
+
+### Added
+
+- Resolve the app module dynamically instead of hardcoding "app"| — Franck ([a3b59be9](https///github.com/ooneex/talos/commit/a3b59be9))
+- Rename app module directory to project name on app init| — Franck ([e1d4e894](https///github.com/ooneex/talos/commit/e1d4e894))
+
+### Changed
+
+- Clarify cache help text does not update installed CLI binary| — Franck ([f1e22aec](https///github.com/ooneex/talos/commit/f1e22aec))
+
