@@ -1,5 +1,8 @@
 export type RoleType = `ROLE_${Uppercase<string>}`
 
+/** Default role for unauthenticated/public routes. */
+export const GUEST_ROLE: RoleType = "ROLE_GUEST"
+
 export type RoleHierarchyEntryType = {
   inherits?: RoleType[];
   description: string;
