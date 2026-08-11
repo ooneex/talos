@@ -1,3 +1,4 @@
+import type { RoleType } from "@talosjs/role";
 import type { LocaleType } from "@talosjs/translation";
 
 export enum EAccountType {
@@ -45,7 +46,7 @@ interface IBase {
 
 export interface IUser extends IBase {
   email: string;
-  roles: Uppercase<string>[];
+  roles: RoleType[];
   externalId?: string;
   name?: string;
   lastName?: string;
