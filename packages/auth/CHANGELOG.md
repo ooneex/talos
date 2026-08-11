@@ -30,3 +30,9 @@
 - Raise coverage thresholds to 99% across all packages| — Franck ([14db3019](https///github.com/ooneex/talos/commit/14db3019))
 - Enable coverage thresholds in every package's bunfig.toml| — Franck ([e19e3785](https///github.com/ooneex/talos/commit/e19e3785))
 
+## [1.2.0](https///github.com/ooneex/talos/releases/tag/@talosjs/auth@1.2.0) - 2026-08-11
+
+### Added
+
+- Use RoleType instead of Uppercase<string> for roles| — Franck ([acb72f8d](https///github.com/ooneex/talos/commit/acb72f8d))
+
