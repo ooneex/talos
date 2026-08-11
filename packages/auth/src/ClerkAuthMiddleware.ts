@@ -3,7 +3,7 @@ import { container, inject } from "@talosjs/container";
 import type { ContextConfigType, ContextType } from "@talosjs/controller";
 import { HttpStatus } from "@talosjs/http-status";
 import type { IMiddleware } from "@talosjs/middleware";
-import type { IRolesConfig } from "@talosjs/role";
+import type { IRolesConfig, RoleType } from "@talosjs/role";
 import type { IUser } from "@talosjs/user";
 import { AuthException } from "./AuthException";
 import { ClerkAuth } from "./ClerkAuth";
@@ -58,7 +58,7 @@ export class ClerkAuthMiddleware implements IMiddleware, IAuth {
       id: clerkUser.privateMetadata?.externalId as string,
       externalId: clerkUser.id,
       email: primaryEmail.emailAddress,
-      roles: (clerkUser.privateMetadata?.roles as Uppercase<string>[]) ?? [userRole],
+      roles: (clerkUser.privateMetadata?.roles as RoleType[]) ?? [userRole],
     };
 
     if (clerkUser.firstName) user.firstName = clerkUser.firstName;

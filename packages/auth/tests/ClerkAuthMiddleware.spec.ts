@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 import { container } from "@talosjs/container";
+import type { RoleType } from "@talosjs/role";
 import { AuthException } from "@/AuthException";
 import { ClerkAuthMiddleware } from "@/ClerkAuthMiddleware";
 
@@ -51,7 +52,7 @@ const createMockClerkUser = (overrides: Record<string, unknown> = {}) => ({
 
 const createMockContext = (
   token: string | null = "valid-token",
-  route?: { roles?: Uppercase<string>[] } | null,
+  route?: { roles?: RoleType[] } | null,
   queries?: { bearerToken?: string | null },
 ) => ({
   header: {
