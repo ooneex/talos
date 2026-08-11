@@ -9,5 +9,5 @@
     "test": "sh scripts/coverage.sh"
   },
   "type": "module",
-  "version": "0.6.0"
+  "version": "0.6.1"
 }
