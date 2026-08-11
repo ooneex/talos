@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { Environment } from "@talosjs/app-env";
 import type { ContextType } from "@talosjs/controller";
 import { HttpStatus } from "@talosjs/http-status";
+import type { RoleType } from "@talosjs/role";
 import type { RouteConfigType } from "@talosjs/routing";
 import { type AssertType, type IAssert, type } from "@talosjs/validation";
 import { AssertFile } from "@talosjs/validation/constraints/AssertFile";
@@ -417,7 +418,7 @@ describe("validateRouteAccess", () => {
     });
 
     test("passes roles to context route", () => {
-      const roles: Uppercase<string>[] = ["ROLE_ADMIN", "ROLE_USER"];
+      const roles: RoleType[] = ["ROLE_ADMIN", "ROLE_USER"];
       const context = createMockContext({
         route: {
           name: "api.test.list",

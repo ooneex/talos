@@ -333,7 +333,7 @@ describe("applyEnvRoles", () => {
     container.removeConstant("app.roles");
     container.addConstant("app.roles", {
       ...testRolesConfig,
-      roles: { ...testRolesConfig.roles, SYSTEM: "CUSTOM_SYSTEM_ROLE" },
+      roles: { ...testRolesConfig.roles, SYSTEM: "ROLE_CUSTOM_SYSTEM_ROLE" },
     });
 
     const context = createMockContext({
@@ -346,7 +346,7 @@ describe("applyEnvRoles", () => {
 
     applyEnvRoles(context);
 
-    expect(context.user?.roles).toContain("CUSTOM_SYSTEM_ROLE");
+    expect(context.user?.roles).toContain("ROLE_CUSTOM_SYSTEM_ROLE");
     expect(context.user?.roles).not.toContain("ROLE_SYSTEM");
   });
 });
