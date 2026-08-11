@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { YAML } from "bun";
 import { Role } from "@/Role";
 import rolesYml from "@/roles.yml" with { type: "text" };
-import type { IRolesConfig } from "@/types";
+import type { IRolesConfig, RoleType } from "@/types";
 
 const config = YAML.parse(rolesYml) as IRolesConfig;
 
@@ -27,17 +27,17 @@ describe("Role", () => {
     });
 
     test("should return false when user role is unknown", () => {
-      expect(role.hasRole("ROLE_UNKNOWN" as Uppercase<string>, "ROLE_GUEST", config)).toBe(false);
+      expect(role.hasRole("ROLE_UNKNOWN" as RoleType, "ROLE_GUEST", config)).toBe(false);
     });
 
     test("should return false when both roles are unknown", () => {
-      expect(role.hasRole("ROLE_UNKNOWN" as Uppercase<string>, "ROLE_ALSO_UNKNOWN" as Uppercase<string>, config)).toBe(
+      expect(role.hasRole("ROLE_UNKNOWN" as RoleType, "ROLE_ALSO_UNKNOWN" as RoleType, config)).toBe(
         false,
       );
     });
 
     test("should return false when required role is unknown even if user role exists", () => {
-      expect(role.hasRole("ROLE_GUEST", "ROLE_UNKNOWN" as Uppercase<string>, config)).toBe(false);
+      expect(role.hasRole("ROLE_GUEST", "ROLE_UNKNOWN" as RoleType, config)).toBe(false);
     });
 
     test("should return false for sibling roles on different branches", () => {
@@ -54,7 +54,7 @@ describe("Role", () => {
     });
 
     test("should return empty array for an unknown role", () => {
-      const result = role.getInheritedRoles("ROLE_UNKNOWN" as Uppercase<string>, config);
+      const result = role.getInheritedRoles("ROLE_UNKNOWN" as RoleType, config);
       expect(result).toEqual([]);
     });
 

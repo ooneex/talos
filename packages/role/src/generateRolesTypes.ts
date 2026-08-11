@@ -1,8 +1,8 @@
-import type { IRolesConfig } from "./types";
+import type { IRolesConfig, RoleType } from "./types";
 
 export const generateRolesTypes = (config: IRolesConfig): string => {
-  const roleKeys = Object.keys(config.roles) as Uppercase<string>[];
-  const hierarchyKeys = Object.keys(config.hierarchy) as Uppercase<string>[];
+  const roleKeys = Object.keys(config.roles) as RoleType[];
+  const hierarchyKeys = Object.keys(config.hierarchy) as RoleType[];
 
   const roleUnion = roleKeys.map((k) => `"${k}"`).join(" | ");
   const hierarchyUnion = hierarchyKeys.map((k) => `"${k}"`).join(" | ");
