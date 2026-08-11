@@ -1,4 +1,5 @@
 import type { ControllerClassType } from "@talosjs/controller";
+import { GUEST_ROLE } from "@talosjs/role";
 import type { HttpMethodType } from "@talosjs/types";
 import type { AssertType, IAssert } from "@talosjs/validation";
 import { router } from "./Router";
@@ -32,6 +33,7 @@ const createRouteDecorator = (method: HttpMethodType) => {
     return (target: ControllerClassType): void => {
       const route: RouteConfigType = {
         ...config,
+        roles: config.roles ?? [GUEST_ROLE],
         path,
         method,
         isSocket: false,
@@ -48,6 +50,7 @@ const createSocketDecorator = () => {
     return (target: SocketControllerClassType): void => {
       const route: RouteConfigType = {
         ...config,
+        roles: config.roles ?? [GUEST_ROLE],
         path,
         method: "GET",
         isSocket: true,
