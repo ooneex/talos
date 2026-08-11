@@ -1,6 +1,8 @@
 import type { EnvironmentNameType } from "@talosjs/app-env";
+import { container } from "@talosjs/container";
 import type { ContextType } from "@talosjs/controller";
 import { HttpStatus, type StatusCodeType } from "@talosjs/http-status";
+import { GUEST_ROLE, type IRolesConfig } from "@talosjs/role";
 import type { RouteConfigType } from "@talosjs/routing";
 import { type AssertType, type IAssert, validateAssert } from "@talosjs/validation";
 
@@ -94,22 +96,28 @@ export const validateRouteAccess = async (
 
   // Check roles
   if (route.roles && route.roles.length > 0) {
-    if (!context.user || !context.user.roles || context.user.roles.length === 0) {
-      return {
-        message: `Route "${route.name}" requires authentication`,
-        status: HttpStatus.Code.Forbidden,
-        key: "AUTHENTICATION_REQUIRED",
-      };
-    }
+    const rolesConfig = container.hasConstant("app.roles") ? container.getConstant<IRolesConfig>("app.roles") : null;
+    const guestRole = rolesConfig?.roles.GUEST ?? GUEST_ROLE;
+    const isPublicRoute = route.roles.includes(guestRole);
 
-    const hasRequiredRole = route.roles.some((requiredRole) => context.user?.roles.includes(requiredRole));
+    if (!isPublicRoute) {
+      if (!context.user || !context.user.roles || context.user.roles.length === 0) {
+        return {
+          message: `Route "${route.name}" requires authentication`,
+          status: HttpStatus.Code.Forbidden,
+          key: "AUTHENTICATION_REQUIRED",
+        };
+      }
 
-    if (!hasRequiredRole) {
-      return {
-        message: `Route "${route.name}" is not accessible for user roles`,
-        status: HttpStatus.Code.NotAcceptable,
-        key: "ROLE_NOT_ALLOWED",
-      };
+      const hasRequiredRole = route.roles.some((requiredRole) => context.user?.roles.includes(requiredRole));
+
+      if (!hasRequiredRole) {
+        return {
+          message: `Route "${route.name}" is not accessible for user roles`,
+          status: HttpStatus.Code.NotAcceptable,
+          key: "ROLE_NOT_ALLOWED",
+        };
+      }
     }
   }
 

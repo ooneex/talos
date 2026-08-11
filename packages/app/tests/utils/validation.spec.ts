@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { Environment } from "@talosjs/app-env";
+import { container } from "@talosjs/container";
 import type { ContextType } from "@talosjs/controller";
 import { HttpStatus } from "@talosjs/http-status";
 import type { RoleType } from "@talosjs/role";
@@ -411,6 +412,53 @@ describe("validateRouteAccess", () => {
     test("returns null when roles array is empty", async () => {
       const context = createMockContext({ user: null });
       const route = createMockRoute({ roles: [] });
+
+      const result = await validateRouteAccess(context, route, Environment.DEVELOPMENT);
+
+      expect(result).toBeNull();
+    });
+
+    test("returns null for anonymous user when route declares ROLE_GUEST", async () => {
+      container.addConstant("app.roles", {
+        roles: { GUEST: "ROLE_GUEST", ADMIN: "ROLE_ADMIN" },
+        hierarchy: {},
+      });
+
+      try {
+        const context = createMockContext({ user: null });
+        const route = createMockRoute({ roles: ["ROLE_GUEST"] });
+
+        const result = await validateRouteAccess(context, route, Environment.DEVELOPMENT);
+
+        expect(result).toBeNull();
+      } finally {
+        container.removeConstant("app.roles");
+      }
+    });
+
+    test("returns null for authenticated user without matching role when route declares ROLE_GUEST", async () => {
+      container.addConstant("app.roles", {
+        roles: { GUEST: "ROLE_GUEST", ADMIN: "ROLE_ADMIN" },
+        hierarchy: {},
+      });
+
+      try {
+        const context = createMockContext({
+          user: { id: "1", email: "test@test.com", roles: ["ROLE_USER"] } as unknown as ContextType["user"],
+        });
+        const route = createMockRoute({ roles: ["ROLE_GUEST"] });
+
+        const result = await validateRouteAccess(context, route, Environment.DEVELOPMENT);
+
+        expect(result).toBeNull();
+      } finally {
+        container.removeConstant("app.roles");
+      }
+    });
+
+    test("treats ROLE_GUEST as public even when app.roles is not registered", async () => {
+      const context = createMockContext({ user: null });
+      const route = createMockRoute({ roles: ["ROLE_GUEST"] });
 
       const result = await validateRouteAccess(context, route, Environment.DEVELOPMENT);
 
