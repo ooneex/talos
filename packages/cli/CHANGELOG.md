@@ -489,3 +489,9 @@
 
 - Clarify cache help text does not update installed CLI binary| — Franck ([f1e22aec](https///github.com/ooneex/talos/commit/f1e22aec))
 
+## [0.6.2](https///github.com/ooneex/talos/releases/tag/@talos/cli@0.6.2) - 2026-08-11
+
+### Changed
+
+- Bump talos-cli version| — Franck ([b132fb51](https///github.com/ooneex/talos/commit/b132fb51))
+
