@@ -63,6 +63,18 @@ fn build_fake_skeleton(root: &Path) {
         "services:\n  postgres:\n    container_name: skeleton_db\nvolumes:\n  skeleton_db_data:\n",
     )
     .unwrap();
+
+    fs::write(
+        root.join("modules").join("app").join("package.json"),
+        "{\n  \"name\": \"@module/app\",\n  \"description\": \"\",\n  \"version\": \"0.0.1\"\n}\n",
+    )
+    .unwrap();
+
+    fs::write(
+        root.join("tsconfig.json"),
+        "{\n  \"compilerOptions\": {\n    \"paths\": {\n      \"@module/app/*\": [\n        \"./modules/app/src/*\"\n      ],\n      \"@module/shared/*\": [\n        \"./modules/shared/src/*\"\n      ],\n      \"@module/design/*\": [\n        \"./modules/design/src/*\"\n      ],\n      \"@module/sdk/*\": [\n        \"./modules/sdk/src/*\"\n      ],\n      \"@module/microservice/*\": [\n        \"./modules/microservice/src/*\"\n      ]\n    },\n    \"types\": [\n      \"bun\"\n    ]\n  }\n}\n",
+    )
+    .unwrap();
 }
 
 #[test]
@@ -107,6 +119,50 @@ fn scaffold_destination_rewrites_env_and_readme() {
         )
         .unwrap(),
         "services:\n  postgres:\n    container_name: my_app_db\nvolumes:\n  my_app_db_data:\n"
+    );
+}
+
+#[test]
+fn scaffold_destination_rewrites_tsconfig_module_paths() {
+    let skeleton = tempdir().unwrap();
+    build_fake_skeleton(skeleton.path());
+    let destination = tempdir().unwrap();
+    let destination_path = destination.path().join("app");
+
+    scaffold_destination(skeleton.path(), &destination_path, "my-app", None).unwrap();
+
+    let tsconfig = fs::read_to_string(destination_path.join("tsconfig.json")).unwrap();
+    assert!(tsconfig.contains("\"@module/app/*\""));
+    assert!(tsconfig.contains("\"./modules/my-app/src/*\""));
+    assert!(!tsconfig.contains("\"./modules/app/src/*\""));
+    assert!(tsconfig.contains("\"@module/shared/*\""));
+    assert!(!tsconfig.contains("\"@module/design/*\""));
+    assert!(!tsconfig.contains("\"@module/sdk/*\""));
+    assert!(!tsconfig.contains("\"@module/microservice/*\""));
+
+    let parsed: serde_json::Value = serde_json::from_str(&tsconfig).unwrap();
+    assert!(parsed["compilerOptions"]["types"].is_array());
+}
+
+#[test]
+fn scaffold_destination_renames_the_app_module_package() {
+    let skeleton = tempdir().unwrap();
+    build_fake_skeleton(skeleton.path());
+    let destination = tempdir().unwrap();
+    let destination_path = destination.path().join("app");
+
+    scaffold_destination(skeleton.path(), &destination_path, "my-app", None).unwrap();
+
+    let app_package_json = fs::read_to_string(
+        destination_path
+            .join("modules")
+            .join("app")
+            .join("package.json"),
+    )
+    .unwrap();
+    assert_eq!(
+        app_package_json,
+        "{\n  \"name\": \"@module/my-app\",\n  \"description\": \"\",\n  \"version\": \"0.0.1\"\n}"
     );
 }
 

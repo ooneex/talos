@@ -266,6 +266,21 @@ pub fn scaffold_destination(
         fs::write(&package_json_path, updated).map_err(|e| e.to_string())?;
     }
 
+    let app_package_json_path = destination.join("modules").join("app").join("package.json");
+    if let Ok(app_package_json) = fs::read_to_string(&app_package_json_path) {
+        let updated = set_package_json_name(&app_package_json, &format!("@module/{kebab_name}"));
+        fs::write(&app_package_json_path, updated).map_err(|e| e.to_string())?;
+    }
+
+    let tsconfig_path = destination.join("tsconfig.json");
+    if let Ok(tsconfig) = fs::read_to_string(&tsconfig_path) {
+        let updated = strip_extra_tsconfig_paths(&tsconfig).replace(
+            "./modules/app/src/*",
+            &format!("./modules/{kebab_name}/src/*"),
+        );
+        fs::write(&tsconfig_path, updated).map_err(|e| e.to_string())?;
+    }
+
     let docker_compose_path = destination
         .join("modules")
         .join("app")
@@ -317,6 +332,14 @@ fn set_package_json_name(package_json: &str, kebab_name: &str) -> String {
         })
         .collect::<Vec<_>>()
         .join("\n")
+}
+
+/// Removes the `@module/design`, `@module/sdk`, and `@module/microservice`
+/// path aliases from the root `tsconfig.json`, leaving only `@module/app`
+/// and `@module/shared`, which every scaffolded project keeps.
+fn strip_extra_tsconfig_paths(tsconfig: &str) -> String {
+    const EXTRA_PATHS: &str = "      \"@module/design/*\": [\n        \"./modules/design/src/*\"\n      ],\n      \"@module/sdk/*\": [\n        \"./modules/sdk/src/*\"\n      ],\n      \"@module/microservice/*\": [\n        \"./modules/microservice/src/*\"\n      ]\n";
+    tsconfig.replace(&format!(",\n{EXTRA_PATHS}"), "\n")
 }
 
 /// Removes every module under `modules/` except `app` and `shared`, which
