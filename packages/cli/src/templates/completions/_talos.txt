@@ -333,11 +333,20 @@ _talos() {
             '--feature=[Feature name (scopes the component to a feature)]:feature' \
             '--override[Override existing file]'
           ;;
-        ai:chat:create|ai:tool:create|ai:middleware:create|analytics:create|cache:create|command:create|cron:create|database:create|e2e:create|flag:create|logger:create|mailer:create|permission:create|queue:create|rate-limit:create|repository:create|service:create|spa:feature:create|storage:create|translation:create|vector-database:create|workflow:create|workflow:transition:create)
+        ai:chat:create|ai:tool:create|ai:middleware:create|analytics:create|cache:create|command:create|cron:create|e2e:create|flag:create|logger:create|mailer:create|permission:create|queue:create|rate-limit:create|repository:create|service:create|spa:feature:create|storage:create|translation:create|vector-database:create|workflow:create|workflow:transition:create)
           _arguments -s \
             '--name=[Name of the resource]:name' \
             '--module=[Module name]:module:_talos_modules' \
             '--override[Override existing file]'
+          ;;
+        database:create)
+          _arguments -s \
+            '--name=[Name of the resource]:name' \
+            '--module=[Module name]:module:_talos_modules' \
+            '--type=[Database type]:type:(postgres sqlite redis)' \
+            '--override[Override existing file]' \
+            '--no-cache[Bypass the skeleton template cache]' \
+            '--cwd=[Working directory]:cwd:_files -/'
           ;;
         controller:create)
           _arguments -s \

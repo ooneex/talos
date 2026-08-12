@@ -1,5 +1,5 @@
 use clap::Parser;
-use cli::commands::database_create::{DatabaseCreateArgs, run};
+use cli::commands::database_create::{DatabaseCreateArgs, DatabaseType, run};
 use std::sync::Mutex;
 
 static ENV_GUARD: Mutex<()> = Mutex::new(());
@@ -28,7 +28,7 @@ fn database_create_parses_all_flags() {
 
     assert_eq!(cli.args.name.as_deref(), Some("MyDatabase"));
     assert_eq!(cli.args.module.as_deref(), Some("user"));
-    assert_eq!(cli.args.r#type.as_deref(), Some("postgres"));
+    assert_eq!(cli.args.r#type, Some(DatabaseType::Postgres));
     assert!(cli.args.r#override);
     assert_eq!(cli.args.cwd.as_deref(), Some("./here"));
 }
@@ -80,7 +80,7 @@ fn database_create_writes_database_and_test_files_from_templates() {
         no_cache: false,
         name: Some("Analytics".to_string()),
         module: Some("shared".to_string()),
-        r#type: Some("postgres".to_string()),
+        r#type: Some(DatabaseType::Postgres),
         r#override: true,
         cwd: Some(root.path().display().to_string()),
     });
@@ -136,7 +136,7 @@ fn database_create_strips_suffixes_and_uses_the_redis_template() {
         no_cache: false,
         name: Some("CacheDatabaseAdapter".to_string()),
         module: None,
-        r#type: Some("redis".to_string()),
+        r#type: Some(DatabaseType::Redis),
         r#override: true,
         cwd: Some(root.path().display().to_string()),
     });
@@ -195,7 +195,7 @@ fn database_create_keeps_the_existing_file_when_override_is_not_confirmed() {
         no_cache: false,
         name: Some("CacheDatabase".to_string()),
         module: None,
-        r#type: Some("sqlite".to_string()),
+        r#type: Some(DatabaseType::Sqlite),
         r#override: false,
         cwd: Some(root.path().display().to_string()),
     });

@@ -234,12 +234,17 @@ seed:create seed:run"
       [[ $flag == --module ]] && candidates="$(_talos_modules)"
       ;;
     ai:chat:create | ai:tool:create | ai:middleware:create | analytics:create | cache:create | \
-      command:create | cron:create | database:create | flag:create | logger:create | \
+      command:create | cron:create | flag:create | logger:create | \
       mailer:create | permission:create | queue:create | rate-limit:create | repository:create | \
       service:create | spa:feature:create | storage:create | translation:create | \
       vector-database:create | workflow:create | workflow:transition:create)
       opts="--name --module --override"
       [[ $flag == --module ]] && candidates="$(_talos_modules)"
+      ;;
+    database:create)
+      opts="--name --module --type --override --no-cache --cwd"
+      [[ $flag == --module ]] && candidates="$(_talos_modules)"
+      [[ $flag == --type ]] && candidates="postgres sqlite redis"
       ;;
     controller:create)
       opts="--name --module --route-name --route-path --route-method --is-socket --override"

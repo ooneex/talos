@@ -1,11 +1,33 @@
-use clap::Args;
+use clap::{Args, ValueEnum};
 
 use crate::utils::{
     ask_confirm, ask_input, ask_select, current_dir, ensure_module, install_dependency,
     read_template, skeleton_templates_dir, to_pascal_case,
 };
 
-const DATABASE_TYPES: &[&str] = &["postgres", "sqlite", "redis"];
+/// Database adapter kind a `database:create` can scaffold.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
+pub enum DatabaseType {
+    Postgres,
+    Sqlite,
+    Redis,
+}
+
+const DATABASE_TYPES: &[DatabaseType] = &[
+    DatabaseType::Postgres,
+    DatabaseType::Sqlite,
+    DatabaseType::Redis,
+];
+
+impl DatabaseType {
+    fn slug(self) -> &'static str {
+        match self {
+            Self::Postgres => "postgres",
+            Self::Sqlite => "sqlite",
+            Self::Redis => "redis",
+        }
+    }
+}
 
 #[derive(Args, Debug)]
 pub struct DatabaseCreateArgs {
@@ -22,8 +44,8 @@ pub struct DatabaseCreateArgs {
     #[arg(long)]
     pub module: Option<String>,
 
-    #[arg(long)]
-    pub r#type: Option<String>,
+    #[arg(long, value_enum, help = "Database type: postgres, sqlite or redis")]
+    pub r#type: Option<DatabaseType>,
 
     #[arg(long, default_value_t = false)]
     pub r#override: bool,
@@ -40,11 +62,11 @@ fn normalize_database_name(name: &str) -> String {
         .unwrap_or(name)
 }
 
-fn template_files(db_type: &str) -> (&'static str, &'static str) {
+fn template_files(db_type: DatabaseType) -> (&'static str, &'static str) {
     match db_type {
-        "postgres" => ("database.pg.txt", "database.test.txt"),
-        "redis" => ("database.redis.txt", "database.redis.test.txt"),
-        _ => ("database.sqlite.txt", "database.test.txt"),
+        DatabaseType::Postgres => ("database.pg.txt", "database.test.txt"),
+        DatabaseType::Redis => ("database.redis.txt", "database.redis.test.txt"),
+        DatabaseType::Sqlite => ("database.sqlite.txt", "database.test.txt"),
     }
 }
 
@@ -95,18 +117,21 @@ pub fn run(args: &DatabaseCreateArgs) {
 
     let name = normalize_database_name(&name);
 
-    let db_type = match args.r#type.clone() {
+    let db_type = match args.r#type {
         Some(db_type) => db_type,
-        None => match ask_select("Select database type", DATABASE_TYPES) {
-            Some(index) => DATABASE_TYPES[index].to_string(),
-            None => return,
-        },
+        None => {
+            let labels: Vec<&str> = DATABASE_TYPES.iter().map(|kind| kind.slug()).collect();
+            match ask_select("Select database type", &labels) {
+                Some(index) => DATABASE_TYPES[index],
+                None => return,
+            }
+        }
     };
 
     let Some(templates_dir) = skeleton_templates_dir(false, !args.no_cache) else {
         return;
     };
-    let (template_file, test_file) = template_files(&db_type);
+    let (template_file, test_file) = template_files(db_type);
     let Some(template) = read_template(&templates_dir, template_file) else {
         return;
     };

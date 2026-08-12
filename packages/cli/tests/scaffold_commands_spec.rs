@@ -415,7 +415,7 @@ fn every_generator_writes_the_source_and_the_spec_its_template_describes() {
         no_cache: false,
         name: Some("main".to_string()),
         module: None,
-        r#type: Some("postgres".to_string()),
+        r#type: Some(commands::database_create::DatabaseType::Postgres),
         r#override: false,
         cwd: Some(root.to_string_lossy().to_string()),
     });
@@ -426,7 +426,7 @@ fn every_generator_writes_the_source_and_the_spec_its_template_describes() {
         no_cache: false,
         name: Some("sessions".to_string()),
         module: None,
-        r#type: Some("redis".to_string()),
+        r#type: Some(commands::database_create::DatabaseType::Redis),
         r#override: false,
         cwd: Some(root.to_string_lossy().to_string()),
     });
@@ -437,7 +437,7 @@ fn every_generator_writes_the_source_and_the_spec_its_template_describes() {
         no_cache: false,
         name: Some("local".to_string()),
         module: None,
-        r#type: Some("sqlite".to_string()),
+        r#type: Some(commands::database_create::DatabaseType::Sqlite),
         r#override: false,
         cwd: Some(root.to_string_lossy().to_string()),
     });
