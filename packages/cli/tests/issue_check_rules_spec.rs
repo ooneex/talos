@@ -1,6 +1,6 @@
 //! The `issue:check` rules the base spec does not reach: the branch and pull
-//! request fields, the dependency graph, comments, `spec`, `resources`, the
-//! testing checklist, and the two reports the command prints.
+//! request fields, the dependency graph, comments, `spec`, `resources`, and
+//! the two reports the command prints.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -487,80 +487,6 @@ fn resources_map_a_name_to_a_string_or_a_list_of_strings() {
     assert!(
         !rules(&check(&root)).contains(&"issue.resources.type"),
         "well-formed resources pass"
-    );
-}
-
-// ---------------------------------------------------------------------------
-// testing
-// ---------------------------------------------------------------------------
-
-#[test]
-fn testing_steps_must_be_numbered_checkboxes_in_order() {
-    let (_dir, root) = workspace();
-
-    write_issue(
-        &root,
-        "ABC-100000",
-        &PLANNED.replace(
-            "  1. [ ] Run `talos workspace:check` — lint, types and tests pass.\n",
-            "  - [ ] Not a numbered step\n",
-        ),
-    );
-    let reported = rules(&check(&root));
-    assert!(reported.contains(&"issue.testing.format"));
-    assert!(
-        reported.contains(&"issue.testing.empty"),
-        "a line that is not a step leaves the checklist with none: {reported:?}"
-    );
-
-    write_issue(
-        &root,
-        "ABC-100000",
-        &PLANNED.replace(
-            "  1. [ ] Run `talos workspace:check` — lint, types and tests pass.\n",
-            "  1. [ ] First step\n  3. [ ] Third step\n",
-        ),
-    );
-    assert!(rules(&check(&root)).contains(&"issue.testing.numbering"));
-}
-
-#[test]
-fn an_implemented_issue_cannot_leave_a_testing_step_unchecked() {
-    let (_dir, root) = workspace();
-
-    write_issue(&root, "ABC-100000", &implemented("Done", ""));
-
-    let report = check(&root);
-    assert!(
-        !rules(&report).contains(&"issue.testing.unchecked"),
-        "the ticked checklist passes: {:?}",
-        rules(&report)
-    );
-
-    write_issue(
-        &root,
-        "ABC-100000",
-        &implemented("Done", "").replace("1. [x]", "1. [ ]"),
-    );
-    assert!(rules(&check(&root)).contains(&"issue.testing.unchecked"));
-}
-
-#[test]
-fn an_indented_line_continues_the_step_above_it() {
-    let (_dir, root) = workspace();
-
-    write_issue(
-        &root,
-        "ABC-100000",
-        &PLANNED.replace(
-            "  1. [ ] Run `talos workspace:check` — lint, types and tests pass.\n",
-            "  1. [ ] Run the suite\n     with the module flag set.\n",
-        ),
-    );
-
-    assert!(
-        !rules(&check(&root)).contains(&"issue.testing.format"),
-        "the continuation is not read as its own step"
     );
 }
 

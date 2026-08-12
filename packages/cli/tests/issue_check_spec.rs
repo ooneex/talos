@@ -550,7 +550,6 @@ fn planned_issues_require_the_full_structure() {
         "issue.context.missing",
         "issue.goal.missing",
         "issue.dod.missing",
-        "issue.testing.missing",
     ] {
         assert!(
             has(&report, rule),
@@ -619,25 +618,6 @@ fn dod_items_must_not_carry_implementation_syntax() {
 }
 
 #[test]
-fn testing_steps_must_be_numbered_sequentially() {
-    let (_guard, root) = root();
-    write_module(&root, "user", Some("module"));
-    write_issue(
-        &root,
-        "user",
-        "ABC-100000",
-        &PLANNED.replace(
-            "  2. [ ] POST `/users` with a new email — responds 201.",
-            "  4. [ ] POST `/users` with a new email — responds 201.",
-        ),
-    );
-
-    let report = check(&root);
-
-    assert!(has(&report, "issue.testing.numbering"));
-}
-
-#[test]
 fn goal_sections_must_match_the_module_type() {
     let (_guard, root) = root();
     write_module(&root, "storefront", Some("spa"));
@@ -674,7 +654,6 @@ fn issues_in_review_need_a_branch_and_every_box_checked() {
 
     assert!(has(&report, "issue.branch.missing"));
     assert!(has(&report, "issue.dod.unchecked"));
-    assert!(has(&report, "issue.testing.unchecked"));
 }
 
 #[test]

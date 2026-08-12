@@ -1,5 +1,5 @@
-//! Field-level checks for testing notes, branch name, pull request link,
-//! dependencies, comments, and spec block sections.
+//! Field-level checks for branch name, pull request link, dependencies,
+//! comments, and spec block sections.
 
 use std::collections::{BTreeSet, HashMap, HashSet};
 
@@ -7,70 +7,8 @@ use serde_yaml::{Mapping, Value};
 
 use crate::utils::COMMIT_TYPES;
 
-use super::loading::{as_str, field, is_kebab_case, parse_numbered_checkbox, value_kind};
-use super::{FileReport, IMPLEMENTED_STATES, LABEL_BRANCH_TYPES, is_valid_issue_id, quote_list};
-
-pub(super) fn check_testing(testing: &str, state: &str, report: &mut FileReport) {
-    let mut expected = 1usize;
-    let mut unchecked = 0usize;
-    let mut steps = 0usize;
-    let implemented = IMPLEMENTED_STATES.contains(&state);
-
-    for (index, line) in testing.lines().enumerate() {
-        let line = line.trim_end();
-        if line.trim().is_empty() {
-            continue;
-        }
-        let number = index + 1;
-        let Some(step) = parse_numbered_checkbox(line) else {
-            // Indented text continues the previous step.
-            if line.starts_with("   ") && steps > 0 {
-                continue;
-            }
-            report.error_at(
-                "issue.testing.format",
-                number,
-                format!(
-                    "`testing` line must be a numbered checkbox (`1. [ ] …`), found \"{}\"",
-                    line.trim()
-                ),
-            );
-            continue;
-        };
-        if step.number != expected {
-            report.error_at(
-                "issue.testing.numbering",
-                number,
-                format!(
-                    "`testing` steps must be numbered sequentially; expected {expected}, found {}",
-                    step.number
-                ),
-            );
-        }
-        expected = step.number + 1;
-        steps += 1;
-        if !step.checked {
-            unchecked += 1;
-        }
-    }
-
-    if steps == 0 {
-        report.error(
-            "issue.testing.empty",
-            "`testing` contains no verification step",
-        );
-        return;
-    }
-    if implemented && unchecked > 0 {
-        report.error(
-            "issue.testing.unchecked",
-            format!(
-                "State is `{state}` but {unchecked} of {steps} `testing` step{} still unchecked",
-                if unchecked == 1 { " is" } else { "s are" }
-            ),
-        );
-    }
-}
+use super::loading::{as_str, field, is_kebab_case, value_kind};
+use super::{FileReport, LABEL_BRANCH_TYPES, is_valid_issue_id, quote_list};
 
 /// Warn when a branch's conventional-commit type doesn't correspond to any of
 /// the issue's change-type labels (e.g. a `fix/` branch on a `Feature` issue).

@@ -9,9 +9,7 @@ use super::fields_a::{
     check_dod, check_goal, check_identity, check_labels, check_priority, check_state, check_title,
     required_text,
 };
-use super::fields_b::{
-    check_branch, check_comments, check_dependencies, check_pr, check_spec, check_testing,
-};
+use super::fields_b::{check_branch, check_comments, check_dependencies, check_pr, check_spec};
 use super::loading::{as_str, field, value_kind};
 use super::{Diagnostic, FileReport, KNOWN_FIELDS, LoadedIssue, PLANNED_STATES, Severity};
 
@@ -116,16 +114,6 @@ pub(super) fn check_issue(
     if let Some(dod) = required_text(document, "dod", "issue.dod.missing", planned, &mut report) {
         check_dod(dod, state, &mut report);
     }
-    if let Some(testing) = required_text(
-        document,
-        "testing",
-        "issue.testing.missing",
-        planned,
-        &mut report,
-    ) {
-        check_testing(testing, state, &mut report);
-    }
-
     check_dependencies(document, &id, planned, index, &mut report);
     check_branch(document, state, &id, &change_types, &mut report);
     check_pr(document, state, &mut report);
