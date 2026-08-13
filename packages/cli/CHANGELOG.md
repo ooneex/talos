@@ -507,3 +507,17 @@
 - Update Cargo.lock| — Franck ([6bac9b61](https///github.com/ooneex/talos/commit/6bac9b61))
 - Remove testing-steps checklist validation from issue_check| — Franck ([f6647dde](https///github.com/ooneex/talos/commit/f6647dde))
 
+## [0.8.0](https///github.com/ooneex/talos/releases/tag/@talos/cli@0.8.0) - 2026-08-13
+
+### Added
+
+- Add plain LLM-ready report output for project:check --logs| — Franck ([87abb053](https///github.com/ooneex/talos/commit/87abb053))
+
+### Changed
+
+- Update Cargo.lock| — Franck ([cd975173](https///github.com/ooneex/talos/commit/cd975173))
+
+### Fixed
+
+- Exclude backend modules from e2e coverage check| — Franck ([5aa01759](https///github.com/ooneex/talos/commit/5aa01759))
+
