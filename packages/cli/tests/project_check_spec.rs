@@ -3945,14 +3945,12 @@ fn a_spec_that_no_script_runs_fails() {
 }
 
 #[test]
-fn a_server_module_with_no_route_serves_nothing_yet() {
-    assert_eq!(e2e_coverage::serves(Some("api"), 0), None);
+fn a_backend_module_is_not_a_browser_suite_target() {
+    assert_eq!(e2e_coverage::serves(Some("api")), None);
+    assert_eq!(e2e_coverage::serves(Some("microservice")), None);
+    assert_eq!(e2e_coverage::serves(None), None);
     assert_eq!(
-        e2e_coverage::serves(Some("api"), 2),
-        Some("2 routes".to_string())
-    );
-    assert_eq!(
-        e2e_coverage::serves(Some("spa"), 0),
+        e2e_coverage::serves(Some("spa")),
         Some("an application".to_string())
     );
 }

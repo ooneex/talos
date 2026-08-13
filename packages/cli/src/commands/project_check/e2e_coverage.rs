@@ -1,29 +1,24 @@
 //! E2E coverage check — which modules the browser suite actually covers.
 //!
 //! The `e2e` check runs the suites that exist. This one asks the question
-//! before it: a module that serves routes or renders pages and has no spec at
-//! all is not passing its end-to-end tests, it simply has none — and that reads
-//! identically in a green CI run.
+//! before it: a module that renders pages and has no spec at all is not
+//! passing its end-to-end tests, it simply has none — and that reads
+//! identically in a green CI run. Scoped to the module types a browser can
+//! drive; a backend module's testing is its `tests/` suite, not Playwright.
 
 use std::path::Path;
 
 use super::modules::{
     TS_EXTENSIONS, WorkspaceModule, collect_files, discover_modules, filter_modules, wanted_names,
 };
-use super::routes;
 use crate::commands::project_check::{
     CheckId, CheckOutcome, CheckStatus, ProjectCheckArgs, static_outcome,
 };
 
-/// Module types a browser suite can drive.
-const TESTABLE_TYPES: [&str; 6] = [
-    "spa",
-    "admin",
-    "storybook",
-    "swagger",
-    "api",
-    "microservice",
-];
+/// Module types a browser suite can drive. Backend types (`module`, `api`,
+/// `microservice`) render nothing a browser opens — their testing is the
+/// unit/integration suite under `tests/`, not Playwright.
+const TESTABLE_TYPES: [&str; 4] = ["spa", "admin", "storybook", "swagger"];
 
 /// The directory the generator writes specs into.
 const E2E_DIR: &str = "e2e";
@@ -58,17 +53,13 @@ pub fn coverage(module: &WorkspaceModule) -> Coverage {
     }
 }
 
-/// What a module actually puts in front of a user, and so what a browser suite
-/// would drive. A server module with no route yet serves nothing.
-pub fn serves(kind: Option<&str>, routes: usize) -> Option<String> {
+/// What a module actually puts in front of a user, and so what a browser
+/// suite would drive.
+pub fn serves(kind: Option<&str>) -> Option<String> {
     match kind {
         Some("spa") | Some("admin") => Some("an application".to_string()),
         Some("storybook") => Some("a component gallery".to_string()),
         Some("swagger") => Some("an api explorer".to_string()),
-        _ if routes > 0 => Some(format!(
-            "{routes} route{}",
-            if routes == 1 { "" } else { "s" }
-        )),
         _ => None,
     }
 }
@@ -80,12 +71,11 @@ pub fn inspect(
     label: &str,
     kind: Option<&str>,
     coverage: &Coverage,
-    routes: usize,
     errors: &mut Vec<String>,
     warnings: &mut Vec<String>,
 ) {
     if coverage.specs == 0 {
-        if let Some(subject) = serves(kind, routes) {
+        if let Some(subject) = serves(kind) {
             warnings.push(format!(
                 "{label}: serves {subject} and has no end-to-end spec"
             ));
@@ -139,19 +129,17 @@ pub fn run(args: &ProjectCheckArgs, root: &Path) -> CheckOutcome {
 
     for module in &modules {
         let coverage = coverage(module);
-        let routes = routes::collect(root, std::slice::from_ref(module)).len();
         specs += coverage.specs;
         if coverage.specs > 0 {
             covered += 1;
         }
-        if serves(module.kind.as_deref(), routes).is_some() {
+        if serves(module.kind.as_deref()).is_some() {
             serving += 1;
         }
         inspect(
             &module.label(),
             module.kind.as_deref(),
             &coverage,
-            routes,
             &mut errors,
             &mut warnings,
         );
