@@ -495,3 +495,15 @@
 
 - Bump talos-cli version| — Franck ([b132fb51](https///github.com/ooneex/talos/commit/b132fb51))
 
+## [0.7.0](https///github.com/ooneex/talos/releases/tag/@talos/cli@0.7.0) - 2026-08-13
+
+### Added
+
+- Allow exceptions and types folders in backend modules| — Franck ([8b2a6e93](https///github.com/ooneex/talos/commit/8b2a6e93))
+- Make database:create --type a validated enum| — Franck ([6b51f6c4](https///github.com/ooneex/talos/commit/6b51f6c4))
+
+### Changed
+
+- Update Cargo.lock| — Franck ([6bac9b61](https///github.com/ooneex/talos/commit/6bac9b61))
+- Remove testing-steps checklist validation from issue_check| — Franck ([f6647dde](https///github.com/ooneex/talos/commit/f6647dde))
+
