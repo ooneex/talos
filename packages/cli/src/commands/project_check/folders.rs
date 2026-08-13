@@ -33,7 +33,9 @@ const MODULE_ROOT: &[&str] = &["src", "tests", "e2e", "issues"];
 /// The same, for a module that ships a browser bundle.
 const FRONTEND_ROOT: &[&str] = &["public", "src", "tests", "e2e", "issues"];
 
-/// The artifact folders of a backend module, one per kind the container binds.
+/// The artifact folders of a backend module — one per kind the container
+/// binds, plus `exceptions/` and `types/`, which hold plain classes and type
+/// definitions rather than DI-bound artifacts.
 const BACKEND_SRC: &[&str] = &[
     "ai",
     "analytics",
@@ -44,6 +46,7 @@ const BACKEND_SRC: &[&str] = &[
     "databases",
     "entities",
     "events",
+    "exceptions",
     "flags",
     "loggers",
     "mailers",
@@ -57,6 +60,7 @@ const BACKEND_SRC: &[&str] = &[
     "services",
     "storage",
     "translations",
+    "types",
     "utils",
     "workflows",
 ];
