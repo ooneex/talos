@@ -182,6 +182,100 @@ fn render_verdict(report: &ProjectReport) -> String {
     )
 }
 
+/// Render the report as plain, uncolored text meant to be pasted into an LLM
+/// conversation — no ANSI codes, no column truncation, and every detail and
+/// hint spelled out under the check that raised it. `--logs` asks for this in
+/// place of the human report so a check run can be handed straight to an
+/// assistant (`pr-review`, `project-fix`) without it having to strip styling
+/// or guess what a summary was cut short of.
+pub fn render_llm(report: &ProjectReport) -> String {
+    let mut out = String::new();
+    out.push_str(&format!(
+        "# Project check — {} check{} · {}\n\n",
+        report.outcomes.len(),
+        if report.outcomes.len() == 1 { "" } else { "s" },
+        report.root
+    ));
+
+    out.push_str("## Summary\n\n");
+    out.push_str(&format!(
+        "- failed: {}\n",
+        report.count(CheckStatus::Failed)
+    ));
+    out.push_str(&format!(
+        "- warnings: {}\n",
+        report.count(CheckStatus::Warned)
+    ));
+    out.push_str(&format!(
+        "- passed: {}\n",
+        report.count(CheckStatus::Passed)
+    ));
+    out.push_str(&format!(
+        "- skipped: {}\n",
+        report.count(CheckStatus::Skipped)
+    ));
+    out.push_str(&format!(
+        "- duration: {}\n\n",
+        format_duration(report.duration_ms)
+    ));
+
+    out.push_str("## Results\n\n");
+    for category in Category::ALL {
+        let outcomes: Vec<&CheckOutcome> = report
+            .outcomes
+            .iter()
+            .filter(|outcome| outcome.id.category() == category)
+            .collect();
+        if outcomes.is_empty() {
+            continue;
+        }
+        for outcome in outcomes {
+            out.push_str(&format!(
+                "- [{}] {} — {}{}\n",
+                llm_status_label(outcome.status),
+                outcome.id.title(),
+                outcome.summary,
+                if outcome.cached {
+                    " (cached)".to_string()
+                } else {
+                    format!(" ({})", format_duration(outcome.duration_ms))
+                },
+            ));
+        }
+    }
+
+    let detailed: Vec<&CheckOutcome> = report
+        .outcomes
+        .iter()
+        .filter(|outcome| outcome.status != CheckStatus::Passed)
+        .filter(|outcome| !outcome.details.is_empty() || !outcome.hints.is_empty())
+        .collect();
+    if !detailed.is_empty() {
+        out.push_str("\n## Details\n");
+        for outcome in detailed {
+            out.push_str(&format!("\n### {}\n\n", outcome.id.title()));
+            for detail in &outcome.details {
+                out.push_str(&format!("- {detail}\n"));
+            }
+            for hint in &outcome.hints {
+                out.push_str(&format!("- hint: {hint}\n"));
+            }
+        }
+    }
+
+    out.push('\n');
+    out
+}
+
+fn llm_status_label(status: CheckStatus) -> &'static str {
+    match status {
+        CheckStatus::Passed => "PASS",
+        CheckStatus::Skipped => "SKIP",
+        CheckStatus::Warned => "WARN",
+        CheckStatus::Failed => "FAIL",
+    }
+}
+
 /// Render the machine-readable report used by CI.
 pub fn render_json(report: &ProjectReport) -> String {
     let payload = json!({

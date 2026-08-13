@@ -19,8 +19,8 @@ use cli::commands::project_check::{
     contrast, dependencies, disabled_a11y_rules, discover_ui_modules, docker, docs, e2e_coverage,
     entities, env, exceptions, execute, graph, health, imports, lint_commits, lockfile, migrations,
     modules_with_e2e, orphans, outdated, parse_biome_a11y, queries, registration, render_json,
-    render_report, restricted, roles, routes, scan_source, sdk, secrets, select_checks, sql,
-    stories, structure, transactions, translations, tsconfig, validation,
+    render_llm, render_report, restricted, roles, routes, scan_source, sdk, secrets, select_checks,
+    sql, stories, structure, transactions, translations, tsconfig, validation,
 };
 
 #[derive(Parser)]
@@ -486,6 +486,21 @@ fn the_report_details_failing_checks_only() {
     assert!(rendered.contains("Inspect with `talos security:check`"));
     // A passing check never adds a detail section.
     assert_eq!(rendered.matches("Workspace").count(), 1);
+}
+
+#[test]
+fn the_llm_report_is_plain_and_lists_every_check() {
+    let rendered = render_llm(&report());
+
+    assert!(!rendered.contains('\u{1b}'), "must carry no ANSI codes");
+    assert!(rendered.contains("[FAIL] Security"));
+    assert!(rendered.contains("[WARN] Commits"));
+    assert!(rendered.contains("[PASS] Workspace"));
+    assert!(rendered.contains("[SKIP] Issues"));
+    assert!(rendered.contains("GHSA-1234"));
+    assert!(rendered.contains("hint: Inspect with `talos security:check`"));
+    // A passing check never earns a details section.
+    assert!(!rendered.contains("### Workspace"));
 }
 
 #[test]

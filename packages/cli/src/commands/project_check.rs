@@ -213,7 +213,8 @@ pub struct ProjectCheckArgs {
     #[arg(long)]
     pub concurrency: Option<usize>,
 
-    /// Stream plain workspace logs instead of the interactive view.
+    /// Stream plain workspace logs instead of the interactive view, and print
+    /// the final report as plain, uncolored, LLM-ready text.
     #[arg(long, default_value_t = false)]
     pub logs: bool,
 
@@ -258,6 +259,6 @@ pub use outcome::{
     CheckOutcome, CheckStatus, ERROR_DETAIL, ProjectReport, WARN_DETAIL, cap_details, harden,
     parse_ids, select_checks, split_csv, static_outcome,
 };
-pub use render::{render_json, render_report};
+pub use render::{render_json, render_llm, render_report};
 pub use types::{Category, CheckId, Reads};
 pub use workspace::modules_with_e2e;

@@ -27,7 +27,7 @@ use super::{
     outdated, pagination,
     performance::check_performance,
     permissions, queries, queues, registration,
-    render::{render_json, render_report},
+    render::{render_json, render_llm, render_report},
     repositories, restricted, roles, router, routes, sdk, secrets,
     security_issues::{check_issues, check_security},
     select_checks, sql, stories, structure, tests, todos, tokens, transactions, translations,
@@ -411,6 +411,8 @@ pub fn run(args: &ProjectCheckArgs) {
 
     if args.json {
         println!("{}", render_json(&report));
+    } else if args.logs {
+        print!("{}", render_llm(&report));
     } else {
         print!("{}", render_report(&report));
     }
