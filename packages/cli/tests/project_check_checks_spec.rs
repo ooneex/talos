@@ -154,14 +154,17 @@ fn tests_are_held_to_the_layout_they_mirror() {
 }
 
 #[test]
-fn a_module_root_holds_only_the_four_folders_it_is_given() {
+fn a_module_root_holds_only_the_folders_it_is_given() {
     let backend = folders::Layout::Backend;
-    for folder in ["src", "tests", "e2e", "issues"] {
+    for folder in ["src", "bin", "tests", "e2e", "issues"] {
         assert!(accepts(backend, folder), "{folder}");
     }
     for folder in ["docs", "scripts", "assets", "public"] {
         assert!(!accepts(backend, folder), "{folder}");
     }
+    // `bin/` owns whatever it groups below, the way an artifact folder does.
+    assert!(accepts(backend, "bin/migration"));
+    assert!(accepts(folders::Layout::Spa, "bin"));
     // Only a module shipping a browser bundle gets a `public/`.
     assert!(accepts(folders::Layout::Spa, "public"));
 }
