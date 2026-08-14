@@ -521,3 +521,9 @@
 
 - Exclude backend modules from e2e coverage check| — Franck ([5aa01759](https///github.com/ooneex/talos/commit/5aa01759))
 
+## [0.9.0](https///github.com/ooneex/talos/releases/tag/@talos/cli@0.9.0) - 2026-08-14
+
+### Added
+
+- Allow bin/ folder in module root layout checks| — Franck ([33e376d8](https///github.com/ooneex/talos/commit/33e376d8))
+
