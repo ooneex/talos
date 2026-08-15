@@ -7,7 +7,7 @@ use serde_json::Value;
 
 use crate::utils::{
     ModulePort, RunnableModule, RunnableModuleType, collect_module_ports, collect_runnable_modules,
-    current_dir, ensure_bin, find_app_module, free_port, run_spinner_step, select_runnable_modules,
+    current_dir, ensure_bin, free_port, run_spinner_step, select_runnable_modules,
 };
 
 #[derive(Args, Debug)]
@@ -61,13 +61,17 @@ pub fn run(args: &AppStopArgs) {
         .clone()
         .map(std::path::PathBuf::from)
         .unwrap_or_else(current_dir);
-    let modules = collect_runnable_modules(&cwd.join("modules"));
-    let Some(app_module) = find_app_module(&modules) else {
+    let app_dir = cwd.join("modules").join("app");
+    // Stopping is best effort: a failing step is reported and the remaining
+    // ones still run, so a partial stop never leaves the rest running.
+    let mut failed = false;
+    let app_found = app_dir.join("package.json").exists();
+    if !app_found {
         crate::utils::error("Module app not found");
-        std::process::exit(1);
-    };
-    let app_dir = app_module.dir.clone();
+        failed = true;
+    }
 
+    let modules = collect_runnable_modules(&cwd.join("modules"));
     let selected =
         select_runnable_modules(&modules, args.modules.as_deref(), args.packages.as_deref());
     if selected.is_empty() {
@@ -83,24 +87,26 @@ pub fn run(args: &AppStopArgs) {
             RunnableModuleType::Api | RunnableModuleType::Microservice
         )
     });
-    let compose_exists = needs_docker && app_dir.join("docker-compose.yml").exists();
-    if !compose_exists {
-        if freed == 0 {
-            crate::utils::error("Nothing to stop");
-            std::process::exit(1);
+    let compose_exists = app_found && needs_docker && app_dir.join("docker-compose.yml").exists();
+    if compose_exists {
+        if ensure_bin("docker") {
+            let name = load_package_name(&app_dir, "app");
+            failed |= !run_spinner_step(
+                false,
+                &format!("Stopping Docker services for {name}"),
+                Command::new("docker")
+                    .args(["compose", "down"])
+                    .current_dir(&app_dir),
+            );
+        } else {
+            failed = true;
         }
-        return;
-    }
-    if !ensure_bin("docker") {
-        return;
+    } else if freed == 0 && !failed {
+        crate::utils::error("Nothing to stop");
+        failed = true;
     }
 
-    let name = load_package_name(&app_dir, &app_module.name);
-    run_spinner_step(
-        false,
-        &format!("Stopping Docker services for {name}"),
-        Command::new("docker")
-            .args(["compose", "down"])
-            .current_dir(&app_dir),
-    );
+    if failed {
+        std::process::exit(1);
+    }
 }
