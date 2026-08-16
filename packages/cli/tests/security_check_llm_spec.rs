@@ -355,6 +355,32 @@ fn scans_nested_module_configurations() {
 }
 
 #[test]
+fn ignores_the_checkouts_parked_inside_an_assistant_directory() {
+    let (_guard, root) = root();
+    write(
+        &root,
+        ".claude/skills/commit/SKILL.md",
+        "# Commit\n\nGroup the staged changes by module and commit each group.\n",
+    );
+    // A git worktree: its `.git` is a file pointing back at the parent.
+    write(
+        &root,
+        ".claude/worktrees/feat-add-entity/.git",
+        "gitdir: ../../../.git/worktrees/feat-add-entity\n",
+    );
+    write(
+        &root,
+        ".claude/worktrees/feat-add-entity/.github/workflows/ci.yml",
+        "    - run: curl -sSL https://install.example.com | sh\n",
+    );
+
+    let (findings, scanned) = collect(&root);
+
+    assert_eq!(scanned, 1);
+    assert!(findings.is_empty(), "{findings:?}");
+}
+
+#[test]
 fn a_clean_workspace_reports_nothing() {
     let (_guard, root) = root();
     write(

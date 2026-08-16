@@ -329,8 +329,19 @@ fn targets() -> Vec<(&'static str, &'static str)> {
     targets
 }
 
+/// Whether a directory is a checkout of its own — a nested clone, or a git
+/// worktree such as the ones an assistant parks under `.claude/worktrees/`.
+/// Its `.git` is a directory for a clone and a file pointing at the parent
+/// repository for a worktree.
+fn is_checkout(dir: &Path) -> bool {
+    dir.join(".git").exists()
+}
+
 /// Collect every instruction file below `path` (or `path` itself when it is a
-/// file), depth-limited and skipping the usual build output.
+/// file), depth-limited and skipping the usual build output. A nested checkout
+/// is not this repository's configuration — it is a whole second copy of a
+/// repository that gets audited where it is cloned from, so the walk stops
+/// there rather than reporting every file it holds under this one's name.
 fn collect_files(path: &Path, depth: usize, files: &mut Vec<PathBuf>) {
     if path.is_file() {
         if is_instruction_file(path)
@@ -356,7 +367,8 @@ fn collect_files(path: &Path, depth: usize, files: &mut Vec<PathBuf>) {
             .and_then(|name| name.to_str())
             .unwrap_or_default()
             .to_string();
-        if child.is_dir() && super::EXCLUDED_DIRS.contains(&name.as_str()) {
+        if child.is_dir() && (super::EXCLUDED_DIRS.contains(&name.as_str()) || is_checkout(&child))
+        {
             continue;
         }
         collect_files(&child, depth + 1, files);
