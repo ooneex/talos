@@ -1562,10 +1562,17 @@ fn docker_run_reports_blocking_compose_findings() {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn only_a_leading_epoch_counts_as_a_migration_timestamp() {
+fn a_migration_timestamp_is_read_through_the_name_that_carries_it() {
     assert_eq!(timestamp("1700000000000-create-user"), Some(1700000000000));
     assert_eq!(timestamp("CreateUser"), None);
     assert_eq!(timestamp("20240101-user"), Some(20240101));
+    // What `talos migration:create` writes.
+    assert_eq!(
+        timestamp("Migration20260815111603481"),
+        Some(20260815111603481)
+    );
+    // A run too short to be a version is not one.
+    assert_eq!(timestamp("Migration42"), None);
 }
 
 #[test]
@@ -1635,6 +1642,123 @@ fn a_migration_without_a_down_is_a_warning_and_broken_seed_yaml_fails() {
             .iter()
             .any(|detail| detail.contains("no `down` method"))
     );
+}
+
+#[test]
+fn the_generated_layout_reports_nothing() {
+    let (_guard, root) = root();
+    scaffold_root(&root);
+    scaffold_module(
+        &root,
+        "modules",
+        "agenda",
+        Some("module"),
+        Some("@module/agenda"),
+    );
+    let dir = root.join("modules/agenda/src/migrations");
+    write(
+        &dir.join("Migration20260815111603481.ts"),
+        "export class Migration20260815111603481 { public async up() {} public async down() {} }\n",
+    );
+    // The index is a barrel of re-exports — it holds no `up` or `down` itself.
+    write(
+        &dir.join("migrations.ts"),
+        "export { Migration20260815111603481 } from \"./Migration20260815111603481\";\n",
+    );
+    let bin = root.join("modules/agenda/bin/migration");
+    write(
+        &bin.join("up.ts"),
+        "import { up } from \"@talosjs/migrations\";\nawait up({ tableName: \"migrations\" });\n",
+    );
+    write(
+        &bin.join("down.ts"),
+        "import { down } from \"@talosjs/migrations\";\nawait down({ tableName: \"migrations\" });\n",
+    );
+
+    let outcome = migrations::run(&ProjectCheckArgs::default(), &root);
+
+    assert_eq!(outcome.status, CheckStatus::Passed, "{:?}", outcome.details);
+    assert!(
+        outcome.summary.contains("1 migration"),
+        "{}",
+        outcome.summary
+    );
+}
+
+#[test]
+fn a_migration_the_index_never_exports_fails() {
+    let (_guard, root) = root();
+    scaffold_root(&root);
+    scaffold_module(
+        &root,
+        "modules",
+        "user",
+        Some("module"),
+        Some("@module/user"),
+    );
+    let dir = root.join("modules/user/src/migrations");
+    write(
+        &dir.join("Migration1700000000000.ts"),
+        "export class Migration1700000000000 { public async up() {} public async down() {} }\n",
+    );
+    write(
+        &dir.join("Migration1700000000001.ts"),
+        "export class Migration1700000000001 { public async up() {} public async down() {} }\n",
+    );
+    write(
+        &dir.join("migrations.ts"),
+        "export { Migration1700000000000 } from \"./Migration1700000000000\";\n",
+    );
+
+    let outcome = migrations::run(&ProjectCheckArgs::default(), &root);
+
+    assert_eq!(outcome.status, CheckStatus::Failed);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("does not export Migration1700000000001"))
+    );
+    assert!(
+        !outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("does not export Migration1700000000000"))
+    );
+}
+
+#[test]
+fn a_module_whose_bin_scripts_cannot_run_its_migrations_warns() {
+    let (_guard, root) = root();
+    scaffold_root(&root);
+    scaffold_module(
+        &root,
+        "modules",
+        "user",
+        Some("module"),
+        Some("@module/user"),
+    );
+    write(
+        &root.join("modules/user/src/migrations/Migration1700000000000.ts"),
+        "export class Migration1700000000000 { public async up() {} public async down() {} }\n",
+    );
+    // Present, but never rolls anything back; `up.ts` is missing outright.
+    write(
+        &root.join("modules/user/bin/migration/down.ts"),
+        "console.log(\"todo\");\n",
+    );
+
+    let outcome = migrations::run(&ProjectCheckArgs::default(), &root);
+
+    assert_eq!(outcome.status, CheckStatus::Warned);
+    assert!(outcome.details.iter().any(|detail| {
+        detail.contains("modules/user/bin/migration/up.ts is missing")
+            && detail.contains("cannot be applied")
+    }));
+    assert!(outcome.details.iter().any(|detail| {
+        detail.contains("modules/user/bin/migration/down.ts never calls `down()`")
+            && detail.contains("cannot be rolled back")
+    }));
 }
 
 // ---------------------------------------------------------------------------
