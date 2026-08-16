@@ -527,3 +527,18 @@
 
 - Allow bin/ folder in module root layout checks| — Franck ([33e376d8](https///github.com/ooneex/talos/commit/33e376d8))
 
+## [0.10.0](https///github.com/ooneex/talos/releases/tag/@talos/cli@0.10.0) - 2026-08-16
+
+### Added
+
+- Check the migration index and bin/migration runners in project:check| — Franck ([4454ec46](https///github.com/ooneex/talos/commit/4454ec46))
+
+### Changed
+
+- Sync Cargo.lock with talos-cli 0.9.0| — Franck ([28316052](https///github.com/ooneex/talos/commit/28316052))
+
+### Fixed
+
+- Stop security:check from walking into nested checkouts and worktrees| — Franck ([ebbea06f](https///github.com/ooneex/talos/commit/ebbea06f))
+- Make app:stop best effort so one failing step does not skip the rest| — Franck ([e9a5b3ab](https///github.com/ooneex/talos/commit/e9a5b3ab))
+
