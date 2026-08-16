@@ -130,7 +130,7 @@
     },
     "packages/cli": {
       "name": "@talos/cli",
-      "version": "0.9.0",
+      "version": "0.10.0",
     },
     "packages/color": {
       "name": "@talosjs/color",
