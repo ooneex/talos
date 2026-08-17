@@ -58,7 +58,7 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-            packages/cli/target
+            packages/cli/target.noindex
           key: ${{ matrix.target }}-cargo-${{ hashFiles('packages/cli/Cargo.lock') }}
 
       - name: Sync Cargo.lock package version
