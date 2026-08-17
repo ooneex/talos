@@ -103,6 +103,83 @@ fn drop_and_no_cache_are_passed_through_to_the_script() {
     assert!(recorded.contains("--no-cache"), "{recorded}");
 }
 
+/// A workspace with two modules, each recording into its own log, so a run can
+/// be read back per module.
+fn two_module_workspace() -> (tempfile::TempDir, PathBuf) {
+    let dir = tempfile::tempdir().expect("create temp dir");
+    let root = dir.path().to_path_buf();
+
+    write(&root.join("package.json"), "{ \"name\": \"scratch\" }\n");
+    for name in ["alpha", "beta"] {
+        let module = root.join("modules").join(name);
+        write(
+            &module.join("package.json"),
+            &format!("{{ \"name\": \"@module/{name}\" }}\n"),
+        );
+        write(
+            &module.join("bin/migration/up.ts"),
+            &recorder(&root.join(format!("{name}.log"))),
+        );
+    }
+
+    (dir, root)
+}
+
+#[test]
+fn only_the_first_module_is_told_to_drop_the_database() {
+    let (_dir, root) = two_module_workspace();
+
+    let output = talos(&root, &["migration:up", "--drop"]);
+
+    assert!(output.status.success(), "{}", text(&output));
+    let alpha = calls(&root.join("alpha.log"));
+    let beta = calls(&root.join("beta.log"));
+    assert!(alpha.contains("--drop"), "the first module drops: {alpha}");
+    assert!(
+        !beta.contains("--drop"),
+        "a later drop would wipe what the modules before it applied: {beta}"
+    );
+}
+
+#[test]
+fn dropping_clears_the_cache_directory_the_drop_invalidates() {
+    let (_dir, root) = two_module_workspace();
+    let stale = root.join("var/cache/migrations/beta/20260812081730499.json");
+    write(&stale, "{}\n");
+
+    talos(&root, &["migration:up", "--drop"]);
+
+    assert!(
+        !stale.exists(),
+        "a cached 'already applied' marker outlives the database it described"
+    );
+}
+
+#[test]
+fn modules_sharing_a_database_run_one_at_a_time() {
+    let (_dir, root) = two_module_workspace();
+    let log = root.join("order.log");
+    for name in ["alpha", "beta"] {
+        write(
+            &root.join(format!("modules/{name}/bin/migration/up.ts")),
+            &format!(
+                "import {{ appendFileSync }} from \"node:fs\";\nappendFileSync({:?}, \"start {name}\\n\");\nawait Bun.sleep(300);\nappendFileSync({:?}, \"end {name}\\n\");\n",
+                log.to_string_lossy(),
+                log.to_string_lossy()
+            ),
+        );
+    }
+
+    let output = talos(&root, &["migration:up"]);
+
+    assert!(output.status.success(), "{}", text(&output));
+    assert_eq!(
+        calls(&log),
+        "start alpha\nend alpha\nstart beta\nend beta\n",
+        "two modules applying the same shared migration at once race on it"
+    );
+}
+
 #[test]
 fn migration_down_runs_the_other_entry_point() {
     let (_dir, root, _log) = workspace();

@@ -1,6 +1,5 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::sync::mpsc::channel;
 
 pub struct RunModuleScriptsOptions<'a> {
     pub bin_path: &'a [&'a str],
@@ -54,13 +53,21 @@ fn discover_modules_with_script(modules_dir: &Path, bin_path: &[&str]) -> Vec<(S
 }
 
 /// Builds the `bun run <script> [flags...]` argument list for one module.
-fn build_script_args(options: &RunModuleScriptsOptions, dir: &Path, cwd: &Path) -> Vec<String> {
+///
+/// `drop` is decided per module rather than read from `options`: only the first
+/// module of a run may drop the database.
+fn build_script_args(
+    options: &RunModuleScriptsOptions,
+    dir: &Path,
+    cwd: &Path,
+    drop: bool,
+) -> Vec<String> {
     let script_path = options
         .bin_path
         .iter()
         .fold(dir.to_path_buf(), |acc, part| acc.join(part));
     let mut args: Vec<String> = vec!["run".to_string(), script_path.to_string_lossy().to_string()];
-    if options.drop {
+    if drop {
         args.push("--drop".to_string());
     }
     if let Some(version) = &options.version {
@@ -94,8 +101,9 @@ fn run_module_script(
     cwd: &Path,
     options: &RunModuleScriptsOptions,
     titled_label: &str,
+    drop: bool,
 ) -> bool {
-    let args = build_script_args(options, dir, cwd);
+    let args = build_script_args(options, dir, cwd, drop);
 
     super::style::step(format!("Running {} for {name}...", options.label));
     let mut command = Command::new("bun");
@@ -146,47 +154,29 @@ pub fn run_module_scripts(cwd: &Path, options: RunModuleScriptsOptions) {
         return;
     }
 
-    // Run every module's script concurrently, bounded by the number of
-    // available CPUs, instead of blocking on one `bun` process at a time.
-    let limit = std::thread::available_parallelism()
-        .map(|n| n.get())
-        .unwrap_or(1)
-        .max(1);
+    // Every module script talks to the same database, and each one applies the
+    // migrations (or seeds) it transitively imports — importing another module's
+    // migration to declare a dependency also registers it. Two modules running at
+    // once therefore race to apply the same shared migration, and the loser dies
+    // on "relation already exists". Run them one at a time.
+    //
+    // `--drop` goes to the first module only: a later drop would wipe everything
+    // the modules before it just applied. A drop also invalidates every cached
+    // "already applied" marker, so the cache directory goes with it — otherwise
+    // the remaining modules would skip the work the drop just undid.
+    if options.drop
+        && let Some(cache_dir) = options.cache_dir
+    {
+        let _ = std::fs::remove_dir_all(cwd.join(cache_dir));
+    }
+
     let mut any_failed = false;
 
-    let options = &options;
-    let titled_label = &titled_label;
-
-    std::thread::scope(|scope| {
-        let (tx, rx) = channel::<bool>();
-        let mut pending = modules.iter();
-        let mut inflight = 0usize;
-
-        loop {
-            while inflight < limit {
-                let Some((name, dir)) = pending.next() else {
-                    break;
-                };
-                inflight += 1;
-                let tx = tx.clone();
-                scope.spawn(move || {
-                    let ok = run_module_script(name, dir, cwd, options, titled_label);
-                    let _ = tx.send(ok);
-                });
-            }
-
-            if inflight == 0 {
-                break;
-            }
-
-            let Ok(ok) = rx.recv() else {
-                any_failed = true;
-                break;
-            };
-            inflight -= 1;
-            any_failed |= !ok;
-        }
-    });
+    for (index, (name, dir)) in modules.iter().enumerate() {
+        let drop = options.drop && index == 0;
+        let ok = run_module_script(name, dir, cwd, &options, &titled_label, drop);
+        any_failed |= !ok;
+    }
 
     if any_failed {
         std::process::exit(1);
