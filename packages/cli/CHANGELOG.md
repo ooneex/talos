@@ -580,3 +580,9 @@
 
 - Refresh and commit Cargo.lock during release create| — Franck ([c29b6ef6](https///github.com/ooneex/talos/commit/c29b6ef6))
 
+## [0.11.5](https///github.com/ooneex/talos/releases/tag/@talos/cli@0.11.5) - 2026-08-17
+
+### Changed
+
+- Bump version to 0.11.4| — Franck ([b78e76d0](https///github.com/ooneex/talos/commit/b78e76d0))
+
