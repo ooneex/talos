@@ -1,0 +1,6 @@
+# Spotlight indexes /Volumes/Projects, and a debug build of this crate writes
+# ~30 GB across 9k artifacts and 145 binaries — every one of which mdworker
+# then reads back. macOS skips any directory whose name ends in `.noindex`,
+# so building there drops the indexing tax without touching system settings.
+[build]
+target-dir = "target.noindex"
