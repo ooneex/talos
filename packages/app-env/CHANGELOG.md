@@ -67,3 +67,9 @@
 
 - Ignore literal undefined values when reading env vars| — Franck ([495cd387](https///github.com/ooneex/talos/commit/495cd387))
 
+## [1.4.0](https///github.com/ooneex/talos/releases/tag/@talosjs/app-env@1.4.0) - 2026-08-17
+
+### Added
+
+- Add CACHE_DRAGONFLY_URL and DATABASE_DRAGONFLY_URL variables| — Franck ([583e75c8](https///github.com/ooneex/talos/commit/583e75c8))
+
