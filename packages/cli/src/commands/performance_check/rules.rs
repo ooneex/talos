@@ -278,6 +278,15 @@ fn callback_loop_pattern() -> &'static Regex {
     })
 }
 
+/// `} while (cursor !== "0");` — the tail of a `do` block, not a new loop.
+///
+/// The header was already counted where the `do {` opened, and reading the
+/// tail as a second loop would report every `do … while` as nested in itself.
+fn do_while_tail_pattern() -> &'static Regex {
+    static PATTERN: OnceLock<Regex> = OnceLock::new();
+    PATTERN.get_or_init(|| pattern(r"^\s*\}\s*while\s*\("))
+}
+
 fn for_await_pattern() -> &'static Regex {
     static PATTERN: OnceLock<Regex> = OnceLock::new();
     PATTERN.get_or_init(|| pattern(r"(?:^|[^\w$.])for\s+await\s*\("))
@@ -523,7 +532,10 @@ pub fn inspect(symbol: &Symbol, markup: bool) -> Vec<Finding> {
 
     for (offset, (number, text)) in symbol.body.iter().enumerate() {
         let number = *number;
-        let statements = loop_pattern().find_iter(text).count();
+        let statements = loop_pattern()
+            .find_iter(text)
+            .count()
+            .saturating_sub(usize::from(do_while_tail_pattern().is_match(text)));
         let statement_loop = statements > 0;
         let callback_loop = callback_loop_pattern().is_match(text);
         let opens_loop = statement_loop || callback_loop;
@@ -815,6 +827,25 @@ export const run = (items: Item[]) => {
             false,
         );
         assert!(bare.contains(&"perf.scan-in-loop"));
+    }
+
+    #[test]
+    fn a_do_while_tail_is_not_a_loop_nested_in_the_do_it_closes() {
+        let ids = ids(
+            "\
+export const drain = async (client: Client) => {
+  let cursor = \"0\";
+  do {
+    const [next, keys] = await client.scan(cursor);
+    cursor = next;
+  } while (cursor !== \"0\");
+};
+",
+            false,
+        );
+
+        assert!(ids.contains(&"perf.await-in-loop"));
+        assert!(!ids.contains(&"perf.nested-loop"));
     }
 
     #[test]
