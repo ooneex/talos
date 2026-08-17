@@ -1559,7 +1559,7 @@ dependencies = [
 
 [[package]]
 name = "talos-cli"
-version = "0.11.5"
+version = "0.11.6"
 dependencies = [
  "blake3",
  "chrono",
