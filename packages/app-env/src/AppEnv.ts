@@ -110,6 +110,7 @@ const buildScalarEnvValues = (
     ANALYTICS_POSTHOG_PROJECT_TOKEN: readString("ANALYTICS_POSTHOG_PROJECT_TOKEN"),
     ANALYTICS_POSTHOG_HOST: readString("ANALYTICS_POSTHOG_HOST"),
     CACHE_REDIS_URL: readString("CACHE_REDIS_URL"),
+    CACHE_DRAGONFLY_URL: readString("CACHE_DRAGONFLY_URL"),
     CACHE_UPSTASH_REDIS_REST_URL: readString("CACHE_UPSTASH_REDIS_REST_URL"),
     CACHE_UPSTASH_REDIS_REST_TOKEN: readString("CACHE_UPSTASH_REDIS_REST_TOKEN"),
     PUBSUB_REDIS_URL: readString("PUBSUB_REDIS_URL"),
@@ -133,6 +134,7 @@ const buildScalarEnvValues = (
     FILESYSTEM_STORAGE_PATH: readString("FILESYSTEM_STORAGE_PATH"),
     DATABASE_URL: readString("DATABASE_URL"),
     DATABASE_REDIS_URL: readString("DATABASE_REDIS_URL"),
+    DATABASE_DRAGONFLY_URL: readString("DATABASE_DRAGONFLY_URL"),
     SQLITE_DATABASE_PATH: readString("SQLITE_DATABASE_PATH"),
     MAILER_SENDER_NAME: readString("MAILER_SENDER_NAME"),
     MAILER_SENDER_ADDRESS: readString("MAILER_SENDER_ADDRESS"),
@@ -193,6 +195,7 @@ export class AppEnv implements IAppEnv {
 
   // Cache
   public readonly CACHE_REDIS_URL: string | undefined;
+  public readonly CACHE_DRAGONFLY_URL: string | undefined;
   public readonly CACHE_UPSTASH_REDIS_REST_URL: string | undefined;
   public readonly CACHE_UPSTASH_REDIS_REST_TOKEN: string | undefined;
 
@@ -228,6 +231,7 @@ export class AppEnv implements IAppEnv {
   // Database
   public readonly DATABASE_URL: string | undefined;
   public readonly DATABASE_REDIS_URL: string | undefined;
+  public readonly DATABASE_DRAGONFLY_URL: string | undefined;
   public readonly SQLITE_DATABASE_PATH: string | undefined;
 
   // Mailer

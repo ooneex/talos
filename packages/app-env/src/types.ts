@@ -55,6 +55,7 @@ export interface IAppEnv {
 
   // Cache
   readonly CACHE_REDIS_URL: string | undefined;
+  readonly CACHE_DRAGONFLY_URL: string | undefined;
   readonly CACHE_UPSTASH_REDIS_REST_URL: string | undefined;
   readonly CACHE_UPSTASH_REDIS_REST_TOKEN: string | undefined;
 
@@ -90,6 +91,7 @@ export interface IAppEnv {
   // Database
   readonly DATABASE_URL: string | undefined;
   readonly DATABASE_REDIS_URL: string | undefined;
+  readonly DATABASE_DRAGONFLY_URL: string | undefined;
   readonly SQLITE_DATABASE_PATH: string | undefined;
 
   // Mailer
