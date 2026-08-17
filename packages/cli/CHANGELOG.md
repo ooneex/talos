@@ -586,3 +586,17 @@
 
 - Bump version to 0.11.4| — Franck ([b78e76d0](https///github.com/ooneex/talos/commit/b78e76d0))
 
+## [0.11.6](https///github.com/ooneex/talos/releases/tag/@talos/cli@0.11.6) - 2026-08-17
+
+### Changed
+
+- Build into target.noindex to keep Spotlight out of cargo artifacts| — Franck ([4b82ab48](https///github.com/ooneex/talos/commit/4b82ab48))
+- Split coverage out of the test script| — Franck ([6295f315](https///github.com/ooneex/talos/commit/6295f315))
+- Drop unused deps and stop emitting debug info for test binaries| — Franck ([97cd7bd2](https///github.com/ooneex/talos/commit/97cd7bd2))
+- Sync Cargo.lock with the 0.11.5 version bump| — Franck ([5f62ea80](https///github.com/ooneex/talos/commit/5f62ea80))
+
+### Fixed
+
+- Roll back modules in the reverse order migrations were applied| — Franck ([ec56fb85](https///github.com/ooneex/talos/commit/ec56fb85))
+- Run module migration scripts sequentially and drop the database once| — Franck ([f05ad48c](https///github.com/ooneex/talos/commit/f05ad48c))
+
