@@ -27,6 +27,7 @@ pub fn run(args: &MigrationDownArgs) {
             version: args.version.clone(),
             no_cache: false,
             cache_dir: Some("var/cache/migrations"),
+            reverse: true,
         },
     );
 }

@@ -9,6 +9,10 @@ pub struct RunModuleScriptsOptions<'a> {
     pub version: Option<String>,
     pub no_cache: bool,
     pub cache_dir: Option<&'a str>,
+    /// Walks the modules from last to first. Rolling back has to mirror
+    /// applying: a module whose migrations sit on top of another module's
+    /// tables must be undone before the module underneath it.
+    pub reverse: bool,
 }
 
 /// Finds every module directory under `modules/` that declares a
@@ -153,6 +157,12 @@ pub fn run_module_scripts(cwd: &Path, options: RunModuleScriptsOptions) {
         super::style::warn(format!("No modules with {} found", options.label));
         return;
     }
+
+    let modules: Vec<(String, PathBuf)> = if options.reverse {
+        modules.into_iter().rev().collect()
+    } else {
+        modules
+    };
 
     // Every module script talks to the same database, and each one applies the
     // migrations (or seeds) it transitively imports — importing another module's

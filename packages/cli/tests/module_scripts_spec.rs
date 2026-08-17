@@ -105,7 +105,7 @@ fn drop_and_no_cache_are_passed_through_to_the_script() {
 
 /// A workspace with two modules, each recording into its own log, so a run can
 /// be read back per module.
-fn two_module_workspace() -> (tempfile::TempDir, PathBuf) {
+fn two_module_workspace(bin_path: &str) -> (tempfile::TempDir, PathBuf) {
     let dir = tempfile::tempdir().expect("create temp dir");
     let root = dir.path().to_path_buf();
 
@@ -117,7 +117,7 @@ fn two_module_workspace() -> (tempfile::TempDir, PathBuf) {
             &format!("{{ \"name\": \"@module/{name}\" }}\n"),
         );
         write(
-            &module.join("bin/migration/up.ts"),
+            &module.join(bin_path),
             &recorder(&root.join(format!("{name}.log"))),
         );
     }
@@ -125,9 +125,24 @@ fn two_module_workspace() -> (tempfile::TempDir, PathBuf) {
     (dir, root)
 }
 
+/// Overwrites each module's script with one that brackets a pause, so the log
+/// shows both which module ran first and whether the two overlapped.
+fn record_run_order(root: &Path, bin_path: &str, log: &Path) {
+    for name in ["alpha", "beta"] {
+        write(
+            &root.join(format!("modules/{name}/{bin_path}")),
+            &format!(
+                "import {{ appendFileSync }} from \"node:fs\";\nappendFileSync({:?}, \"start {name}\\n\");\nawait Bun.sleep(300);\nappendFileSync({:?}, \"end {name}\\n\");\n",
+                log.to_string_lossy(),
+                log.to_string_lossy()
+            ),
+        );
+    }
+}
+
 #[test]
 fn only_the_first_module_is_told_to_drop_the_database() {
-    let (_dir, root) = two_module_workspace();
+    let (_dir, root) = two_module_workspace("bin/migration/up.ts");
 
     let output = talos(&root, &["migration:up", "--drop"]);
 
@@ -143,7 +158,7 @@ fn only_the_first_module_is_told_to_drop_the_database() {
 
 #[test]
 fn dropping_clears_the_cache_directory_the_drop_invalidates() {
-    let (_dir, root) = two_module_workspace();
+    let (_dir, root) = two_module_workspace("bin/migration/up.ts");
     let stale = root.join("var/cache/migrations/beta/20260812081730499.json");
     write(&stale, "{}\n");
 
@@ -157,18 +172,9 @@ fn dropping_clears_the_cache_directory_the_drop_invalidates() {
 
 #[test]
 fn modules_sharing_a_database_run_one_at_a_time() {
-    let (_dir, root) = two_module_workspace();
+    let (_dir, root) = two_module_workspace("bin/migration/up.ts");
     let log = root.join("order.log");
-    for name in ["alpha", "beta"] {
-        write(
-            &root.join(format!("modules/{name}/bin/migration/up.ts")),
-            &format!(
-                "import {{ appendFileSync }} from \"node:fs\";\nappendFileSync({:?}, \"start {name}\\n\");\nawait Bun.sleep(300);\nappendFileSync({:?}, \"end {name}\\n\");\n",
-                log.to_string_lossy(),
-                log.to_string_lossy()
-            ),
-        );
-    }
+    record_run_order(&root, "bin/migration/up.ts", &log);
 
     let output = talos(&root, &["migration:up"]);
 
@@ -177,6 +183,60 @@ fn modules_sharing_a_database_run_one_at_a_time() {
         calls(&log),
         "start alpha\nend alpha\nstart beta\nend beta\n",
         "two modules applying the same shared migration at once race on it"
+    );
+}
+
+#[test]
+fn rolling_back_walks_the_modules_in_the_reverse_order_it_applied_them() {
+    let (_dir, root) = two_module_workspace("bin/migration/down.ts");
+    let log = root.join("order.log");
+    record_run_order(&root, "bin/migration/down.ts", &log);
+
+    let output = talos(&root, &["migration:down"]);
+
+    assert!(output.status.success(), "{}", text(&output));
+    assert_eq!(
+        calls(&log),
+        "start beta\nend beta\nstart alpha\nend alpha\n",
+        "a module stacked on another module's tables has to be undone first"
+    );
+}
+
+#[test]
+fn seeding_runs_one_module_at_a_time_in_the_order_the_migrations_did() {
+    let (_dir, root) = two_module_workspace("bin/seed/run.ts");
+    let log = root.join("order.log");
+    record_run_order(&root, "bin/seed/run.ts", &log);
+
+    let output = talos(&root, &["seed:run"]);
+
+    assert!(output.status.success(), "{}", text(&output));
+    assert_eq!(
+        calls(&log),
+        "start alpha\nend alpha\nstart beta\nend beta\n",
+        "a seed inserting rows another module's seed points at must land first"
+    );
+}
+
+#[test]
+fn only_the_first_seeded_module_is_told_to_drop_the_database() {
+    let (_dir, root) = two_module_workspace("bin/seed/run.ts");
+    let stale = root.join("var/cache/seeds/beta/users.json");
+    write(&stale, "{}\n");
+
+    let output = talos(&root, &["seed:run", "--drop"]);
+
+    assert!(output.status.success(), "{}", text(&output));
+    let alpha = calls(&root.join("alpha.log"));
+    let beta = calls(&root.join("beta.log"));
+    assert!(alpha.contains("--drop"), "the first module drops: {alpha}");
+    assert!(
+        !beta.contains("--drop"),
+        "a later drop would wipe the rows the modules before it seeded: {beta}"
+    );
+    assert!(
+        !stale.exists(),
+        "a cached 'already seeded' marker outlives the database it described"
     );
 }
 

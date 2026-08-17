@@ -30,6 +30,7 @@ pub fn run(args: &MigrationUpArgs) {
             version: None,
             no_cache: args.no_cache,
             cache_dir: Some("var/cache/migrations"),
+            reverse: false,
         },
     );
 }

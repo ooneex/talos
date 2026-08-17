@@ -33,6 +33,7 @@ pub fn run(args: &SeedRunArgs) {
             version: None,
             no_cache: args.no_cache,
             cache_dir: Some("var/cache/seeds"),
+            reverse: false,
         },
     );
 }
