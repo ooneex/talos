@@ -38,11 +38,10 @@ export const isValidRoutePath = (path: string): path is ValidRoutePathType => {
   if (path.endsWith(":")) return false;
   if (path.includes("/:")) {
     // Check for malformed parameters
-    const segments = path.split("/");
-    for (const segment of segments) {
-      if (segment.startsWith(":") && segment.length === 1) return false;
-      if (segment.includes(":") && !segment.startsWith(":")) return false;
-    }
+    const isMalformed = (segment: string): boolean =>
+      segment === ":" || (segment.includes(":") && !segment.startsWith(":"));
+
+    if (path.split("/").some(isMalformed)) return false;
   }
   return true;
 };
@@ -133,19 +132,19 @@ const assertToJsonSchema = (assert: AssertType | IAssert): Record<string, unknow
  * Build the documented schema of a route section, flagging each property as required or not
  */
 const buildRouteSchema = (assert: AssertType | IAssert): Record<string, unknown> => {
-  const schema = assertToJsonSchema(assert);
-  delete schema.$schema;
+  const { $schema: _$schema, ...schema } = assertToJsonSchema(assert);
 
   // a record constraint already flags each of its properties as required
   if (schema.type === "object" && schema.properties && !isAssertRecord(resolveAssert(assert))) {
-    const requiredFields = (schema.required as string[]) || [];
+    const { required, ...schemaWithoutRequired } = schema;
+    const requiredFields = new Set((required as string[]) || []);
     const properties = schema.properties as Record<string, unknown>;
 
     for (const key of Object.keys(properties)) {
-      (properties[key] as Record<string, unknown>).required = requiredFields.includes(key);
+      (properties[key] as Record<string, unknown>).required = requiredFields.has(key);
     }
 
-    delete schema.required;
+    return schemaWithoutRequired;
   }
 
   return schema;

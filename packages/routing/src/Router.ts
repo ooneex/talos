@@ -4,6 +4,9 @@ import type { IRouter, RouteConfigType } from "./types";
 
 export class Router implements IRouter {
   private routes: Map<string, RouteConfigType[]> = new Map();
+  private routesByName: Map<string, RouteConfigType> = new Map();
+  private socketRoutes: Map<string, RouteConfigType> = new Map();
+  private httpRoutes: Map<string, RouteConfigType[]> = new Map();
 
   // biome-ignore lint/complexity/noUselessConstructor: Bun coverage requires an explicit constructor to mark it as hit
   public constructor() {}
@@ -11,21 +14,19 @@ export class Router implements IRouter {
   public addRoute(route: RouteConfigType): this {
     const name = route.name;
 
-    for (const item of this.routes[Symbol.iterator]()) {
-      const existingRoute = item[1].find((r) => r.name === name);
-
-      if (existingRoute) {
-        throw new RouterException(`Route with name '${name}' already exists`, "ROUTE_NAME_EXISTS", route);
-      }
+    if (this.routesByName.has(name)) {
+      throw new RouterException(`Route with name '${name}' already exists`, "ROUTE_NAME_EXISTS", route);
     }
 
     const routes = this.routes.get(route.path) ?? [];
 
-    if (route.isSocket && routes.find((r) => r.isSocket)) {
+    if (route.isSocket && this.socketRoutes.has(route.path)) {
       throw new RouterException(`Socket route with path '${route.path}' already exists`, "SOCKET_PATH_EXISTS", route);
     }
 
-    if (!route.isSocket && routes.find((r) => !r.isSocket && r.method === route.method)) {
+    const httpRoutes = this.httpRoutes.get(route.path) ?? [];
+
+    if (!route.isSocket && httpRoutes.some((r) => r.method === route.method)) {
       throw new RouterException(
         `Route with path '${route.path}' and method '${route.method}' already exists`,
         "ROUTE_PATH_EXISTS",
@@ -35,6 +36,15 @@ export class Router implements IRouter {
 
     routes.push(route);
     this.routes.set(route.path, routes);
+    this.routesByName.set(name, route);
+
+    if (route.isSocket) {
+      this.socketRoutes.set(route.path, route);
+    } else {
+      httpRoutes.push(route);
+      this.httpRoutes.set(route.path, httpRoutes);
+    }
+
     container.add(route.controller, EContainerScope.Singleton);
 
     return this;
@@ -45,15 +55,7 @@ export class Router implements IRouter {
   }
 
   public findRouteByName(name: string): RouteConfigType | null {
-    for (const item of this.routes[Symbol.iterator]()) {
-      const existingRoute = item[1].find((r) => r.name === name);
-
-      if (existingRoute) {
-        return existingRoute;
-      }
-    }
-
-    return null;
+    return this.routesByName.get(name) ?? null;
   }
 
   public getRoutes(): Map<string, RouteConfigType[]> {
@@ -61,29 +63,11 @@ export class Router implements IRouter {
   }
 
   public getSocketRoutes(): Map<string, RouteConfigType> {
-    const socketRoutes = new Map<string, RouteConfigType>();
-
-    for (const [path, routes] of this.routes) {
-      const socketRoute = routes.find((route): route is RouteConfigType => route.isSocket);
-      if (socketRoute) {
-        socketRoutes.set(path, socketRoute);
-      }
-    }
-
-    return socketRoutes;
+    return this.socketRoutes;
   }
 
   public getHttpRoutes(): Map<string, RouteConfigType[]> {
-    const httpRoutes = new Map<string, RouteConfigType[]>();
-
-    for (const [path, routes] of this.routes) {
-      const filteredRoutes = routes.filter((route): route is RouteConfigType => !route.isSocket);
-      if (filteredRoutes.length > 0) {
-        httpRoutes.set(path, filteredRoutes);
-      }
-    }
-
-    return httpRoutes;
+    return this.httpRoutes;
   }
 
   public generate<P extends Record<string, string | number> = Record<string, string | number>>(
