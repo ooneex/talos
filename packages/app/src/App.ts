@@ -28,12 +28,13 @@ import {
 } from "./utils";
 
 export class App {
-  constructor(private readonly config: AppConfigType) {
-    const { loggers, cronJobs, cache, rateLimiter, onException, onStart } = this.config;
+  constructor(private readonly config: AppConfigType) {}
 
-    if (!container.has(AppEnv)) {
-      container.add(AppEnv);
-    }
+  // Every service below reads its configuration from AppEnv while it is constructed
+  // (e.g. RedisCache needs CACHE_REDIS_URL), so this must never run before the
+  // environment files have been layered onto Bun.env.
+  private registerServices(): void {
+    const { loggers, cronJobs, cache, rateLimiter, onException, onStart } = this.config;
 
     loggers.forEach((log) => {
       if (!container.has(log)) {
@@ -80,6 +81,10 @@ export class App {
   }
 
   public async init(): Promise<App> {
+    if (!container.has(AppEnv)) {
+      container.add(AppEnv);
+    }
+
     const env = container.get<IAppEnv>(AppEnv);
 
     const appEnvValidator = new AssertAppEnv();
@@ -120,6 +125,8 @@ export class App {
         },
       );
     }
+
+    this.registerServices();
 
     // Prefer the project root roles.yml, falling back to the running module's own roles.yml.
     // Bun.main is modules/<module-name>/src/index.ts, so the module root is two levels up.

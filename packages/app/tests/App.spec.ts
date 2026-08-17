@@ -107,34 +107,51 @@ describe("App", () => {
     Bun.env.HOST_NAME = originalEnv.HOST_NAME;
   });
 
-  describe("constructor", () => {
-    test("initializes loggers and adds them to container", () => {
-      const config = createMockConfig();
+  describe("service registration", () => {
+    test("resolves no service while constructing, so .env.yml loads first", () => {
+      container.removeConstant("cache");
+      container.removeConstant("rateLimiter");
+      container.removeConstant("logger");
+
+      const config = createMockConfig({
+        cache: MockCache as unknown as AppConfigType["cache"],
+        rateLimiter: MockRateLimiter as unknown as AppConfigType["rateLimiter"],
+      });
 
       new App(config);
+
+      expect(container.hasConstant("cache")).toBe(false);
+      expect(container.hasConstant("rateLimiter")).toBe(false);
+      expect(container.hasConstant("logger")).toBe(false);
+    });
+
+    test("initializes loggers and adds them to container", async () => {
+      const config = createMockConfig();
+
+      await new App(config).init();
 
       expect(container.has(MockLogger)).toBe(true);
     });
 
-    test("calls init on each logger", () => {
+    test("calls init on each logger", async () => {
       const config = createMockConfig();
 
-      new App(config);
+      await new App(config).init();
 
       const logger = container.get(MockLogger) as MockLogger;
       expect(logger.init).toHaveBeenCalled();
     });
 
-    test("registers AppEnv in container if not already present", () => {
+    test("registers AppEnv in container if not already present", async () => {
       container.remove(AppEnv);
 
       const config = createMockConfig();
-      new App(config);
+      await new App(config).init();
 
       expect(container.has(AppEnv)).toBe(true);
     });
 
-    test("registers cron jobs in the container when provided", () => {
+    test("registers cron jobs in the container when provided", async () => {
       class TestCronJob {
         start = mock(() => {});
         stop = mock(() => {});
@@ -147,72 +164,72 @@ describe("App", () => {
         cronJobs: [TestCronJob as unknown as AppConfigType["cronJobs"] extends (infer T)[] | undefined ? T : never],
       });
 
-      new App(config);
+      await new App(config).init();
 
       expect(container.has(TestCronJob)).toBe(true);
     });
 
-    test("adds cache to container and registers constant when provided", () => {
+    test("adds cache to container and registers constant when provided", async () => {
       const config = createMockConfig({
         cache: MockCache as unknown as AppConfigType["cache"],
       });
 
-      new App(config);
+      await new App(config).init();
 
       expect(container.has(MockCache)).toBe(true);
       expect(container.hasConstant("cache")).toBe(true);
     });
 
-    test("adds rateLimiter to container and registers constant when provided", () => {
+    test("adds rateLimiter to container and registers constant when provided", async () => {
       const config = createMockConfig({
         rateLimiter: MockRateLimiter as unknown as AppConfigType["rateLimiter"],
       });
 
-      new App(config);
+      await new App(config).init();
 
       expect(container.has(MockRateLimiter)).toBe(true);
       expect(container.hasConstant("rateLimiter")).toBe(true);
     });
 
-    test("adds onException to container and registers exception.logger constant when provided", () => {
+    test("adds onException to container and registers exception.logger constant when provided", async () => {
       const config = createMockConfig({
         onException: MockOnException as unknown as AppConfigType["onException"],
       });
 
-      new App(config);
+      await new App(config).init();
 
       expect(container.has(MockOnException)).toBe(true);
       expect(container.hasConstant("exception.logger")).toBe(true);
     });
 
-    test("adds onStart to container and registers app.event.start constant when provided", () => {
+    test("adds onStart to container and registers app.event.start constant when provided", async () => {
       const config = createMockConfig({
         onStart: MockOnStart as unknown as AppConfigType["onStart"],
       });
 
-      new App(config);
+      await new App(config).init();
 
       expect(container.has(MockOnStart)).toBe(true);
       expect(container.hasConstant("app.event.start")).toBe(true);
     });
 
-    test("registers logger constant", () => {
+    test("registers logger constant", async () => {
       const config = createMockConfig();
 
-      new App(config);
+      await new App(config).init();
 
       expect(container.hasConstant("logger")).toBe(true);
     });
 
-    test("handles config without optional dependencies", () => {
+    test("handles config without optional dependencies", async () => {
       const config = createMockConfig();
 
-      const app = new App(config);
+      const app = await new App(config).init();
 
       expect(app).toBeInstanceOf(App);
     });
 
-    test("processes multiple loggers and calls init on each", () => {
+    test("processes multiple loggers and calls init on each", async () => {
       class Logger1 {
         init = mock(() => {});
         info = mock(() => {});
@@ -240,7 +257,7 @@ describe("App", () => {
         loggers: [Logger1 as unknown as AppConfigType["loggers"][0], Logger2 as unknown as AppConfigType["loggers"][0]],
       });
 
-      new App(config);
+      await new App(config).init();
 
       expect(container.has(Logger1)).toBe(true);
       expect(container.has(Logger2)).toBe(true);
@@ -250,7 +267,7 @@ describe("App", () => {
       expect(logger2.init).toHaveBeenCalled();
     });
 
-    test("registers multiple cron jobs in the container", () => {
+    test("registers multiple cron jobs in the container", async () => {
       class Cron1 {
         start = mock(() => {});
       }
@@ -269,7 +286,7 @@ describe("App", () => {
         ],
       });
 
-      new App(config);
+      await new App(config).init();
 
       expect(container.has(Cron1)).toBe(true);
       expect(container.has(Cron2)).toBe(true);
