@@ -266,18 +266,9 @@ pub fn scaffold_destination(
         fs::write(&package_json_path, updated).map_err(|e| e.to_string())?;
     }
 
-    let app_package_json_path = destination.join("modules").join("app").join("package.json");
-    if let Ok(app_package_json) = fs::read_to_string(&app_package_json_path) {
-        let updated = set_package_json_name(&app_package_json, &format!("@module/{kebab_name}"));
-        fs::write(&app_package_json_path, updated).map_err(|e| e.to_string())?;
-    }
-
     let tsconfig_path = destination.join("tsconfig.json");
     if let Ok(tsconfig) = fs::read_to_string(&tsconfig_path) {
-        let updated = strip_extra_tsconfig_paths(&tsconfig).replace(
-            "./modules/app/src/*",
-            &format!("./modules/{kebab_name}/src/*"),
-        );
+        let updated = strip_extra_tsconfig_paths(&tsconfig);
         fs::write(&tsconfig_path, updated).map_err(|e| e.to_string())?;
     }
 
@@ -294,15 +285,6 @@ pub fn scaffold_destination(
         .map_err(|e| e.to_string())?;
     }
 
-    let dockerfile_path = destination.join("modules").join("app").join("Dockerfile");
-    if let Ok(dockerfile) = fs::read_to_string(&dockerfile_path) {
-        fs::write(
-            &dockerfile_path,
-            dockerfile.replace("modules/app", &format!("modules/{kebab_name}")),
-        )
-        .map_err(|e| e.to_string())?;
-    }
-
     match app_type {
         Some(AppType::Cli) => {
             let modules_dir = destination.join("modules");
@@ -314,32 +296,6 @@ pub fn scaffold_destination(
             keep_only_app_and_shared_modules(destination)?;
         }
         None => {}
-    }
-
-    // Renamed last, once `keep_only_app_and_shared_modules` (which matches
-    // on the skeleton's original "app" name) has already run, so the app
-    // module directory ends up matching the `@module/{kebab_name}` alias
-    // the tsconfig rewrite above already pointed at.
-    let app_module_dir = destination.join("modules").join("app");
-    if app_module_dir.is_dir() {
-        // Every module's config file is named after its own directory
-        // (`shared.yml`, `billing.yml`, …); the app module is no exception,
-        // and other commands (`app:start`, `module:create`, …) rely on that
-        // convention to find it once it's no longer literally "app".
-        let app_yml_path = app_module_dir.join("app.yml");
-        if app_yml_path.is_file() {
-            fs::rename(
-                &app_yml_path,
-                app_module_dir.join(format!("{kebab_name}.yml")),
-            )
-            .map_err(|e| e.to_string())?;
-        }
-
-        fs::rename(
-            &app_module_dir,
-            destination.join("modules").join(kebab_name),
-        )
-        .map_err(|e| e.to_string())?;
     }
 
     Ok(())

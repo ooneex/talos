@@ -95,11 +95,10 @@ fn scaffold_destination_rewrites_env_and_readme() {
     assert!(!destination_path.join(".git").exists());
     assert!(!destination_path.join("bun.lock").exists());
     assert!(!destination_path.join("remotion.config.ts").exists());
-    assert!(!destination_path.join("modules").join("app").exists());
     assert!(
         !destination_path
             .join("modules")
-            .join("my-app")
+            .join("app")
             .join(".env.example.yml")
             .exists()
     );
@@ -107,7 +106,7 @@ fn scaffold_destination_rewrites_env_and_readme() {
         fs::read_to_string(
             destination_path
                 .join("modules")
-                .join("my-app")
+                .join("app")
                 .join(".env.yml")
         )
         .unwrap(),
@@ -121,7 +120,7 @@ fn scaffold_destination_rewrites_env_and_readme() {
         fs::read_to_string(
             destination_path
                 .join("modules")
-                .join("my-app")
+                .join("app")
                 .join("docker-compose.yml")
         )
         .unwrap(),
@@ -130,7 +129,7 @@ fn scaffold_destination_rewrites_env_and_readme() {
 }
 
 #[test]
-fn scaffold_destination_renames_app_module_dir_and_rewrites_dockerfile() {
+fn scaffold_destination_keeps_the_app_module_dir_and_dockerfile() {
     let skeleton = tempdir().unwrap();
     build_fake_skeleton(skeleton.path());
     let destination = tempdir().unwrap();
@@ -138,22 +137,21 @@ fn scaffold_destination_renames_app_module_dir_and_rewrites_dockerfile() {
 
     scaffold_destination(skeleton.path(), &destination_path, "my-app", None).unwrap();
 
-    assert!(!destination_path.join("modules").join("app").exists());
-    assert!(destination_path.join("modules").join("my-app").is_dir());
+    assert!(destination_path.join("modules").join("app").is_dir());
+    assert!(!destination_path.join("modules").join("my-app").exists());
 
     let dockerfile = fs::read_to_string(
         destination_path
             .join("modules")
-            .join("my-app")
+            .join("app")
             .join("Dockerfile"),
     )
     .unwrap();
-    assert!(dockerfile.contains("modules/my-app"));
-    assert!(!dockerfile.contains("modules/app"));
+    assert!(dockerfile.contains("modules/app"));
 }
 
 #[test]
-fn scaffold_destination_rewrites_tsconfig_module_paths() {
+fn scaffold_destination_strips_extra_tsconfig_module_paths() {
     let skeleton = tempdir().unwrap();
     build_fake_skeleton(skeleton.path());
     let destination = tempdir().unwrap();
@@ -163,8 +161,7 @@ fn scaffold_destination_rewrites_tsconfig_module_paths() {
 
     let tsconfig = fs::read_to_string(destination_path.join("tsconfig.json")).unwrap();
     assert!(tsconfig.contains("\"@module/app/*\""));
-    assert!(tsconfig.contains("\"./modules/my-app/src/*\""));
-    assert!(!tsconfig.contains("\"./modules/app/src/*\""));
+    assert!(tsconfig.contains("\"./modules/app/src/*\""));
     assert!(tsconfig.contains("\"@module/shared/*\""));
     assert!(!tsconfig.contains("\"@module/design/*\""));
     assert!(!tsconfig.contains("\"@module/sdk/*\""));
@@ -175,7 +172,7 @@ fn scaffold_destination_rewrites_tsconfig_module_paths() {
 }
 
 #[test]
-fn scaffold_destination_renames_the_app_module_package() {
+fn scaffold_destination_keeps_the_app_module_package_name() {
     let skeleton = tempdir().unwrap();
     build_fake_skeleton(skeleton.path());
     let destination = tempdir().unwrap();
@@ -186,14 +183,11 @@ fn scaffold_destination_renames_the_app_module_package() {
     let app_package_json = fs::read_to_string(
         destination_path
             .join("modules")
-            .join("my-app")
+            .join("app")
             .join("package.json"),
     )
     .unwrap();
-    assert_eq!(
-        app_package_json,
-        "{\n  \"name\": \"@module/my-app\",\n  \"description\": \"\",\n  \"version\": \"0.0.1\"\n}"
-    );
+    assert!(app_package_json.contains("\"@module/app\""));
 }
 
 #[test]
@@ -205,11 +199,9 @@ fn scaffold_destination_without_app_type_keeps_all_modules() {
 
     scaffold_destination(skeleton.path(), &destination_path, "my-app", None).unwrap();
 
-    assert!(destination_path.join("modules").join("my-app").is_dir());
-    for module in ["shared", "billing"] {
+    for module in ["app", "shared", "billing"] {
         assert!(destination_path.join("modules").join(module).is_dir());
     }
-    assert!(!destination_path.join("modules").join("app").exists());
     assert!(destination_path.join(".dockerignore").exists());
 }
 
@@ -228,8 +220,7 @@ fn scaffold_destination_with_api_app_type_keeps_only_app_and_shared_modules() {
     )
     .unwrap();
 
-    assert!(!destination_path.join("modules").join("app").exists());
-    assert!(destination_path.join("modules").join("my-app").is_dir());
+    assert!(destination_path.join("modules").join("app").is_dir());
     assert!(destination_path.join("modules").join("shared").is_dir());
     assert!(!destination_path.join("modules").join("billing").exists());
 }
