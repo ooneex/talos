@@ -448,6 +448,7 @@ fn apply_release_plan(cwd: &Path, plan: &ReleasePlan, repo_url: Option<&str>) {
     let is_rust = plan.cargo_toml_path.is_some();
     if let Some(cargo_toml_path) = &plan.cargo_toml_path {
         update_cargo_version(cargo_toml_path, &plan.new_version);
+        refresh_cargo_lock(&plan.full_dir);
     }
 
     let name = plan
@@ -479,8 +480,29 @@ fn apply_release_plan(cwd: &Path, plan: &ReleasePlan, repo_url: Option<&str>) {
     ));
 }
 
-/// Refreshes `bun.lock`, commits it, and pushes the release commits and tags
-/// to the remote.
+/// Rewrites the crate's `Cargo.lock` so its own version entry matches the
+/// freshly bumped `Cargo.toml`. Runs offline first since only the workspace
+/// member changed, and falls back to a networked update if the registry cache
+/// is missing an entry.
+fn refresh_cargo_lock(crate_dir: &Path) {
+    if !crate_dir.join("Cargo.lock").is_file() {
+        return;
+    }
+    let updated = Command::new("cargo")
+        .args(["update", "--workspace", "--offline"])
+        .current_dir(crate_dir)
+        .output()
+        .is_ok_and(|output| output.status.success());
+    if !updated {
+        let _ = Command::new("cargo")
+            .args(["update", "--workspace"])
+            .current_dir(crate_dir)
+            .output();
+    }
+}
+
+/// Refreshes `bun.lock`, commits it along with any refreshed `Cargo.lock`, and
+/// pushes the release commits and tags to the remote.
 fn push_to_remote(cwd: &Path) {
     let _ = run_spinner_step(
         false,
@@ -489,6 +511,8 @@ fn push_to_remote(cwd: &Path) {
     );
     let _ = git(cwd, &["add", "bun.lock"]);
     let _ = git(cwd, &["commit", "-m", "chore(common): Update bun.lock"]);
+    let _ = git(cwd, &["add", "--", "*Cargo.lock"]);
+    let _ = git(cwd, &["commit", "-m", "chore(common): Update Cargo.lock"]);
 
     // An `https://` origin needs a credential helper to push non-interactively;
     // `gh auth setup-git` wires git to use the CLI's stored token for that.
