@@ -17,6 +17,7 @@ const runSeed = async (seed: ISeed): Promise<void> => {
 
   const dependencies = await seed.getDependencies();
 
+  // talos-ignore perf.await-in-loop: dependencies seed in declaration order — each one may rely on the data the last wrote
   for (const dependency of dependencies) {
     const dep = container.get(dependency);
     data.push(await runSeed(dep));
@@ -80,6 +81,7 @@ const warmSeedCache = async (
   }
 
   await Promise.all(
+    // talos-ignore perf.await-in-loop: the callbacks run under Promise.all — the cache lookups are already parallel
     seeds.map(async (seed) => {
       const name = seed.constructor.name;
       const hash = computeSeedHash(seed, env);
@@ -152,6 +154,7 @@ export const run = async (config?: { cacheDir?: string }): Promise<void> => {
     }
   }
 
+  // talos-ignore perf.await-in-loop: seeds write to the same database in order — running them together would race
   for (const seed of seeds) {
     const seedName = seed.constructor.name;
 
