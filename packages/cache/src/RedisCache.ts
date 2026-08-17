@@ -86,11 +86,14 @@ export class RedisCache extends AbstractCache {
     return result;
   }
 
-  public async deleteByPrefix(prefix: string): Promise<number> {
-    const pattern = this.namespace ? `${this.namespace}:${prefix}*` : `${prefix}*`;
+  /**
+   * Delete every key the pattern matches, one SCAN page at a time, and say how many went.
+   */
+  private async deleteMatching(pattern: string): Promise<number> {
     let cursor = "0";
     let deleted = 0;
 
+    // talos-ignore perf.await-in-loop: SCAN is a cursor — a page cannot be asked for before the one that returns it
     do {
       const [nextCursor, keys] = await this.client.scan(cursor, "MATCH", pattern, "COUNT", 100);
       cursor = nextCursor;
@@ -104,17 +107,11 @@ export class RedisCache extends AbstractCache {
     return deleted;
   }
 
+  public async deleteByPrefix(prefix: string): Promise<number> {
+    return await this.deleteMatching(this.namespace ? `${this.namespace}:${prefix}*` : `${prefix}*`);
+  }
+
   public async clear(): Promise<void> {
-    const pattern = this.namespace ? `${this.namespace}:*` : "*";
-    let cursor = "0";
-
-    do {
-      const [nextCursor, keys] = await this.client.scan(cursor, "MATCH", pattern, "COUNT", 100);
-      cursor = nextCursor;
-
-      if (keys.length > 0) {
-        await this.client.del(...keys);
-      }
-    } while (cursor !== "0");
+    await this.deleteMatching(this.namespace ? `${this.namespace}:*` : "*");
   }
 }

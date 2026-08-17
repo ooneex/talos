@@ -117,6 +117,7 @@ export class FilesystemCache extends AbstractCache {
     let deleted = 0;
 
     await Promise.all(
+      // talos-ignore perf.await-in-loop: the callbacks run under Promise.all — the deletions are already parallel
       files.map(async (file) => {
         const f = Bun.file(`${this.cacheDir}/${file}`);
         if (await f.exists()) {

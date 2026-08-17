@@ -74,20 +74,20 @@ export class UpstashRedisCache extends AbstractCache {
     return result > 0;
   }
 
-  public async deleteByPrefix(prefix: string): Promise<number> {
+  /**
+   * Delete every key the pattern matches, one SCAN page at a time, and say how many went.
+   */
+  private async deleteMatching(match: string): Promise<number> {
     let cursor = "0";
     let deleted = 0;
 
+    // talos-ignore perf.await-in-loop: SCAN is a cursor — a page cannot be asked for before the one that returns it
     do {
-      const [nextCursor, keys] = await this.client.scan(cursor, { match: `${this.namespace}:${prefix}*`, count: 100 });
+      const [nextCursor, keys] = await this.client.scan(cursor, { match, count: 100 });
       cursor = nextCursor;
 
       if (keys.length > 0) {
-        const pipeline = this.client.pipeline();
-        for (const key of keys) {
-          pipeline.del(key);
-        }
-        await pipeline.exec();
+        await this.client.del(...keys);
         deleted += keys.length;
       }
     } while (cursor !== "0");
@@ -95,20 +95,11 @@ export class UpstashRedisCache extends AbstractCache {
     return deleted;
   }
 
+  public async deleteByPrefix(prefix: string): Promise<number> {
+    return await this.deleteMatching(`${this.namespace}:${prefix}*`);
+  }
+
   public async clear(): Promise<void> {
-    let cursor = "0";
-
-    do {
-      const [nextCursor, keys] = await this.client.scan(cursor, { match: `${this.namespace}:*`, count: 100 });
-      cursor = nextCursor;
-
-      if (keys.length > 0) {
-        const pipeline = this.client.pipeline();
-        for (const key of keys) {
-          pipeline.del(key);
-        }
-        await pipeline.exec();
-      }
-    } while (cursor !== "0");
+    await this.deleteMatching(`${this.namespace}:*`);
   }
 }

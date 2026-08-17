@@ -2,20 +2,13 @@ import { beforeEach, describe, expect, mock, test } from "bun:test";
 import { AppEnv } from "@talosjs/app-env";
 import { CacheException, UpstashRedisCache } from "@/index";
 
-// Create mock pipeline instance
-const mockPipeline = {
-  del: mock((_key: string) => mockPipeline),
-  exec: mock(async () => []),
-};
-
 // Create mock Redis client instance
 const mockRedisClient = {
   get: mock(async <T>(_key: string): Promise<T | null> => null),
   set: mock(async (_key: string, _value: unknown, _opts?: { ex?: number }): Promise<string> => "OK"),
-  del: mock(async (_key: string): Promise<number> => 1),
+  del: mock(async (..._keys: string[]): Promise<number> => 1),
   exists: mock(async (_key: string): Promise<number> => 0),
   scan: mock(async (_cursor: string | number, _opts?: object): Promise<[string, string[]]> => ["0", []]),
-  pipeline: mock(() => mockPipeline),
 };
 
 // Mock the @upstash/redis module
@@ -26,7 +19,6 @@ mock.module("@upstash/redis", () => ({
     del = mockRedisClient.del;
     exists = mockRedisClient.exists;
     scan = mockRedisClient.scan;
-    pipeline = mockRedisClient.pipeline;
   },
 }));
 
@@ -48,9 +40,6 @@ describe("UpstashRedisCache", () => {
       mockRedisClient.del,
       mockRedisClient.exists,
       mockRedisClient.scan,
-      mockRedisClient.pipeline,
-      mockPipeline.del,
-      mockPipeline.exec,
     ];
 
     mocksToReset.forEach((mockFn) => {
@@ -64,14 +53,11 @@ describe("UpstashRedisCache", () => {
     mockRedisClient.set.mockImplementation(
       async (_key: string, _value: unknown, _opts?: { ex?: number }): Promise<string> => "OK",
     );
-    mockRedisClient.del.mockImplementation(async (_key: string): Promise<number> => 1);
+    mockRedisClient.del.mockImplementation(async (..._keys: string[]): Promise<number> => 1);
     mockRedisClient.exists.mockImplementation(async (_key: string): Promise<number> => 0);
     mockRedisClient.scan.mockImplementation(
       async (_cursor: string | number, _opts?: object): Promise<[string, string[]]> => ["0", []],
     );
-    mockRedisClient.pipeline.mockImplementation(() => mockPipeline);
-    mockPipeline.del.mockImplementation((_key: string) => mockPipeline);
-    mockPipeline.exec.mockImplementation(async () => []);
   });
 
   describe("constructor", () => {
@@ -477,10 +463,8 @@ describe("UpstashRedisCache", () => {
 
       expect(result).toBe(2);
       expect(mockRedisClient.scan).toHaveBeenCalledWith("0", { match: "cache:user:*", count: 100 });
-      expect(mockRedisClient.pipeline).toHaveBeenCalledTimes(1);
-      expect(mockPipeline.del).toHaveBeenCalledWith("cache:user:1");
-      expect(mockPipeline.del).toHaveBeenCalledWith("cache:user:2");
-      expect(mockPipeline.exec).toHaveBeenCalledTimes(1);
+      expect(mockRedisClient.del).toHaveBeenCalledTimes(1);
+      expect(mockRedisClient.del).toHaveBeenCalledWith("cache:user:1", "cache:user:2");
     });
 
     test("should handle multiple scan iterations", async () => {
@@ -492,9 +476,7 @@ describe("UpstashRedisCache", () => {
 
       expect(result).toBe(3);
       expect(mockRedisClient.scan).toHaveBeenCalledTimes(2);
-      expect(mockRedisClient.pipeline).toHaveBeenCalledTimes(2);
-      expect(mockPipeline.del).toHaveBeenCalledTimes(3);
-      expect(mockPipeline.exec).toHaveBeenCalledTimes(2);
+      expect(mockRedisClient.del).toHaveBeenCalledTimes(2);
     });
 
     test("should return 0 when no keys match", async () => {
@@ -503,7 +485,7 @@ describe("UpstashRedisCache", () => {
       const result = await adapter.deleteByPrefix("nonexistent:");
 
       expect(result).toBe(0);
-      expect(mockRedisClient.pipeline).not.toHaveBeenCalled();
+      expect(mockRedisClient.del).not.toHaveBeenCalled();
     });
 
     test("should use namespace in pattern", async () => {
@@ -528,10 +510,8 @@ describe("UpstashRedisCache", () => {
       await adapter.clear();
 
       expect(mockRedisClient.scan).toHaveBeenCalledWith("0", { match: "cache:*", count: 100 });
-      expect(mockRedisClient.pipeline).toHaveBeenCalledTimes(1);
-      expect(mockPipeline.del).toHaveBeenCalledWith("cache:key1");
-      expect(mockPipeline.del).toHaveBeenCalledWith("cache:key2");
-      expect(mockPipeline.exec).toHaveBeenCalledTimes(1);
+      expect(mockRedisClient.del).toHaveBeenCalledTimes(1);
+      expect(mockRedisClient.del).toHaveBeenCalledWith("cache:key1", "cache:key2");
     });
 
     test("should handle multiple scan iterations", async () => {
@@ -542,9 +522,7 @@ describe("UpstashRedisCache", () => {
       await adapter.clear();
 
       expect(mockRedisClient.scan).toHaveBeenCalledTimes(2);
-      expect(mockRedisClient.pipeline).toHaveBeenCalledTimes(2);
-      expect(mockPipeline.del).toHaveBeenCalledTimes(3);
-      expect(mockPipeline.exec).toHaveBeenCalledTimes(2);
+      expect(mockRedisClient.del).toHaveBeenCalledTimes(2);
     });
 
     test("should handle empty scan result", async () => {
@@ -553,7 +531,7 @@ describe("UpstashRedisCache", () => {
       await adapter.clear();
 
       expect(mockRedisClient.scan).toHaveBeenCalledTimes(1);
-      expect(mockRedisClient.pipeline).not.toHaveBeenCalled();
+      expect(mockRedisClient.del).not.toHaveBeenCalled();
     });
 
     test("should throw on scan error", async () => {
