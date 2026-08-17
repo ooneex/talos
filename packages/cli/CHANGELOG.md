@@ -564,3 +564,9 @@
 
 - Skip reference folders in asset collection and stop flagging extra SDK methods| — Franck ([7ddca73c](https///github.com/ooneex/talos/commit/7ddca73c))
 
+## [0.11.2](https///github.com/ooneex/talos/releases/tag/@talos/cli@0.11.2) - 2026-08-17
+
+### Fixed
+
+- Stop reading a do-while tail as a loop nested in the do it closes| — Franck ([e36b5ef3](https///github.com/ooneex/talos/commit/e36b5ef3))
+
