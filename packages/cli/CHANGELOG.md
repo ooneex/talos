@@ -542,3 +542,9 @@
 - Stop security:check from walking into nested checkouts and worktrees| — Franck ([ebbea06f](https///github.com/ooneex/talos/commit/ebbea06f))
 - Make app:stop best effort so one failing step does not skip the rest| — Franck ([e9a5b3ab](https///github.com/ooneex/talos/commit/e9a5b3ab))
 
+## [0.10.1](https///github.com/ooneex/talos/releases/tag/@talos/cli@0.10.1) - 2026-08-17
+
+### Changed
+
+- Stop renaming the app module during app init| — Franck ([f07a2848](https///github.com/ooneex/talos/commit/f07a2848))
+
