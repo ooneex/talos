@@ -548,3 +548,9 @@
 
 - Stop renaming the app module during app init| — Franck ([f07a2848](https///github.com/ooneex/talos/commit/f07a2848))
 
+## [0.11.0](https///github.com/ooneex/talos/releases/tag/@talos/cli@0.11.0) - 2026-08-17
+
+### Added
+
+- Allow inspirations folder in design src check| — Franck ([7016f530](https///github.com/ooneex/talos/commit/7016f530))
+
