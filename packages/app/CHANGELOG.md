@@ -103,3 +103,9 @@
 
 - Treat ROLE_GUEST routes as public in validateRouteAccess| — Franck ([3978c5a1](https///github.com/ooneex/talos/commit/3978c5a1))
 
+## [1.4.1](https///github.com/ooneex/talos/releases/tag/@talosjs/app@1.4.1) - 2026-08-17
+
+### Fixed
+
+- Register services during init so env files load before services read them| — Franck ([d2692976](https///github.com/ooneex/talos/commit/d2692976))
+
