@@ -80,10 +80,26 @@ pub fn human_size(bytes: u64) -> String {
     format!("{} KB", bytes / 1024)
 }
 
+/// Source folders holding reference material rather than shipped assets. The
+/// inspirations catalogue is browsed by designers and never reaches the bundle,
+/// so nothing in the source points at it — by design.
+const REFERENCE_DIRS: &[&str] = &["inspirations"];
+
+/// Whether the path sits inside a reference folder.
+fn is_reference(path: &Path) -> bool {
+    path.components().any(|component| {
+        component
+            .as_os_str()
+            .to_str()
+            .is_some_and(|name| REFERENCE_DIRS.contains(&name))
+    })
+}
+
 /// Every asset a module ships, from `public/` and from its sources.
 pub fn collect(module: &WorkspaceModule) -> Vec<std::path::PathBuf> {
     let mut assets = collect_files(&module.dir.join("public"), ASSET_EXTENSIONS, 6);
     assets.extend(collect_files(&module.dir.join("src"), ASSET_EXTENSIONS, 10));
+    assets.retain(|path| !is_reference(path));
     assets.sort();
     assets.dedup();
     assets

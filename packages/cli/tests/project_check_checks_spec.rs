@@ -1105,6 +1105,26 @@ fn an_asset_the_platform_loads_by_name_is_not_orphaned() {
     assert!(!assets::is_conventional("hero-banner"));
 }
 
+#[test]
+fn the_inspirations_catalogue_is_not_a_shipped_asset() {
+    let (guard, root) = folder_root();
+    let module = write_module(&root, "design", "design");
+    fs::create_dir_all(module.dir.join("src/inspirations/article")).expect("create inspirations");
+    fs::create_dir_all(module.dir.join("src/components")).expect("create components");
+    fs::write(
+        module.dir.join("src/inspirations/article/three-pane.webp"),
+        [0_u8; 4],
+    )
+    .expect("write inspiration");
+    fs::write(module.dir.join("src/components/logo.svg"), "<svg/>").expect("write asset");
+
+    let collected = assets::collect(&module);
+
+    assert_eq!(collected.len(), 1);
+    assert!(collected[0].ends_with("logo.svg"));
+    drop(guard);
+}
+
 // ---------------------------------------------------------------------------
 // Repositories
 // ---------------------------------------------------------------------------
@@ -1353,7 +1373,7 @@ fn sdk_surface_reads_keys_endpoints_and_placeholders() {
 }
 
 #[test]
-fn sdk_inspect_reports_stale_methods_and_endpoints() {
+fn sdk_inspect_reports_moved_endpoints_and_leaves_extra_methods_alone() {
     let surface = sdk::SdkSurface {
         keys: ["user.read".to_string(), "user.stale".to_string()]
             .into_iter()
@@ -1384,11 +1404,7 @@ fn sdk_inspect_reports_stale_methods_and_endpoints() {
         &mut warnings,
     );
 
-    assert!(
-        errors
-            .iter()
-            .any(|error| error.contains("still exposes `user.stale`"))
-    );
+    assert!(!errors.iter().any(|error| error.contains("user.stale")));
     assert!(
         errors
             .iter()

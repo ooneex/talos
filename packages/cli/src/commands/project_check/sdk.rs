@@ -94,14 +94,12 @@ pub fn inspect(
         .filter_map(|route| route.name.clone())
         .collect();
 
+    // Only the missing direction is a defect. An SDK is free to expose more than
+    // its target declares — hand-written helpers and methods wrapping another
+    // module's routes are normal, and flagging them was pure noise.
     for missing in declared.difference(&surface.keys) {
         errors.push(format!(
             "{label}: `{missing}` is declared by {target} but the SDK has no method for it"
-        ));
-    }
-    for stale in surface.keys.difference(&declared) {
-        errors.push(format!(
-            "{label}: the SDK still exposes `{stale}`, which {target} no longer declares"
         ));
     }
 
