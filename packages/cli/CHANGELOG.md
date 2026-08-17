@@ -570,3 +570,13 @@
 
 - Stop reading a do-while tail as a loop nested in the do it closes| — Franck ([e36b5ef3](https///github.com/ooneex/talos/commit/e36b5ef3))
 
+## [0.11.3](https///github.com/ooneex/talos/releases/tag/@talos/cli@0.11.3) - 2026-08-17
+
+### Changed
+
+- Update Cargo.lock| — Franck ([66f6a453](https///github.com/ooneex/talos/commit/66f6a453))
+
+### Fixed
+
+- Refresh and commit Cargo.lock during release create| — Franck ([c29b6ef6](https///github.com/ooneex/talos/commit/c29b6ef6))
+
