@@ -43,3 +43,9 @@
 - Raise coverage thresholds to 99% across all packages| — Franck ([14db3019](https///github.com/ooneex/talos/commit/14db3019))
 - Enable coverage thresholds in every package's bunfig.toml| — Franck ([e19e3785](https///github.com/ooneex/talos/commit/e19e3785))
 
+## [1.2.3](https///github.com/ooneex/talos/releases/tag/@talosjs/seeds@1.2.3) - 2026-08-17
+
+### Changed
+
+- Document the ordered and parallel awaits the seed runner relies on| — Franck ([e772edf3](https///github.com/ooneex/talos/commit/e772edf3))
+
