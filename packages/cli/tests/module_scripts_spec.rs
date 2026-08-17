@@ -280,7 +280,11 @@ fn a_workspace_with_no_module_carrying_the_script_says_so_rather_than_failing() 
     let output = talos(dir.path(), &["seed:run"]);
 
     assert!(output.status.success(), "{}", text(&output));
-    assert!(text(&output).contains("No modules"), "{}", text(&output));
+    assert!(
+        text(&output).contains("No module found"),
+        "{}",
+        text(&output)
+    );
 }
 
 #[test]
@@ -290,7 +294,11 @@ fn a_module_without_a_manifest_is_skipped() {
 
     let output = talos(&root, &["seed:run"]);
 
-    assert!(text(&output).contains("No modules"), "{}", text(&output));
+    assert!(
+        text(&output).contains("No module found"),
+        "{}",
+        text(&output)
+    );
 }
 
 #[test]
@@ -304,6 +312,34 @@ fn a_script_that_fails_ends_the_run_non_zero() {
     let output = talos(&root, &["seed:run"]);
 
     assert!(!output.status.success());
+}
+
+#[test]
+fn a_failing_scripts_output_is_kept_for_logs() {
+    let (_dir, root, _log) = workspace();
+    write(
+        &root.join("modules/user/bin/seed/run.ts"),
+        "console.error(\"the seed blew up\");\nprocess.exit(1);\n",
+    );
+
+    let quiet = talos(&root, &["seed:run"]);
+    let logged = talos(&root, &["seed:run", "--logs"]);
+
+    assert!(
+        !text(&quiet).contains("the seed blew up"),
+        "the output is captured, not streamed: {}",
+        text(&quiet)
+    );
+    assert!(
+        text(&quiet).contains("--logs"),
+        "a failure says where its output went: {}",
+        text(&quiet)
+    );
+    assert!(
+        text(&logged).contains("the seed blew up"),
+        "--logs replays what the script printed: {}",
+        text(&logged)
+    );
 }
 
 // ---------------------------------------------------------------------------

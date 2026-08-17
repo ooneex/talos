@@ -14,6 +14,7 @@ fn seed_run_parses_all_flags() {
         "--drop",
         "--env",
         "test",
+        "--logs",
         "--no-cache",
         "--cwd",
         "./here",
@@ -22,6 +23,7 @@ fn seed_run_parses_all_flags() {
 
     assert!(cli.args.drop);
     assert_eq!(cli.args.env.as_deref(), Some("test"));
+    assert!(cli.args.logs);
     assert!(cli.args.no_cache);
     assert_eq!(cli.args.cwd.as_deref(), Some("./here"));
 }
@@ -32,6 +34,7 @@ fn seed_run_defaults_are_empty() {
 
     assert!(!cli.args.drop);
     assert!(cli.args.env.is_none());
+    assert!(!cli.args.logs);
     assert!(!cli.args.no_cache);
     assert!(cli.args.cwd.is_none());
 }

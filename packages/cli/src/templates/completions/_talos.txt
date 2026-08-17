@@ -552,14 +552,19 @@ _talos() {
         migration:up)
           _arguments -s \
             '--drop[Drop the database before running]' \
+            '--logs[Print the output of every module that fails]' \
             '--no-cache[Skip the per-migration run cache]'
           ;;
         seed:run)
           _arguments -s \
-            '--drop[Drop the database before running]'
+            '--drop[Drop the database before running]' \
+            '--env=[APP_ENV the seeds run under]:env' \
+            '--logs[Print the output of every module that fails]' \
+            '--no-cache[Skip the per-seed run cache]'
           ;;
         migration:down)
           _arguments -s \
+            '--logs[Print the output of every module that fails]' \
             '--version=[Version of the migration to roll back]:version'
           ;;
         design:create|microservice:create)

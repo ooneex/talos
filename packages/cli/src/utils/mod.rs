@@ -12,6 +12,7 @@ mod marketing;
 mod migration_version;
 mod module_registry;
 mod module_removal;
+mod module_scripts;
 mod onboarding;
 mod parallel;
 mod ports;
@@ -20,7 +21,6 @@ mod prompts;
 mod provider;
 mod publish_targets;
 mod rng;
-mod run_module_scripts;
 mod runnable_modules;
 mod rust_module;
 mod scaffold;
@@ -74,6 +74,9 @@ pub use module_removal::{
     remove_block, remove_from_app_yml, remove_microservice_app_blocks,
     remove_standard_module_references, resolve_cwd, resolve_module_identity,
 };
+pub use module_scripts::{
+    ModuleScript, ModuleScriptsOptions, ScriptAudit, ScriptStatus, run_module_scripts,
+};
 pub use onboarding::print_onboarding;
 pub use parallel::{Action, run_actions, run_actions_rendered};
 pub use ports::{
@@ -92,7 +95,6 @@ pub use provider::{Provider, resolve_provider_client};
 pub use publish_targets::{
     PublishTarget, discover_publish_targets, resolve_publish_targets, split_csv,
 };
-pub use run_module_scripts::{RunModuleScriptsOptions, run_module_scripts};
 pub use runnable_modules::{
     RunnableModule, RunnableModuleType, collect_runnable_modules, find_app_module,
     find_app_module_name, select_runnable_modules,
