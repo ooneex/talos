@@ -134,7 +134,9 @@ describe("run", () => {
     const dep = new DependencySeed();
     const main = new MainSeed();
 
-    SEEDS_CONTAINER.push(MainSeed as unknown as SeedClassType);
+    // Declared last on purpose: the dependency has to be pulled ahead of the
+    // seed that declares it, whatever the registration order.
+    SEEDS_CONTAINER.push(MainSeed as unknown as SeedClassType, DependencySeed as unknown as SeedClassType);
 
     container.get = mock((klass: SeedClassType) => {
       if (klass === (DependencySeed as unknown as SeedClassType)) return dep;
@@ -145,6 +147,135 @@ describe("run", () => {
     await run({ cacheDir });
 
     expect(calls).toEqual(["dependency.run", "main.run"]);
+  });
+
+  test("should run a dependency once instead of again on its own turn", async () => {
+    const calls: string[] = [];
+
+    class SharedSeed implements ISeed {
+      run<T = unknown>(_data?: unknown[]): T | Promise<T> {
+        calls.push("shared.run");
+        return "shared-result" as unknown as T;
+      }
+      isActive() {
+        return true;
+      }
+      getDependencies() {
+        return [];
+      }
+      getEnv() {
+        return [];
+      }
+    }
+
+    class FirstSeed implements ISeed {
+      run<T = unknown>(data?: unknown[]): T | Promise<T> {
+        calls.push(`first.run:${JSON.stringify(data)}`);
+        return Promise.resolve(undefined as unknown as T);
+      }
+      isActive() {
+        return true;
+      }
+      getDependencies() {
+        return [SharedSeed as unknown as SeedClassType];
+      }
+      getEnv() {
+        return [];
+      }
+    }
+
+    class SecondSeed implements ISeed {
+      run<T = unknown>(data?: unknown[]): T | Promise<T> {
+        calls.push(`second.run:${JSON.stringify(data)}`);
+        return Promise.resolve(undefined as unknown as T);
+      }
+      isActive() {
+        return true;
+      }
+      getDependencies() {
+        return [SharedSeed as unknown as SeedClassType];
+      }
+      getEnv() {
+        return [];
+      }
+    }
+
+    const shared = new SharedSeed();
+    const first = new FirstSeed();
+    const second = new SecondSeed();
+
+    SEEDS_CONTAINER.push(
+      FirstSeed as unknown as SeedClassType,
+      SharedSeed as unknown as SeedClassType,
+      SecondSeed as unknown as SeedClassType,
+    );
+
+    container.get = mock((klass: SeedClassType) => {
+      if (klass === (SharedSeed as unknown as SeedClassType)) return shared;
+      if (klass === (FirstSeed as unknown as SeedClassType)) return first;
+      if (klass === (SecondSeed as unknown as SeedClassType)) return second;
+      throw new Error("unexpected seed class");
+    }) as unknown as typeof container.get;
+
+    await run({ cacheDir });
+
+    // The shared dependency runs exactly once, ahead of both seeds that declare
+    // it, and each of them receives the result it already produced.
+    expect(calls).toEqual(["shared.run", 'first.run:["shared-result"]', 'second.run:["shared-result"]']);
+  });
+
+  test("should not re-run a seed that a later seed depends on when it is cached", async () => {
+    const calls: string[] = [];
+
+    class CachedDependencySeed implements ISeed {
+      run<T = unknown>(_data?: unknown[]): T | Promise<T> {
+        calls.push("cached-dependency.run");
+        return "dep-result" as unknown as T;
+      }
+      isActive() {
+        return true;
+      }
+      getDependencies() {
+        return [];
+      }
+      getEnv() {
+        return [];
+      }
+    }
+
+    class DependentSeed implements ISeed {
+      run<T = unknown>(_data?: unknown[]): T | Promise<T> {
+        calls.push("dependent.run");
+        return Promise.resolve(undefined as unknown as T);
+      }
+      isActive() {
+        return true;
+      }
+      getDependencies() {
+        return [CachedDependencySeed as unknown as SeedClassType];
+      }
+      getEnv() {
+        return [];
+      }
+    }
+
+    const dep = new CachedDependencySeed();
+    const dependent = new DependentSeed();
+
+    SEEDS_CONTAINER.push(CachedDependencySeed as unknown as SeedClassType, DependentSeed as unknown as SeedClassType);
+
+    container.get = mock((klass: SeedClassType) => {
+      if (klass === (CachedDependencySeed as unknown as SeedClassType)) return dep;
+      if (klass === (DependentSeed as unknown as SeedClassType)) return dependent;
+      throw new Error("unexpected seed class");
+    }) as unknown as typeof container.get;
+
+    await writeSeedCache(cacheDir, "CachedDependencySeed", computeSeedHash(dep, process.env.APP_ENV));
+
+    await run({ cacheDir });
+
+    expect(calls).toEqual(["dependent.run"]);
+    expect(output()).toContain("up to date (cached)");
   });
 
   test("should run seed when current environment is in getEnv list", async () => {

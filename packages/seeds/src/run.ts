@@ -12,18 +12,23 @@ type SeedRunOptionsType = {
   cacheDir?: string | undefined;
 };
 
-const runSeed = async (seed: ISeed): Promise<void> => {
-  const data = [];
-
+/**
+ * Runs one seed and records what it returned.
+ *
+ * Only this seed's own `run()` is called here. Its dependencies are registered
+ * seeds too, already run on their own earlier turn — `getSeeds` orders them
+ * ahead of it — so their results are read back from `resultBySeed` instead of
+ * being re-produced. Re-running one would duplicate the rows it wrote.
+ *
+ * A dependency that was skipped (cached, inactive, or excluded by the current
+ * environment) has no recorded result and comes through as `undefined`, keeping
+ * `data` aligned with the declaration order.
+ */
+const runSeed = async (seed: ISeed, resultBySeed: Map<ISeed, unknown>): Promise<void> => {
   const dependencies = await seed.getDependencies();
+  const data = dependencies.map((dependency) => resultBySeed.get(container.get(dependency)));
 
-  // talos-ignore perf.await-in-loop: dependencies seed in declaration order — each one may rely on the data the last wrote
-  for (const dependency of dependencies) {
-    const dep = container.get(dependency);
-    data.push(await runSeed(dep));
-  }
-
-  await seed.run(data);
+  resultBySeed.set(seed, await seed.run(data));
 };
 
 // Best-effort close of the registered database connection. Never throws — a
@@ -154,6 +159,10 @@ export const run = async (config?: { cacheDir?: string }): Promise<void> => {
     }
   }
 
+  // What each seed returned, so a later seed can read the results of the
+  // dependencies it declares without running them a second time.
+  const resultBySeed = new Map<ISeed, unknown>();
+
   // talos-ignore perf.await-in-loop: seeds write to the same database in order — running them together would race
   for (const seed of seeds) {
     const seedName = seed.constructor.name;
@@ -167,7 +176,7 @@ export const run = async (config?: { cacheDir?: string }): Promise<void> => {
 
     const startedAt = performance.now();
     try {
-      await runSeed(seed);
+      await runSeed(seed, resultBySeed);
 
       runLogger.persist(
         colorize(`${SYMBOLS.success} `, COLORS.success) +

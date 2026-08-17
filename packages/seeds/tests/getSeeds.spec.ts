@@ -152,4 +152,167 @@ describe("getSeeds", () => {
 
     expect(seeds).toEqual([seed]);
   });
+
+  test("should place a seed after the dependencies it declares, listing each once", async () => {
+    class BaseSeed implements ISeed {
+      run<T = unknown>(_data?: unknown[]): T | Promise<T> {
+        return Promise.resolve(undefined as unknown as T);
+      }
+      isActive() {
+        return true;
+      }
+      getDependencies() {
+        return [];
+      }
+      getEnv() {
+        return [];
+      }
+    }
+
+    class LeftSeed implements ISeed {
+      run<T = unknown>(_data?: unknown[]): T | Promise<T> {
+        return Promise.resolve(undefined as unknown as T);
+      }
+      isActive() {
+        return true;
+      }
+      getDependencies() {
+        return [BaseSeed as unknown as SeedClassType];
+      }
+      getEnv() {
+        return [];
+      }
+    }
+
+    class RightSeed implements ISeed {
+      run<T = unknown>(_data?: unknown[]): T | Promise<T> {
+        return Promise.resolve(undefined as unknown as T);
+      }
+      isActive() {
+        return true;
+      }
+      getDependencies() {
+        return [BaseSeed as unknown as SeedClassType, LeftSeed as unknown as SeedClassType];
+      }
+      getEnv() {
+        return [];
+      }
+    }
+
+    const base = new BaseSeed();
+    const left = new LeftSeed();
+    const right = new RightSeed();
+
+    SEEDS_CONTAINER.push(
+      RightSeed as unknown as SeedClassType,
+      LeftSeed as unknown as SeedClassType,
+      BaseSeed as unknown as SeedClassType,
+    );
+
+    container.get = mock((klass: SeedClassType) => {
+      if (klass === (BaseSeed as unknown as SeedClassType)) return base;
+      if (klass === (LeftSeed as unknown as SeedClassType)) return left;
+      if (klass === (RightSeed as unknown as SeedClassType)) return right;
+      throw new Error("unexpected seed class");
+    }) as unknown as typeof container.get;
+
+    const seeds = await getSeeds();
+
+    expect(seeds).toEqual([base, left, right]);
+  });
+
+  test("should skip a dependency that is inactive", async () => {
+    class InactiveDependencySeed implements ISeed {
+      run<T = unknown>(_data?: unknown[]): T | Promise<T> {
+        return Promise.resolve(undefined as unknown as T);
+      }
+      isActive() {
+        return false;
+      }
+      getDependencies() {
+        return [];
+      }
+      getEnv() {
+        return [];
+      }
+    }
+
+    class DependentSeed implements ISeed {
+      run<T = unknown>(_data?: unknown[]): T | Promise<T> {
+        return Promise.resolve(undefined as unknown as T);
+      }
+      isActive() {
+        return true;
+      }
+      getDependencies() {
+        return [InactiveDependencySeed as unknown as SeedClassType];
+      }
+      getEnv() {
+        return [];
+      }
+    }
+
+    const inactive = new InactiveDependencySeed();
+    const dependent = new DependentSeed();
+
+    SEEDS_CONTAINER.push(DependentSeed as unknown as SeedClassType, InactiveDependencySeed as unknown as SeedClassType);
+
+    container.get = mock((klass: SeedClassType) => {
+      if (klass === (InactiveDependencySeed as unknown as SeedClassType)) return inactive;
+      if (klass === (DependentSeed as unknown as SeedClassType)) return dependent;
+      throw new Error("unexpected seed class");
+    }) as unknown as typeof container.get;
+
+    const seeds = await getSeeds();
+
+    expect(seeds).toEqual([dependent]);
+  });
+
+  test("should not loop forever on a dependency cycle", async () => {
+    class ASeed implements ISeed {
+      run<T = unknown>(_data?: unknown[]): T | Promise<T> {
+        return Promise.resolve(undefined as unknown as T);
+      }
+      isActive() {
+        return true;
+      }
+      getDependencies(): SeedClassType[] {
+        return [BSeed as unknown as SeedClassType];
+      }
+      getEnv() {
+        return [];
+      }
+    }
+
+    class BSeed implements ISeed {
+      run<T = unknown>(_data?: unknown[]): T | Promise<T> {
+        return Promise.resolve(undefined as unknown as T);
+      }
+      isActive() {
+        return true;
+      }
+      getDependencies(): SeedClassType[] {
+        return [ASeed as unknown as SeedClassType];
+      }
+      getEnv() {
+        return [];
+      }
+    }
+
+    const a = new ASeed();
+    const b = new BSeed();
+
+    SEEDS_CONTAINER.push(ASeed as unknown as SeedClassType, BSeed as unknown as SeedClassType);
+
+    container.get = mock((klass: SeedClassType) => {
+      if (klass === (ASeed as unknown as SeedClassType)) return a;
+      if (klass === (BSeed as unknown as SeedClassType)) return b;
+      throw new Error("unexpected seed class");
+    }) as unknown as typeof container.get;
+
+    const seeds = await getSeeds();
+
+    expect(seeds).toHaveLength(2);
+    expect(new Set(seeds)).toEqual(new Set([a, b]));
+  });
 });
