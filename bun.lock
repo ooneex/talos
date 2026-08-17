@@ -130,7 +130,7 @@
     },
     "packages/cli": {
       "name": "@talos/cli",
-      "version": "0.11.5",
+      "version": "0.11.6",
     },
     "packages/color": {
       "name": "@talosjs/color",
@@ -421,7 +421,7 @@
     },
     "packages/migrations": {
       "name": "@talosjs/migrations",
-      "version": "1.2.2",
+      "version": "1.2.3",
       "dependencies": {
         "@talosjs/container": "workspace:^",
       },
@@ -573,7 +573,7 @@
     },
     "packages/seeds": {
       "name": "@talosjs/seeds",
-      "version": "1.2.3",
+      "version": "1.2.4",
       "dependencies": {
         "@talosjs/container": "workspace:^",
         "@talosjs/utils": "workspace:^",
