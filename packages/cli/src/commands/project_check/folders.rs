@@ -79,6 +79,7 @@ const DESIGN_SRC: &[&str] = &[
     "fonts",
     "hooks",
     "icons",
+    "inspirations",
     "styles",
     "translations",
     "utils",

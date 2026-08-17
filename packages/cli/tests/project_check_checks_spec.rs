@@ -175,6 +175,7 @@ fn a_design_system_is_organised_by_asset_kind() {
     assert!(accepts(design, "src/components/button"));
     assert!(accepts(design, "src/components/language/flags"));
     assert!(accepts(design, "src/fonts/space-grotesk"));
+    assert!(accepts(design, "src/inspirations/dashboards"));
     assert!(!accepts(design, "src/features"));
     assert!(!accepts(design, "src/widgets"));
 }
