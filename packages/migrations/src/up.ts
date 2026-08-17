@@ -1,5 +1,4 @@
 import { parseArgs } from "node:util";
-import { container } from "@talosjs/container";
 import type { IException } from "@talosjs/exception";
 import { SQL } from "bun";
 import { createMigrationTable } from "./createMigrationTable";
@@ -12,18 +11,6 @@ type UpOptionsType = {
   drop?: boolean;
   noCache?: boolean;
   cacheDir?: string | undefined;
-};
-
-// biome-ignore lint/suspicious/noExplicitAny: trust me
-const run = async (migration: IMigration, tx: any, sql: SQL): Promise<void> => {
-  const dependencies = await migration.getDependencies();
-
-  for (const dependency of dependencies) {
-    const dep = container.get(dependency);
-    await run(dep, tx, sql);
-  }
-
-  await migration.up(tx, sql);
 };
 
 const readOptions = (): UpOptionsType => {
@@ -133,8 +120,12 @@ const runMigration = async (
   const id = migration.getVersion();
   const startedAt = performance.now();
 
+  // Only this migration's own `up()` runs here. Its dependencies are registered
+  // migrations too, already applied on their own turn by the loop below —
+  // replaying them would re-issue their DDL against a schema that has it, and
+  // die on "relation already exists".
   await sql.begin(async (tx) => {
-    await run(migration, tx, sql);
+    await migration.up(tx, sql);
     await tx`INSERT INTO ${sql(tableName)} (id) VALUES (${id})`;
   });
 

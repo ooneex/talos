@@ -463,6 +463,222 @@ describe("getMigrations", () => {
     expect(MIGRATIONS_CONTAINER).toEqual(originalOrder);
   });
 
+  test("should place a migration after the dependency it declares", () => {
+    class MigrationTags implements IMigration {
+      async up(): Promise<void> {}
+      async down(): Promise<void> {}
+      getVersion(): string {
+        return "001";
+      }
+      getDependencies(): MigrationClassType[] {
+        return [MigrationUsers as MigrationClassType];
+      }
+    }
+
+    class MigrationUsers implements IMigration {
+      async up(): Promise<void> {}
+      async down(): Promise<void> {}
+      getVersion(): string {
+        return "002";
+      }
+      getDependencies(): MigrationClassType[] {
+        return [];
+      }
+    }
+
+    const tags = new MigrationTags();
+    const users = new MigrationUsers();
+
+    MIGRATIONS_CONTAINER.push(MigrationTags as MigrationClassType);
+    MIGRATIONS_CONTAINER.push(MigrationUsers as MigrationClassType);
+
+    container.get = jest.fn((MigrationClass) => {
+      if (MigrationClass === MigrationTags) return tags;
+      if (MigrationClass === MigrationUsers) return users;
+      throw new Error("Unexpected migration class");
+    }) as typeof container.get;
+
+    const migrations = getMigrations();
+
+    // The dependency wins over the lower version it is declared by.
+    expect(migrations).toEqual([users, tags]);
+  });
+
+  test("should list a shared dependency once, before every migration declaring it", () => {
+    class MigrationUsers implements IMigration {
+      async up(): Promise<void> {}
+      async down(): Promise<void> {}
+      getVersion(): string {
+        return "001";
+      }
+      getDependencies(): MigrationClassType[] {
+        return [];
+      }
+    }
+
+    class MigrationTags implements IMigration {
+      async up(): Promise<void> {}
+      async down(): Promise<void> {}
+      getVersion(): string {
+        return "002";
+      }
+      getDependencies(): MigrationClassType[] {
+        return [MigrationUsers as MigrationClassType];
+      }
+    }
+
+    class MigrationPosts implements IMigration {
+      async up(): Promise<void> {}
+      async down(): Promise<void> {}
+      getVersion(): string {
+        return "003";
+      }
+      getDependencies(): MigrationClassType[] {
+        return [MigrationUsers as MigrationClassType];
+      }
+    }
+
+    const users = new MigrationUsers();
+    const tags = new MigrationTags();
+    const posts = new MigrationPosts();
+
+    MIGRATIONS_CONTAINER.push(MigrationUsers as MigrationClassType);
+    MIGRATIONS_CONTAINER.push(MigrationTags as MigrationClassType);
+    MIGRATIONS_CONTAINER.push(MigrationPosts as MigrationClassType);
+
+    container.get = jest.fn((MigrationClass) => {
+      if (MigrationClass === MigrationUsers) return users;
+      if (MigrationClass === MigrationTags) return tags;
+      if (MigrationClass === MigrationPosts) return posts;
+      throw new Error("Unexpected migration class");
+    }) as typeof container.get;
+
+    const migrations = getMigrations();
+
+    // A dependency is applied once on its own turn, not again per dependant.
+    expect(migrations).toEqual([users, tags, posts]);
+  });
+
+  test("should ignore a dependency that is not registered", () => {
+    class MigrationHelper implements IMigration {
+      async up(): Promise<void> {}
+      async down(): Promise<void> {}
+      getVersion(): string {
+        return "001";
+      }
+      getDependencies(): MigrationClassType[] {
+        return [];
+      }
+    }
+
+    class MigrationTags implements IMigration {
+      async up(): Promise<void> {}
+      async down(): Promise<void> {}
+      getVersion(): string {
+        return "002";
+      }
+      getDependencies(): MigrationClassType[] {
+        return [MigrationHelper as MigrationClassType];
+      }
+    }
+
+    const tags = new MigrationTags();
+
+    MIGRATIONS_CONTAINER.push(MigrationTags as MigrationClassType);
+
+    container.get = jest.fn((MigrationClass) => {
+      if (MigrationClass === MigrationTags) return tags;
+      throw new Error("Unexpected migration class");
+    }) as typeof container.get;
+
+    const migrations = getMigrations();
+
+    expect(migrations).toEqual([tags]);
+    expect(container.get).toHaveBeenCalledTimes(1);
+  });
+
+  test("should keep the version order when dependencies resolve asynchronously", () => {
+    class MigrationUsers implements IMigration {
+      async up(): Promise<void> {}
+      async down(): Promise<void> {}
+      getVersion(): string {
+        return "001";
+      }
+      getDependencies(): MigrationClassType[] {
+        return [];
+      }
+    }
+
+    class MigrationTags implements IMigration {
+      async up(): Promise<void> {}
+      async down(): Promise<void> {}
+      getVersion(): string {
+        return "002";
+      }
+      async getDependencies(): Promise<MigrationClassType[]> {
+        return [MigrationUsers as MigrationClassType];
+      }
+    }
+
+    const users = new MigrationUsers();
+    const tags = new MigrationTags();
+
+    MIGRATIONS_CONTAINER.push(MigrationTags as MigrationClassType);
+    MIGRATIONS_CONTAINER.push(MigrationUsers as MigrationClassType);
+
+    container.get = jest.fn((MigrationClass) => {
+      if (MigrationClass === MigrationUsers) return users;
+      if (MigrationClass === MigrationTags) return tags;
+      throw new Error("Unexpected migration class");
+    }) as typeof container.get;
+
+    const migrations = getMigrations();
+
+    expect(migrations).toEqual([users, tags]);
+  });
+
+  test("should not loop forever on migrations depending on each other", () => {
+    class MigrationA implements IMigration {
+      async up(): Promise<void> {}
+      async down(): Promise<void> {}
+      getVersion(): string {
+        return "001";
+      }
+      getDependencies(): MigrationClassType[] {
+        return [MigrationB as MigrationClassType];
+      }
+    }
+
+    class MigrationB implements IMigration {
+      async up(): Promise<void> {}
+      async down(): Promise<void> {}
+      getVersion(): string {
+        return "002";
+      }
+      getDependencies(): MigrationClassType[] {
+        return [MigrationA as MigrationClassType];
+      }
+    }
+
+    const a = new MigrationA();
+    const b = new MigrationB();
+
+    MIGRATIONS_CONTAINER.push(MigrationA as MigrationClassType);
+    MIGRATIONS_CONTAINER.push(MigrationB as MigrationClassType);
+
+    container.get = jest.fn((MigrationClass) => {
+      if (MigrationClass === MigrationA) return a;
+      if (MigrationClass === MigrationB) return b;
+      throw new Error("Unexpected migration class");
+    }) as typeof container.get;
+
+    const migrations = getMigrations();
+
+    expect(migrations).toHaveLength(2);
+    expect(migrations).toContain(a);
+    expect(migrations).toContain(b);
+  });
+
   test("should handle large number of migrations", () => {
     const migrations: MigrationClassType[] = [];
     const instances: IMigration[] = [];
