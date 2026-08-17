@@ -40,3 +40,9 @@
 
 - Share one SCAN loop and delete key pages in a single round trip| — Franck ([999bde67](https///github.com/ooneex/talos/commit/999bde67))
 
+## [1.3.0](https///github.com/ooneex/talos/releases/tag/@talosjs/cache@1.3.0) - 2026-08-17
+
+### Added
+
+- Add DragonflyCache adapter with atomic TTL and unlink based eviction| — Franck ([6281b9ec](https///github.com/ooneex/talos/commit/6281b9ec))
+
