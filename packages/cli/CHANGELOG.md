@@ -554,3 +554,13 @@
 
 - Allow inspirations folder in design src check| — Franck ([7016f530](https///github.com/ooneex/talos/commit/7016f530))
 
+## [0.11.1](https///github.com/ooneex/talos/releases/tag/@talos/cli@0.11.1) - 2026-08-17
+
+### Changed
+
+- Update Cargo.lock| — Franck ([5c054717](https///github.com/ooneex/talos/commit/5c054717))
+
+### Fixed
+
+- Skip reference folders in asset collection and stop flagging extra SDK methods| — Franck ([7ddca73c](https///github.com/ooneex/talos/commit/7ddca73c))
+
