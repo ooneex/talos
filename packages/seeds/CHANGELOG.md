@@ -49,3 +49,9 @@
 
 - Document the ordered and parallel awaits the seed runner relies on| — Franck ([e772edf3](https///github.com/ooneex/talos/commit/e772edf3))
 
+## [1.2.4](https///github.com/ooneex/talos/releases/tag/@talosjs/seeds@1.2.4) - 2026-08-17
+
+### Fixed
+
+- Order seeds by dependency and run each one only once| — Franck ([98b0057d](https///github.com/ooneex/talos/commit/98b0057d))
+
