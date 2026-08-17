@@ -34,3 +34,9 @@
 - Improve function coverage in AbstractCache and Cache|Add explicit constructor to AbstractCache and convert the static-only — Franck ([d4a0ba7b](https///github.com/ooneex/talos/commit/d4a0ba7b))
 - Enable coverage thresholds in every package's bunfig.toml| — Franck ([e19e3785](https///github.com/ooneex/talos/commit/e19e3785))
 
+## [1.2.1](https///github.com/ooneex/talos/releases/tag/@talosjs/cache@1.2.1) - 2026-08-17
+
+### Changed
+
+- Share one SCAN loop and delete key pages in a single round trip| — Franck ([999bde67](https///github.com/ooneex/talos/commit/999bde67))
+
