@@ -5,6 +5,9 @@ import type { EntityTarget, ObjectLiteral, Repository } from "typeorm";
 export type DatabaseClassType = new (...args: any[]) => IDatabase | IRedisDatabase | ITypeormDatabase;
 
 // biome-ignore lint/suspicious/noExplicitAny: trust me
+export type DragonflyDatabaseClassType = new (...args: any[]) => IDragonflyDatabase;
+
+// biome-ignore lint/suspicious/noExplicitAny: trust me
 export type RedisDatabaseClassType = new (...args: any[]) => IRedisDatabase;
 
 export type RedisConnectionOptionsType = {
@@ -25,6 +28,8 @@ export type RedisConnectionOptionsType = {
       };
 };
 
+export type DragonflyConnectionOptionsType = RedisConnectionOptionsType;
+
 export interface IDatabase {
   open: () => Promise<void>;
   close: () => Promise<void>;
@@ -34,6 +39,13 @@ export interface IDatabase {
 export interface IRedisDatabase {
   open: () => Promise<RedisClient>;
   close: () => Promise<void>;
+  drop: () => Promise<void>;
+}
+
+export interface IDragonflyDatabase {
+  open: () => Promise<RedisClient>;
+  close: () => Promise<void>;
+  ping: () => Promise<boolean>;
   drop: () => Promise<void>;
 }
 
