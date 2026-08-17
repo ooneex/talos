@@ -13,6 +13,19 @@ export type RedisCacheOptionsType = {
   tls?: boolean | object;
 };
 
+export type DragonflyCacheOptionsType = {
+  namespace?: string;
+  connectionString?: string;
+  scanCount?: number;
+  connectionTimeout?: number;
+  idleTimeout?: number;
+  autoReconnect?: boolean;
+  maxRetries?: number;
+  enableOfflineQueue?: boolean;
+  enableAutoPipelining?: boolean;
+  tls?: boolean | object;
+};
+
 export type UpstashRedisCacheOptionsType = {
   namespace?: string;
   url?: string;

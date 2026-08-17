@@ -1,6 +1,6 @@
 # @talosjs/cache
 
-High-performance caching layer with filesystem and Redis backends — features TTL expiration, auto-serialization, configurable size limits, and dependency injection integration
+High-performance caching layer with filesystem, Redis and Dragonfly backends — features TTL expiration, auto-serialization, configurable size limits, and dependency injection integration
 
 ## Installation
 
