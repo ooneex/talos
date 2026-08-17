@@ -43,3 +43,9 @@
 
 - Default route roles to GUEST_ROLE when unset| — Franck ([a2ad7f82](https///github.com/ooneex/talos/commit/a2ad7f82))
 
+## [1.3.1](https///github.com/ooneex/talos/releases/tag/@talosjs/routing@1.3.1) - 2026-08-17
+
+### Changed
+
+- Index routes by name and kind instead of scanning every route| — Franck ([32f227fd](https///github.com/ooneex/talos/commit/32f227fd))
+
