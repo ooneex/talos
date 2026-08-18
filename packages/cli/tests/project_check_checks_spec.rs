@@ -116,6 +116,7 @@ fn a_backend_module_holds_only_its_artifact_folders() {
         "repositories",
         "entities",
         "exceptions",
+        "constraints",
         "types",
         "utils",
     ] {

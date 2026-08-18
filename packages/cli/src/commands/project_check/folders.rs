@@ -43,6 +43,7 @@ const BACKEND_SRC: &[&str] = &[
     "analytics",
     "cache",
     "commands",
+    "constraints",
     "controllers",
     "crons",
     "databases",
