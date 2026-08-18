@@ -363,6 +363,53 @@ describe("random", () => {
     });
   });
 
+  describe("code", () => {
+    describe("basic functionality", () => {
+      test("should return string with length of 8", () => {
+        const result = random.code();
+        expect(typeof result).toBe("string");
+        expect(result).toHaveLength(8);
+      });
+
+      test("should only contain digits and letters a-f", () => {
+        const result = random.code();
+        expect(/^[0-9a-f]{8}$/.test(result)).toBe(true);
+      });
+
+      test("should contain exactly 2 letters and 6 digits", () => {
+        for (let i = 0; i < 100; i++) {
+          const result = random.code();
+          expect(result.replace(/[^a-f]/g, "")).toHaveLength(2);
+          expect(result.replace(/[^0-9]/g, "")).toHaveLength(6);
+        }
+      });
+
+      test("should generate different values on consecutive calls", () => {
+        const result1 = random.code();
+        const result2 = random.code();
+        expect(result1).not.toBe(result2);
+      });
+    });
+
+    describe("randomness quality", () => {
+      test("should not always place letters at the same positions", () => {
+        const layouts = new Set<string>();
+        for (let i = 0; i < 200; i++) {
+          layouts.add(random.code().replace(/[a-f]/g, "L").replace(/[0-9]/g, "D"));
+        }
+        expect(layouts.size).toBeGreaterThan(1);
+      });
+
+      test("should generate mostly unique codes", () => {
+        const results = new Set<string>();
+        for (let i = 0; i < 100; i++) {
+          results.add(random.code());
+        }
+        expect(results.size).toBeGreaterThan(90);
+      });
+    });
+  });
+
   describe("integration tests", () => {
     test("all methods should produce different results", () => {
       const nanoidResult = random.nanoid(10);
