@@ -1,7 +1,10 @@
 import { afterEach, beforeEach, describe, expect, mock, spyOn, test } from "bun:test";
+import { rmSync } from "node:fs";
+import { join } from "node:path";
 import { container } from "@talosjs/container";
 import { SEEDS_CONTAINER } from "@/container";
 import { run } from "@/run";
+import { computeSeedHash, isSeedCached, writeSeedCache } from "@/seedCache";
 import { Environment, type ISeed, type SeedClassType } from "@/types";
 
 describe("run", () => {
@@ -9,6 +12,7 @@ describe("run", () => {
   let originalExit: typeof process.exit;
   let originalAppEnv: string | undefined;
   let originalArgv: string[];
+  let cacheDir: string;
   let stdout: string[];
   let stdoutSpy: ReturnType<typeof spyOn>;
 
@@ -22,6 +26,7 @@ describe("run", () => {
     originalArgv = [...Bun.argv];
 
     SEEDS_CONTAINER.length = 0;
+    cacheDir = join(process.cwd(), ".temp", `seed-run-${Date.now()}-${Math.random().toString(36).slice(2)}`);
 
     stdout = [];
     stdoutSpy = spyOn(process.stdout, "write").mockImplementation((chunk: string | Uint8Array): boolean => {
@@ -46,10 +51,11 @@ describe("run", () => {
     }
     (Bun as { argv: string[] }).argv = originalArgv;
     SEEDS_CONTAINER.length = 0;
+    rmSync(cacheDir, { recursive: true, force: true });
   });
 
   test("should log and return when there are no seeds", async () => {
-    await run();
+    await run({ cacheDir });
 
     expect(output()).toContain("No seeds found");
   });
@@ -82,7 +88,7 @@ describe("run", () => {
       return originalGetConstant.call(container, id);
     }) as typeof container.getConstant;
 
-    await run();
+    await run({ cacheDir });
 
     expect(closeFn).toHaveBeenCalledTimes(1);
     expect(output()).toContain("CloseSeed");
@@ -138,7 +144,7 @@ describe("run", () => {
       throw new Error("unexpected seed class");
     }) as unknown as typeof container.get;
 
-    await run();
+    await run({ cacheDir });
 
     expect(calls).toEqual(["dependency.run", "main.run"]);
   });
@@ -211,11 +217,65 @@ describe("run", () => {
       throw new Error("unexpected seed class");
     }) as unknown as typeof container.get;
 
-    await run();
+    await run({ cacheDir });
 
     // The shared dependency runs exactly once, ahead of both seeds that declare
     // it, and each of them receives the result it already produced.
     expect(calls).toEqual(["shared.run", 'first.run:["shared-result"]', 'second.run:["shared-result"]']);
+  });
+
+  test("should not re-run a seed that a later seed depends on when it is cached", async () => {
+    const calls: string[] = [];
+
+    class CachedDependencySeed implements ISeed {
+      run<T = unknown>(_data?: unknown[]): T | Promise<T> {
+        calls.push("cached-dependency.run");
+        return "dep-result" as unknown as T;
+      }
+      isActive() {
+        return true;
+      }
+      getDependencies() {
+        return [];
+      }
+      getEnv() {
+        return [];
+      }
+    }
+
+    class DependentSeed implements ISeed {
+      run<T = unknown>(_data?: unknown[]): T | Promise<T> {
+        calls.push("dependent.run");
+        return Promise.resolve(undefined as unknown as T);
+      }
+      isActive() {
+        return true;
+      }
+      getDependencies() {
+        return [CachedDependencySeed as unknown as SeedClassType];
+      }
+      getEnv() {
+        return [];
+      }
+    }
+
+    const dep = new CachedDependencySeed();
+    const dependent = new DependentSeed();
+
+    SEEDS_CONTAINER.push(CachedDependencySeed as unknown as SeedClassType, DependentSeed as unknown as SeedClassType);
+
+    container.get = mock((klass: SeedClassType) => {
+      if (klass === (CachedDependencySeed as unknown as SeedClassType)) return dep;
+      if (klass === (DependentSeed as unknown as SeedClassType)) return dependent;
+      throw new Error("unexpected seed class");
+    }) as unknown as typeof container.get;
+
+    await writeSeedCache(cacheDir, "CachedDependencySeed", computeSeedHash(dep, process.env.APP_ENV));
+
+    await run({ cacheDir });
+
+    expect(calls).toEqual(["dependent.run"]);
+    expect(output()).toContain("up to date (cached)");
   });
 
   test("should run seed when current environment is in getEnv list", async () => {
@@ -244,7 +304,7 @@ describe("run", () => {
 
     container.get = mock(() => seedInstance) as unknown as typeof container.get;
 
-    await run();
+    await run({ cacheDir });
 
     expect(calls).toEqual(["staging.run"]);
   });
@@ -270,12 +330,38 @@ describe("run", () => {
 
     container.get = mock(() => seedInstance) as unknown as typeof container.get;
 
-    expect(run()).rejects.toThrow("process.exit called");
+    expect(run({ cacheDir })).rejects.toThrow("process.exit called");
 
     expect(output()).toContain("FailingSeed");
     expect(output()).toContain("failed");
     expect(output()).toContain("boom");
     expect(process.exit).toHaveBeenCalledWith(1);
+  });
+
+  test("should write a cache entry after a successful run", async () => {
+    class CachedSeed implements ISeed {
+      run<T = unknown>(_data?: unknown[]): T | Promise<T> {
+        return Promise.resolve(undefined as unknown as T);
+      }
+      isActive() {
+        return true;
+      }
+      getDependencies() {
+        return [];
+      }
+      getEnv() {
+        return [];
+      }
+    }
+
+    const seedInstance = new CachedSeed();
+    SEEDS_CONTAINER.push(CachedSeed as unknown as SeedClassType);
+    container.get = mock(() => seedInstance) as unknown as typeof container.get;
+
+    await run({ cacheDir });
+
+    const hash = computeSeedHash(seedInstance, process.env.APP_ENV);
+    expect(await isSeedCached(cacheDir, "CachedSeed", hash)).toBe(true);
   });
 
   test("should drop the database when the drop flag is provided", async () => {
@@ -307,11 +393,133 @@ describe("run", () => {
       return originalGetConstant.call(container, id);
     }) as typeof container.getConstant;
 
-    await run();
+    await run({ cacheDir });
 
     expect(dropFn).toHaveBeenCalledTimes(1);
     expect(output()).toContain("Database dropped");
 
     container.getConstant = originalGetConstant;
+  });
+
+  test("should skip a seed whose cache entry is still valid", async () => {
+    const calls: string[] = [];
+
+    class UnchangedSeed implements ISeed {
+      run<T = unknown>(_data?: unknown[]): T | Promise<T> {
+        calls.push("run");
+        return Promise.resolve(undefined as unknown as T);
+      }
+      isActive() {
+        return true;
+      }
+      getDependencies() {
+        return [];
+      }
+      getEnv() {
+        return [];
+      }
+    }
+
+    const seedInstance = new UnchangedSeed();
+    SEEDS_CONTAINER.push(UnchangedSeed as unknown as SeedClassType);
+    container.get = mock(() => seedInstance) as unknown as typeof container.get;
+
+    // Pre-seed a matching cache entry so the seed is considered up to date.
+    const hash = computeSeedHash(seedInstance, process.env.APP_ENV);
+    await writeSeedCache(cacheDir, "UnchangedSeed", hash);
+
+    await run({ cacheDir });
+
+    expect(calls).toEqual([]);
+    expect(output()).toContain("cached");
+  });
+
+  test("should skip only the seeds whose cache entries are still valid", async () => {
+    const calls: string[] = [];
+
+    class CachedSeed implements ISeed {
+      run<T = unknown>(_data?: unknown[]): T | Promise<T> {
+        calls.push("cached.run");
+        return Promise.resolve(undefined as unknown as T);
+      }
+      isActive() {
+        return true;
+      }
+      getDependencies() {
+        return [];
+      }
+      getEnv() {
+        return [];
+      }
+    }
+
+    class FreshSeed implements ISeed {
+      run<T = unknown>(_data?: unknown[]): T | Promise<T> {
+        calls.push("fresh.run");
+        return Promise.resolve(undefined as unknown as T);
+      }
+      isActive() {
+        return true;
+      }
+      getDependencies() {
+        return [];
+      }
+      getEnv() {
+        return [];
+      }
+    }
+
+    const cachedSeed = new CachedSeed();
+    const freshSeed = new FreshSeed();
+
+    SEEDS_CONTAINER.push(CachedSeed as unknown as SeedClassType, FreshSeed as unknown as SeedClassType);
+    container.get = mock((seedClass: SeedClassType) => {
+      if (seedClass === (CachedSeed as unknown as SeedClassType)) {
+        return cachedSeed;
+      }
+      if (seedClass === (FreshSeed as unknown as SeedClassType)) {
+        return freshSeed;
+      }
+      throw new Error("unexpected seed class");
+    }) as unknown as typeof container.get;
+
+    await writeSeedCache(cacheDir, "CachedSeed", computeSeedHash(cachedSeed, process.env.APP_ENV));
+
+    await run({ cacheDir });
+
+    expect(calls).toEqual(["fresh.run"]);
+    expect(output()).toContain("CachedSeed  up to date (cached)");
+    expect(output()).toContain("FreshSeed");
+  });
+
+  test("should re-run a seed when its cached hash no longer matches", async () => {
+    const calls: string[] = [];
+
+    class ChangedSeed implements ISeed {
+      run<T = unknown>(_data?: unknown[]): T | Promise<T> {
+        calls.push("run");
+        return Promise.resolve(undefined as unknown as T);
+      }
+      isActive() {
+        return true;
+      }
+      getDependencies() {
+        return [];
+      }
+      getEnv() {
+        return [];
+      }
+    }
+
+    const seedInstance = new ChangedSeed();
+    SEEDS_CONTAINER.push(ChangedSeed as unknown as SeedClassType);
+    container.get = mock(() => seedInstance) as unknown as typeof container.get;
+
+    // A stale entry (different code) must not cause the seed to be skipped.
+    await writeSeedCache(cacheDir, "ChangedSeed", "stale-hash");
+
+    await run({ cacheDir });
+
+    expect(calls).toEqual(["run"]);
   });
 });

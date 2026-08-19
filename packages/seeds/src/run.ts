@@ -3,10 +3,13 @@ import { container } from "@talosjs/container";
 import type { IException } from "@talosjs/exception";
 import { getSeeds } from "./getSeeds";
 import { COLORS, colorize, formatDuration, runLogger, SYMBOLS } from "./runLogger";
+import { computeSeedHash, isSeedCached, seedCacheDir, writeSeedCache } from "./seedCache";
 import type { ISeed } from "./types";
 
 type SeedRunOptionsType = {
   drop?: boolean;
+  noCache?: boolean;
+  cacheDir?: string | undefined;
 };
 
 /**
@@ -17,7 +20,7 @@ type SeedRunOptionsType = {
  * ahead of it — so their results are read back from `resultBySeed` instead of
  * being re-produced. Re-running one would duplicate the rows it wrote.
  *
- * A dependency that was skipped (inactive, or excluded by the current
+ * A dependency that was skipped (cached, inactive, or excluded by the current
  * environment) has no recorded result and comes through as `undefined`, keeping
  * `data` aligned with the declaration order.
  */
@@ -48,6 +51,12 @@ const readOptions = (): SeedRunOptionsType => {
       drop: {
         type: "boolean",
       },
+      "no-cache": {
+        type: "boolean",
+      },
+      "cache-dir": {
+        type: "string",
+      },
     },
     strict: false,
     allowPositionals: true,
@@ -55,15 +64,90 @@ const readOptions = (): SeedRunOptionsType => {
 
   return {
     drop: Boolean(values.drop),
+    noCache: Boolean(values["no-cache"]),
+    cacheDir: values["cache-dir"] as string | undefined,
   };
 };
 
-export const run = async (): Promise<void> => {
+const warmSeedCache = async (
+  seeds: ISeed[],
+  env: string | undefined,
+  cacheDir: string,
+  cacheEnabled: boolean,
+): Promise<{
+  hashByName: Map<string, string>;
+  cachedNames: Set<string>;
+}> => {
+  const hashByName = new Map<string, string>();
+  const cachedNames = new Set<string>();
+
+  if (!cacheEnabled) {
+    return { hashByName, cachedNames };
+  }
+
+  await Promise.all(
+    // talos-ignore perf.await-in-loop: the callbacks run under Promise.all — the cache lookups are already parallel
+    seeds.map(async (seed) => {
+      const name = seed.constructor.name;
+      const hash = computeSeedHash(seed, env);
+      hashByName.set(name, hash);
+      if (await isSeedCached(cacheDir, name, hash)) {
+        cachedNames.add(name);
+      }
+    }),
+  );
+
+  return { hashByName, cachedNames };
+};
+
+const cacheAppliedSeed = async (
+  cacheEnabled: boolean,
+  cacheDir: string,
+  hashByName: Map<string, string>,
+  seedName: string,
+): Promise<void> => {
+  const hash = hashByName.get(seedName);
+  if (cacheEnabled && hash) {
+    await writeSeedCache(cacheDir, seedName, hash);
+  }
+};
+
+const logCachedSeeds = (seeds: ISeed[]): void => {
+  for (const seed of seeds) {
+    runLogger.persist(
+      colorize(`${SYMBOLS.success} `, COLORS.success) +
+        seed.constructor.name +
+        colorize("  up to date (cached)", COLORS.dim),
+    );
+  }
+};
+
+export const run = async (config?: { cacheDir?: string }): Promise<void> => {
   const options = readOptions();
   const seeds = await getSeeds();
 
   if (seeds.length === 0) {
     runLogger.persist(colorize(`${SYMBOLS.skipped} No seeds found`, COLORS.dim));
+    return;
+  }
+
+  // Per-seed run cache: a seed whose code is unchanged since its last successful
+  // run — for the same environment — is skipped. `--drop` rebuilds the database
+  // (so a hit would wrongly skip re-seeding) and `--no-cache` is the escape
+  // hatch — both disable it. Entries live under `var/cache/seeds`.
+  const env = Bun.env.APP_ENV;
+  const cacheEnabled = !options.drop && !options.noCache;
+  // The runner (`seed:run`) passes an explicit, per-module cache directory under
+  // the workspace root; fall back to the cwd-relative default when `run` is
+  // invoked directly.
+  const cacheDir = config?.cacheDir || options.cacheDir || seedCacheDir();
+  const { hashByName, cachedNames } = await warmSeedCache(seeds, env, cacheDir, cacheEnabled);
+
+  // Fast path: when every seed has already run unchanged, there is nothing to
+  // do — report each as cached and return.
+  if (cachedNames.size === seeds.length) {
+    logCachedSeeds(seeds);
+    await closeDatabase();
     return;
   }
 
@@ -82,6 +166,14 @@ export const run = async (): Promise<void> => {
   // talos-ignore perf.await-in-loop: seeds write to the same database in order — running them together would race
   for (const seed of seeds) {
     const seedName = seed.constructor.name;
+
+    if (cachedNames.has(seedName)) {
+      runLogger.persist(
+        colorize(`${SYMBOLS.success} `, COLORS.success) + seedName + colorize("  up to date (cached)", COLORS.dim),
+      );
+      continue;
+    }
+
     const startedAt = performance.now();
     try {
       await runSeed(seed, resultBySeed);
@@ -91,6 +183,9 @@ export const run = async (): Promise<void> => {
           seedName +
           colorize(`  ${formatDuration(Math.round(performance.now() - startedAt))}`, COLORS.dim),
       );
+
+      // Only cache once the seed has run successfully.
+      await cacheAppliedSeed(cacheEnabled, cacheDir, hashByName, seedName);
     } catch (error) {
       runLogger.persist(
         colorize(`${SYMBOLS.error} `, COLORS.error) +
