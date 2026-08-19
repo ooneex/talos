@@ -2,9 +2,11 @@ import type { EnvironmentNameType } from "@talosjs/app-env";
 import { container } from "@talosjs/container";
 import type { ContextType } from "@talosjs/controller";
 import { HttpStatus, type StatusCodeType } from "@talosjs/http-status";
-import { GUEST_ROLE, type IRolesConfig } from "@talosjs/role";
+import { GUEST_ROLE, type IRolesConfig, Role } from "@talosjs/role";
 import type { RouteConfigType } from "@talosjs/routing";
 import { type AssertType, type IAssert, validateAssert } from "@talosjs/validation";
+
+const role = new Role();
 
 export type RouteValidationErrorType = { message: string; status: StatusCodeType; key?: string | null };
 
@@ -109,7 +111,12 @@ export const validateRouteAccess = async (
         };
       }
 
-      const hasRequiredRole = route.roles.some((requiredRole) => context.user?.roles.includes(requiredRole));
+      const userRoles = context.user.roles;
+      const hasRequiredRole = route.roles.some(
+        (requiredRole) =>
+          userRoles.includes(requiredRole) ||
+          (rolesConfig !== null && userRoles.some((userRole) => role.hasRole(userRole, requiredRole, rolesConfig))),
+      );
 
       if (!hasRequiredRole) {
         return {

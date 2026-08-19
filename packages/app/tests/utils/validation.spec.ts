@@ -3,7 +3,7 @@ import { Environment } from "@talosjs/app-env";
 import { container } from "@talosjs/container";
 import type { ContextType } from "@talosjs/controller";
 import { HttpStatus } from "@talosjs/http-status";
-import type { RoleType } from "@talosjs/role";
+import type { IRolesConfig, RoleType } from "@talosjs/role";
 import type { RouteConfigType } from "@talosjs/routing";
 import { type AssertType, type IAssert, type } from "@talosjs/validation";
 import { AssertFile } from "@talosjs/validation/constraints/AssertFile";
@@ -76,6 +76,29 @@ describe("validateConstraint", () => {
     expect(result).toBeNull();
   });
 });
+
+const HIERARCHY_ROLES_CONFIG = {
+  roles: {
+    GUEST: "ROLE_GUEST",
+    USER: "ROLE_USER",
+    REVIEWER: "ROLE_REVIEWER",
+    MODERATOR: "ROLE_MODERATOR",
+    MANAGER: "ROLE_MANAGER",
+    ADMIN: "ROLE_ADMIN",
+    SUPER_ADMIN: "ROLE_SUPER_ADMIN",
+    SYSTEM: "ROLE_SYSTEM",
+  },
+  hierarchy: {
+    ROLE_GUEST: { description: "Guest" },
+    ROLE_USER: { inherits: ["ROLE_GUEST"], description: "User" },
+    ROLE_REVIEWER: { inherits: ["ROLE_USER"], description: "Reviewer" },
+    ROLE_MODERATOR: { inherits: ["ROLE_USER"], description: "Moderator" },
+    ROLE_MANAGER: { inherits: ["ROLE_USER"], description: "Manager" },
+    ROLE_ADMIN: { inherits: ["ROLE_MANAGER"], description: "Admin" },
+    ROLE_SUPER_ADMIN: { inherits: ["ROLE_ADMIN"], description: "Super admin" },
+    ROLE_SYSTEM: { inherits: ["ROLE_SUPER_ADMIN"], description: "System" },
+  },
+} satisfies IRolesConfig;
 
 describe("validateRouteAccess", () => {
   test("returns null when route has no restrictions", async () => {
@@ -454,6 +477,124 @@ describe("validateRouteAccess", () => {
       } finally {
         container.removeConstant("app.roles");
       }
+    });
+
+    test("returns null when user role inherits the required role through the hierarchy", async () => {
+      container.addConstant("app.roles", HIERARCHY_ROLES_CONFIG);
+
+      try {
+        const context = createMockContext({
+          user: { id: "1", email: "test@test.com", roles: ["ROLE_SUPER_ADMIN"] } as unknown as ContextType["user"],
+        });
+        const route = createMockRoute({ roles: ["ROLE_USER"] });
+
+        const result = await validateRouteAccess(context, route, Environment.DEVELOPMENT);
+
+        expect(result).toBeNull();
+      } finally {
+        container.removeConstant("app.roles");
+      }
+    });
+
+    test("returns null when one of several user roles inherits the required role", async () => {
+      container.addConstant("app.roles", HIERARCHY_ROLES_CONFIG);
+
+      try {
+        const context = createMockContext({
+          user: {
+            id: "1",
+            email: "test@test.com",
+            roles: ["ROLE_REVIEWER", "ROLE_ADMIN"],
+          } as unknown as ContextType["user"],
+        });
+        const route = createMockRoute({ roles: ["ROLE_MANAGER"] });
+
+        const result = await validateRouteAccess(context, route, Environment.DEVELOPMENT);
+
+        expect(result).toBeNull();
+      } finally {
+        container.removeConstant("app.roles");
+      }
+    });
+
+    test("returns null when the route accepts any of several roles and one is inherited", async () => {
+      container.addConstant("app.roles", HIERARCHY_ROLES_CONFIG);
+
+      try {
+        const context = createMockContext({
+          user: { id: "1", email: "test@test.com", roles: ["ROLE_ADMIN"] } as unknown as ContextType["user"],
+        });
+        const route = createMockRoute({ roles: ["ROLE_SYSTEM", "ROLE_USER"] });
+
+        const result = await validateRouteAccess(context, route, Environment.DEVELOPMENT);
+
+        expect(result).toBeNull();
+      } finally {
+        container.removeConstant("app.roles");
+      }
+    });
+
+    test("returns error when the required role is above the user role in the hierarchy", async () => {
+      container.addConstant("app.roles", HIERARCHY_ROLES_CONFIG);
+
+      try {
+        const context = createMockContext({
+          user: { id: "1", email: "test@test.com", roles: ["ROLE_USER"] } as unknown as ContextType["user"],
+        });
+        const route = createMockRoute({ roles: ["ROLE_ADMIN"] });
+
+        const result = await validateRouteAccess(context, route, Environment.DEVELOPMENT);
+
+        expect(result?.key).toBe("ROLE_NOT_ALLOWED");
+        expect(result?.status).toBe(HttpStatus.Code.NotAcceptable);
+      } finally {
+        container.removeConstant("app.roles");
+      }
+    });
+
+    test("returns error for sibling roles that do not inherit from each other", async () => {
+      container.addConstant("app.roles", HIERARCHY_ROLES_CONFIG);
+
+      try {
+        const context = createMockContext({
+          user: { id: "1", email: "test@test.com", roles: ["ROLE_REVIEWER"] } as unknown as ContextType["user"],
+        });
+        const route = createMockRoute({ roles: ["ROLE_MODERATOR"] });
+
+        const result = await validateRouteAccess(context, route, Environment.DEVELOPMENT);
+
+        expect(result?.key).toBe("ROLE_NOT_ALLOWED");
+      } finally {
+        container.removeConstant("app.roles");
+      }
+    });
+
+    test("still matches an exact role that is missing from the hierarchy", async () => {
+      container.addConstant("app.roles", HIERARCHY_ROLES_CONFIG);
+
+      try {
+        const context = createMockContext({
+          user: { id: "1", email: "test@test.com", roles: ["ROLE_UNKNOWN"] } as unknown as ContextType["user"],
+        });
+        const route = createMockRoute({ roles: ["ROLE_UNKNOWN"] });
+
+        const result = await validateRouteAccess(context, route, Environment.DEVELOPMENT);
+
+        expect(result).toBeNull();
+      } finally {
+        container.removeConstant("app.roles");
+      }
+    });
+
+    test("falls back to exact role matching when app.roles is not registered", async () => {
+      const context = createMockContext({
+        user: { id: "1", email: "test@test.com", roles: ["ROLE_SUPER_ADMIN"] } as unknown as ContextType["user"],
+      });
+      const route = createMockRoute({ roles: ["ROLE_USER"] });
+
+      const result = await validateRouteAccess(context, route, Environment.DEVELOPMENT);
+
+      expect(result?.key).toBe("ROLE_NOT_ALLOWED");
     });
 
     test("treats ROLE_GUEST as public even when app.roles is not registered", async () => {
