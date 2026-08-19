@@ -415,10 +415,12 @@ for cmd in oo talos
 
     complete -c $cmd -n '__fish_seen_subcommand_from migration:up' -l drop -d 'Drop the database before running'
     complete -c $cmd -n '__fish_seen_subcommand_from migration:up' -l logs -d 'Print the output of every module that fails'
+    complete -c $cmd -n '__fish_seen_subcommand_from migration:up' -l no-cache -d 'Skip the per-migration run cache'
 
     complete -c $cmd -n '__fish_seen_subcommand_from seed:run' -l drop -d 'Drop the database before running'
     complete -c $cmd -n '__fish_seen_subcommand_from seed:run' -l env -x -d 'APP_ENV the seeds run under'
     complete -c $cmd -n '__fish_seen_subcommand_from seed:run' -l logs -d 'Print the output of every module that fails'
+    complete -c $cmd -n '__fish_seen_subcommand_from seed:run' -l no-cache -d 'Skip the per-seed run cache'
 
     complete -c $cmd -n '__fish_seen_subcommand_from migration:down' -l logs -d 'Print the output of every module that fails'
     complete -c $cmd -n '__fish_seen_subcommand_from migration:down' -l version -x -d 'Version of the migration to roll back'

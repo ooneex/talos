@@ -47,9 +47,11 @@ pub fn execute(args: &MigrationDownArgs) -> bool {
             title: "Rollback report",
             done: "rolled back",
             clean: "Every rollback succeeded",
+            cache_dir: "var/cache/migrations",
             drop: false,
             env: None,
             version: args.version.clone(),
+            no_cache: false,
             // A module whose migrations sit on top of another module's tables
             // must be undone before the module underneath it.
             reverse: true,

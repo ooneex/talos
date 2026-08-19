@@ -75,7 +75,7 @@ fn calls(log: &Path) -> String {
 
 #[test]
 fn migration_up_runs_every_modules_entry_point_and_says_which_one_it_ran() {
-    let (_dir, root, _log) = workspace();
+    let (_dir, root, log) = workspace();
 
     let output = talos(&root, &["migration:up"]);
 
@@ -85,15 +85,22 @@ fn migration_up_runs_every_modules_entry_point_and_says_which_one_it_ran() {
         "the module is named by its package: {}",
         text(&output)
     );
+    assert!(
+        calls(&log).contains("--cache-dir"),
+        "the run is given a cache directory: {}",
+        calls(&log)
+    );
 }
 
 #[test]
-fn drop_is_passed_through_to_the_script() {
+fn drop_and_no_cache_are_passed_through_to_the_script() {
     let (_dir, root, log) = workspace();
 
-    talos(&root, &["migration:up", "--drop"]);
+    talos(&root, &["migration:up", "--drop", "--no-cache"]);
 
-    assert!(calls(&log).contains("--drop"), "{}", calls(&log));
+    let recorded = calls(&log);
+    assert!(recorded.contains("--drop"), "{recorded}");
+    assert!(recorded.contains("--no-cache"), "{recorded}");
 }
 
 /// A workspace with two modules, each recording into its own log, so a run can
@@ -150,6 +157,20 @@ fn only_the_first_module_is_told_to_drop_the_database() {
 }
 
 #[test]
+fn dropping_clears_the_cache_directory_the_drop_invalidates() {
+    let (_dir, root) = two_module_workspace("bin/migration/up.ts");
+    let stale = root.join("var/cache/migrations/beta/20260812081730499.json");
+    write(&stale, "{}\n");
+
+    talos(&root, &["migration:up", "--drop"]);
+
+    assert!(
+        !stale.exists(),
+        "a cached 'already applied' marker outlives the database it described"
+    );
+}
+
+#[test]
 fn modules_sharing_a_database_run_one_at_a_time() {
     let (_dir, root) = two_module_workspace("bin/migration/up.ts");
     let log = root.join("order.log");
@@ -200,6 +221,8 @@ fn seeding_runs_one_module_at_a_time_in_the_order_the_migrations_did() {
 #[test]
 fn only_the_first_seeded_module_is_told_to_drop_the_database() {
     let (_dir, root) = two_module_workspace("bin/seed/run.ts");
+    let stale = root.join("var/cache/seeds/beta/users.json");
+    write(&stale, "{}\n");
 
     let output = talos(&root, &["seed:run", "--drop"]);
 
@@ -210,6 +233,10 @@ fn only_the_first_seeded_module_is_told_to_drop_the_database() {
     assert!(
         !beta.contains("--drop"),
         "a later drop would wipe the rows the modules before it seeded: {beta}"
+    );
+    assert!(
+        !stale.exists(),
+        "a cached 'already seeded' marker outlives the database it described"
     );
 }
 

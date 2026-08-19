@@ -552,13 +552,15 @@ _talos() {
         migration:up)
           _arguments -s \
             '--drop[Drop the database before running]' \
-            '--logs[Print the output of every module that fails]'
+            '--logs[Print the output of every module that fails]' \
+            '--no-cache[Skip the per-migration run cache]'
           ;;
         seed:run)
           _arguments -s \
             '--drop[Drop the database before running]' \
             '--env=[APP_ENV the seeds run under]:env' \
-            '--logs[Print the output of every module that fails]'
+            '--logs[Print the output of every module that fails]' \
+            '--no-cache[Skip the per-seed run cache]'
           ;;
         migration:down)
           _arguments -s \

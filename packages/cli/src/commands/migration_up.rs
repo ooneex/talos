@@ -18,6 +18,10 @@ pub struct MigrationUpArgs {
     #[arg(long, default_value_t = false)]
     pub logs: bool,
 
+    /// Skip reading and writing the migration cache.
+    #[arg(long, default_value_t = false)]
+    pub no_cache: bool,
+
     /// Working directory (defaults to the current directory).
     #[arg(long)]
     pub cwd: Option<String>,
@@ -47,9 +51,11 @@ pub fn execute(args: &MigrationUpArgs) -> bool {
             title: "Migration report",
             done: "migrated",
             clean: "Every module is up to date",
+            cache_dir: "var/cache/migrations",
             drop: args.drop,
             env: None,
             version: None,
+            no_cache: args.no_cache,
             reverse: false,
         },
         args.logs,

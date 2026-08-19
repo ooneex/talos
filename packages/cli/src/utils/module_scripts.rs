@@ -4,8 +4,7 @@
 //
 // The scripts all talk to the same database and each one applies what it
 // transitively imports, so they run one at a time rather than in parallel —
-// see [`runner`]. Nothing is cached: every run asks the database what it has
-// already applied. Their output is captured instead of printed, kept for
+// see [`runner`]. Their output is captured instead of printed, kept for
 // `--logs`, and a module that fails always ends the run in a non-zero status.
 
 mod report;
@@ -38,12 +37,17 @@ pub struct ModuleScriptsOptions<'a> {
     pub done: &'a str,
     /// `Every module is up to date` — the summary of a run with no failure.
     pub clean: &'a str,
-    /// Drops the database before the first module runs.
+    /// Where the scripts keep their "already ran" markers, relative to the
+    /// project root.
+    pub cache_dir: &'a str,
+    /// Drops the database before the first module runs, and clears the cache
+    /// with it.
     pub drop: bool,
     /// Passed to every script as `APP_ENV`.
     pub env: Option<String>,
     /// The one version to act on, for a command that takes one.
     pub version: Option<String>,
+    pub no_cache: bool,
     /// Walks the modules from last to first. Rolling back has to mirror
     /// applying: a module whose migrations sit on top of another module's
     /// tables must be undone before the module underneath it.
@@ -128,12 +132,19 @@ pub fn audit(root: &Path, options: &ModuleScriptsOptions, quiet: bool) -> Script
         return ScriptAudit::default();
     }
 
+    // A drop invalidates every cached "already ran" marker, so the cache
+    // directory goes with it — otherwise the modules after the first would
+    // skip the work the drop just undid.
+    if options.drop {
+        let _ = std::fs::remove_dir_all(root.join(options.cache_dir));
+    }
+
     let loader = if quiet {
         Loader::hidden()
     } else {
         Loader::start(vec![LoaderGroup::new(options.group, targets.len())])
     };
-    let modules = run_targets(targets, options, &loader);
+    let modules = run_targets(targets, root, options, &loader);
     loader.stop();
 
     ScriptAudit { modules }
