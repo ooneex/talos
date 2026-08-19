@@ -61,7 +61,7 @@
     },
     "packages/app": {
       "name": "@talosjs/app",
-      "version": "1.4.1",
+      "version": "1.5.0",
       "dependencies": {
         "@talosjs/app-env": "workspace:^",
         "@talosjs/cache": "workspace:^",
@@ -119,7 +119,7 @@
     },
     "packages/cache": {
       "name": "@talosjs/cache",
-      "version": "1.3.0",
+      "version": "1.3.1",
       "dependencies": {
         "@talosjs/app-env": "workspace:^",
         "@talosjs/container": "workspace:^",
@@ -130,7 +130,7 @@
     },
     "packages/cli": {
       "name": "@talos/cli",
-      "version": "0.11.6",
+      "version": "0.12.0",
     },
     "packages/color": {
       "name": "@talosjs/color",
@@ -220,7 +220,7 @@
     },
     "packages/database": {
       "name": "@talosjs/database",
-      "version": "1.2.0",
+      "version": "1.2.1",
       "dependencies": {
         "@talosjs/app-env": "workspace:^",
         "@talosjs/container": "workspace:^",
@@ -315,7 +315,7 @@
     },
     "packages/http-request": {
       "name": "@talosjs/http-request",
-      "version": "1.1.3",
+      "version": "1.1.4",
       "dependencies": {
         "@talosjs/http-header": "workspace:^",
         "@talosjs/http-request-file": "workspace:^",
@@ -421,7 +421,7 @@
     },
     "packages/migrations": {
       "name": "@talosjs/migrations",
-      "version": "1.2.3",
+      "version": "1.2.4",
       "dependencies": {
         "@talosjs/container": "workspace:^",
       },
@@ -573,7 +573,7 @@
     },
     "packages/seeds": {
       "name": "@talosjs/seeds",
-      "version": "1.2.4",
+      "version": "1.2.5",
       "dependencies": {
         "@talosjs/container": "workspace:^",
         "@talosjs/utils": "workspace:^",
@@ -657,7 +657,7 @@
     },
     "packages/utils": {
       "name": "@talosjs/utils",
-      "version": "1.1.3",
+      "version": "1.2.0",
       "dependencies": {
         "nanoid": "^5.1.6",
       },
