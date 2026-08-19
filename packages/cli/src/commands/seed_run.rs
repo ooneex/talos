@@ -6,7 +6,7 @@ use std::path::PathBuf;
 
 use clap::Args;
 
-use crate::utils::{ModuleScriptsOptions, current_dir, run_module_scripts};
+use crate::utils::{ModuleScriptsOptions, current_dir, info, run_module_scripts};
 
 #[derive(Args, Debug)]
 pub struct SeedRunArgs {
@@ -37,6 +37,17 @@ pub fn run(args: &SeedRunArgs) {
     }
 }
 
+/// The `APP_ENV` the seeds will actually run under: what `--env` asks for,
+/// otherwise whatever the shell already exports, otherwise the same
+/// `production` the app falls back to when the variable is unset.
+fn active_env(args: &SeedRunArgs) -> String {
+    args.env
+        .clone()
+        .or_else(|| std::env::var("APP_ENV").ok())
+        .filter(|env| !env.is_empty())
+        .unwrap_or_else(|| "production".to_string())
+}
+
 /// Run every module's seeds and print the report, returning whether the run
 /// succeeded.
 pub fn execute(args: &SeedRunArgs) -> bool {
@@ -45,6 +56,8 @@ pub fn execute(args: &SeedRunArgs) -> bool {
         .clone()
         .map(PathBuf::from)
         .unwrap_or_else(current_dir);
+
+    info(format!("Seeding under APP_ENV={}", active_env(args)));
 
     run_module_scripts(
         &root,
