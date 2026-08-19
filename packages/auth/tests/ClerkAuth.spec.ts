@@ -158,6 +158,28 @@ describe("ClerkAuth", () => {
       expect(result).toBeDefined();
     });
 
+    test("should get user by email", async () => {
+      const result = await auth.getUserByEmail("test@test.com");
+
+      expect(result).toEqual({ id: "user_1" } as never);
+    });
+
+    test("should query clerk with the email address and a single-result limit", async () => {
+      await auth.getUserByEmail("test@test.com");
+
+      const client = mockCreateClerkClient.mock.results.at(-1)?.value as MockClient;
+      expect(client.users.getUserList).toHaveBeenCalledWith({ emailAddress: ["test@test.com"], limit: 1 });
+    });
+
+    test("should return null when no clerk account carries the email", async () => {
+      const client = mockCreateClerkClient.mock.results.at(-1)?.value as MockClient;
+      client.users.getUserList = mock(() => Promise.resolve({ data: [] })) as MockClient["users"]["getUserList"];
+
+      const result = await auth.getUserByEmail("missing@test.com");
+
+      expect(result).toBeNull();
+    });
+
     test("should lock user", async () => {
       const result = await auth.lockUser("user_1");
       expect(result).toBeDefined();
@@ -283,6 +305,7 @@ describe("ClerkAuth", () => {
       expect(typeof auth.isBanned).toBe("function");
       expect(typeof auth.unbanUser).toBe("function");
       expect(typeof auth.getUser).toBe("function");
+      expect(typeof auth.getUserByEmail).toBe("function");
       expect(typeof auth.lockUser).toBe("function");
       expect(typeof auth.isLocked).toBe("function");
       expect(typeof auth.unlockUser).toBe("function");

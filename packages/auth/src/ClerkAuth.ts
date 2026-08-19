@@ -59,6 +59,16 @@ export class ClerkAuth implements IAuth {
     return await this.client.users.getUser(userId);
   }
 
+  /**
+   * Resolves the Clerk account owning an email address, or null when no account
+   * carries it. Used to bind a locally provisioned user to its Clerk identity.
+   */
+  public async getUserByEmail(email: string): Promise<User | null> {
+    const { data } = await this.client.users.getUserList({ emailAddress: [email], limit: 1 });
+
+    return data[0] ?? null;
+  }
+
   public async lockUser(userId: string): Promise<User> {
     return await this.client.users.lockUser(userId);
   }
