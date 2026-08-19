@@ -7,7 +7,7 @@ interface WriteToConsoleConfig {
   level: string;
   message: string;
   date?: Date;
-  data?: Record<string, ScalarType>;
+  data?: Record<string, ScalarType | ScalarType[]>;
   stackTrace?: ExceptionStackFrameType[];
   showArrow?: boolean;
   showTimestamp?: boolean;
@@ -25,6 +25,14 @@ export class TerminalLogger implements ILogger {
     } catch {
       return text;
     }
+  }
+
+  private isScalarList(value: ScalarType | ScalarType[]): value is ScalarType[] {
+    return (
+      Array.isArray(value) &&
+      value.length > 0 &&
+      value.every((item) => typeof item === "string" || typeof item === "number" || typeof item === "boolean")
+    );
   }
 
   private getLevelColor(level: string): string {
@@ -87,11 +95,15 @@ export class TerminalLogger implements ILogger {
             (typeof value === "string" ||
               typeof value === "number" ||
               typeof value === "boolean" ||
-              typeof value === "bigint"),
+              typeof value === "bigint" ||
+              this.isScalarList(value)),
         )
         .map(([key, value]) => {
-          const valueColor = typeof value === "string" ? "#69E502" : typeof value === "number" ? "#FFE809" : "#D3D3D3";
-          const colorizedValue = this.colorizeText(String(value), valueColor);
+          const isList = this.isScalarList(value);
+          const valueColor =
+            typeof value === "string" || isList ? "#69E502" : typeof value === "number" ? "#FFE809" : "#D3D3D3";
+          const displayValue = isList ? value.join(", ") : String(value);
+          const colorizedValue = this.colorizeText(displayValue, valueColor);
           return `${this.colorizeText(key, "#79B")}: ${colorizedValue}`;
         });
 

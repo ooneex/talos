@@ -249,7 +249,22 @@ describe("TerminalLogger", () => {
       expect(() => logger.info("Test", data)).not.toThrow();
     });
 
-    test("should filter out non-scalar values like Date, objects, and arrays", () => {
+    test("should render scalar arrays like roles as a comma separated list", () => {
+      const logger = new TerminalLogger();
+      const writeSpy = spyOn(process.stdout, "write").mockImplementation(() => true);
+
+      try {
+        logger.success("GET /users", { roles: ["ROLE_ADMIN", "ROLE_USER"] } as unknown as Record<string, string>);
+
+        const output = String(writeSpy.mock.calls[0]?.[0]);
+        expect(output).toContain("roles");
+        expect(output).toContain("ROLE_ADMIN, ROLE_USER");
+      } finally {
+        writeSpy.mockRestore();
+      }
+    });
+
+    test("should filter out empty arrays and object values", () => {
       const logger = new TerminalLogger();
       const data = {
         status: 200,
@@ -258,7 +273,7 @@ describe("TerminalLogger", () => {
         params: { id: "123" },
         payload: { name: "test", nested: { deep: true } },
         queries: { page: "1" },
-        items: [1, 2, 3],
+        items: [],
       } as unknown as Record<string, string>;
       expect(() => logger.success("Request completed", data)).not.toThrow();
     });

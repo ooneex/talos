@@ -51,6 +51,7 @@ export type LogDataType = {
   date?: Date;
   userId?: string;
   email?: string;
+  roles?: string[];
   lastName?: string;
   firstName?: string;
   status?: number;
