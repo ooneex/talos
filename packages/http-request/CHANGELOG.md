@@ -32,3 +32,9 @@
 
 - Fall back to default language only when header is empty| — Franck ([97b053fa](https///github.com/ooneex/talos/commit/97b053fa))
 
+## [1.1.4](https///github.com/ooneex/talos/releases/tag/@talosjs/http-request@1.1.4) - 2026-08-19
+
+### Changed
+
+- Average the URL and header timings over many instances| — Franck ([286a0b54](https///github.com/ooneex/talos/commit/286a0b54))
+
