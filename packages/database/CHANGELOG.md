@@ -36,3 +36,9 @@
 
 - Add DragonflyDatabase adapter with ping and FLUSHDB drop| — Franck ([bf1e1cdc](https///github.com/ooneex/talos/commit/bf1e1cdc))
 
+## [1.2.1](https///github.com/ooneex/talos/releases/tag/@talosjs/database@1.2.1) - 2026-08-19
+
+### Changed
+
+- Extract AbstractRedisDatabase shared by Redis and Dragonfly| — Franck ([0c8f7b9c](https///github.com/ooneex/talos/commit/0c8f7b9c))
+
