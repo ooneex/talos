@@ -62,3 +62,13 @@
 
 - Stop re-running dependencies and order them topologically instead| — Franck ([d5978f08](https///github.com/ooneex/talos/commit/d5978f08))
 
+## [1.2.4](https///github.com/ooneex/talos/releases/tag/@talosjs/migrations@1.2.4) - 2026-08-19
+
+### Changed
+
+- Drop the migration cache and rely on the database state| — Franck ([8a9c34ee](https///github.com/ooneex/talos/commit/8a9c34ee))
+
+### Removed
+
+- Restore the migration cache| — Franck ([a6a069c1](https///github.com/ooneex/talos/commit/a6a069c1))
+
