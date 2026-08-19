@@ -1,8 +1,9 @@
 export { AbstractCache } from "./AbstractCache";
+export { AbstractRedisCache } from "./AbstractRedisCache";
 export { Cache } from "./Cache";
 export { CacheException } from "./CacheException";
-export { decorator } from "./decorators";
 export { DragonflyCache } from "./DragonflyCache";
+export { decorator } from "./decorators";
 export { FilesystemCache } from "./FilesystemCache";
 export { RedisCache } from "./RedisCache";
 export * from "./types";

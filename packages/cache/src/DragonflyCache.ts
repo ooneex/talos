@@ -1,7 +1,6 @@
 import { AppEnv } from "@talosjs/app-env";
 import { inject } from "@talosjs/container";
-import { AbstractCache } from "./AbstractCache";
-import { CacheException } from "./CacheException";
+import { AbstractRedisCache } from "./AbstractRedisCache";
 import { decorator } from "./decorators";
 import type { DragonflyCacheOptionsType } from "./types";
 
@@ -12,68 +11,20 @@ import type { DragonflyCacheOptionsType } from "./types";
 const DEFAULT_SCAN_COUNT = 1000;
 
 @decorator.cache()
-export class DragonflyCache extends AbstractCache {
-  private readonly client: Bun.RedisClient;
-  private readonly namespace: string | null;
+export class DragonflyCache extends AbstractRedisCache {
   private readonly scanCount: number;
 
-  constructor(
-    @inject(AppEnv) private readonly env: AppEnv,
-    options: DragonflyCacheOptionsType = {},
-  ) {
-    super();
-    this.namespace = options.namespace ?? "cache";
-    this.scanCount = options.scanCount && options.scanCount > 0 ? options.scanCount : DEFAULT_SCAN_COUNT;
-    const connectionString = options.connectionString || this.env.CACHE_DRAGONFLY_URL;
-
-    if (!connectionString) {
-      throw new CacheException(
-        "Dragonfly connection string is required. Please provide a connection string either through the constructor options or set the CACHE_DRAGONFLY_URL environment variable.",
-        "URL_REQUIRED",
-      );
-    }
-
-    const { connectionString: _, namespace: __, scanCount: ___, ...userOptions } = options;
-
-    this.client = new Bun.RedisClient(connectionString, {
-      // Max time (ms) to wait for initial connection
-      connectionTimeout: 10_000,
-      // Disable idle timeout to keep connection alive during traffic bursts
-      idleTimeout: 0,
-      // Automatically reconnect on connection loss
-      autoReconnect: true,
-      // Max reconnection attempts before giving up
-      maxRetries: 10,
-      // Queue commands while disconnected, flush on reconnect
-      enableOfflineQueue: true,
-      // Dragonfly is multi-threaded, so pipelined batches are served in parallel across shards
-      enableAutoPipelining: true,
-      ...userOptions,
+  constructor(@inject(AppEnv) env: AppEnv, options: DragonflyCacheOptionsType = {}) {
+    super(options.connectionString || env.CACHE_DRAGONFLY_URL, options, {
+      label: "Dragonfly",
+      envKey: "CACHE_DRAGONFLY_URL",
     });
-  }
-
-  private getKey(key: string): string {
-    return this.namespace ? `${this.namespace}:${key}` : key;
-  }
-
-  public async get<T = unknown>(key: string): Promise<T | undefined> {
-    const value = await this.client.get(this.getKey(key));
-
-    if (value === null) {
-      return;
-    }
-
-    try {
-      return JSON.parse(value);
-    } catch {
-      return value as T;
-    }
+    this.scanCount = options.scanCount && options.scanCount > 0 ? options.scanCount : DEFAULT_SCAN_COUNT;
   }
 
   public async set<T = unknown>(key: string, value: T, ttl?: number): Promise<void> {
     const namespacedKey = this.getKey(key);
-    const normalizedValue = value === undefined ? null : value;
-    const serializedValue = typeof normalizedValue === "string" ? normalizedValue : JSON.stringify(normalizedValue);
+    const serializedValue = this.serialize(value);
 
     if (ttl && ttl > 0) {
       // Dragonfly sets the value and its expiry atomically, so a crash can never leave a key immortal
@@ -91,17 +42,11 @@ export class DragonflyCache extends AbstractCache {
     return result > 0;
   }
 
-  public async has(key: string): Promise<boolean> {
-    const result = await this.client.exists(this.getKey(key));
-
-    return result;
-  }
-
   /**
    * Delete every string key the pattern matches, one SCAN page at a time, and say how many went.
    * SCAN may hand back the same key twice, so the count comes from the server, not from the page.
    */
-  private async deleteMatching(pattern: string): Promise<number> {
+  protected async deleteMatching(pattern: string): Promise<number> {
     let cursor = "0";
     let deleted = 0;
 
@@ -124,13 +69,5 @@ export class DragonflyCache extends AbstractCache {
     } while (cursor !== "0");
 
     return deleted;
-  }
-
-  public async deleteByPrefix(prefix: string): Promise<number> {
-    return await this.deleteMatching(this.namespace ? `${this.namespace}:${prefix}*` : `${prefix}*`);
-  }
-
-  public async clear(): Promise<void> {
-    await this.deleteMatching(this.namespace ? `${this.namespace}:*` : "*");
   }
 }
