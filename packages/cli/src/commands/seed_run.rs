@@ -10,7 +10,7 @@ use crate::utils::{ModuleScriptsOptions, current_dir, run_module_scripts};
 
 #[derive(Args, Debug)]
 pub struct SeedRunArgs {
-    /// Clear the seeded data before the first module runs.
+    /// Re-run every seed from scratch, ignoring the cache.
     #[arg(long, default_value_t = false)]
     pub drop: bool,
 

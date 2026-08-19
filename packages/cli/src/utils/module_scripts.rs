@@ -40,8 +40,9 @@ pub struct ModuleScriptsOptions<'a> {
     /// Where the scripts keep their "already ran" markers, relative to the
     /// project root.
     pub cache_dir: &'a str,
-    /// Drops the database before the first module runs, and clears the cache
-    /// with it.
+    /// Starts the run from scratch: the cache goes, and the first module gets
+    /// the flag — `migration:up` drops the schema on it, `seed:run` only
+    /// re-runs every seed.
     pub drop: bool,
     /// Passed to every script as `APP_ENV`.
     pub env: Option<String>,
@@ -134,7 +135,7 @@ pub fn audit(root: &Path, options: &ModuleScriptsOptions, quiet: bool) -> Script
 
     // A drop invalidates every cached "already ran" marker, so the cache
     // directory goes with it — otherwise the modules after the first would
-    // skip the work the drop just undid.
+    // skip the work the run is meant to redo.
     if options.drop {
         let _ = std::fs::remove_dir_all(root.join(options.cache_dir));
     }

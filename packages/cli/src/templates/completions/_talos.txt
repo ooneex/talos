@@ -557,7 +557,7 @@ _talos() {
           ;;
         seed:run)
           _arguments -s \
-            '--drop[Drop the database before running]' \
+            '--drop[Re-run every seed from scratch, ignoring the cache]' \
             '--env=[APP_ENV the seeds run under]:env' \
             '--logs[Print the output of every module that fails]' \
             '--no-cache[Skip the per-seed run cache]'
