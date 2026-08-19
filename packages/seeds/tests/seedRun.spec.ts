@@ -364,9 +364,12 @@ describe("run", () => {
     expect(await isSeedCached(cacheDir, "CachedSeed", hash)).toBe(true);
   });
 
-  test("should drop the database when the drop flag is provided", async () => {
+  test("should re-run a cached seed when the drop flag is provided", async () => {
+    const calls: string[] = [];
+
     class DropSeed implements ISeed {
       run<T = unknown>(_data?: unknown[]): T | Promise<T> {
+        calls.push("run");
         return Promise.resolve(undefined as unknown as T);
       }
       isActive() {
@@ -381,24 +384,16 @@ describe("run", () => {
     }
 
     const seedInstance = new DropSeed();
-    const dropFn = mock(() => Promise.resolve());
-    const closeFn = mock(() => Promise.resolve());
-    const originalGetConstant = container.getConstant;
-
-    (Bun as { argv: string[] }).argv = ["bun", "run", "--drop"];
     SEEDS_CONTAINER.push(DropSeed as unknown as SeedClassType);
     container.get = mock(() => seedInstance) as unknown as typeof container.get;
-    container.getConstant = mock((id: string | symbol) => {
-      if (id === "database") return { drop: dropFn, close: closeFn };
-      return originalGetConstant.call(container, id);
-    }) as typeof container.getConstant;
 
+    await writeSeedCache(cacheDir, "DropSeed", computeSeedHash(seedInstance, process.env.APP_ENV));
+
+    (Bun as { argv: string[] }).argv = ["bun", "run", "--drop"];
     await run({ cacheDir });
 
-    expect(dropFn).toHaveBeenCalledTimes(1);
-    expect(output()).toContain("Database dropped");
-
-    container.getConstant = originalGetConstant;
+    expect(calls).toEqual(["run"]);
+    expect(output()).not.toContain("cached");
   });
 
   test("should skip a seed whose cache entry is still valid", async () => {

@@ -7,6 +7,12 @@ import { computeSeedHash, isSeedCached, seedCacheDir, writeSeedCache } from "./s
 import type { ISeed } from "./types";
 
 type SeedRunOptionsType = {
+  /**
+   * Run every seed again from scratch, ignoring the cache. A seed is idempotent
+   * — it updates the rows it already wrote rather than duplicating them — so a
+   * full re-run needs no wipe, and the data a seed reads (the user it attributes
+   * its rows to, say) survives it.
+   */
   drop?: boolean;
   noCache?: boolean;
   cacheDir?: string | undefined;
@@ -132,9 +138,9 @@ export const run = async (config?: { cacheDir?: string }): Promise<void> => {
   }
 
   // Per-seed run cache: a seed whose code is unchanged since its last successful
-  // run — for the same environment — is skipped. `--drop` rebuilds the database
-  // (so a hit would wrongly skip re-seeding) and `--no-cache` is the escape
-  // hatch — both disable it. Entries live under `var/cache/seeds`.
+  // run — for the same environment — is skipped. `--drop` asks for a run from
+  // scratch and `--no-cache` is the escape hatch — both disable it. Entries live
+  // under `var/cache/seeds`.
   const env = Bun.env.APP_ENV;
   const cacheEnabled = !options.drop && !options.noCache;
   // The runner (`seed:run`) passes an explicit, per-module cache directory under
@@ -149,14 +155,6 @@ export const run = async (config?: { cacheDir?: string }): Promise<void> => {
     logCachedSeeds(seeds);
     await closeDatabase();
     return;
-  }
-
-  if (options.drop) {
-    const database = container.getConstant<{ drop: () => Promise<void> }>("database");
-    if (database) {
-      await database.drop();
-      runLogger.persist(colorize(`${SYMBOLS.success} Database dropped`, COLORS.success));
-    }
   }
 
   // What each seed returned, so a later seed can read the results of the
