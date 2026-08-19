@@ -55,3 +55,17 @@
 
 - Order seeds by dependency and run each one only once| — Franck ([98b0057d](https///github.com/ooneex/talos/commit/98b0057d))
 
+## [1.2.5](https///github.com/ooneex/talos/releases/tag/@talosjs/seeds@1.2.5) - 2026-08-19
+
+### Changed
+
+- Drop the seed cache and rely on the database state| — Franck ([a86cf16b](https///github.com/ooneex/talos/commit/a86cf16b))
+
+### Removed
+
+- Restore the seed cache| — Franck ([029bd9a5](https///github.com/ooneex/talos/commit/029bd9a5))
+
+### Fixed
+
+- Make --drop re-run every seed instead of dropping the database| — Franck ([94a159c6](https///github.com/ooneex/talos/commit/94a159c6))
+
