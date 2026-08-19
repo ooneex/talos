@@ -90,7 +90,6 @@ fn script_path(dir: &Path, bin_path: &[&str]) -> PathBuf {
 /// exists".
 pub(super) fn run_targets(
     targets: Vec<Target>,
-    root: &Path,
     options: &ModuleScriptsOptions,
     loader: &Loader,
 ) -> Vec<ModuleScript> {
@@ -101,7 +100,7 @@ pub(super) fn run_targets(
             loader.entered(0, target.label.clone());
             // `--drop` goes to the first module only: a later drop would wipe
             // everything the modules before it just applied.
-            let script = run_script(target, root, options, options.drop && index == 0);
+            let script = run_script(target, options, options.drop && index == 0);
             loader.left(0, &target.label);
             script
         })
@@ -112,12 +111,7 @@ pub(super) fn run_targets(
 ///
 /// `drop` is decided per module rather than read from `options`: only the
 /// first module of a run may drop the database.
-fn script_args(
-    target: &Target,
-    root: &Path,
-    options: &ModuleScriptsOptions,
-    drop: bool,
-) -> Vec<String> {
+fn script_args(target: &Target, options: &ModuleScriptsOptions, drop: bool) -> Vec<String> {
     let mut args = vec![
         "run".to_string(),
         script_path(&target.dir, options.bin_path)
@@ -131,36 +125,16 @@ fn script_args(
         args.push("--version".to_string());
         args.push(version.clone());
     }
-    if options.no_cache {
-        args.push("--no-cache".to_string());
-    }
-    let module_name = target
-        .dir
-        .file_name()
-        .map(|name| name.to_string_lossy().to_string())
-        .unwrap_or_default();
-    args.push("--cache-dir".to_string());
-    args.push(
-        root.join(options.cache_dir)
-            .join(module_name)
-            .to_string_lossy()
-            .to_string(),
-    );
     args
 }
 
 /// Run one module's script and turn its exit status into a [`ModuleScript`].
-fn run_script(
-    target: &Target,
-    root: &Path,
-    options: &ModuleScriptsOptions,
-    drop: bool,
-) -> ModuleScript {
+fn run_script(target: &Target, options: &ModuleScriptsOptions, drop: bool) -> ModuleScript {
     let started = Instant::now();
 
     let mut command = Command::new("bun");
     command
-        .args(script_args(target, root, options, drop))
+        .args(script_args(target, options, drop))
         .current_dir(&target.dir);
     if let Some(env) = &options.env {
         command.env("APP_ENV", env);

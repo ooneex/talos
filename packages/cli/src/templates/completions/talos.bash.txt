@@ -359,10 +359,10 @@ threads whatsapp telegram messenger discord reddit medium cloudflare bunny s3 op
       [[ $flag == --modules ]] && candidates="$(_talos_pkg_modules)"
       ;;
     migration:up)
-      opts="--drop --logs --no-cache"
+      opts="--drop --logs"
       ;;
     seed:run)
-      opts="--drop --env --logs --no-cache"
+      opts="--drop --env --logs"
       ;;
     migration:down)
       opts="--logs --version"

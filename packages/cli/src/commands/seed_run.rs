@@ -22,10 +22,6 @@ pub struct SeedRunArgs {
     #[arg(long, default_value_t = false)]
     pub logs: bool,
 
-    /// Skip reading and writing the seed cache.
-    #[arg(long, default_value_t = false)]
-    pub no_cache: bool,
-
     /// Working directory (defaults to the current directory).
     #[arg(long)]
     pub cwd: Option<String>,
@@ -55,11 +51,9 @@ pub fn execute(args: &SeedRunArgs) -> bool {
             title: "Seed report",
             done: "seeded",
             clean: "Every seed ran",
-            cache_dir: "var/cache/seeds",
             drop: args.drop,
             env: args.env.clone(),
             version: None,
-            no_cache: args.no_cache,
             reverse: false,
         },
         args.logs,
