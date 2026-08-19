@@ -133,12 +133,22 @@ describe("HttpRequest Performance Tests", () => {
         url: urlWithManyParams,
       } as Request;
 
-      const startTime = performance.now();
-      const request = new HttpRequest(requestWithManyParams);
-      const endTime = performance.now();
+      // Averaged over many instances: a single one is short enough that a GC
+      // pause or a descheduled thread would dominate what is being measured.
+      const iterations = 200;
+      for (let i = 0; i < iterations; i++) {
+        new HttpRequest(requestWithManyParams);
+      }
 
-      expect(endTime - startTime).toBeLessThan(25);
-      expect(Object.keys(request.queries ?? {})).toHaveLength(100);
+      const startTime = performance.now();
+      for (let i = 0; i < iterations; i++) {
+        new HttpRequest(requestWithManyParams);
+      }
+      const endTime = performance.now();
+      const avgTime = (endTime - startTime) / iterations;
+
+      expect(avgTime).toBeLessThan(1);
+      expect(Object.keys(new HttpRequest(requestWithManyParams).queries ?? {})).toHaveLength(100);
     });
 
     test("should handle deeply nested paths efficiently", () => {
@@ -178,12 +188,22 @@ describe("HttpRequest Performance Tests", () => {
         headers: manyHeaders,
       } as Request;
 
-      const startTime = performance.now();
-      const request = new HttpRequest(requestWithManyHeaders);
-      const endTime = performance.now();
+      // Averaged over many instances: a single one is short enough that a GC
+      // pause or a descheduled thread would dominate what is being measured.
+      const iterations = 200;
+      for (let i = 0; i < iterations; i++) {
+        new HttpRequest(requestWithManyHeaders);
+      }
 
-      expect(endTime - startTime).toBeLessThan(20);
-      expect(request.header.get("X-Custom-Header-25")).toBe("value25");
+      const startTime = performance.now();
+      for (let i = 0; i < iterations; i++) {
+        new HttpRequest(requestWithManyHeaders);
+      }
+      const endTime = performance.now();
+      const avgTime = (endTime - startTime) / iterations;
+
+      expect(avgTime).toBeLessThan(1);
+      expect(new HttpRequest(requestWithManyHeaders).header.get("X-Custom-Header-25")).toBe("value25");
     });
 
     test("should handle complex Accept-Language headers efficiently", () => {
