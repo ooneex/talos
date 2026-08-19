@@ -101,6 +101,7 @@ const buildLogData = (context: ContextType, status: StatusCodeType): LogDataType
 
   if (context.user?.id) logData.userId = context.user.id;
   if (context.user?.email) logData.email = context.user.email;
+  if (context.user?.roles?.length) logData.roles = context.user.roles;
   if (context.user?.lastName) logData.lastName = context.user.lastName;
   if (context.user?.firstName) logData.firstName = context.user.firstName;
 
@@ -110,7 +111,8 @@ const buildLogData = (context: ContextType, status: StatusCodeType): LogDataType
 export const logRequest = (context: ContextType, statusOverride?: StatusCodeType, methodLabel?: string): void => {
   const logger = context.logger as LevelLoggerType | undefined;
 
-  if (!logger) {
+  // CORS preflight requests carry no business signal, so they stay out of the logs.
+  if (!logger || context.method === "OPTIONS") {
     return;
   }
 

@@ -24,6 +24,22 @@ describe("logRequest", () => {
     expect(logger.error).not.toHaveBeenCalled();
   });
 
+  test("does not log OPTIONS requests", () => {
+    const logger = createMockLogger();
+    const context = createMockContext({
+      logger: logger as unknown as ContextType["logger"],
+      method: "OPTIONS",
+    });
+    context.response.json({}, HttpStatus.Code.OK);
+
+    logRequest(context);
+
+    expect(logger.success).not.toHaveBeenCalled();
+    expect(logger.info).not.toHaveBeenCalled();
+    expect(logger.warn).not.toHaveBeenCalled();
+    expect(logger.error).not.toHaveBeenCalled();
+  });
+
   test("uses the methodLabel in the log message when provided", () => {
     const logger = createMockLogger();
     const context = createMockContext({
@@ -159,6 +175,25 @@ describe("logRequest", () => {
     expect(logData.email).toBe("test@example.com");
     expect(logData.firstName).toBe("John");
     expect(logData.lastName).toBe("Doe");
+    expect(logData.roles).toBeUndefined();
+  });
+
+  test("includes the user roles when the user has some", () => {
+    const logger = createMockLogger();
+    const context = createMockContext({
+      logger: logger as unknown as ContextType["logger"],
+      user: {
+        id: "user-123",
+        email: "test@example.com",
+        roles: ["ROLE_ADMIN", "ROLE_USER"],
+      } as unknown as ContextType["user"],
+    });
+    context.response.json({}, HttpStatus.Code.OK);
+
+    logRequest(context);
+
+    const logData = logger.success.mock.calls[0]?.[1] as LogDataType;
+    expect(logData.roles).toEqual(["ROLE_ADMIN", "ROLE_USER"]);
   });
 
   test("includes client info when available", () => {
