@@ -109,3 +109,9 @@
 
 - Register services during init so env files load before services read them| — Franck ([d2692976](https///github.com/ooneex/talos/commit/d2692976))
 
+## [1.5.0](https///github.com/ooneex/talos/releases/tag/@talosjs/app@1.5.0) - 2026-08-19
+
+### Added
+
+- Honor the role hierarchy when checking route access| — Franck ([b09d683c](https///github.com/ooneex/talos/commit/b09d683c))
+
