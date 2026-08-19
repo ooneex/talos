@@ -600,3 +600,22 @@
 - Roll back modules in the reverse order migrations were applied| — Franck ([ec56fb85](https///github.com/ooneex/talos/commit/ec56fb85))
 - Run module migration scripts sequentially and drop the database once| — Franck ([f05ad48c](https///github.com/ooneex/talos/commit/f05ad48c))
 
+## [0.12.0](https///github.com/ooneex/talos/releases/tag/@talos/cli@0.12.0) - 2026-08-19
+
+### Added
+
+- Print the active APP_ENV before running seeds| — Franck ([17cf910e](https///github.com/ooneex/talos/commit/17cf910e))
+- Stream each migration and seed line above the loader| — Franck ([f9b940a8](https///github.com/ooneex/talos/commit/f9b940a8))
+- Allow a constraints folder in backend modules for project:check| — Franck ([e3c78480](https///github.com/ooneex/talos/commit/e3c78480))
+- Add --logs flag and module scripts report to migration and seed commands| — Franck ([2321665c](https///github.com/ooneex/talos/commit/2321665c))
+
+### Changed
+
+- Reword the seed:run --drop help to match its behavior| — Franck ([1e6f5b41](https///github.com/ooneex/talos/commit/1e6f5b41))
+- Remove the --no-cache flag and cache handling from migration and seed runs| — Franck ([cfae3176](https///github.com/ooneex/talos/commit/cfae3176))
+- Update Cargo.lock| — Franck ([90a5c362](https///github.com/ooneex/talos/commit/90a5c362))
+
+### Removed
+
+- Restore the --no-cache flag and cache handling for migration and seed runs| — Franck ([20d2fca5](https///github.com/ooneex/talos/commit/20d2fca5))
+
