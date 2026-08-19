@@ -1,6 +1,6 @@
 // `migration:down` — roll every module's migrations back, one module at a
-// time, behind a progress bar and a report. See
-// [`module_scripts`](crate::utils) for the run itself.
+// time, streaming each rollback as it lands under a progress bar, then a
+// report. See [`module_scripts`](crate::utils) for the run itself.
 
 use std::path::PathBuf;
 

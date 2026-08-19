@@ -1,6 +1,6 @@
-// `seed:run` — run every module's seeds, one module at a time, behind a
-// progress bar and a report. See [`module_scripts`](crate::utils) for the run
-// itself.
+// `seed:run` — run every module's seeds, one module at a time, streaming
+// each seed as it lands under a progress bar, then a report. See
+// [`module_scripts`](crate::utils) for the run itself.
 
 use std::path::PathBuf;
 

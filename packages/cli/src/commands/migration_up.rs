@@ -1,6 +1,6 @@
 // `migration:up` — apply every module's migrations, one module at a time,
-// behind a progress bar and a report. See [`module_scripts`](crate::utils) for
-// the run itself.
+// streaming each migration as it lands under a progress bar, then a report.
+// See [`module_scripts`](crate::utils) for the run itself.
 
 use std::path::PathBuf;
 

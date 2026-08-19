@@ -301,6 +301,26 @@ impl Loader {
         self.with_group(group, |state| state.done += 1);
     }
 
+    /// Print a line above the rows, as scrollback, without tearing the frame.
+    ///
+    /// A frame leaves the cursor at the start of the first row, so a line
+    /// written there takes the rows' place and the next frame repaints them
+    /// under it — the bar stays at the bottom while the log grows above it.
+    /// `\x1b[0J` clears what the rows left behind first, since the new line is
+    /// rarely as wide as the frame it lands on.
+    ///
+    /// A hidden loader has no frame to tear: the line is simply printed, which
+    /// is what a redirected or unattended run wants.
+    pub fn log(&self, line: impl AsRef<str>) {
+        let Some(inner) = &self.inner else {
+            println!("{}", line.as_ref());
+            return;
+        };
+        let _draw = inner.draw.lock().expect("the loader is not poisoned");
+        println!("\u{1b}[0J{}", line.as_ref());
+        let _ = std::io::stdout().flush();
+    }
+
     fn with_group(&self, group: usize, edit: impl FnOnce(&mut LoaderRow)) {
         let Some(inner) = &self.inner else {
             return;
@@ -472,6 +492,15 @@ mod tests {
         loader.pause();
         loader.resume();
         loader.stop();
+    }
+
+    #[test]
+    fn loader_logs_above_its_rows_whether_it_draws_or_not() {
+        let loader = Loader::start_attended(vec![LoaderGroup::new("Migrate", 1)]);
+        loader.log("✔ 20240101120000  12ms");
+        loader.stop();
+
+        Loader::hidden().log("✔ 20240101120000  12ms");
     }
 
     #[test]

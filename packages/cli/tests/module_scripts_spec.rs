@@ -315,31 +315,52 @@ fn a_script_that_fails_ends_the_run_non_zero() {
 }
 
 #[test]
-fn a_failing_scripts_output_is_kept_for_logs() {
+fn a_scripts_output_is_streamed_as_it_runs_and_replayed_by_logs() {
     let (_dir, root, _log) = workspace();
     write(
         &root.join("modules/user/bin/seed/run.ts"),
         "console.error(\"the seed blew up\");\nprocess.exit(1);\n",
     );
 
-    let quiet = talos(&root, &["seed:run"]);
+    let streamed = talos(&root, &["seed:run"]);
     let logged = talos(&root, &["seed:run", "--logs"]);
 
     assert!(
-        !text(&quiet).contains("the seed blew up"),
-        "the output is captured, not streamed: {}",
-        text(&quiet)
+        text(&streamed).contains("the seed blew up"),
+        "every line a script prints is streamed under its module: {}",
+        text(&streamed)
     );
     assert!(
-        text(&quiet).contains("--logs"),
-        "a failure says where its output went: {}",
-        text(&quiet)
+        text(&streamed).contains("modules/user"),
+        "a streamed line names the module that printed it: {}",
+        text(&streamed)
     );
     assert!(
         text(&logged).contains("the seed blew up"),
         "--logs replays what the script printed: {}",
         text(&logged)
     );
+}
+
+#[test]
+fn each_line_of_a_module_is_streamed_on_its_own_row() {
+    let (_dir, root, _log) = workspace();
+    write(
+        &root.join("modules/user/bin/seed/run.ts"),
+        "console.log(\"\\u2714 UserSeed  12ms\");\nconsole.log(\"\\u2714 RoleSeed  3ms\");\n",
+    );
+
+    let output = talos(&root, &["seed:run"]);
+    let printed = text(&output);
+
+    let streamed: Vec<&str> = printed
+        .lines()
+        .filter(|line| line.contains("UserSeed") || line.contains("RoleSeed"))
+        .collect();
+
+    assert_eq!(streamed.len(), 2, "{printed}");
+    assert!(streamed[0].contains("UserSeed"), "{printed}");
+    assert!(streamed[1].contains("RoleSeed"), "{printed}");
 }
 
 // ---------------------------------------------------------------------------

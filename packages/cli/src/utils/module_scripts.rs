@@ -4,11 +4,13 @@
 //
 // The scripts all talk to the same database and each one applies what it
 // transitively imports, so they run one at a time rather than in parallel —
-// see [`runner`]. Their output is captured instead of printed, kept for
-// `--logs`, and a module that fails always ends the run in a non-zero status.
+// see [`runner`]. Each line they print — one per migration or seed — is
+// streamed above the loader as it arrives and kept for `--logs`, and a module
+// that fails always ends the run in a non-zero status.
 
 mod report;
 mod runner;
+mod stream;
 
 pub use report::print_report;
 use runner::{collect_targets, run_targets};
@@ -119,8 +121,9 @@ impl ScriptAudit {
 ///
 /// This is the whole of a command bar the report it prints, so an embedded
 /// run can never behave differently from the command: same modules, same
-/// order, same scripts. `quiet` is for a caller that owns stdout and only
-/// silences the spinner and the loader.
+/// order, same scripts. `quiet` is for a caller that owns stdout: it silences
+/// the spinner, the loader and the streamed lines, which stay readable on the
+/// audit.
 pub fn audit(root: &Path, options: &ModuleScriptsOptions, quiet: bool) -> ScriptAudit {
     // Walking the workspace is the one stretch before the loader where nothing
     // is printed, so it gets a spinner of its own.
@@ -145,7 +148,7 @@ pub fn audit(root: &Path, options: &ModuleScriptsOptions, quiet: bool) -> Script
     } else {
         Loader::start(vec![LoaderGroup::new(options.group, targets.len())])
     };
-    let modules = run_targets(targets, root, options, &loader);
+    let modules = run_targets(targets, root, options, &loader, !quiet);
     loader.stop();
 
     ScriptAudit { modules }
