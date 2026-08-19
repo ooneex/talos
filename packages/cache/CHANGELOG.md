@@ -46,3 +46,9 @@
 
 - Add DragonflyCache adapter with atomic TTL and unlink based eviction| — Franck ([6281b9ec](https///github.com/ooneex/talos/commit/6281b9ec))
 
+## [1.3.1](https///github.com/ooneex/talos/releases/tag/@talosjs/cache@1.3.1) - 2026-08-19
+
+### Changed
+
+- Extract AbstractRedisCache shared by the Redis and Dragonfly caches| — Franck ([c3043d85](https///github.com/ooneex/talos/commit/c3043d85))
+
