@@ -29,3 +29,9 @@
 - Raise coverage thresholds to 99% across all packages| — Franck ([14db3019](https///github.com/ooneex/talos/commit/14db3019))
 - Enable coverage thresholds in every package's bunfig.toml| — Franck ([e19e3785](https///github.com/ooneex/talos/commit/e19e3785))
 
+## [1.2.0](https///github.com/ooneex/talos/releases/tag/@talosjs/utils@1.2.0) - 2026-08-19
+
+### Added
+
+- Add random.code generator returning a shuffled 8-character code| — Franck ([1df49d5d](https///github.com/ooneex/talos/commit/1df49d5d))
+
