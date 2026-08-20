@@ -1,6 +1,7 @@
 import { describe, expect, mock, test } from "bun:test";
 import { AppEnv } from "@talosjs/app-env";
 import { container } from "@talosjs/container";
+import type { ContextType } from "@talosjs/controller";
 import type { FeatureFlagClassType } from "@talosjs/feature-flag";
 import { HttpResponse, type IResponse } from "@talosjs/http-response";
 import { HttpStatus } from "@talosjs/http-status";
@@ -242,6 +243,56 @@ describe("formatHttpRoutes middleware and access control", () => {
     expect(response.status).toBe(HttpStatus.Code.InternalServerError);
     expect(body.message).toBe("Middleware exploded");
     expect(indexMock).not.toHaveBeenCalled();
+
+    container.removeConstant("logger");
+  });
+
+  test("keeps the headers an earlier middleware set when a later one throws", async () => {
+    container.addConstant("logger", createMockLogger());
+    container.add(AppEnv);
+
+    class HeaderMiddleware {
+      async handler(context: ContextType): Promise<ContextType> {
+        context.response.header.set("Access-Control-Allow-Origin", "http://localhost:3031");
+
+        return context;
+      }
+    }
+    container.add(HeaderMiddleware);
+
+    class RejectingMiddleware {
+      async handler(): Promise<never> {
+        throw new Error("Authentication required");
+      }
+    }
+    container.add(RejectingMiddleware);
+
+    class HeaderCarryOverController {
+      index = mock(() => new HttpResponse().json({ ok: true }));
+    }
+    container.add(HeaderCarryOverController);
+
+    const handler = formatHttpRoutes(
+      new Map([
+        [
+          "/header-carry-over",
+          [
+            createMockRoute({
+              path: "/header-carry-over",
+              method: "GET",
+              controller: HeaderCarryOverController,
+            } as Partial<RouteConfigType>),
+          ],
+        ],
+      ]),
+      [HeaderMiddleware, RejectingMiddleware] as unknown as import("@talosjs/middleware").MiddlewareClassType[],
+    )["/v1/header-carry-over"]?.GET;
+
+    // biome-ignore lint/complexity/noBannedTypes: trust me
+    const response = await (handler as Function)(createReq("http://localhost/v1/header-carry-over"), createServer());
+
+    expect(response.status).toBe(HttpStatus.Code.InternalServerError);
+    expect(response.headers.get("Access-Control-Allow-Origin")).toBe("http://localhost:3031");
 
     container.removeConstant("logger");
   });

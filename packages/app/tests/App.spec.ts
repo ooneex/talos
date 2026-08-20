@@ -2,8 +2,10 @@ import { afterEach, beforeEach, describe, expect, mock, spyOn, test } from "bun:
 import { AppEnv } from "@talosjs/app-env";
 import { container } from "@talosjs/container";
 import { Exception } from "@talosjs/exception";
+import { HttpResponse } from "@talosjs/http-response";
 import { HttpStatus } from "@talosjs/http-status";
 import { RoleException } from "@talosjs/role";
+import { router } from "@talosjs/routing";
 import { App } from "@/App";
 import type { AppConfigType } from "@/types";
 
@@ -943,6 +945,84 @@ hierarchy:
 
       expect(Bun.env.NODE_TLS_REJECT_UNAUTHORIZED).toBeUndefined();
       serveSpy.mockRestore();
+      exitSpy.mockRestore();
+    });
+
+    test("runs the CORS middleware before one that rejects the request", async () => {
+      const serveSpy = spyOn(Bun, "serve").mockReturnValue(fakeServer as unknown as ReturnType<typeof Bun.serve>);
+      const exitSpy = spyOn(process, "exit").mockImplementation((() => undefined) as never);
+
+      const order: string[] = [];
+
+      class OrderedCorsMiddleware {
+        handler = mock((context: import("@talosjs/controller").ContextType) => {
+          order.push("cors");
+
+          return Promise.resolve(context);
+        });
+      }
+      container.add(OrderedCorsMiddleware);
+
+      class OrderedAuthMiddleware {
+        handler = mock(() => {
+          order.push("auth");
+
+          return Promise.reject(new Error("Authentication required"));
+        });
+      }
+      container.add(OrderedAuthMiddleware);
+
+      class OrderedController {
+        index = mock(() => new HttpResponse().json({ ok: true }));
+      }
+      container.add(OrderedController);
+
+      router.addRoute({
+        name: "ordered.read",
+        path: "/ordered",
+        method: "GET",
+        version: 1,
+        description: "Ordering probe",
+        controller: OrderedController,
+      } as unknown as Parameters<typeof router.addRoute>[0]);
+
+      const app = new App(
+        createMockConfig({
+          cors: OrderedCorsMiddleware as unknown as AppConfigType["cors"],
+          middlewares: [OrderedAuthMiddleware] as unknown as AppConfigType["middlewares"],
+        }),
+      );
+
+      await app.run();
+
+      const serveOptions = (serveSpy.mock.calls as unknown[][])[0]?.[0] as {
+        routes: Record<
+          string,
+          Record<string, (req: import("bun").BunRequest, server: import("bun").Server<unknown>) => Promise<Response>>
+        >;
+      };
+
+      const handler = Object.entries(serveOptions.routes).find(([path]) => path.endsWith("/ordered"))?.[1]?.GET;
+
+      await handler?.(
+        {
+          cookies: { get: mock(() => null), set: mock(() => {}) },
+          headers: new Headers(),
+          method: "GET",
+          url: "http://localhost/v1/ordered",
+          params: {},
+          json: mock(() => Promise.resolve({})),
+          formData: mock(() => Promise.resolve(new FormData())),
+        } as unknown as import("bun").BunRequest,
+        { requestIP: mock(() => ({ address: "127.0.0.1" })) } as unknown as import("bun").Server<unknown>,
+      );
+
+      expect(order).toEqual(["cors", "auth"]);
+
+      serveSpy.mockRestore();
+      exitSpy.mockRestore();
+    });
+
     test("wires websocket message and close handlers into the served app", async () => {
       const serveSpy = spyOn(Bun, "serve").mockReturnValue({
         ...fakeServer,

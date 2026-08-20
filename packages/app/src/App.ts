@@ -206,9 +206,16 @@ export class App {
     await loadEnv([join(cwd, ".env.yml"), join(moduleRoot, ".env.yml")]);
   }
 
+  /**
+   * CORS goes first so its headers are already on the response when a later
+   * middleware throws. A rejected request still has to be readable by the
+   * browser that sent it — with CORS last, an authentication failure reached
+   * the client as an opaque network error instead of the 401 it was, and the
+   * real status was invisible from the devtools console.
+   */
   private buildMiddlewares(middlewares: MiddlewareClassType[]): MiddlewareClassType[] {
     const allMiddlewares = this.config.cors
-      ? [...(middlewares as MiddlewareClassType[]), this.config.cors]
+      ? [this.config.cors, ...(middlewares as MiddlewareClassType[])]
       : (middlewares as MiddlewareClassType[]);
 
     return allMiddlewares;
