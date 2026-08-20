@@ -1,5 +1,5 @@
 import { dirname, join } from "node:path";
-import { AppEnv, type IAppEnv, loadEnv } from "@talosjs/app-env";
+import { AppEnv, Environment, type IAppEnv, loadEnv } from "@talosjs/app-env";
 import { container } from "@talosjs/container";
 import type { ICron } from "@talosjs/cron";
 import { Exception, type IException } from "@talosjs/exception";
@@ -155,6 +155,7 @@ export class App {
 
   public async run(): Promise<App> {
     await this.loadEnvironment();
+    this.relaxLocalTls();
 
     const logger = new TerminalLogger();
 
@@ -175,6 +176,25 @@ export class App {
     this.startCronJobs();
 
     return this;
+  }
+
+  /**
+   * A corporate TLS proxy re-signs outbound HTTPS with a root Bun does not
+   * carry, so behind one every call an app makes — to an identity provider, a
+   * payment gateway — fails to verify and surfaces as a 500 the developer
+   * cannot place. Trusting the proxy properly is the machine's job, through
+   * `NODE_EXTRA_CA_CERTS`, and staying unset should not stop an app from
+   * booting locally.
+   *
+   * Nothing outside `local` is touched, and this runs after the environment is
+   * loaded, so a deployed app cannot reach it whatever its shell holds.
+   */
+  private relaxLocalTls(): void {
+    if (Bun.env.APP_ENV !== Environment.LOCAL) {
+      return;
+    }
+
+    Bun.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
   }
 
   private async loadEnvironment(): Promise<void> {

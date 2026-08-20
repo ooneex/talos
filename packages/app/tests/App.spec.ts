@@ -916,6 +916,33 @@ hierarchy:
       exitSpy.mockRestore();
     });
 
+    test("stops verifying TLS certificates on local, so a proxied machine can boot", async () => {
+      const serveSpy = spyOn(Bun, "serve").mockReturnValue(fakeServer as unknown as ReturnType<typeof Bun.serve>);
+      const exitSpy = spyOn(process, "exit").mockImplementation((() => undefined) as never);
+
+      Bun.env.APP_ENV = "local";
+      delete Bun.env.NODE_TLS_REJECT_UNAUTHORIZED;
+
+      await new App(createMockConfig()).run();
+
+      expect(Bun.env.NODE_TLS_REJECT_UNAUTHORIZED as string | undefined).toBe("0");
+
+      delete Bun.env.NODE_TLS_REJECT_UNAUTHORIZED;
+      serveSpy.mockRestore();
+      exitSpy.mockRestore();
+    });
+
+    test("leaves TLS verification alone outside local", async () => {
+      const serveSpy = spyOn(Bun, "serve").mockReturnValue(fakeServer as unknown as ReturnType<typeof Bun.serve>);
+      const exitSpy = spyOn(process, "exit").mockImplementation((() => undefined) as never);
+
+      Bun.env.APP_ENV = "production";
+      delete Bun.env.NODE_TLS_REJECT_UNAUTHORIZED;
+
+      await new App(createMockConfig()).run();
+
+      expect(Bun.env.NODE_TLS_REJECT_UNAUTHORIZED).toBeUndefined();
+      serveSpy.mockRestore();
     test("wires websocket message and close handlers into the served app", async () => {
       const serveSpy = spyOn(Bun, "serve").mockReturnValue({
         ...fakeServer,
