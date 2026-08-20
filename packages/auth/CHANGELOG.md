@@ -48,3 +48,9 @@
 
 - Add getUserByEmail lookup to ClerkAuth| — Franck ([a779eed6](https///github.com/ooneex/talos/commit/a779eed6))
 
+## [1.3.1](https///github.com/ooneex/talos/releases/tag/@talosjs/auth@1.3.1) - 2026-08-20
+
+### Fixed
+
+- Return 401 for invalid credentials via AuthException status option| — Franck ([a03a2ff3](https///github.com/ooneex/talos/commit/a03a2ff3))
+
