@@ -1,6 +1,7 @@
 import { createClerkClient, type Session, type User, verifyToken } from "@clerk/backend";
 import { AppEnv } from "@talosjs/app-env";
 import { inject } from "@talosjs/container";
+import { HttpStatus } from "@talosjs/http-status";
 import { AuthException } from "./AuthException";
 import { decorator } from "./decorators";
 import type { IAuth } from "./types";
@@ -148,7 +149,9 @@ export class ClerkAuth implements IAuth {
     });
 
     if (users.length === 0) {
-      throw new AuthException("Invalid email or password.", "INVALID_CREDENTIALS");
+      throw new AuthException("Invalid email or password.", "INVALID_CREDENTIALS", {
+        status: HttpStatus.Code.Unauthorized,
+      });
     }
 
     const user = users[0] as User;
@@ -159,7 +162,9 @@ export class ClerkAuth implements IAuth {
     });
 
     if (!verified) {
-      throw new AuthException("Invalid email or password.", "INVALID_CREDENTIALS");
+      throw new AuthException("Invalid email or password.", "INVALID_CREDENTIALS", {
+        status: HttpStatus.Code.Unauthorized,
+      });
     }
 
     const signInToken = await this.client.signInTokens.createSignInToken({

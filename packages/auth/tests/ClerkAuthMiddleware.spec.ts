@@ -105,6 +105,7 @@ describe("ClerkAuthMiddleware", () => {
       } catch (error) {
         expect(error).toBeInstanceOf(AuthException);
         expect((error as AuthException).message).toBe("Authentication required: Missing bearer token");
+        expect((error as AuthException).status).toBe(401);
       }
     });
 
@@ -117,6 +118,7 @@ describe("ClerkAuthMiddleware", () => {
       } catch (error) {
         expect(error).toBeInstanceOf(AuthException);
         expect((error as AuthException).message).toBe("Authentication required: Missing bearer token");
+        expect((error as AuthException).status).toBe(401);
       }
     });
 
@@ -165,6 +167,7 @@ describe("ClerkAuthMiddleware", () => {
       } catch (error) {
         expect(error).toBeInstanceOf(AuthException);
         expect((error as AuthException).message).toBe("Authentication required: Missing bearer token");
+        expect((error as AuthException).status).toBe(401);
       }
     });
 
@@ -201,6 +204,7 @@ describe("ClerkAuthMiddleware", () => {
       } catch (error) {
         expect(error).toBeInstanceOf(AuthException);
         expect((error as AuthException).message).toBe("Authentication required: Missing bearer token");
+        expect((error as AuthException).status).toBe(401);
       }
     });
 
@@ -225,6 +229,7 @@ describe("ClerkAuthMiddleware", () => {
       } catch (error) {
         expect(error).toBeInstanceOf(AuthException);
         expect((error as AuthException).message).toBe("Authentication failed: Invalid or expired token");
+        expect((error as AuthException).status).toBe(401);
       }
     });
 
@@ -245,6 +250,7 @@ describe("ClerkAuthMiddleware", () => {
       } catch (error) {
         expect(error).toBeInstanceOf(AuthException);
         expect((error as AuthException).message).toBe("User has no primary email");
+        expect((error as AuthException).status).toBe(401);
       }
     });
 
@@ -264,6 +270,7 @@ describe("ClerkAuthMiddleware", () => {
       } catch (error) {
         expect(error).toBeInstanceOf(AuthException);
         expect((error as AuthException).message).toBe("User has no primary email");
+        expect((error as AuthException).status).toBe(401);
       }
     });
   });

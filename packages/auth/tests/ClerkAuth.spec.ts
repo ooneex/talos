@@ -262,14 +262,22 @@ describe("ClerkAuth", () => {
       const client = mockCreateClerkClient.mock.results.at(-1)?.value as MockClient;
       client.users.getUserList.mockImplementation(() => Promise.resolve({ data: [] }));
 
-      expect(auth.signIn({ email: "unknown@example.com", password: "password123" })).rejects.toThrow(AuthException);
+      const error = await auth.signIn({ email: "unknown@example.com", password: "password123" }).catch((e) => e);
+
+      expect(error).toBeInstanceOf(AuthException);
+      expect((error as AuthException).key).toBe("INVALID_CREDENTIALS");
+      expect((error as AuthException).status).toBe(401);
     });
 
     test("should throw when password is invalid", async () => {
       const client = mockCreateClerkClient.mock.results.at(-1)?.value as MockClient;
       client.users.verifyPassword.mockImplementation(() => Promise.resolve({ verified: false }));
 
-      expect(auth.signIn({ email: "test@example.com", password: "wrong" })).rejects.toThrow(AuthException);
+      const error = await auth.signIn({ email: "test@example.com", password: "wrong" }).catch((e) => e);
+
+      expect(error).toBeInstanceOf(AuthException);
+      expect((error as AuthException).key).toBe("INVALID_CREDENTIALS");
+      expect((error as AuthException).status).toBe(401);
     });
   });
 
