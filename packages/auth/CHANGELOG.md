@@ -42,3 +42,9 @@
 
 - Use GUEST_ROLE constant instead of string literal| — Franck ([caa43772](https///github.com/ooneex/talos/commit/caa43772))
 
+## [1.3.0](https///github.com/ooneex/talos/releases/tag/@talosjs/auth@1.3.0) - 2026-08-20
+
+### Added
+
+- Add getUserByEmail lookup to ClerkAuth| — Franck ([a779eed6](https///github.com/ooneex/talos/commit/a779eed6))
+
