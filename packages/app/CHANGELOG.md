@@ -121,3 +121,10 @@
 
 - Log user roles and skip OPTIONS preflight requests| — Franck ([e37e7082](https///github.com/ooneex/talos/commit/e37e7082))
 
+## [1.6.1](https///github.com/ooneex/talos/releases/tag/@talosjs/app@1.6.1) - 2026-08-20
+
+### Fixed
+
+- Run the CORS middleware first so rejected requests stay readable| — Franck ([1f40c64d](https///github.com/ooneex/talos/commit/1f40c64d))
+- Skip TLS verification on local so a proxied machine can boot| — Franck ([d86063aa](https///github.com/ooneex/talos/commit/d86063aa))
+
