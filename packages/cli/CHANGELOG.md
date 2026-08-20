@@ -635,3 +635,9 @@
 
 - Update Cargo.lock| — Franck ([143c76e1](https///github.com/ooneex/talos/commit/143c76e1))
 
+## [0.12.3](https///github.com/ooneex/talos/releases/tag/@talos/cli@0.12.3) - 2026-08-20
+
+### Changed
+
+- Update Cargo.lock| — Franck ([f6c1d76c](https///github.com/ooneex/talos/commit/f6c1d76c))
+
