@@ -619,3 +619,13 @@
 
 - Restore the --no-cache flag and cache handling for migration and seed runs| — Franck ([20d2fca5](https///github.com/ooneex/talos/commit/20d2fca5))
 
+## [0.12.1](https///github.com/ooneex/talos/releases/tag/@talos/cli@0.12.1) - 2026-08-20
+
+### Changed
+
+- Update Cargo.lock| — Franck ([55e8f957](https///github.com/ooneex/talos/commit/55e8f957))
+
+### Fixed
+
+- Resolve microservice templates from the modules/templates directory| — Franck ([53f35357](https///github.com/ooneex/talos/commit/53f35357))
+
