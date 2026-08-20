@@ -36,3 +36,9 @@
 - Raise coverage thresholds to 99% across all packages| — Franck ([14db3019](https///github.com/ooneex/talos/commit/14db3019))
 - Enable coverage thresholds in every package's bunfig.toml| — Franck ([e19e3785](https///github.com/ooneex/talos/commit/e19e3785))
 
+## [1.2.0](https///github.com/ooneex/talos/releases/tag/@talosjs/logger@1.2.0) - 2026-08-20
+
+### Added
+
+- Render scalar arrays such as roles as a comma separated list| — Franck ([26222a0c](https///github.com/ooneex/talos/commit/26222a0c))
+
