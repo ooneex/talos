@@ -344,7 +344,7 @@ pub fn run(args: &MicroserviceCreateArgs) {
     };
     let templates_dir = std::env::var_os(crate::utils::TEMPLATES_DIR_ENV)
         .map(std::path::PathBuf::from)
-        .unwrap_or_else(|| repo_dir.join("templates"));
+        .unwrap_or_else(|| repo_dir.join("modules").join("templates"));
 
     if !scaffold_microservice_files(&repo_dir, &templates_dir, &module_dir, &names) {
         return;
