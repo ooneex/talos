@@ -115,3 +115,9 @@
 
 - Honor the role hierarchy when checking route access| — Franck ([b09d683c](https///github.com/ooneex/talos/commit/b09d683c))
 
+## [1.6.0](https///github.com/ooneex/talos/releases/tag/@talosjs/app@1.6.0) - 2026-08-20
+
+### Added
+
+- Log user roles and skip OPTIONS preflight requests| — Franck ([e37e7082](https///github.com/ooneex/talos/commit/e37e7082))
+
