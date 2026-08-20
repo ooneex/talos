@@ -629,3 +629,9 @@
 
 - Resolve microservice templates from the modules/templates directory| — Franck ([53f35357](https///github.com/ooneex/talos/commit/53f35357))
 
+## [0.12.2](https///github.com/ooneex/talos/releases/tag/@talos/cli@0.12.2) - 2026-08-20
+
+### Changed
+
+- Update Cargo.lock| — Franck ([143c76e1](https///github.com/ooneex/talos/commit/143c76e1))
+
