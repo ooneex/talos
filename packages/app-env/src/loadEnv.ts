@@ -34,6 +34,7 @@ const ENV_VAR_NAMES: Record<string, string> = {
   "storage.bunny.access_key": "STORAGE_BUNNY_ACCESS_KEY",
   "storage.bunny.storage_zone": "STORAGE_BUNNY_STORAGE_ZONE",
   "storage.bunny.region": "STORAGE_BUNNY_REGION",
+  "storage.bunny.end_point": "STORAGE_BUNNY_END_POINT",
   "storage.filesystem.path": "FILESYSTEM_STORAGE_PATH",
   "database.url": "DATABASE_URL",
   "database.redis.url": "DATABASE_REDIS_URL",

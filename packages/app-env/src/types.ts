@@ -86,6 +86,7 @@ export interface IAppEnv {
   readonly STORAGE_BUNNY_ACCESS_KEY: string | undefined;
   readonly STORAGE_BUNNY_STORAGE_ZONE: string | undefined;
   readonly STORAGE_BUNNY_REGION: string | undefined;
+  readonly STORAGE_BUNNY_END_POINT: string | undefined;
   readonly FILESYSTEM_STORAGE_PATH: string | undefined;
 
   // Database

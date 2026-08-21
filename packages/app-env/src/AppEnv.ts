@@ -131,6 +131,7 @@ const buildScalarEnvValues = (
     STORAGE_BUNNY_ACCESS_KEY: readString("STORAGE_BUNNY_ACCESS_KEY"),
     STORAGE_BUNNY_STORAGE_ZONE: readString("STORAGE_BUNNY_STORAGE_ZONE"),
     STORAGE_BUNNY_REGION: readString("STORAGE_BUNNY_REGION"),
+    STORAGE_BUNNY_END_POINT: readString("STORAGE_BUNNY_END_POINT"),
     FILESYSTEM_STORAGE_PATH: readString("FILESYSTEM_STORAGE_PATH"),
     DATABASE_URL: readString("DATABASE_URL"),
     DATABASE_REDIS_URL: readString("DATABASE_REDIS_URL"),
@@ -226,6 +227,7 @@ export class AppEnv implements IAppEnv {
   public readonly STORAGE_BUNNY_ACCESS_KEY: string | undefined;
   public readonly STORAGE_BUNNY_STORAGE_ZONE: string | undefined;
   public readonly STORAGE_BUNNY_REGION: string | undefined;
+  public readonly STORAGE_BUNNY_END_POINT: string | undefined;
   public readonly FILESYSTEM_STORAGE_PATH: string | undefined;
 
   // Database
