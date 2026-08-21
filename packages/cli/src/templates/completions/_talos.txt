@@ -551,12 +551,16 @@ _talos() {
           ;;
         migration:up)
           _arguments -s \
+            '--modules=-[Module name(s), comma-separated (default: all)]::modules:_talos_modules' \
+            '--packages=-[Alias for --modules, comma-separated]::packages:_talos_modules' \
             '--drop[Drop the database before running]' \
             '--logs[Print the output of every module that fails]' \
             '--no-cache[Skip the per-migration run cache]'
           ;;
         seed:run)
           _arguments -s \
+            '--modules=-[Module name(s), comma-separated (default: all)]::modules:_talos_modules' \
+            '--packages=-[Alias for --modules, comma-separated]::packages:_talos_modules' \
             '--drop[Re-run every seed from scratch, ignoring the cache]' \
             '--env=[APP_ENV the seeds run under]:env' \
             '--logs[Print the output of every module that fails]' \
@@ -564,6 +568,8 @@ _talos() {
           ;;
         migration:down)
           _arguments -s \
+            '--modules=-[Module name(s), comma-separated (default: all)]::modules:_talos_modules' \
+            '--packages=-[Alias for --modules, comma-separated]::packages:_talos_modules' \
             '--logs[Print the output of every module that fails]' \
             '--version=[Version of the migration to roll back]:version'
           ;;

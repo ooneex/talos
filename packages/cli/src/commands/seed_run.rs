@@ -6,10 +6,19 @@ use std::path::PathBuf;
 
 use clap::Args;
 
+use crate::commands::project_check::modules::wanted_names;
 use crate::utils::{ModuleScriptsOptions, current_dir, info, run_module_scripts};
 
 #[derive(Args, Debug)]
 pub struct SeedRunArgs {
+    /// Only seed modules whose directory name matches (comma-separated).
+    #[arg(long)]
+    pub modules: Option<String>,
+
+    /// Alias for --modules (comma-separated).
+    #[arg(long)]
+    pub packages: Option<String>,
+
     /// Re-run every seed from scratch, ignoring the cache.
     #[arg(long, default_value_t = false)]
     pub drop: bool,
@@ -72,6 +81,7 @@ pub fn execute(args: &SeedRunArgs) -> bool {
             drop: args.drop,
             env: args.env.clone(),
             version: None,
+            modules: wanted_names(args.modules.as_deref(), args.packages.as_deref()),
             no_cache: args.no_cache,
             reverse: false,
         },

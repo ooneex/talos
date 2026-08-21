@@ -241,6 +241,123 @@ fn only_the_first_seeded_module_is_told_to_drop_the_database() {
 }
 
 #[test]
+fn migrating_a_selection_leaves_every_other_module_alone() {
+    let (_dir, root) = two_module_workspace("bin/migration/up.ts");
+
+    let output = talos(&root, &["migration:up", "--modules", "beta"]);
+
+    assert!(output.status.success(), "{}", text(&output));
+    assert!(
+        calls(&root.join("alpha.log")).is_empty(),
+        "a module left out of --modules is not migrated"
+    );
+    assert!(
+        !calls(&root.join("beta.log")).is_empty(),
+        "the selected module is migrated"
+    );
+}
+
+#[test]
+fn dropping_the_database_cannot_be_narrowed_to_a_selection() {
+    let (_dir, root) = two_module_workspace("bin/migration/up.ts");
+
+    let output = talos(&root, &["migration:up", "--drop", "--modules", "alpha"]);
+
+    assert!(
+        !output.status.success(),
+        "a drop that only re-applies part of the schema is refused: {}",
+        text(&output)
+    );
+    assert!(
+        calls(&root.join("alpha.log")).is_empty(),
+        "nothing is run once the combination is refused"
+    );
+}
+
+#[test]
+fn rolling_back_a_selection_leaves_every_other_module_alone() {
+    let (_dir, root) = two_module_workspace("bin/migration/down.ts");
+
+    let output = talos(&root, &["migration:down", "--packages", "alpha"]);
+
+    assert!(output.status.success(), "{}", text(&output));
+    assert!(
+        !calls(&root.join("alpha.log")).is_empty(),
+        "--packages is an alias for --modules"
+    );
+    assert!(
+        calls(&root.join("beta.log")).is_empty(),
+        "a module left out of the selection is not rolled back"
+    );
+}
+
+#[test]
+fn seeding_a_selection_leaves_every_other_module_alone() {
+    let (_dir, root) = two_module_workspace("bin/seed/run.ts");
+
+    let output = talos(&root, &["seed:run", "--modules", "beta"]);
+
+    assert!(output.status.success(), "{}", text(&output));
+    assert!(
+        calls(&root.join("alpha.log")).is_empty(),
+        "a module left out of --modules is not seeded"
+    );
+    assert!(
+        !calls(&root.join("beta.log")).is_empty(),
+        "the selected module is seeded"
+    );
+}
+
+#[test]
+fn packages_selects_the_same_modules_modules_does() {
+    let (_dir, root) = two_module_workspace("bin/seed/run.ts");
+
+    let output = talos(&root, &["seed:run", "--packages", "alpha"]);
+
+    assert!(output.status.success(), "{}", text(&output));
+    assert!(
+        !calls(&root.join("alpha.log")).is_empty(),
+        "--packages is an alias for --modules"
+    );
+    assert!(calls(&root.join("beta.log")).is_empty());
+}
+
+#[test]
+fn dropping_a_selection_keeps_the_cache_of_the_modules_it_left_out() {
+    let (_dir, root) = two_module_workspace("bin/seed/run.ts");
+    let kept = root.join("var/cache/seeds/beta/users.json");
+    let dropped = root.join("var/cache/seeds/alpha/users.json");
+    write(&kept, "{}\n");
+    write(&dropped, "{}\n");
+
+    let output = talos(&root, &["seed:run", "--drop", "--modules", "alpha"]);
+
+    assert!(output.status.success(), "{}", text(&output));
+    assert!(
+        !dropped.exists(),
+        "the selected module's 'already seeded' markers go with the drop"
+    );
+    assert!(
+        kept.exists(),
+        "nothing dropped the data a module outside the selection seeded"
+    );
+}
+
+#[test]
+fn seeding_a_selection_matching_nothing_says_so_and_succeeds() {
+    let (_dir, root) = two_module_workspace("bin/seed/run.ts");
+
+    let output = talos(&root, &["seed:run", "--modules", "gamma"]);
+
+    assert!(output.status.success(), "{}", text(&output));
+    assert!(
+        text(&output).contains("gamma"),
+        "the selection that matched nothing is named back: {}",
+        text(&output)
+    );
+}
+
+#[test]
 fn migration_down_runs_the_other_entry_point() {
     let (_dir, root, _log) = workspace();
     fs::remove_file(root.join("modules/user/bin/migration/up.ts")).expect("drop the up script");

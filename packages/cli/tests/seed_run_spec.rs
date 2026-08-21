@@ -11,6 +11,10 @@ struct TestCli {
 fn seed_run_parses_all_flags() {
     let cli = TestCli::try_parse_from([
         "talos",
+        "--modules",
+        "user,billing",
+        "--packages",
+        "color",
         "--drop",
         "--env",
         "test",
@@ -21,6 +25,8 @@ fn seed_run_parses_all_flags() {
     ])
     .expect("valid arguments should parse");
 
+    assert_eq!(cli.args.modules.as_deref(), Some("user,billing"));
+    assert_eq!(cli.args.packages.as_deref(), Some("color"));
     assert!(cli.args.drop);
     assert_eq!(cli.args.env.as_deref(), Some("test"));
     assert!(cli.args.logs);
@@ -32,6 +38,8 @@ fn seed_run_parses_all_flags() {
 fn seed_run_defaults_are_empty() {
     let cli = TestCli::try_parse_from(["talos"]).expect("no arguments is valid");
 
+    assert!(cli.args.modules.is_none());
+    assert!(cli.args.packages.is_none());
     assert!(!cli.args.drop);
     assert!(cli.args.env.is_none());
     assert!(!cli.args.logs);

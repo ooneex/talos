@@ -6,10 +6,19 @@ use std::path::PathBuf;
 
 use clap::Args;
 
+use crate::commands::project_check::modules::wanted_names;
 use crate::utils::{ModuleScriptsOptions, current_dir, run_module_scripts};
 
 #[derive(Args, Debug)]
 pub struct MigrationDownArgs {
+    /// Only roll back modules whose directory name matches (comma-separated).
+    #[arg(long)]
+    pub modules: Option<String>,
+
+    /// Alias for --modules (comma-separated).
+    #[arg(long)]
+    pub packages: Option<String>,
+
     /// The migration version to roll back (defaults to the latest one).
     #[arg(long)]
     pub version: Option<String>,
@@ -51,6 +60,7 @@ pub fn execute(args: &MigrationDownArgs) -> bool {
             drop: false,
             env: None,
             version: args.version.clone(),
+            modules: wanted_names(args.modules.as_deref(), args.packages.as_deref()),
             no_cache: false,
             // A module whose migrations sit on top of another module's tables
             // must be undone before the module underneath it.

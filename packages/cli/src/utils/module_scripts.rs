@@ -13,7 +13,7 @@ mod runner;
 mod stream;
 
 pub use report::print_report;
-use runner::{collect_targets, run_targets};
+use runner::{cache_dir, collect_targets, run_targets};
 
 use std::path::{Path, PathBuf};
 use std::time::Instant;
@@ -51,6 +51,9 @@ pub struct ModuleScriptsOptions<'a> {
     /// The one version to act on, for a command that takes one.
     pub version: Option<String>,
     pub no_cache: bool,
+    /// The directory names the run is narrowed to — what `--modules` and
+    /// `--packages` selected. Empty runs every module.
+    pub modules: Vec<String>,
     /// Walks the modules from last to first. Rolling back has to mirror
     /// applying: a module whose migrations sit on top of another module's
     /// tables must be undone before the module underneath it.
@@ -136,11 +139,18 @@ pub fn audit(root: &Path, options: &ModuleScriptsOptions, quiet: bool) -> Script
         return ScriptAudit::default();
     }
 
-    // A drop invalidates every cached "already ran" marker, so the cache
-    // directory goes with it — otherwise the modules after the first would
-    // skip the work the run is meant to redo.
+    // A drop invalidates every cached "already ran" marker, so the caches of
+    // the modules being run go with it — otherwise the modules after the
+    // first would skip the work the run is meant to redo. A module left out
+    // of the selection keeps its cache: nothing dropped its data.
     if options.drop {
-        let _ = std::fs::remove_dir_all(root.join(options.cache_dir));
+        if options.modules.is_empty() {
+            let _ = std::fs::remove_dir_all(root.join(options.cache_dir));
+        } else {
+            for target in &targets {
+                let _ = std::fs::remove_dir_all(cache_dir(root, options, target));
+            }
+        }
     }
 
     let loader = if quiet {
@@ -162,10 +172,18 @@ pub fn run_module_scripts(root: &Path, options: ModuleScriptsOptions, logs: bool
     let audit = audit(root, &options, false);
 
     if audit.modules.is_empty() {
-        super::warn(format!(
-            "No module found to run — a module needs a package.json and a {} script",
-            options.bin_path.join("/")
-        ));
+        super::warn(if options.modules.is_empty() {
+            format!(
+                "No module found to run — a module needs a package.json and a {} script",
+                options.bin_path.join("/")
+            )
+        } else {
+            format!(
+                "No module found to run in {} — a module needs a package.json and a {} script",
+                options.modules.join(", "),
+                options.bin_path.join("/")
+            )
+        });
         return true;
     }
 

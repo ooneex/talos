@@ -19,11 +19,14 @@ pub(super) struct Target {
     pub(super) name: String,
     /// `modules/user` — how the module is named while it is running.
     pub(super) label: String,
+    /// The module's directory name, which is also its cache directory.
+    pub(super) dir_name: String,
     dir: PathBuf,
 }
 
 /// Every module under `modules/` that declares a `package.json` and carries
-/// the script, in the order the run should walk them.
+/// the script, in the order the run should walk them — narrowed to
+/// `options.modules` when the selection is not empty.
 pub(super) fn collect_targets(root: &Path, options: &ModuleScriptsOptions) -> Vec<Target> {
     let modules_dir = root.join("modules");
     let Ok(entries) = std::fs::read_dir(&modules_dir) else {
@@ -42,6 +45,7 @@ pub(super) fn collect_targets(root: &Path, options: &ModuleScriptsOptions) -> Ve
 
     names
         .into_iter()
+        .filter(|name| options.modules.is_empty() || options.modules.contains(name))
         .filter_map(|name| target(&modules_dir, name, options.bin_path))
         .collect()
 }
@@ -67,8 +71,14 @@ fn target(modules_dir: &Path, name: String, bin_path: &[&str]) -> Option<Target>
     Some(Target {
         name: declared.unwrap_or_else(|| name.clone()),
         label: format!("modules/{name}"),
+        dir_name: name,
         dir,
     })
+}
+
+/// Where one module keeps its "already ran" markers.
+pub(super) fn cache_dir(root: &Path, options: &ModuleScriptsOptions, target: &Target) -> PathBuf {
+    root.join(options.cache_dir).join(&target.dir_name)
 }
 
 fn script_path(dir: &Path, bin_path: &[&str]) -> PathBuf {
@@ -147,15 +157,9 @@ fn script_args(
     if options.no_cache {
         args.push("--no-cache".to_string());
     }
-    let module_name = target
-        .dir
-        .file_name()
-        .map(|name| name.to_string_lossy().to_string())
-        .unwrap_or_default();
     args.push("--cache-dir".to_string());
     args.push(
-        root.join(options.cache_dir)
-            .join(module_name)
+        cache_dir(root, options, target)
             .to_string_lossy()
             .to_string(),
     );

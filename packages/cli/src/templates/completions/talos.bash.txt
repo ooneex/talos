@@ -359,13 +359,16 @@ threads whatsapp telegram messenger discord reddit medium cloudflare bunny s3 op
       [[ $flag == --modules ]] && candidates="$(_talos_pkg_modules)"
       ;;
     migration:up)
-      opts="--drop --logs --no-cache"
+      opts="--modules --packages --drop --logs --no-cache"
+      [[ $flag == --modules || $flag == --packages ]] && candidates="$(_talos_modules)"
       ;;
     seed:run)
-      opts="--drop --env --logs --no-cache"
+      opts="--modules --packages --drop --env --logs --no-cache"
+      [[ $flag == --modules || $flag == --packages ]] && candidates="$(_talos_modules)"
       ;;
     migration:down)
-      opts="--logs --version"
+      opts="--modules --packages --logs --version"
+      [[ $flag == --modules || $flag == --packages ]] && candidates="$(_talos_modules)"
       ;;
     design:create | microservice:create)
       opts="--name --no-cache"
