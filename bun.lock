@@ -92,7 +92,7 @@
     },
     "packages/app-env": {
       "name": "@talosjs/app-env",
-      "version": "1.4.0",
+      "version": "1.5.1",
       "dependencies": {
         "@talosjs/container": "workspace:^",
         "@talosjs/exception": "workspace:^",
