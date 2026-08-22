@@ -641,3 +641,15 @@
 
 - Update Cargo.lock| — Franck ([f6c1d76c](https///github.com/ooneex/talos/commit/f6c1d76c))
 
+## [0.13.0](https///github.com/ooneex/talos/releases/tag/@talos/cli@0.13.0) - 2026-08-22
+
+### Added
+
+- Stream command:run output live for the module that owns the command| — Franck ([f0ac80f6](https///github.com/ooneex/talos/commit/f0ac80f6))
+- Add --modules and --packages selection to migration and seed commands| — Franck ([ef35dfa1](https///github.com/ooneex/talos/commit/ef35dfa1))
+
+### Changed
+
+- Rename command:run --id flag to --name| — Franck ([85346026](https///github.com/ooneex/talos/commit/85346026))
+- Update Cargo.lock| — Franck ([7e36c17f](https///github.com/ooneex/talos/commit/7e36c17f))
+
