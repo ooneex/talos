@@ -92,7 +92,7 @@
     },
     "packages/app-env": {
       "name": "@talosjs/app-env",
-      "version": "1.5.1",
+      "version": "1.6.0",
       "dependencies": {
         "@talosjs/container": "workspace:^",
         "@talosjs/exception": "workspace:^",
@@ -130,7 +130,7 @@
     },
     "packages/cli": {
       "name": "@talos/cli",
-      "version": "0.12.3",
+      "version": "0.13.0",
     },
     "packages/color": {
       "name": "@talosjs/color",
