@@ -133,6 +133,9 @@ const buildScalarEnvValues = (
     STORAGE_BUNNY_REGION: readString("STORAGE_BUNNY_REGION"),
     STORAGE_BUNNY_END_POINT: readString("STORAGE_BUNNY_END_POINT"),
     FILESYSTEM_STORAGE_PATH: readString("FILESYSTEM_STORAGE_PATH"),
+    STREAM_BUNNY_ACCESS_KEY: readString("STREAM_BUNNY_ACCESS_KEY"),
+    STREAM_BUNNY_LIBRARY_ID: readString("STREAM_BUNNY_LIBRARY_ID"),
+    STREAM_BUNNY_END_POINT: readString("STREAM_BUNNY_END_POINT"),
     DATABASE_URL: readString("DATABASE_URL"),
     DATABASE_REDIS_URL: readString("DATABASE_REDIS_URL"),
     DATABASE_DRAGONFLY_URL: readString("DATABASE_DRAGONFLY_URL"),
@@ -231,6 +234,11 @@ export class AppEnv implements IAppEnv {
   public readonly STORAGE_BUNNY_REGION: string | undefined;
   public readonly STORAGE_BUNNY_END_POINT: string | undefined;
   public readonly FILESYSTEM_STORAGE_PATH: string | undefined;
+
+  // Stream
+  public readonly STREAM_BUNNY_ACCESS_KEY: string | undefined;
+  public readonly STREAM_BUNNY_LIBRARY_ID: string | undefined;
+  public readonly STREAM_BUNNY_END_POINT: string | undefined;
 
   // Database
   public readonly DATABASE_URL: string | undefined;

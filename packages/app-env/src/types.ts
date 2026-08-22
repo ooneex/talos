@@ -89,6 +89,11 @@ export interface IAppEnv {
   readonly STORAGE_BUNNY_END_POINT: string | undefined;
   readonly FILESYSTEM_STORAGE_PATH: string | undefined;
 
+  // Stream
+  readonly STREAM_BUNNY_ACCESS_KEY: string | undefined;
+  readonly STREAM_BUNNY_LIBRARY_ID: string | undefined;
+  readonly STREAM_BUNNY_END_POINT: string | undefined;
+
   // Database
   readonly DATABASE_URL: string | undefined;
   readonly DATABASE_REDIS_URL: string | undefined;

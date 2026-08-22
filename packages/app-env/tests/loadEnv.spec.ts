@@ -108,6 +108,16 @@ describe("loadEnv", () => {
     expect(Bun.env.STORAGE_FILESYSTEM_PATH).toBeUndefined();
   });
 
+  test("maps stream.bunny keys to the STREAM_BUNNY_ names", async () => {
+    await Bun.write(
+      `${testDir}/.env.yml`,
+      'stream:\n  bunny:\n    access_key: "sk_abc123"\n    library_id: "512345"\n',
+    );
+    await loadEnv();
+    expect(Bun.env.STREAM_BUNNY_ACCESS_KEY).toBe("sk_abc123");
+    expect(Bun.env.STREAM_BUNNY_LIBRARY_ID).toBe("512345");
+  });
+
   test("maps mailer.resend.api_key to RESEND_API_KEY", async () => {
     await Bun.write(`${testDir}/.env.yml`, 'mailer:\n  resend:\n    api_key: "re_abc123"\n');
     await loadEnv();
