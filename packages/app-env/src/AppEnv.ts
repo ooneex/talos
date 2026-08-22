@@ -137,6 +137,8 @@ const buildScalarEnvValues = (
     DATABASE_REDIS_URL: readString("DATABASE_REDIS_URL"),
     DATABASE_DRAGONFLY_URL: readString("DATABASE_DRAGONFLY_URL"),
     SQLITE_DATABASE_PATH: readString("SQLITE_DATABASE_PATH"),
+    DATABASE_BUNNY_URL: readString("DATABASE_BUNNY_URL"),
+    DATABASE_BUNNY_TOKEN: readString("DATABASE_BUNNY_TOKEN"),
     MAILER_SENDER_NAME: readString("MAILER_SENDER_NAME"),
     MAILER_SENDER_ADDRESS: readString("MAILER_SENDER_ADDRESS"),
     RESEND_API_KEY: readString("RESEND_API_KEY"),
@@ -235,6 +237,8 @@ export class AppEnv implements IAppEnv {
   public readonly DATABASE_REDIS_URL: string | undefined;
   public readonly DATABASE_DRAGONFLY_URL: string | undefined;
   public readonly SQLITE_DATABASE_PATH: string | undefined;
+  public readonly DATABASE_BUNNY_URL: string | undefined;
+  public readonly DATABASE_BUNNY_TOKEN: string | undefined;
 
   // Mailer
   public readonly MAILER_SENDER_NAME: string | undefined;

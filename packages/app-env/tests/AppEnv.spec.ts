@@ -613,6 +613,8 @@ describe("AppEnv", () => {
       delete Bun.env.DATABASE_URL;
       delete Bun.env.DATABASE_REDIS_URL;
       delete Bun.env.SQLITE_DATABASE_PATH;
+      delete Bun.env.DATABASE_BUNNY_URL;
+      delete Bun.env.DATABASE_BUNNY_TOKEN;
       delete Bun.env.MAILER_SENDER_NAME;
       delete Bun.env.MAILER_SENDER_ADDRESS;
       delete Bun.env.RESEND_API_KEY;
@@ -692,6 +694,8 @@ describe("AppEnv", () => {
       expect(appEnv.DATABASE_URL).toBeUndefined();
       expect(appEnv.DATABASE_REDIS_URL).toBeUndefined();
       expect(appEnv.SQLITE_DATABASE_PATH).toBeUndefined();
+      expect(appEnv.DATABASE_BUNNY_URL).toBeUndefined();
+      expect(appEnv.DATABASE_BUNNY_TOKEN).toBeUndefined();
       expect(appEnv.MAILER_SENDER_NAME).toBeUndefined();
       expect(appEnv.MAILER_SENDER_ADDRESS).toBeUndefined();
       expect(appEnv.RESEND_API_KEY).toBeUndefined();
@@ -797,11 +801,15 @@ describe("AppEnv", () => {
       Bun.env.DATABASE_URL = "postgres://localhost/mydb";
       Bun.env.DATABASE_REDIS_URL = "redis://localhost:6379";
       Bun.env.SQLITE_DATABASE_PATH = "/data/app.db";
+      Bun.env.DATABASE_BUNNY_URL = "libsql://db.bunny.net";
+      Bun.env.DATABASE_BUNNY_TOKEN = "bunny-token";
 
       const appEnv = new AppEnv();
 
       expect(appEnv.DATABASE_URL).toBe("postgres://localhost/mydb");
       expect(appEnv.DATABASE_REDIS_URL).toBe("redis://localhost:6379");
+      expect(appEnv.DATABASE_BUNNY_URL).toBe("libsql://db.bunny.net");
+      expect(appEnv.DATABASE_BUNNY_TOKEN).toBe("bunny-token");
       expect(appEnv.SQLITE_DATABASE_PATH).toBe("/data/app.db");
     });
 
@@ -1020,12 +1028,16 @@ describe("AppEnv", () => {
       Bun.env.DATABASE_URL = "  postgres://localhost/mydb  ";
       Bun.env.DATABASE_REDIS_URL = "  redis://localhost:6379  ";
       Bun.env.SQLITE_DATABASE_PATH = "  /data/app.db  ";
+      Bun.env.DATABASE_BUNNY_URL = "  libsql://db.bunny.net  ";
+      Bun.env.DATABASE_BUNNY_TOKEN = "  bunny-token  ";
 
       const appEnv = new AppEnv();
 
       expect(appEnv.DATABASE_URL).toBe("postgres://localhost/mydb");
       expect(appEnv.DATABASE_REDIS_URL).toBe("redis://localhost:6379");
       expect(appEnv.SQLITE_DATABASE_PATH).toBe("/data/app.db");
+      expect(appEnv.DATABASE_BUNNY_URL).toBe("libsql://db.bunny.net");
+      expect(appEnv.DATABASE_BUNNY_TOKEN).toBe("bunny-token");
     });
 
     test("should trim mailer env vars", () => {

@@ -94,6 +94,8 @@ export interface IAppEnv {
   readonly DATABASE_REDIS_URL: string | undefined;
   readonly DATABASE_DRAGONFLY_URL: string | undefined;
   readonly SQLITE_DATABASE_PATH: string | undefined;
+  readonly DATABASE_BUNNY_URL: string | undefined;
+  readonly DATABASE_BUNNY_TOKEN: string | undefined;
 
   // Mailer
   readonly MAILER_SENDER_NAME: string | undefined;
