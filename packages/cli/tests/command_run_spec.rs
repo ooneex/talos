@@ -210,6 +210,42 @@ fn command_run_executes_the_matching_module_command() {
 
 #[cfg(unix)]
 #[test]
+fn command_run_streams_the_command_output_on_success() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let bin = dir.path().join("bin");
+    std::fs::create_dir_all(&bin).expect("bin");
+    executable(
+        &bin.join("bun"),
+        "#!/bin/sh\necho 'image-1 loaded'\necho 'image-2 skipped' >&2\nexit 0\n",
+    );
+    write(
+        &dir.path().join("modules/shared/package.json"),
+        "{ \"name\": \"@module/shared\" }\n",
+    );
+    write(
+        &dir.path().join("modules/shared/bin/command/run.ts"),
+        "// runner\n",
+    );
+    write(
+        &dir.path()
+            .join("modules/shared/src/commands/SeedCommand.ts"),
+        "export class SeedCommand { getName() { return 'seed'; } }\n",
+    );
+
+    let output = talos(dir.path(), &bin, &["command:run", "--id", "seed"]);
+
+    let output_text = text(&output);
+    assert!(output.status.success(), "{output_text}");
+    assert!(output_text.contains("image-1 loaded"), "{output_text}");
+    assert!(output_text.contains("image-2 skipped"), "{output_text}");
+    assert!(
+        output_text.contains("completed for @module/shared"),
+        "{output_text}"
+    );
+}
+
+#[cfg(unix)]
+#[test]
 fn command_run_exits_when_the_confirmed_command_fails() {
     let dir = tempfile::tempdir().expect("tempdir");
     let bin = dir.path().join("bin");

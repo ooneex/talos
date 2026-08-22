@@ -145,39 +145,50 @@ fn run_in_module(
     confirmed: bool,
 ) -> bool {
     let command_run_path = dir.join("bin").join("command").join("run.ts");
-    let output = Command::new("bun")
+    let mut command = Command::new("bun");
+    command
         .arg("run")
         .arg(&command_run_path)
         .arg(command_name)
         .args(extra_args)
-        .current_dir(cwd)
-        .output();
+        .current_dir(cwd);
 
-    match output {
+    // A module that declares the command owns the terminal: its output streams straight
+    // through so long-running commands report progress as it happens. A module we are only
+    // probing stays captured, so a "not found" never spills its noise into the run.
+    if confirmed {
+        return match command.status() {
+            Ok(status) if status.success() => {
+                crate::utils::success(format!("Command \"{command_name}\" completed for {name}"));
+                true
+            }
+            Ok(status) => {
+                crate::utils::error(format!(
+                    "Command \"{command_name}\" failed in {name} (exit code: {})",
+                    status.code().unwrap_or(1)
+                ));
+                std::process::exit(1);
+            }
+            Err(error) => {
+                crate::utils::error(format!(
+                    "Command \"{command_name}\" failed in {name}: {error}"
+                ));
+                std::process::exit(1);
+            }
+        };
+    }
+
+    match command.output() {
         Ok(output) if output.status.success() => {
+            let details = collect_output(&output);
+            if !details.is_empty() {
+                println!("{details}");
+            }
             crate::utils::success(format!("Command \"{command_name}\" completed for {name}"));
             true
         }
         Ok(output) => {
-            let details = [
-                String::from_utf8_lossy(&output.stdout).trim().to_string(),
-                String::from_utf8_lossy(&output.stderr).trim().to_string(),
-            ]
-            .into_iter()
-            .filter(|part| !part.is_empty())
-            .collect::<Vec<_>>()
-            .join("\n");
-
-            if confirmed {
-                crate::utils::error(format!(
-                    "Command \"{command_name}\" failed in {name} (exit code: {})",
-                    output.status.code().unwrap_or(1)
-                ));
-                if !details.is_empty() {
-                    eprintln!("{details}");
-                }
-                std::process::exit(1);
-            }
+            let details = collect_output(&output);
 
             crate::utils::warn(format!("Command \"{command_name}\" not found in {name}"));
             if !details.is_empty() {
@@ -185,16 +196,20 @@ fn run_in_module(
             }
             false
         }
-        Err(error) => {
-            if confirmed {
-                crate::utils::error(format!(
-                    "Command \"{command_name}\" failed in {name}: {error}"
-                ));
-                std::process::exit(1);
-            }
-            false
-        }
+        Err(_) => false,
     }
+}
+
+/// The child's stdout and stderr as one block, in that order, blank parts dropped.
+fn collect_output(output: &std::process::Output) -> String {
+    [
+        String::from_utf8_lossy(&output.stdout).trim().to_string(),
+        String::from_utf8_lossy(&output.stderr).trim().to_string(),
+    ]
+    .into_iter()
+    .filter(|part| !part.is_empty())
+    .collect::<Vec<_>>()
+    .join("\n")
 }
 
 pub fn run(args: &CommandRunArgs) {
