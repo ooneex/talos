@@ -272,7 +272,8 @@ _talos() {
           ;;
         command:run)
           _arguments -s \
-            '1:command name:_talos_custom_commands'
+            '--name=[Name of the command to run]:name:_talos_custom_commands' \
+            '--cwd=[Working directory]:cwd:_files -/'
           ;;
         commitlint:check)
           _arguments -s \

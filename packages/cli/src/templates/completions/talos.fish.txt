@@ -238,7 +238,8 @@ for cmd in oo talos
     complete -c $cmd -n '__fish_seen_subcommand_from app:init' -l app-type -x -a 'cli api' -d 'Application type'
     complete -c $cmd -n '__fish_seen_subcommand_from app:init' -l no-cache -d 'Ignore the cached skeleton and re-download it'
 
-    complete -c $cmd -n '__fish_seen_subcommand_from command:run' -f -a '(__talos_custom_commands)' -d 'Custom command'
+    complete -c $cmd -n '__fish_seen_subcommand_from command:run' -l name -x -a '(__talos_custom_commands)' -d 'Name of the command to run'
+    complete -c $cmd -n '__fish_seen_subcommand_from command:run' -l cwd -r -f -a '(__fish_complete_directories)' -d 'Working directory'
 
     complete -c $cmd -n '__fish_seen_subcommand_from issue:create' -l title -x -d 'Issue title'
     complete -c $cmd -n '__fish_seen_subcommand_from issue:create' -l priority -x -a 'Low Medium High Urgent' -d 'Issue priority'

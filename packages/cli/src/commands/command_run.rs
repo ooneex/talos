@@ -11,7 +11,7 @@ use crate::utils::current_dir;
 #[derive(Args, Debug)]
 pub struct CommandRunArgs {
     #[arg(long)]
-    pub id: Option<String>,
+    pub name: Option<String>,
 
     #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
     pub args: Vec<String>,
@@ -52,14 +52,14 @@ pub fn visit_command_files(dir: &Path, files: &mut Vec<PathBuf>) {
     }
 }
 
-/// Resolves the command name from `--id`, exiting with a usage error when it
+/// Resolves the command name from `--name`, exiting with a usage error when it
 /// is missing.
 fn resolve_command_name(args: &CommandRunArgs) -> String {
-    match args.id.clone() {
-        Some(id) => id,
+    match args.name.clone() {
+        Some(name) => name,
         None => {
             crate::utils::error(
-                "Command name is required. Usage: talos command:run --id <command-name> [args...]",
+                "Command name is required. Usage: talos command:run --name <command-name> [args...]",
             );
             std::process::exit(1);
         }

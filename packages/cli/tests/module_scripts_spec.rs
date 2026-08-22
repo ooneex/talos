@@ -488,7 +488,7 @@ fn each_line_of_a_module_is_streamed_on_its_own_row() {
 fn a_command_is_run_by_the_module_that_declares_it() {
     let (_dir, root, log) = workspace();
 
-    let output = talos(&root, &["command:run", "--id=sync:users"]);
+    let output = talos(&root, &["command:run", "--name=sync:users"]);
 
     assert!(output.status.success(), "{}", text(&output));
     assert!(calls(&log).contains("sync:users"), "{}", calls(&log));
@@ -503,7 +503,7 @@ fn extra_arguments_are_handed_to_the_command_untouched() {
     Command::new(env!("CARGO_BIN_EXE_talos"))
         .args([
             "command:run",
-            "--id=sync:users",
+            "--name=sync:users",
             &cwd,
             "--",
             "--force",
@@ -523,21 +523,21 @@ fn extra_arguments_are_handed_to_the_command_untouched() {
 fn a_command_no_module_declares_is_reported() {
     let (_dir, root, _log) = workspace();
 
-    let output = talos(&root, &["command:run", "--id=nope:nope"]);
+    let output = talos(&root, &["command:run", "--name=nope:nope"]);
 
     assert!(!output.status.success());
     assert!(text(&output).contains("nope:nope"), "{}", text(&output));
 }
 
 #[test]
-fn command_run_without_an_id_says_how_to_call_it() {
+fn command_run_without_a_name_says_how_to_call_it() {
     let (_dir, root, _log) = workspace();
 
     let output = talos(&root, &["command:run"]);
 
     assert!(!output.status.success());
     assert!(
-        text(&output).contains("command:run --id"),
+        text(&output).contains("command:run --name"),
         "{}",
         text(&output)
     );
@@ -547,7 +547,7 @@ fn command_run_without_an_id_says_how_to_call_it() {
 fn command_run_in_a_workspace_with_no_modules_directory_says_so() {
     let dir = tempfile::tempdir().expect("create temp dir");
 
-    let output = talos(dir.path(), &["command:run", "--id=sync:users"]);
+    let output = talos(dir.path(), &["command:run", "--name=sync:users"]);
 
     assert!(text(&output).contains("sync:users"), "{}", text(&output));
 }

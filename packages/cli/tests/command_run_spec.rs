@@ -9,21 +9,21 @@ struct TestCli {
 }
 
 #[test]
-fn command_run_parses_id_and_cwd() {
-    let cli = TestCli::try_parse_from(["talos", "--id", "seed", "--cwd", "./here"])
+fn command_run_parses_name_and_cwd() {
+    let cli = TestCli::try_parse_from(["talos", "--name", "seed", "--cwd", "./here"])
         .expect("valid arguments should parse");
 
-    assert_eq!(cli.args.id.as_deref(), Some("seed"));
+    assert_eq!(cli.args.name.as_deref(), Some("seed"));
     assert_eq!(cli.args.cwd.as_deref(), Some("./here"));
     assert!(cli.args.args.is_empty());
 }
 
 #[test]
 fn command_run_collects_trailing_var_args() {
-    let cli = TestCli::try_parse_from(["talos", "--id", "seed", "--", "run", "--flag", "-x"])
+    let cli = TestCli::try_parse_from(["talos", "--name", "seed", "--", "run", "--flag", "-x"])
         .expect("trailing arguments should parse");
 
-    assert_eq!(cli.args.id.as_deref(), Some("seed"));
+    assert_eq!(cli.args.name.as_deref(), Some("seed"));
     assert_eq!(
         cli.args.args,
         vec!["run".to_string(), "--flag".to_string(), "-x".to_string(),]
@@ -42,7 +42,7 @@ fn command_run_allows_hyphen_values_in_trailing_args() {
 fn command_run_defaults_are_empty() {
     let cli = TestCli::try_parse_from(["talos"]).expect("no arguments is valid");
 
-    assert!(cli.args.id.is_none());
+    assert!(cli.args.name.is_none());
     assert!(cli.args.cwd.is_none());
     assert!(cli.args.args.is_empty());
 }
@@ -157,7 +157,7 @@ fn command_run_requires_an_identifier() {
 fn command_run_warns_when_no_modules_directory_exists() {
     let dir = tempfile::tempdir().expect("tempdir");
 
-    let output = talos(dir.path(), dir.path(), &["command:run", "--id", "seed"]);
+    let output = talos(dir.path(), dir.path(), &["command:run", "--name", "seed"]);
 
     assert!(output.status.success());
     assert!(text(&output).contains("not found in any module"));
@@ -193,7 +193,7 @@ fn command_run_executes_the_matching_module_command() {
     let output = talos(
         dir.path(),
         &bin,
-        &["command:run", "--id", "seed", "--", "--flag", "value"],
+        &["command:run", "--name", "seed", "--", "--flag", "value"],
     );
 
     let output_text = text(&output);
@@ -232,7 +232,7 @@ fn command_run_streams_the_command_output_on_success() {
         "export class SeedCommand { getName() { return 'seed'; } }\n",
     );
 
-    let output = talos(dir.path(), &bin, &["command:run", "--id", "seed"]);
+    let output = talos(dir.path(), &bin, &["command:run", "--name", "seed"]);
 
     let output_text = text(&output);
     assert!(output.status.success(), "{output_text}");
@@ -268,7 +268,7 @@ fn command_run_exits_when_the_confirmed_command_fails() {
         "export class SeedCommand { getName() { return 'seed'; } }\n",
     );
 
-    let output = talos(dir.path(), &bin, &["command:run", "--id", "seed"]);
+    let output = talos(dir.path(), &bin, &["command:run", "--name", "seed"]);
 
     let output_text = text(&output);
     assert!(!output.status.success());
@@ -300,7 +300,7 @@ fn command_run_reports_when_no_module_declares_the_command() {
         "export class OtherCommand { getName() { return 'other'; } }\n",
     );
 
-    let output = talos(dir.path(), &bin, &["command:run", "--id", "seed"]);
+    let output = talos(dir.path(), &bin, &["command:run", "--name", "seed"]);
 
     assert!(!output.status.success());
     assert!(text(&output).contains("not found in any module"));

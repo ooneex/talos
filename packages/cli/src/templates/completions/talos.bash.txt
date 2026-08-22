@@ -204,7 +204,9 @@ seed:create seed:run"
       [[ $flag == --app-type ]] && candidates="cli api"
       ;;
     command:run)
-      [[ $cur != -* ]] && candidates="$(_talos_custom_commands)"
+      opts="--name --cwd"
+      [[ $flag == --name ]] && candidates="$(_talos_custom_commands)"
+      [[ $flag == --cwd ]] && dirs=1
       ;;
     issue:create)
       opts="--title --priority --description --labels --module --interactive"
