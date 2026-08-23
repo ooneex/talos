@@ -21,6 +21,12 @@ pub struct ParsedIssue {
     pub title: Option<String>,
     pub state: Option<String>,
     pub priority: Option<String>,
+    /// Where the issue belongs in the tracker: the team that owns it, and
+    /// optionally a project and a milestone inside that project. Linear only —
+    /// GitHub has no equivalent and ignores them.
+    pub team: Option<String>,
+    pub project: Option<String>,
+    pub milestone: Option<String>,
     pub context: Option<String>,
     pub goal: Option<String>,
     pub dod: Option<String>,
@@ -118,20 +124,59 @@ pub fn priority_value(priority: Option<&str>) -> Option<i64> {
     }
 }
 
-fn resolve_state(client: &LinearClient, state_name: &str) -> Option<String> {
-    let query = r#"query { workflowStates { nodes { id name } } }"#;
-    let data = client.request(query, json!({}))?;
-    data.get("workflowStates")?
-        .get("nodes")?
-        .as_array()?
+/// The workflow state named `state_name`, looked up inside the owning team.
+///
+/// States are per-team in Linear, and several teams have a "Todo": taking the
+/// first match across the whole workspace picks a state the issue's team does
+/// not own, which the API then rejects. The workspace-wide query stays as the
+/// fallback for when the team is not known yet.
+fn resolve_state(client: &LinearClient, team_id: Option<&str>, state_name: &str) -> Option<String> {
+    let (query, variables) = match team_id {
+        Some(team_id) => (
+            r#"query($teamId: String!) { team(id: $teamId) { states { nodes { id name } } } }"#,
+            json!({ "teamId": team_id }),
+        ),
+        None => (
+            r#"query { workflowStates { nodes { id name } } }"#,
+            json!({}),
+        ),
+    };
+    let data = client.request(query, variables)?;
+    let nodes = match team_id {
+        Some(_) => data.get("team")?.get("states")?,
+        None => data.get("workflowStates")?,
+    };
+    named_id(nodes.get("nodes")?.as_array()?, &["name"], state_name)
+}
+
+/// The id of the node whose `fields` carry `wanted`, compared case-insensitively.
+fn named_id(nodes: &[Value], fields: &[&str], wanted: &str) -> Option<String> {
+    nodes
         .iter()
-        .find(|state| {
-            state
-                .get("name")
-                .and_then(Value::as_str)
-                .is_some_and(|name| name.eq_ignore_ascii_case(state_name))
+        .find(|node| {
+            fields.iter().any(|field| {
+                node.get(field)
+                    .and_then(Value::as_str)
+                    .is_some_and(|value| value.eq_ignore_ascii_case(wanted))
+            })
         })
-        .and_then(|state| state.get("id").and_then(Value::as_str).map(str::to_string))
+        .and_then(|node| node.get("id").and_then(Value::as_str).map(str::to_string))
+}
+
+/// The names a lookup could have matched, for the error message that follows a
+/// miss — a typo in a team key is otherwise indistinguishable from an empty
+/// workspace.
+fn names(nodes: &[Value], field: &str) -> String {
+    let mut names: Vec<&str> = nodes
+        .iter()
+        .filter_map(|node| node.get(field).and_then(Value::as_str))
+        .collect();
+    names.sort_unstable();
+    if names.is_empty() {
+        "none".to_string()
+    } else {
+        names.join(", ")
+    }
 }
 
 fn resolve_label_ids(client: &LinearClient, label_names: &[String]) -> Vec<String> {
@@ -175,23 +220,125 @@ fn resolve_label_ids(client: &LinearClient, label_names: &[String]) -> Vec<Strin
     ids
 }
 
-fn find_team_general(client: &LinearClient) -> Option<String> {
+/// Team the issue belongs to, matched on its key (`ENG`) or its name.
+///
+/// `wanted` is the `team:` an issue file declares; without one the fallback is
+/// the "General" team, which is where every issue landed before issue files
+/// could name their own.
+fn find_team(client: &LinearClient, wanted: Option<&str>) -> Option<String> {
     let query = r#"query { teams { nodes { id name key } } }"#;
     let data = client.request(query, json!({}))?;
-    data.get("teams")?
+    let nodes = data.get("teams")?.get("nodes")?.as_array()?;
+    let wanted = wanted.unwrap_or("general");
+    match named_id(nodes, &["key", "name"], wanted) {
+        Some(id) => Some(id),
+        None => {
+            crate::utils::error(format!(
+                "No \"{wanted}\" team in Linear (teams: {})",
+                names(nodes, "key")
+            ));
+            None
+        }
+    }
+}
+
+/// Project named `wanted` inside `team_id`.
+///
+/// Scoped to the team because project names repeat across teams, and an issue
+/// filed against a project its team does not own is rejected by the API.
+fn find_project(client: &LinearClient, team_id: &str, wanted: &str) -> Option<String> {
+    let query =
+        r#"query($teamId: String!) { team(id: $teamId) { projects { nodes { id name } } } }"#;
+    let data = client.request(query, json!({ "teamId": team_id }))?;
+    let nodes = data
+        .get("team")?
+        .get("projects")?
         .get("nodes")?
-        .as_array()?
-        .iter()
-        .find(|team| {
-            team.get("name")
-                .and_then(Value::as_str)
-                .is_some_and(|v| v.eq_ignore_ascii_case("general"))
-                || team
-                    .get("key")
-                    .and_then(Value::as_str)
-                    .is_some_and(|v| v.eq_ignore_ascii_case("general"))
-        })
-        .and_then(|team| team.get("id").and_then(Value::as_str).map(str::to_string))
+        .as_array()?;
+    match named_id(nodes, &["name"], wanted) {
+        Some(id) => Some(id),
+        None => {
+            crate::utils::error(format!(
+                "No \"{wanted}\" project in that team (projects: {})",
+                names(nodes, "name")
+            ));
+            None
+        }
+    }
+}
+
+/// Milestone named `wanted` inside `project_id`.
+fn find_milestone(client: &LinearClient, project_id: &str, wanted: &str) -> Option<String> {
+    let query =
+        r#"query($id: String!) { project(id: $id) { projectMilestones { nodes { id name } } } }"#;
+    let data = client.request(query, json!({ "id": project_id }))?;
+    let nodes = data
+        .get("project")?
+        .get("projectMilestones")?
+        .get("nodes")?
+        .as_array()?;
+    match named_id(nodes, &["name"], wanted) {
+        Some(id) => Some(id),
+        None => {
+            crate::utils::error(format!(
+                "No \"{wanted}\" milestone in that project (milestones: {})",
+                names(nodes, "name")
+            ));
+            None
+        }
+    }
+}
+
+/// Where an issue goes in Linear, resolved from the `team`, `project` and
+/// `milestone` its file declares.
+struct Target {
+    team_id: String,
+    /// Whether the team came from the issue file rather than the fallback. An
+    /// update only re-points an issue the file actually asked to move, so a
+    /// re-push never drags an issue filed under `ENG` back into `General`.
+    declared: bool,
+    project_id: Option<String>,
+    milestone_id: Option<String>,
+}
+
+/// The declared value of a field, ignoring one left blank.
+fn declared(value: Option<&String>) -> Option<&str> {
+    value
+        .map(|value| value.trim())
+        .filter(|value| !value.is_empty())
+}
+
+/// Resolve the issue's destination, or `None` when a name it declares does not
+/// exist — better a named failure than an issue silently filed in the wrong
+/// place, which is only noticed once someone goes looking for it.
+fn resolve_target(client: &LinearClient, parsed: &ParsedIssue) -> Option<Target> {
+    let team = declared(parsed.team.as_ref());
+    let team_id = find_team(client, team)?;
+
+    let project_id = match declared(parsed.project.as_ref()) {
+        Some(project) => Some(find_project(client, &team_id, project)?),
+        None => None,
+    };
+
+    let milestone_id = match declared(parsed.milestone.as_ref()) {
+        Some(milestone) => {
+            let Some(project_id) = project_id.as_deref() else {
+                crate::utils::error(
+                    "`milestone` needs a `project`: Linear milestones belong to a project",
+                );
+                return None;
+            };
+            Some(find_milestone(client, project_id, milestone)?)
+        }
+        None => None,
+    };
+
+    Some(Target {
+        team_id,
+        declared: team.is_some(),
+        project_id,
+        milestone_id,
+    })
 }
 
 fn get_issue(client: &LinearClient, id: &str) -> Option<Value> {
@@ -254,10 +401,14 @@ pub fn push_issue(
         .or(Some(id))
         .and_then(|value| get_issue(client, value));
     let description = build_description(&parsed, module);
+    let Some(target) = resolve_target(client, &parsed) else {
+        crate::utils::error(format!("Cannot place issue {id} in Linear"));
+        return false;
+    };
     let state_id = parsed
         .state
         .as_deref()
-        .and_then(|state| resolve_state(client, state));
+        .and_then(|state| resolve_state(client, Some(&target.team_id), state));
     let label_ids = resolve_label_ids(client, &parsed.labels);
     let priority = priority_value(parsed.priority.as_deref());
 
@@ -276,6 +427,17 @@ pub fn push_issue(
         }
         if let Some(state_id) = state_id.as_deref() {
             input["stateId"] = json!(state_id);
+        }
+        // Only a file that names its own team asks to be moved; without one the
+        // issue keeps the placement it already has in Linear.
+        if target.declared {
+            input["teamId"] = json!(target.team_id);
+        }
+        if let Some(project_id) = target.project_id.as_deref() {
+            input["projectId"] = json!(project_id);
+        }
+        if let Some(milestone_id) = target.milestone_id.as_deref() {
+            input["projectMilestoneId"] = json!(milestone_id);
         }
         if client
             .request(query, json!({"id": issue_id, "input": input}))
@@ -298,13 +460,9 @@ pub fn push_issue(
         crate::utils::error(format!("Issue {id} has no title; cannot create in Linear"));
         return false;
     };
-    let Some(team_id) = find_team_general(client) else {
-        crate::utils::error("No \"General\" team found in Linear");
-        return false;
-    };
     let query = r#"mutation($input: IssueCreateInput!) { issueCreate(input: $input) { issue { id identifier } } }"#;
     let mut input = json!({
-        "teamId": team_id,
+        "teamId": target.team_id,
         "title": title,
         "description": description,
         "labelIds": label_ids,
@@ -314,6 +472,12 @@ pub fn push_issue(
     }
     if let Some(state_id) = state_id.as_deref() {
         input["stateId"] = json!(state_id);
+    }
+    if let Some(project_id) = target.project_id.as_deref() {
+        input["projectId"] = json!(project_id);
+    }
+    if let Some(milestone_id) = target.milestone_id.as_deref() {
+        input["projectMilestoneId"] = json!(milestone_id);
     }
     let Some(data) = client.request(query, json!({"input": input})) else {
         crate::utils::error(format!("Failed to create issue {id} in Linear"));
@@ -351,6 +515,19 @@ fn push_issue_github(module: &str, issues_dir: &Path, file_path: &Path, id: &str
     let module = parsed.module.as_deref().unwrap_or(module);
     let description = build_description(&parsed, module);
     let labels = parsed.labels.clone();
+    // GitHub issues have no team, project or milestone of the shape Linear
+    // gives them, so say the placement is dropped rather than drop it quietly.
+    for (field, value) in [
+        ("team", &parsed.team),
+        ("project", &parsed.project),
+        ("milestone", &parsed.milestone),
+    ] {
+        if declared(value.as_ref()).is_some() {
+            crate::utils::warn(format!(
+                "Issue {id}: `{field}` is Linear-only and was ignored"
+            ));
+        }
+    }
 
     let existing_number = parsed
         .id

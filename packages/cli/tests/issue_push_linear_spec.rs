@@ -51,6 +51,11 @@ fn operation(request: &Request) -> &'static str {
         "workflowStates",
         "issueLabels",
         "teams",
+        // Team-scoped lookups all start `team(id:` / `project(id:`, so they are
+        // told apart by the connection they ask for rather than the root field.
+        "states",
+        "projects",
+        "projectMilestones",
         "issue(",
     ] {
         if query.contains(name) {
@@ -82,7 +87,24 @@ fn linear(existing: Value) -> Server {
                 "data": { "issueLabelCreate": { "issueLabel": { "id": "label-new" } } }
             }),
             "teams" => json!({
-                "data": { "teams": { "nodes": [{ "id": "team-1", "name": "General", "key": "GEN" }] } }
+                "data": { "teams": { "nodes": [
+                    { "id": "team-1", "name": "General", "key": "GEN" },
+                    { "id": "team-eng", "name": "Engineering", "key": "ENG" },
+                ] } }
+            }),
+            "states" => json!({
+                "data": { "team": { "states": { "nodes": [
+                    { "id": "state-todo", "name": "Todo" },
+                    { "id": "state-done", "name": "Done" },
+                ] } } }
+            }),
+            "projects" => json!({
+                "data": { "team": { "projects": { "nodes": [{ "id": "project-v3", "name": "v3" }] } } }
+            }),
+            "projectMilestones" => json!({
+                "data": { "project": { "projectMilestones": { "nodes": [
+                    { "id": "milestone-home", "name": "Homepage" },
+                ] } } }
             }),
             "issueCreate" => json!({
                 "data": { "issueCreate": { "issue": { "id": "uuid-1", "identifier": "GEN-7" } } }
@@ -288,6 +310,173 @@ fn push_issue_fails_when_the_create_is_rejected() {
         &path,
         "TMP-1"
     ));
+}
+
+// ---------------------------------------------------------------------------
+// Where the issue lands: team, project, milestone
+// ---------------------------------------------------------------------------
+
+#[test]
+fn push_issue_creates_under_the_team_project_and_milestone_the_file_declares() {
+    let dir = scratch();
+    let (issues, path) = issue_file(
+        dir.path(),
+        "TMP-1",
+        "title: \"Add pagination\"\nteam: \"ENG\"\nproject: \"v3\"\nmilestone: \"Homepage\"\n",
+    );
+    let server = linear(Value::Null);
+
+    assert!(push_issue(
+        &client(&server),
+        "user",
+        &issues,
+        &path,
+        "TMP-1"
+    ));
+
+    let input = &variables_of(&server, "issueCreate")["input"];
+    assert_eq!(input["teamId"], "team-eng");
+    assert_eq!(input["projectId"], "project-v3");
+    assert_eq!(input["projectMilestoneId"], "milestone-home");
+}
+
+#[test]
+fn push_issue_matches_a_team_by_name_as_well_as_by_key() {
+    let dir = scratch();
+    let (issues, path) = issue_file(
+        dir.path(),
+        "TMP-1",
+        "title: \"Add\"\nteam: \"engineering\"\n",
+    );
+    let server = linear(Value::Null);
+
+    push_issue(&client(&server), "user", &issues, &path, "TMP-1");
+
+    assert_eq!(
+        variables_of(&server, "issueCreate")["input"]["teamId"],
+        "team-eng"
+    );
+}
+
+#[test]
+fn push_issue_still_falls_back_to_general_when_the_file_names_no_team() {
+    let dir = scratch();
+    let (issues, path) = issue_file(dir.path(), "TMP-1", "title: \"Add\"\n");
+    let server = linear(Value::Null);
+
+    push_issue(&client(&server), "user", &issues, &path, "TMP-1");
+
+    let input = &variables_of(&server, "issueCreate")["input"];
+    assert_eq!(input["teamId"], "team-1");
+    assert!(input.get("projectId").is_none());
+}
+
+#[test]
+fn push_issue_scopes_the_state_lookup_to_the_team_that_owns_the_issue() {
+    let dir = scratch();
+    let (issues, path) = issue_file(
+        dir.path(),
+        "TMP-1",
+        "title: \"Add\"\nstate: \"Todo\"\nteam: \"ENG\"\n",
+    );
+    let server = linear(Value::Null);
+
+    push_issue(&client(&server), "user", &issues, &path, "TMP-1");
+
+    assert_eq!(variables_of(&server, "states")["teamId"], "team-eng");
+}
+
+#[test]
+fn push_issue_refuses_a_team_linear_does_not_have() {
+    let dir = scratch();
+    let (issues, path) = issue_file(dir.path(), "TMP-1", "title: \"Add\"\nteam: \"NOPE\"\n");
+    let server = linear(Value::Null);
+
+    assert!(!push_issue(
+        &client(&server),
+        "user",
+        &issues,
+        &path,
+        "TMP-1"
+    ));
+    assert!(
+        server
+            .requests()
+            .iter()
+            .all(|request| operation(request) != "issueCreate"),
+        "a misspelled team must not silently land the issue somewhere else"
+    );
+}
+
+#[test]
+fn push_issue_refuses_a_project_the_team_does_not_own() {
+    let dir = scratch();
+    let (issues, path) = issue_file(
+        dir.path(),
+        "TMP-1",
+        "title: \"Add\"\nteam: \"ENG\"\nproject: \"v9\"\n",
+    );
+    let server = linear(Value::Null);
+
+    assert!(!push_issue(
+        &client(&server),
+        "user",
+        &issues,
+        &path,
+        "TMP-1"
+    ));
+}
+
+#[test]
+fn push_issue_refuses_a_milestone_without_a_project() {
+    let dir = scratch();
+    let (issues, path) = issue_file(
+        dir.path(),
+        "TMP-1",
+        "title: \"Add\"\nteam: \"ENG\"\nmilestone: \"Homepage\"\n",
+    );
+    let server = linear(Value::Null);
+
+    assert!(!push_issue(
+        &client(&server),
+        "user",
+        &issues,
+        &path,
+        "TMP-1"
+    ));
+}
+
+#[test]
+fn push_issue_repoints_an_existing_issue_the_file_asks_to_move() {
+    let dir = scratch();
+    let (issues, path) = issue_file(
+        dir.path(),
+        "GEN-7",
+        "id: \"GEN-7\"\ntitle: \"Add\"\nteam: \"ENG\"\nproject: \"v3\"\nmilestone: \"Homepage\"\n",
+    );
+    let server = linear(json!({ "id": "uuid-1", "identifier": "GEN-7" }));
+
+    push_issue(&client(&server), "user", &issues, &path, "GEN-7");
+
+    let input = &variables_of(&server, "issueUpdate")["input"];
+    assert_eq!(input["teamId"], "team-eng");
+    assert_eq!(input["projectId"], "project-v3");
+    assert_eq!(input["projectMilestoneId"], "milestone-home");
+}
+
+#[test]
+fn push_issue_leaves_an_existing_issue_where_it_is_when_the_file_names_no_team() {
+    let dir = scratch();
+    let (issues, path) = issue_file(dir.path(), "GEN-7", "id: \"GEN-7\"\ntitle: \"Add\"\n");
+    let server = linear(json!({ "id": "uuid-1", "identifier": "GEN-7" }));
+
+    push_issue(&client(&server), "user", &issues, &path, "GEN-7");
+
+    let input = &variables_of(&server, "issueUpdate")["input"];
+    assert!(
+        input.get("teamId").is_none(),
+        "an update must not drag the issue into the fallback team"
+    );
 }
 
 // ---------------------------------------------------------------------------
