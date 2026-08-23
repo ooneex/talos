@@ -34,3 +34,9 @@
 
 - Resolve exactOptionalPropertyTypes lint failure in putDir|Only includes the filter property in the recursive putDir options when — Franck ([e2e9748d](https///github.com/ooneex/talos/commit/e2e9748d))
 
+## [1.1.4](https///github.com/ooneex/talos/releases/tag/@talosjs/storage@1.1.4) - 2026-08-23
+
+### Fixed
+
+- Check Bunny object existence with a ranged request instead of a full download| — Franck ([b8f76105](https///github.com/ooneex/talos/commit/b8f76105))
+
