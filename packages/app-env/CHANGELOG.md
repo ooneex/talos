@@ -81,3 +81,9 @@
 - Add DATABASE_BUNNY_URL and DATABASE_BUNNY_TOKEN environment variables| — Franck ([0ef6e303](https///github.com/ooneex/talos/commit/0ef6e303))
 - Add STORAGE_BUNNY_END_POINT environment variable| — Franck ([fda5424d](https///github.com/ooneex/talos/commit/fda5424d))
 
+## [1.6.1](https///github.com/ooneex/talos/releases/tag/@talosjs/app-env@1.6.1) - 2026-08-23
+
+### Changed
+
+- Drop STREAM_BUNNY properties from AppEnv and IAppEnv| — Franck ([66cfb8d7](https///github.com/ooneex/talos/commit/66cfb8d7))
+
