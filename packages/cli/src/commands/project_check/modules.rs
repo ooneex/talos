@@ -188,3 +188,105 @@ pub fn relative(root: &Path, path: &Path) -> String {
         .to_string_lossy()
         .to_string()
 }
+
+// ---------------------------------------------------------------------------
+// Declared exclusions
+// ---------------------------------------------------------------------------
+
+/// Paths a module tells a check to leave alone, declared in its manifest:
+///
+/// ```yaml
+/// checks:
+///   duplication:
+///     exclude:
+///       - "src/shared/components/**"
+/// ```
+///
+/// Some code is duplicated, or long, or untested on purpose, and the module
+/// that owns the exception is the only place that knows why — a storybook
+/// vendors the design components it renders so its own shell keeps working
+/// while the design system is being edited. Without a way to say so in the
+/// manifest, a generated module breaks the framework's own rules from the
+/// moment it is installed, and the only way out is to stop running the check.
+///
+/// Patterns are globs relative to the module directory. `*` stays inside one
+/// path segment, `**` crosses them, and a pattern with no wildcard at all
+/// covers the directory it names.
+pub fn declared_exclusions(module: &WorkspaceModule, check: &str) -> Vec<String> {
+    let Ok(content) = fs::read_to_string(module.manifest_path()) else {
+        return Vec::new();
+    };
+    let Ok(manifest) = serde_yaml::from_str::<serde_yaml::Value>(&content) else {
+        return Vec::new();
+    };
+    manifest
+        .get("checks")
+        .and_then(|checks| checks.get(check))
+        .and_then(|check| check.get("exclude"))
+        .and_then(|exclude| exclude.as_sequence())
+        .map(|patterns| {
+            patterns
+                .iter()
+                .filter_map(|pattern| pattern.as_str())
+                .map(|pattern| pattern.trim().trim_start_matches("./").to_string())
+                .filter(|pattern| !pattern.is_empty())
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+/// Whether `path`, relative to the module directory, is covered by any of the
+/// declared patterns.
+pub fn excluded(patterns: &[String], path: &str) -> bool {
+    patterns
+        .iter()
+        .any(|pattern| matches_glob(pattern, path.trim_start_matches("./")))
+}
+
+/// Glob match over path segments: `**` crosses separators, `*` and `?` stay
+/// within one segment, and a wildcard-free pattern also covers everything
+/// under the directory it names, so `src/shared` needs no `/**` to work.
+pub fn matches_glob(pattern: &str, path: &str) -> bool {
+    if !pattern.contains(['*', '?']) {
+        let prefix = pattern.trim_end_matches('/');
+        return path == prefix || path.starts_with(&format!("{prefix}/"));
+    }
+    let pattern: Vec<&str> = pattern.split('/').collect();
+    let path: Vec<&str> = path.split('/').collect();
+    match_segments(&pattern, &path)
+}
+
+fn match_segments(pattern: &[&str], path: &[&str]) -> bool {
+    match pattern.split_first() {
+        None => path.is_empty(),
+        // `**` consumes any number of segments, including none, so the shortest
+        // match is tried first and the rest of the pattern decides.
+        Some((&"**", rest)) => (0..=path.len()).any(|taken| match_segments(rest, &path[taken..])),
+        Some((head, rest)) => match path.split_first() {
+            Some((segment, tail)) => match_segment(head, segment) && match_segments(rest, tail),
+            None => false,
+        },
+    }
+}
+
+/// One path segment against one pattern segment, `*` matching any run of
+/// characters and `?` exactly one.
+fn match_segment(pattern: &str, segment: &str) -> bool {
+    let pattern: Vec<char> = pattern.chars().collect();
+    let segment: Vec<char> = segment.chars().collect();
+    let mut table = vec![vec![false; segment.len() + 1]; pattern.len() + 1];
+    table[0][0] = true;
+    for (index, character) in pattern.iter().enumerate() {
+        table[index + 1][0] = table[index][0] && *character == '*';
+    }
+    for (row, character) in pattern.iter().enumerate() {
+        for column in 0..segment.len() {
+            table[row + 1][column + 1] = match character {
+                '*' => table[row][column + 1] || table[row + 1][column],
+                '?' => table[row][column],
+                _ => table[row][column] && *character == segment[column],
+            };
+        }
+    }
+    table[pattern.len()][segment.len()]
+}

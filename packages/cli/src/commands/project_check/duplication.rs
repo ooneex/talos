@@ -14,7 +14,8 @@ use std::hash::{Hash, Hasher};
 use std::path::Path;
 
 use super::modules::{
-    TS_EXTENSIONS, collect_files, discover_modules, filter_modules, relative, wanted_names,
+    TS_EXTENSIONS, collect_files, declared_exclusions, discover_modules, excluded, filter_modules,
+    relative, wanted_names,
 };
 use crate::commands::project_check::{
     CheckId, CheckOutcome, CheckStatus, ProjectCheckArgs, static_outcome,
@@ -129,13 +130,43 @@ fn significant_line(line: &str) -> Option<String> {
     Some(trimmed.split_whitespace().collect::<Vec<_>>().join(" "))
 }
 
+/// Whether a line opens a multi-line import or re-export — the symbol list
+/// that follows is not code. Two files pulling the same twenty names out of
+/// the same module are not a copy-paste, they are two users of one module, and
+/// the only way to stop repeating the list is to import less of it.
+fn opens_symbol_list(trimmed: &str) -> bool {
+    // The brace has to be the whole rest of the line: `export const X = ({` is
+    // a function opening its parameter list, and swallowing to the next `}`
+    // would take the body with it.
+    ["import ", "export "].iter().any(|keyword| {
+        trimmed
+            .strip_prefix(keyword)
+            .map(|rest| rest.strip_prefix("type ").unwrap_or(rest))
+            .is_some_and(|rest| rest.trim() == "{")
+    })
+}
+
 /// Every line of a file worth comparing, in order.
 pub fn significant(content: &str) -> Vec<Unit> {
-    content
-        .lines()
-        .enumerate()
-        .filter_map(|(number, line)| significant_line(line).map(|text| (number + 1, text)))
-        .collect()
+    let mut units = Vec::new();
+    let mut in_symbol_list = false;
+
+    for (index, line) in content.lines().enumerate() {
+        let trimmed = code_only(line).trim();
+        if in_symbol_list {
+            in_symbol_list = !trimmed.starts_with('}');
+            continue;
+        }
+        if opens_symbol_list(trimmed) {
+            in_symbol_list = true;
+            continue;
+        }
+        if let Some(text) = significant_line(line) {
+            units.push((index + 1, text));
+        }
+    }
+
+    units
 }
 
 fn fingerprint(units: &[Unit], start: usize, length: usize) -> u64 {
@@ -336,10 +367,19 @@ pub fn run(args: &ProjectCheckArgs, root: &Path) -> CheckOutcome {
     let extensions: Vec<&str> = TS_EXTENSIONS.to_vec();
 
     let mut files = Vec::new();
+    let mut skipped = 0;
     for module in &modules {
+        // A module can name the paths it duplicates on purpose — see
+        // `declared_exclusions`. They are dropped before the index is built, so
+        // an excluded copy cannot pull an ordinary file into a finding either.
+        let exclusions = declared_exclusions(module, CheckId::Duplication.key());
         for path in collect_files(&module.dir.join("src"), &extensions, 10) {
             let label = relative(root, &path);
             if generated(&label) {
+                continue;
+            }
+            if !exclusions.is_empty() && excluded(&exclusions, &relative(&module.dir, &path)) {
+                skipped += 1;
                 continue;
             }
             let Ok(content) = fs::read_to_string(&path) else {
@@ -375,11 +415,16 @@ pub fn run(args: &ProjectCheckArgs, root: &Path) -> CheckOutcome {
         })
         .collect();
 
-    let scope = format!(
+    let mut scope = format!(
         "{} file{}",
         files.len(),
         if files.len() == 1 { "" } else { "s" }
     );
+    // An exclusion that goes unsaid reads as a clean run, so say how much of
+    // the tree the report is not speaking for.
+    if skipped > 0 {
+        scope.push_str(&format!(" · {skipped} excluded"));
+    }
 
     static_outcome(
         CheckId::Duplication,

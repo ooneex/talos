@@ -10,6 +10,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use cli::commands::project_check::modules::matches_glob;
 use cli::commands::project_check::{CheckStatus, ProjectCheckArgs, duplication};
 
 fn root() -> (tempfile::TempDir, PathBuf) {
@@ -465,4 +466,156 @@ fn a_workspace_with_no_sources_is_skipped() {
 
     assert_eq!(outcome.status, CheckStatus::Skipped);
     assert!(outcome.summary.contains("no source file to compare"));
+}
+
+#[test]
+fn the_symbol_list_of_a_multi_line_import_is_not_code() {
+    let (_guard, root) = root();
+    let order = workspace(&root, "order", "module");
+    let cart = workspace(&root, "cart", "module");
+    // The same twenty names pulled out of the same module: two users of one
+    // module, not a copy-paste, and nothing to extract.
+    let symbols = (0..20)
+        .map(|number| format!("  Editor{number},"))
+        .collect::<Vec<_>>()
+        .join("\n");
+    for (module, name) in [(&order, "order"), (&cart, "cart")] {
+        write(
+            &module.join(format!("src/{name}.tsx")),
+            &format!(
+                "import {{\n{symbols}\n}} from \"@module/design\";\n\nexport const {name} = 1;\n"
+            ),
+        );
+    }
+
+    assert_eq!(
+        duplication::run(&ProjectCheckArgs::default(), &root).status,
+        CheckStatus::Passed,
+        "an import list is not a block worth extracting"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Exclusions declared by the module that owns them
+// ---------------------------------------------------------------------------
+
+/// A manifest for a module that has already been written by `workspace`,
+/// replacing it so the module can declare the paths it duplicates on purpose.
+fn manifest(dir: &Path, name: &str, kind: &str, checks: &str) {
+    write(
+        &dir.join(format!("{name}.yml")),
+        &format!("type: \"{kind}\"\n{checks}"),
+    );
+}
+
+/// The shape a generated storybook is in: it vendors the design components it
+/// renders, so its own shell keeps working while the design system is edited.
+fn vendored(root: &Path) -> (PathBuf, PathBuf) {
+    let design = workspace(root, "design", "design");
+    let storybook = workspace(root, "storybook", "storybook");
+    write(&design.join("src/components/button/Button.tsx"), &body(20));
+    write(
+        &storybook.join("src/shared/components/button/Button.tsx"),
+        &body(20),
+    );
+    (design, storybook)
+}
+
+#[test]
+fn a_generated_storybook_reports_its_vendored_copies_without_an_exclusion() {
+    let (_guard, root) = root();
+    vendored(&root);
+
+    let outcome = duplication::run(&ProjectCheckArgs::default(), &root);
+
+    assert_eq!(outcome.status, CheckStatus::Warned);
+}
+
+#[test]
+fn a_module_can_declare_the_paths_it_duplicates_on_purpose() {
+    let (_guard, root) = root();
+    let (_design, storybook) = vendored(&root);
+    manifest(
+        &storybook,
+        "storybook",
+        "storybook",
+        "checks:\n  duplication:\n    exclude:\n      - \"src/shared/components/**\"\n",
+    );
+
+    let outcome = duplication::run(&ProjectCheckArgs::default(), &root);
+
+    assert_eq!(outcome.status, CheckStatus::Passed);
+}
+
+#[test]
+fn the_report_says_how_many_files_the_exclusion_took_out() {
+    let (_guard, root) = root();
+    let (_design, storybook) = vendored(&root);
+    manifest(
+        &storybook,
+        "storybook",
+        "storybook",
+        "checks:\n  duplication:\n    exclude:\n      - \"src/shared/components/**\"\n",
+    );
+
+    let outcome = duplication::run(&ProjectCheckArgs::default(), &root);
+
+    assert!(
+        outcome.summary.contains("1 excluded"),
+        "an exclusion that goes unsaid reads as a clean run: {}",
+        outcome.summary
+    );
+}
+
+#[test]
+fn an_exclusion_covers_only_the_module_that_declares_it() {
+    let (_guard, root) = root();
+    let (design, _storybook) = vendored(&root);
+    // The same pattern, on the wrong side of the pair: the design module holds
+    // no `src/shared`, so nothing is dropped and the clone is still reported.
+    manifest(
+        &design,
+        "design",
+        "design",
+        "checks:\n  duplication:\n    exclude:\n      - \"src/shared/components/**\"\n",
+    );
+
+    assert_eq!(
+        duplication::run(&ProjectCheckArgs::default(), &root).status,
+        CheckStatus::Warned
+    );
+}
+
+#[test]
+fn an_exclusion_declared_for_another_check_does_not_apply() {
+    let (_guard, root) = root();
+    let (_design, storybook) = vendored(&root);
+    manifest(
+        &storybook,
+        "storybook",
+        "storybook",
+        "checks:\n  complexity:\n    exclude:\n      - \"src/shared/components/**\"\n",
+    );
+
+    assert_eq!(
+        duplication::run(&ProjectCheckArgs::default(), &root).status,
+        CheckStatus::Warned
+    );
+}
+
+#[test]
+fn glob_patterns_match_by_segment() {
+    // `**` crosses separators, `*` does not.
+    assert!(matches_glob("src/shared/**", "src/shared/a/b/Button.tsx"));
+    assert!(matches_glob(
+        "src/**/*.stories.tsx",
+        "src/features/a/A.stories.tsx"
+    ));
+    assert!(!matches_glob("src/*/Button.tsx", "src/a/b/Button.tsx"));
+    assert!(matches_glob("src/*/Button.tsx", "src/a/Button.tsx"));
+    // A wildcard-free pattern covers the directory it names, and nothing that
+    // merely starts with the same characters.
+    assert!(matches_glob("src/shared", "src/shared/Button.tsx"));
+    assert!(!matches_glob("src/shared", "src/shared-ui/Button.tsx"));
+    assert!(!matches_glob("src/shared", "src/sharedButton.tsx"));
 }
