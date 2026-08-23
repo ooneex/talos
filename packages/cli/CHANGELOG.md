@@ -653,3 +653,9 @@
 - Rename command:run --id flag to --name| — Franck ([85346026](https///github.com/ooneex/talos/commit/85346026))
 - Update Cargo.lock| — Franck ([7e36c17f](https///github.com/ooneex/talos/commit/7e36c17f))
 
+## [0.13.1](https///github.com/ooneex/talos/releases/tag/@talos/cli@0.13.1) - 2026-08-23
+
+### Changed
+
+- Update Cargo.lock| — Franck ([761b2cfd](https///github.com/ooneex/talos/commit/761b2cfd))
+
