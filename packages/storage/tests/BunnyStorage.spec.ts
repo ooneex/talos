@@ -177,6 +177,47 @@ describe("BunnyStorage", () => {
       await storage.exists("file.txt");
 
       expect(fetchMock).toHaveBeenCalledTimes(1);
+
+      const [url] = fetchMock.mock.calls[0] as [URL];
+
+      expect(url.pathname).toContain("my-bucket/file.txt");
+    });
+
+    test("should return true when the object answers a partial read", async () => {
+      fetchMock.mockResolvedValueOnce(new Response("a", { status: 206 }));
+
+      const storage = new BunnyStorage(new AppEnv());
+
+      expect(await storage.exists("video.mp4")).toBe(true);
+    });
+
+    test("should return false when the request fails outright", async () => {
+      fetchMock.mockRejectedValueOnce(new Error("network down"));
+
+      const storage = new BunnyStorage(new AppEnv());
+
+      expect(await storage.exists("file.txt")).toBe(false);
+    });
+
+    // A `DESCRIBE` never reaches the wire under Bun, so the old check came back with the whole
+    // object and buffered it to parse. Asking for one byte is what keeps a check on a video from
+    // costing the video.
+    test("should ask for a single byte rather than the object", async () => {
+      const response = new Response("a", { status: 206 });
+      const refuse = () => Promise.reject(new Error("exists() must not buffer the object"));
+
+      Object.assign(response, { json: refuse, text: refuse, arrayBuffer: refuse, blob: refuse, bytes: refuse });
+
+      fetchMock.mockResolvedValueOnce(response);
+
+      const storage = new BunnyStorage(new AppEnv());
+
+      expect(await storage.exists("video.mp4")).toBe(true);
+
+      const [, init] = fetchMock.mock.calls[0] as [URL, RequestInit];
+
+      expect((init.headers as Record<string, string>).Range).toBe("bytes=0-0");
+      expect(init.method).toBeUndefined();
     });
   });
 

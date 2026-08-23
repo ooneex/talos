@@ -86,11 +86,27 @@ export class BunnyStorage implements IStorage {
     return this;
   }
 
+  /**
+   * Whether an object is filed under the key. This asks for a single byte rather than going
+   * through the SDK's `file.get`, which describes an object with a `DESCRIBE` request: Bun's
+   * fetch does not carry that verb to the wire, so the call comes back as an ordinary `GET` and
+   * the SDK buffers the whole object trying to parse it as metadata. An existence check on a
+   * video then downloads the video — gigabytes of resident memory for a yes-or-no answer, and a
+   * failure once the parse chokes on the bytes, which reads back as "no such object". The range
+   * header keeps the answer to one byte whatever the object weighs.
+   */
   public async exists(key: string): Promise<boolean> {
-    try {
-      await BunnyStorageSDK.file.get(this.storageZone, this.buildFilePath(key));
+    const [header, accessKey] = BunnyStorageSDK.zone.key(this.storageZone);
+    const url = new URL(BunnyStorageSDK.zone.addr(this.storageZone));
 
-      return true;
+    url.pathname = `${url.pathname}${this.buildFilePath(key)}`;
+
+    try {
+      const response = await fetch(url, { headers: { [header]: accessKey, Range: "bytes=0-0" } });
+
+      await response.body?.cancel();
+
+      return response.ok;
     } catch {
       return false;
     }
