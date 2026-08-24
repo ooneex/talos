@@ -118,7 +118,7 @@ fn command_line_hot_reloads_the_entry_point_for_back_end_modules() {
     for module_type in [RunnableModuleType::Api, RunnableModuleType::Microservice] {
         assert_eq!(
             command_line(dir.path(), &module(dir.path(), module_type)),
-            "bun --hot run modules/sample/src/index.ts"
+            "sh -c 'bun run --hot modules/sample/src/index.ts'"
         );
     }
 }
@@ -130,7 +130,7 @@ fn command_line_keeps_the_absolute_path_when_the_module_is_outside_the_workspace
 
     assert_eq!(
         command_line(dir.path(), &outside),
-        "bun --hot run /elsewhere/modules/sample/src/index.ts"
+        "sh -c 'bun run --hot /elsewhere/modules/sample/src/index.ts'"
     );
 }
 
@@ -208,7 +208,7 @@ fn app_start_runs_selected_back_end_modules_and_starts_docker_when_needed() {
     assert!(log_text.contains("docker:compose up -d"));
     assert!(
         log_text.contains(
-            "bun:run --parallel --no-exit-on-error bun --hot run modules/api/src/index.ts"
+            "bun:run --parallel --no-exit-on-error sh -c 'bun run --hot modules/api/src/index.ts'"
         )
     );
 }

@@ -184,7 +184,7 @@ fn ensure_docker_dev_script(base: &Path) {
     }
     if let Some(map) = scripts.as_object_mut() {
         map.entry("dev".to_string()).or_insert_with(|| {
-            Value::String("docker compose up -d && bun --hot run ./src/index.ts".to_string())
+            Value::String("docker compose up -d && bun run --hot ./src/index.ts".to_string())
         });
     }
     if let Ok(json) = serde_json::to_string_pretty(&package_json) {

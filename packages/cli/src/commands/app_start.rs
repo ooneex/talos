@@ -52,7 +52,9 @@ fn module_path(cwd: &Path, module_dir: &Path) -> String {
 
 /// Builds the self-contained command line handed to `bun run --parallel`.
 /// Front-end modules run their own `dev` script from the module directory,
-/// back-end modules hot-reload their entry point from the workspace root.
+/// back-end modules hot-reload their entry point from the workspace root,
+/// wrapped in `sh -c` because a nested `bun` inside `bun run --parallel` is
+/// a Bun-shell builtin that misroutes to the bundler.
 pub fn command_line(cwd: &Path, module: &RunnableModule) -> String {
     match module.r#type {
         RunnableModuleType::Spa
@@ -65,7 +67,7 @@ pub fn command_line(cwd: &Path, module: &RunnableModule) -> String {
             let entry = Path::new(&module_path(cwd, &module.dir))
                 .join("src")
                 .join("index.ts");
-            format!("bun --hot run {}", entry.display())
+            format!("sh -c 'bun run --hot {}'", entry.display())
         }
     }
 }
