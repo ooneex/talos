@@ -3,14 +3,11 @@ use std::path::Path;
 use std::process::Command;
 
 use clap::Args;
-use portable_pty::CommandBuilder;
 use serde_json::Value;
 
 use crate::utils::{
-    ConcurrentCommand, ConcurrentlyOptions, KillCondition, PrefixColor, PrefixStyle,
-    RunnableModule, RunnableModuleType, StartupNotice, SuccessCondition, collect_runnable_modules,
-    current_dir, ensure_bin, find_app_module, run_concurrently, run_spinner_step,
-    select_runnable_modules,
+    RunnableModule, RunnableModuleType, collect_runnable_modules, current_dir, ensure_bin,
+    find_app_module, info, run_spinner_step, select_runnable_modules,
 };
 
 #[derive(Args, Debug)]
@@ -38,56 +35,34 @@ pub fn load_app_module_name(app_dir: &Path, fallback: &str) -> Option<String> {
     )
 }
 
-pub fn command_line(module_dir: &Path, module_type: RunnableModuleType) -> String {
-    match module_type {
-        RunnableModuleType::Spa
-        | RunnableModuleType::Storybook
-        | RunnableModuleType::Swagger
-        | RunnableModuleType::Admin => "bun run dev".to_string(),
-        RunnableModuleType::Api | RunnableModuleType::Microservice => {
-            let entry = module_dir.join("src").join("index.ts");
-            format!("bun --hot run {}", entry.display())
-        }
-    }
+/// Renders a module directory relative to the workspace so the labels
+/// `bun run --parallel` prints stay short.
+fn module_path(cwd: &Path, module_dir: &Path) -> String {
+    module_dir
+        .strip_prefix(cwd)
+        .unwrap_or(module_dir)
+        .display()
+        .to_string()
 }
 
-fn build_command(cwd: &Path, module_dir: &Path, module_type: RunnableModuleType) -> CommandBuilder {
-    let mut command = CommandBuilder::new("bun");
-    match module_type {
+/// Builds the self-contained command line handed to `bun run --parallel`.
+/// Front-end modules run their own `dev` script from the module directory,
+/// back-end modules hot-reload their entry point from the workspace root.
+pub fn command_line(cwd: &Path, module: &RunnableModule) -> String {
+    match module.r#type {
         RunnableModuleType::Spa
         | RunnableModuleType::Storybook
         | RunnableModuleType::Swagger
         | RunnableModuleType::Admin => {
-            command.arg("run");
-            command.arg("dev");
-            command.cwd(module_dir);
+            format!("bun run --cwd {} dev", module_path(cwd, &module.dir))
         }
         RunnableModuleType::Api | RunnableModuleType::Microservice => {
-            command.arg("--hot");
-            command.arg("run");
-            command.arg(module_dir.join("src").join("index.ts"));
-            command.cwd(cwd);
+            let entry = Path::new(&module_path(cwd, &module.dir))
+                .join("src")
+                .join("index.ts");
+            format!("bun --hot run {}", entry.display())
         }
     }
-    for (key, value) in std::env::vars() {
-        command.env(key, value);
-    }
-    if std::env::var_os("TERM").is_none() {
-        command.env("TERM", "xterm-256color");
-    }
-    command
-}
-
-fn build_concurrent_command(cwd: &Path, module: &RunnableModule) -> ConcurrentCommand {
-    let cwd = cwd.to_path_buf();
-    let module_dir = module.dir.clone();
-    let module_type = module.r#type;
-    ConcurrentCommand::new(
-        module.name.clone(),
-        command_line(&module.dir, module.r#type),
-        move || build_command(&cwd, &module_dir, module_type),
-    )
-    .with_color(PrefixColor::Auto)
 }
 
 pub fn run(args: &AppStartArgs) {
@@ -134,34 +109,39 @@ pub fn run(args: &AppStartArgs) {
         }
     }
 
+    if !ensure_bin("bun") {
+        return;
+    }
+
     let module_names = selected
         .iter()
         .map(|module| module.name.clone())
         .collect::<Vec<_>>()
         .join(", ");
+    info(format!("Starting {module_names}"));
 
-    let commands = selected
-        .iter()
-        .map(|module| build_concurrent_command(&cwd, module))
-        .collect::<Vec<_>>();
+    let mut command = Command::new("bun");
+    command
+        .arg("run")
+        .arg("--parallel")
+        .arg("--no-exit-on-error")
+        .current_dir(&cwd);
+    for module in &selected {
+        command.arg(command_line(&cwd, module));
+    }
+    if std::env::var_os("TERM").is_none() {
+        command.env("TERM", "xterm-256color");
+    }
 
-    let options = ConcurrentlyOptions {
-        prefix: if commands.len() > 1 {
-            PrefixStyle::Name
-        } else {
-            PrefixStyle::None
-        },
-        kill_others_on: vec![KillCondition::Failure],
-        success_condition: SuccessCondition::All,
-        startup: Some(StartupNotice {
-            starting_label: format!("Starting {module_names}"),
-            started_message: format!("{module_names} started"),
-        }),
-        ..ConcurrentlyOptions::default()
+    let status = match command.status() {
+        Ok(status) => status,
+        Err(err) => {
+            crate::utils::error(format!("Failed to start {module_names}: {err}"));
+            std::process::exit(1);
+        }
     };
 
-    let outcome = run_concurrently(commands, options);
-    if !outcome.success {
-        std::process::exit(outcome.exit_code);
+    if !status.success() {
+        std::process::exit(status.code().unwrap_or(1));
     }
 }

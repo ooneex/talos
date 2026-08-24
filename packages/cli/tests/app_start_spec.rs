@@ -48,7 +48,7 @@ mod support;
 use std::process::{Command, Output};
 
 use cli::commands::app_start::{command_line, load_app_module_name};
-use cli::utils::RunnableModuleType;
+use cli::utils::{RunnableModule, RunnableModuleType};
 use support::TempDir;
 
 #[test]
@@ -83,8 +83,16 @@ fn load_app_module_name_is_none_without_a_readable_manifest() {
     assert!(load_app_module_name(dir.path(), "fallback").is_none());
 }
 
+fn module(dir: &std::path::Path, module_type: RunnableModuleType) -> RunnableModule {
+    RunnableModule {
+        name: "sample".to_string(),
+        r#type: module_type,
+        dir: dir.join("modules").join("sample"),
+    }
+}
+
 #[test]
-fn command_line_runs_vite_for_front_end_modules() {
+fn command_line_runs_the_dev_script_from_the_module_directory_for_front_end_modules() {
     let dir = TempDir::new("app-start-command-front");
 
     for module_type in [
@@ -93,7 +101,10 @@ fn command_line_runs_vite_for_front_end_modules() {
         RunnableModuleType::Swagger,
         RunnableModuleType::Admin,
     ] {
-        assert_eq!(command_line(dir.path(), module_type), "bun run dev");
+        assert_eq!(
+            command_line(dir.path(), &module(dir.path(), module_type)),
+            "bun run --cwd modules/sample dev"
+        );
     }
 }
 
@@ -102,10 +113,22 @@ fn command_line_hot_reloads_the_entry_point_for_back_end_modules() {
     let dir = TempDir::new("app-start-command-back");
 
     for module_type in [RunnableModuleType::Api, RunnableModuleType::Microservice] {
-        let line = command_line(dir.path(), module_type);
-        assert!(line.starts_with("bun --hot run "));
-        assert!(line.ends_with("src/index.ts"));
+        assert_eq!(
+            command_line(dir.path(), &module(dir.path(), module_type)),
+            "bun --hot run modules/sample/src/index.ts"
+        );
     }
+}
+
+#[test]
+fn command_line_keeps_the_absolute_path_when_the_module_is_outside_the_workspace() {
+    let dir = TempDir::new("app-start-command-outside");
+    let outside = module(std::path::Path::new("/elsewhere"), RunnableModuleType::Api);
+
+    assert_eq!(
+        command_line(dir.path(), &outside),
+        "bun --hot run /elsewhere/modules/sample/src/index.ts"
+    );
 }
 
 #[cfg(unix)]
@@ -177,10 +200,14 @@ fn app_start_runs_selected_back_end_modules_and_starts_docker_when_needed() {
     let output_text = text(&output);
     assert!(output.status.success(), "{output_text}");
     assert!(output_text.contains("Starting Docker services for @acme/app"));
-    assert!(output_text.contains("api started"));
+    assert!(output_text.contains("Starting api"));
     let log_text = std::fs::read_to_string(log).expect("log");
     assert!(log_text.contains("docker:compose up -d"));
-    assert!(log_text.contains("bun:--hot run"));
+    assert!(
+        log_text.contains(
+            "bun:run --parallel --no-exit-on-error bun --hot run modules/api/src/index.ts"
+        )
+    );
 }
 
 #[test]
