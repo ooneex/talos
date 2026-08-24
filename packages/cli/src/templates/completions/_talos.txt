@@ -247,7 +247,13 @@ _talos() {
             '--cwd=[Working directory]:cwd:_files -/' \
             '--no-cache[Ignore the cached skeleton and re-download it]'
           ;;
-        app:start|app:stop)
+        app:start)
+          _arguments -s \
+            '--modules=-[Module name(s), comma-separated (default: all)]::modules:_talos_runnable_modules' \
+            '--packages=-[Alias for --modules, comma-separated (default: all)]::modules:_talos_runnable_modules' \
+            '--kill-ports[Free the ports of the selected modules before launching]'
+          ;;
+        app:stop)
           _arguments -s \
             '--modules=-[Module name(s), comma-separated (default: all)]::modules:_talos_runnable_modules' \
             '--packages=-[Alias for --modules, comma-separated (default: all)]::modules:_talos_runnable_modules'

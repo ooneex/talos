@@ -184,7 +184,12 @@ seed:create seed:run"
       [[ $flag == --agents ]] && candidates=".claude .codex .cursor .gemini .windsurf .cline .junie .roo .continue .zed"
       [[ $flag == --cwd ]] && dirs=1
       ;;
-    app:start | app:stop)
+    app:start)
+      opts="--modules --packages --kill-ports"
+      [[ $flag == --modules ]] && candidates="$(_talos_runnable_modules)"
+      [[ $flag == --packages ]] && candidates="$(_talos_runnable_modules)"
+      ;;
+    app:stop)
       opts="--modules --packages"
       [[ $flag == --modules ]] && candidates="$(_talos_runnable_modules)"
       [[ $flag == --packages ]] && candidates="$(_talos_runnable_modules)"

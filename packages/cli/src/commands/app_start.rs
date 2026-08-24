@@ -6,8 +6,9 @@ use clap::Args;
 use serde_json::Value;
 
 use crate::utils::{
-    RunnableModule, RunnableModuleType, collect_runnable_modules, current_dir, ensure_bin,
-    find_app_module, info, run_spinner_step, select_runnable_modules,
+    ModulePort, RunnableModule, RunnableModuleType, collect_module_ports, collect_runnable_modules,
+    current_dir, ensure_bin, find_app_module, free_port, info, run_spinner_step,
+    select_runnable_modules,
 };
 
 #[derive(Args, Debug)]
@@ -20,6 +21,10 @@ pub struct AppStartArgs {
 
     #[arg(long)]
     pub cwd: Option<String>,
+
+    /// Free the ports of the modules about to start before launching them.
+    #[arg(long)]
+    pub kill_ports: bool,
 }
 
 pub fn load_app_module_name(app_dir: &Path, fallback: &str) -> Option<String> {
@@ -65,6 +70,23 @@ pub fn command_line(cwd: &Path, module: &RunnableModule) -> String {
     }
 }
 
+/// Free every port the selected modules declare, so a leftover process from a
+/// previous run does not keep the one about to start from binding.
+fn free_module_ports(modules: &[RunnableModule]) {
+    for ModulePort { module, port } in collect_module_ports(modules) {
+        let pids = free_port(port);
+        if pids.is_empty() {
+            continue;
+        }
+        let pids = pids
+            .iter()
+            .map(u32::to_string)
+            .collect::<Vec<_>>()
+            .join(", ");
+        crate::utils::success(format!("Freed port {port} of {module} (pid {pids})"));
+    }
+}
+
 pub fn run(args: &AppStartArgs) {
     let cwd = args
         .cwd
@@ -85,6 +107,10 @@ pub fn run(args: &AppStartArgs) {
     if selected.is_empty() {
         crate::utils::error("No matching modules found");
         return;
+    }
+
+    if args.kill_ports {
+        free_module_ports(&selected);
     }
 
     let needs_docker = selected.iter().any(|module| {

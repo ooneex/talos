@@ -17,12 +17,14 @@ fn app_start_parses_all_flags() {
         "core",
         "--cwd",
         "./here",
+        "--kill-ports",
     ])
     .expect("valid arguments should parse");
 
     assert_eq!(cli.args.modules.as_deref(), Some("user"));
     assert_eq!(cli.args.packages.as_deref(), Some("core"));
     assert_eq!(cli.args.cwd.as_deref(), Some("./here"));
+    assert!(cli.args.kill_ports);
 }
 
 #[test]
@@ -32,6 +34,7 @@ fn app_start_defaults_are_empty() {
     assert!(cli.args.modules.is_none());
     assert!(cli.args.packages.is_none());
     assert!(cli.args.cwd.is_none());
+    assert!(!cli.args.kill_ports);
 }
 
 #[test]
