@@ -27,6 +27,9 @@ describe("decorator.storage", () => {
       public async exists(): Promise<boolean> {
         return false;
       }
+      public async size(): Promise<number | null> {
+        return null;
+      }
       public async delete(): Promise<void> {
         // noop
       }
@@ -74,6 +77,9 @@ describe("decorator.storage", () => {
       }
       public async exists(): Promise<boolean> {
         return false;
+      }
+      public async size(): Promise<number | null> {
+        return null;
       }
       public async delete(): Promise<void> {
         // noop
@@ -125,6 +131,9 @@ describe("decorator.storage", () => {
       }
       public async exists(): Promise<boolean> {
         return false;
+      }
+      public async size(): Promise<number | null> {
+        return null;
       }
       public async delete(): Promise<void> {
         // noop
@@ -185,6 +194,9 @@ describe("decorator.storage", () => {
       public async exists(): Promise<boolean> {
         return false;
       }
+      public async size(): Promise<number | null> {
+        return null;
+      }
       public async delete(): Promise<void> {
         // noop
       }
@@ -236,6 +248,9 @@ describe("decorator.storage", () => {
       }
       public async exists(): Promise<boolean> {
         return false;
+      }
+      public async size(): Promise<number | null> {
+        return null;
       }
       public async delete(): Promise<void> {
         // noop
@@ -290,6 +305,9 @@ describe("decorator.storage", () => {
       public async exists(): Promise<boolean> {
         return false;
       }
+      public async size(): Promise<number | null> {
+        return null;
+      }
       public async delete(): Promise<void> {
         // noop
       }
@@ -339,6 +357,9 @@ describe("decorator.storage", () => {
       }
       public async exists(): Promise<boolean> {
         return false;
+      }
+      public async size(): Promise<number | null> {
+        return null;
       }
       public async delete(): Promise<void> {
         // noop

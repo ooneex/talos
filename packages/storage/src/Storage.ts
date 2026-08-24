@@ -43,6 +43,20 @@ export abstract class Storage implements IStorage {
     return await client.exists(key);
   }
 
+  /**
+   * How many bytes are filed under the key, or `null` when nothing is. The size comes off the
+   * object's metadata rather than its body, so asking costs the same whatever the object weighs.
+   */
+  public async size(key: string): Promise<number | null> {
+    const client = this.getClient();
+
+    try {
+      return (await client.stat(key)).size;
+    } catch {
+      return null;
+    }
+  }
+
   public async delete(key: string): Promise<void> {
     const client = this.getClient();
 

@@ -141,6 +141,12 @@ export class FilesystemStorage extends Storage {
     return await file.exists();
   }
 
+  public override async size(key: string): Promise<number | null> {
+    const file = Bun.file(this.getFilePath(key));
+
+    return (await file.exists()) ? file.size : null;
+  }
+
   public override async delete(key: string): Promise<void> {
     const filePath = this.getFilePath(key);
     const file = Bun.file(filePath);

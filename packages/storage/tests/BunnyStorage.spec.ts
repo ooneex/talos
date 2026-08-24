@@ -146,6 +146,68 @@ describe("BunnyStorage", () => {
     });
   });
 
+  describe("size", () => {
+    test("should read the total off the content-range of a ranged answer", async () => {
+      fetchMock.mockResolvedValueOnce(
+        new Response("x", { status: 206, headers: { "content-range": "bytes 0-0/20824500" } }),
+      );
+
+      const storage = new BunnyStorage(new AppEnv());
+
+      expect(await storage.size("video.mp4")).toBe(20824500);
+    });
+
+    test("should ask for a single byte rather than the whole object", async () => {
+      fetchMock.mockResolvedValueOnce(
+        new Response("x", { status: 206, headers: { "content-range": "bytes 0-0/512" } }),
+      );
+
+      const storage = new BunnyStorage(new AppEnv());
+      await storage.size("video.mp4");
+
+      const [, init] = fetchMock.mock.calls[0] as [URL, RequestInit];
+
+      expect((init.headers as Record<string, string>).Range).toBe("bytes=0-0");
+    });
+
+    test("should fall back to the content-length when the range was answered in full", async () => {
+      fetchMock.mockResolvedValueOnce(
+        new Response("x".repeat(64), { status: 200, headers: { "content-length": "64" } }),
+      );
+
+      const storage = new BunnyStorage(new AppEnv());
+
+      expect(await storage.size("small.txt")).toBe(64);
+    });
+
+    test("should return null when nothing is filed under the key", async () => {
+      fetchMock.mockResolvedValueOnce(new Response("Not Found", { status: 404 }));
+
+      const storage = new BunnyStorage(new AppEnv());
+
+      expect(await storage.size("missing.txt")).toBeNull();
+    });
+
+    test("should return null when the request fails", async () => {
+      fetchMock.mockRejectedValueOnce(new Error("network down"));
+
+      const storage = new BunnyStorage(new AppEnv());
+
+      expect(await storage.size("unreachable.txt")).toBeNull();
+    });
+
+    test("should return null when the answer reports no size at all", async () => {
+      const response = new Response(null, { status: 206 });
+
+      response.headers.delete("content-length");
+      fetchMock.mockResolvedValueOnce(response);
+
+      const storage = new BunnyStorage(new AppEnv());
+
+      expect(await storage.size("headerless.txt")).toBeNull();
+    });
+  });
+
   describe("exists", () => {
     test("should return true when file exists", async () => {
       fetchMock.mockResolvedValueOnce(

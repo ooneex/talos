@@ -19,6 +19,7 @@ export interface IStorage {
   list(): Promise<string[]>;
   clearBucket(): Promise<this>;
   exists(key: string): Promise<boolean>;
+  size(key: string): Promise<number | null>;
   delete(key: string): Promise<void>;
   putFile(key: string, localPath: string): Promise<number>;
   putDir(bucket: string, options: PutDirOptionsType): Promise<number>;

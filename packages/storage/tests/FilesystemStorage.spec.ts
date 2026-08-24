@@ -207,6 +207,23 @@ describe("FilesystemStorage", () => {
     });
   });
 
+  describe("size", () => {
+    test("should return the byte length of a stored file", async () => {
+      const storage = new FilesystemStorage(new AppEnv());
+      storage.setBucket("size-bucket");
+      await storage.put("sized.txt", "content");
+
+      expect(await storage.size("sized.txt")).toBe(7);
+    });
+
+    test("should return null when the file does not exist", async () => {
+      const storage = new FilesystemStorage(new AppEnv());
+      storage.setBucket("size-bucket");
+
+      expect(await storage.size("non-existent.txt")).toBeNull();
+    });
+  });
+
   describe("exists", () => {
     test("should return true when file exists", async () => {
       const storage = new FilesystemStorage(new AppEnv());

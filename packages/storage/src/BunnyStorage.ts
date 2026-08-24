@@ -86,16 +86,30 @@ export class BunnyStorage implements IStorage {
     return this;
   }
 
-  /**
-   * Whether an object is filed under the key. This asks for a single byte rather than going
-   * through the SDK's `file.get`, which describes an object with a `DESCRIBE` request: Bun's
-   * fetch does not carry that verb to the wire, so the call comes back as an ordinary `GET` and
-   * the SDK buffers the whole object trying to parse it as metadata. An existence check on a
-   * video then downloads the video — gigabytes of resident memory for a yes-or-no answer, and a
-   * failure once the parse chokes on the bytes, which reads back as "no such object". The range
-   * header keeps the answer to one byte whatever the object weighs.
-   */
+  /** Whether an object is filed under the key. */
   public async exists(key: string): Promise<boolean> {
+    return (await this.probe(key)) !== null;
+  }
+
+  /** How many bytes are filed under the key, or `null` when nothing is, or when it will not say. */
+  public async size(key: string): Promise<number | null> {
+    const headers = await this.probe(key);
+
+    return headers === null ? null : this.totalBytes(headers);
+  }
+
+  /**
+   * What the storage says about an object without handing back its body: the headers of a
+   * one-byte ranged read, or `null` when nothing is filed under the key.
+   *
+   * This asks for a single byte rather than going through the SDK's `file.get`, which describes
+   * an object with a `DESCRIBE` request: Bun's fetch does not carry that verb to the wire, so the
+   * call comes back as an ordinary `GET` and the SDK buffers the whole object trying to parse it
+   * as metadata. Asking after a video then downloads the video — gigabytes of resident memory for
+   * a yes-or-no answer, and a failure once the parse chokes on the bytes, which reads back as
+   * "no such object". The range header keeps the answer to one byte whatever the object weighs.
+   */
+  private async probe(key: string): Promise<Headers | null> {
     const [header, accessKey] = BunnyStorageSDK.zone.key(this.storageZone);
     const url = new URL(BunnyStorageSDK.zone.addr(this.storageZone));
 
@@ -106,10 +120,33 @@ export class BunnyStorage implements IStorage {
 
       await response.body?.cancel();
 
-      return response.ok;
+      return response.ok ? response.headers : null;
     } catch {
-      return false;
+      return null;
     }
+  }
+
+  /**
+   * The size a ranged answer reports for the whole object — the figure behind the slash in
+   * `Content-Range`. A server that answered the range as an ordinary body says nothing about a
+   * total, and its `Content-Length` is the whole object rather than the slice asked for.
+   */
+  private totalBytes(headers: Headers): number | null {
+    return this.toSize(headers.get("content-range")?.split("/").pop()) ?? this.toSize(headers.get("content-length"));
+  }
+
+  /**
+   * A header read as a size, or `null` when it does not carry one. A header that is absent reads
+   * as nothing rather than as zero, which would otherwise pass for an object of no bytes.
+   */
+  private toSize(value: string | null | undefined): number | null {
+    if (value === null || value === undefined || value.trim() === "") {
+      return null;
+    }
+
+    const size = Number(value);
+
+    return Number.isFinite(size) && size >= 0 ? size : null;
   }
 
   public async delete(key: string): Promise<void> {

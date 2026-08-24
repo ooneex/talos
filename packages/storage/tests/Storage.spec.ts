@@ -61,6 +61,7 @@ class MockS3File {
 class MockS3Client {
   private files: Map<string, MockS3File> = new Map();
   private existsMap: Map<string, boolean> = new Map();
+  private statMap: Map<string, number> = new Map();
   private deletedKeys: Set<string> = new Set();
   private listResult: { contents?: Array<{ key: string }> } = { contents: [] };
 
@@ -72,6 +73,20 @@ class MockS3Client {
 
   setExists(key: string, exists: boolean): void {
     this.existsMap.set(key, exists);
+  }
+
+  setStat(key: string, size: number): void {
+    this.statMap.set(key, size);
+  }
+
+  async stat(key: string): Promise<{ size: number }> {
+    const size = this.statMap.get(key);
+
+    if (size === undefined) {
+      throw new Error(`NoSuchKey: ${key}`);
+    }
+
+    return { size };
   }
 
   async list(): Promise<{ contents?: Array<{ key: string }> }> {
@@ -282,6 +297,18 @@ describe("Storage", () => {
 
       expect(result).toBe(storage);
       expect(mockClient.getDeletedKeys()).toHaveLength(0);
+    });
+  });
+
+  describe("size", () => {
+    test("should return the size the client reports for the object", async () => {
+      mockClient.setStat("video.mp4", 20824500);
+
+      expect(await storage.size("video.mp4")).toBe(20824500);
+    });
+
+    test("should return null when nothing is filed under the key", async () => {
+      expect(await storage.size("missing.mp4")).toBeNull();
     });
   });
 
