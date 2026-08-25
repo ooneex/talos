@@ -206,11 +206,9 @@ fn app_start_runs_selected_back_end_modules_and_starts_docker_when_needed() {
     assert!(output_text.contains("Starting api"));
     let log_text = std::fs::read_to_string(log).expect("log");
     assert!(log_text.contains("docker:compose up -d"));
-    assert!(
-        log_text.contains(
-            "bun:run --parallel --no-exit-on-error sh -c 'bun run --hot modules/api/src/index.ts'"
-        )
-    );
+    assert!(log_text.contains(
+        "bun:run --parallel --no-exit-on-error sh -c 'bun run --hot modules/api/src/index.ts'"
+    ));
 }
 
 #[test]

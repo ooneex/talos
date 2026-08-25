@@ -13,6 +13,8 @@ pub mod artifacts;
 pub mod assets;
 #[path = "project_check/asynchrony.rs"]
 pub mod asynchrony;
+#[path = "project_check/audit.rs"]
+pub mod audit;
 #[path = "project_check/boundaries.rs"]
 pub mod boundaries;
 #[path = "project_check/branches.rs"]
@@ -31,6 +33,8 @@ pub mod contrast;
 pub mod conventions;
 #[path = "project_check/crons.rs"]
 pub mod crons;
+#[path = "project_check/dedupe.rs"]
+pub mod dedupe;
 #[path = "project_check/dependencies.rs"]
 pub mod dependencies;
 #[path = "project_check/docker.rs"]
@@ -176,7 +180,7 @@ pub(super) const MAX_SCANNED_FILE_BYTES: u64 = 512 * 1024;
 
 #[derive(Args, Debug, Default, Clone)]
 pub struct ProjectCheckArgs {
-    /// Only run these checks (comma-separated). Accepts a category — foundation, architecture, api, data, runtime, frontend, quality, supply-chain, process — or a check: workspace, structure, folders, tsconfig, lockfile, conventions, imports, boundaries, restricted, container, registration, middlewares, routes, openapi, pagination, validation, roles, permissions, entities, indexes, repositories, transactions, sql, async, exceptions, logging, complexity, duplication, orphans, events, queues, crons, workflows, mailers, flags, env, dependencies, outdated, docker, migrations, accessibility, contrast, tokens, assets, translations, stories, router, queries, sdk, tests, coverage, performance, e2e-coverage, docs, bundle, security, secrets, git, issues, todos, branches, commits, hygiene, e2e.
+    /// Only run these checks (comma-separated). Accepts a category — foundation, architecture, api, data, runtime, frontend, quality, supply-chain, process — or a check: workspace, structure, folders, tsconfig, lockfile, dedupe, conventions, imports, boundaries, restricted, container, registration, middlewares, routes, openapi, pagination, validation, roles, permissions, entities, indexes, repositories, transactions, sql, async, exceptions, logging, complexity, duplication, orphans, events, queues, crons, workflows, mailers, flags, env, dependencies, outdated, docker, migrations, accessibility, contrast, tokens, assets, translations, stories, router, queries, sdk, tests, coverage, performance, e2e-coverage, docs, bundle, security, audit, secrets, git, issues, todos, branches, commits, hygiene, e2e.
     #[arg(long)]
     pub only: Option<String>,
 

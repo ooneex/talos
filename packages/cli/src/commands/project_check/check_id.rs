@@ -8,12 +8,13 @@ impl CheckId {
     /// Every check, in execution order. The workspace runs first because the
     /// install it performs is what makes the other tools available, and the
     /// end-to-end suite runs last because it needs the build they produce.
-    pub const ALL: [CheckId; 65] = [
+    pub const ALL: [CheckId; 67] = [
         CheckId::Workspace,
         CheckId::Structure,
         CheckId::Folders,
         CheckId::Tsconfig,
         CheckId::Lockfile,
+        CheckId::Dedupe,
         CheckId::Conventions,
         CheckId::Imports,
         CheckId::Boundaries,
@@ -66,6 +67,7 @@ impl CheckId {
         CheckId::Docs,
         CheckId::Bundle,
         CheckId::Security,
+        CheckId::Audit,
         CheckId::Secrets,
         CheckId::Git,
         CheckId::Issues,
@@ -81,11 +83,11 @@ impl CheckId {
     /// drift apart. The end-to-end suite is opt-in because it boots the
     /// application, and the outdated check because it queries the public
     /// registries for every dependency.
-    pub const DEFAULT: [CheckId; 63] = Self::default_checks();
+    pub const DEFAULT: [CheckId; 65] = Self::default_checks();
 
     /// Builds `DEFAULT` from `ALL` at compile time.
-    const fn default_checks() -> [CheckId; 63] {
-        let mut result = [CheckId::Workspace; 63];
+    const fn default_checks() -> [CheckId; 65] {
+        let mut result = [CheckId::Workspace; 65];
         let mut source = 0;
         let mut target = 0;
         while source < CheckId::ALL.len() {
@@ -106,6 +108,7 @@ impl CheckId {
             | CheckId::Structure
             | CheckId::Tsconfig
             | CheckId::Lockfile
+            | CheckId::Dedupe
             | CheckId::Dependencies
             | CheckId::Outdated
             | CheckId::Docker
@@ -169,7 +172,7 @@ impl CheckId {
             | CheckId::Todos
             | CheckId::E2e => Category::Quality,
 
-            CheckId::Security | CheckId::Secrets => Category::SupplyChain,
+            CheckId::Security | CheckId::Audit | CheckId::Secrets => Category::SupplyChain,
 
             CheckId::Issues | CheckId::Branches | CheckId::Commits => Category::Process,
         }
@@ -182,6 +185,7 @@ impl CheckId {
             CheckId::Folders => "folders",
             CheckId::Tsconfig => "tsconfig",
             CheckId::Lockfile => "lockfile",
+            CheckId::Dedupe => "dedupe",
             CheckId::Conventions => "conventions",
             CheckId::Imports => "imports",
             CheckId::Boundaries => "boundaries",
@@ -234,6 +238,7 @@ impl CheckId {
             CheckId::Docs => "docs",
             CheckId::Bundle => "bundle",
             CheckId::Security => "security",
+            CheckId::Audit => "audit",
             CheckId::Secrets => "secrets",
             CheckId::Git => "git",
             CheckId::Issues => "issues",
@@ -252,6 +257,7 @@ impl CheckId {
             CheckId::Folders => "Folders",
             CheckId::Tsconfig => "Tsconfig",
             CheckId::Lockfile => "Lockfile",
+            CheckId::Dedupe => "Dedupe",
             CheckId::Conventions => "Conventions",
             CheckId::Imports => "Imports",
             CheckId::Boundaries => "Boundaries",
@@ -304,6 +310,7 @@ impl CheckId {
             CheckId::Docs => "Docs",
             CheckId::Bundle => "Bundle",
             CheckId::Security => "Security",
+            CheckId::Audit => "Audit",
             CheckId::Secrets => "Secrets",
             CheckId::Git => "Git",
             CheckId::Issues => "Issues",
@@ -325,6 +332,7 @@ impl CheckId {
             CheckId::Folders => "every folder against the layout its module type allows",
             CheckId::Tsconfig => "compiler settings inherited from the root config",
             CheckId::Lockfile => "one lockfile, covering every manifest",
+            CheckId::Dedupe => "duplicate versions the lockfile can still drop",
             CheckId::Conventions => "DI naming, typed env access and type conventions",
             CheckId::Imports => "resolvable imports, no cycles, no inverted layers",
             CheckId::Boundaries => "which module may know about which, by runtime",
@@ -377,6 +385,7 @@ impl CheckId {
             CheckId::Docs => "relative links in every markdown document",
             CheckId::Bundle => "shipped source maps and stale build output",
             CheckId::Security => "dependency audit against OSV.dev",
+            CheckId::Audit => "the installed tree against Bun's advisory database",
             CheckId::Secrets => "credentials in the working tree",
             CheckId::Git => "build output in the index and .gitignore coverage",
             CheckId::Issues => "issue YAML conventions",

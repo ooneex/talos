@@ -20,11 +20,18 @@ fn hash_file(path: &Path) -> Option<String> {
     Some(hasher.finalize().to_hex().to_string())
 }
 
+/// What a file looked like the last time it was hashed.
+///
+/// The timestamp is whole nanoseconds rather than milliseconds-as-a-float
+/// because a float does not survive the round trip through the cache file:
+/// `serde_json` reads some of them back a single unit off what was written,
+/// and the file then looks stale to every run that follows. See the same
+/// note on the project check's `FileHash`.
 #[derive(Clone, Serialize, Deserialize)]
 pub struct FileHashRecord {
     pub size: u64,
-    #[serde(rename = "mtimeMs")]
-    pub mtime_ms: f64,
+    #[serde(rename = "mtimeNs")]
+    pub mtime_ns: u64,
     pub hash: String,
 }
 
@@ -79,41 +86,49 @@ pub fn load_file_hash_cache(cache_dir: &Path) -> FileHashCache {
     serde_json::from_str(&raw).unwrap_or_default()
 }
 
+/// Write the cache back through a temporary file, so a save that is
+/// interrupted — or raced by another command's — leaves the last whole file
+/// behind rather than a half-written one nothing can parse.
 pub fn save_file_hash_cache(cache_dir: &Path, cache: &FileHashCache) {
     let _ = fs::create_dir_all(cache_dir);
-    if let Ok(json) = serde_json::to_string(cache) {
-        let _ = fs::write(cache_dir.join(FILEHASH_CACHE_FILE), json);
+    let Ok(json) = serde_json::to_string(cache) else {
+        return;
+    };
+    let path = cache_dir.join(FILEHASH_CACHE_FILE);
+    let temporary = cache_dir.join(format!(".tmp-{}-{FILEHASH_CACHE_FILE}", std::process::id()));
+    if fs::write(&temporary, json).is_ok() && fs::rename(&temporary, &path).is_err() {
+        let _ = fs::remove_file(&temporary);
     }
 }
 
-fn mtime_millis(metadata: &fs::Metadata) -> f64 {
+fn mtime_nanos(metadata: &fs::Metadata) -> u64 {
     metadata
         .modified()
         .ok()
         .and_then(|time| time.duration_since(UNIX_EPOCH).ok())
-        .map(|duration| duration.as_secs_f64() * 1000.0)
-        .unwrap_or(0.0)
+        .map(|duration| duration.as_nanos() as u64)
+        .unwrap_or(0)
 }
 
 fn hash_file_cached(path: &Path, cache: &FileHashCache) -> Option<String> {
     let metadata = fs::metadata(path).ok()?;
     let size = metadata.len();
-    let mtime_ms = mtime_millis(&metadata);
-    let path_key = path.to_string_lossy().to_string();
+    let mtime_ns = mtime_nanos(&metadata);
+    let path_key = path.to_string_lossy();
 
-    if let Some(record) = cache.get(&path_key)
+    if let Some(record) = cache.get(path_key.as_ref())
         && record.size == size
-        && record.mtime_ms == mtime_ms
+        && record.mtime_ns == mtime_ns
     {
         return Some(record.hash.clone());
     }
 
     let hash = hash_file(path)?;
     cache.insert(
-        path_key,
+        path_key.into_owned(),
         FileHashRecord {
             size,
-            mtime_ms,
+            mtime_ns,
             hash: hash.clone(),
         },
     );

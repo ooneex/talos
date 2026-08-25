@@ -16,9 +16,9 @@ impl CheckId {
     /// Four kinds are not. The workspace and end-to-end checks *do* something —
     /// install, build, lint, test, boot the app — so replaying a stored verdict
     /// would skip the work rather than repeat it, and both already cache
-    /// themselves at the task level. The security and outdated checks ask the
-    /// network, and an advisory published this morning changes their answer
-    /// with no file having moved. The git, commits and branches checks read the
+    /// themselves at the task level. The security, audit and outdated checks
+    /// ask the network, and an advisory published this morning changes their
+    /// answer with no file having moved. The git, commits and branches checks read the
     /// repository rather than the files in it: staging a file, amending a
     /// commit or deleting a branch changes what they report while every
     /// fingerprint stays exactly where it was.
@@ -29,6 +29,7 @@ impl CheckId {
                 | CheckId::Coverage
                 | CheckId::E2e
                 | CheckId::Security
+                | CheckId::Audit
                 | CheckId::Outdated
                 | CheckId::Git
                 | CheckId::Commits
@@ -75,6 +76,7 @@ impl CheckId {
             | CheckId::Folders
             | CheckId::Tsconfig
             | CheckId::Lockfile
+            | CheckId::Dedupe
             | CheckId::Conventions
             | CheckId::Imports
             | CheckId::Boundaries
@@ -107,6 +109,7 @@ impl CheckId {
             | CheckId::Docs
             | CheckId::Bundle
             | CheckId::Security
+            | CheckId::Audit
             | CheckId::Secrets
             | CheckId::Git
             | CheckId::Issues
@@ -136,6 +139,7 @@ impl CheckId {
             "folders" | "folder" | "tree" | "directories" => Some(CheckId::Folders),
             "tsconfig" | "typescript" | "compiler" => Some(CheckId::Tsconfig),
             "lockfile" | "lock" | "lockfiles" => Some(CheckId::Lockfile),
+            "dedupe" | "dedup" | "duplicate-versions" => Some(CheckId::Dedupe),
             "conventions" | "convention" | "naming" => Some(CheckId::Conventions),
             "imports" | "import" | "cycles" | "layers" => Some(CheckId::Imports),
             "boundaries" | "boundary" | "coupling" => Some(CheckId::Boundaries),
@@ -187,7 +191,8 @@ impl CheckId {
             "e2e-coverage" | "e2e-specs" | "browser-coverage" => Some(CheckId::E2eCoverage),
             "docs" | "doc" | "documentation" | "markdown" => Some(CheckId::Docs),
             "bundle" | "bundles" | "dist" => Some(CheckId::Bundle),
-            "security" | "audit" | "vulnerabilities" => Some(CheckId::Security),
+            "security" | "osv" | "vulnerabilities" => Some(CheckId::Security),
+            "audit" | "bun-audit" | "advisories" => Some(CheckId::Audit),
             "secrets" | "credentials" => Some(CheckId::Secrets),
             "git" | "gitignore" => Some(CheckId::Git),
             "issues" | "issue" => Some(CheckId::Issues),

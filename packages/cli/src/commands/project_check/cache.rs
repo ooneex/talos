@@ -72,12 +72,43 @@ const MAX_DEPTH: usize = 16;
 /// What a file looked like the last time it was hashed. Hashing is skipped
 /// while its size and modification time are unchanged, which turns the second
 /// run of a fingerprint into a directory walk and nothing more.
+///
+/// The timestamp is whole nanoseconds and not milliseconds-as-a-float on
+/// purpose. A float here does not survive the round trip through the memo
+/// file: `serde_json` reads a handful of them back a single unit off what was
+/// written, the record then looks stale for a file nobody touched, and it is
+/// hashed again on every run for as long as it exists. An integer compares
+/// for equality after being written and read the way a timestamp should.
 #[derive(Clone, Serialize, Deserialize)]
 pub struct FileHash {
     pub size: u64,
-    #[serde(rename = "mtimeMs")]
-    pub mtime_ms: f64,
+    #[serde(rename = "mtimeNs")]
+    pub mtime_ns: u64,
     pub hash: String,
+}
+
+/// Nanoseconds since the epoch, or `0` for a file whose timestamp cannot be
+/// read — which never matches a record and so is simply hashed.
+fn mtime_nanos(metadata: &fs::Metadata) -> u64 {
+    metadata
+        .modified()
+        .ok()
+        .and_then(|time| time.duration_since(UNIX_EPOCH).ok())
+        .map(|since| since.as_nanos() as u64)
+        .unwrap_or(0)
+}
+
+/// A file the walk found, with what its `stat` already said about it.
+///
+/// The walk has to touch every entry anyway, so it reads size and timestamp
+/// there and hands them on rather than leaving hashing to `stat` the same
+/// file a second time.
+struct Found {
+    path: PathBuf,
+    /// How the fingerprint names the file: its path relative to the walk root.
+    relative: String,
+    size: u64,
+    mtime_ns: u64,
 }
 
 /// The memo itself, loaded once and written back once.
@@ -96,12 +127,22 @@ impl FileHashes {
         Self { entries, path }
     }
 
+    /// Write the memo back, through a temporary file so that two commands
+    /// saving at once leave a whole file behind rather than two interleaved
+    /// halves of one — a memo that cannot be parsed is a memo that is thrown
+    /// away, and the run after it hashes the whole workspace again.
     pub fn save(&self) {
         if let Some(parent) = self.path.parent() {
             let _ = fs::create_dir_all(parent);
         }
-        if let Ok(json) = serde_json::to_string(&self.entries) {
-            let _ = fs::write(&self.path, json);
+        let Ok(json) = serde_json::to_string(&self.entries) else {
+            return;
+        };
+        let temporary = self
+            .path
+            .with_extension(format!("{}.tmp", std::process::id()));
+        if fs::write(&temporary, json).is_ok() && fs::rename(&temporary, &self.path).is_err() {
+            let _ = fs::remove_file(&temporary);
         }
     }
 
@@ -109,18 +150,21 @@ impl FileHashes {
     /// time. `None` when the file cannot be read.
     pub fn hash(&self, path: &Path) -> Option<String> {
         let metadata = fs::metadata(path).ok()?;
-        let size = metadata.len();
-        let mtime_ms = metadata
-            .modified()
-            .ok()
-            .and_then(|time| time.duration_since(UNIX_EPOCH).ok())
-            .map(|since| since.as_secs_f64() * 1000.0)
-            .unwrap_or(0.0);
-        let key = path.to_string_lossy().to_string();
+        self.hashed(
+            path,
+            &path.to_string_lossy(),
+            metadata.len(),
+            mtime_nanos(&metadata),
+        )
+    }
 
-        if let Some(record) = self.entries.get(&key)
+    /// The same, for a file the walk has already `stat`ed. The key is borrowed
+    /// rather than owned, so a file that has not moved costs no allocation at
+    /// all.
+    fn hashed(&self, path: &Path, key: &str, size: u64, mtime_ns: u64) -> Option<String> {
+        if let Some(record) = self.entries.get(key)
             && record.size == size
-            && record.mtime_ms == mtime_ms
+            && record.mtime_ns == mtime_ns
         {
             return Some(record.hash.clone());
         }
@@ -129,10 +173,10 @@ impl FileHashes {
         hasher.update_mmap(path).ok()?;
         let hash = hasher.finalize().to_hex().to_string();
         self.entries.insert(
-            key,
+            key.to_string(),
             FileHash {
                 size,
-                mtime_ms,
+                mtime_ns,
                 hash: hash.clone(),
             },
         );
@@ -143,31 +187,49 @@ impl FileHashes {
 /// The fingerprint of one directory tree: every file it holds, by path and
 /// content, in a stable order.
 pub fn fingerprint(dir: &Path, hashes: &FileHashes, skip: &[&str]) -> String {
-    let mut files = Vec::new();
-    walk(dir, dir, 0, skip, &mut files);
-    files.sort();
+    let mut files = walk(dir, dir, 0, skip);
+    files.sort_by(|left, right| left.relative.cmp(&right.relative));
 
     let digests: Vec<Option<String>> = files
         .par_iter()
-        .map(|file| hashes.hash(&dir.join(file)))
+        .map(|found| {
+            hashes.hashed(
+                &found.path,
+                &found.path.to_string_lossy(),
+                found.size,
+                found.mtime_ns,
+            )
+        })
         .collect();
 
     let mut hasher = blake3::Hasher::new();
-    for (file, digest) in files.iter().zip(digests) {
+    for (found, digest) in files.iter().zip(digests) {
         if let Some(digest) = digest {
-            hasher.update(format!("{file}={digest}\n").as_bytes());
+            hasher.update(found.relative.as_bytes());
+            hasher.update(b"=");
+            hasher.update(digest.as_bytes());
+            hasher.update(b"\n");
         }
     }
     hasher.finalize().to_hex().to_string()
 }
 
-fn walk(base: &Path, dir: &Path, depth: usize, skip: &[&str], files: &mut Vec<String>) {
+/// Every file under `dir`, with the `stat` the walk had to make anyway.
+///
+/// A single module can hold tens of thousands of files spread over hundreds of
+/// directories, and a walk is nothing but syscalls, so the subdirectories are
+/// walked at once rather than one after another — on a tree that size it is
+/// the difference between the fingerprint being noticed and not.
+fn walk(base: &Path, dir: &Path, depth: usize, skip: &[&str]) -> Vec<Found> {
     if depth > MAX_DEPTH {
-        return;
+        return Vec::new();
     }
     let Ok(entries) = fs::read_dir(dir) else {
-        return;
+        return Vec::new();
     };
+
+    let mut dirs = Vec::new();
+    let mut files = Vec::new();
 
     for entry in entries.flatten() {
         let path = entry.path();
@@ -175,22 +237,51 @@ fn walk(base: &Path, dir: &Path, depth: usize, skip: &[&str], files: &mut Vec<St
             continue;
         };
 
-        // A symlinked directory is followed by `is_dir`, which is how a loop
-        // gets in; the depth bound is what keeps it finite.
-        if path.is_dir() {
+        // The kind comes back with the directory entry itself, so an ordinary
+        // file or directory costs no `stat` at all here. Only a symlink has to
+        // be resolved, and it is resolved the way it always was — followed, so
+        // a symlinked directory is walked; the depth bound is what keeps a
+        // loop finite.
+        let listed = entry.file_type().ok().filter(|kind| !kind.is_symlink());
+        let is_dir = listed
+            .map(|kind| kind.is_dir())
+            .unwrap_or_else(|| path.is_dir());
+
+        if is_dir {
             // Dependencies and build output are not part of what a check reads,
             // and walking them would dominate the fingerprint's cost.
             if EXCLUDED_DIRS.contains(&name) || skip.contains(&name) {
                 continue;
             }
-            walk(base, &path, depth + 1, skip, files);
+            dirs.push(path);
             continue;
         }
 
-        if let Ok(relative) = path.strip_prefix(base) {
-            files.push(relative.to_string_lossy().replace('\\', "/"));
-        }
+        let Ok(relative) = path.strip_prefix(base) else {
+            continue;
+        };
+        // A file that cannot be `stat`ed cannot be hashed either, and used to
+        // drop out of the fingerprint one step later; it drops out here now.
+        let Some(metadata) = (match listed {
+            Some(_) => entry.metadata().ok(),
+            None => fs::metadata(&path).ok(),
+        }) else {
+            continue;
+        };
+        files.push(Found {
+            relative: relative.to_string_lossy().replace('\\', "/"),
+            size: metadata.len(),
+            mtime_ns: mtime_nanos(&metadata),
+            path,
+        });
     }
+
+    let nested: Vec<Vec<Found>> = dirs
+        .par_iter()
+        .map(|dir| walk(base, dir, depth + 1, skip))
+        .collect();
+    files.extend(nested.into_iter().flatten());
+    files
 }
 
 /// One workspace member as the cache sees it: what it holds, and which checks
