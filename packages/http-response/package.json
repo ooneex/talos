@@ -40,7 +40,7 @@
     "compile": "tsc ./src/index.ts --declaration --emitDeclarationOnly --target ES2022 --moduleResolution bundler --outfile dist/index.d.ts",
     "fmt": "bunx biome check --write",
     "lint": "tsc --noEmit && bunx biome lint",
-    "test": "bun test tests"
+    "test": "bun test --parallel=4 --isolate tests"
   },
   "type": "module",
   "types": "./dist/index.d.ts",

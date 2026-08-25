@@ -48,7 +48,7 @@
     "build": "bunup",
     "fmt": "bunx biome check --write",
     "lint": "tsc --noEmit && bunx biome lint",
-    "test": "bun test tests"
+    "test": "bun test --parallel=4 --isolate tests"
   },
   "type": "module",
   "types": "./dist/index.d.ts",

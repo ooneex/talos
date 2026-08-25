@@ -58,7 +58,7 @@ Create the following files under `packages/<name>/`.
   },
   "license": "MIT",
   "scripts": {
-    "test": "bun test tests",
+    "test": "bun test --parallel=4 --isolate tests",
     "build": "bunup",
     "fmt": "bunx biome check --write",
     "lint": "tsc --noEmit && bunx biome lint",
