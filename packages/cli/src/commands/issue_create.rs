@@ -52,6 +52,7 @@ pub fn run(args: &IssueCreateArgs) {
         priority: Some(priority.trim().to_string()),
         description: Some(description.trim().to_string()),
         labels: Some(args.labels.clone()),
+        ..IssueYaml::default()
     });
 
     let file_path = issues_dir.join(format!("{resolved_id}.yml"));
