@@ -1,13 +1,28 @@
 use clap::Parser;
 use cli::commands::workspace_check::{
-    OutputFormat, WorkspaceCheckArgs, build_args, coverage_args, install_args, lint_args,
-    performance_args, score,
+    OutputFormat, WorkspaceCheckArgs, install_args, lint_args, score,
 };
 
 #[derive(Parser)]
 struct TestCli {
     #[command(flatten)]
     args: WorkspaceCheckArgs,
+}
+
+/// The arguments every helper is read against, so a test only has to say what
+/// it is looking at.
+fn args() -> WorkspaceCheckArgs {
+    WorkspaceCheckArgs {
+        packages: Some("core".to_string()),
+        modules: Some("user".to_string()),
+        logs: true,
+        no_cache: true,
+        threshold: Some(85.0),
+        concurrency: Some(4),
+        strict: true,
+        output: None,
+        cwd: Some("./here".to_string()),
+    }
 }
 
 #[test]
@@ -20,11 +35,6 @@ fn workspace_check_parses_all_flags() {
         "user",
         "--logs",
         "--no-cache",
-        "--threshold",
-        "85",
-        "--concurrency",
-        "4",
-        "--strict",
         "--output",
         "json",
         "--cwd",
@@ -36,9 +46,6 @@ fn workspace_check_parses_all_flags() {
     assert_eq!(cli.args.modules.as_deref(), Some("user"));
     assert!(cli.args.logs);
     assert!(cli.args.no_cache);
-    assert_eq!(cli.args.threshold, Some(85.0));
-    assert_eq!(cli.args.concurrency, Some(4));
-    assert!(cli.args.strict);
     assert_eq!(cli.args.output, Some(OutputFormat::Json));
     assert_eq!(cli.args.cwd.as_deref(), Some("./here"));
 }
@@ -51,11 +58,12 @@ fn workspace_check_defaults_are_empty() {
     assert!(cli.args.modules.is_none());
     assert!(!cli.args.logs);
     assert!(!cli.args.no_cache);
+    assert!(cli.args.output.is_none());
+    assert!(cli.args.cwd.is_none());
+    // Left to a programmatic caller: the gate has no flag for any of them.
     assert!(cli.args.threshold.is_none());
     assert!(cli.args.concurrency.is_none());
     assert!(!cli.args.strict);
-    assert!(cli.args.output.is_none());
-    assert!(cli.args.cwd.is_none());
 }
 
 #[test]
@@ -63,21 +71,18 @@ fn workspace_check_rejects_unknown_flag() {
     assert!(TestCli::try_parse_from(["talos", "--definitely-not-a-flag"]).is_err());
 }
 
+/// The gate installs and lints, so the flags that only ever meant something
+/// to coverage or the performance score are not flags of it any more.
+#[test]
+fn workspace_check_rejects_the_flags_it_no_longer_reads() {
+    assert!(TestCli::try_parse_from(["talos", "--threshold", "85"]).is_err());
+    assert!(TestCli::try_parse_from(["talos", "--concurrency", "4"]).is_err());
+    assert!(TestCli::try_parse_from(["talos", "--strict"]).is_err());
+}
+
 #[test]
 fn workspace_check_builds_the_install_arguments() {
-    let args = WorkspaceCheckArgs {
-        packages: Some("core".to_string()),
-        modules: Some("user".to_string()),
-        logs: true,
-        no_cache: true,
-        threshold: Some(85.0),
-        concurrency: Some(4),
-        strict: true,
-        output: None,
-        cwd: Some("./here".to_string()),
-    };
-
-    let install = install_args(&args);
+    let install = install_args(&args());
 
     assert!(!install.force);
     assert!(install.audit_level.is_none());
@@ -87,104 +92,14 @@ fn workspace_check_builds_the_install_arguments() {
 }
 
 #[test]
-fn workspace_check_builds_the_build_arguments() {
-    let args = WorkspaceCheckArgs {
-        packages: Some("core".to_string()),
-        modules: Some("user".to_string()),
-        logs: true,
-        no_cache: true,
-        threshold: Some(85.0),
-        concurrency: Some(4),
-        strict: true,
-        output: None,
-        cwd: Some("./here".to_string()),
-    };
-
-    let build = build_args(&args);
-
-    assert_eq!(build.packages.as_deref(), Some("core"));
-    assert_eq!(build.modules.as_deref(), Some("user"));
-    assert!(build.logs);
-    assert!(build.no_cache);
-    assert_eq!(build.cwd.as_deref(), Some("./here"));
-}
-
-#[test]
 fn workspace_check_builds_the_lint_arguments() {
-    let args = WorkspaceCheckArgs {
-        packages: Some("core".to_string()),
-        modules: Some("user".to_string()),
-        logs: true,
-        no_cache: true,
-        threshold: Some(85.0),
-        concurrency: Some(4),
-        strict: true,
-        output: None,
-        cwd: Some("./here".to_string()),
-    };
-
-    let lint = lint_args(&args);
+    let lint = lint_args(&args());
 
     assert_eq!(lint.packages.as_deref(), Some("core"));
     assert_eq!(lint.modules.as_deref(), Some("user"));
     assert!(lint.logs);
     assert!(lint.no_cache);
     assert_eq!(lint.cwd.as_deref(), Some("./here"));
-}
-
-#[test]
-fn workspace_check_builds_the_coverage_arguments() {
-    let args = WorkspaceCheckArgs {
-        packages: Some("core".to_string()),
-        modules: Some("user".to_string()),
-        logs: true,
-        no_cache: true,
-        threshold: Some(85.0),
-        concurrency: Some(4),
-        strict: true,
-        output: None,
-        cwd: Some("./here".to_string()),
-    };
-
-    let coverage = coverage_args(&args);
-
-    assert!(!coverage.issues);
-    assert_eq!(coverage.packages.as_deref(), Some("core"));
-    assert_eq!(coverage.modules.as_deref(), Some("user"));
-    assert!(coverage.logs);
-    assert!(coverage.no_cache);
-    assert_eq!(coverage.threshold, Some(85.0));
-    assert_eq!(coverage.concurrency, Some(4));
-    assert!(coverage.strict);
-    assert_eq!(coverage.cwd.as_deref(), Some("./here"));
-}
-
-#[test]
-fn workspace_check_builds_the_performance_arguments() {
-    let args = WorkspaceCheckArgs {
-        packages: Some("core".to_string()),
-        modules: Some("user".to_string()),
-        logs: true,
-        no_cache: true,
-        threshold: Some(85.0),
-        concurrency: Some(4),
-        strict: true,
-        output: None,
-        cwd: Some("./here".to_string()),
-    };
-
-    let performance = performance_args(&args);
-
-    assert!(!performance.issues);
-    assert_eq!(performance.packages.as_deref(), Some("core"));
-    assert_eq!(performance.modules.as_deref(), Some("user"));
-    assert!(performance.logs);
-    assert!(performance.strict);
-    assert_eq!(performance.cwd.as_deref(), Some("./here"));
-    // The gate's --threshold is a coverage rate, so it is never spent on the
-    // performance score — that one keeps its own default.
-    assert!(performance.threshold.is_none());
-    assert!(performance.min_severity.is_none());
 }
 
 #[test]
@@ -203,15 +118,8 @@ fn workspace_check_scores_the_sources_it_is_pointed_at() {
     .expect("source");
 
     let args = WorkspaceCheckArgs {
-        packages: None,
-        modules: None,
-        logs: false,
-        no_cache: false,
-        threshold: None,
-        concurrency: None,
-        strict: false,
-        output: None,
         cwd: Some(dir.path().to_string_lossy().to_string()),
+        ..scoring_args()
     };
 
     let audit = score(&args, true).expect("the sources are scored");
@@ -229,6 +137,17 @@ fn workspace_check_scores_the_sources_it_is_pointed_at() {
 fn workspace_check_reports_a_workspace_with_nothing_to_score() {
     let dir = tempfile::tempdir().expect("tempdir");
     let args = WorkspaceCheckArgs {
+        cwd: Some(dir.path().to_string_lossy().to_string()),
+        ..scoring_args()
+    };
+
+    assert!(score(&args, true).is_err());
+}
+
+/// A bare set of arguments — `score` reads nothing but the modules, packages
+/// and working directory.
+fn scoring_args() -> WorkspaceCheckArgs {
+    WorkspaceCheckArgs {
         packages: None,
         modules: None,
         logs: false,
@@ -237,8 +156,6 @@ fn workspace_check_reports_a_workspace_with_nothing_to_score() {
         concurrency: None,
         strict: false,
         output: None,
-        cwd: Some(dir.path().to_string_lossy().to_string()),
-    };
-
-    assert!(score(&args, true).is_err());
+        cwd: None,
+    }
 }

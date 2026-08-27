@@ -18,11 +18,6 @@ fn check_parses_all_flags() {
         "user",
         "--logs",
         "--no-cache",
-        "--threshold",
-        "85",
-        "--concurrency",
-        "4",
-        "--strict",
         "--output",
         "md",
         "--cwd",
@@ -34,9 +29,6 @@ fn check_parses_all_flags() {
     assert_eq!(cli.args.modules.as_deref(), Some("user"));
     assert!(cli.args.logs);
     assert!(cli.args.no_cache);
-    assert_eq!(cli.args.threshold, Some(85.0));
-    assert_eq!(cli.args.concurrency, Some(4));
-    assert!(cli.args.strict);
     assert_eq!(cli.args.output, Some(OutputFormat::Md));
     assert_eq!(cli.args.cwd.as_deref(), Some("./here"));
 }
@@ -49,9 +41,6 @@ fn check_defaults_are_empty() {
     assert!(cli.args.modules.is_none());
     assert!(!cli.args.logs);
     assert!(!cli.args.no_cache);
-    assert!(cli.args.threshold.is_none());
-    assert!(cli.args.concurrency.is_none());
-    assert!(!cli.args.strict);
     assert!(cli.args.output.is_none());
     assert!(cli.args.cwd.is_none());
 }
@@ -73,6 +62,15 @@ fn check_rejects_unknown_flag() {
     assert!(TestCli::try_parse_from(["talos", "--definitely-not-a-flag"]).is_err());
 }
 
+/// The gate measures nothing, so `talos check` no longer takes the flags that
+/// only ever meant something to coverage or the performance score.
+#[test]
+fn check_rejects_the_flags_the_gate_no_longer_reads() {
+    assert!(TestCli::try_parse_from(["talos", "--threshold", "85"]).is_err());
+    assert!(TestCli::try_parse_from(["talos", "--concurrency", "4"]).is_err());
+    assert!(TestCli::try_parse_from(["talos", "--strict"]).is_err());
+}
+
 #[test]
 fn check_forwards_all_flags_to_workspace_check() {
     let args = CheckArgs {
@@ -80,9 +78,6 @@ fn check_forwards_all_flags_to_workspace_check() {
         modules: Some("user".to_string()),
         logs: true,
         no_cache: true,
-        threshold: Some(85.0),
-        concurrency: Some(4),
-        strict: true,
         output: Some(OutputFormat::Json),
         cwd: Some("./here".to_string()),
     };
@@ -93,9 +88,10 @@ fn check_forwards_all_flags_to_workspace_check() {
     assert_eq!(forwarded.modules.as_deref(), Some("user"));
     assert!(forwarded.logs);
     assert!(forwarded.no_cache);
-    assert_eq!(forwarded.threshold, Some(85.0));
-    assert_eq!(forwarded.concurrency, Some(4));
-    assert!(forwarded.strict);
     assert_eq!(forwarded.output, Some(OutputFormat::Json));
     assert_eq!(forwarded.cwd.as_deref(), Some("./here"));
+    // Nothing the gate runs reads any of these — see `forwarded_args`.
+    assert!(forwarded.threshold.is_none());
+    assert!(forwarded.concurrency.is_none());
+    assert!(!forwarded.strict);
 }

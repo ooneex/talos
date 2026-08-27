@@ -246,9 +246,6 @@ pub fn run(args: &ReleaseCreateArgs) {
         modules: args.modules.clone(),
         logs: false,
         no_cache: false,
-        threshold: None,
-        concurrency: None,
-        strict: false,
         output: None,
         cwd: Some(cwd.to_string_lossy().to_string()),
     });

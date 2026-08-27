@@ -12,15 +12,6 @@ pub struct CheckArgs {
     pub logs: bool,
     #[arg(long, default_value_t = false)]
     pub no_cache: bool,
-    /// Minimum line and function coverage a module must reach, in percent.
-    #[arg(long)]
-    pub threshold: Option<f64>,
-    /// How many suites run at once (defaults to the core count, capped at 8).
-    #[arg(long)]
-    pub concurrency: Option<usize>,
-    /// Fail on every module that stayed under the coverage threshold.
-    #[arg(long, default_value_t = false)]
-    pub strict: bool,
     /// Also write the report to var/outputs/talos_check.md or
     /// var/outputs/talos_check.json, in the shape an AI agent is handed to fix
     /// what it lists.
@@ -36,9 +27,12 @@ pub fn forwarded_args(args: &CheckArgs) -> WorkspaceCheckArgs {
         modules: args.modules.clone(),
         logs: args.logs,
         no_cache: args.no_cache,
-        threshold: args.threshold,
-        concurrency: args.concurrency,
-        strict: args.strict,
+        // The gate lints and nothing else, so it never reads any of these —
+        // they are only here for the callers of `workspace_check::measure`
+        // and `score`, which build the same arguments themselves.
+        threshold: None,
+        concurrency: None,
+        strict: false,
         output: args.output,
         cwd: args.cwd.clone(),
     }
