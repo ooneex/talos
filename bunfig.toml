@@ -1,5 +1,5 @@
 [test]
-coverage = true
+coverage = false
 coveragePathIgnorePatterns = []
 pathIgnorePatterns = [
   "packages/utils/src/sleep.ts",

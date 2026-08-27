@@ -1,5 +1,5 @@
 [test]
-coverage = true
+coverage = false
 coverageReporter = ["text", "lcov"]
 coverageDir = "coverage"
 coverageSkipTestFiles = true
