@@ -1,6 +1,7 @@
 use clap::Parser;
 use cli::commands::workspace_check::{
-    WorkspaceCheckArgs, build_args, coverage_args, install_args, lint_args, performance_args, score,
+    OutputFormat, WorkspaceCheckArgs, build_args, coverage_args, install_args, lint_args,
+    performance_args, score,
 };
 
 #[derive(Parser)]
@@ -24,6 +25,8 @@ fn workspace_check_parses_all_flags() {
         "--concurrency",
         "4",
         "--strict",
+        "--output",
+        "json",
         "--cwd",
         "./here",
     ])
@@ -36,6 +39,7 @@ fn workspace_check_parses_all_flags() {
     assert_eq!(cli.args.threshold, Some(85.0));
     assert_eq!(cli.args.concurrency, Some(4));
     assert!(cli.args.strict);
+    assert_eq!(cli.args.output, Some(OutputFormat::Json));
     assert_eq!(cli.args.cwd.as_deref(), Some("./here"));
 }
 
@@ -50,6 +54,7 @@ fn workspace_check_defaults_are_empty() {
     assert!(cli.args.threshold.is_none());
     assert!(cli.args.concurrency.is_none());
     assert!(!cli.args.strict);
+    assert!(cli.args.output.is_none());
     assert!(cli.args.cwd.is_none());
 }
 
@@ -68,6 +73,7 @@ fn workspace_check_builds_the_install_arguments() {
         threshold: Some(85.0),
         concurrency: Some(4),
         strict: true,
+        output: None,
         cwd: Some("./here".to_string()),
     };
 
@@ -90,6 +96,7 @@ fn workspace_check_builds_the_build_arguments() {
         threshold: Some(85.0),
         concurrency: Some(4),
         strict: true,
+        output: None,
         cwd: Some("./here".to_string()),
     };
 
@@ -112,6 +119,7 @@ fn workspace_check_builds_the_lint_arguments() {
         threshold: Some(85.0),
         concurrency: Some(4),
         strict: true,
+        output: None,
         cwd: Some("./here".to_string()),
     };
 
@@ -134,6 +142,7 @@ fn workspace_check_builds_the_coverage_arguments() {
         threshold: Some(85.0),
         concurrency: Some(4),
         strict: true,
+        output: None,
         cwd: Some("./here".to_string()),
     };
 
@@ -160,6 +169,7 @@ fn workspace_check_builds_the_performance_arguments() {
         threshold: Some(85.0),
         concurrency: Some(4),
         strict: true,
+        output: None,
         cwd: Some("./here".to_string()),
     };
 
@@ -200,6 +210,7 @@ fn workspace_check_scores_the_sources_it_is_pointed_at() {
         threshold: None,
         concurrency: None,
         strict: false,
+        output: None,
         cwd: Some(dir.path().to_string_lossy().to_string()),
     };
 
@@ -225,6 +236,7 @@ fn workspace_check_reports_a_workspace_with_nothing_to_score() {
         threshold: None,
         concurrency: None,
         strict: false,
+        output: None,
         cwd: Some(dir.path().to_string_lossy().to_string()),
     };
 

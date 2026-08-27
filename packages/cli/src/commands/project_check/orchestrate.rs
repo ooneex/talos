@@ -25,7 +25,7 @@ use super::{
     health,
     hygiene::check_hygiene,
     imports, indexes, lockfile, logging, mailers, middlewares, migrations, openapi, orphans,
-    outdated, pagination,
+    outdated, output, pagination,
     performance::check_performance,
     permissions, queries, queues, registration,
     render::{render_json, render_llm, render_report},
@@ -418,6 +418,18 @@ pub fn run(args: &ProjectCheckArgs) {
         print!("{}", render_llm(&report));
     } else {
         print!("{}", render_report(&report));
+    }
+
+    // The file is written after the report and never instead of it: whatever
+    // it does, stdout has already carried the same run. Under `--json` stdout
+    // belongs to the payload, so the file lands without a word about it.
+    if let Some(format) = args.output {
+        let root = args
+            .cwd
+            .clone()
+            .map(PathBuf::from)
+            .unwrap_or_else(current_dir);
+        crate::utils::announce_report_file(output::write(&root, format, &report, args), args.json);
     }
 
     if report.is_failure(args.strict) {

@@ -1,6 +1,6 @@
 use clap::Args;
 
-use crate::commands::workspace_check::{self, WorkspaceCheckArgs};
+use crate::commands::workspace_check::{self, OutputFormat, WorkspaceCheckArgs};
 
 #[derive(Args, Debug)]
 pub struct CheckArgs {
@@ -21,6 +21,11 @@ pub struct CheckArgs {
     /// Fail on every module that stayed under the coverage threshold.
     #[arg(long, default_value_t = false)]
     pub strict: bool,
+    /// Also write the report to var/outputs/talos_check.md or
+    /// var/outputs/talos_check.json, in the shape an AI agent is handed to fix
+    /// what it lists.
+    #[arg(long, value_enum)]
+    pub output: Option<OutputFormat>,
     #[arg(long)]
     pub cwd: Option<String>,
 }
@@ -34,6 +39,7 @@ pub fn forwarded_args(args: &CheckArgs) -> WorkspaceCheckArgs {
         threshold: args.threshold,
         concurrency: args.concurrency,
         strict: args.strict,
+        output: args.output,
         cwd: args.cwd.clone(),
     }
 }

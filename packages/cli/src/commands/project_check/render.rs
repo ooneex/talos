@@ -5,7 +5,7 @@
 use std::collections::BTreeSet;
 
 use console::style;
-use serde_json::json;
+use serde_json::{Value, json};
 
 use crate::utils::format_duration;
 
@@ -276,6 +276,21 @@ fn llm_status_label(status: CheckStatus) -> &'static str {
     }
 }
 
+/// One check, as both the CI report and the `--output=json` file spell it out.
+pub(super) fn check_value(outcome: &CheckOutcome) -> Value {
+    json!({
+        "id": outcome.id.key(),
+        "title": outcome.id.title(),
+        "category": outcome.id.category().key(),
+        "status": outcome.status.label(),
+        "cached": outcome.cached,
+        "summary": outcome.summary,
+        "details": outcome.details,
+        "hints": outcome.hints,
+        "durationMs": outcome.duration_ms,
+    })
+}
+
 /// Render the machine-readable report used by CI.
 pub fn render_json(report: &ProjectReport) -> String {
     let payload = json!({
@@ -285,21 +300,7 @@ pub fn render_json(report: &ProjectReport) -> String {
         "warnings": report.count(CheckStatus::Warned),
         "passed": report.count(CheckStatus::Passed),
         "skipped": report.count(CheckStatus::Skipped),
-        "checks": report
-            .outcomes
-            .iter()
-            .map(|outcome| json!({
-                "id": outcome.id.key(),
-                "title": outcome.id.title(),
-                "category": outcome.id.category().key(),
-                "status": outcome.status.label(),
-                "cached": outcome.cached,
-                "summary": outcome.summary,
-                "details": outcome.details,
-                "hints": outcome.hints,
-                "durationMs": outcome.duration_ms,
-            }))
-            .collect::<Vec<_>>(),
+        "checks": report.outcomes.iter().map(check_value).collect::<Vec<_>>(),
     });
     serde_json::to_string_pretty(&payload).unwrap_or_else(|_| "{}".to_string())
 }

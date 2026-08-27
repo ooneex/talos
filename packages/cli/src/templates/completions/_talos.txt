@@ -439,7 +439,19 @@ _talos() {
             '--logs[Stream plain logs instead of the interactive view]' \
             '--no-cache[Skip reading and writing the task cache]'
           ;;
-        workspace:check|check|build|fmt|lint|test|e2e:run)
+        workspace:check|check)
+          _arguments -s \
+            '--packages=-[Package name(s), comma-separated (default: all)]::packages:_talos_publish_packages' \
+            '--modules=-[Module name(s), comma-separated (default: all)]::modules:_talos_publish_modules' \
+            '--threshold=[Minimum line and function coverage a module must reach, in percent]:threshold' \
+            '--concurrency=[How many suites run at once]:concurrency:(1 2 4 8)' \
+            '--strict[Fail on every module under the coverage threshold]' \
+            '--output=[Also write the report to var/outputs/talos_check.md or .json]:format:(md json)' \
+            '--logs[Stream plain logs instead of the interactive view]' \
+            '--no-cache[Skip reading and writing the task cache]' \
+            '--cwd=[Working directory]:cwd:_files -/'
+          ;;
+        build|fmt|lint|test|e2e:run)
           _arguments -s \
             '--packages=-[Package name(s), comma-separated (default: all)]::packages:_talos_publish_packages' \
             '--modules=-[Module name(s), comma-separated (default: all)]::modules:_talos_publish_modules' \
@@ -522,6 +534,7 @@ _talos() {
             '--logs[Stream plain workspace logs instead of the interactive view]' \
             '--no-cache[Skip reading and writing the workspace task cache]' \
             '--strict[Fail when a check only reports warnings]' \
+            '--output=[Also write the report to var/outputs/talos_project_check.md or .json]:format:(md json)' \
             '--json[Print the report as JSON]' \
             '--cwd=[Working directory]:cwd:_files -/'
           ;;

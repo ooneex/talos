@@ -1,5 +1,6 @@
 use clap::Parser;
 use cli::commands::check::{CheckArgs, forwarded_args};
+use cli::commands::workspace_check::OutputFormat;
 
 #[derive(Parser)]
 struct TestCli {
@@ -22,6 +23,8 @@ fn check_parses_all_flags() {
         "--concurrency",
         "4",
         "--strict",
+        "--output",
+        "md",
         "--cwd",
         "./here",
     ])
@@ -34,6 +37,7 @@ fn check_parses_all_flags() {
     assert_eq!(cli.args.threshold, Some(85.0));
     assert_eq!(cli.args.concurrency, Some(4));
     assert!(cli.args.strict);
+    assert_eq!(cli.args.output, Some(OutputFormat::Md));
     assert_eq!(cli.args.cwd.as_deref(), Some("./here"));
 }
 
@@ -48,7 +52,20 @@ fn check_defaults_are_empty() {
     assert!(cli.args.threshold.is_none());
     assert!(cli.args.concurrency.is_none());
     assert!(!cli.args.strict);
+    assert!(cli.args.output.is_none());
     assert!(cli.args.cwd.is_none());
+}
+
+#[test]
+fn check_rejects_an_output_format_it_cannot_write() {
+    assert!(TestCli::try_parse_from(["talos", "--output", "html"]).is_err());
+}
+
+#[test]
+fn check_parses_the_json_output_format() {
+    let cli = TestCli::try_parse_from(["talos", "--output", "json"]).expect("json is a format");
+
+    assert_eq!(cli.args.output, Some(OutputFormat::Json));
 }
 
 #[test]
@@ -66,6 +83,7 @@ fn check_forwards_all_flags_to_workspace_check() {
         threshold: Some(85.0),
         concurrency: Some(4),
         strict: true,
+        output: Some(OutputFormat::Json),
         cwd: Some("./here".to_string()),
     };
 
@@ -78,5 +96,6 @@ fn check_forwards_all_flags_to_workspace_check() {
     assert_eq!(forwarded.threshold, Some(85.0));
     assert_eq!(forwarded.concurrency, Some(4));
     assert!(forwarded.strict);
+    assert_eq!(forwarded.output, Some(OutputFormat::Json));
     assert_eq!(forwarded.cwd.as_deref(), Some("./here"));
 }

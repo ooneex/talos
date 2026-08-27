@@ -160,6 +160,8 @@ pub(super) fn gate_args(args: &ProjectCheckArgs, root: &Path) -> WorkspaceCheckA
         threshold: args.threshold,
         concurrency: args.concurrency,
         strict: args.strict,
+        // `project:check` owns its own report and never writes the gate's.
+        output: None,
         cwd: Some(root.to_string_lossy().to_string()),
     }
 }

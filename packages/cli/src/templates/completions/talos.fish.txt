@@ -354,6 +354,12 @@ for cmd in oo talos
     complete -c $cmd -n '__fish_seen_subcommand_from workspace:check check build fmt lint test' -l logs -d 'Stream plain logs instead of the interactive view'
     complete -c $cmd -n '__fish_seen_subcommand_from workspace:check check build fmt lint test' -l no-cache -d 'Skip reading and writing the task cache'
 
+    complete -c $cmd -n '__fish_seen_subcommand_from workspace:check check' -l threshold -x -d 'Minimum line and function coverage a module must reach, in percent'
+    complete -c $cmd -n '__fish_seen_subcommand_from workspace:check check' -l concurrency -x -d 'How many suites run at once'
+    complete -c $cmd -n '__fish_seen_subcommand_from workspace:check check' -l strict -d 'Fail on every module under the coverage threshold'
+    complete -c $cmd -n '__fish_seen_subcommand_from workspace:check check' -l output -x -a 'md json' -d 'Also write the report to var/outputs/talos_check.md or .json'
+    complete -c $cmd -n '__fish_seen_subcommand_from workspace:check check' -l cwd -d 'Working directory'
+
     complete -c $cmd -n '__fish_seen_subcommand_from security:check' -l issues -d 'Create a YAML issue per vulnerability instead of printing the report'
     complete -c $cmd -n '__fish_seen_subcommand_from security:check' -l modules -a '(__talos_pkg_modules)' -d 'Module name(s), comma-separated'
     complete -c $cmd -n '__fish_seen_subcommand_from security:check' -l packages -a '(__talos_packages)' -d 'Alias for --modules, comma-separated'
@@ -392,6 +398,7 @@ for cmd in oo talos
     complete -c $cmd -n '__fish_seen_subcommand_from project:check' -l no-cache -d 'Skip reading and writing the workspace task cache'
     complete -c $cmd -n '__fish_seen_subcommand_from project:check' -l strict -d 'Fail when a check only reports warnings'
     complete -c $cmd -n '__fish_seen_subcommand_from project:check' -l json -d 'Print the report as JSON'
+    complete -c $cmd -n '__fish_seen_subcommand_from project:check' -l output -x -a 'md json' -d 'Also write the report to var/outputs/talos_project_check.md or .json'
     complete -c $cmd -n '__fish_seen_subcommand_from project:check' -l cwd -d 'Working directory'
 
     complete -c $cmd -n '__fish_seen_subcommand_from entity:create' -l name -x -d 'Name of the resource'

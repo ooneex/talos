@@ -134,6 +134,8 @@ pub mod workflows;
 
 use clap::Args;
 
+use crate::utils::OutputFormat;
+
 /// Command the end-to-end check runs.
 pub(super) const E2E_COMMANDS: &str = "e2e";
 
@@ -234,6 +236,12 @@ pub struct ProjectCheckArgs {
     #[arg(long, default_value_t = false)]
     pub json: bool,
 
+    /// Also write the report to var/outputs/talos_project_check.md or
+    /// var/outputs/talos_project_check.json, in the shape an AI agent is
+    /// handed to fix what it lists.
+    #[arg(long, value_enum)]
+    pub output: Option<OutputFormat>,
+
     /// Working directory (defaults to the current directory).
     #[arg(long)]
     pub cwd: Option<String>,
@@ -246,6 +254,7 @@ mod commits;
 mod hygiene;
 mod orchestrate;
 mod outcome;
+pub mod output;
 mod performance;
 mod render;
 mod security_issues;
@@ -263,6 +272,7 @@ pub use outcome::{
     CheckOutcome, CheckStatus, ERROR_DETAIL, ProjectReport, WARN_DETAIL, cap_details, harden,
     parse_ids, select_checks, split_csv, static_outcome,
 };
+pub use output::command_line;
 pub use render::{render_json, render_llm, render_report};
 pub use types::{Category, CheckId, Reads};
 pub use workspace::modules_with_e2e;

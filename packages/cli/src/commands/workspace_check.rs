@@ -20,8 +20,18 @@
 //! gate under `--strict` — the same thing `performance:check` does when it is
 //! run alone. It is scored against its own default threshold rather than the
 //! gate's `--threshold`, which is the coverage rate and means something else.
+//!
+//! `--output` writes those same three reports to `var/outputs/talos_check.md`
+//! or `.json` — see [`output`] — for handing to an agent that will fix what
+//! they found. It only ever adds a file: the console report is printed and
+//! the gate exits exactly as it would have without it.
 
-use std::path::PathBuf;
+pub mod output;
+
+pub use crate::utils::OutputFormat;
+pub use output::{CheckReport, command_line};
+
+use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 use clap::Args;
@@ -58,6 +68,11 @@ pub struct WorkspaceCheckArgs {
     /// on the suites that broke.
     #[arg(long, default_value_t = false)]
     pub strict: bool,
+
+    /// Also write the report to var/outputs/talos_check.md or .json, ready to
+    /// hand to an agent.
+    #[arg(long, value_enum)]
+    pub output: Option<OutputFormat>,
 
     #[arg(long)]
     pub cwd: Option<String>,
@@ -211,17 +226,39 @@ pub fn run(args: &WorkspaceCheckArgs) {
     });
     let elapsed_ms = started.elapsed().as_millis() as u64;
 
-    let passed = print_check_report(
-        args,
-        coverage.unwrap_or_else(|_| Err("coverage panicked".to_string())),
-        lint.unwrap_or_else(|_| Err("lint panicked".to_string())),
-        performance.unwrap_or_else(|_| Err("the performance score panicked".to_string())),
-        elapsed_ms,
-    );
+    let coverage = coverage.unwrap_or_else(|_| Err("coverage panicked".to_string()));
+    let lint = lint.unwrap_or_else(|_| Err("lint panicked".to_string()));
+    let performance =
+        performance.unwrap_or_else(|_| Err("the performance score panicked".to_string()));
+
+    let passed = print_check_report(args, &coverage, &lint, &performance, elapsed_ms);
+
+    // The file is written after the report and never instead of it: whatever
+    // it does, the terminal has already said the same thing.
+    if let Some(format) = args.output {
+        write_output(
+            &root,
+            format,
+            &CheckReport {
+                coverage: &coverage,
+                lint: &lint,
+                performance: &performance,
+                strict: args.strict,
+                elapsed_ms,
+                passed,
+                command: command_line(args),
+            },
+        );
+    }
 
     if !passed {
         std::process::exit(1);
     }
+}
+
+/// Write the gate's report under `var/outputs` and say where it landed.
+fn write_output(root: &Path, format: OutputFormat, report: &CheckReport) {
+    crate::utils::announce_report_file(output::write(root, format, report), false);
 }
 
 /// Prints coverage, lint and the performance score as one gate report instead
@@ -233,14 +270,14 @@ pub fn run(args: &WorkspaceCheckArgs) {
 /// together is seeing all three at once.
 fn print_check_report(
     args: &WorkspaceCheckArgs,
-    coverage: Result<CoverageAudit, String>,
-    lint: Result<LintAudit, String>,
-    performance: Result<PerformanceAudit, String>,
+    coverage: &Result<CoverageAudit, String>,
+    lint: &Result<LintAudit, String>,
+    performance: &Result<PerformanceAudit, String>,
     elapsed_ms: u64,
 ) -> bool {
     let coverage_passed = match coverage {
         Ok(audit) => {
-            coverage::print_report(&audit, args.logs, args.strict, elapsed_ms, true);
+            coverage::print_report(audit, args.logs, args.strict, elapsed_ms, true);
             !audit.is_failure(args.strict)
         }
         Err(message) => {
@@ -251,7 +288,7 @@ fn print_check_report(
 
     let lint_passed = match lint {
         Ok(audit) => {
-            lint::print_report(&audit, args.logs, elapsed_ms);
+            lint::print_report(audit, args.logs, elapsed_ms);
             !audit.is_failure()
         }
         Err(message) => {
@@ -265,7 +302,7 @@ fn print_check_report(
     // verdict.
     let performance_passed = match performance {
         Ok(audit) => {
-            performance_check::print_report(&audit, args.logs, args.strict, elapsed_ms, true);
+            performance_check::print_report(audit, args.logs, args.strict, elapsed_ms, true);
             !audit.is_failure(args.strict)
         }
         Err(message) => {

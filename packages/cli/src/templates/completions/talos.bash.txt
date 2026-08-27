@@ -303,7 +303,13 @@ threads whatsapp telegram messenger discord reddit medium cloudflare bunny s3 op
       [[ $flag == --packages ]] && candidates="$(_talos_packages)"
       [[ $flag == --modules ]] && candidates="$(_talos_pkg_modules)"
       ;;
-    workspace:check | check | build | fmt | lint | test)
+    workspace:check | check)
+      opts="--packages --modules --threshold --concurrency --strict --output --logs --no-cache --cwd"
+      [[ $flag == --packages ]] && candidates="$(_talos_packages)"
+      [[ $flag == --modules ]] && candidates="$(_talos_pkg_modules)"
+      [[ $flag == --output ]] && candidates="md json"
+      ;;
+    build | fmt | lint | test)
       opts="--packages --modules --logs --no-cache"
       [[ $flag == --packages ]] && candidates="$(_talos_packages)"
       [[ $flag == --modules ]] && candidates="$(_talos_pkg_modules)"
@@ -338,11 +344,12 @@ threads whatsapp telegram messenger discord reddit medium cloudflare bunny s3 op
       [[ $flag == --min-severity ]] && candidates="low moderate high critical"
       ;;
     project:check)
-      opts="--only --skip --packages --modules --audit-level --threshold --concurrency --e2e --outdated --logs --no-cache --strict --json --cwd"
+      opts="--only --skip --packages --modules --audit-level --threshold --concurrency --e2e --outdated --logs --no-cache --strict --json --output --cwd"
       [[ $flag == --only || $flag == --skip ]] && candidates="workspace structure tsconfig lockfile conventions imports boundaries restricted container registration routes validation roles entities sql async complexity duplication orphans env dependencies outdated docker migrations accessibility contrast translations stories sdk tests coverage performance e2e-coverage docs bundle security secrets git issues branches commits hygiene e2e"
       [[ $flag == --packages ]] && candidates="$(_talos_packages)"
       [[ $flag == --modules ]] && candidates="$(_talos_pkg_modules)"
       [[ $flag == --audit-level ]] && candidates="low moderate high critical"
+      [[ $flag == --output ]] && candidates="md json"
       ;;
     entity:create)
       opts="--name --module --table-name --override"
