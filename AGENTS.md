@@ -31,10 +31,12 @@ talos build                           # bunup per package
 talos check                           # build + fmt + lint + test, one report (alias of workspace:check)
 talos check --packages=cache,routing  # scope any of the above to named packages
 talos check --logs --no-cache         # stream task output / bypass var/cache
+talos check --output=md               # also write var/outputs/talos_check.md for an agent to fix
 talos coverage                        # per-package line and function coverage
 talos security:check                  # OSV.dev audit of every lockfile + LLM config audit
 talos performance:check               # performance rules over the sources
 talos project:check --strict          # the whole-project gate, every check aggregated
+talos project:check --output=md       # also write var/outputs/talos_project_check.md for an agent to fix
 talos release:create                  # detect unreleased commits, bump, changelog, tag, push
 ```
 

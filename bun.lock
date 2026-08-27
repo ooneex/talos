@@ -610,7 +610,7 @@
     },
     "packages/storage": {
       "name": "@talosjs/storage",
-      "version": "1.1.4",
+      "version": "1.1.5",
       "dependencies": {
         "@bunny.net/storage-sdk": "^0.3.1",
         "@talosjs/app-env": "workspace:^",

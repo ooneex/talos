@@ -206,7 +206,9 @@ talos install     # audits every dependency for known vulnerabilities, then inst
 talos check       # install, build, fmt, lint, test across every package
 ```
 
-`talos check` is the full gate. During day-to-day work the individual steps each keep their own cache, so re-running one only redoes the packages that changed:
+`talos check` is the full gate. Add `--output=md` (or `--output=json`) and it also writes `var/outputs/talos_check.md` — the same report, with every failing suite's log, every under-covered file and every performance hotspot spelled out, ready to hand to an AI agent to fix.
+
+During day-to-day work the individual steps each keep their own cache, so re-running one only redoes the packages that changed:
 
 ```sh
 talos fmt                        # format
