@@ -1,6 +1,6 @@
 [package]
 name = "talos-cli"
-version = "0.13.1"
+version = "0.14.0"
 edition = "2024"
 description = "The talos dev CLI — scaffolds projects, modules, and artifacts"
 license = "MIT"
