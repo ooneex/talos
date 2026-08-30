@@ -695,3 +695,9 @@
 
 - Restore coverage report output module| — Franck ([34f0659c](https///github.com/ooneex/talos/commit/34f0659c))
 
+## [0.14.4](https///github.com/ooneex/talos/releases/tag/@talos/cli@0.14.4) - 2026-08-30
+
+### Changed
+
+- Update Cargo.lock| — Franck ([24e42927](https///github.com/ooneex/talos/commit/24e42927))
+
