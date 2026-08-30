@@ -70,13 +70,13 @@ jobs:
       - name: Package (Unix)
         if: runner.os != 'Windows'
         run: |
-          tar -czf "${{ matrix.name }}.tar.gz" -C "target/${{ matrix.target }}/release" talos
+          tar -czf "${{ matrix.name }}.tar.gz" -C "target.noindex/${{ matrix.target }}/release" talos
 
       - name: Package (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          Compress-Archive -Path "target/${{ matrix.target }}/release/talos.exe" -DestinationPath "${{ matrix.name }}.zip"
+          Compress-Archive -Path "target.noindex/${{ matrix.target }}/release/talos.exe" -DestinationPath "${{ matrix.name }}.zip"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
