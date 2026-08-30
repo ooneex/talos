@@ -685,3 +685,13 @@
 - Bump version to 0.14.1| — Franck ([40755430](https///github.com/ooneex/talos/commit/40755430))
 - Update Cargo.lock| — Franck ([dc8417a2](https///github.com/ooneex/talos/commit/dc8417a2))
 
+## [0.14.3](https///github.com/ooneex/talos/releases/tag/@talos/cli@0.14.3) - 2026-08-30
+
+### Changed
+
+- Update Cargo.lock| — Franck ([8a3e8e7d](https///github.com/ooneex/talos/commit/8a3e8e7d))
+
+### Fixed
+
+- Restore coverage report output module| — Franck ([34f0659c](https///github.com/ooneex/talos/commit/34f0659c))
+
