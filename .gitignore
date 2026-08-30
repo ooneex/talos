@@ -20,6 +20,10 @@ lib-cov
 
 # Coverage directory used by tools like istanbul
 coverage
+# Rust source for the `talos coverage` command; keep it trackable even though
+# generated coverage directories use the same name.
+!packages/cli/src/commands/coverage/
+!packages/cli/src/commands/coverage/**
 *.lcov
 
 # nyc test coverage
