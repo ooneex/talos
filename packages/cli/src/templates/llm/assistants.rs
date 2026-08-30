@@ -36,12 +36,20 @@ pub struct SkillInput {
     pub references: Vec<(String, String)>,
 }
 
+/// Codex-native inputs read from a source tree that already carries
+/// `.codex/agents/*.toml` and `.codex/skills/*/SKILL.md`.
+pub struct NativeCodexInput {
+    pub agents: Vec<(String, String)>,
+    pub skills: Vec<(String, SkillInput)>,
+}
+
 /// The shared inputs every adapter renders. `agents` and `skills` are ordered
 /// so the generated files are deterministic.
 pub struct ScaffoldInput {
     pub agents_md: String,
     pub agents: Vec<(String, String)>,
     pub skills: Vec<(String, SkillInput)>,
+    pub native_codex: Option<NativeCodexInput>,
 }
 
 /// An adapter renders the shared input into one assistant's native layout.
@@ -117,28 +125,43 @@ pub fn default_adapter(input: &ScaffoldInput, config_dir: &str) -> Vec<Generated
     files
 }
 
-/// Codex: TOML custom agents under `.codex/agents` and trimmed `SKILL.md` folders
-/// under `.codex/skills`.
+/// Codex: TOML custom agents under `.codex/agents` and `SKILL.md` folders under
+/// `.codex/skills`. Prefer native Codex sources when the skeleton provides
+/// them; the Claude adapter remains a compatibility fallback for older or
+/// minimal source trees.
 pub fn codex_adapter(input: &ScaffoldInput, _config_dir: &str) -> Vec<GeneratedFile> {
     let mut files = vec![agents_md_file(input)];
+    let (agents, skills, native) = if let Some(native) = &input.native_codex {
+        (&native.agents, &native.skills, true)
+    } else {
+        (&input.agents, &input.skills, false)
+    };
 
-    for (name, content) in &input.agents {
+    for (name, content) in agents {
         files.push(GeneratedFile {
             path: Path::new(".codex")
                 .join("agents")
                 .join(format!("{name}.toml")),
-            content: to_codex_agent(content),
+            content: if native {
+                content.clone()
+            } else {
+                to_codex_agent(content)
+            },
         });
     }
 
-    for (name, skill) in &input.skills {
+    for (name, skill) in skills {
         let slug = slugify(name);
         files.push(GeneratedFile {
             path: Path::new(".codex")
                 .join("skills")
                 .join(&slug)
                 .join("SKILL.md"),
-            content: to_codex_skill(&skill.source),
+            content: if native {
+                skill.source.clone()
+            } else {
+                to_codex_skill(&skill.source)
+            },
         });
 
         for (ref_name, ref_content) in &skill.references {

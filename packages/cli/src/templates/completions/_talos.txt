@@ -245,7 +245,10 @@ _talos() {
           _arguments -s \
             '--agents=-[Assistant config dir(s), comma-separated]::agents:_talos_agent_dirs' \
             '--cwd=[Working directory]:cwd:_files -/' \
-            '--no-cache[Ignore the cached skeleton and re-download it]'
+            '--name=[Project name used in generated configuration]:name:' \
+            '--no-cache[Ignore the cached skeleton and re-download it]' \
+            '--silent[Suppress success messages]' \
+            '--source-dir=[Skeleton source directory]:source-dir:_files -/'
           ;;
         app:start)
           _arguments -s \

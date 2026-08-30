@@ -221,7 +221,10 @@ for cmd in oo talos
 
     complete -c $cmd -n '__fish_seen_subcommand_from agent:skills:create' -l agents -x -a '(__talos_agent_dirs)' -d 'Assistant config dir(s), comma-separated'
     complete -c $cmd -n '__fish_seen_subcommand_from agent:skills:create' -l cwd -r -f -a '(__fish_complete_directories)' -d 'Working directory'
+    complete -c $cmd -n '__fish_seen_subcommand_from agent:skills:create' -l name -x -d 'Project name used in generated configuration'
     complete -c $cmd -n '__fish_seen_subcommand_from agent:skills:create' -l no-cache -d 'Ignore the cached skeleton and re-download it'
+    complete -c $cmd -n '__fish_seen_subcommand_from agent:skills:create' -l silent -d 'Suppress success messages'
+    complete -c $cmd -n '__fish_seen_subcommand_from agent:skills:create' -l source-dir -r -f -a '(__fish_complete_directories)' -d 'Skeleton source directory'
 
     complete -c $cmd -n '__fish_seen_subcommand_from app:start app:stop' -l modules -a '(__talos_runnable_modules)' -d 'Module name(s), comma-separated (default: all)'
     complete -c $cmd -n '__fish_seen_subcommand_from app:start app:stop' -l packages -a '(__talos_runnable_modules)' -d 'Alias for --modules, comma-separated (default: all)'

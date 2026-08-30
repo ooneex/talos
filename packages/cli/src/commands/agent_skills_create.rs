@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use clap::Args;
 
 use crate::templates::llm::assistants::{
-    ScaffoldInput, SkillInput, default_config_dirs, resolve_adapter,
+    NativeCodexInput, ScaffoldInput, SkillInput, default_config_dirs, resolve_adapter,
 };
 use crate::utils::{clone_skeleton, current_dir};
 
@@ -33,10 +33,10 @@ pub struct AgentSkillsCreateArgs {
     pub no_cache: bool,
 }
 
-/// Read the skeleton's `.claude/agents/*.md` files into `(name, content)` pairs
-/// sorted by file name.
-fn read_agents(repo_dir: &Path) -> Vec<(String, String)> {
-    let agents_dir = repo_dir.join(".claude").join("agents");
+/// Read one assistant's agent files into `(name, content)` pairs sorted by file
+/// name.
+fn read_agents(repo_dir: &Path, config_dir: &str, extension: &str) -> Vec<(String, String)> {
+    let agents_dir = repo_dir.join(config_dir).join("agents");
     let Ok(entries) = fs::read_dir(&agents_dir) else {
         return Vec::new();
     };
@@ -45,7 +45,7 @@ fn read_agents(repo_dir: &Path) -> Vec<(String, String)> {
         .flatten()
         .filter_map(|entry| {
             let path = entry.path();
-            if !path.is_file() || path.extension().and_then(|ext| ext.to_str()) != Some("md") {
+            if !path.is_file() || path.extension().and_then(|ext| ext.to_str()) != Some(extension) {
                 return None;
             }
             let name = path.file_stem()?.to_str()?.to_string();
@@ -83,10 +83,10 @@ fn read_skill_references(skill_dir: &Path) -> Vec<(String, String)> {
     references
 }
 
-/// Read the skeleton's `.claude/skills/*/SKILL.md` folders into `(name, skill)`
-/// pairs sorted by directory name.
-fn read_skills(repo_dir: &Path) -> Vec<(String, SkillInput)> {
-    let skills_dir = repo_dir.join(".claude").join("skills");
+/// Read one assistant's `skills/*/SKILL.md` folders into `(name, skill)` pairs
+/// sorted by directory name.
+fn read_skills(repo_dir: &Path, config_dir: &str) -> Vec<(String, SkillInput)> {
+    let skills_dir = repo_dir.join(config_dir).join("skills");
     let Ok(entries) = fs::read_dir(&skills_dir) else {
         return Vec::new();
     };
@@ -115,12 +115,42 @@ fn load_scaffold_input(repo_dir: &Path, project_name: &str) -> ScaffoldInput {
     let agents_md = fs::read_to_string(repo_dir.join("AGENTS.md"))
         .unwrap_or_default()
         .replace("{{NAME}}", project_name);
+    let codex_dir = repo_dir.join(".codex");
+    let native_codex = codex_dir.is_dir().then(|| NativeCodexInput {
+        agents: read_agents(repo_dir, ".codex", "toml"),
+        skills: read_skills(repo_dir, ".codex"),
+    });
 
     ScaffoldInput {
         agents_md,
-        agents: read_agents(repo_dir),
-        skills: read_skills(repo_dir),
+        agents: read_agents(repo_dir, ".claude", "md"),
+        skills: read_skills(repo_dir, ".claude"),
+        native_codex,
     }
+}
+
+/// Codex discovers repository skills through `.agents/skills`. Keep the
+/// canonical generated files under `.codex/skills` and expose them through one
+/// relative directory symlink, without replacing an existing user-owned path.
+fn ensure_codex_skill_discovery(cwd: &Path) {
+    let source = cwd.join(".codex").join("skills");
+    let link = cwd.join(".agents").join("skills");
+    if !source.is_dir() || fs::symlink_metadata(&link).is_ok() {
+        return;
+    }
+
+    let Some(parent) = link.parent() else {
+        return;
+    };
+    if fs::create_dir_all(parent).is_err() {
+        return;
+    }
+
+    #[cfg(unix)]
+    let _ = std::os::unix::fs::symlink(Path::new("../.codex/skills"), &link);
+
+    #[cfg(windows)]
+    let _ = std::os::windows::fs::symlink_dir(Path::new("../.codex/skills"), &link);
 }
 
 pub fn run(args: &AgentSkillsCreateArgs) {
@@ -170,5 +200,9 @@ pub fn run(args: &AgentSkillsCreateArgs) {
                 "{config_dir} created successfully ({written} {label})"
             ));
         }
+    }
+
+    if agent_dirs.iter().any(|dir| dir == ".codex") {
+        ensure_codex_skill_discovery(&cwd);
     }
 }

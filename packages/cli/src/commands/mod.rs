@@ -125,6 +125,7 @@ pub enum Commands {
     #[command(name = "ai:middleware:create")]
     AiMiddlewareCreate(ai_middleware_create::AiMiddlewareCreateArgs),
 
+    /// Scaffold skills and configuration for coding assistants.
     #[command(name = "agent:skills:create")]
     AgentSkillsCreate(agent_skills_create::AgentSkillsCreateArgs),
 
