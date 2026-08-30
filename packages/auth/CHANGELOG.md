@@ -54,3 +54,9 @@
 
 - Return 401 for invalid credentials via AuthException status option| — Franck ([a03a2ff3](https///github.com/ooneex/talos/commit/a03a2ff3))
 
+## [1.3.2](https///github.com/ooneex/talos/releases/tag/@talosjs/auth@1.3.2) - 2026-08-30
+
+### Changed
+
+- Disable test coverage by default in bunfig| — Franck ([8677a826](https///github.com/ooneex/talos/commit/8677a826))
+
