@@ -35,3 +35,10 @@
 
 - Resolve lint failures from unused params and Buffer overload|Removes an unused options parameter from convertPdfToImages and an — Franck ([282bf781](https///github.com/ooneex/talos/commit/282bf781))
 
+## [1.1.4](https///github.com/ooneex/talos/releases/tag/@talosjs/pdf@1.1.4) - 2026-08-30
+
+### Changed
+
+- Disable test coverage by default in bunfig| — Franck ([8677a826](https///github.com/ooneex/talos/commit/8677a826))
+- Run package tests with parallel isolated workers| — Franck ([aee22840](https///github.com/ooneex/talos/commit/aee22840))
+
