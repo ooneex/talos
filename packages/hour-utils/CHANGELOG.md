@@ -30,3 +30,10 @@
 - Reach full function and line coverage|Replace the static-only Hour/Millisecond/Minute/Second classes with — Franck ([242331e1](https///github.com/ooneex/talos/commit/242331e1))
 - Enable coverage thresholds in every package's bunfig.toml| — Franck ([e19e3785](https///github.com/ooneex/talos/commit/e19e3785))
 
+## [1.1.4](https///github.com/ooneex/talos/releases/tag/@talosjs/hour-utils@1.1.4) - 2026-08-30
+
+### Changed
+
+- Disable test coverage by default in bunfig| — Franck ([8677a826](https///github.com/ooneex/talos/commit/8677a826))
+- Run package tests with parallel isolated workers| — Franck ([aee22840](https///github.com/ooneex/talos/commit/aee22840))
+
