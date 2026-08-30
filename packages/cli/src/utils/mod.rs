@@ -1,3 +1,4 @@
+mod agent_report;
 mod case;
 mod commitlint;
 mod concurrently;
@@ -36,6 +37,10 @@ pub mod workspace_scheduler;
 pub mod workspace_task;
 mod yaml;
 
+pub use agent_report::{
+    AgentReport, ReportEntry, ReportSection, ReportStatus, SummaryRow,
+    announce as announce_agent_report, logs as report_logs, write_agent_report,
+};
 pub use case::{pluralize, to_kebab_case, to_pascal_case, to_snake_case};
 pub use commitlint::{
     BODY_MAX_LINE_LENGTH, COMMIT_TYPES, COMMON_SCOPE, HEADER_MAX_LENGTH, check_commit_message_file,
@@ -119,7 +124,9 @@ pub use workspace::{
 };
 pub use workspace_footer::{BAR_WIDTH, FooterState, build_footer_lines};
 pub use workspace_group::{INSTALL_COMMAND, build_group, build_install_group};
-pub(crate) use workspace_scheduler::{SchedulerContext, print_task_report, run_group};
+pub(crate) use workspace_scheduler::{
+    SchedulerContext, default_concurrency, print_task_report, run_group,
+};
 pub use workspace_task::{Task, TaskStatus, format_duration};
 
 pub use style::{

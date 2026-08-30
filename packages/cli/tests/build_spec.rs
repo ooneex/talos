@@ -4,6 +4,7 @@ use std::process::Command;
 
 use clap::Parser;
 use cli::commands::build::{BuildArgs, execute};
+use cli::utils::{OUTPUT_DIR, OutputFormat};
 
 #[derive(Parser)]
 struct TestCli {
@@ -17,6 +18,7 @@ fn args(root: &Path) -> BuildArgs {
         modules: None,
         logs: false,
         no_cache: true,
+        output: None,
         cwd: Some(root.display().to_string()),
     }
 }
@@ -72,6 +74,8 @@ fn build_parses_all_flags() {
         "user",
         "--logs",
         "--no-cache",
+        "--output",
+        "md",
         "--cwd",
         "./here",
     ])
@@ -81,6 +85,7 @@ fn build_parses_all_flags() {
     assert_eq!(cli.args.modules.as_deref(), Some("user"));
     assert!(cli.args.logs);
     assert!(cli.args.no_cache);
+    assert_eq!(cli.args.output, Some(OutputFormat::Md));
     assert_eq!(cli.args.cwd.as_deref(), Some("./here"));
 }
 
@@ -92,6 +97,7 @@ fn build_defaults_are_empty() {
     assert!(cli.args.modules.is_none());
     assert!(!cli.args.logs);
     assert!(!cli.args.no_cache);
+    assert!(cli.args.output.is_none());
     assert!(cli.args.cwd.is_none());
 }
 
@@ -161,19 +167,34 @@ fn execute_warns_and_succeeds_when_no_target_declares_a_build_script() {
 }
 
 #[test]
-fn execute_reports_a_single_failure_without_logs_and_stops_before_later_targets() {
+fn execute_reports_a_single_failure_without_logs() {
     let tmp = tempfile::tempdir().expect("tempdir");
-    // Sorted alphabetically ahead of "zeta" with no dependency between them,
-    // "alpha" fails first — the scheduler is fail-fast, so "zeta" must never
-    // run at all.
     write_module(tmp.path(), "alpha", "{\"build\":\"false\"}");
-    write_module(tmp.path(), "zeta", "{\"build\":\"touch ran.marker\"}");
+    write_module(tmp.path(), "zeta", "{\"build\":\"exit 0\"}");
 
     let mut a = args(tmp.path());
     a.logs = false;
 
     assert!(!execute(&a));
-    assert!(!tmp.path().join("modules/zeta/ran.marker").exists());
+}
+
+#[test]
+fn execute_never_builds_a_target_that_depends_on_a_failing_one() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    write_module(tmp.path(), "core", "{\"build\":\"false\"}");
+    // "app" imports "core", so it is held until core builds — which it never
+    // does. Two targets with no dependency between them have no such reason
+    // to wait for one another, and do run at the same time.
+    let app_dir = tmp.path().join("modules/app");
+    fs::create_dir_all(&app_dir).expect("app dir");
+    fs::write(
+        app_dir.join("package.json"),
+        "{\"name\":\"app\",\"scripts\":{\"build\":\"touch ran.marker\"},\"dependencies\":{\"core\":\"*\"}}",
+    )
+    .expect("package.json");
+
+    assert!(!execute(&args(tmp.path())));
+    assert!(!app_dir.join("ran.marker").exists());
 }
 
 #[cfg(unix)]
@@ -266,4 +287,28 @@ fn execute_reuses_a_cached_build_on_a_second_run() {
 
     // Second run should hit the cache entry written by the first.
     assert!(execute(&a));
+}
+
+#[test]
+fn execute_writes_the_report_an_agent_works_from_when_output_is_asked_for() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    write_module(tmp.path(), "alpha", "{\"build\":\"false\"}");
+
+    let mut a = args(tmp.path());
+    a.output = Some(OutputFormat::Json);
+
+    assert!(!execute(&a));
+
+    let report = fs::read_to_string(tmp.path().join(OUTPUT_DIR).join("talos_build.json"))
+        .expect("the report is written");
+    let value: serde_json::Value = serde_json::from_str(&report).expect("valid json");
+
+    assert_eq!(value["tool"], "talos build");
+    assert_eq!(value["passed"], false);
+    assert_eq!(value["summary"]["build"]["status"], "fail");
+    assert_eq!(value["buildFailures"][0]["path"], "modules/alpha");
+    assert_eq!(
+        value["buildFailures"][0]["rerun"],
+        "talos build --modules=alpha --logs"
+    );
 }

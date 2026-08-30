@@ -1,3 +1,6 @@
+#[path = "fmt/output.rs"]
+mod output;
+
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::time::Instant;
@@ -6,16 +9,21 @@ use clap::Args;
 use console::style;
 
 use crate::utils::{
-    Loader, LoaderGroup, SchedulerContext, TargetType, WorkspaceTarget, build_group, current_dir,
-    discover_targets, error, hash_root_inputs, is_git_workspace_root, load_cache_index,
-    load_file_hash_cache, print_task_report, run_group, save_file_hash_cache,
-    sort_targets_by_dependencies,
+    Loader, LoaderGroup, OutputFormat, SchedulerContext, TargetType, WorkspaceTarget,
+    announce_agent_report, build_group, current_dir, discover_targets, error, hash_root_inputs,
+    is_git_workspace_root, load_cache_index, load_file_hash_cache, print_task_report, run_group,
+    save_file_hash_cache, sort_targets_by_dependencies, write_agent_report,
 };
 
 /// `fmt` runs a single, order-independent command, so it keeps its own
 /// fingerprint cache instead of sharing `workspace:run`'s — a `--no-cache`
 /// build or a stale lint result never has a reason to invalidate a clean
 /// format pass, or the other way around.
+///
+/// Being order-independent is also what lets every target format at once:
+/// [`run_group`] holds a task back only for a dependency, and a fmt task
+/// declares none. `--output` leaves the same report behind as a file, for an
+/// agent to fix what it lists — see [`output`].
 const FMT_CACHE_DIR: &str = "var/cache/fmt";
 
 #[derive(Args, Debug)]
@@ -28,6 +36,11 @@ pub struct FmtArgs {
     pub logs: bool,
     #[arg(long, default_value_t = false)]
     pub no_cache: bool,
+    /// Also write the report to var/outputs/talos_fmt.md or
+    /// var/outputs/talos_fmt.json, in the shape an AI agent is handed to fix
+    /// what it lists.
+    #[arg(long, value_enum)]
+    pub output: Option<OutputFormat>,
     #[arg(long)]
     pub cwd: Option<String>,
 }
@@ -154,6 +167,7 @@ pub fn execute(args: &FmtArgs) -> bool {
             cache_index: &cache_index,
             loader: &loader,
             loader_group: 0,
+            concurrency: None,
         },
     );
     loader.stop();
@@ -162,12 +176,15 @@ pub fn execute(args: &FmtArgs) -> bool {
         save_file_hash_cache(&cache_dir, &file_hash_cache);
     }
 
-    print_task_report(
-        "Fmt report",
-        &group,
-        args.logs,
-        started_at.elapsed().as_millis() as u64,
-    );
+    let elapsed_ms = started_at.elapsed().as_millis() as u64;
+    print_task_report("Fmt report", &group, args.logs, elapsed_ms);
+
+    // The file is written after the report and never instead of it: whatever
+    // it does, the terminal has already said the same thing.
+    if let Some(format) = args.output {
+        let report = output::report(args, &group, elapsed_ms);
+        announce_agent_report(write_agent_report(&root_dir, format, &report));
+    }
 
     !any_failed
 }

@@ -9,6 +9,7 @@ use cli::commands::coverage::{
 };
 use cli::commands::project_check::cache::FileHashes;
 use cli::commands::project_check::modules::discover_modules;
+use cli::utils::OutputFormat;
 
 #[derive(Parser)]
 struct TestCli {
@@ -61,6 +62,7 @@ fn parses_with_no_arguments() {
     assert!(!cli.args.no_cache);
     assert!(!cli.args.strict);
     assert!(cli.args.threshold.is_none());
+    assert!(cli.args.output.is_none());
 }
 
 #[test]
@@ -75,6 +77,7 @@ fn parses_every_flag() {
         "--concurrency=2",
         "--no-cache",
         "--strict",
+        "--output=json",
         "--cwd=/tmp/app",
     ])
     .expect("every flag parses");
@@ -87,6 +90,7 @@ fn parses_every_flag() {
     assert_eq!(cli.args.packages.as_deref(), Some("color"));
     assert_eq!(cli.args.threshold, Some(75.5));
     assert_eq!(cli.args.concurrency, Some(2));
+    assert_eq!(cli.args.output, Some(OutputFormat::Json));
     assert_eq!(cli.args.cwd.as_deref(), Some("/tmp/app"));
 }
 

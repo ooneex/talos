@@ -20,6 +20,8 @@ fn test_parses_all_flags() {
         "user",
         "--logs",
         "--no-cache",
+        "--concurrency",
+        "3",
         "--cwd",
         "./here",
     ])
@@ -29,6 +31,7 @@ fn test_parses_all_flags() {
     assert_eq!(cli.args.modules.as_deref(), Some("user"));
     assert!(cli.args.logs);
     assert!(cli.args.no_cache);
+    assert_eq!(cli.args.concurrency, Some(3));
     assert_eq!(cli.args.cwd.as_deref(), Some("./here"));
 }
 
@@ -40,6 +43,7 @@ fn test_defaults_are_empty() {
     assert!(cli.args.modules.is_none());
     assert!(!cli.args.logs);
     assert!(!cli.args.no_cache);
+    assert!(cli.args.concurrency.is_none());
     assert!(cli.args.cwd.is_none());
 }
 
@@ -73,8 +77,21 @@ fn args(cwd: &Path) -> TestArgs {
         modules: None,
         logs: false,
         no_cache: true,
+        concurrency: None,
         cwd: Some(cwd.display().to_string()),
     }
+}
+
+#[test]
+fn execute_honours_a_concurrency_of_one() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    write_module_with_tests(tmp.path(), "alpha", "{\"test\":\"true\"}");
+    write_module_with_tests(tmp.path(), "beta", "{\"test\":\"true\"}");
+
+    assert!(execute(&TestArgs {
+        concurrency: Some(1),
+        ..args(tmp.path())
+    }));
 }
 
 #[test]

@@ -451,12 +451,29 @@ _talos() {
             '--no-cache[Skip reading and writing the task cache]' \
             '--cwd=[Working directory]:cwd:_files -/'
           ;;
-        build|fmt|lint|test|e2e:run)
+        build|fmt|lint)
+          _arguments -s \
+            '--packages=-[Package name(s), comma-separated (default: all)]::packages:_talos_publish_packages' \
+            '--modules=-[Module name(s), comma-separated (default: all)]::modules:_talos_publish_modules' \
+            '--logs[Stream plain logs instead of the interactive view]' \
+            '--no-cache[Skip reading and writing the task cache]' \
+            '--output=[Also write the report to var/outputs/talos_<command>.md or .json]:format:(md json)' \
+            '--cwd=[Working directory]:cwd:_files -/'
+          ;;
+        e2e:run)
           _arguments -s \
             '--packages=-[Package name(s), comma-separated (default: all)]::packages:_talos_publish_packages' \
             '--modules=-[Module name(s), comma-separated (default: all)]::modules:_talos_publish_modules' \
             '--logs[Stream plain logs instead of the interactive view]' \
             '--no-cache[Skip reading and writing the task cache]'
+          ;;
+        test)
+          _arguments -s \
+            '--packages=-[Package name(s), comma-separated (default: all)]::packages:_talos_publish_packages' \
+            '--modules=-[Module name(s), comma-separated (default: all)]::modules:_talos_publish_modules' \
+            '--logs[Stream plain logs instead of the interactive view]' \
+            '--no-cache[Skip reading and writing the task cache]' \
+            '--concurrency=[How many module suites run at once (default: cores, capped at 8)]:concurrency'
           ;;
         install)
           _arguments -s \
@@ -507,6 +524,7 @@ _talos() {
             '--concurrency=[How many suites run at once]:concurrency:(1 2 4 8)' \
             '--no-cache[Skip reading and writing the coverage cache]' \
             '--strict[Fail when a module stays under the threshold]' \
+            '--output=[Also write the report to var/outputs/talos_coverage.md or .json]:format:(md json)' \
             '--cwd=[Working directory]:cwd:_files -/'
           ;;
         performance:check)

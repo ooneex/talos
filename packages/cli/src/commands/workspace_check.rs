@@ -120,6 +120,9 @@ pub fn lint_args(args: &WorkspaceCheckArgs) -> LintArgs {
         modules: args.modules.clone(),
         logs: args.logs,
         no_cache: args.no_cache,
+        // The gate writes its own `talos_check` report, so the lint it runs
+        // never leaves a second file of its own behind.
+        output: None,
         cwd: args.cwd.clone(),
     }
 }

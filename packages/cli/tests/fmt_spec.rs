@@ -3,6 +3,7 @@ use std::path::Path;
 
 use clap::Parser;
 use cli::commands::fmt::{FmtArgs, execute};
+use cli::utils::{OUTPUT_DIR, OutputFormat};
 
 #[derive(Parser)]
 struct TestCli {
@@ -20,6 +21,8 @@ fn fmt_parses_all_flags() {
         "user",
         "--logs",
         "--no-cache",
+        "--output",
+        "md",
         "--cwd",
         "./here",
     ])
@@ -29,6 +32,7 @@ fn fmt_parses_all_flags() {
     assert_eq!(cli.args.modules.as_deref(), Some("user"));
     assert!(cli.args.logs);
     assert!(cli.args.no_cache);
+    assert_eq!(cli.args.output, Some(OutputFormat::Md));
     assert_eq!(cli.args.cwd.as_deref(), Some("./here"));
 }
 
@@ -40,6 +44,7 @@ fn fmt_defaults_are_empty() {
     assert!(cli.args.modules.is_none());
     assert!(!cli.args.logs);
     assert!(!cli.args.no_cache);
+    assert!(cli.args.output.is_none());
     assert!(cli.args.cwd.is_none());
 }
 
@@ -64,6 +69,7 @@ fn args(cwd: &Path) -> FmtArgs {
         modules: None,
         logs: false,
         no_cache: true,
+        output: None,
         cwd: Some(cwd.display().to_string()),
     }
 }
@@ -154,4 +160,22 @@ fn execute_filters_to_the_named_package_only() {
         modules: Some("alpha".to_string()),
         ..args(tmp.path())
     }));
+}
+
+#[test]
+fn execute_writes_the_report_an_agent_works_from_when_output_is_asked_for() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    write_module(tmp.path(), "alpha", "{\"fmt\":\"false\"}");
+
+    let mut a = args(tmp.path());
+    a.output = Some(OutputFormat::Md);
+
+    assert!(!execute(&a));
+
+    let report = fs::read_to_string(tmp.path().join(OUTPUT_DIR).join("talos_fmt.md"))
+        .expect("the report is written");
+    assert!(report.starts_with("# talos fmt report"));
+    assert!(report.contains("**Verdict:** FAILED"));
+    assert!(report.contains("## Fmt failures (1)"));
+    assert!(report.contains("talos fmt --modules=alpha --logs"));
 }

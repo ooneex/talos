@@ -285,6 +285,7 @@ mod tests {
             cache_index,
             loader,
             loader_group: 0,
+            concurrency: None,
         }
     }
 

@@ -1,5 +1,6 @@
 use clap::Parser;
 use cli::commands::lint::LintArgs;
+use cli::utils::OutputFormat;
 
 #[derive(Parser)]
 struct TestCli {
@@ -17,6 +18,8 @@ fn lint_parses_all_flags() {
         "user",
         "--logs",
         "--no-cache",
+        "--output",
+        "md",
         "--cwd",
         "./here",
     ])
@@ -26,6 +29,7 @@ fn lint_parses_all_flags() {
     assert_eq!(cli.args.modules.as_deref(), Some("user"));
     assert!(cli.args.logs);
     assert!(cli.args.no_cache);
+    assert_eq!(cli.args.output, Some(OutputFormat::Md));
     assert_eq!(cli.args.cwd.as_deref(), Some("./here"));
 }
 
@@ -37,6 +41,7 @@ fn lint_defaults_are_empty() {
     assert!(cli.args.modules.is_none());
     assert!(!cli.args.logs);
     assert!(!cli.args.no_cache);
+    assert!(cli.args.output.is_none());
     assert!(cli.args.cwd.is_none());
 }
 

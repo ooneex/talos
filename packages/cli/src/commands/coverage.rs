@@ -9,15 +9,18 @@
 // under the threshold named with their uncovered lines, and the failing suites
 // called out separately from the merely under-covered ones.
 //
-// Running suites is expensive, so a report a module's sources have not moved
-// since is replayed from [`cache`] rather than measured again, and `--no-cache`
-// turns that off. A failing suite always ends the run in a non-zero status;
+// Running suites is expensive, so they run in parallel — as many at once as
+// `--concurrency` allows — and a report a module's sources have not moved
+// since is replayed from [`cache`] rather than measured again, `--no-cache`
+// turns that off. `--output` leaves the same report behind as a file, for an
+// agent to fix what it lists — see [`output`]. A failing suite always ends the run in a non-zero status;
 // `--strict` extends that to the modules that merely stayed under the
 // threshold, which is what makes the command usable as a gate.
 
 #[path = "coverage/cache.rs"]
 pub mod cache;
 mod issues;
+mod output;
 mod parsing;
 mod report;
 mod runner;
@@ -37,7 +40,9 @@ use std::time::Instant;
 use clap::Args;
 
 use crate::commands::project_check::cache::FileHashes;
-use crate::utils::{Loader, LoaderGroup, Spinner};
+use crate::utils::{
+    Loader, LoaderGroup, OutputFormat, Spinner, announce_agent_report, write_agent_report,
+};
 
 /// Coverage a module is expected to reach, in percent, when `--threshold` says
 /// nothing else.
@@ -94,6 +99,12 @@ pub struct CoverageArgs {
     /// non-zero status.
     #[arg(long, default_value_t = false)]
     pub strict: bool,
+
+    /// Also write the report to var/outputs/talos_coverage.md or
+    /// var/outputs/talos_coverage.json, in the shape an AI agent is handed to
+    /// fix what it lists.
+    #[arg(long, value_enum)]
+    pub output: Option<OutputFormat>,
 
     /// Working directory (defaults to the current directory).
     #[arg(long)]
@@ -359,12 +370,15 @@ pub fn execute(args: &CoverageArgs) -> bool {
         return true;
     }
 
-    print_report(
-        &audit,
-        args.logs,
-        args.strict,
-        started.elapsed().as_millis() as u64,
-        false,
-    );
+    let elapsed_ms = started.elapsed().as_millis() as u64;
+    print_report(&audit, args.logs, args.strict, elapsed_ms, false);
+
+    // The file is written after the report and never instead of it: whatever
+    // it does, the terminal has already said the same thing.
+    if let Some(format) = args.output {
+        let report = output::report(args, &audit, elapsed_ms);
+        announce_agent_report(write_agent_report(&root, format, &report));
+    }
+
     !audit.is_failure(args.strict)
 }
