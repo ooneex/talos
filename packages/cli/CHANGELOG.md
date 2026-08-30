@@ -678,3 +678,10 @@
 
 - Wrap back-end hot reload in sh -c to avoid Bun shell builtin| — Franck ([b64d1d85](https///github.com/ooneex/talos/commit/b64d1d85))
 
+## [0.14.2](https///github.com/ooneex/talos/releases/tag/@talos/cli@0.14.2) - 2026-08-30
+
+### Changed
+
+- Bump version to 0.14.1| — Franck ([40755430](https///github.com/ooneex/talos/commit/40755430))
+- Update Cargo.lock| — Franck ([dc8417a2](https///github.com/ooneex/talos/commit/dc8417a2))
+
