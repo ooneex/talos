@@ -69,3 +69,10 @@
 
 - Make --drop re-run every seed instead of dropping the database| — Franck ([94a159c6](https///github.com/ooneex/talos/commit/94a159c6))
 
+## [1.2.6](https///github.com/ooneex/talos/releases/tag/@talosjs/seeds@1.2.6) - 2026-08-30
+
+### Changed
+
+- Disable test coverage by default in bunfig| — Franck ([8677a826](https///github.com/ooneex/talos/commit/8677a826))
+- Run package tests with parallel isolated workers| — Franck ([aee22840](https///github.com/ooneex/talos/commit/aee22840))
+
