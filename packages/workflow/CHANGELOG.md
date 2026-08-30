@@ -45,3 +45,10 @@
 
 - Document why the saga awaits its transitions in sequence| — Franck ([e58d4b3b](https///github.com/ooneex/talos/commit/e58d4b3b))
 
+## [1.1.6](https///github.com/ooneex/talos/releases/tag/@talosjs/workflow@1.1.6) - 2026-08-30
+
+### Changed
+
+- Disable test coverage by default in bunfig| — Franck ([8677a826](https///github.com/ooneex/talos/commit/8677a826))
+- Run package tests with parallel isolated workers| — Franck ([aee22840](https///github.com/ooneex/talos/commit/aee22840))
+
