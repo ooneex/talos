@@ -7,8 +7,8 @@ use console::style;
 
 use crate::utils::{
     Loader, LoaderGroup, SchedulerContext, TargetType, WorkspaceTarget, build_group, current_dir,
-    discover_targets, error, hash_root_inputs, is_git_workspace_root, load_cache_index,
-    load_file_hash_cache, print_task_report, run_group, save_file_hash_cache,
+    default_concurrency, discover_targets, error, hash_root_inputs, is_git_workspace_root,
+    load_cache_index, load_file_hash_cache, print_task_report, run_group, save_file_hash_cache,
     sort_targets_by_dependencies,
 };
 
@@ -17,6 +17,13 @@ use crate::utils::{
 /// build or a stale fmt result never has a reason to invalidate a clean test
 /// run, or the other way around.
 const TEST_CACHE_DIR: &str = "var/cache/test";
+
+/// How many module suites run at once when `--concurrency` says nothing else.
+/// A suite is not a single process — every module's `test` script is a
+/// `bun test --parallel` of its own — so one suite per core spawns several
+/// times the machine's worth of workers and finishes later than a bounded
+/// fan-out does.
+const MAX_CONCURRENCY: usize = 8;
 
 #[derive(Args, Debug)]
 pub struct TestArgs {
@@ -28,6 +35,9 @@ pub struct TestArgs {
     pub logs: bool,
     #[arg(long, default_value_t = false)]
     pub no_cache: bool,
+    /// How many module suites run at once (defaults to the core count, capped at 8).
+    #[arg(long)]
+    pub concurrency: Option<usize>,
     #[arg(long)]
     pub cwd: Option<String>,
 }
@@ -154,6 +164,7 @@ pub fn execute(args: &TestArgs) -> bool {
             cache_index: &cache_index,
             loader: &loader,
             loader_group: 0,
+            concurrency: Some(resolve_concurrency(args.concurrency)),
         },
     );
     loader.stop();
@@ -170,6 +181,15 @@ pub fn execute(args: &TestArgs) -> bool {
     );
 
     !any_failed
+}
+
+/// How many suites run at once: what `--concurrency` asked for, or the core
+/// count held to [`MAX_CONCURRENCY`].
+fn resolve_concurrency(requested: Option<usize>) -> usize {
+    match requested {
+        Some(requested) => requested.max(1),
+        None => default_concurrency().min(MAX_CONCURRENCY),
+    }
 }
 
 fn split_csv(value: Option<&str>) -> Vec<String> {

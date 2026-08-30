@@ -63,7 +63,7 @@ YAML under `packages/<package>/issues/<ID>.yml`, `state` always `Todo` on creati
 
 ### Two repos
 
-`/Volumes/Projects/Ooneex/Skeleton` (github.com/ooneex/skeleton) holds `.claude/skills/` and `.claude/agents/` — the canonical assistant config that `talos agent:skills:create` clones and installs into a generated project, for each of the eleven supported assistants. Those documents describe **applications** built on Talos; the ones in this repo describe **the framework**.
+`/Volumes/Projects/Ooneex/Skeleton` (github.com/ooneex/skeleton) holds the canonical assistant config that `talos agent:skills:create` clones and installs into a generated project for each of the eleven supported assistants. Claude content lives under `.claude/`; Codex has native `.codex/skills/` and `.codex/agents/*.toml` sources exposed through `.agents/skills/`. Other assistants are adapted from the Claude source. Those documents describe **applications** built on Talos; the ones in this repo describe **the framework**.
 
 So a change to a CLI command's name, flags or behaviour is not done when it compiles: the four completion templates and the matching Skeleton skill have to follow. That is exactly what `cli-command-integrate` covers — run it as the last step of adding or changing a command in `packages/cli/src/commands/`.
 

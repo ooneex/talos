@@ -1,8 +1,8 @@
 //! Scaffolding a whole project, and the assistant configuration that goes with it.
 //!
 //! `app:init` copies the skeleton into a new directory and renames what carries
-//! the project's name; `agent:skills:create` renders the skeleton's `.claude`
-//! tree into one directory per assistant. Both read the skeleton, so both run
+//! the project's name; `agent:skills:create` renders the skeleton's native
+//! assistant trees, with `.claude` as the cross-assistant fallback. Both run
 //! against a miniature one — seeded into `$HOME/.talos/skeleton` for the first
 //! and handed over with `--source-dir` for the second.
 
@@ -18,7 +18,7 @@ fn write(path: &Path, content: &str) {
 }
 
 /// A miniature skeleton: a root manifest, an app module with an example
-/// environment, a README to rename, and the `.claude` tree the assistant
+/// environment, a README to rename, and native Claude/Codex trees the assistant
 /// scaffolder reads.
 fn skeleton(dir: &Path) {
     write(
@@ -54,6 +54,18 @@ fn skeleton(dir: &Path) {
     write(
         &dir.join(".claude/skills/deploy/references/checklist.md"),
         "- [ ] Tag the release\n",
+    );
+    write(
+        &dir.join(".codex/agents/reviewer.toml"),
+        "name = \"reviewer\"\ndescription = \"Reviews a diff\"\ndeveloper_instructions = '''\nUse the native Codex reviewer.\n'''\n",
+    );
+    write(
+        &dir.join(".codex/skills/deploy/SKILL.md"),
+        "---\nname: deploy\ndescription: Deploy the app.\n---\n\nUse the native Codex deploy workflow.\n",
+    );
+    write(
+        &dir.join(".codex/skills/deploy/references/checklist.md"),
+        "- [ ] Tag the Codex release\n",
     );
 }
 
@@ -293,6 +305,27 @@ fn each_assistant_gets_the_layout_it_expects() {
     assert!(
         written.contains(&PathBuf::from(".codex/agents/reviewer.toml")),
         "codex takes the agents in its own format: {written:?}"
+    );
+    assert!(
+        read(&target.path().join(".codex/agents/reviewer.toml"))
+            .contains("Use the native Codex reviewer."),
+        "Codex should use the native source instead of adapting Claude prose"
+    );
+    assert_eq!(
+        read(
+            &target
+                .path()
+                .join(".codex/skills/deploy/references/checklist.md")
+        ),
+        "- [ ] Tag the Codex release\n"
+    );
+    #[cfg(unix)]
+    assert!(
+        fs::symlink_metadata(target.path().join(".agents/skills"))
+            .expect("Codex skill discovery link")
+            .file_type()
+            .is_symlink(),
+        "Codex skills should be discoverable through .agents/skills"
     );
 }
 

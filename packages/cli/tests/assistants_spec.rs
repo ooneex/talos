@@ -7,6 +7,7 @@ fn minimal_input() -> ScaffoldInput {
         agents_md: "# Talos\n".to_string(),
         agents: Vec::new(),
         skills: Vec::new(),
+        native_codex: None,
     }
 }
 
@@ -53,9 +54,9 @@ fn every_registered_assistant_resolves_an_adapter_that_writes_agents_md() {
 use std::path::{Path, PathBuf};
 
 use cli::templates::llm::assistants::{
-    GeneratedFile, SkillInput, cline_adapter, codex_adapter, continue_adapter, copilot_adapter,
-    cursor_adapter, default_adapter, gemini_adapter, junie_adapter, roo_adapter, windsurf_adapter,
-    zed_adapter,
+    GeneratedFile, NativeCodexInput, SkillInput, cline_adapter, codex_adapter, continue_adapter,
+    copilot_adapter, cursor_adapter, default_adapter, gemini_adapter, junie_adapter, roo_adapter,
+    windsurf_adapter, zed_adapter,
 };
 
 /// An agent template in the shape the loader hands the adapters: Claude front
@@ -90,6 +91,7 @@ fn full_input() -> ScaffoldInput {
                 references: vec![("conventions.md".to_string(), "# Conventions\n".to_string())],
             },
         )],
+        native_codex: None,
     }
 }
 
@@ -167,6 +169,43 @@ fn codex_adapter_writes_toml_agents_and_trimmed_skills() {
             ".codex/skills/talos-commit/references/conventions.md"
         ),
         "# Conventions\n"
+    );
+
+    let agent = content_of(&files, ".codex/agents/api-issue-fixer.toml");
+    assert!(agent.contains("developer_instructions = '''"));
+    assert!(!agent.contains("nickname_candidates"));
+}
+
+#[test]
+fn codex_adapter_prefers_native_codex_sources() {
+    let mut input = full_input();
+    let native_agent = "name = \"reviewer\"\ndescription = \"Reviews code.\"\ndeveloper_instructions = '''\nUse Codex-native instructions.\n'''\n";
+    let native_skill =
+        "---\nname: deploy\ndescription: Deploy the app.\n---\n\nUse the native Codex workflow.\n";
+    input.native_codex = Some(NativeCodexInput {
+        agents: vec![("reviewer".to_string(), native_agent.to_string())],
+        skills: vec![(
+            "deploy".to_string(),
+            SkillInput {
+                source: native_skill.to_string(),
+                references: Vec::new(),
+            },
+        )],
+    });
+
+    let files = codex_adapter(&input, ".codex");
+
+    assert_eq!(
+        content_of(&files, ".codex/agents/reviewer.toml"),
+        native_agent
+    );
+    assert_eq!(
+        content_of(&files, ".codex/skills/deploy/SKILL.md"),
+        native_skill
+    );
+    assert!(
+        !paths(&files).contains(&PathBuf::from(".codex/agents/api-issue-fixer.toml")),
+        "Claude agents must not leak into a native Codex scaffold"
     );
 }
 
@@ -307,6 +346,7 @@ fn roo_adapter_grants_write_access_only_to_agents_that_need_it() {
                 .to_string(),
         )],
         skills: Vec::new(),
+        native_codex: None,
     };
 
     let writer = roo_adapter(&full_input(), ".roo");
@@ -346,6 +386,7 @@ fn copilot_adapter_grants_the_editing_tools_only_to_agents_that_need_them() {
                 .to_string(),
         )],
         skills: Vec::new(),
+        native_codex: None,
     };
 
     let writer = copilot_adapter(&full_input(), ".github");
@@ -366,6 +407,7 @@ fn every_adapter_copes_with_nothing_to_render() {
         agents_md: "# Talos\n".to_string(),
         agents: Vec::new(),
         skills: Vec::new(),
+        native_codex: None,
     };
 
     for adapter in [

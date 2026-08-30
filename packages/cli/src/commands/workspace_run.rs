@@ -37,6 +37,7 @@ fn run_standalone(command: &str, args: &WorkspaceRunArgs) -> bool {
             modules: args.modules.clone(),
             logs: args.logs,
             no_cache: args.no_cache,
+            output: None,
             cwd: args.cwd.clone(),
         }),
         "fmt" => fmt::execute(&FmtArgs {
@@ -44,6 +45,7 @@ fn run_standalone(command: &str, args: &WorkspaceRunArgs) -> bool {
             modules: args.modules.clone(),
             logs: args.logs,
             no_cache: args.no_cache,
+            output: None,
             cwd: args.cwd.clone(),
         }),
         "lint" => lint::execute(&LintArgs {
@@ -51,6 +53,7 @@ fn run_standalone(command: &str, args: &WorkspaceRunArgs) -> bool {
             modules: args.modules.clone(),
             logs: args.logs,
             no_cache: args.no_cache,
+            output: None,
             cwd: args.cwd.clone(),
         }),
         "test" => test::execute(&TestArgs {
@@ -58,6 +61,7 @@ fn run_standalone(command: &str, args: &WorkspaceRunArgs) -> bool {
             modules: args.modules.clone(),
             logs: args.logs,
             no_cache: args.no_cache,
+            concurrency: None,
             cwd: args.cwd.clone(),
         }),
         other => unreachable!("{other} is not a standalone command"),
@@ -225,6 +229,7 @@ fn run_all_groups(
                 cache_index,
                 loader,
                 loader_group: index,
+                concurrency: None,
             },
         );
         if group_failed {

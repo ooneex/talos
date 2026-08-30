@@ -1,5 +1,6 @@
-//! Adapters that turn the shared, Claude-flavoured agent/skill templates into the
-//! formats Codex expects:
+//! Compatibility adapters that turn shared Claude-flavoured agent/skill
+//! templates into the formats Codex expects when a source tree does not yet
+//! provide native `.codex` files:
 //!
 //!   * Codex agents → TOML files whose body becomes the `developer_instructions`
 //!     string. See <https://developers.openai.com/codex/subagents>
@@ -11,8 +12,7 @@
 //! standard.
 
 use super::frontmatter::{
-    can_write_files, merge_description, parse_template, to_title_case, toml_basic_string,
-    yaml_scalar,
+    can_write_files, merge_description, parse_template, toml_basic_string, yaml_scalar,
 };
 
 /// Render a shared agent template as a Codex custom-agent TOML file. The Claude
@@ -46,10 +46,6 @@ pub fn to_codex_agent(source: &str) -> String {
         } else {
             "read-only"
         })
-    ));
-    lines.push(format!(
-        "nickname_candidates = [{}]",
-        toml_basic_string(&to_title_case(name))
     ));
     // A TOML multi-line literal string (''' … ''') keeps the body verbatim — no
     // escaping of backslashes in embedded regexes/paths — and the leading

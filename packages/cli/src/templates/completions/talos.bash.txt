@@ -180,9 +180,9 @@ seed:create seed:run"
   case "$cmd" in
     completion:zsh | completion:bash | completion:fish | help | version | upgrade) ;;
     agent:skills:create)
-      opts="--agents --cwd --no-cache"
+      opts="--agents --cwd --name --no-cache --silent --source-dir"
       [[ $flag == --agents ]] && candidates=".claude .codex .cursor .gemini .windsurf .cline .junie .roo .continue .zed"
-      [[ $flag == --cwd ]] && dirs=1
+      [[ $flag == --cwd || $flag == --source-dir ]] && dirs=1
       ;;
     app:start)
       opts="--modules --packages --kill-ports"
@@ -309,8 +309,14 @@ threads whatsapp telegram messenger discord reddit medium cloudflare bunny s3 op
       [[ $flag == --modules ]] && candidates="$(_talos_pkg_modules)"
       [[ $flag == --output ]] && candidates="md json"
       ;;
-    build | fmt | lint | test)
-      opts="--packages --modules --logs --no-cache"
+    build | fmt | lint)
+      opts="--packages --modules --logs --no-cache --output --cwd"
+      [[ $flag == --packages ]] && candidates="$(_talos_packages)"
+      [[ $flag == --modules ]] && candidates="$(_talos_pkg_modules)"
+      [[ $flag == --output ]] && candidates="md json"
+      ;;
+    test)
+      opts="--packages --modules --logs --no-cache --concurrency"
       [[ $flag == --packages ]] && candidates="$(_talos_packages)"
       [[ $flag == --modules ]] && candidates="$(_talos_pkg_modules)"
       ;;
@@ -333,9 +339,10 @@ threads whatsapp telegram messenger discord reddit medium cloudflare bunny s3 op
       [[ $flag == --audit-level ]] && candidates="low moderate high critical"
       ;;
     coverage)
-      opts="--issues --modules --packages --threshold --logs --concurrency --no-cache --strict --cwd"
+      opts="--issues --modules --packages --threshold --logs --concurrency --no-cache --strict --output --cwd"
       [[ $flag == --modules ]] && candidates="$(_talos_pkg_modules)"
       [[ $flag == --packages ]] && candidates="$(_talos_packages)"
+      [[ $flag == --output ]] && candidates="md json"
       ;;
     performance:check)
       opts="--issues --modules --packages --threshold --min-severity --logs --strict --cwd"

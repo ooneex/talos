@@ -6,10 +6,13 @@
 // dependencies read, so a module whose sources have not moved since it last
 // passed is replayed from its own cache — see [`cache`] — rather than linted
 // again. `--no-cache` turns that off, and a failing module always ends the
-// run in a non-zero status.
+// run in a non-zero status. Modules are linted in parallel, and `--output`
+// leaves the same report behind as a file, for an agent to fix what it
+// lists — see [`output`].
 
 #[path = "lint/cache.rs"]
 pub mod cache;
+mod output;
 mod report;
 mod runner;
 
@@ -22,7 +25,9 @@ use std::time::Instant;
 use clap::Args;
 
 use crate::commands::project_check::cache::FileHashes;
-use crate::utils::{Loader, LoaderGroup, Spinner};
+use crate::utils::{
+    Loader, LoaderGroup, OutputFormat, Spinner, announce_agent_report, write_agent_report,
+};
 
 /// How many modules a report shows the output of before it is truncated.
 pub(super) const LOG_TAIL_LINES: usize = 40;
@@ -51,6 +56,12 @@ pub struct LintArgs {
     /// Skip reading and writing the lint cache.
     #[arg(long, default_value_t = false)]
     pub no_cache: bool,
+
+    /// Also write the report to var/outputs/talos_lint.md or
+    /// var/outputs/talos_lint.json, in the shape an AI agent is handed to fix
+    /// what it lists.
+    #[arg(long, value_enum)]
+    pub output: Option<OutputFormat>,
 
     /// Working directory (defaults to the current directory).
     #[arg(long)]
@@ -210,6 +221,15 @@ pub fn execute(args: &LintArgs) -> bool {
         }
     };
 
-    print_report(&audit, args.logs, started.elapsed().as_millis() as u64);
+    let elapsed_ms = started.elapsed().as_millis() as u64;
+    print_report(&audit, args.logs, elapsed_ms);
+
+    // The file is written after the report and never instead of it: whatever
+    // it does, the terminal has already said the same thing.
+    if let Some(format) = args.output {
+        let report = output::report(args, &audit, elapsed_ms);
+        announce_agent_report(write_agent_report(&root, format, &report));
+    }
+
     !audit.is_failure()
 }

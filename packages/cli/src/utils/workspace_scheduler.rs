@@ -47,6 +47,11 @@ pub(crate) struct SchedulerContext<'a> {
     /// its own row, so one `Loader` can show several at once.
     pub loader: &'a Loader,
     pub loader_group: usize,
+    /// How many tasks the pass runs at once. `None` fans out to one task per
+    /// core; a command whose tasks spawn workers of their own — `test`, where
+    /// every suite is already a `bun test --parallel` — passes a smaller
+    /// number so the machine is not oversubscribed.
+    pub concurrency: Option<usize>,
 }
 
 /// Runs one task to completion: checks the cache when eligible, otherwise
@@ -178,6 +183,14 @@ fn cache_successful_task(task: &Task, ctx: SchedulerContext) {
     );
 }
 
+/// One task per core — what a pass runs when `--concurrency` says nothing.
+pub(crate) fn default_concurrency() -> usize {
+    std::thread::available_parallelism()
+        .map(|n| n.get())
+        .unwrap_or(1)
+        .max(1)
+}
+
 pub(crate) fn run_group(tasks: &mut [Task], ctx: SchedulerContext) -> bool {
     for task in tasks.iter() {
         if task.status == TaskStatus::Skipped {
@@ -198,10 +211,7 @@ pub(crate) fn run_group(tasks: &mut [Task], ctx: SchedulerContext) -> bool {
         .filter(|t| t.status != TaskStatus::Pending)
         .map(|t| t.key.clone())
         .collect();
-    let limit = std::thread::available_parallelism()
-        .map(|n| n.get())
-        .unwrap_or(1)
-        .max(1);
+    let limit = ctx.concurrency.unwrap_or_else(default_concurrency).max(1);
     let mut launched = vec![false; tasks.len()];
 
     std::thread::scope(|scope| {
@@ -392,6 +402,7 @@ mod tests {
                 cache_index: &CacheIndex::new(),
                 loader: &loader,
                 loader_group: 0,
+                concurrency: None,
             },
         );
 
@@ -461,6 +472,7 @@ mod tests {
             cache_index,
             loader,
             loader_group: 0,
+            concurrency: None,
         }
     }
 
