@@ -52,3 +52,10 @@
 
 - Extract AbstractRedisCache shared by the Redis and Dragonfly caches| — Franck ([c3043d85](https///github.com/ooneex/talos/commit/c3043d85))
 
+## [1.3.2](https///github.com/ooneex/talos/releases/tag/@talosjs/cache@1.3.2) - 2026-08-30
+
+### Changed
+
+- Disable test coverage by default in bunfig| — Franck ([8677a826](https///github.com/ooneex/talos/commit/8677a826))
+- Run package tests with parallel isolated workers| — Franck ([aee22840](https///github.com/ooneex/talos/commit/aee22840))
+
