@@ -40,3 +40,14 @@
 
 - Check Bunny object existence with a ranged request instead of a full download| — Franck ([b8f76105](https///github.com/ooneex/talos/commit/b8f76105))
 
+## [1.2.0](https///github.com/ooneex/talos/releases/tag/@talosjs/storage@1.2.0) - 2026-08-30
+
+### Added
+
+- Add size method to storage implementations| — Franck ([a1860a7e](https///github.com/ooneex/talos/commit/a1860a7e))
+
+### Changed
+
+- Disable test coverage by default in bunfig| — Franck ([8677a826](https///github.com/ooneex/talos/commit/8677a826))
+- Run package tests with parallel isolated workers| — Franck ([aee22840](https///github.com/ooneex/talos/commit/aee22840))
+
