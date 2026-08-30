@@ -34,3 +34,9 @@
 
 - Use RoleType for route roles| — Franck ([da81f63e](https///github.com/ooneex/talos/commit/da81f63e))
 
+## [1.2.1](https///github.com/ooneex/talos/releases/tag/@talosjs/controller@1.2.1) - 2026-08-30
+
+### Changed
+
+- Disable test coverage by default in bunfig| — Franck ([8677a826](https///github.com/ooneex/talos/commit/8677a826))
+

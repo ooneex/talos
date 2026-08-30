@@ -72,3 +72,10 @@
 
 - Restore the migration cache| — Franck ([a6a069c1](https///github.com/ooneex/talos/commit/a6a069c1))
 
+## [1.2.5](https///github.com/ooneex/talos/releases/tag/@talosjs/migrations@1.2.5) - 2026-08-30
+
+### Changed
+
+- Disable test coverage by default in bunfig| — Franck ([8677a826](https///github.com/ooneex/talos/commit/8677a826))
+- Run package tests with parallel isolated workers| — Franck ([aee22840](https///github.com/ooneex/talos/commit/aee22840))
+

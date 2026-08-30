@@ -659,3 +659,22 @@
 
 - Update Cargo.lock| — Franck ([761b2cfd](https///github.com/ooneex/talos/commit/761b2cfd))
 
+## [0.14.0](https///github.com/ooneex/talos/releases/tag/@talos/cli@0.14.0) - 2026-08-30
+
+### Added
+
+- Add --output agent reports and parallel builds to workspace tasks (#5)|* feat(cli): Add --output agent reports and parallel builds to workspace tasks — fkdiomande ([d14b3de0](https///github.com/ooneex/talos/commit/d14b3de0))
+- Add --output flag writing check reports to var/outputs| — Franck ([f1d54e60](https///github.com/ooneex/talos/commit/f1d54e60))
+- Add dedupe and audit checks to project:check| — Franck ([1b28532e](https///github.com/ooneex/talos/commit/1b28532e))
+- Add --kill-ports flag to app:start| — Franck ([ac9b341f](https///github.com/ooneex/talos/commit/ac9b341f))
+
+### Changed
+
+- Simplify check output reporting| — Franck ([1bb23987](https///github.com/ooneex/talos/commit/1bb23987))
+- Start app modules with bun run --parallel| — Franck ([2c733884](https///github.com/ooneex/talos/commit/2c733884))
+- Update Cargo.lock| — Franck ([fc07b32b](https///github.com/ooneex/talos/commit/fc07b32b))
+
+### Fixed
+
+- Wrap back-end hot reload in sh -c to avoid Bun shell builtin| — Franck ([b64d1d85](https///github.com/ooneex/talos/commit/b64d1d85))
+

@@ -34,3 +34,10 @@
 
 - Use RoleType for user roles| — Franck ([5146ce22](https///github.com/ooneex/talos/commit/5146ce22))
 
+## [1.2.1](https///github.com/ooneex/talos/releases/tag/@talosjs/user@1.2.1) - 2026-08-30
+
+### Changed
+
+- Disable test coverage by default in bunfig| — Franck ([8677a826](https///github.com/ooneex/talos/commit/8677a826))
+- Run package tests with parallel isolated workers| — Franck ([aee22840](https///github.com/ooneex/talos/commit/aee22840))
+

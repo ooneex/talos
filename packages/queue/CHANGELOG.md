@@ -33,3 +33,10 @@
 - Expand Queue spec coverage| — Franck ([ef47ec2f](https///github.com/ooneex/talos/commit/ef47ec2f))
 - Enable coverage thresholds in every package's bunfig.toml| — Franck ([e19e3785](https///github.com/ooneex/talos/commit/e19e3785))
 
+## [1.1.4](https///github.com/ooneex/talos/releases/tag/@talosjs/queue@1.1.4) - 2026-08-30
+
+### Changed
+
+- Disable test coverage by default in bunfig| — Franck ([8677a826](https///github.com/ooneex/talos/commit/8677a826))
+- Run package tests with parallel isolated workers| — Franck ([aee22840](https///github.com/ooneex/talos/commit/aee22840))
+

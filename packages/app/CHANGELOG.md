@@ -128,3 +128,9 @@
 - Run the CORS middleware first so rejected requests stay readable| — Franck ([1f40c64d](https///github.com/ooneex/talos/commit/1f40c64d))
 - Skip TLS verification on local so a proxied machine can boot| — Franck ([d86063aa](https///github.com/ooneex/talos/commit/d86063aa))
 
+## [1.6.2](https///github.com/ooneex/talos/releases/tag/@talosjs/app@1.6.2) - 2026-08-30
+
+### Changed
+
+- Run package tests with parallel isolated workers| — Franck ([aee22840](https///github.com/ooneex/talos/commit/aee22840))
+

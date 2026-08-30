@@ -54,3 +54,10 @@
 - Enable coverage thresholds in every package's bunfig.toml| — Franck ([e19e3785](https///github.com/ooneex/talos/commit/e19e3785))
 - Clean up temp output directory after conversion test| — Franck ([89f6e46c](https///github.com/ooneex/talos/commit/89f6e46c))
 
+## [1.2.1](https///github.com/ooneex/talos/releases/tag/@talosjs/rag@1.2.1) - 2026-08-30
+
+### Changed
+
+- Disable test coverage by default in bunfig| — Franck ([8677a826](https///github.com/ooneex/talos/commit/8677a826))
+- Run package tests with parallel isolated workers| — Franck ([aee22840](https///github.com/ooneex/talos/commit/aee22840))
+
