@@ -203,10 +203,10 @@ To develop the framework packages themselves:
 git clone https://github.com/ooneex/talos.git
 cd talos
 talos install     # audits every dependency for known vulnerabilities, then installs
-talos check       # install, build, fmt, lint, test across every package
+talos check       # install dependencies, lint and test every package
 ```
 
-`talos check` is the full gate. Add `--output=md` (or `--output=json`) and it also writes `var/outputs/talos_check.md` — the same report, with every failing suite's log, every under-covered file and every performance hotspot spelled out, ready to hand to an AI agent to fix.
+`talos check` runs every phase even when an earlier one fails, and only then returns its final status. Add `--output=md` (or `--output=json`) and it also writes `var/outputs/talos_check.md` with the install, lint and test verdicts plus every failing lint log, ready to hand to an AI agent to fix.
 
 During day-to-day work the individual steps each keep their own cache, so re-running one only redoes the packages that changed:
 
