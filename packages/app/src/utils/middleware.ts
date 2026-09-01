@@ -11,12 +11,8 @@ export const runMiddlewares = async <TContext>(
   context: TContext,
   middlewares: MiddlewareHandlerClassType<TContext>[],
 ): Promise<TContext> => {
-  let currentContext = context;
-
-  for (const MiddlewareClass of middlewares) {
+  return middlewares.reduce<Promise<TContext>>(async (previousContext, MiddlewareClass) => {
     const middleware = container.get(MiddlewareClass);
-    currentContext = await middleware.handler(currentContext);
-  }
-
-  return currentContext;
+    return middleware.handler(await previousContext);
+  }, Promise.resolve(context));
 };

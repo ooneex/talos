@@ -132,21 +132,23 @@ export class App {
     // Bun.main is modules/<module-name>/src/index.ts, so the module root is two levels up.
     const moduleRoot = dirname(dirname(Bun.main));
     const rolesDirs = [process.cwd(), moduleRoot];
-    for (const rolesDir of rolesDirs) {
-      const rolesFile = Bun.file(join(rolesDir, "roles.yml"));
-      if (await rolesFile.exists()) {
-        const rolesConfig = Bun.YAML.parse(await rolesFile.text()) as IRolesConfig;
-        validateConfig(rolesConfig);
-        container.addConstant("app.roles", rolesConfig);
+    const candidates = await Promise.all(
+      rolesDirs.map(async (rolesDir) => {
+        const rolesFile = Bun.file(join(rolesDir, "roles.yml"));
+        return (await rolesFile.exists()) ? { rolesDir, content: await rolesFile.text() } : undefined;
+      }),
+    );
+    const candidate = candidates.find((item) => item !== undefined);
+    if (candidate) {
+      const rolesConfig = Bun.YAML.parse(candidate.content) as IRolesConfig;
+      validateConfig(rolesConfig);
+      container.addConstant("app.roles", rolesConfig);
 
-        // Generated types are only useful at development time, and writing into the
-        // source tree at boot fails on read-only filesystems in production containers
-        if (env.isLocal) {
-          const rolesTypesFile = join(rolesDir, "roles.types.ts");
-          await Bun.write(rolesTypesFile, generateRolesTypes(rolesConfig));
-        }
-
-        break;
+      // Generated types are only useful at development time, and writing into the
+      // source tree at boot fails on read-only filesystems in production containers
+      if (env.isLocal) {
+        const rolesTypesFile = join(candidate.rolesDir, "roles.types.ts");
+        await Bun.write(rolesTypesFile, generateRolesTypes(rolesConfig));
       }
     }
 

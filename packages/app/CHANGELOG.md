@@ -71,72 +71,72 @@
 
 - Update validation constraint imports to per-file entry points| — Franck ([879b91b1](https://github.com/ooneex/talos/commit/879b91b1))
 
-## [1.3.0](https///github.com/ooneex/talos/releases/tag/@talosjs/app@1.3.0) - 2026-08-09
+## [1.3.0](https://github.com/ooneex/talos/releases/tag/@talosjs/app@1.3.0) - 2026-08-09
 
 ### Added
 
-- Add configurable websocket options to App| — Franck ([9e9fb16b](https///github.com/ooneex/talos/commit/9e9fb16b))
+- Add configurable websocket options to App| — Franck ([9e9fb16b](https://github.com/ooneex/talos/commit/9e9fb16b))
 
 ### Changed
 
-- Update logging test to handle 16-color fallback in output| — Franck ([04abddeb](https///github.com/ooneex/talos/commit/04abddeb))
-- Reduce complexity and clean up conventions| — Franck ([e5c9c529](https///github.com/ooneex/talos/commit/e5c9c529))
-- Use validateAssert guard for route constraint validation|Replace the inline constraint-shape detection in validateConstraint — Franck ([68d5f642](https///github.com/ooneex/talos/commit/68d5f642))
-- Add explicit constructors and biome-ignore comments for Bun's coverage tool|This commit adds explicit constructors to abstract classes and utility functions — Franck ([4d33ff04](https///github.com/ooneex/talos/commit/4d33ff04))
-- Raise coverage thresholds to 99% across all packages| — Franck ([14db3019](https///github.com/ooneex/talos/commit/14db3019))
-- Enable coverage thresholds in every package's bunfig.toml| — Franck ([e19e3785](https///github.com/ooneex/talos/commit/e19e3785))
-- Use Cache helpers from @talosjs/cache for route keys| — Franck ([1e492faa](https///github.com/ooneex/talos/commit/1e492faa))
+- Update logging test to handle 16-color fallback in output| — Franck ([04abddeb](https://github.com/ooneex/talos/commit/04abddeb))
+- Reduce complexity and clean up conventions| — Franck ([e5c9c529](https://github.com/ooneex/talos/commit/e5c9c529))
+- Use validateAssert guard for route constraint validation|Replace the inline constraint-shape detection in validateConstraint — Franck ([68d5f642](https://github.com/ooneex/talos/commit/68d5f642))
+- Add explicit constructors and biome-ignore comments for Bun's coverage tool|This commit adds explicit constructors to abstract classes and utility functions — Franck ([4d33ff04](https://github.com/ooneex/talos/commit/4d33ff04))
+- Raise coverage thresholds to 99% across all packages| — Franck ([14db3019](https://github.com/ooneex/talos/commit/14db3019))
+- Enable coverage thresholds in every package's bunfig.toml| — Franck ([e19e3785](https://github.com/ooneex/talos/commit/e19e3785))
+- Use Cache helpers from @talosjs/cache for route keys| — Franck ([1e492faa](https://github.com/ooneex/talos/commit/1e492faa))
 
 ### Fixed
 
-- Resolve roles.yml fallback from the running module, not shared|The fallback path was hardcoded to modules/shared/src/roles.yml, so any — Franck ([6e84dbf1](https///github.com/ooneex/talos/commit/6e84dbf1))
+- Resolve roles.yml fallback from the running module, not shared|The fallback path was hardcoded to modules/shared/src/roles.yml, so any — Franck ([6e84dbf1](https://github.com/ooneex/talos/commit/6e84dbf1))
 
-## [1.3.1](https///github.com/ooneex/talos/releases/tag/@talosjs/app@1.3.1) - 2026-08-11
+## [1.3.1](https://github.com/ooneex/talos/releases/tag/@talosjs/app@1.3.1) - 2026-08-11
 
 ### Changed
 
-- Update tests for RoleType role changes| — Franck ([c358dd77](https///github.com/ooneex/talos/commit/c358dd77))
+- Update tests for RoleType role changes| — Franck ([c358dd77](https://github.com/ooneex/talos/commit/c358dd77))
 
-## [1.4.0](https///github.com/ooneex/talos/releases/tag/@talosjs/app@1.4.0) - 2026-08-11
+## [1.4.0](https://github.com/ooneex/talos/releases/tag/@talosjs/app@1.4.0) - 2026-08-11
 
 ### Added
 
-- Treat ROLE_GUEST routes as public in validateRouteAccess| — Franck ([3978c5a1](https///github.com/ooneex/talos/commit/3978c5a1))
+- Treat ROLE_GUEST routes as public in validateRouteAccess| — Franck ([3978c5a1](https://github.com/ooneex/talos/commit/3978c5a1))
 
-## [1.4.1](https///github.com/ooneex/talos/releases/tag/@talosjs/app@1.4.1) - 2026-08-17
+## [1.4.1](https://github.com/ooneex/talos/releases/tag/@talosjs/app@1.4.1) - 2026-08-17
 
 ### Fixed
 
-- Register services during init so env files load before services read them| — Franck ([d2692976](https///github.com/ooneex/talos/commit/d2692976))
+- Register services during init so env files load before services read them| — Franck ([d2692976](https://github.com/ooneex/talos/commit/d2692976))
 
-## [1.5.0](https///github.com/ooneex/talos/releases/tag/@talosjs/app@1.5.0) - 2026-08-19
-
-### Added
-
-- Honor the role hierarchy when checking route access| — Franck ([b09d683c](https///github.com/ooneex/talos/commit/b09d683c))
-
-## [1.6.0](https///github.com/ooneex/talos/releases/tag/@talosjs/app@1.6.0) - 2026-08-20
+## [1.5.0](https://github.com/ooneex/talos/releases/tag/@talosjs/app@1.5.0) - 2026-08-19
 
 ### Added
 
-- Log user roles and skip OPTIONS preflight requests| — Franck ([e37e7082](https///github.com/ooneex/talos/commit/e37e7082))
+- Honor the role hierarchy when checking route access| — Franck ([b09d683c](https://github.com/ooneex/talos/commit/b09d683c))
 
-## [1.6.1](https///github.com/ooneex/talos/releases/tag/@talosjs/app@1.6.1) - 2026-08-20
+## [1.6.0](https://github.com/ooneex/talos/releases/tag/@talosjs/app@1.6.0) - 2026-08-20
+
+### Added
+
+- Log user roles and skip OPTIONS preflight requests| — Franck ([e37e7082](https://github.com/ooneex/talos/commit/e37e7082))
+
+## [1.6.1](https://github.com/ooneex/talos/releases/tag/@talosjs/app@1.6.1) - 2026-08-20
 
 ### Fixed
 
-- Run the CORS middleware first so rejected requests stay readable| — Franck ([1f40c64d](https///github.com/ooneex/talos/commit/1f40c64d))
-- Skip TLS verification on local so a proxied machine can boot| — Franck ([d86063aa](https///github.com/ooneex/talos/commit/d86063aa))
+- Run the CORS middleware first so rejected requests stay readable| — Franck ([1f40c64d](https://github.com/ooneex/talos/commit/1f40c64d))
+- Skip TLS verification on local so a proxied machine can boot| — Franck ([d86063aa](https://github.com/ooneex/talos/commit/d86063aa))
 
-## [1.6.2](https///github.com/ooneex/talos/releases/tag/@talosjs/app@1.6.2) - 2026-08-30
-
-### Changed
-
-- Run package tests with parallel isolated workers| — Franck ([aee22840](https///github.com/ooneex/talos/commit/aee22840))
-
-## [1.6.3](https///github.com/ooneex/talos/releases/tag/@talosjs/app@1.6.3) - 2026-09-01
+## [1.6.2](https://github.com/ooneex/talos/releases/tag/@talosjs/app@1.6.2) - 2026-08-30
 
 ### Changed
 
-- Cover swallowed logging errors| — Franck ([414ce5f3](https///github.com/ooneex/talos/commit/414ce5f3))
+- Run package tests with parallel isolated workers| — Franck ([aee22840](https://github.com/ooneex/talos/commit/aee22840))
+
+## [1.6.3](https://github.com/ooneex/talos/releases/tag/@talosjs/app@1.6.3) - 2026-09-01
+
+### Changed
+
+- Cover swallowed logging errors| — Franck ([414ce5f3](https://github.com/ooneex/talos/commit/414ce5f3))
 
