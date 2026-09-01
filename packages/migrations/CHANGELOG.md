@@ -47,35 +47,35 @@
 
 - Add migrations package| — Franck ([8bcc266f](https://github.com/ooneex/talos/commit/8bcc266f))
 
-## [1.2.2](https///github.com/ooneex/talos/releases/tag/@talosjs/migrations@1.2.2) - 2026-08-09
+## [1.2.2](https://github.com/ooneex/talos/releases/tag/@talosjs/migrations@1.2.2) - 2026-08-09
 
 ### Changed
 
-- Reduce complexity and clean up conventions| — Franck ([70aed714](https///github.com/ooneex/talos/commit/70aed714))
-- Add explicit constructors and biome-ignore comments for Bun's coverage tool|This commit adds explicit constructors to abstract classes and utility functions — Franck ([4d33ff04](https///github.com/ooneex/talos/commit/4d33ff04))
-- Raise coverage thresholds to 99% across all packages| — Franck ([14db3019](https///github.com/ooneex/talos/commit/14db3019))
-- Enable coverage thresholds in every package's bunfig.toml| — Franck ([e19e3785](https///github.com/ooneex/talos/commit/e19e3785))
+- Reduce complexity and clean up conventions| — Franck ([70aed714](https://github.com/ooneex/talos/commit/70aed714))
+- Add explicit constructors and biome-ignore comments for Bun's coverage tool|This commit adds explicit constructors to abstract classes and utility functions — Franck ([4d33ff04](https://github.com/ooneex/talos/commit/4d33ff04))
+- Raise coverage thresholds to 99% across all packages| — Franck ([14db3019](https://github.com/ooneex/talos/commit/14db3019))
+- Enable coverage thresholds in every package's bunfig.toml| — Franck ([e19e3785](https://github.com/ooneex/talos/commit/e19e3785))
 
-## [1.2.3](https///github.com/ooneex/talos/releases/tag/@talosjs/migrations@1.2.3) - 2026-08-17
+## [1.2.3](https://github.com/ooneex/talos/releases/tag/@talosjs/migrations@1.2.3) - 2026-08-17
 
 ### Fixed
 
-- Stop re-running dependencies and order them topologically instead| — Franck ([d5978f08](https///github.com/ooneex/talos/commit/d5978f08))
+- Stop re-running dependencies and order them topologically instead| — Franck ([d5978f08](https://github.com/ooneex/talos/commit/d5978f08))
 
-## [1.2.4](https///github.com/ooneex/talos/releases/tag/@talosjs/migrations@1.2.4) - 2026-08-19
+## [1.2.4](https://github.com/ooneex/talos/releases/tag/@talosjs/migrations@1.2.4) - 2026-08-19
 
 ### Changed
 
-- Drop the migration cache and rely on the database state| — Franck ([8a9c34ee](https///github.com/ooneex/talos/commit/8a9c34ee))
+- Drop the migration cache and rely on the database state| — Franck ([8a9c34ee](https://github.com/ooneex/talos/commit/8a9c34ee))
 
 ### Removed
 
-- Restore the migration cache| — Franck ([a6a069c1](https///github.com/ooneex/talos/commit/a6a069c1))
+- Restore the migration cache| — Franck ([a6a069c1](https://github.com/ooneex/talos/commit/a6a069c1))
 
-## [1.2.5](https///github.com/ooneex/talos/releases/tag/@talosjs/migrations@1.2.5) - 2026-08-30
+## [1.2.5](https://github.com/ooneex/talos/releases/tag/@talosjs/migrations@1.2.5) - 2026-08-30
 
 ### Changed
 
-- Disable test coverage by default in bunfig| — Franck ([8677a826](https///github.com/ooneex/talos/commit/8677a826))
-- Run package tests with parallel isolated workers| — Franck ([aee22840](https///github.com/ooneex/talos/commit/aee22840))
+- Disable test coverage by default in bunfig| — Franck ([8677a826](https://github.com/ooneex/talos/commit/8677a826))
+- Run package tests with parallel isolated workers| — Franck ([aee22840](https://github.com/ooneex/talos/commit/aee22840))
 

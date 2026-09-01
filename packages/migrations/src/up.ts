@@ -189,14 +189,15 @@ export const up = async (config?: { databaseUrl?: string; tableName?: string; ca
 
   await createMigrationTable(sql, tableName);
 
-  for (const migration of migrations) {
+  await migrations.reduce<Promise<void>>(async (previousMigration, migration) => {
+    await previousMigration;
     const id = migration.getVersion();
 
     if (cachedIds.has(id)) {
       runLogger.persist(
         colorize(`${SYMBOLS.success} `, COLORS.success) + id + colorize("  up to date (cached)", COLORS.dim),
       );
-      continue;
+      return;
     }
 
     const entities = await sql`SELECT * FROM ${sql(tableName)} WHERE id = ${id}`;
@@ -205,7 +206,7 @@ export const up = async (config?: { databaseUrl?: string; tableName?: string; ca
       // Applied on a previous run (e.g. before this cache existed, or by another
       // process). Record it so the next run skips even the lookup.
       await cacheAppliedMigration(cacheEnabled, cacheDir, hashById, id);
-      continue;
+      return;
     }
 
     const startedAt = performance.now();
@@ -223,7 +224,7 @@ export const up = async (config?: { databaseUrl?: string; tableName?: string; ca
       await sql.close({ timeout: 0 });
       process.exit(1);
     }
-  }
+  }, Promise.resolve());
 
   await sql.close();
 };

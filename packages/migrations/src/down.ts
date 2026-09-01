@@ -83,7 +83,8 @@ export const down = async (config?: {
     targets = targets.slice(0, 1);
   }
 
-  for (const migration of targets) {
+  const migration = targets[0];
+  if (migration) {
     const id = migration.getVersion();
     const migrationName = id;
 
