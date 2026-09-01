@@ -61,3 +61,9 @@
 - Disable test coverage by default in bunfig| — Franck ([8677a826](https///github.com/ooneex/talos/commit/8677a826))
 - Run package tests with parallel isolated workers| — Franck ([aee22840](https///github.com/ooneex/talos/commit/aee22840))
 
+## [1.2.2](https///github.com/ooneex/talos/releases/tag/@talosjs/rag@1.2.2) - 2026-09-01
+
+### Changed
+
+- Complete LanceDB embedding mock| — Franck ([7f22ba23](https///github.com/ooneex/talos/commit/7f22ba23))
+
