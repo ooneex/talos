@@ -21,18 +21,18 @@
 
 - Add html package| — Franck ([98f718e2](https://github.com/ooneex/talos/commit/98f718e2))
 
-## [1.1.3](https///github.com/ooneex/talos/releases/tag/@talosjs/html@1.1.3) - 2026-08-09
+## [1.1.3](https://github.com/ooneex/talos/releases/tag/@talosjs/html@1.1.3) - 2026-08-09
 
 ### Changed
 
-- Reduce complexity and clean up conventions| — Franck ([d88f1cca](https///github.com/ooneex/talos/commit/d88f1cca))
-- Raise coverage thresholds to 99% across all packages| — Franck ([14db3019](https///github.com/ooneex/talos/commit/14db3019))
-- Enable coverage thresholds in every package's bunfig.toml| — Franck ([e19e3785](https///github.com/ooneex/talos/commit/e19e3785))
+- Reduce complexity and clean up conventions| — Franck ([d88f1cca](https://github.com/ooneex/talos/commit/d88f1cca))
+- Raise coverage thresholds to 99% across all packages| — Franck ([14db3019](https://github.com/ooneex/talos/commit/14db3019))
+- Enable coverage thresholds in every package's bunfig.toml| — Franck ([e19e3785](https://github.com/ooneex/talos/commit/e19e3785))
 
-## [1.1.4](https///github.com/ooneex/talos/releases/tag/@talosjs/html@1.1.4) - 2026-08-30
+## [1.1.4](https://github.com/ooneex/talos/releases/tag/@talosjs/html@1.1.4) - 2026-08-30
 
 ### Changed
 
-- Disable test coverage by default in bunfig| — Franck ([8677a826](https///github.com/ooneex/talos/commit/8677a826))
-- Run package tests with parallel isolated workers| — Franck ([aee22840](https///github.com/ooneex/talos/commit/aee22840))
+- Disable test coverage by default in bunfig| — Franck ([8677a826](https://github.com/ooneex/talos/commit/8677a826))
+- Run package tests with parallel isolated workers| — Franck ([aee22840](https://github.com/ooneex/talos/commit/aee22840))
 
