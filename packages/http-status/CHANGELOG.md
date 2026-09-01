@@ -21,19 +21,19 @@
 
 - Add http status package| — Franck ([b0a2fb9e](https://github.com/ooneex/talos/commit/b0a2fb9e))
 
-## [1.1.3](https///github.com/ooneex/talos/releases/tag/@talosjs/http-status@1.1.3) - 2026-08-09
+## [1.1.3](https://github.com/ooneex/talos/releases/tag/@talosjs/http-status@1.1.3) - 2026-08-09
 
 ### Changed
 
-- Add explicit constructors and biome-ignore comments for Bun's coverage tool|This commit adds explicit constructors to abstract classes and utility functions — Franck ([4d33ff04](https///github.com/ooneex/talos/commit/4d33ff04))
-- Raise coverage thresholds to 99% across all packages| — Franck ([14db3019](https///github.com/ooneex/talos/commit/14db3019))
-- Reach full function coverage on HttpStatus|Add an explicit constructor to HttpStatus so it registers as covered — Franck ([152fa50b](https///github.com/ooneex/talos/commit/152fa50b))
-- Enable coverage thresholds in every package's bunfig.toml| — Franck ([e19e3785](https///github.com/ooneex/talos/commit/e19e3785))
+- Add explicit constructors and biome-ignore comments for Bun's coverage tool|This commit adds explicit constructors to abstract classes and utility functions — Franck ([4d33ff04](https://github.com/ooneex/talos/commit/4d33ff04))
+- Raise coverage thresholds to 99% across all packages| — Franck ([14db3019](https://github.com/ooneex/talos/commit/14db3019))
+- Reach full function coverage on HttpStatus|Add an explicit constructor to HttpStatus so it registers as covered — Franck ([152fa50b](https://github.com/ooneex/talos/commit/152fa50b))
+- Enable coverage thresholds in every package's bunfig.toml| — Franck ([e19e3785](https://github.com/ooneex/talos/commit/e19e3785))
 
-## [1.1.4](https///github.com/ooneex/talos/releases/tag/@talosjs/http-status@1.1.4) - 2026-08-30
+## [1.1.4](https://github.com/ooneex/talos/releases/tag/@talosjs/http-status@1.1.4) - 2026-08-30
 
 ### Changed
 
-- Disable test coverage by default in bunfig| — Franck ([8677a826](https///github.com/ooneex/talos/commit/8677a826))
-- Run package tests with parallel isolated workers| — Franck ([aee22840](https///github.com/ooneex/talos/commit/aee22840))
+- Disable test coverage by default in bunfig| — Franck ([8677a826](https://github.com/ooneex/talos/commit/8677a826))
+- Run package tests with parallel isolated workers| — Franck ([aee22840](https://github.com/ooneex/talos/commit/aee22840))
 
