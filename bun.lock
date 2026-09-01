@@ -507,6 +507,7 @@
       "version": "1.2.2",
       "dependencies": {
         "@lancedb/lancedb": "^0.27.1",
+        "@talosjs/app-env": "workspace:^",
         "@talosjs/container": "workspace:^",
         "@talosjs/exception": "workspace:^",
         "@talosjs/http-status": "workspace:^",
@@ -671,7 +672,7 @@
         "@talosjs/currencies": "workspace:^",
         "@talosjs/http-mimes": "workspace:^",
         "@talosjs/translation": "workspace:^",
-        "arktype": "^2.1.29",
+        "arktype": "^2.2.3",
       },
     },
     "packages/workflow": {
