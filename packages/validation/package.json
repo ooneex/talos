@@ -4,7 +4,7 @@
     "@talosjs/currencies": "workspace:^",
     "@talosjs/http-mimes": "workspace:^",
     "@talosjs/translation": "workspace:^",
-    "arktype": "^2.1.29"
+    "arktype": "^2.2.3"
   },
   "description": "Type-safe validation framework powered by ArkType — define schemas with built-in constraints, custom rules, and JSON Schema generation",
   "exports": {
