@@ -254,6 +254,10 @@ pub struct CacheEntryMeta {
     pub created_at: String,
     #[serde(rename = "durationMs")]
     pub duration_ms: u64,
+    pub success: bool,
+    #[serde(rename = "exitCode")]
+    pub exit_code: Option<i32>,
+    pub output: String,
 }
 
 pub fn read_cache_entry(

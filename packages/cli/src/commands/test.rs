@@ -14,8 +14,8 @@ use crate::utils::{
 
 /// `test` runs a single, order-independent command, so it keeps its own
 /// fingerprint cache instead of sharing `workspace:run`'s — a `--no-cache`
-/// build or a stale fmt result never has a reason to invalidate a clean test
-/// run, or the other way around.
+/// build or a stale fmt result never has a reason to invalidate a test result,
+/// or the other way around.
 const TEST_CACHE_DIR: &str = "var/cache/test";
 
 /// How many module suites run at once when `--concurrency` says nothing else.

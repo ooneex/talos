@@ -1,5 +1,6 @@
-//! Writing the gate's lint audit to `var/outputs/talos_check.{md,json}` — the
-//! same report the terminal draws, in a shape an agent can act on.
+//! Writing the gate's install, lint and optional test verdicts to
+//! `var/outputs/talos_check.{md,json}` — the same run the terminal draws, in a
+//! shape an agent can act on.
 //!
 //! The console report is written for someone watching it: it colours, ranks,
 //! truncates and gets out of the way. A file handed to an AI agent is read
@@ -39,7 +40,11 @@ const LOG_TAIL_LINES: usize = 120;
 /// a step that could not run at all is a thing the agent has to fix too, and
 /// dropping it here would leave the file quietly claiming the section passed.
 pub struct CheckReport<'a> {
+    pub install_passed: bool,
     pub lint: &'a Result<LintAudit, String>,
+    /// `None` for `workspace:check`; `Some` when the full `check` command also
+    /// ran the test suites.
+    pub tests_passed: Option<bool>,
     pub elapsed_ms: u64,
     /// Whether the gate passed — the same verdict the process exits with.
     pub passed: bool,
@@ -184,7 +189,20 @@ fn markdown_summary(report: &CheckReport) -> String {
         String::from("## Summary\n\n| Section | Status | What it found |\n| --- | --- | --- |\n");
 
     out.push_str(&format!(
-        "| Lint | {} | {} |\n\n",
+        "| Install | {} | dependencies {} |\n",
+        if report.install_passed {
+            "pass"
+        } else {
+            "fail"
+        },
+        if report.install_passed {
+            "installed"
+        } else {
+            "could not be installed"
+        }
+    ));
+    out.push_str(&format!(
+        "| Lint | {} | {} |\n",
         lint_status(report.lint).slug(),
         match report.lint {
             Ok(audit) => format!(
@@ -196,6 +214,19 @@ fn markdown_summary(report: &CheckReport) -> String {
             Err(message) => format!("lint could not run: {message}"),
         }
     ));
+
+    if let Some(tests_passed) = report.tests_passed {
+        out.push_str(&format!(
+            "| Test | {} | {} |\n",
+            if tests_passed { "pass" } else { "fail" },
+            if tests_passed {
+                "every selected suite passed"
+            } else {
+                "one or more selected suites failed; re-run `talos test --logs`"
+            }
+        ));
+    }
+    out.push('\n');
 
     out
 }
@@ -244,7 +275,14 @@ fn render_json(report: &CheckReport) -> String {
             format!("Re-run `{}` until it passes.", report.command),
         ],
         "summary": {
+            "install": {
+                "status": if report.install_passed { "pass" } else { "fail" },
+            },
             "lint": lint_summary_json(report),
+            "test": report.tests_passed.map(|passed| json!({
+                "status": if passed { "pass" } else { "fail" },
+                "rerun": "talos test --logs",
+            })),
         },
         "lintFailures": lint_failures_json(report),
     });

@@ -57,6 +57,7 @@ fn run_one_biome_batch(
     ctx: SchedulerContext,
 ) -> bool {
     // Filter cache hits up front; only the misses are handed to biome.
+    let mut any_failed = false;
     let mut miss_indices: Vec<usize> = Vec::new();
     let mut miss_hashes: HashMap<usize, String> = HashMap::new();
     for &index in indices {
@@ -83,7 +84,14 @@ fn run_one_biome_batch(
         {
             tasks[index].hash = Some(hash.clone());
             tasks[index].duration_ms = meta.duration_ms;
-            tasks[index].status = TaskStatus::Cached;
+            tasks[index].output = meta.output;
+            tasks[index].exit_code = meta.exit_code;
+            tasks[index].status = if meta.success {
+                TaskStatus::Cached
+            } else {
+                any_failed = true;
+                TaskStatus::CachedFailure
+            };
             // A cache hit is not work in flight, so it is counted rather
             // than named as running.
             ctx.loader.advance(ctx.loader_group);
@@ -97,7 +105,7 @@ fn run_one_biome_batch(
     }
 
     if miss_indices.is_empty() {
-        return false;
+        return any_failed;
     }
 
     for &index in &miss_indices {
@@ -121,7 +129,7 @@ fn run_one_biome_batch(
         .output();
     let duration_ms = started.elapsed().as_millis() as u64;
 
-    let (output, success) = match result {
+    let (output, success, exit_code, completed) = match result {
         Ok(output) => (
             format!(
                 "{}{}",
@@ -129,8 +137,10 @@ fn run_one_biome_batch(
                 String::from_utf8_lossy(&output.stderr)
             ),
             output.status.success(),
+            output.status.code(),
+            true,
         ),
-        Err(error) => (error.to_string(), false),
+        Err(error) => (error.to_string(), false, Some(1), false),
     };
 
     let per_target = if success {
@@ -153,7 +163,6 @@ fn run_one_biome_batch(
     // configuration error), fail every batched target so nothing slips through.
     let attribute_all = !success && error_keys.is_empty();
 
-    let mut any_failed = false;
     for &index in &miss_indices {
         let key = tasks[index].target_key.clone().unwrap_or_default();
         let target_failed = !success && (attribute_all || error_keys.contains(&key));
@@ -161,7 +170,7 @@ fn run_one_biome_batch(
 
         if target_failed {
             tasks[index].status = TaskStatus::Failed;
-            tasks[index].exit_code = Some(1);
+            tasks[index].exit_code = exit_code;
             tasks[index].output = per_target
                 .get(&key)
                 .cloned()
@@ -169,10 +178,10 @@ fn run_one_biome_batch(
             any_failed = true;
         } else {
             tasks[index].status = TaskStatus::Success;
-            if let Some(hash) = miss_hashes.remove(&index) {
-                tasks[index].hash = Some(hash.clone());
-                cache_batched_success(&tasks[index], &key, hash, duration_ms, ctx);
-            }
+        }
+        if completed && let Some(hash) = miss_hashes.remove(&index) {
+            tasks[index].hash = Some(hash.clone());
+            cache_batched_task(&tasks[index], &key, hash, duration_ms, ctx);
         }
         ctx.loader.left(ctx.loader_group, &tasks[index].label);
     }
@@ -180,8 +189,8 @@ fn run_one_biome_batch(
     any_failed
 }
 
-/// Writes a cache entry for one target of a successful batched biome run.
-fn cache_batched_success(
+/// Writes a cache entry for one target of a completed batched biome run.
+fn cache_batched_task(
     task: &Task,
     key: &str,
     hash: String,
@@ -191,6 +200,7 @@ fn cache_batched_success(
     let Some(target) = ctx.by_key.get(key) else {
         return;
     };
+    let success = task.status == TaskStatus::Success;
     write_cache_entry(
         ctx.cache_dir,
         ctx.cache_index,
@@ -201,6 +211,13 @@ fn cache_batched_success(
             hash,
             created_at: chrono::Utc::now().to_rfc3339(),
             duration_ms,
+            success,
+            exit_code: task.exit_code,
+            output: if success {
+                String::new()
+            } else {
+                task.output.clone()
+            },
         },
     );
 }
@@ -533,6 +550,9 @@ mod tests {
                 hash: app_hash,
                 created_at: chrono::Utc::now().to_rfc3339(),
                 duration_ms: 33,
+                success: true,
+                exit_code: None,
+                output: String::new(),
             },
         );
 
@@ -606,6 +626,7 @@ mod tests {
         let cache_index = CacheIndex::new();
 
         for key in ["modules/app", "modules/web"] {
+            let success = key == "modules/app";
             let hash = compute_task_hash(
                 by_key[key],
                 "fmt",
@@ -625,6 +646,13 @@ mod tests {
                     hash,
                     created_at: chrono::Utc::now().to_rfc3339(),
                     duration_ms: 10,
+                    success,
+                    exit_code: (!success).then_some(7),
+                    output: if success {
+                        String::new()
+                    } else {
+                        "cached biome failure".to_string()
+                    },
                 },
             );
         }
@@ -649,8 +677,11 @@ mod tests {
 
         let failed = run_biome_batch_pass(&mut tasks, ctx);
 
-        assert!(!failed);
-        assert!(tasks.iter().all(|t| t.status == TaskStatus::Cached));
+        assert!(failed);
+        assert_eq!(tasks[0].status, TaskStatus::Cached);
+        assert_eq!(tasks[1].status, TaskStatus::CachedFailure);
+        assert_eq!(tasks[1].exit_code, Some(7));
+        assert_eq!(tasks[1].output, "cached biome failure");
         assert!(!root.path().join("biome.log").exists());
     }
 
@@ -714,11 +745,11 @@ mod tests {
     }
 
     // -------------------------------------------------------------------
-    // cache_batched_success
+    // cache_batched_task
     // -------------------------------------------------------------------
 
     #[test]
-    fn cache_batched_success_skips_when_the_target_cannot_be_resolved() {
+    fn cache_batched_task_skips_when_the_target_cannot_be_resolved() {
         let root = tempfile::tempdir().expect("tempdir");
         let cache = tempfile::tempdir().expect("tempdir");
         let task = make_task("app#fmt", "modules/app", "fmt");
@@ -738,16 +769,17 @@ mod tests {
             true,
         );
 
-        cache_batched_success(&task, "modules/app", "hash".to_string(), 10, ctx);
+        cache_batched_task(&task, "modules/app", "hash".to_string(), 10, ctx);
 
         assert!(cache_index.is_empty());
     }
 
     #[test]
-    fn cache_batched_success_writes_an_entry_when_the_target_resolves() {
+    fn cache_batched_task_writes_an_entry_when_the_target_resolves() {
         let root = tempfile::tempdir().expect("tempdir");
         let cache = tempfile::tempdir().expect("tempdir");
-        let task = make_task("app#fmt", "modules/app", "fmt");
+        let mut task = make_task("app#fmt", "modules/app", "fmt");
+        task.status = TaskStatus::Success;
         let target = make_target(
             root.path(),
             "modules/app",
@@ -772,10 +804,11 @@ mod tests {
             true,
         );
 
-        cache_batched_success(&task, "modules/app", "hash-1".to_string(), 40, ctx);
+        cache_batched_task(&task, "modules/app", "hash-1".to_string(), 40, ctx);
 
         let entry = read_cache_entry(cache.path(), &cache_index, "hash-1").expect("entry written");
         assert_eq!(entry.duration_ms, 40);
         assert_eq!(entry.target, "modules/app");
+        assert!(entry.success);
     }
 }

@@ -76,8 +76,8 @@ pub fn report(
         sections: vec![ReportSection {
             title: "Build failures".to_string(),
             key: "buildFailures".to_string(),
-            blurb: "each target below failed its build script, and everything that \
-                    depends on it never got to build at all"
+            blurb: "each target below failed its build script; the remaining selected \
+                    targets were still attempted"
                 .to_string(),
             entries: broken.iter().map(|result| entry(result)).collect(),
         }],

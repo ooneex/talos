@@ -26,6 +26,20 @@ use crate::commands::install::{self, InstallArgs};
 use crate::commands::lint::{self, LintArgs, LintAudit};
 use crate::commands::performance_check::{self, PerformanceAudit};
 
+/// The gate's completed work, kept separate from process exit and file output
+/// so `check` can append its test phase before deciding the final verdict.
+pub struct WorkspaceCheckExecution {
+    pub install_passed: bool,
+    pub lint: Result<LintAudit, String>,
+    pub elapsed_ms: u64,
+}
+
+impl WorkspaceCheckExecution {
+    pub fn passed(&self) -> bool {
+        self.install_passed && matches!(&self.lint, Ok(audit) if !audit.is_failure())
+    }
+}
+
 #[derive(Args, Debug)]
 pub struct WorkspaceCheckArgs {
     #[arg(long)]
@@ -137,15 +151,27 @@ fn root(args: &WorkspaceCheckArgs) -> PathBuf {
 }
 
 pub fn run(args: &WorkspaceCheckArgs) {
-    // The sources are only worth linting against a workspace that installed
-    // cleanly, so a failure there ends the gate before lint runs.
-    if !install::execute(&install_args(args)) {
+    if !execute(args) {
         std::process::exit(1);
     }
+}
 
-    // Lint is the whole of the gate now, so it draws its own live loader
-    // rather than running quietly beside something slower.
+/// Run the whole gate, write the optional report, and return its verdict
+/// without exiting so another command can aggregate it.
+pub fn execute(args: &WorkspaceCheckArgs) -> bool {
+    let execution = audit(args);
+    let passed = execution.passed();
+    write_requested_output(args, &execution, None, passed);
+    passed
+}
+
+/// Run install and lint without stopping after either failure. The terminal
+/// still receives the normal reports; file output is left to the caller so
+/// `check` can add its test verdict to the same report.
+pub fn audit(args: &WorkspaceCheckArgs) -> WorkspaceCheckExecution {
     let started = Instant::now();
+    let install_passed = install::execute(&install_args(args));
+
     let root = root(args);
     let lint = lint::audit(
         &root,
@@ -155,27 +181,36 @@ pub fn run(args: &WorkspaceCheckArgs) {
         false,
     );
     let elapsed_ms = started.elapsed().as_millis() as u64;
+    print_check_report(args, &lint, elapsed_ms);
 
-    let passed = print_check_report(args, &lint, elapsed_ms);
-
-    // The file is written after the report and never instead of it: whatever
-    // it does, the terminal has already said the same thing.
-    if let Some(format) = args.output {
-        write_output(
-            &root,
-            format,
-            &CheckReport {
-                lint: &lint,
-                elapsed_ms,
-                passed,
-                command: command_line(args),
-            },
-        );
+    WorkspaceCheckExecution {
+        install_passed,
+        lint,
+        elapsed_ms,
     }
+}
 
-    if !passed {
-        std::process::exit(1);
-    }
+/// Write the report requested by either `workspace:check` or `check` after
+/// every phase that belongs to that command has finished.
+pub fn write_requested_output(
+    args: &WorkspaceCheckArgs,
+    execution: &WorkspaceCheckExecution,
+    tests_passed: Option<bool>,
+    passed: bool,
+) {
+    let Some(format) = args.output else { return };
+    write_output(
+        &root(args),
+        format,
+        &CheckReport {
+            install_passed: execution.install_passed,
+            lint: &execution.lint,
+            tests_passed,
+            elapsed_ms: execution.elapsed_ms,
+            passed,
+            command: command_line(args),
+        },
+    );
 }
 
 /// Write the gate's report under `var/outputs` and say where it landed.
@@ -189,15 +224,13 @@ fn print_check_report(
     args: &WorkspaceCheckArgs,
     lint: &Result<LintAudit, String>,
     elapsed_ms: u64,
-) -> bool {
+) {
     match lint {
         Ok(audit) => {
             lint::print_report(audit, args.logs, elapsed_ms);
-            !audit.is_failure()
         }
         Err(message) => {
             crate::utils::error(message);
-            false
         }
     }
 }

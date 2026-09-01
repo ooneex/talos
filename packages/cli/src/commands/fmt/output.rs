@@ -41,7 +41,7 @@ pub fn command_line(args: &FmtArgs) -> String {
 pub fn report(args: &FmtArgs, tasks: &[Task], elapsed_ms: u64) -> AgentReport {
     let broken: Vec<&Task> = tasks
         .iter()
-        .filter(|task| task.status == TaskStatus::Failed)
+        .filter(|task| matches!(task.status, TaskStatus::Failed | TaskStatus::CachedFailure))
         .collect();
     let ran = tasks
         .iter()
@@ -49,7 +49,7 @@ pub fn report(args: &FmtArgs, tasks: &[Task], elapsed_ms: u64) -> AgentReport {
         .count();
     let cached = tasks
         .iter()
-        .filter(|task| task.status == TaskStatus::Cached)
+        .filter(|task| matches!(task.status, TaskStatus::Cached | TaskStatus::CachedFailure))
         .count();
 
     AgentReport {

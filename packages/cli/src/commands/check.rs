@@ -1,4 +1,5 @@
 use clap::Args;
+use std::time::Instant;
 
 use crate::commands::test::{self, TestArgs};
 use crate::commands::workspace_check::{self, OutputFormat, WorkspaceCheckArgs};
@@ -51,6 +52,21 @@ pub fn forwarded_test_args(args: &CheckArgs) -> TestArgs {
 }
 
 pub fn run(args: &CheckArgs) {
-    workspace_check::run(&forwarded_args(args));
-    test::run(&forwarded_test_args(args));
+    let started = Instant::now();
+    let workspace_args = forwarded_args(args);
+    let mut workspace = workspace_check::audit(&workspace_args);
+    let tests_passed = test::execute(&forwarded_test_args(args));
+    let passed = workspace.passed() && tests_passed;
+    workspace.elapsed_ms = started.elapsed().as_millis() as u64;
+
+    workspace_check::write_requested_output(
+        &workspace_args,
+        &workspace,
+        Some(tests_passed),
+        passed,
+    );
+
+    if !passed {
+        std::process::exit(1);
+    }
 }

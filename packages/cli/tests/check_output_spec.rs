@@ -22,7 +22,9 @@ fn failing_lint() -> LintAudit {
 
 fn report(lint: &Result<LintAudit, String>, passed: bool) -> CheckReport<'_> {
     CheckReport {
+        install_passed: true,
         lint,
+        tests_passed: Some(passed),
         elapsed_ms: 64_000,
         passed,
         command: "talos check --logs".to_string(),
@@ -40,6 +42,8 @@ fn markdown_names_every_section_that_needs_work() {
     assert!(markdown.contains("## How to use this file"));
 
     assert!(markdown.contains("| Lint | fail | 1 module linted · 1 failing |"));
+    assert!(markdown.contains("| Install | pass | dependencies installed |"));
+    assert!(markdown.contains("| Test | fail |"));
     assert!(markdown.contains("## Lint failures (1)"));
     assert!(markdown.contains("error TS2322"));
     assert!(markdown.contains("talos lint --modules=user --logs"));
@@ -73,6 +77,8 @@ fn json_carries_the_same_report_in_a_parsable_shape() {
     assert_eq!(value["passed"], false);
     assert_eq!(value["command"], "talos check --logs");
     assert_eq!(value["summary"]["lint"]["status"], "fail");
+    assert_eq!(value["summary"]["install"]["status"], "pass");
+    assert_eq!(value["summary"]["test"]["status"], "fail");
     assert_eq!(value["summary"]["lint"]["failing"], 1);
 
     assert_eq!(value["lintFailures"][0]["module"], "user");

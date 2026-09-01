@@ -179,12 +179,11 @@ fn execute_reports_a_single_failure_without_logs() {
 }
 
 #[test]
-fn execute_never_builds_a_target_that_depends_on_a_failing_one() {
+fn execute_attempts_a_target_that_depends_on_a_failing_one() {
     let tmp = tempfile::tempdir().expect("tempdir");
     write_module(tmp.path(), "core", "{\"build\":\"false\"}");
-    // "app" imports "core", so it is held until core builds — which it never
-    // does. Two targets with no dependency between them have no such reason
-    // to wait for one another, and do run at the same time.
+    // "app" imports "core", so it is held until core finishes. The failed
+    // dependency still must not stop the rest of the selected modules.
     let app_dir = tmp.path().join("modules/app");
     fs::create_dir_all(&app_dir).expect("app dir");
     fs::write(
@@ -194,7 +193,7 @@ fn execute_never_builds_a_target_that_depends_on_a_failing_one() {
     .expect("package.json");
 
     assert!(!execute(&args(tmp.path())));
-    assert!(!app_dir.join("ran.marker").exists());
+    assert!(app_dir.join("ran.marker").exists());
 }
 
 #[cfg(unix)]
@@ -287,6 +286,26 @@ fn execute_reuses_a_cached_build_on_a_second_run() {
 
     // Second run should hit the cache entry written by the first.
     assert!(execute(&a));
+}
+
+#[test]
+fn execute_reuses_a_cached_failed_build_on_a_second_run() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    write_module(
+        tmp.path(),
+        "alpha",
+        "{\"build\":\"printf run >> ../../executions.log; exit 7\"}",
+    );
+
+    let mut a = args(tmp.path());
+    a.no_cache = false;
+
+    assert!(!execute(&a));
+    assert!(!execute(&a));
+    assert_eq!(
+        fs::read_to_string(tmp.path().join("executions.log")).expect("execution log"),
+        "run"
+    );
 }
 
 #[test]

@@ -11,7 +11,7 @@ pub use cache::{
     save_file_hash_cache, write_cache_entry,
 };
 
-pub const WORKSPACE_CACHE_VERSION: u32 = 2;
+pub const WORKSPACE_CACHE_VERSION: u32 = 3;
 pub const WORKSPACE_CACHE_DIR: &str = "var/cache/workspace";
 
 const TARGET_ROOTS: &[(&str, TargetType)] = &[

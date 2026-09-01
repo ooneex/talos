@@ -6,6 +6,7 @@ pub enum TaskStatus {
     Success,
     Cached,
     Failed,
+    CachedFailure,
     Skipped,
 }
 

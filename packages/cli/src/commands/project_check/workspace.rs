@@ -56,8 +56,10 @@ pub(super) fn check_workspace(args: &ProjectCheckArgs, root: &Path) -> CheckOutc
     }
 }
 
-/// Runs [`CHECK_COMMANDS`] in order, each through its own standalone
-/// command, stopping at the first that fails.
+/// Runs [`CHECK_COMMANDS`] in order, each through its own standalone command.
+/// A failed step is remembered but never prevents the remaining steps from
+/// running, so the workspace outcome contains the whole gate rather than its
+/// first error.
 fn run_workspace_commands(args: &ProjectCheckArgs, root: &Path) -> Result<bool, String> {
     // In JSON mode the interactive runner would pollute stdout, so each
     // command runs as its own child process and its logs are captured
@@ -67,8 +69,8 @@ fn run_workspace_commands(args: &ProjectCheckArgs, root: &Path) -> Result<bool, 
     }
 
     let cwd = Some(root.to_string_lossy().to_string());
-    for command in CHECK_COMMANDS.split(',') {
-        let ok = match command {
+    run_all_workspace_commands(|command| {
+        let passed = match command {
             "install" => install::execute(&InstallArgs {
                 force: false,
                 audit_level: None,
@@ -102,11 +104,8 @@ fn run_workspace_commands(args: &ProjectCheckArgs, root: &Path) -> Result<bool, 
             }),
             other => unreachable!("{other} is not part of CHECK_COMMANDS"),
         };
-        if !ok {
-            return Ok(false);
-        }
-    }
-    Ok(true)
+        Ok(passed)
+    })
 }
 
 fn run_workspace_commands_detached(args: &ProjectCheckArgs, root: &Path) -> Result<bool, String> {
@@ -114,7 +113,7 @@ fn run_workspace_commands_detached(args: &ProjectCheckArgs, root: &Path) -> Resu
         return Err("Could not locate the talos executable to run the workspace tasks".to_string());
     };
 
-    for command in CHECK_COMMANDS.split(',') {
+    run_all_workspace_commands(|command| {
         let mut cmd = Command::new(&exe);
         cmd.arg(command).arg("--logs").current_dir(root);
         if let Some(packages) = &args.packages {
@@ -126,14 +125,43 @@ fn run_workspace_commands_detached(args: &ProjectCheckArgs, root: &Path) -> Resu
         if args.no_cache {
             cmd.arg("--no-cache");
         }
+        if command == "test"
+            && let Some(concurrency) = args.concurrency
+        {
+            cmd.arg(format!("--concurrency={concurrency}"));
+        }
 
         match cmd.output() {
-            Ok(output) if output.status.success() => continue,
-            Ok(_) => return Ok(false),
-            Err(err) => return Err(format!("Could not run \"talos {command}\": {err}")),
+            Ok(output) => Ok(output.status.success()),
+            Err(err) => Err(format!("Could not run \"talos {command}\": {err}")),
+        }
+    })
+}
+
+/// Run every workspace command and aggregate both ordinary non-zero statuses
+/// and commands that could not be started. Startup errors are returned after
+/// the remaining commands have still been attempted.
+fn run_all_workspace_commands(
+    mut run: impl FnMut(&str) -> Result<bool, String>,
+) -> Result<bool, String> {
+    let mut passed = true;
+    let mut errors = Vec::new();
+
+    for command in CHECK_COMMANDS.split(',') {
+        match run(command) {
+            Ok(command_passed) => passed &= command_passed,
+            Err(message) => {
+                passed = false;
+                errors.push(message);
+            }
         }
     }
-    Ok(true)
+
+    if errors.is_empty() {
+        Ok(passed)
+    } else {
+        Err(errors.join("; "))
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -360,6 +388,23 @@ mod check_commands_tests {
     #[test]
     fn check_commands_runs_the_scripted_gate_in_order() {
         assert_eq!(CHECK_COMMANDS, "install,build,lint,test");
+    }
+
+    #[test]
+    fn check_commands_continue_after_failures_and_errors() {
+        let mut ran = Vec::new();
+
+        let result = run_all_workspace_commands(|command| {
+            ran.push(command.to_string());
+            match command {
+                "install" => Ok(false),
+                "lint" => Err("lint could not start".to_string()),
+                _ => Ok(true),
+            }
+        });
+
+        assert_eq!(ran, vec!["install", "build", "lint", "test"]);
+        assert_eq!(result, Err("lint could not start".to_string()));
     }
 }
 

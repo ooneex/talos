@@ -13,6 +13,9 @@ use crate::utils::{
 enum TaskOutcome {
     Cached {
         hash: String,
+        output: String,
+        exit_code: Option<i32>,
+        success: bool,
         duration_ms: u64,
     },
     Ran {
@@ -20,6 +23,7 @@ enum TaskOutcome {
         output: String,
         exit_code: Option<i32>,
         success: bool,
+        completed: bool,
         duration_ms: u64,
     },
 }
@@ -88,6 +92,9 @@ fn execute_task(
             hit: Some(hit),
         }) => TaskOutcome::Cached {
             hash,
+            output: hit.output,
+            exit_code: hit.exit_code,
+            success: hit.success,
             duration_ms: hit.duration_ms,
         },
         other => {
@@ -108,6 +115,7 @@ fn execute_task(
                     ),
                     exit_code: output.status.code(),
                     success: output.status.success(),
+                    completed: true,
                     duration_ms,
                 },
                 Err(error) => TaskOutcome::Ran {
@@ -115,6 +123,7 @@ fn execute_task(
                     output: error.to_string(),
                     exit_code: Some(1),
                     success: false,
+                    completed: false,
                     duration_ms,
                 },
             }
@@ -123,19 +132,33 @@ fn execute_task(
 }
 
 /// Applies a finished task's outcome to its `Task`, writing a cache entry
-/// when the task succeeded and was cacheable.
+/// whenever the command completed and the task was cacheable.
 fn apply_outcome(task: &mut Task, outcome: TaskOutcome, ctx: SchedulerContext, failed: &mut bool) {
     match outcome {
-        TaskOutcome::Cached { hash, duration_ms } => {
+        TaskOutcome::Cached {
+            hash,
+            output,
+            exit_code,
+            success,
+            duration_ms,
+        } => {
             task.hash = Some(hash);
+            task.output = output;
+            task.exit_code = exit_code;
             task.duration_ms = duration_ms;
-            task.status = TaskStatus::Cached;
+            task.status = if success {
+                TaskStatus::Cached
+            } else {
+                *failed = true;
+                TaskStatus::CachedFailure
+            };
         }
         TaskOutcome::Ran {
             hash,
             output,
             exit_code,
             success,
+            completed,
             duration_ms,
         } => {
             task.hash = hash;
@@ -144,18 +167,20 @@ fn apply_outcome(task: &mut Task, outcome: TaskOutcome, ctx: SchedulerContext, f
             task.duration_ms = duration_ms;
             if success {
                 task.status = TaskStatus::Success;
-                cache_successful_task(task, ctx);
             } else {
                 task.status = TaskStatus::Failed;
                 *failed = true;
+            }
+            if completed {
+                cache_task(task, ctx);
             }
         }
     }
 }
 
-/// Writes a cache entry for a task that just succeeded, when it is cacheable
-/// and its target can still be resolved.
-fn cache_successful_task(task: &Task, ctx: SchedulerContext) {
+/// Writes a cache entry for a task whose command completed, when it is
+/// cacheable and its target can still be resolved.
+fn cache_task(task: &Task, ctx: SchedulerContext) {
     if !task.cacheable {
         return;
     }
@@ -168,6 +193,7 @@ fn cache_successful_task(task: &Task, ctx: SchedulerContext) {
     let Some(target) = ctx.by_key.get(target_key.as_str()) else {
         return;
     };
+    let success = task.status == TaskStatus::Success;
 
     write_cache_entry(
         ctx.cache_dir,
@@ -179,6 +205,13 @@ fn cache_successful_task(task: &Task, ctx: SchedulerContext) {
             hash: hash.clone(),
             created_at: chrono::Utc::now().to_rfc3339(),
             duration_ms: task.duration_ms,
+            success,
+            exit_code: task.exit_code,
+            output: if success {
+                String::new()
+            } else {
+                task.output.clone()
+            },
         },
     );
 }
@@ -219,7 +252,7 @@ pub(crate) fn run_group(tasks: &mut [Task], ctx: SchedulerContext) -> bool {
         let mut inflight = 0usize;
 
         loop {
-            while !failed && inflight < limit {
+            while inflight < limit {
                 let next = (0..tasks.len()).find(|&i| {
                     !launched[i]
                         && tasks[i].status == TaskStatus::Pending
@@ -282,6 +315,9 @@ struct TaskHashResult {
 
 struct CacheHit {
     duration_ms: u64,
+    success: bool,
+    exit_code: Option<i32>,
+    output: String,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -311,6 +347,9 @@ fn try_cache_hit(
 
     let hit = read_cache_entry(cache_dir, cache_index, &hash).map(|meta| CacheHit {
         duration_ms: meta.duration_ms,
+        success: meta.success,
+        exit_code: meta.exit_code,
+        output: meta.output,
     });
 
     Some(TaskHashResult { hash, hit })
@@ -558,6 +597,9 @@ mod tests {
                 hash: miss.hash.clone(),
                 created_at: chrono::Utc::now().to_rfc3339(),
                 duration_ms: 42,
+                success: true,
+                exit_code: None,
+                output: String::new(),
             },
         );
 
@@ -613,6 +655,9 @@ mod tests {
                 hash: hash.clone(),
                 created_at: chrono::Utc::now().to_rfc3339(),
                 duration_ms: 77,
+                success: true,
+                exit_code: None,
+                output: String::new(),
             },
         );
 
@@ -641,6 +686,7 @@ mod tests {
             TaskOutcome::Cached {
                 hash: got_hash,
                 duration_ms,
+                ..
             } => {
                 assert_eq!(got_hash, hash);
                 assert_eq!(duration_ms, 77);
@@ -723,6 +769,9 @@ mod tests {
             &mut task,
             TaskOutcome::Cached {
                 hash: "abc".to_string(),
+                output: String::new(),
+                exit_code: None,
+                success: true,
                 duration_ms: 5,
             },
             ctx,
@@ -764,6 +813,7 @@ mod tests {
                 output: "boom".to_string(),
                 exit_code: Some(1),
                 success: false,
+                completed: true,
                 duration_ms: 9,
             },
             ctx,
@@ -775,11 +825,11 @@ mod tests {
     }
 
     // -----------------------------------------------------------------------
-    // cache_successful_task
+    // cache_task
     // -----------------------------------------------------------------------
 
     #[test]
-    fn cache_successful_task_skips_a_task_that_is_not_cacheable() {
+    fn cache_task_skips_a_task_that_is_not_cacheable() {
         let mut task = make_task("app#fmt", "modules/app");
         task.cacheable = false;
         task.hash = Some("abc".to_string());
@@ -801,13 +851,13 @@ mod tests {
             true,
         );
 
-        cache_successful_task(&task, ctx);
+        cache_task(&task, ctx);
 
         assert!(cache_index.is_empty());
     }
 
     #[test]
-    fn cache_successful_task_skips_a_task_without_a_hash() {
+    fn cache_task_skips_a_task_without_a_hash() {
         let mut task = make_task("app#fmt", "modules/app");
         task.cacheable = true;
         task.hash = None;
@@ -829,13 +879,13 @@ mod tests {
             true,
         );
 
-        cache_successful_task(&task, ctx);
+        cache_task(&task, ctx);
 
         assert!(cache_index.is_empty());
     }
 
     #[test]
-    fn cache_successful_task_skips_a_task_without_a_target_key() {
+    fn cache_task_skips_a_task_without_a_target_key() {
         let mut task = make_task("app#fmt", "modules/app");
         task.cacheable = true;
         task.hash = Some("abc".to_string());
@@ -858,13 +908,13 @@ mod tests {
             true,
         );
 
-        cache_successful_task(&task, ctx);
+        cache_task(&task, ctx);
 
         assert!(cache_index.is_empty());
     }
 
     #[test]
-    fn cache_successful_task_skips_when_the_target_cannot_be_resolved() {
+    fn cache_task_skips_when_the_target_cannot_be_resolved() {
         let mut task = make_task("app#fmt", "modules/app");
         task.cacheable = true;
         task.hash = Some("abc".to_string());
@@ -886,17 +936,18 @@ mod tests {
             true,
         );
 
-        cache_successful_task(&task, ctx);
+        cache_task(&task, ctx);
 
         assert!(cache_index.is_empty());
     }
 
     #[test]
-    fn cache_successful_task_writes_a_cache_entry_when_everything_resolves() {
+    fn cache_task_writes_a_cache_entry_when_everything_resolves() {
         let mut task = make_task("app#fmt", "modules/app");
         task.cacheable = true;
         task.hash = Some("abc123".to_string());
         task.duration_ms = 55;
+        task.status = TaskStatus::Success;
         let root = tempfile::tempdir().expect("tempdir");
         let cache = tempfile::tempdir().expect("tempdir");
         let target = make_target(root.path(), "modules/app", "app");
@@ -917,11 +968,12 @@ mod tests {
             true,
         );
 
-        cache_successful_task(&task, ctx);
+        cache_task(&task, ctx);
 
         let entry = read_cache_entry(cache.path(), &cache_index, "abc123").expect("entry written");
         assert_eq!(entry.duration_ms, 55);
         assert_eq!(entry.target, "modules/app");
+        assert!(entry.success);
     }
 
     // -----------------------------------------------------------------------
@@ -1000,5 +1052,108 @@ mod tests {
         assert!(failed);
         assert_eq!(tasks[0].status, TaskStatus::Success);
         assert_eq!(tasks[1].status, TaskStatus::Failed);
+    }
+
+    #[test]
+    fn run_group_keeps_launching_tasks_after_a_failure() {
+        let root = tempfile::tempdir().expect("tempdir");
+        let cache = tempfile::tempdir().expect("tempdir");
+
+        let mut failing = make_task("first#test", "modules/first");
+        failing.cwd = root.path().to_path_buf();
+        failing.argv = vec!["sh".to_string(), "-c".to_string(), "exit 1".to_string()];
+
+        let marker = root.path().join("second-ran");
+        let mut passing = make_task("second#test", "modules/second");
+        passing.cwd = root.path().to_path_buf();
+        passing.argv = vec![
+            "sh".to_string(),
+            "-c".to_string(),
+            format!("touch {}", marker.display()),
+        ];
+
+        let mut tasks = vec![failing, passing];
+        let by_key: HashMap<&str, &WorkspaceTarget> = HashMap::new();
+        let cache_index = CacheIndex::new();
+        let memo = FingerprintMemo::new();
+        let file_hash_cache = FileHashCache::new();
+        let loader = Loader::hidden();
+        let mut ctx = make_ctx(
+            root.path(),
+            cache.path(),
+            &by_key,
+            &cache_index,
+            &memo,
+            &file_hash_cache,
+            &loader,
+            true,
+        );
+        ctx.concurrency = Some(1);
+
+        let failed = run_group(&mut tasks, ctx);
+
+        assert!(failed);
+        assert_eq!(tasks[0].status, TaskStatus::Failed);
+        assert_eq!(tasks[1].status, TaskStatus::Success);
+        assert!(marker.exists());
+    }
+
+    #[test]
+    fn run_group_caches_and_reuses_a_completed_failure() {
+        let root = tempfile::tempdir().expect("tempdir");
+        let cache = tempfile::tempdir().expect("tempdir");
+        let module_dir = root.path().join("modules/app");
+        fs::create_dir_all(&module_dir).expect("module dir");
+        fs::write(module_dir.join("file.txt"), "hello").expect("source file");
+        let script = root.path().join("fail.sh");
+        let executions = root.path().join("executions.log");
+        write_executable(
+            &script,
+            &format!(
+                "#!/bin/sh\nprintf 'run\\n' >> \"{}\"\necho 'cached failure' >&2\nexit 7\n",
+                executions.display()
+            ),
+        );
+
+        let target = make_target(root.path(), "modules/app", "app");
+        let by_key: HashMap<&str, &WorkspaceTarget> =
+            HashMap::from([(target.key.as_str(), &target)]);
+        let cache_index = CacheIndex::new();
+        let memo = FingerprintMemo::new();
+        let file_hash_cache = FileHashCache::new();
+        let loader = Loader::hidden();
+        let ctx = make_ctx(
+            root.path(),
+            cache.path(),
+            &by_key,
+            &cache_index,
+            &memo,
+            &file_hash_cache,
+            &loader,
+            false,
+        );
+
+        let mut first = make_task("app#fmt", "modules/app");
+        first.cwd = module_dir.clone();
+        first.argv = vec![script.to_string_lossy().to_string()];
+        first.cacheable = true;
+        assert!(run_group(std::slice::from_mut(&mut first), ctx));
+        assert_eq!(first.status, TaskStatus::Failed);
+        assert_eq!(first.exit_code, Some(7));
+        assert!(first.output.contains("cached failure"));
+        assert_eq!(cache_index.len(), 1);
+
+        let mut second = make_task("app#fmt", "modules/app");
+        second.cwd = module_dir;
+        second.argv = vec![script.to_string_lossy().to_string()];
+        second.cacheable = true;
+        assert!(run_group(std::slice::from_mut(&mut second), ctx));
+        assert_eq!(second.status, TaskStatus::CachedFailure);
+        assert_eq!(second.exit_code, Some(7));
+        assert!(second.output.contains("cached failure"));
+        assert_eq!(
+            fs::read_to_string(executions).expect("execution log"),
+            "run\n"
+        );
     }
 }

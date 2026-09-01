@@ -17,8 +17,8 @@ use crate::utils::{
 
 /// `fmt` runs a single, order-independent command, so it keeps its own
 /// fingerprint cache instead of sharing `workspace:run`'s — a `--no-cache`
-/// build or a stale lint result never has a reason to invalidate a clean
-/// format pass, or the other way around.
+/// build or a stale lint result never has a reason to invalidate a format
+/// result, or the other way around.
 ///
 /// Being order-independent is also what lets every target format at once:
 /// [`run_group`] holds a task back only for a dependency, and a fmt task

@@ -171,6 +171,27 @@ fn execute_reports_failure_when_the_test_script_fails() {
 }
 
 #[test]
+fn execute_reuses_an_unchanged_failing_test_result() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    write_module_with_tests(
+        tmp.path(),
+        "alpha",
+        "{\"test\":\"printf run >> ../../executions.log; exit 7\"}",
+    );
+    let cached_args = TestArgs {
+        no_cache: false,
+        ..args(tmp.path())
+    };
+
+    assert!(!execute(&cached_args));
+    assert!(!execute(&cached_args));
+    assert_eq!(
+        fs::read_to_string(tmp.path().join("executions.log")).expect("execution log"),
+        "run"
+    );
+}
+
+#[test]
 fn execute_filters_to_the_named_module_only() {
     let tmp = tempfile::tempdir().expect("tempdir");
     write_module_with_tests(tmp.path(), "alpha", "{\"test\":\"true\"}");

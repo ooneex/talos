@@ -20,12 +20,18 @@ pub fn finish_lines(task: &Task) -> (Vec<String>, bool) {
             )],
             false,
         ),
-        TaskStatus::Failed => {
+        TaskStatus::Failed | TaskStatus::CachedFailure => {
+            let cached = if task.status == TaskStatus::CachedFailure {
+                "  cached"
+            } else {
+                ""
+            };
             let mut lines = vec![format!(
-                "{} {}{}{}",
+                "{} {}{}{}{}",
                 style("✖").red(),
                 task.label,
                 style("  failed").red(),
+                style(cached).dim(),
                 style(format!(
                     "  exit {}  {}",
                     task.exit_code.unwrap_or(1),
@@ -120,7 +126,10 @@ pub fn print_task_report(title: &str, tasks: &[Task], logs: bool, elapsed_ms: u6
         .filter(|task| {
             matches!(
                 task.status,
-                TaskStatus::Success | TaskStatus::Cached | TaskStatus::Failed
+                TaskStatus::Success
+                    | TaskStatus::Cached
+                    | TaskStatus::Failed
+                    | TaskStatus::CachedFailure
             )
         })
         .collect();
@@ -167,13 +176,13 @@ fn print_rows(ran: &[&Task]) {
                 style("✔").green().bold().to_string(),
                 style(format_duration(task.duration_ms)).dim().to_string(),
             ),
-            TaskStatus::Failed => (
+            TaskStatus::Failed | TaskStatus::CachedFailure => (
                 style("✖").red().bold().to_string(),
                 style(format_duration(task.duration_ms)).red().to_string(),
             ),
             TaskStatus::Skipped | TaskStatus::Pending => continue,
         };
-        let cached = if task.status == TaskStatus::Cached {
+        let cached = if matches!(task.status, TaskStatus::Cached | TaskStatus::CachedFailure) {
             style(" cached").dim().to_string()
         } else {
             String::new()
@@ -189,7 +198,7 @@ fn print_rows(ran: &[&Task]) {
 fn print_failures(ran: &[&Task], logs: bool) {
     let broken: Vec<&&Task> = ran
         .iter()
-        .filter(|task| task.status == TaskStatus::Failed)
+        .filter(|task| matches!(task.status, TaskStatus::Failed | TaskStatus::CachedFailure))
         .collect();
     if broken.is_empty() {
         return;
@@ -222,11 +231,11 @@ fn print_summary(ran: &[&Task], skipped: usize) {
         .count();
     let cached = ran
         .iter()
-        .filter(|task| task.status == TaskStatus::Cached)
+        .filter(|task| matches!(task.status, TaskStatus::Cached | TaskStatus::CachedFailure))
         .count();
     let broken = ran
         .iter()
-        .filter(|task| task.status == TaskStatus::Failed)
+        .filter(|task| matches!(task.status, TaskStatus::Failed | TaskStatus::CachedFailure))
         .count();
 
     let mut parts = vec![format!("{completed} run"), format!("{cached} cached")];

@@ -386,8 +386,15 @@ fn the_second_run_is_served_from_the_cache() {
 
     let second = execute(&cached_args, &checks);
     assert!(
-        second.outcomes.iter().any(|outcome| outcome.cached),
-        "the warm run reuses entries"
+        second.outcomes.iter().all(|outcome| outcome.cached),
+        "the warm run reuses every cacheable entry, including failures"
+    );
+    assert!(
+        first
+            .outcomes
+            .iter()
+            .any(|outcome| outcome.status == CheckStatus::Failed),
+        "the fixture must cover failed-result caching"
     );
 
     for (before, after) in first.outcomes.iter().zip(second.outcomes.iter()) {

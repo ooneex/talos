@@ -259,26 +259,24 @@ fn concurrency(jobs: usize) -> usize {
 /// Build every job, as many at a time as the machine has cores for, and
 /// report them in the order they were planned.
 ///
-/// A job starts the moment everything it imports has been built, so an
-/// unrelated pair never waits on each other. A failure stops the run from
-/// starting anything new — the jobs already in flight are still collected,
-/// since their output is as much a part of the report as the failure is, and
-/// everything that was waiting on the broken target is simply never built.
+/// A job starts the moment every build it imports has finished, so an
+/// unrelated pair never waits on each other. A failure is recorded but does
+/// not stop the queue: every selected target is attempted and the complete
+/// report is returned at the end.
 fn run_builds(jobs: &[Job], ctx: BuildContext) -> Vec<TargetBuild> {
     let limit = concurrency(jobs.len());
-    let mut built = vec![false; jobs.len()];
+    let mut completed = vec![false; jobs.len()];
     let mut launched = vec![false; jobs.len()];
     let mut results: Vec<Option<TargetBuild>> = (0..jobs.len()).map(|_| None).collect();
-    let mut failed = false;
 
     std::thread::scope(|scope| {
         let (tx, rx) = channel::<(usize, TargetBuild)>();
         let mut inflight = 0usize;
 
         loop {
-            while !failed && inflight < limit {
+            while inflight < limit {
                 let next = (0..jobs.len()).find(|&index| {
-                    !launched[index] && jobs[index].deps.iter().all(|&dep| built[dep])
+                    !launched[index] && jobs[index].deps.iter().all(|&dep| completed[dep])
                 });
                 let Some(index) = next else { break };
 
@@ -296,12 +294,10 @@ fn run_builds(jobs: &[Job], ctx: BuildContext) -> Vec<TargetBuild> {
             }
 
             let Ok((index, build)) = rx.recv() else {
-                failed = true;
                 break;
             };
             inflight -= 1;
-            built[index] = build.status == BuildStatus::Passed;
-            failed |= build.status == BuildStatus::Failed;
+            completed[index] = true;
             results[index] = Some(build);
         }
     });
@@ -329,20 +325,44 @@ fn build_job(job: &Job, ctx: BuildContext) -> TargetBuild {
         // A cache hit is not work in flight, so it is counted rather than
         // named as running.
         ctx.loader.advance(0);
-        return result(job, BuildStatus::Passed, 0, String::new(), true);
+        return result(
+            job,
+            if entry.success {
+                BuildStatus::Passed
+            } else {
+                BuildStatus::Failed
+            },
+            entry.duration_ms,
+            entry.output,
+            true,
+        );
     }
 
     ctx.loader.entered(0, job.label.clone());
-    let (success_flag, output, duration_ms) = run_build(target);
+    let (success_flag, output, duration_ms, completed) = run_build(target);
     ctx.loader.left(0, &job.label);
 
-    if success_flag {
-        if !ctx.no_cache {
-            cache::write(ctx.root_dir, &target.key, &hash, duration_ms, &output);
-        }
-        return result(job, BuildStatus::Passed, duration_ms, output, false);
+    if completed && !ctx.no_cache {
+        cache::write(
+            ctx.root_dir,
+            &target.key,
+            &hash,
+            duration_ms,
+            success_flag,
+            &output,
+        );
     }
-    result(job, BuildStatus::Failed, duration_ms, output, false)
+    result(
+        job,
+        if success_flag {
+            BuildStatus::Passed
+        } else {
+            BuildStatus::Failed
+        },
+        duration_ms,
+        output,
+        false,
+    )
 }
 
 fn result(
@@ -487,11 +507,11 @@ fn build_argv(target: &WorkspaceTarget) -> Vec<String> {
         .unwrap_or_default()
 }
 
-fn run_build(target: &WorkspaceTarget) -> (bool, String, u64) {
+fn run_build(target: &WorkspaceTarget) -> (bool, String, u64, bool) {
     let argv = build_argv(target);
     let started = Instant::now();
     let Some((bin, rest)) = argv.split_first() else {
-        return (false, "no build script declared".to_string(), 0);
+        return (false, "no build script declared".to_string(), 0, false);
     };
 
     let result = Command::new(bin)
@@ -508,8 +528,9 @@ fn run_build(target: &WorkspaceTarget) -> (bool, String, u64) {
                 String::from_utf8_lossy(&output.stderr)
             ),
             duration_ms,
+            true,
         ),
-        Err(err) => (false, err.to_string(), duration_ms),
+        Err(err) => (false, err.to_string(), duration_ms, false),
     }
 }
 
@@ -781,11 +802,12 @@ mod tests {
         t.direct_scripts = true;
         t.scripts.insert("build".to_string(), String::new());
 
-        let (success_flag, output, duration_ms) = run_build(&t);
+        let (success_flag, output, duration_ms, completed) = run_build(&t);
 
         assert!(!success_flag);
         assert_eq!(output, "no build script declared");
         assert_eq!(duration_ms, 0);
+        assert!(!completed);
     }
 
     #[test]
@@ -798,10 +820,11 @@ mod tests {
             "totally-nonexistent-binary-xyz-123".to_string(),
         );
 
-        let (success_flag, output, _duration_ms) = run_build(&t);
+        let (success_flag, output, _duration_ms, completed) = run_build(&t);
 
         assert!(!success_flag);
         assert!(!output.is_empty());
+        assert!(!completed);
     }
 
     #[test]
@@ -810,16 +833,18 @@ mod tests {
         let mut ok = target("crate-a", TargetType::Package, dir.path().to_path_buf());
         ok.direct_scripts = true;
         ok.scripts.insert("build".to_string(), "true".to_string());
-        let (success_flag, _output, _duration_ms) = run_build(&ok);
+        let (success_flag, _output, _duration_ms, completed) = run_build(&ok);
         assert!(success_flag);
+        assert!(completed);
 
         let mut failing = target("crate-b", TargetType::Package, dir.path().to_path_buf());
         failing.direct_scripts = true;
         failing
             .scripts
             .insert("build".to_string(), "false".to_string());
-        let (success_flag, _output, _duration_ms) = run_build(&failing);
+        let (success_flag, _output, _duration_ms, completed) = run_build(&failing);
         assert!(!success_flag);
+        assert!(completed);
     }
 
     // -- filter_targets ----------------------------------------------
@@ -908,9 +933,7 @@ mod tests {
         print_rows(&mixed);
         print_failures(&mixed, false);
         print_failures(&mixed, true);
-        // Two failures pluralizes "targets failing": a run stops launching
-        // new work at the first failure, but everything already in flight is
-        // still collected, so a second one is reachable.
+        // Two failures pluralizes "targets failing".
         print_summary(&mixed, 2, 1);
         print_report(&mixed, true, 100, 2, 1);
     }
@@ -977,7 +1000,7 @@ mod tests {
     }
 
     #[test]
-    fn run_builds_never_builds_what_waits_on_a_failed_target() {
+    fn run_builds_attempts_dependents_after_a_failed_target() {
         let dir = tempfile::tempdir().expect("tempdir");
         let mut core = target("core", TargetType::Package, dir.path().to_path_buf());
         core.direct_scripts = true;
@@ -994,8 +1017,10 @@ mod tests {
         let scratch = Scratch::new();
         let results = run_builds(&jobs, scratch.context(dir.path(), &buildable));
 
-        assert_eq!(results.len(), 1);
+        assert_eq!(results.len(), 2);
         assert_eq!(results[0].label, "core:build");
         assert_eq!(results[0].status, BuildStatus::Failed);
+        assert_eq!(results[1].label, "app:build");
+        assert_eq!(results[1].status, BuildStatus::Passed);
     }
 }

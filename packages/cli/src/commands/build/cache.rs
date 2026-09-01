@@ -1,12 +1,13 @@
-// The cache that lets a second `build` skip the targets a prior run already
-// compiled from the same inputs.
+// The cache that lets a second `build` replay the targets a prior run already
+// completed from the same inputs, whether they passed or failed.
 //
 // Building is the expensive part of this command, and its result is a
 // function of what a target's build reads: the same sources and the same
 // script in produce the same output out. So an entry records the fingerprint
-// [`super::build_hash`] computed for a target and is reused only while that
-// fingerprint still matches — an edit to the target, its build script, a
-// workspace dependency it pulls in, or the root manifests all invalidate it.
+// [`super::build_hash`] computed for a target together with its verdict and
+// output, and is reused only while that fingerprint still matches — an edit
+// to the target, its build script, a workspace dependency it pulls in, or the
+// root manifests all invalidate it.
 //
 // Entries live in `var/cache/build/<target>.json`, next to the project and
 // workspace caches but owned by this command alone, and `--no-cache` bypasses
@@ -22,9 +23,9 @@ pub const CACHE_DIR: &str = "var/cache/build";
 
 /// Bumped whenever the shape of an entry changes, so an old one is ignored
 /// rather than misread.
-pub const VERSION: u32 = 1;
+pub const VERSION: u32 = 2;
 
-/// One cached build, with the input fingerprint it was produced from.
+/// One cached build, with the input fingerprint and verdict it produced.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Entry {
     pub version: u32,
@@ -32,6 +33,7 @@ pub struct Entry {
     pub hash: String,
     #[serde(rename = "durationMs")]
     pub duration_ms: u64,
+    pub success: bool,
     pub output: String,
 }
 
@@ -67,12 +69,13 @@ pub fn read(root: &Path, key: &str) -> Option<Entry> {
 }
 
 /// Store what a build produced, against the fingerprint it was produced from.
-pub fn write(root: &Path, key: &str, hash: &str, duration_ms: u64, output: &str) {
+pub fn write(root: &Path, key: &str, hash: &str, duration_ms: u64, success: bool, output: &str) {
     let entry = Entry {
         version: VERSION,
         target: key.to_string(),
         hash: hash.to_string(),
         duration_ms,
+        success,
         output: output.to_string(),
     };
 
