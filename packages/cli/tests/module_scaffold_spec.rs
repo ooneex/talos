@@ -103,10 +103,7 @@ fn seed(home: &Path) {
         &templates.join("module/test.txt"),
         "// {{NAME}}Module {{name}}\n",
     );
-    write(
-        &templates.join("module/yml.txt"),
-        "type: \"module\"\n",
-    );
+    write(&templates.join("module/yml.txt"), "type: \"module\"\n");
     write(
         &templates.join("github/microservice-ci.yml.txt"),
         "name: {{name}} ci\nenv: {{NAME_UPPER}}\n",
