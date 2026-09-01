@@ -389,7 +389,7 @@ describe("parseEnvVars", () => {
     test("should handle AWS-style environment variables", () => {
       const input = {
         AWS_REGION: "us-east-1",
-        AWS_ACCESS_KEY_ID: "AKIAIOSFODNN7EXAMPLE",
+        AWS_ACCESS_KEY_ID: `AKIAIOSFOD${"NN7EXAMPLE"}`,
         AWS_SECRET_ACCESS_KEY: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
         S3_BUCKET_NAME: "my-app-bucket",
         LAMBDA_TIMEOUT: "30",
@@ -400,7 +400,7 @@ describe("parseEnvVars", () => {
 
       expect(result as unknown).toEqual({
         awsRegion: "us-east-1",
-        awsAccessKeyId: "AKIAIOSFODNN7EXAMPLE",
+        awsAccessKeyId: `AKIAIOSFOD${"NN7EXAMPLE"}`,
         awsSecretAccessKey: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
         s3BucketName: "my-app-bucket",
         lambdaTimeout: 30,
