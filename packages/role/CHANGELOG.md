@@ -21,31 +21,31 @@
 
 - Add role package| — Franck ([b1aca61a](https://github.com/ooneex/talos/commit/b1aca61a))
 
-## [1.1.3](https///github.com/ooneex/talos/releases/tag/@talosjs/role@1.1.3) - 2026-08-09
+## [1.1.3](https://github.com/ooneex/talos/releases/tag/@talosjs/role@1.1.3) - 2026-08-09
 
 ### Changed
 
-- Reduce complexity and clean up conventions| — Franck ([244671d8](https///github.com/ooneex/talos/commit/244671d8))
-- Add explicit constructors and biome-ignore comments for Bun's coverage tool|This commit adds explicit constructors to abstract classes and utility functions — Franck ([4d33ff04](https///github.com/ooneex/talos/commit/4d33ff04))
-- Raise coverage thresholds to 99% across all packages| — Franck ([14db3019](https///github.com/ooneex/talos/commit/14db3019))
-- Enable coverage thresholds in every package's bunfig.toml| — Franck ([e19e3785](https///github.com/ooneex/talos/commit/e19e3785))
+- Reduce complexity and clean up conventions| — Franck ([244671d8](https://github.com/ooneex/talos/commit/244671d8))
+- Add explicit constructors and biome-ignore comments for Bun's coverage tool|This commit adds explicit constructors to abstract classes and utility functions — Franck ([4d33ff04](https://github.com/ooneex/talos/commit/4d33ff04))
+- Raise coverage thresholds to 99% across all packages| — Franck ([14db3019](https://github.com/ooneex/talos/commit/14db3019))
+- Enable coverage thresholds in every package's bunfig.toml| — Franck ([e19e3785](https://github.com/ooneex/talos/commit/e19e3785))
 
-## [1.2.0](https///github.com/ooneex/talos/releases/tag/@talosjs/role@1.2.0) - 2026-08-11
-
-### Added
-
-- Add RoleType branded type for role strings| — Franck ([13e8712d](https///github.com/ooneex/talos/commit/13e8712d))
-
-## [1.3.0](https///github.com/ooneex/talos/releases/tag/@talosjs/role@1.3.0) - 2026-08-11
+## [1.2.0](https://github.com/ooneex/talos/releases/tag/@talosjs/role@1.2.0) - 2026-08-11
 
 ### Added
 
-- Export GUEST_ROLE constant| — Franck ([794d2442](https///github.com/ooneex/talos/commit/794d2442))
+- Add RoleType branded type for role strings| — Franck ([13e8712d](https://github.com/ooneex/talos/commit/13e8712d))
 
-## [1.3.1](https///github.com/ooneex/talos/releases/tag/@talosjs/role@1.3.1) - 2026-08-30
+## [1.3.0](https://github.com/ooneex/talos/releases/tag/@talosjs/role@1.3.0) - 2026-08-11
+
+### Added
+
+- Export GUEST_ROLE constant| — Franck ([794d2442](https://github.com/ooneex/talos/commit/794d2442))
+
+## [1.3.1](https://github.com/ooneex/talos/releases/tag/@talosjs/role@1.3.1) - 2026-08-30
 
 ### Changed
 
-- Disable test coverage by default in bunfig| — Franck ([8677a826](https///github.com/ooneex/talos/commit/8677a826))
-- Run package tests with parallel isolated workers| — Franck ([aee22840](https///github.com/ooneex/talos/commit/aee22840))
+- Disable test coverage by default in bunfig| — Franck ([8677a826](https://github.com/ooneex/talos/commit/8677a826))
+- Run package tests with parallel isolated workers| — Franck ([aee22840](https://github.com/ooneex/talos/commit/aee22840))
 
