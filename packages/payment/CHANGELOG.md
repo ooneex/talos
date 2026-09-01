@@ -27,18 +27,18 @@
 
 - Add payment package| — Franck ([0b55de10](https://github.com/ooneex/talos/commit/0b55de10))
 
-## [1.1.4](https///github.com/ooneex/talos/releases/tag/@talosjs/payment@1.1.4) - 2026-08-09
+## [1.1.4](https://github.com/ooneex/talos/releases/tag/@talosjs/payment@1.1.4) - 2026-08-09
 
 ### Changed
 
-- Reduce complexity and clean up conventions| — Franck ([5621186f](https///github.com/ooneex/talos/commit/5621186f))
-- Add explicit constructors and biome-ignore comments for Bun's coverage tool|This commit adds explicit constructors to abstract classes and utility functions — Franck ([4d33ff04](https///github.com/ooneex/talos/commit/4d33ff04))
-- Raise coverage thresholds to 99% across all packages| — Franck ([14db3019](https///github.com/ooneex/talos/commit/14db3019))
-- Enable coverage thresholds in every package's bunfig.toml| — Franck ([e19e3785](https///github.com/ooneex/talos/commit/e19e3785))
+- Reduce complexity and clean up conventions| — Franck ([5621186f](https://github.com/ooneex/talos/commit/5621186f))
+- Add explicit constructors and biome-ignore comments for Bun's coverage tool|This commit adds explicit constructors to abstract classes and utility functions — Franck ([4d33ff04](https://github.com/ooneex/talos/commit/4d33ff04))
+- Raise coverage thresholds to 99% across all packages| — Franck ([14db3019](https://github.com/ooneex/talos/commit/14db3019))
+- Enable coverage thresholds in every package's bunfig.toml| — Franck ([e19e3785](https://github.com/ooneex/talos/commit/e19e3785))
 
-## [1.1.5](https///github.com/ooneex/talos/releases/tag/@talosjs/payment@1.1.5) - 2026-08-30
+## [1.1.5](https://github.com/ooneex/talos/releases/tag/@talosjs/payment@1.1.5) - 2026-08-30
 
 ### Changed
 
-- Disable test coverage by default in bunfig| — Franck ([8677a826](https///github.com/ooneex/talos/commit/8677a826))
+- Disable test coverage by default in bunfig| — Franck ([8677a826](https://github.com/ooneex/talos/commit/8677a826))
 
