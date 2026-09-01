@@ -1,5 +1,5 @@
 use clap::Parser;
-use cli::commands::check::{CheckArgs, forwarded_args};
+use cli::commands::check::{CheckArgs, forwarded_args, forwarded_test_args};
 use cli::commands::workspace_check::OutputFormat;
 
 #[derive(Parser)]
@@ -94,4 +94,25 @@ fn check_forwards_all_flags_to_workspace_check() {
     assert!(forwarded.threshold.is_none());
     assert!(forwarded.concurrency.is_none());
     assert!(!forwarded.strict);
+}
+
+#[test]
+fn check_forwards_shared_flags_to_test() {
+    let args = CheckArgs {
+        packages: Some("core".to_string()),
+        modules: Some("user".to_string()),
+        logs: true,
+        no_cache: true,
+        output: Some(OutputFormat::Json),
+        cwd: Some("./here".to_string()),
+    };
+
+    let forwarded = forwarded_test_args(&args);
+
+    assert_eq!(forwarded.packages.as_deref(), Some("core"));
+    assert_eq!(forwarded.modules.as_deref(), Some("user"));
+    assert!(forwarded.logs);
+    assert!(forwarded.no_cache);
+    assert!(forwarded.concurrency.is_none());
+    assert_eq!(forwarded.cwd.as_deref(), Some("./here"));
 }

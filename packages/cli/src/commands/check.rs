@@ -1,5 +1,6 @@
 use clap::Args;
 
+use crate::commands::test::{self, TestArgs};
 use crate::commands::workspace_check::{self, OutputFormat, WorkspaceCheckArgs};
 
 #[derive(Args, Debug)]
@@ -38,6 +39,18 @@ pub fn forwarded_args(args: &CheckArgs) -> WorkspaceCheckArgs {
     }
 }
 
+pub fn forwarded_test_args(args: &CheckArgs) -> TestArgs {
+    TestArgs {
+        packages: args.packages.clone(),
+        modules: args.modules.clone(),
+        logs: args.logs,
+        no_cache: args.no_cache,
+        concurrency: None,
+        cwd: args.cwd.clone(),
+    }
+}
+
 pub fn run(args: &CheckArgs) {
     workspace_check::run(&forwarded_args(args));
+    test::run(&forwarded_test_args(args));
 }

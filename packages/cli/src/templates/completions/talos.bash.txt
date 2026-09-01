@@ -304,7 +304,7 @@ threads whatsapp telegram messenger discord reddit medium cloudflare bunny s3 op
       [[ $flag == --modules ]] && candidates="$(_talos_pkg_modules)"
       ;;
     workspace:check | check)
-      opts="--packages --modules --threshold --concurrency --strict --output --logs --no-cache --cwd"
+      opts="--packages --modules --output --logs --no-cache --cwd"
       [[ $flag == --packages ]] && candidates="$(_talos_packages)"
       [[ $flag == --modules ]] && candidates="$(_talos_pkg_modules)"
       [[ $flag == --output ]] && candidates="md json"

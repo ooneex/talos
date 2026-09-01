@@ -173,8 +173,8 @@ _talos() {
     'npm\:publish:Publish a package or module to npm'
     'workspace\:run:Run package.json scripts across packages and modules with granular caching'
     'run:Alias for workspace:run — run package.json scripts across packages and modules with granular caching'
-    'workspace\:check:Run install, build, lint and test across packages and modules with granular caching'
-    'check:Alias for workspace:check — run install, build, fmt, lint and test across packages and modules with granular caching'
+    'workspace\:check:Install dependencies and lint packages and modules with granular caching'
+    'check:Install dependencies, lint sources and run package and module test suites'
     'security\:check:Audit dependencies for known vulnerabilities via OSV.dev'
     'coverage:Run tests per module with coverage and report what is left uncovered'
     'performance\:check:Score every function, method and class on what it will cost as the data grows'
@@ -446,9 +446,6 @@ _talos() {
           _arguments -s \
             '--packages=-[Package name(s), comma-separated (default: all)]::packages:_talos_publish_packages' \
             '--modules=-[Module name(s), comma-separated (default: all)]::modules:_talos_publish_modules' \
-            '--threshold=[Minimum line and function coverage a module must reach, in percent]:threshold' \
-            '--concurrency=[How many suites run at once]:concurrency:(1 2 4 8)' \
-            '--strict[Fail on every module under the coverage threshold]' \
             '--output=[Also write the report to var/outputs/talos_check.md or .json]:format:(md json)' \
             '--logs[Stream plain logs instead of the interactive view]' \
             '--no-cache[Skip reading and writing the task cache]' \

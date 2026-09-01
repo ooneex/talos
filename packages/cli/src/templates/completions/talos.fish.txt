@@ -162,8 +162,8 @@ for cmd in oo talos
     complete -c $cmd -f -n __fish_use_subcommand -a npm:publish -d 'Publish a package or module to npm'
     complete -c $cmd -f -n __fish_use_subcommand -a workspace:run -d 'Run package.json scripts across packages and modules with granular caching'
     complete -c $cmd -f -n __fish_use_subcommand -a run -d 'Alias for workspace:run'
-    complete -c $cmd -f -n __fish_use_subcommand -a workspace:check -d 'Run install, build, lint and test across packages and modules with granular caching'
-    complete -c $cmd -f -n __fish_use_subcommand -a check -d 'Alias for workspace:check'
+    complete -c $cmd -f -n __fish_use_subcommand -a workspace:check -d 'Install dependencies and lint packages and modules with granular caching'
+    complete -c $cmd -f -n __fish_use_subcommand -a check -d 'Install dependencies, lint sources and run package and module test suites'
     complete -c $cmd -f -n __fish_use_subcommand -a security:check -d 'Audit dependencies for known vulnerabilities via OSV.dev'
     complete -c $cmd -f -n __fish_use_subcommand -a coverage -d 'Run tests per module with coverage and report what is left uncovered'
     complete -c $cmd -f -n __fish_use_subcommand -a performance:check -d 'Score every function, method and class on what it will cost as the data grows'
@@ -362,9 +362,6 @@ for cmd in oo talos
 
     complete -c $cmd -n '__fish_seen_subcommand_from test' -l concurrency -x -d 'How many module suites run at once'
 
-    complete -c $cmd -n '__fish_seen_subcommand_from workspace:check check' -l threshold -x -d 'Minimum line and function coverage a module must reach, in percent'
-    complete -c $cmd -n '__fish_seen_subcommand_from workspace:check check' -l concurrency -x -d 'How many suites run at once'
-    complete -c $cmd -n '__fish_seen_subcommand_from workspace:check check' -l strict -d 'Fail on every module under the coverage threshold'
     complete -c $cmd -n '__fish_seen_subcommand_from workspace:check check' -l output -x -a 'md json' -d 'Also write the report to var/outputs/talos_check.md or .json'
     complete -c $cmd -n '__fish_seen_subcommand_from workspace:check check' -l cwd -d 'Working directory'
 

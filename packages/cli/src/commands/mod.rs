@@ -361,9 +361,11 @@ pub enum Commands {
     #[command(name = "swagger:remove")]
     SwaggerRemove(swagger_remove::SwaggerRemoveArgs),
 
+    /// Install dependencies and lint every package and module
     #[command(name = "workspace:check")]
     WorkspaceCheck(workspace_check::WorkspaceCheckArgs),
 
+    /// Install dependencies, lint sources and run every package and module test suite
     #[command(name = "check")]
     Check(check::CheckArgs),
 
