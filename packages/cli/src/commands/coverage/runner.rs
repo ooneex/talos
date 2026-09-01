@@ -2,6 +2,7 @@
 //! `bun test --coverage` and turning their output into a [`super::ModuleCoverage`].
 
 use std::fs;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::Mutex;
@@ -247,12 +248,82 @@ fn prepare_lcov(target: &Target) -> PathBuf {
     lcov
 }
 
+/// A package may disable coverage for its ordinary `bun test` runs. Bun gives
+/// that setting precedence over `--coverage`, so the coverage command has to
+/// run with a temporary copy that enables it while preserving every other test
+/// setting (preloads, ignores, thresholds and output paths).
+fn forced_coverage_config(target: &Target) -> Result<Option<tempfile::NamedTempFile>, String> {
+    let path = target.dir.join("bunfig.toml");
+    let Ok(content) = fs::read_to_string(&path) else {
+        return Ok(None);
+    };
+    let Some(content) = enable_coverage(&content) else {
+        return Ok(None);
+    };
+
+    let mut config = tempfile::Builder::new()
+        .prefix(".talos-coverage-")
+        .suffix(".toml")
+        .tempfile_in(&target.dir)
+        .map_err(|err| format!("could not create coverage config: {err}"))?;
+    config
+        .write_all(content.as_bytes())
+        .map_err(|err| format!("could not write coverage config: {err}"))?;
+    Ok(Some(config))
+}
+
+/// Return a copy of a bunfig with an explicitly disabled coverage setting
+/// enabled, or `None` when the command-line flag can already take effect.
+fn enable_coverage(content: &str) -> Option<String> {
+    let mut changed = false;
+    let mut output = String::with_capacity(content.len());
+
+    for line in content.split_inclusive('\n') {
+        let (body, newline) = line
+            .strip_suffix('\n')
+            .map_or((line, ""), |body| (body, "\n"));
+        let trimmed = body.trim();
+        let disabled = trimmed
+            .strip_prefix("coverage")
+            .and_then(|value| value.trim_start().strip_prefix('='))
+            .is_some_and(|value| value.trim() == "false");
+
+        if disabled {
+            let indent = &body[..body.len() - body.trim_start().len()];
+            output.push_str(indent);
+            output.push_str("coverage = true");
+            changed = true;
+        } else {
+            output.push_str(body);
+        }
+        output.push_str(newline);
+    }
+
+    changed.then_some(output)
+}
+
 /// Run one module's suite under `bun test --coverage` and read what it printed.
 fn run_bun_suite(target: &Target) -> ModuleCoverage {
     let started = Instant::now();
     let lcov = prepare_lcov(target);
 
-    let output = Command::new("bun")
+    let config = match forced_coverage_config(target) {
+        Ok(config) => config,
+        Err(reason) => {
+            return errored(
+                target,
+                reason,
+                String::new(),
+                started.elapsed().as_millis() as u64,
+            );
+        }
+    };
+
+    let mut command = Command::new("bun");
+    if let Some(config) = &config {
+        command.arg(format!("--config={}", config.path().display()));
+    }
+    let output = command
         .arg("test")
         .arg("tests")
         .args(["--coverage", "--coverage-reporter=text"])

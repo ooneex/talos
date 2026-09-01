@@ -124,6 +124,23 @@ fn the_audit_measures_every_module_that_carries_a_suite() {
 }
 
 #[test]
+fn the_audit_measures_a_module_that_disables_coverage_for_ordinary_tests() {
+    let (_dir, root) = workspace();
+    write(
+        &root.join("modules/covered/bunfig.toml"),
+        "[test]\ncoverage = false\ncoverageReporter = [\"text\", \"lcov\"]\ncoverageDir = \"coverage\"\n",
+    );
+
+    let report =
+        audit(&root, Some("covered"), None, None, None, true, true).expect("covered was found");
+
+    assert_eq!(report.modules[0].status, RunStatus::Passed);
+    assert_eq!(report.modules[0].lines, 100.0);
+    assert_eq!(report.modules[0].functions, 100.0);
+    assert!(!report.modules[0].files.is_empty());
+}
+
+#[test]
 fn a_module_with_no_suite_is_skipped_with_the_reason_it_was_skipped_for() {
     let (_dir, root) = workspace();
 
