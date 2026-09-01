@@ -266,17 +266,14 @@ export class FilesystemStorage extends Storage {
   }
 
   private async deleteEmptyParentDirectories(filePath: string): Promise<void> {
-    let parentDir = dirname(filePath);
+    const parentDir = dirname(filePath);
     const bucketPath = this.getBucketPath();
 
-    while (parentDir !== bucketPath && parentDir !== this.storagePath) {
-      const wasDeleted = await this.deleteDirectoryIfEmpty(parentDir);
-
-      if (!wasDeleted) {
-        break;
-      }
-
-      parentDir = dirname(parentDir);
+    if (parentDir === bucketPath || parentDir === this.storagePath) {
+      return;
+    }
+    if (await this.deleteDirectoryIfEmpty(parentDir)) {
+      await this.deleteEmptyParentDirectories(parentDir);
     }
   }
 

@@ -21,33 +21,33 @@
 
 - Add storage package| — Franck ([e89cdb17](https://github.com/ooneex/talos/commit/e89cdb17))
 
-## [1.1.3](https///github.com/ooneex/talos/releases/tag/@talosjs/storage@1.1.3) - 2026-08-09
+## [1.1.3](https://github.com/ooneex/talos/releases/tag/@talosjs/storage@1.1.3) - 2026-08-09
 
 ### Changed
 
-- Simplify S3 mock write to only handle raw byte input| — Franck ([1de04560](https///github.com/ooneex/talos/commit/1de04560))
-- Add explicit constructors and biome-ignore comments for Bun's coverage tool|This commit adds explicit constructors to abstract classes and utility functions — Franck ([4d33ff04](https///github.com/ooneex/talos/commit/4d33ff04))
-- Raise coverage thresholds to 99% across all packages| — Franck ([14db3019](https///github.com/ooneex/talos/commit/14db3019))
-- Enable coverage thresholds in every package's bunfig.toml| — Franck ([e19e3785](https///github.com/ooneex/talos/commit/e19e3785))
+- Simplify S3 mock write to only handle raw byte input| — Franck ([1de04560](https://github.com/ooneex/talos/commit/1de04560))
+- Add explicit constructors and biome-ignore comments for Bun's coverage tool|This commit adds explicit constructors to abstract classes and utility functions — Franck ([4d33ff04](https://github.com/ooneex/talos/commit/4d33ff04))
+- Raise coverage thresholds to 99% across all packages| — Franck ([14db3019](https://github.com/ooneex/talos/commit/14db3019))
+- Enable coverage thresholds in every package's bunfig.toml| — Franck ([e19e3785](https://github.com/ooneex/talos/commit/e19e3785))
 
 ### Fixed
 
-- Resolve exactOptionalPropertyTypes lint failure in putDir|Only includes the filter property in the recursive putDir options when — Franck ([e2e9748d](https///github.com/ooneex/talos/commit/e2e9748d))
+- Resolve exactOptionalPropertyTypes lint failure in putDir|Only includes the filter property in the recursive putDir options when — Franck ([e2e9748d](https://github.com/ooneex/talos/commit/e2e9748d))
 
-## [1.1.4](https///github.com/ooneex/talos/releases/tag/@talosjs/storage@1.1.4) - 2026-08-23
+## [1.1.4](https://github.com/ooneex/talos/releases/tag/@talosjs/storage@1.1.4) - 2026-08-23
 
 ### Fixed
 
-- Check Bunny object existence with a ranged request instead of a full download| — Franck ([b8f76105](https///github.com/ooneex/talos/commit/b8f76105))
+- Check Bunny object existence with a ranged request instead of a full download| — Franck ([b8f76105](https://github.com/ooneex/talos/commit/b8f76105))
 
-## [1.2.0](https///github.com/ooneex/talos/releases/tag/@talosjs/storage@1.2.0) - 2026-08-30
+## [1.2.0](https://github.com/ooneex/talos/releases/tag/@talosjs/storage@1.2.0) - 2026-08-30
 
 ### Added
 
-- Add size method to storage implementations| — Franck ([a1860a7e](https///github.com/ooneex/talos/commit/a1860a7e))
+- Add size method to storage implementations| — Franck ([a1860a7e](https://github.com/ooneex/talos/commit/a1860a7e))
 
 ### Changed
 
-- Disable test coverage by default in bunfig| — Franck ([8677a826](https///github.com/ooneex/talos/commit/8677a826))
-- Run package tests with parallel isolated workers| — Franck ([aee22840](https///github.com/ooneex/talos/commit/aee22840))
+- Disable test coverage by default in bunfig| — Franck ([8677a826](https://github.com/ooneex/talos/commit/8677a826))
+- Run package tests with parallel isolated workers| — Franck ([aee22840](https://github.com/ooneex/talos/commit/aee22840))
 
