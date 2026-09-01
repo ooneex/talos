@@ -50,7 +50,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use cli::commands::release_create::{
-    CommitInfo, bump_version, determine_bump_type, update_cargo_version, update_changelog,
+    CommitInfo, bump_version, determine_bump_type, normalize_repo_url, update_cargo_version,
+    update_changelog,
 };
 
 /// A scratch directory that removes itself when the test ends.
@@ -149,6 +150,18 @@ fn bump_version_treats_missing_components_as_zero() {
     assert_eq!(bump_version("", "patch"), "0.0.1");
     // A pre-release suffix is not a number, so that component reads as absent.
     assert_eq!(bump_version("1.2.3-beta", "patch"), "1.2.1");
+}
+
+#[test]
+fn repository_urls_preserve_https_and_convert_scp_syntax() {
+    assert_eq!(
+        normalize_repo_url("https://github.com/ooneex/talos.git"),
+        "https://github.com/ooneex/talos"
+    );
+    assert_eq!(
+        normalize_repo_url("git@github.com:ooneex/talos.git"),
+        "https://github.com/ooneex/talos"
+    );
 }
 
 #[test]

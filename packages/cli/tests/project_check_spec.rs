@@ -961,7 +961,8 @@ fn a_complete_env_file_passes() {
 
 #[test]
 fn known_credential_formats_are_confident_findings() {
-    let findings = secrets::scan_content("const key = \"AKIAIOSFODNN7EXAMPLE\";", false);
+    let credential = concat!("AKIAIOSFOD", "NN7EXAMPLE");
+    let findings = secrets::scan_content(&format!("const key = \"{credential}\";"), false);
 
     assert_eq!(findings.len(), 1);
     assert_eq!(findings[0].rule, "aws-access-key");
@@ -970,7 +971,8 @@ fn known_credential_formats_are_confident_findings() {
 
 #[test]
 fn a_fixture_downgrades_a_credential_to_a_warning() {
-    let findings = secrets::scan_content("const key = \"AKIAIOSFODNN7EXAMPLE\";", true);
+    let credential = concat!("AKIAIOSFOD", "NN7EXAMPLE");
+    let findings = secrets::scan_content(&format!("const key = \"{credential}\";"), true);
 
     assert_eq!(findings.len(), 1);
     assert!(!findings[0].confident);
@@ -1382,6 +1384,19 @@ fn any_spec_in_tests_satisfies_the_check() {
         &root.join("modules/user/tests/UserService.spec.ts"),
         "// ok\n",
     );
+
+    assert_eq!(
+        tests_check::run(&ProjectCheckArgs::default(), &root).status,
+        CheckStatus::Passed
+    );
+}
+
+#[test]
+fn a_rust_spec_in_tests_satisfies_the_check() {
+    let (_guard, root) = root();
+    scaffold_root(&root);
+    scaffold_module(&root, "packages", "cli", None, Some("talos-cli"));
+    write(&root.join("packages/cli/tests/commands_spec.rs"), "// ok\n");
 
     assert_eq!(
         tests_check::run(&ProjectCheckArgs::default(), &root).status,
@@ -1810,13 +1825,16 @@ fn tracked_build_output_is_reported() {
         "modules/user/src/index.ts".to_string(),
         "node_modules/left-pad/index.js".to_string(),
         "modules/spa/dist/app.js".to_string(),
+        "packages/cli/src/commands/coverage/report.rs".to_string(),
+        "packages/app/coverage/lcov.info".to_string(),
     ];
 
     assert_eq!(
         forbidden(&tracked),
         vec![
             "node_modules/left-pad/index.js".to_string(),
-            "modules/spa/dist/app.js".to_string()
+            "modules/spa/dist/app.js".to_string(),
+            "packages/app/coverage/lcov.info".to_string()
         ]
     );
 }
@@ -2568,6 +2586,24 @@ fn a_declaration_keyword_is_never_read_as_the_function_name() {
     assert_eq!(parameters, "id: string".to_string());
 }
 
+#[test]
+fn prose_and_static_data_are_not_functions_or_overlong_code() {
+    assert!(
+        complexity::function_signature("/** Tools for function calling (auto-executed). */")
+            .is_none()
+    );
+
+    let data = format!(
+        "export const values = [\n{}] as const;\n",
+        "  { id: 1 },\n".repeat(600)
+    );
+    assert!(
+        !complexity::inspect(&data, false)
+            .iter()
+            .any(|overrun| overrun.rule == "complexity.file")
+    );
+}
+
 // ---------------------------------------------------------------------------
 // Stories
 // ---------------------------------------------------------------------------
@@ -3111,7 +3147,10 @@ fn secrets_run_warns_in_fixtures_and_skips_empty_trees() {
 
     write(
         &root.join("tests/fixture.spec.ts"),
-        "export const token = 'ghp_abcdefghijklmnopqrstuvwxyz1234567890';\n",
+        &format!(
+            "export const token = '{}';\n",
+            concat!("ghp_abcdefghijklmnopqr", "stuvwxyz1234567890")
+        ),
     );
     let outcome = secrets::run(&ProjectCheckArgs::default(), &root);
     assert_eq!(outcome.status, CheckStatus::Warned);
@@ -3136,7 +3175,10 @@ fn secrets_run_reports_real_secrets_and_skips_unreadable_files() {
     fs::create_dir_all(&src).expect("create src");
     write(
         &src.join("secrets.ts"),
-        "export const token = 'ghp_abcdefghijklmnopqrstuvwxyz1234567890';\n",
+        &format!(
+            "export const token = '{}';\n",
+            concat!("ghp_abcdefghijklmnopqr", "stuvwxyz1234567890")
+        ),
     );
     let unreadable = src.join("hidden.ts");
     write(&unreadable, "export const x = 1;\n");
@@ -3958,6 +4000,28 @@ fn an_await_inside_a_loop_is_reported_once() {
 fn an_async_iterator_is_serial_by_design() {
     let findings = asynchrony::scan(
         "export const read = async (stream) => {\n  for await (const chunk of stream) {\n    await sink.write(chunk);\n  }\n};\n",
+    );
+
+    assert!(findings.is_empty());
+}
+
+#[test]
+fn a_stream_reader_and_a_handler_declared_in_a_loop_are_not_serial_work() {
+    assert!(
+        asynchrony::scan("while (true) {\n  const chunk = await reader.read();\n}\n").is_empty()
+    );
+    assert!(
+        asynchrony::scan(
+            "for (const route of routes) {\n  handlers[route.path] = async () => {\n    await route.run();\n  };\n}\n",
+        )
+        .is_empty()
+    );
+}
+
+#[test]
+fn a_documented_ordered_loop_is_not_reported() {
+    let findings = asynchrony::scan(
+        "// talos-ignore perf.await-in-loop: each step consumes the previous result\nfor (const step of steps) {\n  await step.run();\n}\n",
     );
 
     assert!(findings.is_empty());

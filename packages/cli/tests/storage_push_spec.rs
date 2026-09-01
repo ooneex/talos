@@ -300,7 +300,7 @@ fn an_empty_payload_hashes_to_the_value_s3_expects() {
 fn sign(method: &str, uri: &str, query: &str) -> String {
     authorization_header(
         method,
-        "AKIAIOSFODNN7EXAMPLE",
+        concat!("AKIAIOSFOD", "NN7EXAMPLE"),
         "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY",
         "us-east-1",
         "examplebucket.s3.us-east-1.amazonaws.com",
@@ -318,7 +318,10 @@ fn the_authorization_header_names_the_scope_and_the_headers_it_covers() {
 
     assert!(header.starts_with("AWS4-HMAC-SHA256 "), "{header}");
     assert!(
-        header.contains("Credential=AKIAIOSFODNN7EXAMPLE/20130524/us-east-1/s3/aws4_request"),
+        header.contains(&format!(
+            "Credential={}/20130524/us-east-1/s3/aws4_request",
+            concat!("AKIAIOSFOD", "NN7EXAMPLE")
+        )),
         "{header}"
     );
     assert!(

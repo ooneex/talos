@@ -18,7 +18,20 @@ const REQUIRED_IGNORES: [(&str, &str); 4] = [
 ];
 
 /// Path fragments that mark a tracked file as build or dependency output.
-const FORBIDDEN_FRAGMENTS: [&str; 4] = ["node_modules/", "/dist/", "/.next/", "/coverage/"];
+const FORBIDDEN_FRAGMENTS: [&str; 3] = ["node_modules/", "/dist/", "/.next/"];
+
+/// Whether a tracked path is generated coverage output rather than source code
+/// for a feature that happens to be named `coverage`.
+fn is_coverage_output(path: &str) -> bool {
+    let segments: Vec<&str> = path.split('/').collect();
+    segments.iter().enumerate().any(|(index, segment)| {
+        *segment == "coverage"
+            && index + 1 < segments.len()
+            && !segments[..index]
+                .iter()
+                .any(|ancestor| matches!(*ancestor, "src" | "tests"))
+    })
+}
 
 /// Whether `.gitignore` covers a pattern, allowing for the usual decorations
 /// (`/node_modules`, `node_modules/`, `**/dist`, `.env*`).
@@ -47,6 +60,7 @@ pub fn forbidden(paths: &[String]) -> Vec<String> {
             FORBIDDEN_FRAGMENTS
                 .iter()
                 .any(|fragment| padded.contains(fragment))
+                || is_coverage_output(path)
         })
         .cloned()
         .collect()

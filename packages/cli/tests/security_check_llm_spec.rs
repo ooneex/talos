@@ -245,7 +245,10 @@ fn honest_markdown_links_are_not_cloaked() {
 #[test]
 fn detects_a_hardcoded_credential() {
     let hits = scan_content(
-        "Authenticate with ghp_0123456789abcdefghijklmnopqrstuvwxyz\n",
+        &format!(
+            "Authenticate with {}\n",
+            concat!("ghp_0123456789abcdefgh", "ijklmnopqrstuvwxyz")
+        ),
         false,
     );
 

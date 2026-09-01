@@ -52,10 +52,50 @@ fn floating_map_pattern() -> &'static Regex {
 /// read as one.
 fn code_only(line: &str) -> &str {
     let line = line.trim();
-    if line.starts_with("//") || line.starts_with('*') {
+    if line.starts_with("//") || line.starts_with("/*") || line.starts_with('*') {
         return "";
     }
     line
+}
+
+/// Find an await performed by the loop itself. Awaits inside a handler the
+/// loop merely defines belong to that handler, while a stream reader must be
+/// consumed serially by design.
+fn serial_await_offset(lines: &[&str], start: usize, end: usize) -> Option<usize> {
+    if lines[start.saturating_sub(2)..=end]
+        .iter()
+        .any(|line| line.contains("talos-ignore perf.await-in-loop"))
+    {
+        return None;
+    }
+
+    let mut depth: i64 = 0;
+    let mut nested_async_depth: Option<i64> = None;
+
+    for (offset, line) in lines[start..=end].iter().enumerate() {
+        let code = code_only(line);
+        let previous_depth = depth;
+        for character in code.chars() {
+            (depth, _) = apply_brace(character, depth, true);
+        }
+
+        if code.contains("async")
+            && (code.contains("=>") || code.contains("function "))
+            && depth > previous_depth
+        {
+            nested_async_depth = Some(depth);
+        }
+
+        if code.contains("await ") && nested_async_depth.is_none() && !code.contains(".read()") {
+            return Some(offset);
+        }
+
+        if nested_async_depth.is_some_and(|nested_depth| depth < nested_depth) {
+            nested_async_depth = None;
+        }
+    }
+
+    None
 }
 
 /// Applies one character's effect on brace depth, returning the updated
@@ -131,10 +171,7 @@ pub fn scan(content: &str) -> Vec<Serial> {
             continue;
         };
 
-        if let Some(offset) = lines[number..=end]
-            .iter()
-            .position(|body| code_only(body).contains("await "))
-        {
+        if let Some(offset) = serial_await_offset(&lines, number, end) {
             let keyword = captured.get(1).map(|group| group.as_str()).unwrap_or("for");
             found.push(Serial {
                 line: number + offset + 1,

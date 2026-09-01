@@ -8,11 +8,13 @@ use std::collections::BTreeSet;
 use std::path::Path;
 
 use super::modules::{
-    TS_EXTENSIONS, WorkspaceModule, collect_files, discover_modules, filter_modules, wanted_names,
+    WorkspaceModule, collect_files, discover_modules, filter_modules, wanted_names,
 };
 use crate::commands::project_check::{
     CheckId, CheckOutcome, CheckStatus, ProjectCheckArgs, static_outcome,
 };
+
+const SPEC_EXTENSIONS: &[&str] = &["ts", "tsx", "js", "jsx", "rs"];
 
 /// Files that hold no behaviour and therefore need no test of their own.
 const EXEMPT_STEMS: [&str; 6] = [
@@ -37,7 +39,7 @@ pub fn needs_test(stem: &str, content: &str) -> bool {
 
 /// A module carrying a `tests/` directory that holds no spec file at all.
 pub fn missing_specs(module: &WorkspaceModule) -> Vec<String> {
-    let specs: BTreeSet<String> = collect_files(&module.dir.join("tests"), TS_EXTENSIONS, 8)
+    let specs: BTreeSet<String> = collect_files(&module.dir.join("tests"), SPEC_EXTENSIONS, 8)
         .iter()
         .filter_map(|path| path.file_stem().and_then(|stem| stem.to_str()))
         .map(str::to_string)

@@ -187,13 +187,19 @@ pub fn bump_version(version: &str, kind: &str) -> String {
     }
 }
 
+pub fn normalize_repo_url(url: &str) -> String {
+    let trimmed = url.trim().trim_end_matches(".git");
+    let Some(scp_url) = trimmed.strip_prefix("git@") else {
+        return trimmed.to_string();
+    };
+    let Some((host, path)) = scp_url.split_once(':') else {
+        return trimmed.to_string();
+    };
+    format!("https://{host}/{path}")
+}
+
 fn get_repo_url(cwd: &Path) -> Option<String> {
-    crate::utils::git_origin_url(cwd).map(|url| {
-        url.trim()
-            .trim_end_matches(".git")
-            .replace("git@", "https://")
-            .replace(':', "/")
-    })
+    crate::utils::git_origin_url(cwd).map(|url| normalize_repo_url(&url))
 }
 
 #[path = "release_create/changelog.rs"]

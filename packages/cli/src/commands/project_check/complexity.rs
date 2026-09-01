@@ -47,10 +47,22 @@ pub struct Overrun {
 /// string literals. Only the shape of the file matters here.
 fn code_only(line: &str) -> &str {
     let line = line.trim();
-    if line.starts_with("//") || line.starts_with('*') {
+    if line.starts_with("//") || line.starts_with("/*") || line.starts_with('*') {
         return "";
     }
     line
+}
+
+/// Large static lookup tables are data, not control flow. Splitting them only
+/// makes the dataset harder to search and adds import plumbing without making
+/// any executable code easier to understand.
+fn is_data_only(content: &str) -> bool {
+    let trimmed = content.trim_start();
+    trimmed.starts_with("export const ")
+        && trimmed.contains("] as const;")
+        && !trimmed.contains("=>")
+        && !trimmed.contains("class ")
+        && !trimmed.contains("function ")
 }
 
 fn string_literal_pattern() -> &'static Regex {
@@ -165,7 +177,7 @@ pub fn inspect(content: &str, markup: bool) -> Vec<Overrun> {
     let mut overruns = Vec::new();
     let lines: Vec<&str> = content.lines().collect();
 
-    if lines.len() > MAX_FILE_LINES {
+    if lines.len() > MAX_FILE_LINES && !is_data_only(content) {
         overruns.push(Overrun {
             line: lines.len(),
             rule: "complexity.file",
