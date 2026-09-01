@@ -134,3 +134,9 @@
 
 - Run package tests with parallel isolated workers| — Franck ([aee22840](https///github.com/ooneex/talos/commit/aee22840))
 
+## [1.6.3](https///github.com/ooneex/talos/releases/tag/@talosjs/app@1.6.3) - 2026-09-01
+
+### Changed
+
+- Cover swallowed logging errors| — Franck ([414ce5f3](https///github.com/ooneex/talos/commit/414ce5f3))
+
