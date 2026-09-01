@@ -1,11 +1,46 @@
 import { describe, expect, mock, test } from "bun:test";
 import { join } from "node:path";
+import { container } from "@talosjs/container";
 import type { ContextType } from "@talosjs/controller";
 import { Exception } from "@talosjs/exception";
 import { HttpStatus } from "@talosjs/http-status";
 import type { LogDataType } from "@talosjs/logger";
-import { logException, logRequest, logServerStart } from "@/utils/logging";
+import { logException, logRequest, logServerStart, logSwallowedError } from "@/utils/logging";
 import { createMockContext, createMockLogger } from "./helpers";
+
+describe("logSwallowedError", () => {
+  test("returns without logging when no logger is registered", () => {
+    container.removeConstant("logger");
+
+    expect(() => logSwallowedError("Cache read", new Error("unavailable"))).not.toThrow();
+  });
+
+  test("logs an Error with the failed operation", () => {
+    const logger = createMockLogger();
+    container.addConstant("logger", logger);
+
+    try {
+      logSwallowedError("Cache read", new Error("unavailable"));
+
+      expect(logger.error).toHaveBeenCalledWith("Cache read failed: unavailable");
+    } finally {
+      container.removeConstant("logger");
+    }
+  });
+
+  test("stringifies a non-Error value", () => {
+    const logger = createMockLogger();
+    container.addConstant("logger", logger);
+
+    try {
+      logSwallowedError("Rate limit", "offline");
+
+      expect(logger.error).toHaveBeenCalledWith("Rate limit failed: offline");
+    } finally {
+      container.removeConstant("logger");
+    }
+  });
+});
 
 describe("logRequest", () => {
   test("calls logger.success for 2xx status", () => {
