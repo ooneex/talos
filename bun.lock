@@ -61,7 +61,7 @@
     },
     "packages/app": {
       "name": "@talosjs/app",
-      "version": "1.6.2",
+      "version": "1.6.3",
       "dependencies": {
         "@talosjs/app-env": "workspace:^",
         "@talosjs/cache": "workspace:^",
@@ -130,7 +130,7 @@
     },
     "packages/cli": {
       "name": "@talos/cli",
-      "version": "0.14.4",
+      "version": "0.14.5",
     },
     "packages/color": {
       "name": "@talosjs/color",
@@ -220,7 +220,7 @@
     },
     "packages/database": {
       "name": "@talosjs/database",
-      "version": "1.2.2",
+      "version": "1.2.3",
       "dependencies": {
         "@talosjs/app-env": "workspace:^",
         "@talosjs/container": "workspace:^",
@@ -504,7 +504,7 @@
     },
     "packages/rag": {
       "name": "@talosjs/rag",
-      "version": "1.2.1",
+      "version": "1.2.2",
       "dependencies": {
         "@lancedb/lancedb": "^0.27.1",
         "@talosjs/container": "workspace:^",
