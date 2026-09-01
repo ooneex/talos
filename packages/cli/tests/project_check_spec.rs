@@ -154,7 +154,7 @@ fn aliases_resolve_to_their_check() {
             CheckId::Dependencies,
             CheckId::Accessibility,
             CheckId::Translations,
-            CheckId::Security,
+            CheckId::Audit,
             CheckId::Commits,
         ]
     );

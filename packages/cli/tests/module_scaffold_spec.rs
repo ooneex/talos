@@ -62,6 +62,7 @@ fn seeded_home() -> PathBuf {
 /// Populate a home directory's skeleton cache with the miniature skeleton.
 fn seed(home: &Path) {
     let skeleton = home.join(".talos/skeleton");
+    let templates = skeleton.join("modules/templates");
 
     ui_template(&skeleton.join("modules/design"), "design");
     ui_template(&skeleton.join("modules/spa"), "spa");
@@ -95,31 +96,31 @@ fn seed(home: &Path) {
     );
 
     write(
-        &skeleton.join("templates/module/module.txt"),
+        &templates.join("module/module.txt"),
         "export const {{NAME}}Module = {};\n",
     );
     write(
-        &skeleton.join("templates/module/test.txt"),
+        &templates.join("module/test.txt"),
         "// {{NAME}}Module {{name}}\n",
     );
     write(
-        &skeleton.join("templates/module/yml.txt"),
+        &templates.join("module/yml.txt"),
         "type: \"module\"\n",
     );
     write(
-        &skeleton.join("templates/github/microservice-ci.yml.txt"),
+        &templates.join("github/microservice-ci.yml.txt"),
         "name: {{name}} ci\nenv: {{NAME_UPPER}}\n",
     );
     write(
-        &skeleton.join("templates/github/microservice-production.yml.txt"),
+        &templates.join("github/microservice-production.yml.txt"),
         "name: {{name}} production\n",
     );
     write(
-        &skeleton.join("templates/gitlab/microservice.yml.txt"),
+        &templates.join("gitlab/microservice.yml.txt"),
         "{{name}}-job:\n  script: echo {{NAME}}\n",
     );
     write(
-        &skeleton.join("templates/bitbucket/microservice-pipelines.yml.txt"),
+        &templates.join("bitbucket/microservice-pipelines.yml.txt"),
         "pipelines:\n  default:\n    - step: {{name}}\n",
     );
 }

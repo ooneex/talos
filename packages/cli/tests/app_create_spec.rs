@@ -212,8 +212,8 @@ fn app_create_scaffolds_an_api_project_from_the_cached_skeleton() {
     assert!(output.status.success(), "{output_text}");
     let destination = workdir.path().join("my-api");
     assert!(destination.join("package.json").is_file());
-    assert!(destination.join("modules/my-api/.env.yml").is_file());
-    assert!(!destination.join("modules/app").exists());
+    assert!(destination.join("modules/app/.env.yml").is_file());
+    assert!(!destination.join("modules/my-api").exists());
     assert!(output_text.contains("my-api created successfully"));
     assert!(output_text.contains("talos app:start"));
     assert!(output_text.contains("talos app:stop"));
