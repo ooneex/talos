@@ -701,3 +701,17 @@
 
 - Update Cargo.lock| — Franck ([24e42927](https///github.com/ooneex/talos/commit/24e42927))
 
+## [0.14.5](https///github.com/ooneex/talos/releases/tag/@talos/cli@0.14.5) - 2026-09-01
+
+### Changed
+
+- Format scaffold fixture| — Franck ([3f5b500f](https///github.com/ooneex/talos/commit/3f5b500f))
+- Align fixtures with scaffold behavior| — Franck ([2eacb791](https///github.com/ooneex/talos/commit/2eacb791))
+- Update Cargo.lock| — Franck ([7f67c0c4](https///github.com/ooneex/talos/commit/7f67c0c4))
+
+### Fixed
+
+- Continue tasks and cache failures| — Franck ([2ae5a96f](https///github.com/ooneex/talos/commit/2ae5a96f))
+- Force coverage for disabled package configs| — Franck ([1d4c7bf2](https///github.com/ooneex/talos/commit/1d4c7bf2))
+- Run tests in check command| — Franck ([4fae3a7f](https///github.com/ooneex/talos/commit/4fae3a7f))
+
