@@ -35,19 +35,19 @@
 
 - Correct TikTok profile URL| — Franck ([a3717752](https://github.com/ooneex/talos/commit/a3717752))
 
-## [1.2.2](https///github.com/ooneex/talos/releases/tag/@talosjs/mailer@1.2.2) - 2026-08-09
+## [1.2.2](https://github.com/ooneex/talos/releases/tag/@talosjs/mailer@1.2.2) - 2026-08-09
 
 ### Changed
 
-- Reduce complexity and clean up conventions| — Franck ([b29cae97](https///github.com/ooneex/talos/commit/b29cae97))
-- Raise coverage thresholds to 99% across all packages| — Franck ([14db3019](https///github.com/ooneex/talos/commit/14db3019))
-- Add MailerLayout and icons tests, include tsx in tsconfig| — Franck ([91d5fa8e](https///github.com/ooneex/talos/commit/91d5fa8e))
-- Enable coverage thresholds in every package's bunfig.toml| — Franck ([e19e3785](https///github.com/ooneex/talos/commit/e19e3785))
+- Reduce complexity and clean up conventions| — Franck ([b29cae97](https://github.com/ooneex/talos/commit/b29cae97))
+- Raise coverage thresholds to 99% across all packages| — Franck ([14db3019](https://github.com/ooneex/talos/commit/14db3019))
+- Add MailerLayout and icons tests, include tsx in tsconfig| — Franck ([91d5fa8e](https://github.com/ooneex/talos/commit/91d5fa8e))
+- Enable coverage thresholds in every package's bunfig.toml| — Franck ([e19e3785](https://github.com/ooneex/talos/commit/e19e3785))
 
-## [1.2.3](https///github.com/ooneex/talos/releases/tag/@talosjs/mailer@1.2.3) - 2026-08-30
+## [1.2.3](https://github.com/ooneex/talos/releases/tag/@talosjs/mailer@1.2.3) - 2026-08-30
 
 ### Changed
 
-- Disable test coverage by default in bunfig| — Franck ([8677a826](https///github.com/ooneex/talos/commit/8677a826))
-- Run package tests with parallel isolated workers| — Franck ([aee22840](https///github.com/ooneex/talos/commit/aee22840))
+- Disable test coverage by default in bunfig| — Franck ([8677a826](https://github.com/ooneex/talos/commit/8677a826))
+- Run package tests with parallel isolated workers| — Franck ([aee22840](https://github.com/ooneex/talos/commit/aee22840))
 
