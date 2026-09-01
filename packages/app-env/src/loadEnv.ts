@@ -105,13 +105,19 @@ export const loadEnv = async (candidates?: string[]): Promise<void> => {
   // Empty values are skipped by flatten(), so a module's .env.yml overrides only
   // the keys it actually sets (e.g. its own PORT) while inheriting shared config.
   const vars: Record<string, string> = {};
-
-  for (const path of paths) {
-    const file = Bun.file(path);
-    if (await file.exists()) {
+  const layers = await Promise.all(
+    paths.map(async (path) => {
+      const file = Bun.file(path);
+      if (!(await file.exists())) {
+        return {};
+      }
       const parsed = Bun.YAML.parse(await file.text()) as { [key: string]: YamlNode };
-      Object.assign(vars, flatten(parsed));
-    }
+      return flatten(parsed);
+    }),
+  );
+
+  for (const layer of layers) {
+    Object.assign(vars, layer);
   }
 
   for (const [key, value] of Object.entries(vars)) {

@@ -49,48 +49,48 @@
 
 - Update AppEnv tests| — Franck ([46021ccc](https://github.com/ooneex/talos/commit/46021ccc))
 
-## [1.3.0](https///github.com/ooneex/talos/releases/tag/@talosjs/app-env@1.3.0) - 2026-08-09
+## [1.3.0](https://github.com/ooneex/talos/releases/tag/@talosjs/app-env@1.3.0) - 2026-08-09
 
 ### Added
 
-- Add Stripe environment variable configuration|Extends AppEnv to support Stripe configuration with STRIPE_SECRET_KEY, STRIPE_API_VERSION, and STRIPE_WEBHOOK_SECRET variables. Updates environment schema and adds corresponding test coverage. — Julien ([373eaf49](https///github.com/ooneex/talos/commit/373eaf49))
+- Add Stripe environment variable configuration|Extends AppEnv to support Stripe configuration with STRIPE_SECRET_KEY, STRIPE_API_VERSION, and STRIPE_WEBHOOK_SECRET variables. Updates environment schema and adds corresponding test coverage. — Julien ([373eaf49](https://github.com/ooneex/talos/commit/373eaf49))
 
 ### Changed
 
-- Consolidate AI provider keys into OPENROUTER_API_KEY| — Franck ([8d40cd7c](https///github.com/ooneex/talos/commit/8d40cd7c))
-- Reduce complexity and clean up conventions| — Franck ([d0970535](https///github.com/ooneex/talos/commit/d0970535))
-- Raise coverage thresholds to 99% across all packages| — Franck ([14db3019](https///github.com/ooneex/talos/commit/14db3019))
-- Enable coverage thresholds in every package's bunfig.toml| — Franck ([e19e3785](https///github.com/ooneex/talos/commit/e19e3785))
-- Rename the loadEnv fallback fixture from shared to app|Keep the test module name aligned with the app module (not a special — Franck ([57240445](https///github.com/ooneex/talos/commit/57240445))
+- Consolidate AI provider keys into OPENROUTER_API_KEY| — Franck ([8d40cd7c](https://github.com/ooneex/talos/commit/8d40cd7c))
+- Reduce complexity and clean up conventions| — Franck ([d0970535](https://github.com/ooneex/talos/commit/d0970535))
+- Raise coverage thresholds to 99% across all packages| — Franck ([14db3019](https://github.com/ooneex/talos/commit/14db3019))
+- Enable coverage thresholds in every package's bunfig.toml| — Franck ([e19e3785](https://github.com/ooneex/talos/commit/e19e3785))
+- Rename the loadEnv fallback fixture from shared to app|Keep the test module name aligned with the app module (not a special — Franck ([57240445](https://github.com/ooneex/talos/commit/57240445))
 
 ### Fixed
 
-- Ignore literal undefined values when reading env vars| — Franck ([495cd387](https///github.com/ooneex/talos/commit/495cd387))
+- Ignore literal undefined values when reading env vars| — Franck ([495cd387](https://github.com/ooneex/talos/commit/495cd387))
 
-## [1.4.0](https///github.com/ooneex/talos/releases/tag/@talosjs/app-env@1.4.0) - 2026-08-17
-
-### Added
-
-- Add CACHE_DRAGONFLY_URL and DATABASE_DRAGONFLY_URL variables| — Franck ([583e75c8](https///github.com/ooneex/talos/commit/583e75c8))
-
-## [1.6.0](https///github.com/ooneex/talos/releases/tag/@talosjs/app-env@1.6.0) - 2026-08-22
+## [1.4.0](https://github.com/ooneex/talos/releases/tag/@talosjs/app-env@1.4.0) - 2026-08-17
 
 ### Added
 
-- Add Bunny stream environment variables| — Franck ([f4725189](https///github.com/ooneex/talos/commit/f4725189))
-- Add DATABASE_BUNNY_URL and DATABASE_BUNNY_TOKEN environment variables| — Franck ([0ef6e303](https///github.com/ooneex/talos/commit/0ef6e303))
-- Add STORAGE_BUNNY_END_POINT environment variable| — Franck ([fda5424d](https///github.com/ooneex/talos/commit/fda5424d))
+- Add CACHE_DRAGONFLY_URL and DATABASE_DRAGONFLY_URL variables| — Franck ([583e75c8](https://github.com/ooneex/talos/commit/583e75c8))
 
-## [1.6.1](https///github.com/ooneex/talos/releases/tag/@talosjs/app-env@1.6.1) - 2026-08-23
+## [1.6.0](https://github.com/ooneex/talos/releases/tag/@talosjs/app-env@1.6.0) - 2026-08-22
+
+### Added
+
+- Add Bunny stream environment variables| — Franck ([f4725189](https://github.com/ooneex/talos/commit/f4725189))
+- Add DATABASE_BUNNY_URL and DATABASE_BUNNY_TOKEN environment variables| — Franck ([0ef6e303](https://github.com/ooneex/talos/commit/0ef6e303))
+- Add STORAGE_BUNNY_END_POINT environment variable| — Franck ([fda5424d](https://github.com/ooneex/talos/commit/fda5424d))
+
+## [1.6.1](https://github.com/ooneex/talos/releases/tag/@talosjs/app-env@1.6.1) - 2026-08-23
 
 ### Changed
 
-- Drop STREAM_BUNNY properties from AppEnv and IAppEnv| — Franck ([66cfb8d7](https///github.com/ooneex/talos/commit/66cfb8d7))
+- Drop STREAM_BUNNY properties from AppEnv and IAppEnv| — Franck ([66cfb8d7](https://github.com/ooneex/talos/commit/66cfb8d7))
 
-## [1.6.2](https///github.com/ooneex/talos/releases/tag/@talosjs/app-env@1.6.2) - 2026-08-30
+## [1.6.2](https://github.com/ooneex/talos/releases/tag/@talosjs/app-env@1.6.2) - 2026-08-30
 
 ### Changed
 
-- Disable test coverage by default in bunfig| — Franck ([8677a826](https///github.com/ooneex/talos/commit/8677a826))
-- Run package tests with parallel isolated workers| — Franck ([aee22840](https///github.com/ooneex/talos/commit/aee22840))
+- Disable test coverage by default in bunfig| — Franck ([8677a826](https://github.com/ooneex/talos/commit/8677a826))
+- Run package tests with parallel isolated workers| — Franck ([aee22840](https://github.com/ooneex/talos/commit/aee22840))
 
