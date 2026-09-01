@@ -4,6 +4,7 @@ import { Utf8 } from "apache-arrow";
 // The base constructor resolves an embedding function from the lancedb
 // registry — stub it so instantiating never reaches a real provider.
 mock.module("@lancedb/lancedb/embedding", () => ({
+  EmbeddingFunction: class {},
   getRegistry: () => ({
     get: () => ({
       create: () => ({
@@ -13,6 +14,7 @@ mock.module("@lancedb/lancedb/embedding", () => ({
     }),
   }),
   LanceSchema: (schema: Record<string, unknown>) => schema,
+  register: () => (target: unknown) => target,
 }));
 
 const { AbstractVectorDatabase, VectorDatabase } = await import("@/index");
