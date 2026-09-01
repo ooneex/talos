@@ -21,23 +21,23 @@
 
 - Add user package| — Franck ([bef4cf6e](https://github.com/ooneex/talos/commit/bef4cf6e))
 
-## [1.1.3](https///github.com/ooneex/talos/releases/tag/@talosjs/user@1.1.3) - 2026-08-09
+## [1.1.3](https://github.com/ooneex/talos/releases/tag/@talosjs/user@1.1.3) - 2026-08-09
 
 ### Changed
 
-- Raise coverage thresholds to 99% across all packages| — Franck ([14db3019](https///github.com/ooneex/talos/commit/14db3019))
-- Enable coverage thresholds in every package's bunfig.toml| — Franck ([e19e3785](https///github.com/ooneex/talos/commit/e19e3785))
+- Raise coverage thresholds to 99% across all packages| — Franck ([14db3019](https://github.com/ooneex/talos/commit/14db3019))
+- Enable coverage thresholds in every package's bunfig.toml| — Franck ([e19e3785](https://github.com/ooneex/talos/commit/e19e3785))
 
-## [1.2.0](https///github.com/ooneex/talos/releases/tag/@talosjs/user@1.2.0) - 2026-08-11
+## [1.2.0](https://github.com/ooneex/talos/releases/tag/@talosjs/user@1.2.0) - 2026-08-11
 
 ### Added
 
-- Use RoleType for user roles| — Franck ([5146ce22](https///github.com/ooneex/talos/commit/5146ce22))
+- Use RoleType for user roles| — Franck ([5146ce22](https://github.com/ooneex/talos/commit/5146ce22))
 
-## [1.2.1](https///github.com/ooneex/talos/releases/tag/@talosjs/user@1.2.1) - 2026-08-30
+## [1.2.1](https://github.com/ooneex/talos/releases/tag/@talosjs/user@1.2.1) - 2026-08-30
 
 ### Changed
 
-- Disable test coverage by default in bunfig| — Franck ([8677a826](https///github.com/ooneex/talos/commit/8677a826))
-- Run package tests with parallel isolated workers| — Franck ([aee22840](https///github.com/ooneex/talos/commit/aee22840))
+- Disable test coverage by default in bunfig| — Franck ([8677a826](https://github.com/ooneex/talos/commit/8677a826))
+- Run package tests with parallel isolated workers| — Franck ([aee22840](https://github.com/ooneex/talos/commit/aee22840))
 
