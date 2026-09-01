@@ -1,3 +1,4 @@
+import { AppEnv } from "@talosjs/app-env";
 import type { PDFExtractOptionsType, PDFExtractResultType } from "@talosjs/pdf";
 import { PDF } from "@talosjs/pdf";
 import OpenAI from "openai";
@@ -17,10 +18,10 @@ export class RAG implements IRAG {
   private readonly apiKey: string | undefined;
   private client: OpenAI | undefined;
 
-  public constructor(source: string, options: RAGOptionsType = {}) {
+  public constructor(source: string, options: RAGOptionsType = {}, env: AppEnv = new AppEnv()) {
     this.source = source;
     this.pdf = new PDF(source);
-    this.apiKey = options.apiKey ?? process.env.OPENROUTER_API_KEY;
+    this.apiKey = options.apiKey ?? env.OPENROUTER_API_KEY;
   }
 
   public async extract(options?: PDFExtractOptionsType): Promise<RAGExtractResultType> {

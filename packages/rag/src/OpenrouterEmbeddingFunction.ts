@@ -1,4 +1,5 @@
 import { EmbeddingFunction, register } from "@lancedb/lancedb/embedding";
+import { AppEnv } from "@talosjs/app-env";
 import { Float32 } from "apache-arrow";
 import OpenAI from "openai";
 import type { OpenrouterEmbeddingOptionsType, OpenrouterModelType } from "./types.ts";
@@ -18,11 +19,14 @@ export class OpenrouterEmbeddingFunction extends EmbeddingFunction<string, Parti
   private readonly client: OpenAI;
   private readonly model: OpenrouterModelType;
 
-  public constructor(optionsRaw: Partial<OpenrouterEmbeddingOptionsType> = { model: "qwen3-embedding-8b" }) {
+  public constructor(
+    optionsRaw: Partial<OpenrouterEmbeddingOptionsType> = { model: "qwen3-embedding-8b" },
+    env: AppEnv = new AppEnv(),
+  ) {
     super();
 
     const options = this.resolveVariables(optionsRaw);
-    const apiKey = options.apiKey ?? process.env.OPENROUTER_API_KEY;
+    const apiKey = options.apiKey ?? env.OPENROUTER_API_KEY;
     if (!apiKey) {
       throw new Error("OpenRouter API key is required");
     }
