@@ -86,8 +86,8 @@ pub use module_scripts::{
 pub use onboarding::print_onboarding;
 pub use parallel::{Action, run_actions, run_actions_rendered};
 pub use ports::{
-    ModulePort, collect_module_ports, free_port, listening_pids, module_ports, parse_env_port,
-    parse_netstat_pids, parse_script_ports, parse_unix_pids,
+    ModulePort, collect_module_ports, free_port, listening_pids, module_ports, parse_compose_ports,
+    parse_env_port, parse_netstat_pids, parse_script_ports, parse_unix_pids,
 };
 pub use process::{ensure_bin, run_spinner_step, run_step};
 pub use prompts::{

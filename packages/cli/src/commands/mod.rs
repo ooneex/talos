@@ -107,6 +107,7 @@ pub enum Commands {
     #[command(name = "app:create")]
     AppCreate(app_create::AppCreateArgs),
 
+    /// Start the application after freeing every required host port.
     #[command(name = "app:start")]
     AppStart(app_start::AppStartArgs),
 

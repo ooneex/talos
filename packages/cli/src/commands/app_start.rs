@@ -7,8 +7,8 @@ use serde_json::Value;
 
 use crate::utils::{
     ModulePort, RunnableModule, RunnableModuleType, collect_module_ports, collect_runnable_modules,
-    current_dir, ensure_bin, find_app_module, free_port, info, run_spinner_step,
-    select_runnable_modules,
+    current_dir, ensure_bin, find_app_module, free_port, info, parse_compose_ports,
+    run_spinner_step, select_runnable_modules,
 };
 
 #[derive(Args, Debug)]
@@ -22,8 +22,8 @@ pub struct AppStartArgs {
     #[arg(long)]
     pub cwd: Option<String>,
 
-    /// Free the ports of the modules about to start before launching them.
-    #[arg(long)]
+    /// Kept for compatibility; required ports are always freed before startup.
+    #[arg(long, hide = true)]
     pub kill_ports: bool,
 }
 
@@ -72,10 +72,36 @@ pub fn command_line(cwd: &Path, module: &RunnableModule) -> String {
     }
 }
 
-/// Free every port the selected modules declare, so a leftover process from a
-/// previous run does not keep the one about to start from binding.
-fn free_module_ports(modules: &[RunnableModule]) {
-    for ModulePort { module, port } in collect_module_ports(modules) {
+/// Resolve Compose before stopping it so environment-backed published ports
+/// reflect the values Docker will actually bind. Reading the source document
+/// is a fallback for older Compose installations without JSON output.
+fn collect_compose_ports(app_dir: &Path) -> Vec<ModulePort> {
+    let resolved = Command::new("docker")
+        .args(["compose", "config", "--format", "json"])
+        .current_dir(app_dir)
+        .output()
+        .ok()
+        .filter(|output| output.status.success())
+        .and_then(|output| parse_compose_ports(&String::from_utf8_lossy(&output.stdout)));
+    if let Some(ports) = resolved {
+        return ports;
+    }
+
+    fs::read_to_string(app_dir.join("docker-compose.yml"))
+        .ok()
+        .and_then(|content| parse_compose_ports(&content))
+        .unwrap_or_default()
+}
+
+/// Free every selected module and Compose host port, so no leftover process
+/// can keep the application about to start from binding.
+fn free_required_ports(modules: &[RunnableModule], compose_ports: Vec<ModulePort>) {
+    let mut ports = collect_module_ports(modules);
+    ports.extend(compose_ports);
+    ports.sort_by_key(|entry| entry.port);
+    ports.dedup_by_key(|entry| entry.port);
+
+    for ModulePort { module, port } in ports {
         let pids = free_port(port);
         if pids.is_empty() {
             continue;
@@ -111,10 +137,6 @@ pub fn run(args: &AppStartArgs) {
         return;
     }
 
-    if args.kill_ports {
-        free_module_ports(&selected);
-    }
-
     let needs_docker = selected.iter().any(|module| {
         matches!(
             module.r#type,
@@ -122,19 +144,37 @@ pub fn run(args: &AppStartArgs) {
         )
     });
     let compose_exists = needs_docker && app_dir.join("docker-compose.yml").exists();
-    if compose_exists {
+    let compose_ports = if compose_exists {
         if !ensure_bin("docker") {
             return;
         }
+        let ports = collect_compose_ports(&app_dir);
         if !run_spinner_step(
+            false,
+            &format!("Stopping previous Docker services for {name}"),
+            Command::new("docker")
+                .args(["compose", "down", "--remove-orphans"])
+                .current_dir(&app_dir),
+        ) {
+            return;
+        }
+        ports
+    } else {
+        Vec::new()
+    };
+
+    free_required_ports(&selected, compose_ports);
+
+    if compose_exists
+        && !run_spinner_step(
             false,
             &format!("Starting Docker services for {name}"),
             Command::new("docker")
                 .args(["compose", "up", "-d"])
                 .current_dir(&app_dir),
-        ) {
-            return;
-        }
+        )
+    {
+        return;
     }
 
     if !ensure_bin("bun") {

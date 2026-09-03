@@ -13,6 +13,7 @@ use std::time::Duration;
 
 use regex::Regex;
 use serde_json::Value;
+use serde_yaml::Value as YamlValue;
 
 use super::runnable_modules::RunnableModule;
 
@@ -112,6 +113,104 @@ pub fn collect_module_ports(modules: &[RunnableModule]) -> Vec<ModulePort> {
         }
     }
     ports
+}
+
+/// The numeric ports represented by a Compose `published` value.
+///
+/// Compose accepts both one port and an equally sized range. Environment
+/// defaults are understood as a fallback for reading the source compose file;
+/// `docker compose config` resolves actual environment values before this
+/// parser is used during startup.
+fn published_ports(value: &str) -> BTreeSet<u16> {
+    let value = value.trim().trim_matches(['"', '\'']);
+    let value = if let Some(variable) = value
+        .strip_prefix("${")
+        .and_then(|value| value.strip_suffix('}'))
+    {
+        variable
+            .split_once(":-")
+            .or_else(|| variable.split_once('-'))
+            .map(|(_, default)| default)
+            .unwrap_or("")
+    } else {
+        value
+    };
+    let value = value.split('/').next().unwrap_or(value);
+
+    if let Some((start, end)) = value.split_once('-') {
+        let (Ok(start), Ok(end)) = (start.parse::<u16>(), end.parse::<u16>()) else {
+            return BTreeSet::new();
+        };
+        return (start..=end).filter(|port| *port != 0).collect();
+    }
+
+    value
+        .parse()
+        .into_iter()
+        .filter(|port| *port != 0)
+        .collect()
+}
+
+/// The host side of a Compose short port mapping.
+fn short_mapping_ports(mapping: &str) -> BTreeSet<u16> {
+    let mapping = mapping.trim().trim_matches(['"', '\'']);
+    let mapping = mapping.split('/').next().unwrap_or(mapping);
+    let Some((host, _container)) = mapping.rsplit_once(':') else {
+        // A bare container port is published on an ephemeral host port.
+        return BTreeSet::new();
+    };
+    let host = if host.starts_with("${") {
+        host
+    } else {
+        host.rsplit(':').next().unwrap_or(host)
+    };
+    published_ports(host)
+}
+
+/// Every fixed host port published by a Docker Compose document.
+///
+/// Both the source YAML shape and the JSON emitted by
+/// `docker compose config --format json` are accepted. Ports are attributed to
+/// `docker:<service>` so startup can explain what owned a freed listener.
+pub fn parse_compose_ports(content: &str) -> Option<Vec<ModulePort>> {
+    let document = serde_yaml::from_str::<YamlValue>(content).ok()?;
+    let services = document.get("services")?.as_mapping()?;
+    let mut seen = BTreeSet::new();
+    let mut ports = Vec::new();
+
+    for (name, service) in services {
+        let name = name.as_str().unwrap_or("service");
+        let Some(mappings) = service.get("ports").and_then(YamlValue::as_sequence) else {
+            continue;
+        };
+        for mapping in mappings {
+            let published = match mapping {
+                YamlValue::String(mapping) => short_mapping_ports(mapping),
+                YamlValue::Mapping(mapping) => mapping
+                    .get(YamlValue::from("published"))
+                    .map(|value| match value {
+                        YamlValue::String(value) => published_ports(value),
+                        YamlValue::Number(value) => published_ports(&value.to_string()),
+                        _ => BTreeSet::new(),
+                    })
+                    .unwrap_or_default(),
+                // A bare number only declares the container port and gets an
+                // ephemeral host port, so it cannot conflict before startup.
+                _ => BTreeSet::new(),
+            };
+
+            for port in published {
+                if seen.insert(port) {
+                    ports.push(ModulePort {
+                        module: format!("docker:{name}"),
+                        port,
+                    });
+                }
+            }
+        }
+    }
+
+    Some(ports)
 }
 
 /// The PIDs in a Unix probe's output.
@@ -354,6 +453,65 @@ mod tests {
                 port: 3030
             }]
         );
+    }
+
+    #[test]
+    fn collects_short_and_long_form_compose_host_ports() {
+        let compose = r#"
+services:
+  postgres:
+    ports:
+      - "127.0.0.1:5432:5432"
+  mysql:
+    ports:
+      - published: 3306
+        target: 3306
+  web:
+    ports:
+      - "8080-8082:80-82/tcp"
+      - 3000
+"#;
+
+        assert_eq!(
+            parse_compose_ports(compose),
+            Some(vec![
+                ModulePort {
+                    module: "docker:postgres".to_string(),
+                    port: 5432,
+                },
+                ModulePort {
+                    module: "docker:mysql".to_string(),
+                    port: 3306,
+                },
+                ModulePort {
+                    module: "docker:web".to_string(),
+                    port: 8080,
+                },
+                ModulePort {
+                    module: "docker:web".to_string(),
+                    port: 8081,
+                },
+                ModulePort {
+                    module: "docker:web".to_string(),
+                    port: 8082,
+                },
+            ])
+        );
+    }
+
+    #[test]
+    fn reads_compose_environment_defaults_and_resolved_json() {
+        let source = r#"services: {redis: {ports: ["${REDIS_PORT:-6379}:6379"]}}"#;
+        let resolved = r#"{"services":{"mysql":{"ports":[{"published":"3307","target":3306}]}}}"#;
+
+        assert_eq!(parse_compose_ports(source).expect("compose")[0].port, 6379);
+        assert_eq!(parse_compose_ports(resolved).expect("config")[0].port, 3307);
+    }
+
+    #[test]
+    fn rejects_an_invalid_compose_document() {
+        assert_eq!(parse_compose_ports("services: ["), None);
+        assert_eq!(parse_compose_ports("name: app"), None);
     }
 
     #[test]

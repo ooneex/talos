@@ -1,7 +1,7 @@
 use clap::Parser;
 use cli::commands::app_start::AppStartArgs;
 
-#[derive(Parser)]
+#[derive(Debug, Parser)]
 struct TestCli {
     #[command(flatten)]
     args: AppStartArgs,
@@ -35,6 +35,15 @@ fn app_start_defaults_are_empty() {
     assert!(cli.args.packages.is_none());
     assert!(cli.args.cwd.is_none());
     assert!(!cli.args.kill_ports);
+}
+
+#[test]
+fn app_start_hides_the_redundant_kill_ports_flag_from_help() {
+    let help = TestCli::try_parse_from(["talos", "--help"])
+        .expect_err("help exits after rendering")
+        .to_string();
+
+    assert!(!help.contains("kill-ports"), "{help}");
 }
 
 #[test]
@@ -144,6 +153,24 @@ fn write_executable(path: &std::path::Path, content: &str) {
     std::fs::set_permissions(path, permissions).expect("permissions");
 }
 
+#[cfg(unix)]
+fn write_released_listener(bin: &std::path::Path, log: &std::path::Path, pid: &str) {
+    write_executable(
+        &bin.join("lsof"),
+        &format!(
+            "#!/bin/sh\nprintf 'lsof:%s\\n' \"$*\" >> \"{0}\"\nif [ -f \"{0}.seen\" ]; then exit 1; fi\n: > \"{0}.seen\"\nprintf '{pid}\\n'\n",
+            log.display()
+        ),
+    );
+    write_executable(
+        &bin.join("kill"),
+        &format!(
+            "#!/bin/sh\nprintf 'kill:%s\\n' \"$*\" >> \"{}\"\n",
+            log.display()
+        ),
+    );
+}
+
 fn run_talos(root: &std::path::Path, bin: &std::path::Path, args: &[&str]) -> Output {
     Command::new(env!("CARGO_BIN_EXE_talos"))
         .args(args)
@@ -168,7 +195,10 @@ fn app_start_runs_selected_back_end_modules_and_starts_docker_when_needed() {
     let dir = TempDir::new("app-start-run");
     dir.write("modules/app/package.json", r#"{"name": "@acme/app"}"#);
     dir.write("modules/app/app.yml", "type: \"api\"\n");
-    dir.write("modules/app/docker-compose.yml", "services: {}\n");
+    dir.write(
+        "modules/app/docker-compose.yml",
+        "services:\n  postgres:\n    ports: [\"5432:5432\"]\n",
+    );
     dir.write("modules/api/api.yml", "type: \"api\"\n");
     dir.write("modules/api/src/index.ts", "console.log('api');\n");
     let bin = dir.dir("bin");
@@ -176,7 +206,7 @@ fn app_start_runs_selected_back_end_modules_and_starts_docker_when_needed() {
     write_executable(
         &bin.join("docker"),
         &format!(
-            "#!/bin/sh\nprintf 'docker:%s\\n' \"$*\" >> \"{}\"\nif [ \"$1\" = \"--version\" ]; then exit 0; fi\nexit 0\n",
+            "#!/bin/sh\nprintf 'docker:%s\\n' \"$*\" >> \"{}\"\nif [ \"$1 $2 $3 $4\" = \"compose config --format json\" ]; then printf '%s\\n' '{{\"services\":{{\"postgres\":{{\"ports\":[{{\"published\":\"5432\",\"target\":5432}}]}}}}}}'; fi\nexit 0\n",
             log.display()
         ),
     );
@@ -187,6 +217,7 @@ fn app_start_runs_selected_back_end_modules_and_starts_docker_when_needed() {
             log.display()
         ),
     );
+    write_released_listener(&bin, &log, "4242");
 
     let output = run_talos(
         dir.path(),
@@ -203,9 +234,20 @@ fn app_start_runs_selected_back_end_modules_and_starts_docker_when_needed() {
     let output_text = text(&output);
     assert!(output.status.success(), "{output_text}");
     assert!(output_text.contains("Starting Docker services for @acme/app"));
+    assert!(output_text.contains("Stopping previous Docker services for @acme/app"));
+    assert!(output_text.contains("Freed port 5432 of docker:postgres (pid 4242)"));
     assert!(output_text.contains("Starting api"));
     let log_text = std::fs::read_to_string(log).expect("log");
+    assert!(log_text.contains("docker:compose config --format json"));
+    assert!(log_text.contains("docker:compose down --remove-orphans"));
     assert!(log_text.contains("docker:compose up -d"));
+    assert!(log_text.contains("kill:-TERM 4242"));
+    let down = log_text
+        .find("docker:compose down --remove-orphans")
+        .expect("compose down");
+    let kill = log_text.find("kill:-TERM 4242").expect("port kill");
+    let up = log_text.find("docker:compose up -d").expect("compose up");
+    assert!(down < kill && kill < up, "{log_text}");
     assert!(log_text.contains(
         "bun:run --parallel --no-exit-on-error sh -c 'bun run --hot modules/api/src/index.ts'"
     ));

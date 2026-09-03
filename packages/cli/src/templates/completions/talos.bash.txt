@@ -185,7 +185,8 @@ seed:create seed:run"
       [[ $flag == --cwd || $flag == --source-dir ]] && dirs=1
       ;;
     app:start)
-      opts="--modules --packages --kill-ports"
+      opts="--cwd --modules --packages"
+      [[ $flag == --cwd ]] && dirs=1
       [[ $flag == --modules ]] && candidates="$(_talos_runnable_modules)"
       [[ $flag == --packages ]] && candidates="$(_talos_runnable_modules)"
       ;;
