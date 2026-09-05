@@ -2,7 +2,7 @@ import { Cache } from "@talosjs/cache";
 import { container } from "@talosjs/container";
 import { HttpStatus, type StatusCodeType } from "@talosjs/http-status";
 import type { MiddlewareClassType } from "@talosjs/middleware";
-import type { IRateLimiter } from "@talosjs/rate-limit";
+import type { RateLimitResultType } from "@talosjs/rate-limit";
 import type { RouteConfigType } from "@talosjs/routing";
 import type { BunRequest, Server } from "bun";
 import { applyEnvRoles, checkAllowedUsers } from "./auth";
@@ -19,44 +19,6 @@ const buildVersionedPath = (path: string, version: number, prefix?: string): str
   return `/${prefix ? `${prefix}/` : ""}v${version}${path}`;
 };
 
-const buildRateLimitResponse = (result: Awaited<ReturnType<IRateLimiter["check"]>>): Response => {
-  return new Response(JSON.stringify({ message: "Too Many Requests", key: "RATE_LIMITED" }), {
-    status: HttpStatus.Code.TooManyRequests,
-    headers: {
-      "Content-Type": "application/json",
-      "Retry-After": String(Math.ceil((result.resetAt.getTime() - Date.now()) / 1000)),
-      "X-RateLimit-Limit": String(result.total),
-      "X-RateLimit-Remaining": "0",
-      "X-RateLimit-Reset": String(Math.ceil(result.resetAt.getTime() / 1000)),
-    },
-  });
-};
-
-const checkRateLimit = async (req: BunRequest, server: Server<unknown>): Promise<Response | null> => {
-  try {
-    const rateLimiter = container.hasConstant("rateLimiter")
-      ? container.getConstant<IRateLimiter>("rateLimiter")
-      : undefined;
-
-    if (!rateLimiter) {
-      return null;
-    }
-
-    const address = server.requestIP(req);
-    const ip = address?.address ?? "unknown";
-    const result = await rateLimiter.check(ip);
-
-    if (result.limited) {
-      return buildRateLimitResponse(result);
-    }
-  } catch (error: unknown) {
-    // Fail open, but leave a trace so operators can detect a broken rate-limiter backend
-    logSwallowedError("Rate limiter check", error);
-  }
-
-  return null;
-};
-
 const buildHttpErrorResponse = (
   context: Awaited<ReturnType<typeof buildHttpContext>>,
   message: string,
@@ -66,6 +28,48 @@ const buildHttpErrorResponse = (
   const httpResponse = buildExceptionResponse(context, message, status, context.env.APP_ENV, key);
   logRequest(context);
   return httpResponse;
+};
+
+/**
+ * Many clients share one IP behind a NAT or a corporate proxy, so an IP-only
+ * quota throttles them as a group once the first few get busy. Scoping the key
+ * to the authenticated user as well gives each of them their own budget; the
+ * anonymous requests from that IP still share one.
+ */
+const buildRateLimitKey = (context: Awaited<ReturnType<typeof buildHttpContext>>): string => {
+  return `${context.ip ?? "unknown"}:${context.user?.id ?? "anon"}`;
+};
+
+const buildRateLimitResponse = (
+  context: Awaited<ReturnType<typeof buildHttpContext>>,
+  result: RateLimitResultType,
+): Response => {
+  context.response.header
+    .set("Retry-After", String(Math.ceil((result.resetAt.getTime() - Date.now()) / 1000)))
+    .set("X-RateLimit-Limit", String(result.total))
+    .set("X-RateLimit-Remaining", "0")
+    .set("X-RateLimit-Reset", String(Math.ceil(result.resetAt.getTime() / 1000)));
+
+  return buildHttpErrorResponse(context, "Too Many Requests", HttpStatus.Code.TooManyRequests, "RATE_LIMITED");
+};
+
+const checkRateLimit = async (context: Awaited<ReturnType<typeof buildHttpContext>>): Promise<Response | null> => {
+  if (!context.rateLimiter) {
+    return null;
+  }
+
+  try {
+    const result = await context.rateLimiter.check(buildRateLimitKey(context));
+
+    if (result.limited) {
+      return buildRateLimitResponse(context, result);
+    }
+  } catch (error: unknown) {
+    // Fail open, but leave a trace so operators can detect a broken rate-limiter backend
+    logSwallowedError("Rate limiter check", error);
+  }
+
+  return null;
 };
 
 const checkFeatureFlag = async (
@@ -155,11 +159,6 @@ export const formatHttpRoutes = (
       const methodHandlers = routes[versionedPath];
 
       methodHandlers[route.method] = async (req: BunRequest, server: Server<unknown>) => {
-        const rateLimitResponse = await checkRateLimit(req, server);
-        if (rateLimitResponse) {
-          return rateLimitResponse;
-        }
-
         let context = await buildHttpContext({ req, server, route });
 
         const featureFlagResponse = await checkFeatureFlag(context, route);
@@ -172,6 +171,13 @@ export const formatHttpRoutes = (
           return middlewareResult;
         }
         context = middlewareResult;
+
+        // The authenticated user is only known once the middlewares have run, so the
+        // quota check waits for them; it still precedes every access check below
+        const rateLimitResponse = await checkRateLimit(context);
+        if (rateLimitResponse) {
+          return rateLimitResponse;
+        }
 
         applyEnvRoles(context);
 

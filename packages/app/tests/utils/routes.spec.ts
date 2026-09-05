@@ -766,49 +766,57 @@ describe("formatHttpRoutes rate limit", () => {
     getCount: mock(() => Promise.resolve(result.total - result.remaining)),
   });
 
-  test("returns 429 when rate limit is exceeded", async () => {
-    const resetAt = new Date(Date.now() + 60_000);
-    const rateLimiter = createMockRateLimiter({
+  const createLimitedRateLimiter = (): IRateLimiter =>
+    createMockRateLimiter({
       limited: true,
       remaining: 0,
       total: 120,
-      resetAt,
+      resetAt: new Date(Date.now() + 60_000),
     });
-    container.addConstant("rateLimiter", rateLimiter);
 
-    class RateLimitController {
-      index(): IResponse {
-        return new HttpResponse().json({ ok: true });
-      }
-    }
-    container.add(RateLimitController);
-
-    const httpRoutes = new Map<string, RouteConfigType[]>();
-    httpRoutes.set("/rate-limited", [
-      createMockRoute({
-        path: "/rate-limited",
-        method: "GET",
-        controller: RateLimitController,
-      } as Partial<RouteConfigType>),
-    ]);
-
-    const result = formatHttpRoutes(httpRoutes);
-    const handler = result["/v1/rate-limited"]?.GET;
-
-    expect(handler).toBeDefined();
-
-    const mockReq = {
+  const createReq = (url: string): BunRequest =>
+    ({
       cookies: { get: mock(() => null), set: mock(() => {}) },
       headers: new Headers(),
       method: "GET",
-      url: "http://localhost/v1/rate-limited",
-    } as unknown as BunRequest;
-    const mockServer = {
-      requestIP: mock(() => ({ address: "192.168.1.1" })),
-    } as unknown as Server<unknown>;
+      url,
+      params: {},
+      json: mock(() => Promise.resolve({})),
+      formData: mock(() => Promise.resolve(new FormData())),
+    }) as unknown as BunRequest;
+
+  const createServer = (address: string | null = "192.168.1.1"): Server<unknown> =>
+    ({ requestIP: mock(() => (address ? { address } : null)) }) as unknown as Server<unknown>;
+
+  const buildHandler = (
+    path: string,
+    controller: unknown,
+    middlewares: import("@talosjs/middleware").MiddlewareClassType[] = [],
+    // biome-ignore lint/complexity/noBannedTypes: trust me
+  ): Function => {
+    const httpRoutes = new Map<string, RouteConfigType[]>();
+    httpRoutes.set(path, [createMockRoute({ path, method: "GET", controller } as Partial<RouteConfigType>)]);
 
     // biome-ignore lint/complexity/noBannedTypes: trust me
-    const response = await (handler as Function)(mockReq, mockServer);
+    return formatHttpRoutes(httpRoutes, middlewares)[`/v1${path}`]?.GET as Function;
+  };
+
+  test("returns 429 with the rate-limit headers and skips the controller when the limit is exceeded", async () => {
+    container.addConstant("logger", createMockLogger());
+    container.add(AppEnv);
+
+    const rateLimiter = createLimitedRateLimiter();
+    container.addConstant("rateLimiter", rateLimiter);
+
+    const indexMock = mock(() => new HttpResponse().json({ ok: true }));
+
+    class RateLimitController {
+      index = indexMock;
+    }
+    container.add(RateLimitController);
+
+    const handler = buildHandler("/rate-limited", RateLimitController);
+    const response = await handler(createReq("http://localhost/v1/rate-limited"), createServer());
 
     expect(response.status).toBe(HttpStatus.Code.TooManyRequests);
     expect(response.headers.get("Content-Type")).toBe("application/json");
@@ -820,13 +828,108 @@ describe("formatHttpRoutes rate limit", () => {
     const body = await response.json();
     expect(body.message).toBe("Too Many Requests");
     expect(body.key).toBe("RATE_LIMITED");
-
-    expect(rateLimiter.check).toHaveBeenCalledWith("192.168.1.1");
+    expect(indexMock).not.toHaveBeenCalled();
 
     container.removeConstant("rateLimiter");
+    container.removeConstant("logger");
   });
 
-  test("allows request when rate limit is not exceeded", () => {
+  test("keys anonymous requests on the IP alone", async () => {
+    container.addConstant("logger", createMockLogger());
+    container.add(AppEnv);
+
+    const rateLimiter = createLimitedRateLimiter();
+    container.addConstant("rateLimiter", rateLimiter);
+
+    class AnonymousKeyController {
+      index(): IResponse {
+        return new HttpResponse().json({ ok: true });
+      }
+    }
+    container.add(AnonymousKeyController);
+
+    const handler = buildHandler("/anonymous-key", AnonymousKeyController);
+    await handler(createReq("http://localhost/v1/anonymous-key"), createServer());
+
+    expect(rateLimiter.check).toHaveBeenCalledWith("192.168.1.1:anon");
+
+    container.removeConstant("rateLimiter");
+    container.removeConstant("logger");
+  });
+
+  test("keys requests on the IP and the user a middleware authenticated", async () => {
+    container.addConstant("logger", createMockLogger());
+    container.add(AppEnv);
+
+    const rateLimiter = createLimitedRateLimiter();
+    container.addConstant("rateLimiter", rateLimiter);
+
+    class AuthenticatingMiddleware {
+      async handler(context: ContextType): Promise<ContextType> {
+        context.user = { id: "user-1", email: "user@example.com", roles: [] } as unknown as typeof context.user;
+
+        return context;
+      }
+    }
+    container.add(AuthenticatingMiddleware);
+
+    class UserKeyController {
+      index(): IResponse {
+        return new HttpResponse().json({ ok: true });
+      }
+    }
+    container.add(UserKeyController);
+
+    const handler = buildHandler("/user-key", UserKeyController, [
+      AuthenticatingMiddleware as unknown as import("@talosjs/middleware").MiddlewareClassType,
+    ]);
+    const response = await handler(createReq("http://localhost/v1/user-key"), createServer());
+
+    expect(response.status).toBe(HttpStatus.Code.TooManyRequests);
+    expect(rateLimiter.check).toHaveBeenCalledWith("192.168.1.1:user-1");
+
+    container.removeConstant("rateLimiter");
+    container.removeConstant("logger");
+  });
+
+  test("keeps the headers a middleware set on the 429 response", async () => {
+    container.addConstant("logger", createMockLogger());
+    container.add(AppEnv);
+
+    container.addConstant("rateLimiter", createLimitedRateLimiter());
+
+    class CorsHeaderMiddleware {
+      async handler(context: ContextType): Promise<ContextType> {
+        context.response.header.set("Access-Control-Allow-Origin", "http://localhost:3031");
+
+        return context;
+      }
+    }
+    container.add(CorsHeaderMiddleware);
+
+    class CorsRateLimitController {
+      index(): IResponse {
+        return new HttpResponse().json({ ok: true });
+      }
+    }
+    container.add(CorsRateLimitController);
+
+    const handler = buildHandler("/cors-rate-limited", CorsRateLimitController, [
+      CorsHeaderMiddleware as unknown as import("@talosjs/middleware").MiddlewareClassType,
+    ]);
+    const response = await handler(createReq("http://localhost/v1/cors-rate-limited"), createServer());
+
+    expect(response.status).toBe(HttpStatus.Code.TooManyRequests);
+    expect(response.headers.get("Access-Control-Allow-Origin")).toBe("http://localhost:3031");
+
+    container.removeConstant("rateLimiter");
+    container.removeConstant("logger");
+  });
+
+  test("allows the request through to the controller when the limit is not exceeded", async () => {
+    container.addConstant("logger", createMockLogger());
+    container.add(AppEnv);
+
     const rateLimiter = createMockRateLimiter({
       limited: false,
       remaining: 119,
@@ -835,97 +938,50 @@ describe("formatHttpRoutes rate limit", () => {
     });
     container.addConstant("rateLimiter", rateLimiter);
 
+    const indexMock = mock(() => new HttpResponse().json({ ok: true }));
+
     class AllowedController {
-      index(): IResponse {
-        return new HttpResponse().json({ ok: true });
-      }
+      index = indexMock;
     }
     container.add(AllowedController);
 
-    const httpRoutes = new Map<string, RouteConfigType[]>();
-    httpRoutes.set("/allowed", [
-      createMockRoute({
-        path: "/allowed",
-        method: "GET",
-        controller: AllowedController,
-      } as Partial<RouteConfigType>),
-    ]);
+    const handler = buildHandler("/allowed", AllowedController);
+    const response = await handler(createReq("http://localhost/v1/allowed"), createServer());
 
-    const result = formatHttpRoutes(httpRoutes);
-    const handler = result["/v1/allowed"]?.GET;
-
-    expect(handler).toBeDefined();
-    expect(typeof handler).toBe("function");
+    expect(response.status).toBe(HttpStatus.Code.OK);
+    expect(rateLimiter.check).toHaveBeenCalledTimes(1);
+    expect(indexMock).toHaveBeenCalledTimes(1);
 
     container.removeConstant("rateLimiter");
+    container.removeConstant("logger");
   });
 
-  test("skips rate limit when no rateLimiter is configured", () => {
+  test("reaches the controller without a quota check when no rateLimiter is configured", async () => {
+    container.addConstant("logger", createMockLogger());
+    container.add(AppEnv);
+    container.removeConstant("rateLimiter");
+
+    const indexMock = mock(() => new HttpResponse().json({ ok: true }));
+
     class NoRateLimitController {
-      index(): IResponse {
-        return new HttpResponse().json({ ok: true });
-      }
+      index = indexMock;
     }
     container.add(NoRateLimitController);
 
-    const httpRoutes = new Map<string, RouteConfigType[]>();
-    httpRoutes.set("/no-rate-limit", [
-      createMockRoute({
-        path: "/no-rate-limit",
-        method: "GET",
-        controller: NoRateLimitController,
-      } as Partial<RouteConfigType>),
-    ]);
+    const handler = buildHandler("/no-rate-limit", NoRateLimitController);
+    const response = await handler(createReq("http://localhost/v1/no-rate-limit"), createServer());
 
-    const result = formatHttpRoutes(httpRoutes);
-    const handler = result["/v1/no-rate-limit"]?.GET;
+    expect(response.status).toBe(HttpStatus.Code.OK);
+    expect(indexMock).toHaveBeenCalledTimes(1);
 
-    expect(handler).toBeDefined();
-    expect(typeof handler).toBe("function");
-  });
-
-  test("falls through when rate limiter throws", async () => {
-    const throwingRateLimiter: IRateLimiter = {
-      check: mock(() => Promise.reject(new Error("Redis connection failed"))),
-      isLimited: mock(() => Promise.reject(new Error("Redis connection failed"))),
-      reset: mock(() => Promise.resolve(true)),
-      getCount: mock(() => Promise.resolve(0)),
-    };
-    container.addConstant("rateLimiter", throwingRateLimiter);
-
-    class FallThroughController {
-      index(): IResponse {
-        return new HttpResponse().json({ ok: true });
-      }
-    }
-    container.add(FallThroughController);
-
-    const httpRoutes = new Map<string, RouteConfigType[]>();
-    httpRoutes.set("/fallthrough", [
-      createMockRoute({
-        path: "/fallthrough",
-        method: "GET",
-        controller: FallThroughController,
-      } as Partial<RouteConfigType>),
-    ]);
-
-    const result = formatHttpRoutes(httpRoutes);
-    const handler = result["/v1/fallthrough"]?.GET;
-
-    expect(handler).toBeDefined();
-    expect(typeof handler).toBe("function");
-
-    container.removeConstant("rateLimiter");
+    container.removeConstant("logger");
   });
 
   test("uses unknown IP when server.requestIP returns null", async () => {
-    const resetAt = new Date(Date.now() + 60_000);
-    const rateLimiter = createMockRateLimiter({
-      limited: true,
-      remaining: 0,
-      total: 120,
-      resetAt,
-    });
+    container.addConstant("logger", createMockLogger());
+    container.add(AppEnv);
+
+    const rateLimiter = createLimitedRateLimiter();
     container.addConstant("rateLimiter", rateLimiter);
 
     class NullIpController {
@@ -935,35 +991,14 @@ describe("formatHttpRoutes rate limit", () => {
     }
     container.add(NullIpController);
 
-    const httpRoutes = new Map<string, RouteConfigType[]>();
-    httpRoutes.set("/null-ip", [
-      createMockRoute({
-        path: "/null-ip",
-        method: "GET",
-        controller: NullIpController,
-      } as Partial<RouteConfigType>),
-    ]);
-
-    const result = formatHttpRoutes(httpRoutes);
-    const handler = result["/v1/null-ip"]?.GET;
-
-    const mockReq = {
-      cookies: { get: mock(() => null), set: mock(() => {}) },
-      headers: new Headers(),
-      method: "GET",
-      url: "http://localhost/v1/null-ip",
-    } as unknown as BunRequest;
-    const mockServer = {
-      requestIP: mock(() => null),
-    } as unknown as Server<unknown>;
-
-    // biome-ignore lint/complexity/noBannedTypes: trust me
-    const response = await (handler as Function)(mockReq, mockServer);
+    const handler = buildHandler("/null-ip", NullIpController);
+    const response = await handler(createReq("http://localhost/v1/null-ip"), createServer(null));
 
     expect(response.status).toBe(HttpStatus.Code.TooManyRequests);
-    expect(rateLimiter.check).toHaveBeenCalledWith("unknown");
+    expect(rateLimiter.check).toHaveBeenCalledWith("unknown:anon");
 
     container.removeConstant("rateLimiter");
+    container.removeConstant("logger");
   });
 
   test("logs through the container logger and fails open when rate limiter throws", async () => {
@@ -986,32 +1021,8 @@ describe("formatHttpRoutes rate limit", () => {
     }
     container.add(LoggedFallThroughController);
 
-    const httpRoutes = new Map<string, RouteConfigType[]>();
-    httpRoutes.set("/logged-fallthrough", [
-      createMockRoute({
-        path: "/logged-fallthrough",
-        method: "GET",
-        controller: LoggedFallThroughController,
-      } as Partial<RouteConfigType>),
-    ]);
-
-    const handler = formatHttpRoutes(httpRoutes)["/v1/logged-fallthrough"]?.GET;
-
-    const mockReq = {
-      cookies: { get: mock(() => null), set: mock(() => {}) },
-      headers: new Headers(),
-      method: "GET",
-      url: "http://localhost/v1/logged-fallthrough",
-      params: {},
-      json: mock(() => Promise.resolve({})),
-      formData: mock(() => Promise.resolve(new FormData())),
-    } as unknown as BunRequest;
-    const mockServer = {
-      requestIP: mock(() => ({ address: "127.0.0.1" })),
-    } as unknown as Server<unknown>;
-
-    // biome-ignore lint/complexity/noBannedTypes: trust me
-    const response = await (handler as Function)(mockReq, mockServer);
+    const handler = buildHandler("/logged-fallthrough", LoggedFallThroughController);
+    const response = await handler(createReq("http://localhost/v1/logged-fallthrough"), createServer("127.0.0.1"));
 
     expect(response.status).toBe(HttpStatus.Code.OK);
     expect(loggerMock.error).toHaveBeenCalled();
