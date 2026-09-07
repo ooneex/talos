@@ -97,7 +97,6 @@ Full documentation: [docs.talosjs.com](https://docs.talosjs.com/getting-started)
 [![Bun][Bun-badge]][Bun-url]
 [![TypeScript][TypeScript-badge]][TypeScript-url]
 [![Biome][Biome-badge]][Biome-url]
-[![InversifyJS][Inversify-badge]][Inversify-url]
 [![TypeORM][TypeORM-badge]][TypeORM-url]
 [![React][React-badge]][React-url]
 
@@ -265,7 +264,6 @@ Distributed under the MIT License. See [`LICENSE`](LICENSE) for more information
 ## Acknowledgments
 
 - [Bun](https://bun.sh) — Fast all-in-one JavaScript runtime
-- [InversifyJS](https://inversify.io/) — Powerful IoC container for TypeScript
 - [TypeORM](https://typeorm.io/) — ORM for TypeScript and JavaScript
 - [ArkType](https://arktype.io/) — TypeScript's 1:1 validator
 - [Biome](https://biomejs.dev/) — Fast formatter and linter
@@ -292,8 +290,6 @@ Distributed under the MIT License. See [`LICENSE`](LICENSE) for more information
 [TypeScript-url]: https://www.typescriptlang.org/
 [Biome-badge]: https://img.shields.io/badge/Biome-60A5FA?style=for-the-badge&logo=biome&logoColor=white
 [Biome-url]: https://biomejs.dev
-[Inversify-badge]: https://img.shields.io/badge/InversifyJS-E8542E?style=for-the-badge
-[Inversify-url]: https://inversify.io/
 [TypeORM-badge]: https://img.shields.io/badge/TypeORM-FE0803?style=for-the-badge&logo=typeorm&logoColor=white
 [TypeORM-url]: https://typeorm.io/
 [React-badge]: https://img.shields.io/badge/React-61DAFB?style=for-the-badge&logo=react&logoColor=black
