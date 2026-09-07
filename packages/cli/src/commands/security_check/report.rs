@@ -165,6 +165,7 @@ pub(super) fn create_issues(root: &Path, findings: &[Finding]) {
             priority: Some(finding.severity.priority().to_string()),
             description: Some(build_issue_description(finding)),
             labels: Some(vec!["Security".to_string()]),
+            ..IssueYaml::default()
         });
 
         let file_path = issues_dir.join(format!("{id}.yml"));

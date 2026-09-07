@@ -41,6 +41,7 @@ pub(super) fn create_issues(audit: &CoverageAudit) {
             priority: Some(priority(module, audit.threshold).to_string()),
             description: Some(build_issue_description(module, audit.threshold)),
             labels: Some(vec![label(module).to_string()]),
+            ..IssueYaml::default()
         });
 
         let file_path = issues_dir.join(format!("{id}.yml"));

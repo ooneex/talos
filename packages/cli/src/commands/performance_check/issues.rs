@@ -39,6 +39,7 @@ pub(super) fn create_issues(audit: &PerformanceAudit) {
             priority: Some(priority(module).to_string()),
             description: Some(build_issue_description(module, audit.threshold)),
             labels: Some(vec!["Performance".to_string()]),
+            ..IssueYaml::default()
         });
 
         let file_path = issues_dir.join(format!("{id}.yml"));
