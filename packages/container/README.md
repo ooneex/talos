@@ -1,6 +1,6 @@
 # @talosjs/container
 
-Dependency injection container built on Inversify — manages service lifecycle with singleton, transient, and request-scoped registrations and automatic dependency resolution
+Dependency-free injection container — manages service lifecycle with singleton, transient, and request-scoped registrations and resolves constructor dependencies declared with `@inject`
 
 ## Installation
 

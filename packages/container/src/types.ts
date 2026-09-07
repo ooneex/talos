@@ -6,11 +6,17 @@ export enum EContainerScope {
   Request = "request",
 }
 
+/** A concrete class the container can instantiate. */
+export type ClassType<T = unknown> = new (...args: any[]) => T;
+
+/** What a binding is looked up by: a registered class or the string / symbol key of a constant. */
+export type ServiceIdentifierType<T = unknown> = string | symbol | ClassType<T>;
+
 export interface IContainer {
-  add: (target: new (...args: any[]) => any, scope?: EContainerScope) => void;
-  get: <T>(target: new (...args: any[]) => T) => T;
-  has: (target: new (...args: any[]) => unknown) => boolean;
-  remove: (target: new (...args: any[]) => unknown) => void;
+  add: (target: ClassType, scope?: EContainerScope) => void;
+  get: <T>(target: ClassType<T>) => T;
+  has: (target: ClassType) => boolean;
+  remove: (target: ClassType) => void;
   addConstant: <T>(identifier: string | symbol, value: T) => void;
   getConstant: <T>(identifier: string | symbol) => T;
   hasConstant: (identifier: string | symbol) => boolean;

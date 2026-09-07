@@ -1,10 +1,9 @@
 {
   "dependencies": {
     "@talosjs/exception": "workspace:^",
-    "@talosjs/http-status": "workspace:^",
-    "inversify": "^7.10.4"
+    "@talosjs/http-status": "workspace:^"
   },
-  "description": "Dependency injection container built on Inversify — manages service lifecycle with singleton, transient, and request-scoped registrations and automatic dependency resolution",
+  "description": "Dependency-free injection container — manages service lifecycle with singleton, transient, and request-scoped registrations and resolves constructor dependencies declared with @inject",
   "exports": {
     ".": {
       "import": {
@@ -25,7 +24,6 @@
     "container",
     "dependency-injection",
     "di",
-    "inversify",
     "ioc",
     "talos",
     "typescript"

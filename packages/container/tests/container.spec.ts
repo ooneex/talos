@@ -1,5 +1,12 @@
 import { beforeEach, describe, expect, test } from "bun:test";
-import { Container, EContainerScope, injectable, container as sharedContainer } from "@/index";
+import {
+  Container,
+  ContainerException,
+  EContainerScope,
+  inject,
+  injectable,
+  container as sharedContainer,
+} from "@/index";
 
 describe("Container - Dependency Injection", () => {
   let container: Container;
@@ -985,6 +992,402 @@ describe("Container - Dependency Injection", () => {
 
       // Both should be the same instance
       expect(service1).toBe(service2);
+    });
+  });
+
+  describe("Constructor injection", () => {
+    class Env {
+      public readonly name = "env";
+    }
+
+    test("should resolve class dependencies declared with @inject through a chain", () => {
+      class Repository {
+        constructor(@inject(Env) public readonly env: Env) {}
+      }
+
+      class Service {
+        constructor(
+          @inject(Repository) public readonly repository: Repository,
+          @inject(Env) public readonly env: Env,
+        ) {}
+      }
+
+      container.add(Env);
+      container.add(Repository);
+      container.add(Service);
+
+      const service = container.get(Service);
+
+      expect(service.repository).toBeInstanceOf(Repository);
+      expect(service.env).toBeInstanceOf(Env);
+      expect(service.repository.env).toBe(service.env);
+    });
+
+    test("should inject string and symbol constants into constructors", () => {
+      const DATABASE = "database";
+      const SECRET = Symbol("secret");
+
+      class Repository {
+        constructor(
+          @inject(DATABASE) public readonly database: { name: string },
+          @inject(SECRET) public readonly secret: string,
+        ) {}
+      }
+
+      container.addConstant(DATABASE, { name: "main" });
+      container.addConstant(SECRET, "s3cr3t");
+      container.add(Repository);
+
+      const repository = container.get(Repository);
+
+      expect(repository.database).toEqual({ name: "main" });
+      expect(repository.secret).toBe("s3cr3t");
+    });
+
+    test("should leave an undecorated parameter with a default value to the constructor", () => {
+      class Cache {
+        constructor(
+          @inject(Env) public readonly env: Env,
+          public readonly options: { ttl: number } = { ttl: 60 },
+        ) {}
+      }
+
+      container.add(Env);
+      container.add(Cache);
+
+      const cache = container.get(Cache);
+
+      expect(cache.env).toBeInstanceOf(Env);
+      expect(cache.options).toEqual({ ttl: 60 });
+    });
+
+    test("should resolve a decorated parameter that sits past a defaulted one", () => {
+      class Database {
+        constructor(
+          public readonly options: { pool: number } = { pool: 10 },
+          @inject(Env) public readonly env: Env = new Env(),
+        ) {}
+      }
+
+      container.add(Env);
+      container.add(Database);
+
+      const database = container.get(Database);
+
+      expect(database.options).toEqual({ pool: 10 });
+      expect(database.env).toBe(container.get(Env));
+    });
+
+    test("should share a singleton dependency between consumers and renew a transient one", () => {
+      class Shared {}
+      class Fresh {}
+
+      class Consumer {
+        constructor(
+          @inject(Shared) public readonly shared: Shared,
+          @inject(Fresh) public readonly fresh: Fresh,
+        ) {}
+      }
+
+      container.add(Shared, EContainerScope.Singleton);
+      container.add(Fresh, EContainerScope.Transient);
+      container.add(Consumer, EContainerScope.Transient);
+
+      const first = container.get(Consumer);
+      const second = container.get(Consumer);
+
+      expect(first).not.toBe(second);
+      expect(first.shared).toBe(second.shared);
+      expect(first.fresh).not.toBe(second.fresh);
+    });
+
+    test("should share a request-scoped dependency within one resolution only", () => {
+      class RequestContext {
+        private static count = 0;
+        public readonly id: number;
+
+        constructor() {
+          RequestContext.count++;
+          this.id = RequestContext.count;
+        }
+      }
+
+      class Repository {
+        constructor(@inject(RequestContext) public readonly context: RequestContext) {}
+      }
+
+      class Service {
+        constructor(
+          @inject(RequestContext) public readonly context: RequestContext,
+          @inject(Repository) public readonly repository: Repository,
+        ) {}
+      }
+
+      container.add(RequestContext, EContainerScope.Request);
+      container.add(Repository, EContainerScope.Transient);
+      container.add(Service, EContainerScope.Transient);
+
+      const first = container.get(Service);
+      const second = container.get(Service);
+
+      expect(first.context).toBe(first.repository.context);
+      expect(first.context.id).toBe(1);
+      expect(second.context).toBe(second.repository.context);
+      expect(second.context.id).toBe(2);
+    });
+
+    test("should pass constructor parameters in order for every arity", () => {
+      class One {
+        constructor(@inject("p1") public readonly p1: string) {}
+      }
+
+      class Two {
+        constructor(
+          @inject("p1") public readonly p1: string,
+          @inject("p2") public readonly p2: string,
+        ) {}
+      }
+
+      class Three {
+        constructor(
+          @inject("p1") public readonly p1: string,
+          @inject("p2") public readonly p2: string,
+          @inject("p3") public readonly p3: string,
+        ) {}
+      }
+
+      class Four {
+        constructor(
+          @inject("p1") public readonly p1: string,
+          @inject("p2") public readonly p2: string,
+          @inject("p3") public readonly p3: string,
+          public readonly p4: string = "default-4",
+        ) {}
+      }
+
+      class Five {
+        constructor(
+          @inject("p1") public readonly p1: string,
+          @inject("p2") public readonly p2: string,
+          @inject("p3") public readonly p3: string,
+          @inject("p4") public readonly p4: string,
+          public readonly p5: string = "default-5",
+        ) {}
+      }
+
+      for (const key of ["p1", "p2", "p3", "p4", "p5"]) {
+        container.addConstant(key, `value-${key}`);
+      }
+
+      for (const target of [One, Two, Three, Four, Five]) {
+        container.add(target, EContainerScope.Transient);
+      }
+
+      expect(container.get(One)).toEqual({ p1: "value-p1" });
+      expect(container.get(Two)).toEqual({ p1: "value-p1", p2: "value-p2" });
+      expect(container.get(Three)).toEqual({ p1: "value-p1", p2: "value-p2", p3: "value-p3" });
+      expect(container.get(Four)).toEqual({ p1: "value-p1", p2: "value-p2", p3: "value-p3", p4: "default-4" });
+      expect(container.get(Five)).toEqual({
+        p1: "value-p1",
+        p2: "value-p2",
+        p3: "value-p3",
+        p4: "value-p4",
+        p5: "default-5",
+      });
+    });
+
+    test("should keep a get() issued from inside a constructor as its own request", () => {
+      class RequestContext {
+        private static count = 0;
+        public readonly id: number;
+
+        constructor() {
+          RequestContext.count++;
+          this.id = RequestContext.count;
+        }
+      }
+
+      class Nested {
+        constructor(@inject(RequestContext) public readonly context: RequestContext) {}
+      }
+
+      class Outer {
+        public readonly nested: Nested;
+
+        constructor(@inject(RequestContext) public readonly context: RequestContext) {
+          this.nested = container.get(Nested);
+        }
+      }
+
+      class Root {
+        constructor(
+          @inject(Outer) public readonly outer: Outer,
+          @inject(RequestContext) public readonly context: RequestContext,
+        ) {}
+      }
+
+      container.add(RequestContext, EContainerScope.Request);
+      container.add(Nested, EContainerScope.Transient);
+      container.add(Outer, EContainerScope.Transient);
+      container.add(Root, EContainerScope.Transient);
+
+      const root = container.get(Root);
+
+      // the outer request survives the nested get() and keeps sharing its own instance
+      expect(root.context).toBe(root.outer.context);
+      expect(root.context.id).toBe(1);
+      // the nested get() got a request of its own
+      expect(root.outer.nested.context).not.toBe(root.context);
+      expect(root.outer.nested.context.id).toBe(2);
+    });
+
+    test("should catch a cycle that runs through a get() issued from inside a constructor", () => {
+      class Outer {
+        public static cyclic = true;
+
+        constructor(@inject(Env) public readonly env: Env) {
+          if (Outer.cyclic) {
+            container.get(Inner);
+          }
+        }
+      }
+
+      class Inner {
+        constructor(@inject(Outer) public readonly outer: Outer) {}
+      }
+
+      container.add(Env);
+      container.add(Outer);
+      container.add(Inner);
+
+      expect(() => container.get(Outer)).toThrow("Circular dependency found: Outer -> Inner -> Outer");
+
+      // the failed resolution left no trace behind: the same class resolves once the cycle is gone
+      Outer.cyclic = false;
+      expect(container.get(Outer).env).toBeInstanceOf(Env);
+      expect(container.get(Inner).outer).toBe(container.get(Outer));
+    });
+
+    test("should resolve a subclass through its own decorated constructor", () => {
+      abstract class BaseDatabase {
+        constructor(public readonly env: Env) {}
+
+        public abstract kind(): string;
+      }
+
+      class PgDatabase extends BaseDatabase {
+        constructor(@inject(Env) env: Env) {
+          super(env);
+        }
+
+        public kind(): string {
+          return "pg";
+        }
+      }
+
+      container.add(Env);
+      container.add(PgDatabase);
+
+      const database = container.get(PgDatabase);
+
+      expect(database.kind()).toBe("pg");
+      expect(database.env).toBe(container.get(Env));
+    });
+
+    test("should drop the cached singleton when a service is added again", () => {
+      class Counter {}
+
+      container.add(Counter);
+      const first = container.get(Counter);
+
+      container.add(Counter);
+      const second = container.get(Counter);
+
+      expect(second).toBeInstanceOf(Counter);
+      expect(second).not.toBe(first);
+    });
+
+    test("should name both services when a nested dependency is not bound", () => {
+      class Mailer {}
+
+      class Notifier {
+        constructor(@inject(Mailer) public readonly mailer: Mailer) {}
+      }
+
+      container.add(Notifier);
+
+      expect(() => container.get(Notifier)).toThrow(
+        'Failed to resolve dependency: Notifier. No bindings found for service: "Mailer" (injected into "Notifier")',
+      );
+    });
+
+    test("should throw when a required constructor parameter has no @inject", () => {
+      class NeedsConfig {
+        constructor(public readonly config: { url: string }) {}
+      }
+
+      container.add(NeedsConfig);
+
+      expect(() => container.get(NeedsConfig)).toThrow(
+        'Failed to resolve dependency: NeedsConfig. Missing @inject on constructor parameter 0 of "NeedsConfig": every required constructor parameter must be decorated',
+      );
+    });
+
+    test("should report a circular dependency with its trace", () => {
+      class ServiceA {
+        constructor(public readonly b: unknown) {}
+      }
+
+      class ServiceB {
+        constructor(public readonly a: unknown) {}
+      }
+
+      inject(ServiceB)(ServiceA, undefined, 0);
+      inject(ServiceA)(ServiceB, undefined, 0);
+
+      container.add(ServiceA);
+      container.add(ServiceB);
+
+      try {
+        container.get(ServiceA);
+        expect(true).toBe(false); // Should not reach here
+      } catch (error) {
+        const exception = error as ContainerException;
+        expect(exception).toBeInstanceOf(ContainerException);
+        expect(exception.key).toBe("SERVICE_RESOLVE_FAILED");
+        expect(exception.message).toBe(
+          "Failed to resolve dependency: ServiceA. Circular dependency found: ServiceA -> ServiceB -> ServiceA",
+        );
+      }
+    });
+
+    test("should report a service depending on itself", () => {
+      class Ouroboros {
+        constructor(@inject(Ouroboros) public readonly self: Ouroboros) {}
+      }
+
+      container.add(Ouroboros, EContainerScope.Transient);
+
+      expect(() => container.get(Ouroboros)).toThrow("Circular dependency found: Ouroboros -> Ouroboros");
+    });
+
+    test("should wrap a constructor failure and retry on the next resolution", () => {
+      let attempts = 0;
+
+      class Flaky {
+        constructor() {
+          attempts++;
+          if (attempts === 1) {
+            throw new Error("not ready");
+          }
+        }
+      }
+
+      container.add(Flaky);
+
+      expect(() => container.get(Flaky)).toThrow("Failed to resolve dependency: Flaky. not ready");
+      expect(container.get(Flaky)).toBeInstanceOf(Flaky);
+      expect(attempts).toBe(2);
     });
   });
 });
