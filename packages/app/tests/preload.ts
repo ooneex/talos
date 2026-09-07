@@ -11,8 +11,8 @@ class MockTerminalLogger {
   success = () => {};
 }
 
-// Mock @talosjs/logger module before any tests run to prevent SqliteLogger decorator execution
-// The SqliteLogger has an optional constructor parameter that is incompatible with InversifyJS
+// Mock @talosjs/logger before any test runs so the real loggers' decorators never register
+// into the shared container and no logger tries to reach a backend during the app tests
 mock.module("@talosjs/logger", () => ({
   TerminalLogger: MockTerminalLogger,
   SqliteLogger: class {
