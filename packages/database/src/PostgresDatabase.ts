@@ -1,12 +1,19 @@
 import { AppEnv } from "@talosjs/app-env";
 import { inject } from "@talosjs/container";
-import { DataSource } from "typeorm";
 import { DatabaseException } from "./DatabaseException";
 import { decorator } from "./decorators";
-import { TypeormDatabase } from "./TypeormDatabase";
+import { DataSource } from "./orm/DataSource";
+import { SqlDatabase } from "./SqlDatabase";
 
+/**
+ * A PostgreSQL data source configured from `DATABASE_URL`, managing every decorated entity.
+ *
+ * @example
+ * const database = container.get(PostgresDatabase);
+ * const users = await database.open(UserEntity);
+ */
 @decorator.database()
-export class TypeormPgDatabase extends TypeormDatabase {
+export class PostgresDatabase extends SqlDatabase {
   public constructor(@inject(AppEnv) private readonly env: AppEnv = new AppEnv()) {
     super();
   }
@@ -26,16 +33,10 @@ export class TypeormPgDatabase extends TypeormDatabase {
     }
 
     this.source = new DataSource({
-      synchronize: false,
-      entities: [
-        // Load your entities here
-      ],
-      extra: {
-        max: 10,
-        // idleTimeoutMillis: 30000,
-      },
-      url,
       type: "postgres",
+      url,
+      synchronize: false,
+      poolSize: 10,
     });
 
     return this.source;

@@ -3,13 +3,10 @@
     "@talosjs/app-env": "workspace:^",
     "@talosjs/container": "workspace:^",
     "@talosjs/exception": "workspace:^",
-    "@talosjs/http-status": "workspace:^"
+    "@talosjs/http-status": "workspace:^",
+    "@talosjs/utils": "workspace:^"
   },
-  "description": "Database abstraction layer with TypeORM integration — provides connection pooling, query building, and migration support for relational databases",
-  "devDependencies": {
-    "pg": "^8.23.0",
-    "typeorm": "^1.0.0"
-  },
+  "description": "Database layer on Bun's native SQL client — a decorator-based ORM (entities, relations, repositories, query builders, transactions) for PostgreSQL, MySQL and SQLite, plus Redis and Dragonfly clients",
   "exports": {
     ".": {
       "import": {
@@ -29,18 +26,20 @@
     "bun",
     "database",
     "db",
-    "talos",
-    "query",
+    "entity",
+    "mysql",
+    "orm",
+    "postgres",
+    "query-builder",
+    "repository",
     "sql",
-    "typeorm",
+    "sqlite",
+    "talos",
     "typescript"
   ],
   "license": "MIT",
   "module": "./dist/index.js",
   "name": "@talosjs/database",
-  "peerDependencies": {
-    "typeorm": ">=0.3.0"
-  },
   "scripts": {
     "build": "bunup",
     "fmt": "bunx biome check --write",
