@@ -69,6 +69,14 @@ fn database_create_parses_mongodb_type() {
 }
 
 #[test]
+fn database_create_parses_turso_type() {
+    let cli = TestCli::try_parse_from(["talos", "--type", "turso"])
+        .expect("turso should be a valid database type");
+
+    assert_eq!(cli.args.r#type, Some(DatabaseType::Turso));
+}
+
+#[test]
 fn database_create_rejects_unknown_flag() {
     assert!(TestCli::try_parse_from(["talos", "--definitely-not-a-flag"]).is_err());
 }

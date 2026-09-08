@@ -135,6 +135,10 @@ const TEMPLATES: &[(&str, &str)] = &[
         "database.sqlite.txt",
         "export class {{NAME}}Database {} // sqlite\n",
     ),
+    (
+        "database.turso.txt",
+        "export class {{NAME}}Database {} // turso\n",
+    ),
     ("database.test.txt", "// {{NAME}}Database in {{MODULE}}\n"),
     (
         "database.cloudflare.test.txt",
@@ -147,6 +151,10 @@ const TEMPLATES: &[(&str, &str)] = &[
     (
         "database.mongodb.test.txt",
         "// {{NAME}}Database mongodb in {{MODULE}}\n",
+    ),
+    (
+        "database.turso.test.txt",
+        "// {{NAME}}Database turso in {{MODULE}}\n",
     ),
     ("module/module.txt", "export const {{NAME}}Module = {};\n"),
     (
@@ -494,6 +502,17 @@ fn every_generator_writes_the_source_and_the_spec_its_template_describes() {
         cwd: Some(root.to_string_lossy().to_string()),
     });
     assert!(source(&root, "databases", "LocalDatabase.ts").contains("// sqlite"));
+
+    commands::database_create::run(&commands::database_create::DatabaseCreateArgs {
+        no_cache: false,
+        name: Some("edge-sql".to_string()),
+        module: None,
+        r#type: Some(commands::database_create::DatabaseType::Turso),
+        r#override: false,
+        cwd: Some(root.to_string_lossy().to_string()),
+    });
+    assert!(source(&root, "databases", "EdgeSqlDatabase.ts").contains("// turso"));
+    assert!(spec(&root, "databases", "EdgeSqlDatabase.spec.ts").contains("turso"));
 
     commands::controller_create::run(&commands::controller_create::ControllerCreateArgs {
         no_cache: false,

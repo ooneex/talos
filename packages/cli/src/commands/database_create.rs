@@ -10,6 +10,7 @@ use crate::utils::{
 pub enum DatabaseType {
     Postgres,
     Sqlite,
+    Turso,
     Cloudflare,
     Redis,
     Mongodb,
@@ -19,6 +20,7 @@ pub enum DatabaseType {
 const DATABASE_TYPES: &[DatabaseType] = &[
     DatabaseType::Postgres,
     DatabaseType::Sqlite,
+    DatabaseType::Turso,
     DatabaseType::Cloudflare,
     DatabaseType::Redis,
     DatabaseType::Mongodb,
@@ -30,6 +32,7 @@ impl DatabaseType {
         match self {
             Self::Postgres => "postgres",
             Self::Sqlite => "sqlite",
+            Self::Turso => "turso",
             Self::Cloudflare => "cloudflare",
             Self::Redis => "redis",
             Self::Mongodb => "mongodb",
@@ -56,7 +59,7 @@ pub struct DatabaseCreateArgs {
     #[arg(
         long,
         value_enum,
-        help = "Database type: postgres, sqlite, cloudflare, redis, mongodb or clickhouse"
+        help = "Database type: postgres, sqlite, turso, cloudflare, redis, mongodb or clickhouse"
     )]
     pub r#type: Option<DatabaseType>,
 
@@ -83,6 +86,7 @@ fn template_files(db_type: DatabaseType) -> (&'static str, &'static str) {
         DatabaseType::Redis => ("database.redis.txt", "database.redis.test.txt"),
         DatabaseType::Mongodb => ("database.mongodb.txt", "database.mongodb.test.txt"),
         DatabaseType::Sqlite => ("database.sqlite.txt", "database.test.txt"),
+        DatabaseType::Turso => ("database.turso.txt", "database.turso.test.txt"),
     }
 }
 

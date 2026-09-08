@@ -353,7 +353,7 @@ _talos() {
           _arguments -s \
             '--name=[Name of the resource]:name' \
             '--module=[Module name]:module:_talos_modules' \
-            '--type=[Database type]:type:(postgres sqlite cloudflare redis mongodb clickhouse)' \
+            '--type=[Database type]:type:(postgres sqlite turso cloudflare redis mongodb clickhouse)' \
             '--override[Override existing file]' \
             '--no-cache[Bypass the skeleton template cache]' \
             '--cwd=[Working directory]:cwd:_files -/'
