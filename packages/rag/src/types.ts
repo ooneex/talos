@@ -23,6 +23,8 @@ import type {
   Uint64,
   Utf8,
 } from "apache-arrow";
+import type { CloudflareVectorizeClient } from "./CloudflareVectorizeClient.ts";
+import type { CloudflareVectorTable } from "./CloudflareVectorTable.ts";
 import type { VectorTable } from "./VectorTable.ts";
 
 export type RAGOptionsType = {
@@ -55,6 +57,16 @@ export interface IVectorDatabase<DataType extends { metadata: Record<string, unk
   open: (name: string, options?: { mode?: "create" | "overwrite" }) => Promise<VectorTable<DataType>>;
 }
 
+export interface ICloudflareVectorDatabase<DataType extends { metadata: Record<string, unknown> }> {
+  getDatabaseUri: () => string;
+  connect: () => Promise<void>;
+  getDatabase: () => CloudflareVectorizeClient;
+  getEmbeddingModel: () => EmbeddingModelType;
+  listIndexes: () => Promise<CloudflareVectorizeIndexType[]>;
+  open: (name: string, options?: CloudflareVectorDatabaseOpenOptionsType) => Promise<CloudflareVectorTable<DataType>>;
+  deleteIndex: (name: string) => Promise<unknown>;
+}
+
 export type OpenAIModelType = "text-embedding-ada-002" | "text-embedding-3-small" | "text-embedding-3-large";
 
 export type QwenModelType = "qwen3-embedding-8b";
@@ -68,6 +80,100 @@ export type OpenrouterEmbeddingOptionsType = {
 
 export type EmbeddingModelType = {
   model: OpenrouterModelType;
+};
+
+export type CloudflareVectorizeMetricType = "cosine" | "euclidean" | "dot-product";
+
+export type CloudflareVectorizeMetadataIndexType = "string" | "number" | "boolean";
+
+export type CloudflareVectorizeFilterValueType = string | number | boolean | null;
+
+export type CloudflareVectorizeFilterOperatorType = {
+  $eq?: CloudflareVectorizeFilterValueType;
+  $ne?: CloudflareVectorizeFilterValueType;
+  $in?: CloudflareVectorizeFilterValueType[];
+  $nin?: CloudflareVectorizeFilterValueType[];
+  $lt?: string | number;
+  $lte?: string | number;
+  $gt?: string | number;
+  $gte?: string | number;
+};
+
+export type CloudflareVectorizeFilterType = Record<
+  string,
+  CloudflareVectorizeFilterValueType | CloudflareVectorizeFilterOperatorType
+>;
+
+export type CloudflareVectorizeIndexType = {
+  config?: {
+    dimensions: number;
+    metric: CloudflareVectorizeMetricType;
+  };
+  created_on?: string;
+  description?: string;
+  modified_on?: string;
+  name?: string;
+};
+
+export type CloudflareVectorizeVectorType = {
+  id: string;
+  values: number[];
+  metadata?: Record<string, unknown>;
+  namespace?: string;
+};
+
+export type CloudflareVectorizeMatchType = {
+  id: string;
+  metadata?: Record<string, unknown>;
+  namespace?: string;
+  score?: number;
+  values?: number[];
+};
+
+export type CloudflareVectorizeMutationType = {
+  mutationId?: string;
+};
+
+export type CloudflareVectorizeQueryOptionsType = {
+  filter?: CloudflareVectorizeFilterType;
+  returnMetadata?: "none" | "indexed" | "all";
+  returnValues?: boolean;
+  topK?: number;
+};
+
+export type CloudflareVectorizeQueryResultType = {
+  count: number;
+  matches: CloudflareVectorizeMatchType[];
+};
+
+export interface ITextEmbeddingFunction {
+  ndims: () => number;
+  computeSourceEmbeddings: (data: string[]) => Promise<number[][]>;
+  computeQueryEmbeddings: (data: string) => Promise<number[]>;
+}
+
+export type CloudflareVectorDatabaseOptionsType = {
+  accountId: string;
+  apiToken: string;
+  apiUrl?: string;
+  embeddingApiKey?: string;
+  embeddingFunction?: ITextEmbeddingFunction;
+  embeddingModel?: EmbeddingModelType;
+  fetch?: typeof globalThis.fetch;
+};
+
+export type CloudflareVectorDatabaseOpenOptionsType = {
+  description?: string;
+  metric?: CloudflareVectorizeMetricType;
+};
+
+export type CloudflareVectorRecordType<DataType extends { metadata: Record<string, unknown> }> = {
+  id: string;
+  text: string;
+  metadata: DataType["metadata"];
+  namespace?: string;
+  score?: number;
+  values?: number[];
 };
 
 export type FieldValueType =
@@ -94,7 +200,7 @@ export type FieldValueType =
   | EmbeddingFunction;
 
 // biome-ignore lint/suspicious/noExplicitAny: trust me
-export type VectorDatabaseClassType = new (...args: any[]) => IVectorDatabase<any>;
+export type VectorDatabaseClassType = new (...args: any[]) => IVectorDatabase<any> | ICloudflareVectorDatabase<any>;
 
 export type FilterFieldType<T extends { metadata: Record<string, unknown> }> = keyof T["metadata"] | "id" | "text";
 

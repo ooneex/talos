@@ -1,4 +1,7 @@
 export { AbstractVectorDatabase } from "./AbstractVectorDatabase";
+export { CloudflareVectorDatabase } from "./CloudflareVectorDatabase";
+export { CloudflareVectorizeClient } from "./CloudflareVectorizeClient";
+export { CloudflareVectorTable } from "./CloudflareVectorTable";
 export { decorator } from "./decorators";
 export { OpenrouterEmbeddingFunction } from "./OpenrouterEmbeddingFunction";
 export { RAG } from "./RAG";
