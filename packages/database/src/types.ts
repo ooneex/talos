@@ -4,50 +4,11 @@ import type { FindOperator } from "./orm/FindOperator";
 import type { Repository } from "./orm/Repository";
 
 // biome-ignore lint/suspicious/noExplicitAny: trust me
-export type DatabaseClassType = new (...args: any[]) => IDatabase | IRedisDatabase | ISqlDatabase;
-
-// biome-ignore lint/suspicious/noExplicitAny: trust me
-export type DragonflyDatabaseClassType = new (...args: any[]) => IDragonflyDatabase;
-
-// biome-ignore lint/suspicious/noExplicitAny: trust me
-export type RedisDatabaseClassType = new (...args: any[]) => IRedisDatabase;
-
-export type RedisConnectionOptionsType = {
-  url?: string;
-  connectionTimeout?: number;
-  idleTimeout?: number;
-  autoReconnect?: boolean;
-  maxRetries?: number;
-  enableOfflineQueue?: boolean;
-  enableAutoPipelining?: boolean;
-  tls?:
-    | boolean
-    | {
-        rejectUnauthorized?: boolean;
-        ca?: string;
-        cert?: string;
-        key?: string;
-      };
-};
-
-export type DragonflyConnectionOptionsType = RedisConnectionOptionsType;
+export type DatabaseClassType = new (...args: any[]) => IDatabase | ISqlDatabase;
 
 export interface IDatabase {
   open: () => Promise<void>;
   close: () => Promise<void>;
-  drop: () => Promise<void>;
-}
-
-export interface IRedisDatabase {
-  open: () => Promise<RedisClient>;
-  close: () => Promise<void>;
-  drop: () => Promise<void>;
-}
-
-export interface IDragonflyDatabase {
-  open: () => Promise<RedisClient>;
-  close: () => Promise<void>;
-  ping: () => Promise<boolean>;
   drop: () => Promise<void>;
 }
 
@@ -109,9 +70,9 @@ type QueryDeepPartialEntityInnerType<Entity> = {
           : QueryDeepPartialEntityInnerType<Entity[P]>);
 };
 
-export type DatabaseTypeType = "postgres" | "mysql" | "mariadb" | "sqlite" | "clickhouse";
+export type DatabaseTypeType = "postgres" | "mysql" | "mariadb" | "sqlite" | "clickhouse" | "redis";
 
-export type DatabaseClientType = SQL | ClickHouseClient;
+export type DatabaseClientType = SQL | ClickHouseClient | RedisClient;
 
 export type TransactionIsolationLevelType = "READ UNCOMMITTED" | "READ COMMITTED" | "REPEATABLE READ" | "SERIALIZABLE";
 
@@ -531,14 +492,34 @@ export type ClickHouseDataSourceOptionsType = BaseDataSourceOptionsType & {
   client?: ClickHouseClient;
 };
 
+export type RedisDataSourceOptionsType = BaseDataSourceOptionsType & {
+  type: "redis";
+  /** RESP endpoint. Bun falls back to REDIS_URL, VALKEY_URL, then localhost when omitted. */
+  url?: string;
+  connectionTimeout?: number;
+  idleTimeout?: number;
+  autoReconnect?: boolean;
+  maxRetries?: number;
+  enableOfflineQueue?: boolean;
+  enableAutoPipelining?: boolean;
+  tls?: boolean | TLSOptions;
+  /** Bring your own Bun Redis client — the data source then neither opens nor closes it. */
+  client?: RedisClient;
+};
+
 export type DataSourceOptionsType =
   | PostgresDataSourceOptionsType
   | MysqlDataSourceOptionsType
   | SqliteDataSourceOptionsType
-  | ClickHouseDataSourceOptionsType;
+  | ClickHouseDataSourceOptionsType
+  | RedisDataSourceOptionsType;
 
 export type DataSourceClientType<Options extends DataSourceOptionsType> =
-  Options extends ClickHouseDataSourceOptionsType ? ClickHouseClient : SQL;
+  Options extends ClickHouseDataSourceOptionsType
+    ? ClickHouseClient
+    : Options extends RedisDataSourceOptionsType
+      ? RedisClient
+      : SQL;
 
 // ---------------------------------------------------------------------------
 // ORM — find options

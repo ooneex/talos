@@ -4,6 +4,7 @@ import { ClickHouseDriver } from "../../../src/orm/driver/ClickHouseDriver";
 import { createDriver } from "../../../src/orm/driver/createDriver";
 import { MysqlDriver } from "../../../src/orm/driver/MysqlDriver";
 import { PostgresDriver } from "../../../src/orm/driver/PostgresDriver";
+import { RedisDriver } from "../../../src/orm/driver/RedisDriver";
 import { SqliteDriver } from "../../../src/orm/driver/SqliteDriver";
 import { MissingDriverError } from "../../../src/orm/errors";
 
@@ -16,6 +17,7 @@ describe("createDriver", () => {
     expect(createDriver({ type: "mariadb" })).toBeInstanceOf(MysqlDriver);
     expect(createDriver({ type: "mariadb" }).type).toBe("mariadb");
     expect(createDriver({ type: "clickhouse" })).toBeInstanceOf(ClickHouseDriver);
+    expect(createDriver({ type: "redis" })).toBeInstanceOf(RedisDriver);
     expect(createDriver(options)).toBeInstanceOf(SqliteDriver);
     expect(createDriver(options).options).toBe(options);
   });

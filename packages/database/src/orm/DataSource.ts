@@ -205,7 +205,7 @@ export class DataSource<Options extends DataSourceOptionsType = DataSourceOption
       .from(targetOrRunner, alias ?? this.getMetadata(targetOrRunner).tableName);
   }
 
-  /** Runs raw SQL; `parameters` bind to `$1`, `$2`, … (`?` on MySQL). Returns the rows. */
+  /** Runs a raw driver command. SQL parameters bind to `$1`, `$2`, … (`?` on MySQL); Redis uses command arguments. */
   public async query<Row = ObjectLiteralType>(
     sql: string,
     parameters: unknown[] = [],

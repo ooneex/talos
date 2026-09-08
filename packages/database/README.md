@@ -1,6 +1,6 @@
 # @talosjs/database
 
-Database layer with a decorator-based ORM for PostgreSQL, MySQL, SQLite and ClickHouse, plus Redis and Dragonfly clients. PostgreSQL, MySQL and SQLite use Bun's native `SQL` client; ClickHouse uses the official `@clickhouse/client`.
+Database layer with a decorator-based ORM for PostgreSQL, MySQL, SQLite and ClickHouse, plus a Bun-native Redis driver. PostgreSQL, MySQL and SQLite use Bun's native `SQL` client; ClickHouse uses the official `@clickhouse/client`.
 
 ## Installation
 
@@ -79,7 +79,7 @@ await dataSource.transaction(async (manager) => {
 |---|---|
 | Entities | `@Entity`, `@Column`, `@PrimaryColumn`, `@PrimaryGeneratedColumn` (`increment`, `uuid`, `rowid`, `identity`), `@CreateDateColumn`, `@UpdateDateColumn`, `@DeleteDateColumn`, `@VersionColumn`, `@Index`, `@Unique`, entity inheritance |
 | Relations | `@OneToOne`, `@OneToMany`, `@ManyToOne`, `@ManyToMany` with `@JoinColumn` / `@JoinTable`, eager loading, cascades (`insert`, `update`, `remove`, `soft-remove`, `recover`), `orphanedRowAction`, `onDelete` / `onUpdate` |
-| Connection | `DataSource` over a Bun `SQL` pool: `initialize`, `destroy`, `synchronize`, `dropDatabase`, `query`, `transaction`, `getRepository`, `createQueryBuilder`, `createQueryRunner`; bring your own client through `options.client` |
+| Connection | `DataSource` owns the selected native driver client: `initialize`, `destroy`, `dropDatabase`, `query`; relational drivers also provide `synchronize`, `transaction`, repositories and query builders; bring your own client through `options.client` |
 | Manager & repository | `create`, `merge`, `preload`, `save`, `remove`, `softRemove`, `recover`, `insert`, `update`, `upsert`, `delete`, `softDelete`, `restore`, `clear`, `increment`, `decrement`, `find*`, `count*`, `exists*`, `sum`, `average`, `minimum`, `maximum`, `Repository.extend` |
 | Find options | `where` (objects, arrays, nested relations), `select`, `relations`, `order`, `skip` / `take`, `withDeleted`, `loadEagerRelations`; operators `Equal`, `Not`, `In`, `Like`, `ILike`, `Between`, `MoreThan`, `LessThan`, `IsNull`, `Raw`, `And`, `Or`, `Any`, `ArrayContains`, `JsonContains`, … |
 | Query builders | `SelectQueryBuilder` (joins, `Brackets`, group / having, pagination, locking, `getRawMany`, `getManyAndCount`, streaming-free hydration), `InsertQueryBuilder` (`orUpdate`, `orIgnore`, `returning`), `UpdateQueryBuilder`, `DeleteQueryBuilder`, `SoftDeleteQueryBuilder`, `RelationQueryBuilder` (`of().add()/remove()/set()/loadMany()`) |
@@ -87,7 +87,7 @@ await dataSource.transaction(async (manager) => {
 | Schema | `SchemaBuilder` creates tables, foreign keys, unique constraints and indexes in dependency order (`synchronize: true`); `dropSchema` for test databases |
 | Naming | `DefaultNamingStrategy` (TypeORM-compatible hashed constraint names), `SnakeNamingStrategy`, custom `INamingStrategy` |
 | Errors | `QueryFailedError`, `EntityNotFoundError`, `EntityMetadataNotFoundError`, `TransactionNotStartedError`, … all extend `DatabaseException` |
-| Key-value | `RedisDatabase`, `DragonflyDatabase` and `AbstractRedisDatabase` on `bun`'s `RedisClient` |
+| Key-value | `RedisDriver` on Bun's native `RedisClient`; compatible with Redis, Valkey and Dragonfly RESP servers |
 
 ### Drivers
 
@@ -97,6 +97,30 @@ await dataSource.transaction(async (manager) => {
 | `mysql` | Bun `SQL` (MySQL adapter) | `ON DUPLICATE KEY UPDATE`, `LAST_INSERT_ID()` reloads, backtick quoting |
 | `sqlite` | Bun `SQL` (SQLite adapter) | file or `:memory:`, foreign keys on by default, WAL and busy timeout options |
 | `clickhouse` | [`@clickhouse/client`](https://clickhouse.com/docs/integrations/language-clients/js) | HTTP(S), `JSONEachRow`, typed query parameters, `MergeTree` synchronization |
+| `redis` | Bun `RedisClient` | Native commands, TLS, reconnects and auto-pipelining; also speaks to Valkey and Dragonfly |
+
+### Redis
+
+Redis participates in the same `DataSource` driver lifecycle as the SQL databases. The initialized `client` is Bun's native `RedisClient`, with its fully typed command API, connection management, TLS, reconnect, offline queue and automatic pipelining controls.
+
+```typescript
+import { DataSource } from "@talosjs/database";
+
+const redis = new DataSource({
+  type: "redis",
+  url: "redis://username:password@localhost:6379",
+  connectionTimeout: 5_000,
+  enableAutoPipelining: true,
+});
+
+await redis.initialize();
+await redis.client.set("greeting", "Hello from Bun!");
+const greeting = await redis.client.get("greeting");
+
+await redis.destroy();
+```
+
+When the URL is omitted, Bun reads `REDIS_URL`, then `VALKEY_URL`, and otherwise connects to its localhost default. Dragonfly uses the same RESP protocol, so it does not need a separate driver. `DataSource.query()` accepts a Redis command name and argument array for untyped or unsupported commands; use `DataSource.client` for Bun's typed methods. Relational entities, schema synchronization, repositories and transactions are not supported by the Redis driver.
 
 ### ClickHouse
 

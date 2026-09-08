@@ -1,13 +1,12 @@
 {
   "dependencies": {
     "@clickhouse/client": "^1.23.1",
-    "@talosjs/app-env": "workspace:^",
     "@talosjs/container": "workspace:^",
     "@talosjs/exception": "workspace:^",
     "@talosjs/http-status": "workspace:^",
     "@talosjs/utils": "workspace:^"
   },
-  "description": "Database layer with a decorator-based ORM for PostgreSQL, MySQL, SQLite and ClickHouse, plus Redis and Dragonfly clients",
+  "description": "Database layer with a decorator-based ORM for PostgreSQL, MySQL, SQLite and ClickHouse, plus a Bun-native Redis driver",
   "exports": {
     ".": {
       "import": {
@@ -33,6 +32,7 @@
     "orm",
     "postgres",
     "query-builder",
+    "redis",
     "repository",
     "sql",
     "sqlite",

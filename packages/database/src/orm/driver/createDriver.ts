@@ -4,15 +4,18 @@ import type { IDriver } from "./AbstractDriver";
 import { ClickHouseDriver } from "./ClickHouseDriver";
 import { MysqlDriver } from "./MysqlDriver";
 import { PostgresDriver } from "./PostgresDriver";
+import { RedisDriver } from "./RedisDriver";
 import { SqliteDriver } from "./SqliteDriver";
 
-/** The dialect matching `options.type`. */
+/** The database driver matching `options.type`. */
 export const createDriver = (options: DataSourceOptionsType): IDriver => {
   switch (options.type) {
     case "clickhouse":
       return new ClickHouseDriver(options);
     case "postgres":
       return new PostgresDriver(options);
+    case "redis":
+      return new RedisDriver(options);
     case "mysql":
     case "mariadb":
       return new MysqlDriver(options);

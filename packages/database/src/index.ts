@@ -1,6 +1,4 @@
-export { AbstractRedisDatabase } from "./AbstractRedisDatabase";
 export { DatabaseException } from "./DatabaseException";
-export { DragonflyDatabase } from "./DragonflyDatabase";
 export * from "./decorators";
 export { Brackets, type IWhereExpressionBuilder, NotBrackets, type WhereConditionInputType } from "./orm/Brackets";
 export { DataSource } from "./orm/DataSource";
@@ -19,6 +17,7 @@ export type { IDriver } from "./orm/driver/AbstractDriver";
 export { ClickHouseDriver } from "./orm/driver/ClickHouseDriver";
 export { MysqlDriver } from "./orm/driver/MysqlDriver";
 export { PostgresDriver } from "./orm/driver/PostgresDriver";
+export { RedisDriver } from "./orm/driver/RedisDriver";
 export { SqliteDriver } from "./orm/driver/SqliteDriver";
 export { EntityManager } from "./orm/EntityManager";
 export {
@@ -69,6 +68,5 @@ export { SoftDeleteQueryBuilder } from "./orm/query-builder/SoftDeleteQueryBuild
 export { UpdateQueryBuilder } from "./orm/query-builder/UpdateQueryBuilder";
 export { Repository } from "./orm/Repository";
 export { SchemaBuilder } from "./orm/SchemaBuilder";
-export { RedisDatabase } from "./RedisDatabase";
 export { SqlDatabase } from "./SqlDatabase";
 export * from "./types";

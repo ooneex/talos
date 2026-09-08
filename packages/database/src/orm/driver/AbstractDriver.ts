@@ -11,7 +11,7 @@ import type { ColumnMetadata } from "../EntityMetadata";
 import type { QueryRunner } from "../QueryRunner";
 import { isBooleanType, isDateTimeType, isDateType, isIntegerType, isJsonType, isNumericType } from "./columnTypes";
 
-/** What a dialect must answer for the builders, the schema tool and the hydration layer. */
+/** What a database driver exposes to the data source, builders, schema tool and hydration layer. */
 export interface IDriver {
   readonly type: DatabaseTypeType;
   readonly options: DataSourceOptionsType;
