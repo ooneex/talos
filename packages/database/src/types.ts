@@ -1,4 +1,5 @@
 import type { ClickHouseClient, ClickHouseClientConfigOptions, ClickHouseSettings } from "@clickhouse/client";
+import type { Client as LibsqlClient, Config as LibsqlConfig } from "@libsql/client";
 import type { RedisClient, SQL, TLSOptions } from "bun";
 import type { MongoClient, MongoClientOptions } from "mongodb";
 import type { FindOperator } from "./orm/FindOperator";
@@ -79,6 +80,7 @@ export type DatabaseTypeType =
   | "clickhouse"
   | "redis"
   | "mongodb"
+  | "turso"
   | "cloudflare";
 
 export type CloudflareValueType = string | number | boolean | null | ArrayBuffer;
@@ -101,7 +103,13 @@ export interface ICloudflareDatabase {
   prepare: (query: string) => ICloudflarePreparedStatement;
 }
 
-export type DatabaseClientType = SQL | ClickHouseClient | RedisClient | MongoClient | ICloudflareDatabase;
+export type DatabaseClientType =
+  | SQL
+  | ClickHouseClient
+  | RedisClient
+  | MongoClient
+  | LibsqlClient
+  | ICloudflareDatabase;
 
 export type TransactionIsolationLevelType = "READ UNCOMMITTED" | "READ COMMITTED" | "REPEATABLE READ" | "SERIALIZABLE";
 
@@ -548,6 +556,22 @@ export type MongoDataSourceOptionsType = BaseDataSourceOptionsType & {
   client?: MongoClient;
 };
 
+export type TursoDataSourceOptionsType = BaseDataSourceOptionsType & {
+  type: "turso";
+  /** Remote libSQL URL, local `file:` URL, or `:memory:`. */
+  url: string;
+  authToken?: string;
+  syncUrl?: string;
+  syncInterval?: number;
+  concurrency?: number;
+  timeout?: number;
+  intMode?: LibsqlConfig["intMode"];
+  /** Remaining options forwarded to `@libsql/client`. */
+  extra?: Omit<LibsqlConfig, "url" | "authToken" | "syncUrl" | "syncInterval" | "concurrency" | "timeout" | "intMode">;
+  /** Bring your own libSQL client — the data source then neither creates nor closes it. */
+  client?: LibsqlClient;
+};
+
 export type CloudflareDataSourceOptionsType = BaseDataSourceOptionsType & {
   type: "cloudflare";
   /** Cloudflare Worker database binding, such as `env.DB`. */
@@ -561,6 +585,7 @@ export type DataSourceOptionsType =
   | ClickHouseDataSourceOptionsType
   | RedisDataSourceOptionsType
   | MongoDataSourceOptionsType
+  | TursoDataSourceOptionsType
   | CloudflareDataSourceOptionsType;
 
 export type DataSourceClientType<Options extends DataSourceOptionsType> =
@@ -570,9 +595,11 @@ export type DataSourceClientType<Options extends DataSourceOptionsType> =
       ? RedisClient
       : Options extends MongoDataSourceOptionsType
         ? MongoClient
-        : Options extends CloudflareDataSourceOptionsType
-          ? ICloudflareDatabase
-          : SQL;
+        : Options extends TursoDataSourceOptionsType
+          ? LibsqlClient
+          : Options extends CloudflareDataSourceOptionsType
+            ? ICloudflareDatabase
+            : SQL;
 
 // ---------------------------------------------------------------------------
 // ORM — find options

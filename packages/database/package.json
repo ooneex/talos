@@ -1,13 +1,14 @@
 {
   "dependencies": {
     "@clickhouse/client": "^1.23.1",
+    "@libsql/client": "^0.18.0",
     "@talosjs/container": "workspace:^",
     "@talosjs/exception": "workspace:^",
     "@talosjs/http-status": "workspace:^",
     "@talosjs/utils": "workspace:^",
     "mongodb": "^7.6.0"
   },
-  "description": "Database layer with a decorator-based ORM for PostgreSQL, MySQL, SQLite, Cloudflare and ClickHouse, plus Redis and MongoDB drivers",
+  "description": "Database layer with a decorator-based ORM for PostgreSQL, MySQL, SQLite, Turso, Cloudflare and ClickHouse, plus Redis and MongoDB drivers",
   "exports": {
     ".": {
       "import": {
@@ -40,6 +41,7 @@
     "sql",
     "sqlite",
     "talos",
+    "turso",
     "typescript"
   ],
   "license": "MIT",

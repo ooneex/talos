@@ -1,5 +1,6 @@
-export { DatabaseException } from "./DatabaseException";
+export type { Client as TursoClient } from "@libsql/client";
 export type { MongoClient } from "mongodb";
+export { DatabaseException } from "./DatabaseException";
 export * from "./decorators";
 export { Brackets, type IWhereExpressionBuilder, NotBrackets, type WhereConditionInputType } from "./orm/Brackets";
 export { DataSource } from "./orm/DataSource";
@@ -22,6 +23,7 @@ export { MysqlDriver } from "./orm/driver/MysqlDriver";
 export { PostgresDriver } from "./orm/driver/PostgresDriver";
 export { RedisDriver } from "./orm/driver/RedisDriver";
 export { SqliteDriver } from "./orm/driver/SqliteDriver";
+export { TursoDriver } from "./orm/driver/TursoDriver";
 export { EntityManager } from "./orm/EntityManager";
 export {
   ColumnMetadata,

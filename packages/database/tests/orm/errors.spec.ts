@@ -141,6 +141,7 @@ describe("orm errors", () => {
     expect(error.message).toContain('"oracle"');
     expect(error.message).toContain("postgres, mysql, mariadb, sqlite");
     expect(error.message).toContain("redis, mongodb, cloudflare");
+    expect(error.message).toContain("sqlite, turso, clickhouse");
     expect(error.data).toEqual({ driverType: "oracle" });
   });
 

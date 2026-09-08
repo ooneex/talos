@@ -1,7 +1,7 @@
 import type { DataSource } from "./orm/DataSource";
 import type { EntityManager } from "./orm/EntityManager";
 import type { Repository } from "./orm/Repository";
-import type { EntityTargetType, ISqlDatabase, ObjectLiteralType } from "./types";
+import type { DataSourceOptionsType, EntityTargetType, ISqlDatabase, ObjectLiteralType } from "./types";
 
 /**
  * A lazily initialised SQL data source behind the `IDatabase` contract.
@@ -22,10 +22,12 @@ import type { EntityTargetType, ISqlDatabase, ObjectLiteralType } from "./types"
  *   }
  * }
  */
-export abstract class SqlDatabase implements ISqlDatabase {
-  protected source: DataSource | undefined;
+export abstract class SqlDatabase<Options extends DataSourceOptionsType = DataSourceOptionsType>
+  implements ISqlDatabase
+{
+  protected source: DataSource<Options> | undefined;
 
-  public abstract getSource(database?: string): DataSource;
+  public abstract getSource(database?: string): DataSource<Options>;
 
   /** The repository of `entity`, connecting the data source first when needed. */
   public async open<Entity extends ObjectLiteralType>(

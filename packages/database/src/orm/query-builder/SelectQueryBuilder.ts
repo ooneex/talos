@@ -1105,7 +1105,7 @@ export class SelectQueryBuilder<Entity extends ObjectLiteralType> extends QueryB
   private createLockExpression(): string {
     const mode = this.expressionMap.lockMode;
 
-    if (!mode || this.driver.type === "sqlite") {
+    if (!mode || this.driver.type === "sqlite" || this.driver.type === "turso") {
       return "";
     }
 

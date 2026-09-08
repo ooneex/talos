@@ -390,7 +390,9 @@ export class InsertQueryBuilder<Entity extends ObjectLiteralType> extends QueryB
     if (increment && lastInsertRowid !== null && this.expressionMap.updateEntity) {
       const missing = valueSets.filter((valueSet) => increment.getEntityValue(valueSet) === undefined);
       // MySQL reports the first id of a multi-row insert, SQLite the last one.
-      let next = Number(lastInsertRowid) - (this.driver.type === "sqlite" ? missing.length - 1 : 0);
+      let next =
+        Number(lastInsertRowid) -
+        (this.driver.type === "sqlite" || this.driver.type === "turso" ? missing.length - 1 : 0);
 
       for (const valueSet of missing) {
         increment.setEntityValue(valueSet, next);

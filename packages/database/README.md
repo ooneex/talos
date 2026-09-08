@@ -1,6 +1,6 @@
 # @talosjs/database
 
-Database layer with a decorator-based ORM for PostgreSQL, MySQL, SQLite, Cloudflare and ClickHouse, plus Redis and MongoDB drivers. PostgreSQL, MySQL and SQLite use Bun's native `SQL` client; Cloudflare uses the Worker binding, ClickHouse uses `@clickhouse/client`, and MongoDB uses the official `mongodb` client.
+Database layer with a decorator-based ORM for PostgreSQL, MySQL, SQLite, Turso, Cloudflare and ClickHouse, plus Redis and MongoDB drivers. PostgreSQL, MySQL and SQLite use Bun's native `SQL` client; Turso uses `@libsql/client`, Cloudflare uses the Worker binding, ClickHouse uses `@clickhouse/client`, and MongoDB uses the official `mongodb` client.
 
 ## Installation
 
@@ -97,6 +97,7 @@ await dataSource.transaction(async (manager) => {
 | `postgres` | Bun `SQL` (PostgreSQL adapter) | `RETURNING`, `ILIKE`, arrays, `jsonb`, schemas, `gen_random_uuid()` |
 | `mysql` | Bun `SQL` (MySQL adapter) | `ON DUPLICATE KEY UPDATE`, `LAST_INSERT_ID()` reloads, backtick quoting |
 | `sqlite` | Bun `SQL` (SQLite adapter) | file or `:memory:`, foreign keys on by default, WAL and busy timeout options |
+| `turso` | [`@libsql/client`](https://docs.turso.tech/sdk/ts/reference) | Remote Turso, local files and embedded replicas with the SQLite ORM dialect |
 | `cloudflare` | `CloudflareDriver` with a Worker database binding | SQLite dialect, prepared statements, schema synchronization and repositories |
 | `clickhouse` | [`@clickhouse/client`](https://clickhouse.com/docs/integrations/language-clients/js) | HTTP(S), `JSONEachRow`, typed query parameters, `MergeTree` synchronization |
 | `redis` | Bun `RedisClient` | Native commands, TLS, reconnects and auto-pipelining; also speaks to Valkey and Dragonfly |
@@ -147,6 +148,26 @@ await documents.destroy();
 ```
 
 The URL defaults to `mongodb://127.0.0.1:27017`. `poolSize` maps to `maxPoolSize`, `connectTimeoutMS` is forwarded, and remaining official client settings go in `extra`. `dropDatabase()` enumerates and drops collections. SQL repositories, schema synchronization and the SQL transaction API are not supported by the MongoDB driver; use the native client for document CRUD, indexes and sessions.
+
+### Turso
+
+Turso uses the production-ready `@libsql/client` integration recommended for ORMs. It shares the SQLite dialect, so entities, repositories, query builders and schema synchronization work with remote Turso databases, local files and in-memory databases.
+
+```typescript
+const turso = new DataSource({
+  type: "turso",
+  url: "libsql://app-organization.turso.io",
+  authToken: process.env.TURSO_AUTH_TOKEN,
+  entities: [User],
+  synchronize: false,
+});
+
+await turso.initialize();
+const users = await turso.getRepository(User).find();
+await turso.destroy();
+```
+
+`syncUrl`, `syncInterval`, `concurrency`, `timeout` and `intMode` map directly to the libSQL client; remaining settings go in `extra`. Talos callback and `QueryRunner` transactions are rejected because they require one reserved Bun SQL connection. Use `turso.client.batch()` or `turso.client.transaction()` when atomic Turso operations are needed.
 
 ### Cloudflare
 

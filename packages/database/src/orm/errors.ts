@@ -137,7 +137,7 @@ export class MissingPrimaryColumnError extends DatabaseException {
 export class MissingDriverError extends DatabaseException {
   public constructor(driverType: string) {
     super(
-      `Wrong driver: "${driverType}" given. Supported drivers are: postgres, mysql, mariadb, sqlite, clickhouse, redis, mongodb, cloudflare.`,
+      `Wrong driver: "${driverType}" given. Supported drivers are: postgres, mysql, mariadb, sqlite, turso, clickhouse, redis, mongodb, cloudflare.`,
       "MISSING_DRIVER",
       {
         driverType,

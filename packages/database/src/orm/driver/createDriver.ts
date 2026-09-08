@@ -8,6 +8,7 @@ import { MysqlDriver } from "./MysqlDriver";
 import { PostgresDriver } from "./PostgresDriver";
 import { RedisDriver } from "./RedisDriver";
 import { SqliteDriver } from "./SqliteDriver";
+import { TursoDriver } from "./TursoDriver";
 
 /** The database driver matching `options.type`. */
 export const createDriver = (options: DataSourceOptionsType): IDriver => {
@@ -22,6 +23,8 @@ export const createDriver = (options: DataSourceOptionsType): IDriver => {
       return new RedisDriver(options);
     case "mongodb":
       return new MongoDriver(options);
+    case "turso":
+      return new TursoDriver(options);
     case "mysql":
     case "mariadb":
       return new MysqlDriver(options);

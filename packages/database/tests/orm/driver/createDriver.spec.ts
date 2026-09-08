@@ -8,6 +8,7 @@ import { MysqlDriver } from "../../../src/orm/driver/MysqlDriver";
 import { PostgresDriver } from "../../../src/orm/driver/PostgresDriver";
 import { RedisDriver } from "../../../src/orm/driver/RedisDriver";
 import { SqliteDriver } from "../../../src/orm/driver/SqliteDriver";
+import { TursoDriver } from "../../../src/orm/driver/TursoDriver";
 import { MissingDriverError } from "../../../src/orm/errors";
 
 describe("createDriver", () => {
@@ -22,6 +23,7 @@ describe("createDriver", () => {
     expect(createDriver({ type: "cloudflare", client: {} as ICloudflareDatabase })).toBeInstanceOf(CloudflareDriver);
     expect(createDriver({ type: "redis" })).toBeInstanceOf(RedisDriver);
     expect(createDriver({ type: "mongodb" })).toBeInstanceOf(MongoDriver);
+    expect(createDriver({ type: "turso", url: ":memory:" })).toBeInstanceOf(TursoDriver);
     expect(createDriver(options)).toBeInstanceOf(SqliteDriver);
     expect(createDriver(options).options).toBe(options);
   });

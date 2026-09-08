@@ -20,7 +20,9 @@ export const createDialectDataSource = (type: Exclude<DatabaseTypeType, "cloudfl
   const dataSource =
     type === "sqlite"
       ? new DataSource({ type, database: ":memory:", entities: fixtureEntities })
-      : new DataSource({ type, entities: fixtureEntities });
+      : type === "turso"
+        ? new DataSource({ type, url: ":memory:", entities: fixtureEntities })
+        : new DataSource({ type, entities: fixtureEntities });
 
   dataSource.entityMetadatas = buildFixtureMetadatas();
 
