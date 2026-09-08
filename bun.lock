@@ -221,7 +221,6 @@
       "version": "1.2.3",
       "dependencies": {
         "@clickhouse/client": "^1.23.1",
-        "@talosjs/app-env": "workspace:^",
         "@talosjs/container": "workspace:^",
         "@talosjs/exception": "workspace:^",
         "@talosjs/http-status": "workspace:^",
