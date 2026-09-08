@@ -45,6 +45,14 @@ fn database_create_defaults_are_empty() {
 }
 
 #[test]
+fn database_create_parses_clickhouse_type() {
+    let cli = TestCli::try_parse_from(["talos", "--type", "clickhouse"])
+        .expect("clickhouse should be a valid database type");
+
+    assert_eq!(cli.args.r#type, Some(DatabaseType::Clickhouse));
+}
+
+#[test]
 fn database_create_rejects_unknown_flag() {
     assert!(TestCli::try_parse_from(["talos", "--definitely-not-a-flag"]).is_err());
 }

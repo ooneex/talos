@@ -112,6 +112,10 @@ const TEMPLATES: &[(&str, &str)] = &[
         "// {{NAME}}Controller in {{MODULE}}\n",
     ),
     (
+        "database.clickhouse.txt",
+        "export class {{NAME}}Database {} // clickhouse\n",
+    ),
+    (
         "database.pg.txt",
         "export class {{NAME}}Database {} // pg\n",
     ),
@@ -410,6 +414,16 @@ fn every_generator_writes_the_source_and_the_spec_its_template_describes() {
         r#override: false,
     });
     assert!(source(&root, "middlewares", "PresenceMiddleware.ts").contains("// socket"));
+
+    commands::database_create::run(&commands::database_create::DatabaseCreateArgs {
+        no_cache: false,
+        name: Some("analytics".to_string()),
+        module: None,
+        r#type: Some(commands::database_create::DatabaseType::Clickhouse),
+        r#override: false,
+        cwd: Some(root.to_string_lossy().to_string()),
+    });
+    assert!(source(&root, "databases", "AnalyticsDatabase.ts").contains("// clickhouse"));
 
     commands::database_create::run(&commands::database_create::DatabaseCreateArgs {
         no_cache: false,

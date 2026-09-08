@@ -11,12 +11,14 @@ pub enum DatabaseType {
     Postgres,
     Sqlite,
     Redis,
+    Clickhouse,
 }
 
 const DATABASE_TYPES: &[DatabaseType] = &[
     DatabaseType::Postgres,
     DatabaseType::Sqlite,
     DatabaseType::Redis,
+    DatabaseType::Clickhouse,
 ];
 
 impl DatabaseType {
@@ -25,6 +27,7 @@ impl DatabaseType {
             Self::Postgres => "postgres",
             Self::Sqlite => "sqlite",
             Self::Redis => "redis",
+            Self::Clickhouse => "clickhouse",
         }
     }
 }
@@ -44,7 +47,11 @@ pub struct DatabaseCreateArgs {
     #[arg(long)]
     pub module: Option<String>,
 
-    #[arg(long, value_enum, help = "Database type: postgres, sqlite or redis")]
+    #[arg(
+        long,
+        value_enum,
+        help = "Database type: postgres, sqlite, redis or clickhouse"
+    )]
     pub r#type: Option<DatabaseType>,
 
     #[arg(long, default_value_t = false)]
@@ -64,6 +71,7 @@ fn normalize_database_name(name: &str) -> String {
 
 fn template_files(db_type: DatabaseType) -> (&'static str, &'static str) {
     match db_type {
+        DatabaseType::Clickhouse => ("database.clickhouse.txt", "database.test.txt"),
         DatabaseType::Postgres => ("database.pg.txt", "database.test.txt"),
         DatabaseType::Redis => ("database.redis.txt", "database.redis.test.txt"),
         DatabaseType::Sqlite => ("database.sqlite.txt", "database.test.txt"),
