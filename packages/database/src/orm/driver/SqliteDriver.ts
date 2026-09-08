@@ -45,8 +45,8 @@ export const sqliteFilename = (database: string): string => {
   return stripped === "" || stripped === MEMORY ? MEMORY : stripped;
 };
 
-export class SqliteDriver extends AbstractDriver {
-  public readonly type: DatabaseTypeType = "sqlite";
+export abstract class AbstractSqliteDriver<Client extends DatabaseClientType> extends AbstractDriver {
+  public abstract override readonly type: DatabaseTypeType;
   public readonly supportsReturning = true;
   public readonly supportsIlike = false;
   public readonly supportsReservedConnections = false;
@@ -121,40 +121,8 @@ export class SqliteDriver extends AbstractDriver {
     return ["BEGIN"];
   }
 
-  public createClient(): SQL {
-    const options = this.options as SqliteDataSourceOptionsType;
-    const filename = sqliteFilename(options.database);
-
-    if (filename !== MEMORY) {
-      mkdirSync(dirname(filename), { recursive: true });
-    }
-
-    return new SQL({
-      adapter: "sqlite",
-      filename,
-      readonly: options.readonly ?? false,
-      create: true,
-      ...options.extra,
-    });
-  }
-
-  public async afterConnect(client: DatabaseClientType): Promise<void> {
-    const options = this.options as SqliteDataSourceOptionsType;
-    const busyTimeout = options.busyTimeout ?? options.timeout;
-    const sql = client as SQL;
-
-    if (options.foreignKeys !== false) {
-      await sql.unsafe("PRAGMA foreign_keys = ON");
-    }
-
-    if (options.enableWAL && sqliteFilename(options.database) !== MEMORY) {
-      await sql.unsafe("PRAGMA journal_mode = WAL");
-    }
-
-    if (busyTimeout !== undefined) {
-      await sql.unsafe(`PRAGMA busy_timeout = ${Math.max(0, Math.floor(busyTimeout))}`);
-    }
-  }
+  public abstract override createClient(): Client;
+  public abstract override afterConnect(client: DatabaseClientType): Promise<void>;
 
   public async listTables(runner: QueryRunner): Promise<string[]> {
     const result = await runner.query<{ name: string }>(
@@ -190,5 +158,44 @@ export class SqliteDriver extends AbstractDriver {
 
   protected override isDistinctFrom(left: string, right: string): string {
     return `${left} IS NOT ${right}`;
+  }
+}
+
+export class SqliteDriver extends AbstractSqliteDriver<SQL> {
+  public readonly type: DatabaseTypeType = "sqlite";
+
+  public createClient(): SQL {
+    const options = this.options as SqliteDataSourceOptionsType;
+    const filename = sqliteFilename(options.database);
+
+    if (filename !== MEMORY) {
+      mkdirSync(dirname(filename), { recursive: true });
+    }
+
+    return new SQL({
+      adapter: "sqlite",
+      filename,
+      readonly: options.readonly ?? false,
+      create: true,
+      ...options.extra,
+    });
+  }
+
+  public async afterConnect(client: DatabaseClientType): Promise<void> {
+    const options = this.options as SqliteDataSourceOptionsType;
+    const busyTimeout = options.busyTimeout ?? options.timeout;
+    const sql = client as SQL;
+
+    if (options.foreignKeys !== false) {
+      await sql.unsafe("PRAGMA foreign_keys = ON");
+    }
+
+    if (options.enableWAL && sqliteFilename(options.database) !== MEMORY) {
+      await sql.unsafe("PRAGMA journal_mode = WAL");
+    }
+
+    if (busyTimeout !== undefined) {
+      await sql.unsafe(`PRAGMA busy_timeout = ${Math.max(0, Math.floor(busyTimeout))}`);
+    }
   }
 }

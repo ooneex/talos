@@ -70,9 +70,29 @@ type QueryDeepPartialEntityInnerType<Entity> = {
           : QueryDeepPartialEntityInnerType<Entity[P]>);
 };
 
-export type DatabaseTypeType = "postgres" | "mysql" | "mariadb" | "sqlite" | "clickhouse" | "redis";
+export type DatabaseTypeType = "postgres" | "mysql" | "mariadb" | "sqlite" | "clickhouse" | "redis" | "cloudflare";
 
-export type DatabaseClientType = SQL | ClickHouseClient | RedisClient;
+export type CloudflareValueType = string | number | boolean | null | ArrayBuffer;
+
+export type CloudflareResultType<Row = ObjectLiteralType> = {
+  success: boolean;
+  results?: Row[] | null;
+  meta?: {
+    changes?: number;
+    last_row_id?: number;
+  };
+};
+
+export interface ICloudflarePreparedStatement {
+  bind: (...values: CloudflareValueType[]) => ICloudflarePreparedStatement;
+  run: <Row = ObjectLiteralType>() => Promise<CloudflareResultType<Row>>;
+}
+
+export interface ICloudflareDatabase {
+  prepare: (query: string) => ICloudflarePreparedStatement;
+}
+
+export type DatabaseClientType = SQL | ClickHouseClient | RedisClient | ICloudflareDatabase;
 
 export type TransactionIsolationLevelType = "READ UNCOMMITTED" | "READ COMMITTED" | "REPEATABLE READ" | "SERIALIZABLE";
 
@@ -507,19 +527,28 @@ export type RedisDataSourceOptionsType = BaseDataSourceOptionsType & {
   client?: RedisClient;
 };
 
+export type CloudflareDataSourceOptionsType = BaseDataSourceOptionsType & {
+  type: "cloudflare";
+  /** Cloudflare Worker database binding, such as `env.DB`. */
+  client: ICloudflareDatabase;
+};
+
 export type DataSourceOptionsType =
   | PostgresDataSourceOptionsType
   | MysqlDataSourceOptionsType
   | SqliteDataSourceOptionsType
   | ClickHouseDataSourceOptionsType
-  | RedisDataSourceOptionsType;
+  | RedisDataSourceOptionsType
+  | CloudflareDataSourceOptionsType;
 
 export type DataSourceClientType<Options extends DataSourceOptionsType> =
   Options extends ClickHouseDataSourceOptionsType
     ? ClickHouseClient
     : Options extends RedisDataSourceOptionsType
       ? RedisClient
-      : SQL;
+      : Options extends CloudflareDataSourceOptionsType
+        ? ICloudflareDatabase
+        : SQL;
 
 // ---------------------------------------------------------------------------
 // ORM — find options

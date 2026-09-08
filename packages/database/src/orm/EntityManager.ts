@@ -764,7 +764,7 @@ export class EntityManager {
   }
 
   private async runInTransaction<T>(useTransaction: boolean, work: (manager: EntityManager) => Promise<T>): Promise<T> {
-    if (!useTransaction || this.queryRunner?.isTransactionActive) {
+    if (!useTransaction || !this.connection.driver.supportsTransactions || this.queryRunner?.isTransactionActive) {
       return work(this);
     }
 

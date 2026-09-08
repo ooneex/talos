@@ -6,7 +6,7 @@
     "@talosjs/http-status": "workspace:^",
     "@talosjs/utils": "workspace:^"
   },
-  "description": "Database layer with a decorator-based ORM for PostgreSQL, MySQL, SQLite and ClickHouse, plus a Bun-native Redis driver",
+  "description": "Database layer with a decorator-based ORM for PostgreSQL, MySQL, SQLite, Cloudflare and ClickHouse, plus a Bun-native Redis driver",
   "exports": {
     ".": {
       "import": {
@@ -25,6 +25,7 @@
   "keywords": [
     "bun",
     "clickhouse",
+    "cloudflare",
     "database",
     "db",
     "entity",

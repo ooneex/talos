@@ -346,7 +346,7 @@ export abstract class AbstractDriver implements IDriver {
   }
 
   public async disconnect(client: DatabaseClientType): Promise<void> {
-    await client.close();
+    await (client as SQL).close();
   }
 
   public async query<Row = ObjectLiteralType>(

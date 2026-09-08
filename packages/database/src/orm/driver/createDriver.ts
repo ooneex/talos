@@ -2,6 +2,7 @@ import type { DataSourceOptionsType } from "../../types";
 import { MissingDriverError } from "../errors";
 import type { IDriver } from "./AbstractDriver";
 import { ClickHouseDriver } from "./ClickHouseDriver";
+import { CloudflareDriver } from "./CloudflareDriver";
 import { MysqlDriver } from "./MysqlDriver";
 import { PostgresDriver } from "./PostgresDriver";
 import { RedisDriver } from "./RedisDriver";
@@ -12,6 +13,8 @@ export const createDriver = (options: DataSourceOptionsType): IDriver => {
   switch (options.type) {
     case "clickhouse":
       return new ClickHouseDriver(options);
+    case "cloudflare":
+      return new CloudflareDriver(options);
     case "postgres":
       return new PostgresDriver(options);
     case "redis":

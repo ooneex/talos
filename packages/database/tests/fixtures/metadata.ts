@@ -16,7 +16,7 @@ import { fixtureEntities } from "./entities";
  * A data source of the given dialect that is never connected: its metadata is built by hand so that
  * query builders can render SQL for PostgreSQL or MySQL without a server.
  */
-export const createDialectDataSource = (type: DatabaseTypeType): DataSource => {
+export const createDialectDataSource = (type: Exclude<DatabaseTypeType, "cloudflare">): DataSource => {
   const dataSource =
     type === "sqlite"
       ? new DataSource({ type, database: ":memory:", entities: fixtureEntities })
