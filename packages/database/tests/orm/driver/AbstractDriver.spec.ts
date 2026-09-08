@@ -179,6 +179,15 @@ describe("AbstractDriver", () => {
       expect(sqlite.hydrateValue("not-an-array", fakeColumn({ type: "text", array: true }))).toBe("not-an-array");
       expect(sqlite.hydrateValue(null, fakeColumn({ type: "text", array: true }))).toBeNull();
     });
+
+    test("should turn the typed arrays Bun decodes PostgreSQL integer arrays into plain arrays", () => {
+      const hydrated = postgres.hydrateValue(new Int32Array([7, 42]), fakeColumn({ type: "int", array: true }));
+
+      expect(Array.isArray(hydrated)).toBe(true);
+      expect(hydrated).toEqual([7, 42]);
+      expect(postgres.hydrateValue(new Float64Array([1.5]), fakeColumn({ type: "float", array: true }))).toEqual([1.5]);
+      expect(postgres.hydrateValue(["a", "b"], fakeColumn({ type: "text", array: true }))).toEqual(["a", "b"]);
+    });
   });
 
   describe("normalizeDefault", () => {

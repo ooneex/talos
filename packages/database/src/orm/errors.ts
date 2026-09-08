@@ -62,24 +62,53 @@ export class RelationNotFoundError extends DatabaseException {
   }
 }
 
-/** The database rejected a query. `data.driverError` carries the Bun `SQLError`. */
+type DriverErrorShapeType = { code?: unknown; errno?: unknown; sqlState?: unknown };
+
+const SQLSTATE_PATTERN = /^[0-9A-Z]{5}$/;
+
+/** The driver's own code: `ERR_POSTGRES_SERVER_ERROR`, `ER_DUP_ENTRY`, `SQLITE_CONSTRAINT_UNIQUE`, … */
+const driverCodeOf = (driverError: unknown): string | undefined => {
+  const code = (driverError as DriverErrorShapeType | null)?.code;
+
+  return typeof code === "string" ? code : undefined;
+};
+
+/** The five-character SQLSTATE: Bun reports it as `errno` on PostgreSQL and `sqlState` on MySQL; SQLite has none. */
+const sqlStateOf = (driverError: unknown): string | undefined => {
+  if (!driverError || typeof driverError !== "object") {
+    return undefined;
+  }
+
+  const { errno, sqlState } = driverError as DriverErrorShapeType;
+  const candidate = typeof sqlState === "string" ? sqlState : errno;
+
+  return typeof candidate === "string" && SQLSTATE_PATTERN.test(candidate) ? candidate : undefined;
+};
+
+/**
+ * The database rejected a query. `driverError` carries the Bun `SQLError`; `code` is the driver's own
+ * error code and `sqlState` the standard SQLSTATE class when the database reports one (`23505` for a
+ * unique violation on PostgreSQL, `23000` on MySQL).
+ */
 export class QueryFailedError extends DatabaseException {
   public readonly query: string;
   public readonly parameters: unknown[];
   public readonly driverError: unknown;
+  public readonly code: string | undefined;
+  public readonly sqlState: string | undefined;
 
   public constructor(query: string, parameters: unknown[], driverError: unknown) {
     const detail = driverError instanceof Error ? driverError.message : String(driverError);
-    super(`Query failed: ${detail}`, "QUERY_FAILED", {
-      query,
-      parameters,
-      driverError,
-      code: (driverError as { code?: string } | null)?.code,
-    });
+    const code = driverCodeOf(driverError);
+    const sqlState = sqlStateOf(driverError);
+
+    super(`Query failed: ${detail}`, "QUERY_FAILED", { query, parameters, driverError, code, sqlState });
     this.name = "QueryFailedError";
     this.query = query;
     this.parameters = parameters;
     this.driverError = driverError;
+    this.code = code;
+    this.sqlState = sqlState;
   }
 }
 

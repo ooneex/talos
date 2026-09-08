@@ -87,7 +87,35 @@ describe("orm errors", () => {
     const error = new QueryFailedError("SELECT 1", [], "boom");
 
     expect(error.message).toBe("Query failed: boom");
-    expect(error.data).toMatchObject({ code: undefined });
+    expect(error.code).toBeUndefined();
+    expect(error.sqlState).toBeUndefined();
+    expect(error.data).toMatchObject({ code: undefined, sqlState: undefined });
+  });
+
+  test("QueryFailedError should expose the SQLSTATE the way each Bun adapter reports it", () => {
+    const postgres = new QueryFailedError(
+      "INSERT",
+      [],
+      Object.assign(new Error("duplicate key"), { code: "ERR_POSTGRES_SERVER_ERROR", errno: "23505" }),
+    );
+    const mysql = new QueryFailedError(
+      "INSERT",
+      [],
+      Object.assign(new Error("Duplicate entry"), { code: "ER_DUP_ENTRY", errno: 1062, sqlState: "23000" }),
+    );
+    const sqlite = new QueryFailedError(
+      "INSERT",
+      [],
+      Object.assign(new Error("UNIQUE constraint failed"), { code: "SQLITE_CONSTRAINT_UNIQUE", errno: 2067 }),
+    );
+
+    expect(postgres.code).toBe("ERR_POSTGRES_SERVER_ERROR");
+    expect(postgres.sqlState).toBe("23505");
+    expect(mysql.code).toBe("ER_DUP_ENTRY");
+    expect(mysql.sqlState).toBe("23000");
+    expect(sqlite.code).toBe("SQLITE_CONSTRAINT_UNIQUE");
+    expect(sqlite.sqlState).toBeUndefined();
+    expect(postgres.data).toMatchObject({ code: "ERR_POSTGRES_SERVER_ERROR", sqlState: "23505" });
   });
 
   test("entity shape errors should name the entity", () => {

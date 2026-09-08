@@ -97,6 +97,22 @@ await dataSource.transaction(async (manager) => {
 | `mysql` | Bun `SQL` (MySQL adapter) | `ON DUPLICATE KEY UPDATE`, `LAST_INSERT_ID()` reloads, backtick quoting |
 | `sqlite` | Bun `SQL` (SQLite adapter) | file or `:memory:`, foreign keys on by default, WAL and busy timeout options |
 
+### The Bun `SQL` client
+
+Every driver is an adapter of [Bun's built-in `SQL` client](https://bun.com/docs/runtime/sql): the data source calls `new SQL({ adapter })`, runs statements through `sql.unsafe(text, parameters)`, reserves a pooled connection with `sql.reserve()` for each transaction (SQLite serialises them on its single connection) and closes the pool with `sql.close()` on `destroy()`. The pool is yours to use directly:
+
+```typescript
+const sql = dataSource.client; // Bun.SQL, available once initialize() ran
+
+const [{ total }] = await sql`SELECT COUNT(*)::int AS total FROM ${sql("users")} WHERE age > ${18}`;
+
+await sql.begin(async (tx) => {
+  await tx`UPDATE accounts SET balance = balance - ${100} WHERE id = ${1}`;
+});
+```
+
+Pass an existing client through `options.client` when the pool is shared with other code; the data source then neither opens nor closes it. Pool size, timeouts, TLS, `prepare` and `bigint` map onto the Bun options (`poolSize`, `connectTimeoutMS`, `ssl`, `prepare`, `bigint`); anything else goes through `extra`. `QueryFailedError` keeps the Bun `SQLError` in `driverError` and exposes `code` (the adapter's own code) and `sqlState` (`23505` for a unique violation on PostgreSQL, `23000` on MySQL).
+
 ### Coming from TypeORM
 
 The decorators, `DataSource`, `EntityManager`, `Repository`, find options and query-builder APIs follow TypeORM's names, so most call sites port unchanged. Differences worth knowing:

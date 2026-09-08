@@ -326,7 +326,12 @@ export abstract class AbstractDriver implements IDriver {
   }
 
   protected hydrateArray(value: unknown, column: ColumnMetadata): unknown {
-    const items = typeof value === "string" ? parseJson(value) : value;
+    let items = typeof value === "string" ? parseJson(value) : value;
+
+    // Bun decodes PostgreSQL integer arrays into typed arrays; entities hold plain arrays.
+    if (ArrayBuffer.isView(items) && !(items instanceof DataView)) {
+      items = Array.from(items as unknown as ArrayLike<unknown>);
+    }
 
     if (!Array.isArray(items)) {
       return items;
