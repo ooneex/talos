@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { Column, Entity, PrimaryColumn, PrimaryGeneratedColumn } from "../../src";
+import { ClickHouseDriver } from "../../src/orm/driver/ClickHouseDriver";
 import { MysqlDriver } from "../../src/orm/driver/MysqlDriver";
 import { PostgresDriver } from "../../src/orm/driver/PostgresDriver";
 import { SqliteDriver } from "../../src/orm/driver/SqliteDriver";
@@ -41,7 +42,7 @@ const anonymize = (statement: string | undefined): string | undefined =>
   statement?.replace(/(PK|FK|UQ|IDX)_[0-9a-f]{20,}/g, "$1_x");
 
 const statementsFor = (
-  driver: SqliteDriver | PostgresDriver | MysqlDriver,
+  driver: SqliteDriver | PostgresDriver | MysqlDriver | ClickHouseDriver,
   metadatas = buildFixtureMetadatas(),
 ): string[] =>
   new SchemaBuilder(driver, naming, metadatas).createStatements().map((statement) => anonymize(statement) ?? "");
@@ -108,6 +109,22 @@ describe("SchemaBuilder", () => {
       "CREATE TABLE IF NOT EXISTS `posts` (`id` int AUTO_INCREMENT NOT NULL, `title` varchar(255) NOT NULL, `views` int NOT NULL DEFAULT 0, `author_id` varchar(20) NULL, CONSTRAINT `PK_x` PRIMARY KEY (`id`), CONSTRAINT `FK_x` FOREIGN KEY (`author_id`) REFERENCES `users` (`id`) ON DELETE CASCADE)",
     );
     expect(indexes).toEqual(["CREATE INDEX `IDX_x` ON `users` (`name`, `age`)"]);
+  });
+
+  test("should render MergeTree tables without unsupported relational constraints or indexes", () => {
+    const statements = statementsFor(new ClickHouseDriver({ type: "clickhouse" }));
+    const users = statements.find((statement) => statement.includes('"users" ('));
+    const posts = statements.find((statement) => statement.includes('"posts" ('));
+    const junction = statements.find((statement) => statement.includes('"post_tags" ('));
+
+    expect(statements.every((statement) => !statement.includes("CREATE INDEX"))).toBe(true);
+    expect(users).toContain('"id" String');
+    expect(users).toContain('"settings" Nullable(String)');
+    expect(users).not.toContain("CONSTRAINT");
+    expect(users).toEndWith('ENGINE = MergeTree ORDER BY ("id")');
+    expect(posts).toContain('"id" Int32');
+    expect(posts).toEndWith('ENGINE = MergeTree ORDER BY ("id")');
+    expect(junction).toEndWith('ENGINE = MergeTree ORDER BY ("postsId", "tagsId")');
   });
 
   test("should skip entities that opted out of synchronize and add enum checks, comments and unsigned", () => {

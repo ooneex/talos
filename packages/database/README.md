@@ -1,6 +1,6 @@
 # @talosjs/database
 
-Database layer on Bun's native `SQL` client — a decorator-based ORM (entities, relations, repositories, query builders, transactions, schema synchronization) for PostgreSQL, MySQL and SQLite, plus Redis and Dragonfly clients. No TypeORM, no native addons: the only runtime is Bun.
+Database layer with a decorator-based ORM for PostgreSQL, MySQL, SQLite and ClickHouse, plus Redis and Dragonfly clients. PostgreSQL, MySQL and SQLite use Bun's native `SQL` client; ClickHouse uses the official `@clickhouse/client`.
 
 ## Installation
 
@@ -96,10 +96,39 @@ await dataSource.transaction(async (manager) => {
 | `postgres` | Bun `SQL` (PostgreSQL adapter) | `RETURNING`, `ILIKE`, arrays, `jsonb`, schemas, `gen_random_uuid()` |
 | `mysql` | Bun `SQL` (MySQL adapter) | `ON DUPLICATE KEY UPDATE`, `LAST_INSERT_ID()` reloads, backtick quoting |
 | `sqlite` | Bun `SQL` (SQLite adapter) | file or `:memory:`, foreign keys on by default, WAL and busy timeout options |
+| `clickhouse` | [`@clickhouse/client`](https://clickhouse.com/docs/integrations/language-clients/js) | HTTP(S), `JSONEachRow`, typed query parameters, `MergeTree` synchronization |
+
+### ClickHouse
+
+Pass the HTTP(S) endpoint and credentials to `DataSource`. Initialization uses an authenticated `SELECT 1` ping, and `destroy()` closes the official client when the data source created it.
+
+```typescript
+const analytics = new DataSource({
+  type: "clickhouse",
+  url: "https://cluster.example:8443",
+  username: "default",
+  password: "secret",
+  database: "analytics",
+  entities: [Event],
+});
+
+await analytics.initialize();
+
+const recent = await analytics.query<{ id: string; occurred_at: string }>(
+  "SELECT id, occurred_at FROM events WHERE occurred_at >= $1 ORDER BY occurred_at DESC LIMIT $2",
+  ["2026-01-01 00:00:00", 100],
+);
+```
+
+The driver translates positional `$1` placeholders into ClickHouse typed query parameters. `SELECT`, `SHOW`, `DESCRIBE` and `EXPLAIN` statements use `JSONEachRow`; other statements use `command()`. ORM updates and deletes run as synchronous `ALTER TABLE ... UPDATE/DELETE` mutations.
+
+With `synchronize: true`, tables use `MergeTree` and order by the entity's primary columns. ClickHouse does not enforce the ORM's foreign keys, unique constraints or regular relational indexes, so synchronization omits them. Transactions and upserts are rejected explicitly. Use UUID generated primary columns when the database should create IDs; ClickHouse has no auto-increment equivalent.
+
+Connection controls map as follows: `poolSize` to `max_open_connections`, `requestTimeoutMS` to `request_timeout`, and `clickhouseSettings` to `clickhouse_settings`. `compression` is passed through directly. Any other official client option can be supplied in `extra`.
 
 ### The Bun `SQL` client
 
-Every driver is an adapter of [Bun's built-in `SQL` client](https://bun.com/docs/runtime/sql): the data source calls `new SQL({ adapter })`, runs statements through `sql.unsafe(text, parameters)`, reserves a pooled connection with `sql.reserve()` for each transaction (SQLite serialises them on its single connection) and closes the pool with `sql.close()` on `destroy()`. The pool is yours to use directly:
+The PostgreSQL, MySQL and SQLite drivers adapt [Bun's built-in `SQL` client](https://bun.com/docs/runtime/sql): the data source calls `new SQL({ adapter })`, runs statements through `sql.unsafe(text, parameters)`, reserves a pooled connection with `sql.reserve()` for each transaction (SQLite serialises them on its single connection) and closes the pool with `sql.close()` on `destroy()`. The pool is yours to use directly:
 
 ```typescript
 const sql = dataSource.client; // Bun.SQL, available once initialize() ran
@@ -111,7 +140,7 @@ await sql.begin(async (tx) => {
 });
 ```
 
-Pass an existing client through `options.client` when the pool is shared with other code; the data source then neither opens nor closes it. Pool size, timeouts, TLS, `prepare` and `bigint` map onto the Bun options (`poolSize`, `connectTimeoutMS`, `ssl`, `prepare`, `bigint`); anything else goes through `extra`. `QueryFailedError` keeps the Bun `SQLError` in `driverError` and exposes `code` (the adapter's own code) and `sqlState` (`23505` for a unique violation on PostgreSQL, `23000` on MySQL).
+Pass an existing native client through `options.client` when it is shared with other code; the data source then neither opens nor closes it. For Bun SQL drivers, pool size, timeouts, TLS, `prepare` and `bigint` map onto the Bun options (`poolSize`, `connectTimeoutMS`, `ssl`, `prepare`, `bigint`); anything else goes through `extra`. `QueryFailedError` keeps the native driver error in `driverError` and exposes `code` and `sqlState` when the adapter reports them.
 
 ### Coming from TypeORM
 

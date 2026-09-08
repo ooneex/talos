@@ -73,7 +73,7 @@ describe("DataSource", () => {
       try {
         expect(result).toBe(dataSource);
         expect(dataSource.isInitialized).toBe(true);
-        expect(typeof dataSource.client.unsafe).toBe("function");
+        expect(typeof (dataSource.client as SQL).unsafe).toBe("function");
         expect(dataSource.entityMetadatas.map((metadata) => metadata.tableName).sort()).toEqual([
           "posts",
           "profiles",

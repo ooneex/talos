@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { DataSourceOptionsType } from "../../../src";
+import { ClickHouseDriver } from "../../../src/orm/driver/ClickHouseDriver";
 import { createDriver } from "../../../src/orm/driver/createDriver";
 import { MysqlDriver } from "../../../src/orm/driver/MysqlDriver";
 import { PostgresDriver } from "../../../src/orm/driver/PostgresDriver";
@@ -14,6 +15,7 @@ describe("createDriver", () => {
     expect(createDriver({ type: "mysql" })).toBeInstanceOf(MysqlDriver);
     expect(createDriver({ type: "mariadb" })).toBeInstanceOf(MysqlDriver);
     expect(createDriver({ type: "mariadb" }).type).toBe("mariadb");
+    expect(createDriver({ type: "clickhouse" })).toBeInstanceOf(ClickHouseDriver);
     expect(createDriver(options)).toBeInstanceOf(SqliteDriver);
     expect(createDriver(options).options).toBe(options);
   });

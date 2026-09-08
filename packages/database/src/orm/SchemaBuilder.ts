@@ -72,7 +72,7 @@ export class SchemaBuilder {
     const after: string[] = [];
     const dependsOn = new Set<string>();
 
-    if (!inlinePrimary) {
+    if (!inlinePrimary && this.driver.type !== "clickhouse") {
       const names = metadata.primaryColumns.map((column) => column.databaseName);
 
       definitions.push(
@@ -80,10 +80,12 @@ export class SchemaBuilder {
       );
     }
 
-    for (const unique of metadata.uniques) {
-      definitions.push(
-        `CONSTRAINT ${this.escape(unique.name)} UNIQUE (${unique.columns.map((column) => this.escape(column.databaseName)).join(", ")})`,
-      );
+    if (this.driver.supportsUniqueConstraints) {
+      for (const unique of metadata.uniques) {
+        definitions.push(
+          `CONSTRAINT ${this.escape(unique.name)} UNIQUE (${unique.columns.map((column) => this.escape(column.databaseName)).join(", ")})`,
+        );
+      }
     }
 
     for (const column of metadata.columns) {
@@ -94,41 +96,47 @@ export class SchemaBuilder {
       }
     }
 
-    for (const foreignKey of metadata.foreignKeys) {
-      if (foreignKey.referencedEntityMetadata !== metadata) {
-        dependsOn.add(foreignKey.referencedEntityMetadata.tableName);
-      }
-
-      definitions.push(this.foreignKeyDefinition(foreignKey));
-    }
-
-    for (const index of metadata.indices) {
-      if (index.synchronize) {
-        after.push(this.indexStatement(metadata, index.name, index.columns, index.isUnique, index.where));
-      }
-    }
-
-    // Foreign keys need an index to be looked up from the other side; MySQL adds one itself.
-    if (this.driver.type !== "mysql" && this.driver.type !== "mariadb") {
-      for (const relation of metadata.ownerRelations) {
-        if (relation.isOneToOneOwner) {
-          continue;
+    if (this.driver.supportsForeignKeys) {
+      for (const foreignKey of metadata.foreignKeys) {
+        if (foreignKey.referencedEntityMetadata !== metadata) {
+          dependsOn.add(foreignKey.referencedEntityMetadata.tableName);
         }
 
-        const names = relation.joinColumns.map((column) => column.databaseName);
-        const indexName = this.namingStrategy.indexName(metadata.tableName, names);
+        definitions.push(this.foreignKeyDefinition(foreignKey));
+      }
+    }
 
-        if (!metadata.indices.some((index) => index.name === indexName)) {
-          after.push(this.indexStatement(metadata, indexName, relation.joinColumns, false));
+    if (this.driver.supportsIndexes) {
+      for (const index of metadata.indices) {
+        if (index.synchronize) {
+          after.push(this.indexStatement(metadata, index.name, index.columns, index.isUnique, index.where));
+        }
+      }
+
+      // Foreign keys need an index to be looked up from the other side; MySQL adds one itself.
+      if (this.driver.type !== "mysql" && this.driver.type !== "mariadb") {
+        for (const relation of metadata.ownerRelations) {
+          if (relation.isOneToOneOwner) {
+            continue;
+          }
+
+          const names = relation.joinColumns.map((column) => column.databaseName);
+          const indexName = this.namingStrategy.indexName(metadata.tableName, names);
+
+          if (!metadata.indices.some((index) => index.name === indexName)) {
+            after.push(this.indexStatement(metadata, indexName, relation.joinColumns, false));
+          }
         }
       }
     }
+
+    const suffix = this.driver.tableSuffix(metadata.primaryColumns.map((column) => column.databaseName));
 
     return {
       name: metadata.tableName,
       path,
       dependsOn,
-      create: `CREATE TABLE IF NOT EXISTS ${path} (${definitions.join(", ")})`,
+      create: `CREATE TABLE IF NOT EXISTS ${path} (${definitions.join(", ")})${suffix ? ` ${suffix}` : ""}`,
       after,
     };
   }
@@ -143,14 +151,18 @@ export class SchemaBuilder {
     const inverse = relation.inverseEntityMetadata;
     const path = this.driver.escapePath(junction.tableName, junction.schema);
     const allColumns = [...junction.joinColumns, ...junction.inverseJoinColumns];
-    const definitions = allColumns.map(
-      (column) => `${this.escape(column.databaseName)} ${this.driver.normalizeType(column.referencedColumn)} NOT NULL`,
-    );
+    const definitions = allColumns.map((column) => {
+      const nullableClause = this.driver.type === "clickhouse" ? "" : " NOT NULL";
+
+      return `${this.escape(column.databaseName)} ${this.driver.normalizeType(column.referencedColumn)}${nullableClause}`;
+    });
     const names = allColumns.map((column) => column.databaseName);
 
-    definitions.push(
-      `CONSTRAINT ${this.escape(this.namingStrategy.primaryKeyName(junction.tableName, names))} PRIMARY KEY (${names.map((name) => this.escape(name)).join(", ")})`,
-    );
+    if (this.driver.type !== "clickhouse") {
+      definitions.push(
+        `CONSTRAINT ${this.escape(this.namingStrategy.primaryKeyName(junction.tableName, names))} PRIMARY KEY (${names.map((name) => this.escape(name)).join(", ")})`,
+      );
+    }
 
     const sides: [EntityMetadata, typeof junction.joinColumns][] = [
       [metadata, junction.joinColumns],
@@ -168,22 +180,26 @@ export class SchemaBuilder {
         referencedNames,
       );
 
-      definitions.push(
-        `CONSTRAINT ${this.escape(constraintName)} FOREIGN KEY (${columnNames.map((name) => this.escape(name)).join(", ")}) REFERENCES ${this.driver.escapePath(target.tableName, target.schema)} (${referencedNames.map((name) => this.escape(name)).join(", ")}) ON DELETE CASCADE ON UPDATE CASCADE`,
-      );
+      if (this.driver.supportsForeignKeys) {
+        definitions.push(
+          `CONSTRAINT ${this.escape(constraintName)} FOREIGN KEY (${columnNames.map((name) => this.escape(name)).join(", ")}) REFERENCES ${this.driver.escapePath(target.tableName, target.schema)} (${referencedNames.map((name) => this.escape(name)).join(", ")}) ON DELETE CASCADE ON UPDATE CASCADE`,
+        );
+      }
 
-      if (this.driver.type !== "mysql" && this.driver.type !== "mariadb") {
+      if (this.driver.supportsIndexes && this.driver.type !== "mysql" && this.driver.type !== "mariadb") {
         after.push(
           `CREATE INDEX ${this.ifNotExists()}${this.escape(this.namingStrategy.indexName(junction.tableName, columnNames))} ON ${path} (${columnNames.map((name) => this.escape(name)).join(", ")})`,
         );
       }
     }
 
+    const suffix = this.driver.tableSuffix(allColumns.map((column) => column.databaseName));
+
     return {
       name: junction.tableName,
       path,
       dependsOn: new Set([metadata.tableName, inverse.tableName]),
-      create: `CREATE TABLE IF NOT EXISTS ${path} (${definitions.join(", ")})`,
+      create: `CREATE TABLE IF NOT EXISTS ${path} (${definitions.join(", ")})${suffix ? ` ${suffix}` : ""}`,
       after,
     };
   }
@@ -198,7 +214,7 @@ export class SchemaBuilder {
       parts.push("UNSIGNED");
     }
 
-    if (!this.driver.isInlinePrimaryKey(column)) {
+    if (!this.driver.isInlinePrimaryKey(column) && this.driver.type !== "clickhouse") {
       if (column.isPrimary || !column.isNullable) {
         parts.push("NOT NULL");
       } else if (column.isNullable) {
@@ -243,7 +259,7 @@ export class SchemaBuilder {
       return undefined;
     }
 
-    if (this.driver.type === "mysql" || this.driver.type === "mariadb") {
+    if (this.driver.type === "mysql" || this.driver.type === "mariadb" || this.driver.type === "clickhouse") {
       return undefined;
     }
 

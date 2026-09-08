@@ -1,5 +1,12 @@
-import type { SQL } from "bun";
-import type { DatabaseTypeType, DataSourceOptionsType, TransactionIsolationLevelType } from "../../types";
+import type { ReservedSQL, SQL } from "bun";
+import type {
+  DatabaseClientType,
+  DatabaseTypeType,
+  DataSourceOptionsType,
+  ObjectLiteralType,
+  QueryResultType,
+  TransactionIsolationLevelType,
+} from "../../types";
 import type { ColumnMetadata } from "../EntityMetadata";
 import type { QueryRunner } from "../QueryRunner";
 import { isBooleanType, isDateTimeType, isDateType, isIntegerType, isJsonType, isNumericType } from "./columnTypes";
@@ -14,7 +21,11 @@ export interface IDriver {
   readonly supportsIlike: boolean;
   /** Connections can be reserved out of the pool for imperative transactions. */
   readonly supportsReservedConnections: boolean;
+  readonly supportsTransactions: boolean;
   readonly supportsCreateIndexIfNotExists: boolean;
+  readonly supportsIndexes: boolean;
+  readonly supportsUniqueConstraints: boolean;
+  readonly supportsForeignKeys: boolean;
   /** How many values one statement should bind at most; multi-row statements are split to stay below it. */
   readonly maxBoundParameters: number;
   escape: (identifier: string) => string;
@@ -52,8 +63,16 @@ export interface IDriver {
   truncateStatement: (tablePath: string) => string;
   /** The statements that open a transaction at the requested isolation level. */
   beginTransactionStatements: (isolationLevel?: TransactionIsolationLevelType) => string[];
-  createClient: () => SQL;
-  afterConnect: (client: SQL) => Promise<void>;
+  tableSuffix: (primaryColumns: string[]) => string;
+  createClient: () => DatabaseClientType;
+  connect: (client: DatabaseClientType) => Promise<void>;
+  disconnect: (client: DatabaseClientType) => Promise<void>;
+  query: <Row = ObjectLiteralType>(
+    client: DatabaseClientType | ReservedSQL,
+    sql: string,
+    parameters?: unknown[],
+  ) => Promise<QueryResultType<Row>>;
+  afterConnect: (client: DatabaseClientType) => Promise<void>;
   listTables: (runner: QueryRunner) => Promise<string[]>;
   dropAllTables: (runner: QueryRunner, tableNames: string[]) => Promise<void>;
 }
@@ -123,7 +142,11 @@ export abstract class AbstractDriver implements IDriver {
   public abstract readonly supportsReturning: boolean;
   public abstract readonly supportsIlike: boolean;
   public abstract readonly supportsReservedConnections: boolean;
+  public readonly supportsTransactions: boolean = true;
   public abstract readonly supportsCreateIndexIfNotExists: boolean;
+  public readonly supportsIndexes: boolean = true;
+  public readonly supportsUniqueConstraints: boolean = true;
+  public readonly supportsForeignKeys: boolean = true;
   /**
    * Network databases are round-trip bound, so statements are made as large as the protocol comfortably
    * allows (PostgreSQL and MySQL accept 65535 values).
@@ -138,8 +161,8 @@ export abstract class AbstractDriver implements IDriver {
   public abstract currentTimestamp(): string;
   public abstract buildLimitOffset(limit?: number, offset?: number): string;
   public abstract buildCountDistinct(expressions: string[]): string;
-  public abstract createClient(): SQL;
-  public abstract afterConnect(client: SQL): Promise<void>;
+  public abstract createClient(): DatabaseClientType;
+  public abstract afterConnect(client: DatabaseClientType): Promise<void>;
   public abstract listTables(runner: QueryRunner): Promise<string[]>;
   public abstract dropAllTables(runner: QueryRunner, tableNames: string[]): Promise<void>;
 
@@ -313,6 +336,29 @@ export abstract class AbstractDriver implements IDriver {
     return [`START TRANSACTION${isolationLevel ? ` ISOLATION LEVEL ${isolationLevel}` : ""}`];
   }
 
+  public tableSuffix(_primaryColumns: string[]): string {
+    return "";
+  }
+
+  public async connect(client: DatabaseClientType): Promise<void> {
+    await (client as SQL).connect();
+    await this.afterConnect(client);
+  }
+
+  public async disconnect(client: DatabaseClientType): Promise<void> {
+    await client.close();
+  }
+
+  public async query<Row = ObjectLiteralType>(
+    client: DatabaseClientType | ReservedSQL,
+    sql: string,
+    parameters: unknown[] = [],
+  ): Promise<QueryResultType<Row>> {
+    const result = (await (client as SQL | ReservedSQL).unsafe(sql, parameters as never)) as BunResultType;
+
+    return normalizeBunResult<Row>(result);
+  }
+
   protected booleanLiteral(value: boolean): string {
     return value ? "true" : "false";
   }
@@ -367,3 +413,26 @@ export abstract class AbstractDriver implements IDriver {
     return type;
   }
 }
+
+type BunResultType = unknown[] & {
+  count?: number | null;
+  command?: string | null;
+  lastInsertRowid?: number | bigint | null;
+  affectedRows?: number | null;
+};
+
+const WRITE_COMMANDS: ReadonlySet<string> = new Set(["INSERT", "UPDATE", "DELETE"]);
+
+const normalizeBunResult = <Row>(result: BunResultType): QueryResultType<Row> => {
+  const records = (Array.isArray(result) ? result : Array.from(result)) as Row[];
+  const command = result.command ?? "";
+  const affected = WRITE_COMMANDS.has(command)
+    ? (result.affectedRows ?? result.count ?? records.length)
+    : records.length;
+
+  return {
+    records,
+    affected: Number(affected ?? 0),
+    lastInsertRowid: result.lastInsertRowid ?? null,
+  };
+};

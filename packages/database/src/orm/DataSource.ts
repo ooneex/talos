@@ -1,7 +1,8 @@
-import type { SQL } from "bun";
 import { DatabaseException } from "../DatabaseException";
 import type {
   ClassType,
+  DatabaseClientType,
+  DataSourceClientType,
   DataSourceOptionsType,
   EntityTargetType,
   INamingStrategy,
@@ -35,7 +36,7 @@ import { SchemaBuilder } from "./SchemaBuilder";
  * await dataSource.initialize();
  * const users = dataSource.getRepository(UserEntity);
  */
-export class DataSource {
+export class DataSource<Options extends DataSourceOptionsType = DataSourceOptionsType> {
   public readonly driver: IDriver;
   public readonly namingStrategy: INamingStrategy;
   public readonly logger: IQueryLogger | undefined;
@@ -45,10 +46,10 @@ export class DataSource {
   public readonly manager: EntityManager;
   public isInitialized = false;
   public entityMetadatas: EntityMetadata[] = [];
-  private clientInstance: SQL | undefined;
+  private clientInstance: DatabaseClientType | undefined;
   private readonly repositories = new Map<EntityMetadata, Repository<ObjectLiteralType>>();
 
-  public constructor(public readonly options: DataSourceOptionsType) {
+  public constructor(public readonly options: Options) {
     this.driver = createDriver(options);
     this.namingStrategy = options.namingStrategy ?? new DefaultNamingStrategy();
     this.logger = options.logger;
@@ -56,13 +57,13 @@ export class DataSource {
     this.manager = new EntityManager(this);
   }
 
-  /** The Bun `SQL` client (pool). Throws until `initialize()` ran. */
-  public get client(): SQL {
+  /** The native driver client. Throws until `initialize()` ran. */
+  public get client(): DataSourceClientType<Options> {
     if (!this.clientInstance || !this.isInitialized) {
       throw new CannotExecuteNotConnectedError();
     }
 
-    return this.clientInstance;
+    return this.clientInstance as DataSourceClientType<Options>;
   }
 
   /** Builds the entity metadata, opens the pool and, when asked, drops and synchronizes the schema. */
@@ -74,15 +75,14 @@ export class DataSource {
     this.entityMetadatas = this.buildMetadatas();
     this.repositories.clear();
 
-    let client: SQL | undefined;
+    let client: DatabaseClientType | undefined;
 
     try {
       client = this.options.client ?? this.driver.createClient();
-      await client.connect();
-      await this.driver.afterConnect(client);
+      await this.driver.connect(client);
     } catch (error) {
       if (client && !this.options.client) {
-        await client.close().catch(() => undefined);
+        await this.driver.disconnect(client).catch(() => undefined);
       }
 
       throw new DatabaseException(
@@ -106,7 +106,7 @@ export class DataSource {
     return this;
   }
 
-  /** Closes the pool. A client passed through `options.client` is left open — its owner closes it. */
+  /** Closes the native client. A client passed through `options.client` is left open for its owner. */
   public async destroy(): Promise<void> {
     if (!this.isInitialized) {
       throw new CannotExecuteNotConnectedError();
@@ -118,7 +118,7 @@ export class DataSource {
     this.clientInstance = undefined;
 
     if (client && !this.options.client) {
-      await client.close();
+      await this.driver.disconnect(client);
     }
   }
 

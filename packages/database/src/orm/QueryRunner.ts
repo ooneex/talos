@@ -1,18 +1,14 @@
 import type { ReservedSQL, SQL } from "bun";
-import type { ObjectLiteralType, QueryResultType, TransactionIsolationLevelType } from "../types";
+import type { DatabaseClientType, ObjectLiteralType, QueryResultType, TransactionIsolationLevelType } from "../types";
 import type { DataSource } from "./DataSource";
 import type { IDriver } from "./driver/AbstractDriver";
 import { EntityManager } from "./EntityManager";
-import { QueryFailedError, QueryRunnerAlreadyReleasedError, TransactionNotStartedError } from "./errors";
-
-type BunResultType = unknown[] & {
-  count?: number | null;
-  command?: string | null;
-  lastInsertRowid?: number | bigint | null;
-  affectedRows?: number | null;
-};
-
-const WRITE_COMMANDS: ReadonlySet<string> = new Set(["INSERT", "UPDATE", "DELETE"]);
+import {
+  QueryFailedError,
+  QueryRunnerAlreadyReleasedError,
+  TransactionNotStartedError,
+  TransactionsNotSupportedError,
+} from "./errors";
 
 /**
  * Runs SQL against the data source and owns a transaction when one is open.
@@ -58,9 +54,7 @@ export class QueryRunner {
     }
 
     try {
-      const result = (await this.connection.unsafe(sql, parameters as never)) as BunResultType;
-
-      return normalizeResult<Row>(result);
+      return await this.driver.query<Row>(this.connection, sql, parameters);
     } catch (error) {
       if (logger) {
         logger.logQueryError(error, sql, parameters);
@@ -75,6 +69,10 @@ export class QueryRunner {
       throw new QueryRunnerAlreadyReleasedError();
     }
 
+    if (!this.driver.supportsTransactions) {
+      throw new TransactionsNotSupportedError(this.driver.type);
+    }
+
     if (this.isTransactionActive) {
       this.transactionDepth += 1;
       await this.query(`SAVEPOINT ${this.savepointName()}`);
@@ -83,7 +81,7 @@ export class QueryRunner {
     }
 
     if (this.driver.supportsReservedConnections) {
-      this.reserved = await this.dataSource.client.reserve();
+      this.reserved = await (this.dataSource.client as SQL).reserve();
     } else {
       this.releaseLock = await this.dataSource.transactionLock.acquire();
     }
@@ -158,7 +156,7 @@ export class QueryRunner {
     this.isReleased = true;
   }
 
-  private get connection(): SQL | ReservedSQL {
+  private get connection(): DatabaseClientType | ReservedSQL {
     return this.reserved ?? this.dataSource.client;
   }
 
@@ -179,18 +177,3 @@ export class QueryRunner {
     this.releaseLock = undefined;
   }
 }
-
-const normalizeResult = <Row>(result: BunResultType): QueryResultType<Row> => {
-  // Bun hands back an Array subclass carrying the metadata; reuse it rather than copying every row.
-  const records = (Array.isArray(result) ? result : Array.from(result)) as Row[];
-  const command = result.command ?? "";
-  const affected = WRITE_COMMANDS.has(command)
-    ? (result.affectedRows ?? result.count ?? records.length)
-    : records.length;
-
-  return {
-    records,
-    affected: Number(affected ?? 0),
-    lastInsertRowid: result.lastInsertRowid ?? null,
-  };
-};

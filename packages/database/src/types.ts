@@ -1,3 +1,4 @@
+import type { ClickHouseClient, ClickHouseClientConfigOptions, ClickHouseSettings } from "@clickhouse/client";
 import type { RedisClient, SQL, TLSOptions } from "bun";
 import type { FindOperator } from "./orm/FindOperator";
 import type { Repository } from "./orm/Repository";
@@ -108,7 +109,9 @@ type QueryDeepPartialEntityInnerType<Entity> = {
           : QueryDeepPartialEntityInnerType<Entity[P]>);
 };
 
-export type DatabaseTypeType = "postgres" | "mysql" | "mariadb" | "sqlite";
+export type DatabaseTypeType = "postgres" | "mysql" | "mariadb" | "sqlite" | "clickhouse";
+
+export type DatabaseClientType = SQL | ClickHouseClient;
 
 export type TransactionIsolationLevelType = "READ UNCOMMITTED" | "READ COMMITTED" | "REPEATABLE READ" | "SERIALIZABLE";
 
@@ -453,11 +456,7 @@ type BaseDataSourceOptionsType = {
   namingStrategy?: INamingStrategy;
   /** Prefix applied to every table name. */
   entityPrefix?: string;
-  /** Extra Bun `SQL` options merged into the client configuration. */
-  extra?: Record<string, unknown>;
-  /** Bring your own Bun `SQL` client — the data source then neither creates nor configures one. */
-  client?: SQL;
-  /** Maximum number of pooled connections (PostgreSQL / MySQL). */
+  /** Maximum number of pooled connections (PostgreSQL / MySQL / ClickHouse). */
   poolSize?: number;
   /** Connection timeout in milliseconds (PostgreSQL / MySQL). */
   connectTimeoutMS?: number;
@@ -478,6 +477,10 @@ export type PostgresDataSourceOptionsType = BaseDataSourceOptionsType & {
   prepare?: boolean;
   /** Return `bigint` values as `BigInt` instead of strings. */
   bigint?: boolean;
+  /** Extra Bun `SQL` options merged into the client configuration. */
+  extra?: Record<string, unknown>;
+  /** Bring your own Bun `SQL` client — the data source then neither creates nor configures one. */
+  client?: SQL;
 };
 
 export type MysqlDataSourceOptionsType = BaseDataSourceOptionsType & {
@@ -490,6 +493,8 @@ export type MysqlDataSourceOptionsType = BaseDataSourceOptionsType & {
   database?: string;
   ssl?: boolean | TLSOptions;
   bigint?: boolean;
+  extra?: Record<string, unknown>;
+  client?: SQL;
 };
 
 export type SqliteDataSourceOptionsType = BaseDataSourceOptionsType & {
@@ -505,12 +510,35 @@ export type SqliteDataSourceOptionsType = BaseDataSourceOptionsType & {
   readonly?: boolean;
   /** Enforce foreign keys (default true). */
   foreignKeys?: boolean;
+  extra?: Record<string, unknown>;
+  client?: SQL;
+};
+
+export type ClickHouseDataSourceOptionsType = BaseDataSourceOptionsType & {
+  type: "clickhouse";
+  /** HTTP(S) endpoint. Defaults to `http://localhost:8123`. */
+  url?: string;
+  username?: string;
+  password?: string;
+  database?: string;
+  /** Request timeout in milliseconds. */
+  requestTimeoutMS?: number;
+  compression?: ClickHouseClientConfigOptions["compression"];
+  clickhouseSettings?: ClickHouseSettings;
+  /** Options forwarded to the official `@clickhouse/client`. */
+  extra?: ClickHouseClientConfigOptions;
+  /** Bring your own official ClickHouse client. */
+  client?: ClickHouseClient;
 };
 
 export type DataSourceOptionsType =
   | PostgresDataSourceOptionsType
   | MysqlDataSourceOptionsType
-  | SqliteDataSourceOptionsType;
+  | SqliteDataSourceOptionsType
+  | ClickHouseDataSourceOptionsType;
+
+export type DataSourceClientType<Options extends DataSourceOptionsType> =
+  Options extends ClickHouseDataSourceOptionsType ? ClickHouseClient : SQL;
 
 // ---------------------------------------------------------------------------
 // ORM — find options

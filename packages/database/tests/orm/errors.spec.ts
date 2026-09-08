@@ -3,6 +3,7 @@ import { DatabaseException } from "../../src/DatabaseException";
 import {
   CannotConnectAlreadyConnectedError,
   CannotExecuteNotConnectedError,
+  DriverFeatureNotSupportedError,
   EntityMetadataNotFoundError,
   EntityNotFoundError,
   EntityPropertyNotFoundError,
@@ -17,6 +18,7 @@ import {
   RelationNotFoundError,
   TransactionAlreadyStartedError,
   TransactionNotStartedError,
+  TransactionsNotSupportedError,
   UpdateValuesMissingError,
 } from "../../src/orm/errors";
 
@@ -147,6 +149,12 @@ describe("orm errors", () => {
       [new CannotExecuteNotConnectedError(), "CannotExecuteNotConnectedError", "NOT_CONNECTED"],
       [new TransactionNotStartedError(), "TransactionNotStartedError", "TRANSACTION_NOT_STARTED"],
       [new TransactionAlreadyStartedError(), "TransactionAlreadyStartedError", "TRANSACTION_ALREADY_STARTED"],
+      [new TransactionsNotSupportedError("clickhouse"), "TransactionsNotSupportedError", "TRANSACTIONS_NOT_SUPPORTED"],
+      [
+        new DriverFeatureNotSupportedError("clickhouse", "upserts"),
+        "DriverFeatureNotSupportedError",
+        "DRIVER_FEATURE_NOT_SUPPORTED",
+      ],
       [new QueryRunnerAlreadyReleasedError(), "QueryRunnerAlreadyReleasedError", "QUERY_RUNNER_RELEASED"],
       [new UpdateValuesMissingError(), "UpdateValuesMissingError", "UPDATE_VALUES_MISSING"],
       [new InsertValuesMissingError(), "InsertValuesMissingError", "INSERT_VALUES_MISSING"],

@@ -1,7 +1,12 @@
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { SQL } from "bun";
-import type { DatabaseTypeType, SqliteDataSourceOptionsType, TransactionIsolationLevelType } from "../../types";
+import type {
+  DatabaseClientType,
+  DatabaseTypeType,
+  SqliteDataSourceOptionsType,
+  TransactionIsolationLevelType,
+} from "../../types";
 import type { ColumnMetadata } from "../EntityMetadata";
 import type { QueryRunner } from "../QueryRunner";
 import { AbstractDriver, typeName } from "./AbstractDriver";
@@ -133,20 +138,21 @@ export class SqliteDriver extends AbstractDriver {
     });
   }
 
-  public async afterConnect(client: SQL): Promise<void> {
+  public async afterConnect(client: DatabaseClientType): Promise<void> {
     const options = this.options as SqliteDataSourceOptionsType;
     const busyTimeout = options.busyTimeout ?? options.timeout;
+    const sql = client as SQL;
 
     if (options.foreignKeys !== false) {
-      await client.unsafe("PRAGMA foreign_keys = ON");
+      await sql.unsafe("PRAGMA foreign_keys = ON");
     }
 
     if (options.enableWAL && sqliteFilename(options.database) !== MEMORY) {
-      await client.unsafe("PRAGMA journal_mode = WAL");
+      await sql.unsafe("PRAGMA journal_mode = WAL");
     }
 
     if (busyTimeout !== undefined) {
-      await client.unsafe(`PRAGMA busy_timeout = ${Math.max(0, Math.floor(busyTimeout))}`);
+      await sql.unsafe(`PRAGMA busy_timeout = ${Math.max(0, Math.floor(busyTimeout))}`);
     }
   }
 

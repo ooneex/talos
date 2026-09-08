@@ -1,5 +1,5 @@
 import { SQL } from "bun";
-import type { DatabaseTypeType, PostgresDataSourceOptionsType } from "../../types";
+import type { DatabaseClientType, DatabaseTypeType, PostgresDataSourceOptionsType } from "../../types";
 import type { ColumnMetadata } from "../EntityMetadata";
 import type { QueryRunner } from "../QueryRunner";
 import { AbstractDriver, isJsonColumn, typeName } from "./AbstractDriver";
@@ -229,7 +229,7 @@ export class PostgresDriver extends AbstractDriver {
     } as ConstructorParameters<typeof SQL>[0]);
   }
 
-  public async afterConnect(_client: SQL): Promise<void> {}
+  public async afterConnect(_client: DatabaseClientType): Promise<void> {}
 
   public async listTables(runner: QueryRunner): Promise<string[]> {
     const schema = (this.options as PostgresDataSourceOptionsType).schema;

@@ -137,7 +137,7 @@ export class MissingPrimaryColumnError extends DatabaseException {
 export class MissingDriverError extends DatabaseException {
   public constructor(driverType: string) {
     super(
-      `Wrong driver: "${driverType}" given. Supported drivers are: postgres, mysql, mariadb, sqlite.`,
+      `Wrong driver: "${driverType}" given. Supported drivers are: postgres, mysql, mariadb, sqlite, clickhouse.`,
       "MISSING_DRIVER",
       {
         driverType,
@@ -175,6 +175,23 @@ export class TransactionAlreadyStartedError extends DatabaseException {
   public constructor() {
     super("Transaction already started for the given query runner.", "TRANSACTION_ALREADY_STARTED");
     this.name = "TransactionAlreadyStartedError";
+  }
+}
+
+export class TransactionsNotSupportedError extends DatabaseException {
+  public constructor(driverType: string) {
+    super(`The ${driverType} driver does not support transactions.`, "TRANSACTIONS_NOT_SUPPORTED", { driverType });
+    this.name = "TransactionsNotSupportedError";
+  }
+}
+
+export class DriverFeatureNotSupportedError extends DatabaseException {
+  public constructor(driverType: string, feature: string) {
+    super(`The ${driverType} driver does not support ${feature}.`, "DRIVER_FEATURE_NOT_SUPPORTED", {
+      driverType,
+      feature,
+    });
+    this.name = "DriverFeatureNotSupportedError";
   }
 }
 
