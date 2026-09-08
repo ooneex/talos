@@ -3,6 +3,7 @@ import { MissingDriverError } from "../errors";
 import type { IDriver } from "./AbstractDriver";
 import { ClickHouseDriver } from "./ClickHouseDriver";
 import { CloudflareDriver } from "./CloudflareDriver";
+import { MongoDriver } from "./MongoDriver";
 import { MysqlDriver } from "./MysqlDriver";
 import { PostgresDriver } from "./PostgresDriver";
 import { RedisDriver } from "./RedisDriver";
@@ -19,6 +20,8 @@ export const createDriver = (options: DataSourceOptionsType): IDriver => {
       return new PostgresDriver(options);
     case "redis":
       return new RedisDriver(options);
+    case "mongodb":
+      return new MongoDriver(options);
     case "mysql":
     case "mariadb":
       return new MysqlDriver(options);

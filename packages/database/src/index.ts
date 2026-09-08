@@ -1,4 +1,5 @@
 export { DatabaseException } from "./DatabaseException";
+export type { MongoClient } from "mongodb";
 export * from "./decorators";
 export { Brackets, type IWhereExpressionBuilder, NotBrackets, type WhereConditionInputType } from "./orm/Brackets";
 export { DataSource } from "./orm/DataSource";
@@ -16,6 +17,7 @@ export { JoinColumn, JoinTable, ManyToMany, ManyToOne, OneToMany, OneToOne } fro
 export type { IDriver } from "./orm/driver/AbstractDriver";
 export { ClickHouseDriver } from "./orm/driver/ClickHouseDriver";
 export { CloudflareDriver } from "./orm/driver/CloudflareDriver";
+export { MongoDriver } from "./orm/driver/MongoDriver";
 export { MysqlDriver } from "./orm/driver/MysqlDriver";
 export { PostgresDriver } from "./orm/driver/PostgresDriver";
 export { RedisDriver } from "./orm/driver/RedisDriver";

@@ -140,6 +140,7 @@ describe("orm errors", () => {
     expect(error.key).toBe("MISSING_DRIVER");
     expect(error.message).toContain('"oracle"');
     expect(error.message).toContain("postgres, mysql, mariadb, sqlite");
+    expect(error.message).toContain("redis, mongodb, cloudflare");
     expect(error.data).toEqual({ driverType: "oracle" });
   });
 

@@ -1,6 +1,6 @@
 # @talosjs/database
 
-Database layer with a decorator-based ORM for PostgreSQL, MySQL, SQLite, Cloudflare and ClickHouse, plus a Bun-native Redis driver. PostgreSQL, MySQL and SQLite use Bun's native `SQL` client; Cloudflare uses the Worker binding, and ClickHouse uses the official `@clickhouse/client`.
+Database layer with a decorator-based ORM for PostgreSQL, MySQL, SQLite, Cloudflare and ClickHouse, plus Redis and MongoDB drivers. PostgreSQL, MySQL and SQLite use Bun's native `SQL` client; Cloudflare uses the Worker binding, ClickHouse uses `@clickhouse/client`, and MongoDB uses the official `mongodb` client.
 
 ## Installation
 
@@ -88,6 +88,7 @@ await dataSource.transaction(async (manager) => {
 | Naming | `DefaultNamingStrategy` (TypeORM-compatible hashed constraint names), `SnakeNamingStrategy`, custom `INamingStrategy` |
 | Errors | `QueryFailedError`, `EntityNotFoundError`, `EntityMetadataNotFoundError`, `TransactionNotStartedError`, … all extend `DatabaseException` |
 | Key-value | `RedisDriver` on Bun's native `RedisClient`; compatible with Redis, Valkey and Dragonfly RESP servers |
+| Documents | `MongoDriver` on the official `MongoClient`; native commands and direct typed client access |
 
 ### Drivers
 
@@ -99,6 +100,7 @@ await dataSource.transaction(async (manager) => {
 | `cloudflare` | `CloudflareDriver` with a Worker database binding | SQLite dialect, prepared statements, schema synchronization and repositories |
 | `clickhouse` | [`@clickhouse/client`](https://clickhouse.com/docs/integrations/language-clients/js) | HTTP(S), `JSONEachRow`, typed query parameters, `MergeTree` synchronization |
 | `redis` | Bun `RedisClient` | Native commands, TLS, reconnects and auto-pipelining; also speaks to Valkey and Dragonfly |
+| `mongodb` | [`mongodb`](https://www.mongodb.com/docs/drivers/node/current/) | Native database commands, collection management and typed `MongoClient` access |
 
 ### Redis
 
@@ -122,6 +124,29 @@ await redis.destroy();
 ```
 
 When the URL is omitted, Bun reads `REDIS_URL`, then `VALKEY_URL`, and otherwise connects to its localhost default. Dragonfly uses the same RESP protocol, so it does not need a separate driver. `DataSource.query()` accepts a Redis command name and argument array for untyped or unsupported commands; use `DataSource.client` for Bun's typed methods. Relational entities, schema synchronization, repositories and transactions are not supported by the Redis driver.
+
+### MongoDB
+
+MongoDB participates in the same `DataSource` lifecycle through the official Node.js driver. Use the typed client for collection operations, or `DataSource.query()` for native database commands. The first query argument is the command name; the parameter array contains the command value followed by an optional options document.
+
+```typescript
+const documents = new DataSource({
+  type: "mongodb",
+  url: "mongodb://localhost:27017/app",
+  database: "app",
+  poolSize: 10,
+});
+
+await documents.initialize();
+await documents.client.db("app").collection("events").insertOne({ type: "created" });
+
+const [{ ok }] = await documents.query<{ ok: number }>("ping");
+const users = await documents.query("find", ["users", { filter: { active: true } }]);
+
+await documents.destroy();
+```
+
+The URL defaults to `mongodb://127.0.0.1:27017`. `poolSize` maps to `maxPoolSize`, `connectTimeoutMS` is forwarded, and remaining official client settings go in `extra`. `dropDatabase()` enumerates and drops collections. SQL repositories, schema synchronization and the SQL transaction API are not supported by the MongoDB driver; use the native client for document CRUD, indexes and sessions.
 
 ### Cloudflare
 

@@ -3,6 +3,7 @@ import type { DataSourceOptionsType, ICloudflareDatabase } from "../../../src";
 import { ClickHouseDriver } from "../../../src/orm/driver/ClickHouseDriver";
 import { CloudflareDriver } from "../../../src/orm/driver/CloudflareDriver";
 import { createDriver } from "../../../src/orm/driver/createDriver";
+import { MongoDriver } from "../../../src/orm/driver/MongoDriver";
 import { MysqlDriver } from "../../../src/orm/driver/MysqlDriver";
 import { PostgresDriver } from "../../../src/orm/driver/PostgresDriver";
 import { RedisDriver } from "../../../src/orm/driver/RedisDriver";
@@ -20,6 +21,7 @@ describe("createDriver", () => {
     expect(createDriver({ type: "clickhouse" })).toBeInstanceOf(ClickHouseDriver);
     expect(createDriver({ type: "cloudflare", client: {} as ICloudflareDatabase })).toBeInstanceOf(CloudflareDriver);
     expect(createDriver({ type: "redis" })).toBeInstanceOf(RedisDriver);
+    expect(createDriver({ type: "mongodb" })).toBeInstanceOf(MongoDriver);
     expect(createDriver(options)).toBeInstanceOf(SqliteDriver);
     expect(createDriver(options).options).toBe(options);
   });

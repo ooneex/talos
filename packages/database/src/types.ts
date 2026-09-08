@@ -1,5 +1,6 @@
 import type { ClickHouseClient, ClickHouseClientConfigOptions, ClickHouseSettings } from "@clickhouse/client";
 import type { RedisClient, SQL, TLSOptions } from "bun";
+import type { MongoClient, MongoClientOptions } from "mongodb";
 import type { FindOperator } from "./orm/FindOperator";
 import type { Repository } from "./orm/Repository";
 
@@ -70,7 +71,15 @@ type QueryDeepPartialEntityInnerType<Entity> = {
           : QueryDeepPartialEntityInnerType<Entity[P]>);
 };
 
-export type DatabaseTypeType = "postgres" | "mysql" | "mariadb" | "sqlite" | "clickhouse" | "redis" | "cloudflare";
+export type DatabaseTypeType =
+  | "postgres"
+  | "mysql"
+  | "mariadb"
+  | "sqlite"
+  | "clickhouse"
+  | "redis"
+  | "mongodb"
+  | "cloudflare";
 
 export type CloudflareValueType = string | number | boolean | null | ArrayBuffer;
 
@@ -92,7 +101,7 @@ export interface ICloudflareDatabase {
   prepare: (query: string) => ICloudflarePreparedStatement;
 }
 
-export type DatabaseClientType = SQL | ClickHouseClient | RedisClient | ICloudflareDatabase;
+export type DatabaseClientType = SQL | ClickHouseClient | RedisClient | MongoClient | ICloudflareDatabase;
 
 export type TransactionIsolationLevelType = "READ UNCOMMITTED" | "READ COMMITTED" | "REPEATABLE READ" | "SERIALIZABLE";
 
@@ -527,6 +536,18 @@ export type RedisDataSourceOptionsType = BaseDataSourceOptionsType & {
   client?: RedisClient;
 };
 
+export type MongoDataSourceOptionsType = BaseDataSourceOptionsType & {
+  type: "mongodb";
+  /** MongoDB connection string. Defaults to `mongodb://127.0.0.1:27017`. */
+  url?: string;
+  /** Database selected for commands and collection management. The URL database is used when omitted. */
+  database?: string;
+  /** Options forwarded to the official MongoDB client. */
+  extra?: MongoClientOptions;
+  /** Bring your own official MongoDB client — the data source then neither creates nor closes it. */
+  client?: MongoClient;
+};
+
 export type CloudflareDataSourceOptionsType = BaseDataSourceOptionsType & {
   type: "cloudflare";
   /** Cloudflare Worker database binding, such as `env.DB`. */
@@ -539,6 +560,7 @@ export type DataSourceOptionsType =
   | SqliteDataSourceOptionsType
   | ClickHouseDataSourceOptionsType
   | RedisDataSourceOptionsType
+  | MongoDataSourceOptionsType
   | CloudflareDataSourceOptionsType;
 
 export type DataSourceClientType<Options extends DataSourceOptionsType> =
@@ -546,9 +568,11 @@ export type DataSourceClientType<Options extends DataSourceOptionsType> =
     ? ClickHouseClient
     : Options extends RedisDataSourceOptionsType
       ? RedisClient
-      : Options extends CloudflareDataSourceOptionsType
-        ? ICloudflareDatabase
-        : SQL;
+      : Options extends MongoDataSourceOptionsType
+        ? MongoClient
+        : Options extends CloudflareDataSourceOptionsType
+          ? ICloudflareDatabase
+          : SQL;
 
 // ---------------------------------------------------------------------------
 // ORM — find options

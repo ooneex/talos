@@ -205,7 +205,7 @@ export class DataSource<Options extends DataSourceOptionsType = DataSourceOption
       .from(targetOrRunner, alias ?? this.getMetadata(targetOrRunner).tableName);
   }
 
-  /** Runs a raw driver command. SQL parameters use driver placeholders (`$1`, `?`, or Cloudflare's `?1`); Redis uses command arguments. */
+  /** Runs a raw driver command. SQL uses placeholders; Redis uses arguments; MongoDB uses `[value, options]`. */
   public async query<Row = ObjectLiteralType>(
     sql: string,
     parameters: unknown[] = [],

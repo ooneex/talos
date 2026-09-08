@@ -4,9 +4,10 @@
     "@talosjs/container": "workspace:^",
     "@talosjs/exception": "workspace:^",
     "@talosjs/http-status": "workspace:^",
-    "@talosjs/utils": "workspace:^"
+    "@talosjs/utils": "workspace:^",
+    "mongodb": "^7.6.0"
   },
-  "description": "Database layer with a decorator-based ORM for PostgreSQL, MySQL, SQLite, Cloudflare and ClickHouse, plus a Bun-native Redis driver",
+  "description": "Database layer with a decorator-based ORM for PostgreSQL, MySQL, SQLite, Cloudflare and ClickHouse, plus Redis and MongoDB drivers",
   "exports": {
     ".": {
       "import": {
@@ -30,6 +31,7 @@
     "db",
     "entity",
     "mysql",
+    "mongodb",
     "orm",
     "postgres",
     "query-builder",
