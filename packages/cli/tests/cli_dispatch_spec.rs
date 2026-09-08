@@ -58,9 +58,17 @@ fn seed_home(home: &Path) {
     );
     write(&templates.join("translation.json.txt"), "{}\n");
     write(&templates.join("database.pg.txt"), "// pg\n");
+    write(
+        &templates.join("database.cloudflare.txt"),
+        "// cloudflare\n",
+    );
     write(&templates.join("database.redis.txt"), "// redis\n");
     write(&templates.join("database.sqlite.txt"), "// sqlite\n");
     write(&templates.join("database.test.txt"), "// {{NAME}}\n");
+    write(
+        &templates.join("database.cloudflare.test.txt"),
+        "// {{NAME}}\n",
+    );
     write(&templates.join("database.redis.test.txt"), "// {{NAME}}\n");
     write(&templates.join("e2e.spec.txt"), "// e2e\n");
     write(

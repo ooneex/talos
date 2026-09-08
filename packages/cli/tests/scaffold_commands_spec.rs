@@ -116,6 +116,10 @@ const TEMPLATES: &[(&str, &str)] = &[
         "export class {{NAME}}Database {} // clickhouse\n",
     ),
     (
+        "database.cloudflare.txt",
+        "export class {{NAME}}Database {} // cloudflare\n",
+    ),
+    (
         "database.pg.txt",
         "export class {{NAME}}Database {} // pg\n",
     ),
@@ -128,6 +132,10 @@ const TEMPLATES: &[(&str, &str)] = &[
         "export class {{NAME}}Database {} // sqlite\n",
     ),
     ("database.test.txt", "// {{NAME}}Database in {{MODULE}}\n"),
+    (
+        "database.cloudflare.test.txt",
+        "// {{NAME}}Database cloudflare in {{MODULE}}\n",
+    ),
     (
         "database.redis.test.txt",
         "// {{NAME}}Database redis in {{MODULE}}\n",
@@ -424,6 +432,17 @@ fn every_generator_writes_the_source_and_the_spec_its_template_describes() {
         cwd: Some(root.to_string_lossy().to_string()),
     });
     assert!(source(&root, "databases", "AnalyticsDatabase.ts").contains("// clickhouse"));
+
+    commands::database_create::run(&commands::database_create::DatabaseCreateArgs {
+        no_cache: false,
+        name: Some("edge".to_string()),
+        module: None,
+        r#type: Some(commands::database_create::DatabaseType::Cloudflare),
+        r#override: false,
+        cwd: Some(root.to_string_lossy().to_string()),
+    });
+    assert!(source(&root, "databases", "EdgeDatabase.ts").contains("// cloudflare"));
+    assert!(spec(&root, "databases", "EdgeDatabase.spec.ts").contains("cloudflare"));
 
     commands::database_create::run(&commands::database_create::DatabaseCreateArgs {
         no_cache: false,

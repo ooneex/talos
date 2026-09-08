@@ -10,6 +10,7 @@ use crate::utils::{
 pub enum DatabaseType {
     Postgres,
     Sqlite,
+    Cloudflare,
     Redis,
     Clickhouse,
 }
@@ -17,6 +18,7 @@ pub enum DatabaseType {
 const DATABASE_TYPES: &[DatabaseType] = &[
     DatabaseType::Postgres,
     DatabaseType::Sqlite,
+    DatabaseType::Cloudflare,
     DatabaseType::Redis,
     DatabaseType::Clickhouse,
 ];
@@ -26,6 +28,7 @@ impl DatabaseType {
         match self {
             Self::Postgres => "postgres",
             Self::Sqlite => "sqlite",
+            Self::Cloudflare => "cloudflare",
             Self::Redis => "redis",
             Self::Clickhouse => "clickhouse",
         }
@@ -50,7 +53,7 @@ pub struct DatabaseCreateArgs {
     #[arg(
         long,
         value_enum,
-        help = "Database type: postgres, sqlite, redis or clickhouse"
+        help = "Database type: postgres, sqlite, cloudflare, redis or clickhouse"
     )]
     pub r#type: Option<DatabaseType>,
 
@@ -72,6 +75,7 @@ fn normalize_database_name(name: &str) -> String {
 fn template_files(db_type: DatabaseType) -> (&'static str, &'static str) {
     match db_type {
         DatabaseType::Clickhouse => ("database.clickhouse.txt", "database.test.txt"),
+        DatabaseType::Cloudflare => ("database.cloudflare.txt", "database.cloudflare.test.txt"),
         DatabaseType::Postgres => ("database.pg.txt", "database.test.txt"),
         DatabaseType::Redis => ("database.redis.txt", "database.redis.test.txt"),
         DatabaseType::Sqlite => ("database.sqlite.txt", "database.test.txt"),

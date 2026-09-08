@@ -252,7 +252,7 @@ seed:create seed:run"
     database:create)
       opts="--name --module --type --override --no-cache --cwd"
       [[ $flag == --module ]] && candidates="$(_talos_modules)"
-      [[ $flag == --type ]] && candidates="postgres sqlite redis clickhouse"
+      [[ $flag == --type ]] && candidates="postgres sqlite cloudflare redis clickhouse"
       ;;
     controller:create)
       opts="--name --module --route-name --route-path --route-method --is-socket --override"
