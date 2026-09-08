@@ -68,8 +68,6 @@ export { SoftDeleteQueryBuilder } from "./orm/query-builder/SoftDeleteQueryBuild
 export { UpdateQueryBuilder } from "./orm/query-builder/UpdateQueryBuilder";
 export { Repository } from "./orm/Repository";
 export { SchemaBuilder } from "./orm/SchemaBuilder";
-export { PostgresDatabase } from "./PostgresDatabase";
 export { RedisDatabase } from "./RedisDatabase";
 export { SqlDatabase } from "./SqlDatabase";
-export { SqliteDatabase } from "./SqliteDatabase";
 export * from "./types";
