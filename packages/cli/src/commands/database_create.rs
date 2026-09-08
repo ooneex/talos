@@ -12,6 +12,7 @@ pub enum DatabaseType {
     Sqlite,
     Cloudflare,
     Redis,
+    Mongodb,
     Clickhouse,
 }
 
@@ -20,6 +21,7 @@ const DATABASE_TYPES: &[DatabaseType] = &[
     DatabaseType::Sqlite,
     DatabaseType::Cloudflare,
     DatabaseType::Redis,
+    DatabaseType::Mongodb,
     DatabaseType::Clickhouse,
 ];
 
@@ -30,6 +32,7 @@ impl DatabaseType {
             Self::Sqlite => "sqlite",
             Self::Cloudflare => "cloudflare",
             Self::Redis => "redis",
+            Self::Mongodb => "mongodb",
             Self::Clickhouse => "clickhouse",
         }
     }
@@ -53,7 +56,7 @@ pub struct DatabaseCreateArgs {
     #[arg(
         long,
         value_enum,
-        help = "Database type: postgres, sqlite, cloudflare, redis or clickhouse"
+        help = "Database type: postgres, sqlite, cloudflare, redis, mongodb or clickhouse"
     )]
     pub r#type: Option<DatabaseType>,
 
@@ -78,6 +81,7 @@ fn template_files(db_type: DatabaseType) -> (&'static str, &'static str) {
         DatabaseType::Cloudflare => ("database.cloudflare.txt", "database.cloudflare.test.txt"),
         DatabaseType::Postgres => ("database.pg.txt", "database.test.txt"),
         DatabaseType::Redis => ("database.redis.txt", "database.redis.test.txt"),
+        DatabaseType::Mongodb => ("database.mongodb.txt", "database.mongodb.test.txt"),
         DatabaseType::Sqlite => ("database.sqlite.txt", "database.test.txt"),
     }
 }

@@ -128,6 +128,10 @@ const TEMPLATES: &[(&str, &str)] = &[
         "export class {{NAME}}Database {} // redis\n",
     ),
     (
+        "database.mongodb.txt",
+        "export class {{NAME}}Database {} // mongodb\n",
+    ),
+    (
         "database.sqlite.txt",
         "export class {{NAME}}Database {} // sqlite\n",
     ),
@@ -139,6 +143,10 @@ const TEMPLATES: &[(&str, &str)] = &[
     (
         "database.redis.test.txt",
         "// {{NAME}}Database redis in {{MODULE}}\n",
+    ),
+    (
+        "database.mongodb.test.txt",
+        "// {{NAME}}Database mongodb in {{MODULE}}\n",
     ),
     ("module/module.txt", "export const {{NAME}}Module = {};\n"),
     (
@@ -465,6 +473,17 @@ fn every_generator_writes_the_source_and_the_spec_its_template_describes() {
     });
     assert!(source(&root, "databases", "SessionsDatabase.ts").contains("// redis"));
     assert!(spec(&root, "databases", "SessionsDatabase.spec.ts").contains("redis"));
+
+    commands::database_create::run(&commands::database_create::DatabaseCreateArgs {
+        no_cache: false,
+        name: Some("documents".to_string()),
+        module: None,
+        r#type: Some(commands::database_create::DatabaseType::Mongodb),
+        r#override: false,
+        cwd: Some(root.to_string_lossy().to_string()),
+    });
+    assert!(source(&root, "databases", "DocumentsDatabase.ts").contains("// mongodb"));
+    assert!(spec(&root, "databases", "DocumentsDatabase.spec.ts").contains("mongodb"));
 
     commands::database_create::run(&commands::database_create::DatabaseCreateArgs {
         no_cache: false,
