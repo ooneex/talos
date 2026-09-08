@@ -108,6 +108,16 @@ describe("loadEnv", () => {
     expect(Bun.env.STORAGE_FILESYSTEM_PATH).toBeUndefined();
   });
 
+  test("maps Turso database credentials", async () => {
+    await Bun.write(
+      `${testDir}/.env.yml`,
+      'database:\n  turso:\n    url: "libsql://app.turso.io"\n    auth_token: "secret"\n',
+    );
+    await loadEnv();
+    expect(Bun.env.TURSO_DATABASE_URL).toBe("libsql://app.turso.io");
+    expect(Bun.env.TURSO_AUTH_TOKEN).toBe("secret");
+  });
+
   test("maps stream.bunny keys to the STREAM_BUNNY_ names", async () => {
     await Bun.write(
       `${testDir}/.env.yml`,

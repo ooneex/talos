@@ -612,6 +612,8 @@ describe("AppEnv", () => {
       delete Bun.env.FILESYSTEM_STORAGE_PATH;
       delete Bun.env.DATABASE_URL;
       delete Bun.env.DATABASE_REDIS_URL;
+      delete Bun.env.TURSO_DATABASE_URL;
+      delete Bun.env.TURSO_AUTH_TOKEN;
       delete Bun.env.SQLITE_DATABASE_PATH;
       delete Bun.env.DATABASE_BUNNY_URL;
       delete Bun.env.DATABASE_BUNNY_TOKEN;
@@ -693,6 +695,8 @@ describe("AppEnv", () => {
       expect(appEnv.FILESYSTEM_STORAGE_PATH).toBeUndefined();
       expect(appEnv.DATABASE_URL).toBeUndefined();
       expect(appEnv.DATABASE_REDIS_URL).toBeUndefined();
+      expect(appEnv.TURSO_DATABASE_URL).toBeUndefined();
+      expect(appEnv.TURSO_AUTH_TOKEN).toBeUndefined();
       expect(appEnv.SQLITE_DATABASE_PATH).toBeUndefined();
       expect(appEnv.DATABASE_BUNNY_URL).toBeUndefined();
       expect(appEnv.DATABASE_BUNNY_TOKEN).toBeUndefined();
@@ -800,6 +804,8 @@ describe("AppEnv", () => {
     test("should read database env vars", () => {
       Bun.env.DATABASE_URL = "postgres://localhost/mydb";
       Bun.env.DATABASE_REDIS_URL = "redis://localhost:6379";
+      Bun.env.TURSO_DATABASE_URL = "libsql://app.turso.io";
+      Bun.env.TURSO_AUTH_TOKEN = "turso-token";
       Bun.env.SQLITE_DATABASE_PATH = "/data/app.db";
       Bun.env.DATABASE_BUNNY_URL = "libsql://db.bunny.net";
       Bun.env.DATABASE_BUNNY_TOKEN = "bunny-token";
@@ -808,6 +814,8 @@ describe("AppEnv", () => {
 
       expect(appEnv.DATABASE_URL).toBe("postgres://localhost/mydb");
       expect(appEnv.DATABASE_REDIS_URL).toBe("redis://localhost:6379");
+      expect(appEnv.TURSO_DATABASE_URL).toBe("libsql://app.turso.io");
+      expect(appEnv.TURSO_AUTH_TOKEN).toBe("turso-token");
       expect(appEnv.DATABASE_BUNNY_URL).toBe("libsql://db.bunny.net");
       expect(appEnv.DATABASE_BUNNY_TOKEN).toBe("bunny-token");
       expect(appEnv.SQLITE_DATABASE_PATH).toBe("/data/app.db");
@@ -1027,6 +1035,8 @@ describe("AppEnv", () => {
     test("should trim database env vars", () => {
       Bun.env.DATABASE_URL = "  postgres://localhost/mydb  ";
       Bun.env.DATABASE_REDIS_URL = "  redis://localhost:6379  ";
+      Bun.env.TURSO_DATABASE_URL = "  libsql://app.turso.io  ";
+      Bun.env.TURSO_AUTH_TOKEN = "  turso-token  ";
       Bun.env.SQLITE_DATABASE_PATH = "  /data/app.db  ";
       Bun.env.DATABASE_BUNNY_URL = "  libsql://db.bunny.net  ";
       Bun.env.DATABASE_BUNNY_TOKEN = "  bunny-token  ";
@@ -1035,6 +1045,8 @@ describe("AppEnv", () => {
 
       expect(appEnv.DATABASE_URL).toBe("postgres://localhost/mydb");
       expect(appEnv.DATABASE_REDIS_URL).toBe("redis://localhost:6379");
+      expect(appEnv.TURSO_DATABASE_URL).toBe("libsql://app.turso.io");
+      expect(appEnv.TURSO_AUTH_TOKEN).toBe("turso-token");
       expect(appEnv.SQLITE_DATABASE_PATH).toBe("/data/app.db");
       expect(appEnv.DATABASE_BUNNY_URL).toBe("libsql://db.bunny.net");
       expect(appEnv.DATABASE_BUNNY_TOKEN).toBe("bunny-token");

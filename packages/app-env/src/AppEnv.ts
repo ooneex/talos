@@ -136,6 +136,8 @@ const buildScalarEnvValues = (
     DATABASE_URL: readString("DATABASE_URL"),
     DATABASE_REDIS_URL: readString("DATABASE_REDIS_URL"),
     DATABASE_DRAGONFLY_URL: readString("DATABASE_DRAGONFLY_URL"),
+    TURSO_DATABASE_URL: readString("TURSO_DATABASE_URL"),
+    TURSO_AUTH_TOKEN: readString("TURSO_AUTH_TOKEN"),
     SQLITE_DATABASE_PATH: readString("SQLITE_DATABASE_PATH"),
     DATABASE_BUNNY_URL: readString("DATABASE_BUNNY_URL"),
     DATABASE_BUNNY_TOKEN: readString("DATABASE_BUNNY_TOKEN"),
@@ -236,6 +238,8 @@ export class AppEnv implements IAppEnv {
   public readonly DATABASE_URL: string | undefined;
   public readonly DATABASE_REDIS_URL: string | undefined;
   public readonly DATABASE_DRAGONFLY_URL: string | undefined;
+  public readonly TURSO_DATABASE_URL: string | undefined;
+  public readonly TURSO_AUTH_TOKEN: string | undefined;
   public readonly SQLITE_DATABASE_PATH: string | undefined;
   public readonly DATABASE_BUNNY_URL: string | undefined;
   public readonly DATABASE_BUNNY_TOKEN: string | undefined;

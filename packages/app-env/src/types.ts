@@ -93,6 +93,8 @@ export interface IAppEnv {
   readonly DATABASE_URL: string | undefined;
   readonly DATABASE_REDIS_URL: string | undefined;
   readonly DATABASE_DRAGONFLY_URL: string | undefined;
+  readonly TURSO_DATABASE_URL: string | undefined;
+  readonly TURSO_AUTH_TOKEN: string | undefined;
   readonly SQLITE_DATABASE_PATH: string | undefined;
   readonly DATABASE_BUNNY_URL: string | undefined;
   readonly DATABASE_BUNNY_TOKEN: string | undefined;

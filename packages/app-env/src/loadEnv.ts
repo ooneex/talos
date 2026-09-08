@@ -42,6 +42,8 @@ const ENV_VAR_NAMES: Record<string, string> = {
   "database.url": "DATABASE_URL",
   "database.redis.url": "DATABASE_REDIS_URL",
   "database.dragonfly.url": "DATABASE_DRAGONFLY_URL",
+  "database.turso.url": "TURSO_DATABASE_URL",
+  "database.turso.auth_token": "TURSO_AUTH_TOKEN",
   "database.sqlite.path": "SQLITE_DATABASE_PATH",
   "mailer.sender.name": "MAILER_SENDER_NAME",
   "mailer.sender.address": "MAILER_SENDER_ADDRESS",
