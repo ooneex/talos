@@ -28,6 +28,11 @@ pub struct IssueYaml {
     pub title: Option<String>,
     pub state: Option<String>,
     pub priority: Option<String>,
+    /// Where the issue lives in the tracker, preserved on a pull so pushing it
+    /// back does not send it to the fallback team.
+    pub team: Option<String>,
+    pub project: Option<String>,
+    pub milestone: Option<String>,
     pub description: Option<String>,
     pub labels: Option<Vec<String>>,
 }
@@ -49,6 +54,15 @@ pub fn issue_to_yaml(issue: &IssueYaml) -> String {
     }
     if let Some(priority) = &issue.priority {
         lines.push(format!("priority: {}", quote_scalar(Some(priority))));
+    }
+    for (key, value) in [
+        ("team", &issue.team),
+        ("project", &issue.project),
+        ("milestone", &issue.milestone),
+    ] {
+        if let Some(value) = value.as_deref().filter(|value| !value.trim().is_empty()) {
+            lines.push(format!("{key}: {}", quote_scalar(Some(value))));
+        }
     }
 
     if let Some(description) = &issue.description {

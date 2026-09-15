@@ -209,6 +209,42 @@ pub(super) fn check_priority(document: &Mapping, report: &mut FileReport) {
     );
 }
 
+/// Validate `team`, `project` and `milestone` — the optional tracker
+/// placement. They are free text (a Linear team key, a project name), so the
+/// only thing to check is that a declared one carries a value: a blank field
+/// reads as "filed here" while pushing to the fallback team instead.
+pub(super) fn check_placement(document: &Mapping, report: &mut FileReport) {
+    const PLACEMENT: [(&str, &str, &str); 3] = [
+        ("team", "issue.team.type", "issue.team.empty"),
+        ("project", "issue.project.type", "issue.project.empty"),
+        ("milestone", "issue.milestone.type", "issue.milestone.empty"),
+    ];
+    for (name, type_rule, empty_rule) in PLACEMENT {
+        let Some(value) = field(document, name) else {
+            continue;
+        };
+        let Some(text) = as_str(value) else {
+            report.error(
+                type_rule,
+                format!("`{name}` must be a string, found {}", value_kind(value)),
+            );
+            continue;
+        };
+        if text.trim().is_empty() {
+            report.error(
+                empty_rule,
+                format!("`{name}` must not be empty; drop the key instead"),
+            );
+        }
+    }
+    if field(document, "milestone").is_some() && field(document, "project").is_none() {
+        report.error(
+            "issue.milestone.orphan",
+            "`milestone` needs a `project`: Linear milestones belong to a project",
+        );
+    }
+}
+
 /// Validate `labels` and return the change-type labels it declares.
 pub(super) fn check_labels(
     document: &Mapping,

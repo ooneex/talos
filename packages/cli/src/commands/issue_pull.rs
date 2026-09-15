@@ -33,6 +33,9 @@ struct PulledIssue {
     title: String,
     state: Option<String>,
     priority: Option<String>,
+    team: Option<String>,
+    project: Option<String>,
+    milestone: Option<String>,
     description: String,
     labels: Vec<String>,
 }
@@ -47,6 +50,9 @@ impl PulledIssue {
             title: issue.title.clone().unwrap_or_default().trim().to_string(),
             state: issue.state.clone().or_else(|| Some("Todo".to_string())),
             priority: issue.priority.clone(),
+            team: issue.team.clone(),
+            project: issue.project.clone(),
+            milestone: issue.milestone.clone(),
             description: issue
                 .description
                 .clone()
@@ -66,6 +72,9 @@ impl PulledIssue {
             title: issue.title.clone().unwrap_or_default().trim().to_string(),
             state: issue.state.clone().or_else(|| Some("Todo".to_string())),
             priority: None,
+            team: None,
+            project: None,
+            milestone: None,
             description: issue
                 .description
                 .clone()
@@ -88,6 +97,9 @@ impl PulledIssue {
             title: Some(self.title.clone()),
             state: self.state.clone(),
             priority: self.priority.clone(),
+            team: self.team.clone(),
+            project: self.project.clone(),
+            milestone: self.milestone.clone(),
             description: Some(self.description.clone()),
             labels: Some(self.labels.clone()),
         })
@@ -236,6 +248,9 @@ mod tests {
             description: Some("  Cover more lines  ".to_string()),
             priority: Some("High".to_string()),
             state: None,
+            team: Some("ENG".to_string()),
+            project: Some("v3".to_string()),
+            milestone: Some("Homepage".to_string()),
             labels: vec!["coverage".to_string()],
             comments: Vec::new(),
         };
@@ -248,6 +263,9 @@ mod tests {
         assert_eq!(pulled.state.as_deref(), Some("Todo"));
         assert_eq!(pulled.priority.as_deref(), Some("High"));
         assert_eq!(pulled.labels, vec!["coverage".to_string()]);
+        assert_eq!(pulled.team.as_deref(), Some("ENG"));
+        assert_eq!(pulled.project.as_deref(), Some("v3"));
+        assert_eq!(pulled.milestone.as_deref(), Some("Homepage"));
     }
 
     #[test]
@@ -269,6 +287,7 @@ mod tests {
         assert_eq!(pulled.state.as_deref(), Some("Todo"));
         assert_eq!(pulled.priority, None);
         assert_eq!(pulled.labels, vec!["bug".to_string()]);
+        assert_eq!(pulled.team, None);
     }
 
     #[test]
@@ -282,6 +301,9 @@ mod tests {
             title: "Add tests".to_string(),
             state: Some("Todo".to_string()),
             priority: Some("Medium".to_string()),
+            team: Some("ENG".to_string()),
+            project: Some("v3".to_string()),
+            milestone: Some("Homepage".to_string()),
             description: "Details".to_string(),
             labels: vec!["coverage".to_string()],
         }
@@ -291,6 +313,11 @@ mod tests {
         assert!(yaml.contains("module: \"shared\""));
         assert!(yaml.contains("title: \"Add tests\""));
         assert!(yaml.contains("priority: \"Medium\""));
+        // Placement survives the round trip, so pushing a pulled issue back
+        // leaves it where it was instead of moving it to the fallback team.
+        assert!(yaml.contains("team: \"ENG\""));
+        assert!(yaml.contains("project: \"v3\""));
+        assert!(yaml.contains("milestone: \"Homepage\""));
     }
 
     #[test]
@@ -356,6 +383,9 @@ mod tests {
             title: "Add tests".to_string(),
             state: Some("Todo".to_string()),
             priority: Some("High".to_string()),
+            team: None,
+            project: None,
+            milestone: None,
             description: "Initial body".to_string(),
             labels: vec!["coverage".to_string()],
         };

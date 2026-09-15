@@ -62,6 +62,12 @@ struct Field {
     key: &'static str,
     prompt: &'static str,
     kind: FieldKind,
+    /// Other flags that fill this same field. Providers name the same secret
+    /// differently — Linear calls its token an API key everywhere in its own
+    /// UI — and a flag that does not match is worse than one that does not
+    /// exist: clap accepts it, the field stays empty, and the command asks for
+    /// a value the user already gave it.
+    aliases: &'static [&'static str],
 }
 
 const fn plain(key: &'static str, prompt: &'static str) -> Field {
@@ -69,6 +75,7 @@ const fn plain(key: &'static str, prompt: &'static str) -> Field {
         key,
         prompt,
         kind: FieldKind::Plain,
+        aliases: &[],
     }
 }
 
@@ -77,6 +84,20 @@ const fn secret(key: &'static str, prompt: &'static str) -> Field {
         key,
         prompt,
         kind: FieldKind::Secret,
+        aliases: &[],
+    }
+}
+
+const fn secret_also(
+    key: &'static str,
+    prompt: &'static str,
+    aliases: &'static [&'static str],
+) -> Field {
+    Field {
+        key,
+        prompt,
+        kind: FieldKind::Secret,
+        aliases,
     }
 }
 
@@ -85,6 +106,7 @@ const fn with_default(key: &'static str, prompt: &'static str, initial: &'static
         key,
         prompt,
         kind: FieldKind::WithDefault(initial),
+        aliases: &[],
     }
 }
 
@@ -95,10 +117,14 @@ const JIRA_FIELDS: &[Field] = &[
         "https://your-domain.atlassian.net",
     ),
     plain("email", "Enter Jira account email"),
-    secret("token", "Enter Jira API token"),
+    secret_also("token", "Enter Jira API token", &["apiKey"]),
 ];
 
-const LINEAR_FIELDS: &[Field] = &[secret("token", "Enter Linear Personal API key")];
+const LINEAR_FIELDS: &[Field] = &[secret_also(
+    "token",
+    "Enter Linear Personal API key",
+    &["apiKey"],
+)];
 
 const X_FIELDS: &[Field] = &[
     plain("clientId", "Enter X client ID"),
@@ -141,7 +167,11 @@ const WHATSAPP_FIELDS: &[Field] = &[
     secret("accessToken", "Enter WhatsApp access token"),
 ];
 
-const TELEGRAM_FIELDS: &[Field] = &[secret("botToken", "Enter Telegram bot token")];
+const TELEGRAM_FIELDS: &[Field] = &[secret_also(
+    "botToken",
+    "Enter Telegram bot token",
+    &["token"],
+)];
 
 const MESSENGER_FIELDS: &[Field] = &[
     plain("pageId", "Enter Messenger page ID"),
@@ -151,7 +181,7 @@ const MESSENGER_FIELDS: &[Field] = &[
 
 const DISCORD_FIELDS: &[Field] = &[
     plain("applicationId", "Enter Discord application ID"),
-    secret("botToken", "Enter Discord bot token"),
+    secret_also("botToken", "Enter Discord bot token", &["token"]),
 ];
 
 const REDDIT_FIELDS: &[Field] = &[
@@ -161,7 +191,11 @@ const REDDIT_FIELDS: &[Field] = &[
     secret("password", "Enter Reddit password"),
 ];
 
-const MEDIUM_FIELDS: &[Field] = &[secret("token", "Enter Medium integration token")];
+const MEDIUM_FIELDS: &[Field] = &[secret_also(
+    "token",
+    "Enter Medium integration token",
+    &["apiKey"],
+)];
 
 const CLOUDFLARE_FIELDS: &[Field] = &[
     secret("accessKey", "Enter Cloudflare R2 access key ID"),
@@ -187,7 +221,11 @@ const S3_FIELDS: &[Field] = &[
     with_default("region", "Enter S3 region", "us-east-1"),
 ];
 
-const OPENROUTER_FIELDS: &[Field] = &[secret("apiKey", "Enter OpenRouter API key")];
+const OPENROUTER_FIELDS: &[Field] = &[secret_also(
+    "apiKey",
+    "Enter OpenRouter API key",
+    &["token"],
+)];
 
 impl CredentialsProvider {
     pub fn slug(self) -> &'static str {
@@ -393,6 +431,65 @@ impl CredentialsCreateArgs {
             _ => None,
         }
     }
+
+    /// The value a field was given on the command line, under its own flag or
+    /// under one of the aliases the provider answers to.
+    fn value_for(&self, field: &Field) -> Option<String> {
+        self.flag(field.key)
+            .or_else(|| field.aliases.iter().find_map(|alias| self.flag(alias)))
+    }
+}
+
+/// Every flag key the command accepts, so a value passed for a field the
+/// chosen provider has no use for can be named back instead of dropped.
+const FLAG_KEYS: &[&str] = &[
+    "baseUrl",
+    "email",
+    "token",
+    "clientId",
+    "clientSecret",
+    "clientKey",
+    "accessToken",
+    "appId",
+    "appSecret",
+    "pageId",
+    "phoneNumberId",
+    "applicationId",
+    "botToken",
+    "username",
+    "password",
+    "accessKey",
+    "secretKey",
+    "endpoint",
+    "region",
+    "bucket",
+    "storageZone",
+    "apiKey",
+];
+
+/// Flags the provider reads, its fields plus every alias they answer to.
+fn accepted_keys(provider: CredentialsProvider) -> Vec<&'static str> {
+    provider
+        .fields()
+        .iter()
+        .flat_map(|field| std::iter::once(field.key).chain(field.aliases.iter().copied()))
+        .collect()
+}
+
+/// Name back the flags that were passed but belong to another provider, so a
+/// wrong one is a line of output rather than a prompt for a value that was
+/// already typed.
+fn warn_unused_flags(args: &CredentialsCreateArgs, provider: CredentialsProvider) {
+    let accepted = accepted_keys(provider);
+    for key in FLAG_KEYS {
+        if args.flag(key).is_some() && !accepted.contains(key) {
+            crate::utils::warn(format!(
+                "--{} is not a {} credential and was ignored",
+                crate::utils::to_kebab_case(key),
+                provider.label()
+            ));
+        }
+    }
 }
 
 pub fn run(args: &CredentialsCreateArgs) {
@@ -402,11 +499,12 @@ pub fn run(args: &CredentialsCreateArgs) {
 
     if !args.silent {
         println!("{}", provider.hint());
+        warn_unused_flags(args, provider);
     }
 
     let mut profile = Vec::new();
     for field in provider.fields() {
-        let value = match args.flag(field.key) {
+        let value = match args.value_for(field) {
             Some(value) => Some(value),
             None => match field.kind {
                 FieldKind::Plain => ask_plain_input(field.prompt),

@@ -2,7 +2,7 @@ use serde_json::{Value, json};
 
 use super::client::LinearClient;
 
-const ISSUE_QUERY: &str = r#"query($id: String!) { issue(id: $id) { identifier title description priority state { name } labels { nodes { name } } comments { nodes { body user { name } } } } }"#;
+const ISSUE_QUERY: &str = r#"query($id: String!) { issue(id: $id) { identifier title description priority state { name } team { key } project { name } projectMilestone { name } labels { nodes { name } } comments { nodes { body user { name } } } } }"#;
 
 /// A single comment attached to a Linear issue.
 pub struct LinearComment {
@@ -18,6 +18,12 @@ pub struct LinearIssue {
     pub description: Option<String>,
     pub priority: Option<String>,
     pub state: Option<String>,
+    /// Team key (`ENG`), project name and milestone name — where the issue
+    /// lives in Linear, so a pulled issue pushed back lands where it was
+    /// rather than in the fallback team.
+    pub team: Option<String>,
+    pub project: Option<String>,
+    pub milestone: Option<String>,
     pub labels: Vec<String>,
     pub comments: Vec<LinearComment>,
 }
@@ -44,6 +50,14 @@ impl LinearIssue {
             .and_then(|state| state.get("name"))
             .and_then(Value::as_str)
             .map(str::to_string);
+
+        let nested = |key: &str, field: &str| {
+            issue
+                .get(key)
+                .and_then(|value| value.get(field))
+                .and_then(Value::as_str)
+                .map(str::to_string)
+        };
 
         let labels = issue
             .get("labels")
@@ -84,6 +98,9 @@ impl LinearIssue {
             description: string_field("description"),
             priority: priority_name(issue.get("priority").and_then(Value::as_i64)),
             state,
+            team: nested("team", "key"),
+            project: nested("project", "name"),
+            milestone: nested("projectMilestone", "name"),
             labels,
             comments,
         }

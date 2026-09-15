@@ -6,8 +6,8 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use serde_yaml::{Mapping, Value};
 
 use super::fields_a::{
-    check_dod, check_goal, check_identity, check_labels, check_priority, check_state, check_title,
-    required_text,
+    check_dod, check_goal, check_identity, check_labels, check_placement, check_priority,
+    check_state, check_title, required_text,
 };
 use super::fields_b::{check_branch, check_comments, check_dependencies, check_pr, check_spec};
 use super::loading::{as_str, field, value_kind};
@@ -89,6 +89,7 @@ pub(super) fn check_issue(
     check_identity(document, issue, &mut report);
     check_title(document, &mut report);
     check_priority(document, &mut report);
+    check_placement(document, &mut report);
 
     let state = check_state(document, &mut report);
     let state = state.as_deref().unwrap_or("Todo");

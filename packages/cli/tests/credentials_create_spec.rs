@@ -1,3 +1,5 @@
+use std::sync::{Mutex, MutexGuard};
+
 use clap::Parser;
 use cli::commands::credentials_create::{
     CredentialsCreateArgs, CredentialsProvider, PROVIDERS, run,
@@ -8,6 +10,32 @@ use cli::utils::read_credentials;
 struct TestCli {
     #[command(flatten)]
     args: CredentialsCreateArgs,
+}
+
+/// `HOME` decides where the profile is written, and it is process-wide — two
+/// tests pointing it at their own temp dir at once would read each other's.
+static HOME: Mutex<()> = Mutex::new(());
+
+/// Run `body` against a `HOME` of its own, restoring the real one after.
+fn with_home<T>(body: impl FnOnce() -> T) -> T {
+    let _guard: MutexGuard<'_, ()> = HOME.lock().unwrap_or_else(|error| error.into_inner());
+    let home = tempfile::tempdir().expect("tempdir");
+    let previous = std::env::var_os("HOME");
+    unsafe {
+        std::env::set_var("HOME", home.path());
+    }
+
+    let outcome = body();
+
+    match previous {
+        Some(value) => unsafe {
+            std::env::set_var("HOME", value);
+        },
+        None => unsafe {
+            std::env::remove_var("HOME");
+        },
+    }
+    outcome
 }
 
 #[test]
@@ -99,49 +127,19 @@ fn every_provider_has_a_non_empty_label() {
 
 #[test]
 fn credentials_create_writes_a_profile_when_the_jira_flags_are_given() {
-    let home = tempfile::tempdir().expect("tempdir");
-    let previous = std::env::var_os("HOME");
-    unsafe {
-        std::env::set_var("HOME", home.path());
-    }
-
-    run(&CredentialsCreateArgs {
-        provider: Some(CredentialsProvider::Jira),
-        base_url: Some("https://acme.atlassian.net".to_string()),
-        email: Some("dev@acme.com".to_string()),
-        token: Some("secret".to_string()),
-        client_id: None,
-        client_secret: None,
-        client_key: None,
-        access_token: None,
-        app_id: None,
-        app_secret: None,
-        page_id: None,
-        phone_number_id: None,
-        application_id: None,
-        bot_token: None,
-        username: None,
-        password: None,
-        access_key: None,
-        secret_key: None,
-        endpoint: None,
-        region: None,
-        bucket: None,
-        storage_zone: None,
-        api_key: None,
-        silent: true,
+    let credentials = with_home(|| {
+        let cli = TestCli::try_parse_from([
+            "talos",
+            "--provider=jira",
+            "--base-url=https://acme.atlassian.net",
+            "--email=dev@acme.com",
+            "--token=secret",
+            "--silent",
+        ])
+        .expect("valid arguments should parse");
+        run(&cli.args);
+        read_credentials("jira.yml")
     });
-
-    let credentials = read_credentials("jira.yml");
-
-    match previous {
-        Some(value) => unsafe {
-            std::env::set_var("HOME", value);
-        },
-        None => unsafe {
-            std::env::remove_var("HOME");
-        },
-    }
 
     assert_eq!(
         credentials,
@@ -153,5 +151,70 @@ fn credentials_create_writes_a_profile_when_the_jira_flags_are_given() {
             ("email".to_string(), "dev@acme.com".to_string()),
             ("token".to_string(), "secret".to_string()),
         ])
+    );
+}
+
+#[test]
+fn credentials_create_takes_the_linear_key_under_the_name_linear_gives_it() {
+    // Linear calls it a Personal API key everywhere in its own UI, so
+    // `--api-key` is the flag a reader of the hint reaches for. Before it was
+    // an alias, clap accepted the value, the field stayed empty, and the
+    // command prompted for a key that had already been typed on the line.
+    let credentials = with_home(|| {
+        let cli = TestCli::try_parse_from([
+            "talos",
+            "--provider=linear",
+            "--api-key=lin_api_xxx",
+            "--silent",
+        ])
+        .expect("valid arguments should parse");
+        run(&cli.args);
+        read_credentials("linear.yml")
+    });
+
+    assert_eq!(
+        credentials,
+        Some(vec![("token".to_string(), "lin_api_xxx".to_string())])
+    );
+}
+
+#[test]
+fn credentials_create_still_takes_the_linear_key_under_its_own_name() {
+    let credentials = with_home(|| {
+        let cli = TestCli::try_parse_from([
+            "talos",
+            "--provider=linear",
+            "--token=lin_api_xxx",
+            "--silent",
+        ])
+        .expect("valid arguments should parse");
+        run(&cli.args);
+        read_credentials("linear.yml")
+    });
+
+    assert_eq!(
+        credentials,
+        Some(vec![("token".to_string(), "lin_api_xxx".to_string())])
+    );
+}
+
+#[test]
+fn credentials_create_prefers_the_field_name_over_its_alias() {
+    let credentials = with_home(|| {
+        let cli = TestCli::try_parse_from([
+            "talos",
+            "--provider=openrouter",
+            "--api-key=own",
+            "--token=alias",
+            "--silent",
+        ])
+        .expect("valid arguments should parse");
+        run(&cli.args);
+        read_credentials("openrouter.yml")
+    });
+
+    assert_eq!(
+        credentials,
+        Some(vec![("apiKey".to_string(), "own".to_string())])
     );
 }
