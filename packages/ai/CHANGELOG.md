@@ -64,3 +64,9 @@
 
 - Fix changelog links| — Franck ([3ab6fd45](https://github.com/ooneex/talos/commit/3ab6fd45))
 
+## [1.2.3](https://github.com/ooneex/talos/releases/tag/@talosjs/ai@1.2.3) - 2026-09-20
+
+### Changed
+
+- @talosjs/ai@1.2.2| — Franck ([42e50c94](https://github.com/ooneex/talos/commit/42e50c94))
+
