@@ -57,3 +57,9 @@
 
 - Remove empty parent directories recursively| — Franck ([834b516a](https://github.com/ooneex/talos/commit/834b516a))
 
+## [1.2.2](https://github.com/ooneex/talos/releases/tag/@talosjs/storage@1.2.2) - 2026-09-20
+
+### Changed
+
+- @talosjs/storage@1.2.1| — Franck ([bc2ff240](https://github.com/ooneex/talos/commit/bc2ff240))
+
