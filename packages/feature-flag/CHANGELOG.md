@@ -41,3 +41,9 @@
 
 - Fix changelog links| — Franck ([e7aa4b64](https://github.com/ooneex/talos/commit/e7aa4b64))
 
+## [1.1.6](https://github.com/ooneex/talos/releases/tag/@talosjs/feature-flag@1.1.6) - 2026-09-20
+
+### Changed
+
+- @talosjs/feature-flag@1.1.5| — Franck ([45396322](https://github.com/ooneex/talos/commit/45396322))
+
