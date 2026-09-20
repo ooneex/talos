@@ -66,3 +66,9 @@
 
 - Fix changelog links| — Franck ([79f7f9ea](https://github.com/ooneex/talos/commit/79f7f9ea))
 
+## [1.3.4](https://github.com/ooneex/talos/releases/tag/@talosjs/auth@1.3.4) - 2026-09-20
+
+### Changed
+
+- @talosjs/auth@1.3.3| — Franck ([c85794e8](https://github.com/ooneex/talos/commit/c85794e8))
+
