@@ -7,6 +7,7 @@ export default defineConfig({
     "src/dataURLtoFile.ts",
     "src/formatRelativeNumber.ts",
     "src/millisecondsToHMS.ts",
+    "src/nanoid.ts",
     "src/parseEnvVars.ts",
     "src/parseString.ts",
     "src/random.ts",

@@ -1,29 +1,34 @@
-import { customAlphabet } from "nanoid";
+import { customAlphabet, randomInt } from "./nanoid";
+
+const HEX_ALPHABET = "0123456789abcdef";
+const DIGIT_ALPHABET = "0123456789";
+const LETTER_ALPHABET = "abcdef";
+
+const hexId = customAlphabet(HEX_ALPHABET, 10);
+const digitId = customAlphabet(DIGIT_ALPHABET, 10);
+const letterId = customAlphabet(LETTER_ALPHABET, 2);
 
 export const random = {
   id(): string {
-    return customAlphabet("1234567890abcdef", 20)();
+    return hexId(20);
   },
   nanoid(size?: number): string {
-    return customAlphabet("1234567890abcdef", size ?? 10)();
+    return hexId(size);
   },
   stringInt(size?: number): string {
-    return customAlphabet("1234567890", size ?? 10)();
+    return digitId(size);
   },
   nanoidFactory(size?: number): (size?: number) => string {
-    return customAlphabet("1234567890abcdef", size ?? 10);
+    return customAlphabet(HEX_ALPHABET, size ?? 10);
   },
   code(): string {
-    const chars = [
-      ...customAlphabet("abcdef", 2)(),
-      ...customAlphabet("1234567890", 6)(),
-    ];
+    const chars = [...letterId(2), ...digitId(6)];
+    let result = "";
 
-    for (let i = chars.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [chars[i], chars[j]] = [chars[j] as string, chars[i] as string];
+    while (chars.length > 0) {
+      result += chars.splice(randomInt(chars.length), 1).join("");
     }
 
-    return chars.join("");
+    return result;
   },
 };

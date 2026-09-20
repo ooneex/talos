@@ -1,6 +1,6 @@
 # @talosjs/utils
 
-General-purpose utility functions including unique ID generation with nanoid, type guards, and common helper methods
+General-purpose utility functions including dependency-free nanoid-compatible unique ID generation, type guards, and common helper methods
 
 ## Installation
 
