@@ -43,3 +43,9 @@
 
 - Fix changelog links| — Franck ([2d29c3d0](https://github.com/ooneex/talos/commit/2d29c3d0))
 
+## [1.1.6](https://github.com/ooneex/talos/releases/tag/@talosjs/cron@1.1.6) - 2026-09-20
+
+### Changed
+
+- @talosjs/cron@1.1.5| — Franck ([dd7e6da4](https://github.com/ooneex/talos/commit/dd7e6da4))
+
