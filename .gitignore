@@ -153,6 +153,7 @@ packages/app/docs
 packages/app/src/types
 packages/app/src/fetchers
 packages/app/src/hooks
+packages/container/tests/tmp
 packages/pdf/tests/tmp
 packages/rag/tests/tmp
 packages/storage/tests/tmp

@@ -1,14 +1,11 @@
 import { ContainerException } from "./ContainerException";
+import { registry } from "./registry";
 import type { ClassType, ServiceIdentifierType } from "./types";
-
-/** Tokens by constructor parameter position; a hole is a parameter left to its default value. */
-type InjectionsType = (ServiceIdentifierType | undefined)[];
 
 const NO_INJECTIONS: readonly (ServiceIdentifierType | undefined)[] = Object.freeze([]);
 
-// Keyed by the decorated class itself: no `reflect-metadata` polyfill is needed, and a subclass never
-// picks up its parent's injections by walking a prototype chain.
-const injections = new WeakMap<ClassType, InjectionsType>();
+// Every copy of this package in the process shares one set of injections; see `registry.ts`.
+const { injections } = registry;
 
 /** The token of each constructor parameter of `target`, indexed by position; shared empty list when none. */
 export const getInjections = (target: ClassType): readonly (ServiceIdentifierType | undefined)[] =>
