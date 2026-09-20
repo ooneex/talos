@@ -733,3 +733,18 @@
 
 - Correct strict checks and release links| — Franck ([739ae6f0](https://github.com/ooneex/talos/commit/739ae6f0))
 
+## [0.16.0](https://github.com/ooneex/talos/releases/tag/@talos/cli@0.16.0) - 2026-09-20
+
+### Added
+
+- Let an issue file choose its team, project and milestone in Linear|`issue:push` could only create issues under the "General" team, so anything — Julien ([0794a4a7](https://github.com/ooneex/talos/commit/0794a4a7))
+
+### Changed
+
+- Update Cargo.lock| — Franck ([56558f25](https://github.com/ooneex/talos/commit/56558f25))
+- @talos/cli@0.15.0| — Franck ([36996ff4](https://github.com/ooneex/talos/commit/36996ff4))
+
+### Fixed
+
+- Accept the Linear API key under the name Linear gives it|`credentials:create --provider=linear --api-key=...` prompted for a key that — Julien ([5f176cc6](https://github.com/ooneex/talos/commit/5f176cc6))
+
