@@ -55,3 +55,23 @@
 
 - Add PostgreSQL test driver| — Franck ([abbcecc2](https://github.com/ooneex/talos/commit/abbcecc2))
 
+## [1.3.0](https://github.com/ooneex/talos/releases/tag/@talosjs/database@1.3.0) - 2026-09-20
+
+### Added
+
+- Add Turso database driver support| — Franck ([53b7c5be](https://github.com/ooneex/talos/commit/53b7c5be))
+- Add MongoDB driver support| — Franck ([03079445](https://github.com/ooneex/talos/commit/03079445))
+- Add Cloudflare D1 driver support| — Franck ([d1f34263](https://github.com/ooneex/talos/commit/d1f34263))
+- Add native Redis driver| — Franck ([6b4b336e](https://github.com/ooneex/talos/commit/6b4b336e))
+- Add ClickHouse driver support| — Franck ([2924c7ee](https://github.com/ooneex/talos/commit/2924c7ee))
+- Replace TypeORM with Bun-native SQL ORM| — Franck ([5341b781](https://github.com/ooneex/talos/commit/5341b781))
+
+### Changed
+
+- Remove PostgresDatabase and SqliteDatabase wrappers| — Franck ([4a4f1db2](https://github.com/ooneex/talos/commit/4a4f1db2))
+- Fix changelog links| — Franck ([aea98e6c](https://github.com/ooneex/talos/commit/aea98e6c))
+
+### Fixed
+
+- Normalize Bun SQL arrays and expose driver error codes| — Franck ([5491158e](https://github.com/ooneex/talos/commit/5491158e))
+
