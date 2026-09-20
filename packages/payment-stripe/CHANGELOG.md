@@ -20,3 +20,9 @@
 
 - Split webhook event construction| — Franck ([f93dbedb](https://github.com/ooneex/talos/commit/f93dbedb))
 
+## [0.1.3](https://github.com/ooneex/talos/releases/tag/@talosjs/payment-stripe@0.1.3) - 2026-09-20
+
+### Changed
+
+- @talosjs/payment-stripe@0.1.2| — Franck ([0f00126e](https://github.com/ooneex/talos/commit/0f00126e))
+
