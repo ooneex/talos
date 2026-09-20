@@ -44,3 +44,10 @@
 - Replace Inversify with a dependency-free in-house container|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([6d412df4](https://github.com/ooneex/talos/commit/6d412df4))
 - Fix changelog links| — Franck ([269d5917](https://github.com/ooneex/talos/commit/269d5917))
 
+## [1.1.6](https://github.com/ooneex/talos/releases/tag/@talosjs/container@1.1.6) - 2026-09-20
+
+### Changed
+
+- @talosjs/container@1.1.5| — Franck ([387722d5](https://github.com/ooneex/talos/commit/387722d5))
+- Extract shared registry to Symbol.for global state|Moves bindings, injections, and request-scoped state to a new registry module — Franck ([6290d747](https://github.com/ooneex/talos/commit/6290d747))
+
