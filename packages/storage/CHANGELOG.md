@@ -51,3 +51,9 @@
 - Disable test coverage by default in bunfig| — Franck ([8677a826](https://github.com/ooneex/talos/commit/8677a826))
 - Run package tests with parallel isolated workers| — Franck ([aee22840](https://github.com/ooneex/talos/commit/aee22840))
 
+## [1.2.1](https://github.com/ooneex/talos/releases/tag/@talosjs/storage@1.2.1) - 2026-09-20
+
+### Changed
+
+- Remove empty parent directories recursively| — Franck ([834b516a](https://github.com/ooneex/talos/commit/834b516a))
+
