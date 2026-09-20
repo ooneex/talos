@@ -104,3 +104,9 @@
 
 - Load environment layers concurrently| — Franck ([8e961efc](https://github.com/ooneex/talos/commit/8e961efc))
 
+## [1.7.1](https://github.com/ooneex/talos/releases/tag/@talosjs/app-env@1.7.1) - 2026-09-20
+
+### Changed
+
+- @talosjs/app-env@1.7.0| — Franck ([f87481d2](https://github.com/ooneex/talos/commit/f87481d2))
+
