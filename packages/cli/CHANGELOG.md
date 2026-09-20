@@ -758,3 +758,9 @@
 
 - Remove orphan container removal from docker compose down|Simplifies the docker compose stop sequence by removing --remove-orphans flag, — Franck ([4a2ef87a](https://github.com/ooneex/talos/commit/4a2ef87a))
 
+## [0.16.2](https://github.com/ooneex/talos/releases/tag/@talos/cli@0.16.2) - 2026-09-20
+
+### Changed
+
+- Update Cargo.lock| — Franck ([be6ac5b0](https://github.com/ooneex/talos/commit/be6ac5b0))
+
