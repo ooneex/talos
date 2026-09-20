@@ -36,3 +36,11 @@
 - Disable test coverage by default in bunfig| — Franck ([8677a826](https://github.com/ooneex/talos/commit/8677a826))
 - Run package tests with parallel isolated workers| — Franck ([aee22840](https://github.com/ooneex/talos/commit/aee22840))
 
+## [1.1.5](https://github.com/ooneex/talos/releases/tag/@talosjs/container@1.1.5) - 2026-09-20
+
+### Changed
+
+- Extract shared registry to Symbol.for global state|Moves bindings, injections, and request-scoped state to a new registry module — Franck ([40ea1356](https://github.com/ooneex/talos/commit/40ea1356))
+- Replace Inversify with a dependency-free in-house container|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([6d412df4](https://github.com/ooneex/talos/commit/6d412df4))
+- Fix changelog links| — Franck ([269d5917](https://github.com/ooneex/talos/commit/269d5917))
+
