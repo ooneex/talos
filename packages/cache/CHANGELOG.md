@@ -65,3 +65,9 @@
 
 - Fix changelog links| — Franck ([e22a69f9](https://github.com/ooneex/talos/commit/e22a69f9))
 
+## [1.3.4](https://github.com/ooneex/talos/releases/tag/@talosjs/cache@1.3.4) - 2026-09-20
+
+### Changed
+
+- @talosjs/cache@1.3.3| — Franck ([25c59594](https://github.com/ooneex/talos/commit/25c59594))
+
