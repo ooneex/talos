@@ -87,3 +87,9 @@
 
 - Export decorator types and enhance generic typing|Exports DateColumnDecoratorType and RelationDecoratorType for decorator factories; — Franck ([89c4cadc](https://github.com/ooneex/talos/commit/89c4cadc))
 
+## [1.4.1](https://github.com/ooneex/talos/releases/tag/@talosjs/database@1.4.1) - 2026-09-20
+
+### Fixed
+
+- Bind raw query parameters through the driver|Bun serialises an array parameter as `a,b,c`, which Postgres rejects as a — Franck ([220dec31](https://github.com/ooneex/talos/commit/220dec31))
+
