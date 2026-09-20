@@ -43,3 +43,9 @@
 
 - Fix changelog links| — Franck ([5add09ac](https://github.com/ooneex/talos/commit/5add09ac))
 
+## [1.1.6](https://github.com/ooneex/talos/releases/tag/@talosjs/event@1.1.6) - 2026-09-20
+
+### Changed
+
+- @talosjs/event@1.1.5| — Franck ([db774df4](https://github.com/ooneex/talos/commit/db774df4))
+
