@@ -41,3 +41,9 @@
 
 - Fix changelog links| — Franck ([0ce3fa81](https://github.com/ooneex/talos/commit/0ce3fa81))
 
+## [1.1.6](https://github.com/ooneex/talos/releases/tag/@talosjs/socket-client@1.1.6) - 2026-09-20
+
+### Changed
+
+- @talosjs/socket-client@1.1.5| — Franck ([13eb53e9](https://github.com/ooneex/talos/commit/13eb53e9))
+
