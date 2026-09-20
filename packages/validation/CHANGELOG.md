@@ -52,3 +52,9 @@
 
 - Align ArkType dependency version| — Franck ([2785cca5](https://github.com/ooneex/talos/commit/2785cca5))
 
+## [1.2.3](https://github.com/ooneex/talos/releases/tag/@talosjs/validation@1.2.3) - 2026-09-20
+
+### Changed
+
+- @talosjs/validation@1.2.2| — Franck ([28df3ea3](https://github.com/ooneex/talos/commit/28df3ea3))
+
