@@ -239,12 +239,10 @@ fn app_start_runs_selected_back_end_modules_and_starts_docker_when_needed() {
     assert!(output_text.contains("Starting api"));
     let log_text = std::fs::read_to_string(log).expect("log");
     assert!(log_text.contains("docker:compose config --format json"));
-    assert!(log_text.contains("docker:compose down --remove-orphans"));
+    assert!(log_text.contains("docker:compose down"));
     assert!(log_text.contains("docker:compose up -d"));
     assert!(log_text.contains("kill:-TERM 4242"));
-    let down = log_text
-        .find("docker:compose down --remove-orphans")
-        .expect("compose down");
+    let down = log_text.find("docker:compose down").expect("compose down");
     let kill = log_text.find("kill:-TERM 4242").expect("port kill");
     let up = log_text.find("docker:compose up -d").expect("compose up");
     assert!(down < kill && kill < up, "{log_text}");

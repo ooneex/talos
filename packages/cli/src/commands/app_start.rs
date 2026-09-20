@@ -153,7 +153,7 @@ pub fn run(args: &AppStartArgs) {
             false,
             &format!("Stopping previous Docker services for {name}"),
             Command::new("docker")
-                .args(["compose", "down", "--remove-orphans"])
+                .args(["compose", "down"])
                 .current_dir(&app_dir),
         ) {
             return;
