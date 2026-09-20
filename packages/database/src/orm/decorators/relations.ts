@@ -14,10 +14,17 @@ import { getMetadataArgsStorage } from "../MetadataArgsStorage";
 type PropertyDecoratorType = (target: object, propertyKey: string | symbol) => void;
 type TypeThunkType<T> = (type?: unknown) => EntityTargetType<T>;
 
+/** The decorator factory produced for each relation kind: `@ManyToOne()`, `@OneToMany()`, … */
+export type RelationDecoratorType = <T>(
+  typeFunctionOrName: TypeThunkType<T> | string,
+  inverseSideOrOptions?: InverseSideSelectorType<T> | RelationOptionsType,
+  maybeOptions?: RelationOptionsType,
+) => PropertyDecoratorType;
+
 const declaringClass = (target: object): ClassType => target.constructor as ClassType;
 
 const relation =
-  (relationType: RelationTypeType) =>
+  (relationType: RelationTypeType): RelationDecoratorType =>
   <T>(
     typeFunctionOrName: TypeThunkType<T> | string,
     inverseSideOrOptions?: InverseSideSelectorType<T> | RelationOptionsType,
@@ -49,7 +56,7 @@ const relation =
  * @JoinColumn({ name: "user_id" })
  * public user?: UserEntity | null;
  */
-export const ManyToOne = relation("many-to-one");
+export const ManyToOne: RelationDecoratorType = relation("many-to-one");
 
 /**
  * One row of this entity owns many rows of the target, which holds the foreign key.
@@ -58,7 +65,7 @@ export const ManyToOne = relation("many-to-one");
  * @OneToMany(() => PostEntity, (post) => post.user)
  * public posts?: PostEntity[];
  */
-export const OneToMany = relation("one-to-many");
+export const OneToMany: RelationDecoratorType = relation("one-to-many");
 
 /**
  * One row here matches one row there. The side decorated with `@JoinColumn()` holds the foreign key.
@@ -68,7 +75,7 @@ export const OneToMany = relation("one-to-many");
  * @JoinColumn({ name: "profile_id" })
  * public profile?: ProfileEntity | null;
  */
-export const OneToOne = relation("one-to-one");
+export const OneToOne: RelationDecoratorType = relation("one-to-one");
 
 /**
  * Rows on both sides match freely through a junction table; the side decorated with `@JoinTable()` owns it.
@@ -78,7 +85,7 @@ export const OneToOne = relation("one-to-one");
  * @JoinTable({ name: "user_roles" })
  * public roles?: RoleEntity[];
  */
-export const ManyToMany = relation("many-to-many");
+export const ManyToMany: RelationDecoratorType = relation("many-to-many");
 
 /**
  * Names the foreign key column of a `@ManyToOne()` or owning `@OneToOne()` relation.

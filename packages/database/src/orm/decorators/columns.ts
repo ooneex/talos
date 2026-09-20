@@ -10,6 +10,9 @@ import { getMetadataArgsStorage } from "../MetadataArgsStorage";
 
 type PropertyDecoratorType = (target: object, propertyKey: string | symbol) => void;
 
+/** The decorator factory produced for each managed timestamp: `@CreateDateColumn()`, `@UpdateDateColumn()`, … */
+export type DateColumnDecoratorType = (options?: ColumnOptionsType) => PropertyDecoratorType;
+
 const declaringClass = (target: object): ClassType => target.constructor as ClassType;
 
 const isColumnType = (value: unknown): value is ColumnType => typeof value === "string" || typeof value === "function";
@@ -101,20 +104,20 @@ export const PrimaryGeneratedColumn = (
 };
 
 const dateColumn =
-  (mode: ColumnModeType, nullable: boolean) =>
+  (mode: ColumnModeType, nullable: boolean): DateColumnDecoratorType =>
   (options: ColumnOptionsType = {}): PropertyDecoratorType =>
   (target, propertyKey): void => {
     registerColumn(target, propertyKey, mode, { nullable, ...options });
   };
 
 /** A timestamp set once, when the row is inserted. */
-export const CreateDateColumn = dateColumn("createDate", false);
+export const CreateDateColumn: DateColumnDecoratorType = dateColumn("createDate", false);
 
 /** A timestamp refreshed on every write. */
-export const UpdateDateColumn = dateColumn("updateDate", false);
+export const UpdateDateColumn: DateColumnDecoratorType = dateColumn("updateDate", false);
 
 /** A nullable timestamp; a non-null value marks the row as soft-deleted and hides it from queries. */
-export const DeleteDateColumn = dateColumn("deleteDate", true);
+export const DeleteDateColumn: DateColumnDecoratorType = dateColumn("deleteDate", true);
 
 /** An integer starting at 1 and incremented on every update. */
 export const VersionColumn = (options: ColumnOptionsType = {}): PropertyDecoratorType => {

@@ -153,7 +153,11 @@ export const In = <T>(values: readonly T[] | FindOperator<T>): FindOperator<T> =
 export const Any = <T>(values: readonly T[] | FindOperator<T>): FindOperator<T> =>
   new FindOperator("any", values as unknown as T, true, true);
 
-export const IsNull = (): FindOperator<unknown> => new FindOperator("isNull", "", false);
+/**
+ * Matches rows whose column is `NULL`. The operand type follows the column it is compared against,
+ * so it composes with the other operators: `Not(IsNull())`.
+ */
+export const IsNull = <T = unknown>(): FindOperator<T> => new FindOperator("isNull", "" as T, false);
 
 /** PostgreSQL array `@>`. */
 export const ArrayContains = <T>(values: readonly T[] | FindOperator<T>): FindOperator<T> =>

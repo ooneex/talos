@@ -216,11 +216,17 @@ export type ColumnType =
   | NumberConstructor
   | StringConstructor;
 
-export interface IValueTransformer {
+/**
+ * Converts a column value between its entity representation and its database representation.
+ *
+ * Declared with method syntax so a transformer typed against a concrete column type stays
+ * assignable to the erased `IValueTransformer` a column option holds.
+ */
+export interface IValueTransformer<EntityValue = unknown, DatabaseValue = unknown> {
   /** Turns the entity value into the value written to the database. */
-  to: (value: unknown) => unknown;
+  to(value: EntityValue): DatabaseValue;
   /** Turns the database value into the entity value. */
-  from: (value: unknown) => unknown;
+  from(value: DatabaseValue): EntityValue;
 }
 
 export type ColumnOptionsType = {
@@ -607,18 +613,25 @@ export type DataSourceClientType<Options extends DataSourceOptionsType> =
 
 export type EqualOperatorType<T> = FindOperator<T>;
 
-export type FindOptionsWherePropertyType<Property> = Property extends Promise<infer I>
+/**
+ * The values a `where` clause accepts for one property.
+ *
+ * `Narrowed` drives the branch selection and distributes over unions, while `Property` keeps the
+ * whole union: a union-typed column stays comparable to a single `FindOperator` holding the union
+ * (`FindOperator<"todo" | "done">`) instead of collapsing into a union of per-member operators.
+ */
+export type FindOptionsWherePropertyType<Narrowed, Property = Narrowed> = Narrowed extends Promise<infer I>
   ? FindOptionsWherePropertyType<NonNullable<I>>
-  : Property extends Array<infer I>
+  : Narrowed extends Array<infer I>
     ? FindOptionsWherePropertyType<NonNullable<I>>
     : // biome-ignore lint/suspicious/noExplicitAny: methods are excluded from where clauses, whatever their signature
-      Property extends (...args: any[]) => any
+      Narrowed extends (...args: any[]) => any
       ? never
-      : Property extends Uint8Array
+      : Narrowed extends Uint8Array
         ? Property | FindOperator<Property>
-        : Property extends Date
+        : Narrowed extends Date
           ? Property | FindOperator<Property>
-          : Property extends object
+          : Narrowed extends object
             ?
                 | FindOptionsWhereType<Property>
                 | FindOptionsWhereType<Property>[]

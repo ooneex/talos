@@ -7,6 +7,7 @@ export { DataSource } from "./orm/DataSource";
 export {
   Column,
   CreateDateColumn,
+  type DateColumnDecoratorType,
   DeleteDateColumn,
   PrimaryColumn,
   PrimaryGeneratedColumn,
@@ -14,7 +15,15 @@ export {
   VersionColumn,
 } from "./orm/decorators/columns";
 export { Entity, Index, Unique } from "./orm/decorators/Entity";
-export { JoinColumn, JoinTable, ManyToMany, ManyToOne, OneToMany, OneToOne } from "./orm/decorators/relations";
+export {
+  JoinColumn,
+  JoinTable,
+  ManyToMany,
+  ManyToOne,
+  OneToMany,
+  OneToOne,
+  type RelationDecoratorType,
+} from "./orm/decorators/relations";
 export type { IDriver } from "./orm/driver/AbstractDriver";
 export { ClickHouseDriver } from "./orm/driver/ClickHouseDriver";
 export { CloudflareDriver } from "./orm/driver/CloudflareDriver";
