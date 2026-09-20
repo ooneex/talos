@@ -77,3 +77,9 @@
 
 - Read OpenRouter credentials through AppEnv| — Franck ([0d90967f](https://github.com/ooneex/talos/commit/0d90967f))
 
+## [1.3.1](https://github.com/ooneex/talos/releases/tag/@talosjs/rag@1.3.1) - 2026-09-20
+
+### Changed
+
+- @talosjs/rag@1.3.0| — Franck ([2044acef](https://github.com/ooneex/talos/commit/2044acef))
+
