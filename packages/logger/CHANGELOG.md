@@ -55,3 +55,9 @@
 
 - Fix changelog links| — Franck ([049dd506](https://github.com/ooneex/talos/commit/049dd506))
 
+## [1.2.3](https://github.com/ooneex/talos/releases/tag/@talosjs/logger@1.2.3) - 2026-09-20
+
+### Changed
+
+- @talosjs/logger@1.2.2| — Franck ([f4ecdb39](https://github.com/ooneex/talos/commit/f4ecdb39))
+
