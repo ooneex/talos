@@ -60,3 +60,9 @@
 
 - Disable test coverage by default in bunfig| — Franck ([8677a826](https://github.com/ooneex/talos/commit/8677a826))
 
+## [1.3.3](https://github.com/ooneex/talos/releases/tag/@talosjs/auth@1.3.3) - 2026-09-20
+
+### Changed
+
+- Fix changelog links| — Franck ([79f7f9ea](https://github.com/ooneex/talos/commit/79f7f9ea))
+
