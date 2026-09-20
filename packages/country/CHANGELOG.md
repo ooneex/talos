@@ -53,3 +53,9 @@
 
 - Fix changelog links| — Franck ([41dc766a](https://github.com/ooneex/talos/commit/41dc766a))
 
+## [1.2.3](https://github.com/ooneex/talos/releases/tag/@talosjs/country@1.2.3) - 2026-09-20
+
+### Changed
+
+- @talosjs/country@1.2.2| — Franck ([611dda43](https://github.com/ooneex/talos/commit/611dda43))
+
