@@ -54,3 +54,9 @@
 
 - @talosjs/utils@1.2.2| — Franck ([15bc56c6](https://github.com/ooneex/talos/commit/15bc56c6))
 
+## [1.3.0](https://github.com/ooneex/talos/releases/tag/@talosjs/utils@1.3.0) - 2026-09-20
+
+### Added
+
+- Replace external nanoid with dependency-free implementation|Implements custom nanoid algorithm with customAlphabet and randomInt functions, — Franck ([c56320fd](https://github.com/ooneex/talos/commit/c56320fd))
+
