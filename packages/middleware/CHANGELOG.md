@@ -41,3 +41,9 @@
 
 - Fix changelog links| — Franck ([609b255a](https://github.com/ooneex/talos/commit/609b255a))
 
+## [1.1.6](https://github.com/ooneex/talos/releases/tag/@talosjs/middleware@1.1.6) - 2026-09-20
+
+### Changed
+
+- @talosjs/middleware@1.1.5| — Franck ([af63a5c6](https://github.com/ooneex/talos/commit/af63a5c6))
+
