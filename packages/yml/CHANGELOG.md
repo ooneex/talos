@@ -42,3 +42,9 @@
 
 - Fix changelog links| — Franck ([1f2109ce](https://github.com/ooneex/talos/commit/1f2109ce))
 
+## [1.1.6](https://github.com/ooneex/talos/releases/tag/@talosjs/yml@1.1.6) - 2026-09-20
+
+### Changed
+
+- @talosjs/yml@1.1.5| — Franck ([143f19c6](https://github.com/ooneex/talos/commit/143f19c6))
+
