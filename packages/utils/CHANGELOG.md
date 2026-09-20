@@ -48,3 +48,9 @@
 
 - Avoid credential-shaped fixture literals| — Franck ([0d4d6d79](https://github.com/ooneex/talos/commit/0d4d6d79))
 
+## [1.2.3](https://github.com/ooneex/talos/releases/tag/@talosjs/utils@1.2.3) - 2026-09-20
+
+### Changed
+
+- @talosjs/utils@1.2.2| — Franck ([15bc56c6](https://github.com/ooneex/talos/commit/15bc56c6))
+
