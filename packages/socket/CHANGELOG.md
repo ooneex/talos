@@ -34,3 +34,9 @@
 
 - Disable test coverage by default in bunfig| — Franck ([8677a826](https://github.com/ooneex/talos/commit/8677a826))
 
+## [1.1.5](https://github.com/ooneex/talos/releases/tag/@talosjs/socket@1.1.5) - 2026-09-20
+
+### Changed
+
+- Fix changelog links| — Franck ([b71b556d](https://github.com/ooneex/talos/commit/b71b556d))
+
