@@ -48,3 +48,9 @@
 
 - Fix changelog links| — Franck ([9e965023](https://github.com/ooneex/talos/commit/9e965023))
 
+## [1.1.7](https://github.com/ooneex/talos/releases/tag/@talosjs/payment@1.1.7) - 2026-09-20
+
+### Changed
+
+- @talosjs/payment@1.1.6| — Franck ([a9d0e42b](https://github.com/ooneex/talos/commit/a9d0e42b))
+
