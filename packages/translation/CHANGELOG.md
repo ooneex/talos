@@ -52,3 +52,9 @@
 
 - Fix changelog links| — Franck ([ed5cb92e](https://github.com/ooneex/talos/commit/ed5cb92e))
 
+## [1.1.7](https://github.com/ooneex/talos/releases/tag/@talosjs/translation@1.1.7) - 2026-09-20
+
+### Changed
+
+- @talosjs/translation@1.1.6| — Franck ([f86f9567](https://github.com/ooneex/talos/commit/f86f9567))
+
