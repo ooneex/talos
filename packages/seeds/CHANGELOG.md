@@ -82,3 +82,9 @@
 
 - Fix changelog links| — Franck ([b053534c](https://github.com/ooneex/talos/commit/b053534c))
 
+## [1.2.8](https://github.com/ooneex/talos/releases/tag/@talosjs/seeds@1.2.8) - 2026-09-20
+
+### Changed
+
+- @talosjs/seeds@1.2.7| — Franck ([f6b6dd9e](https://github.com/ooneex/talos/commit/f6b6dd9e))
+
