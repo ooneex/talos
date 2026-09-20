@@ -40,3 +40,9 @@
 
 - Fix changelog links| — Franck ([1c899707](https://github.com/ooneex/talos/commit/1c899707))
 
+## [1.1.6](https://github.com/ooneex/talos/releases/tag/@talosjs/color@1.1.6) - 2026-09-20
+
+### Changed
+
+- @talosjs/color@1.1.5| — Franck ([cd6f61ed](https://github.com/ooneex/talos/commit/cd6f61ed))
+
