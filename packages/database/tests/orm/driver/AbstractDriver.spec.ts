@@ -14,10 +14,13 @@ import {
 } from "../../../src/orm/driver/AbstractDriver";
 import { PostgresDriver } from "../../../src/orm/driver/PostgresDriver";
 import { SqliteDriver } from "../../../src/orm/driver/SqliteDriver";
+import type { DatabaseClientType } from "../../../src/types";
 import { fakeColumn } from "../../fixtures/metadata";
 
 const postgres = new PostgresDriver({ type: "postgres" });
 const sqlite = new SqliteDriver({ type: "sqlite", database: ":memory:" });
+
+type RecordedQueryType = { sql: string; parameters: unknown[] };
 
 describe("driver helpers", () => {
   test("typeName should lower-case constructor names and pass strings through", () => {
@@ -136,6 +139,50 @@ describe("AbstractDriver", () => {
 
     test("should serialise objects as JSON", () => {
       expect(sqlite.prepareParameter({ theme: "dark" })).toBe('{"theme":"dark"}');
+    });
+  });
+
+  describe("query", () => {
+    /** A Bun client that records what it is asked to run and answers with no rows. */
+    const recordingClient = (): { client: DatabaseClientType; calls: RecordedQueryType[] } => {
+      const calls: RecordedQueryType[] = [];
+      const client = {
+        unsafe: async (sql: string, parameters: unknown[] = []): Promise<unknown[]> => {
+          calls.push({ sql, parameters });
+
+          return [];
+        },
+      } as unknown as DatabaseClientType;
+
+      return { client, calls };
+    };
+
+    test("should bind raw parameters in the dialect format, arrays included", async () => {
+      const { client, calls } = recordingClient();
+      const date = new Date("2024-05-06T10:11:12.000Z");
+
+      await postgres.query(client, `SELECT 1 WHERE "id" = ANY($1::varchar[])`, [["a", "b"]]);
+      await sqlite.query(client, "SELECT 1 WHERE id IN ($1)", [[1, 2]]);
+      await postgres.query(client, "SELECT $1, $2, $3, $4", ["text", 7, date, undefined]);
+
+      expect(calls[0]?.parameters).toEqual(['{"a","b"}']);
+      expect(calls[1]?.parameters).toEqual(["[1,2]"]);
+      expect(calls[2]?.parameters).toEqual(["text", 7, date, null]);
+    });
+
+    test("should leave a prepared parameter untouched when it is bound again", async () => {
+      const { client, calls } = recordingClient();
+
+      await postgres.query(client, "SELECT $1", [postgres.prepareParameter(["a", "b"])]);
+
+      expect(calls[0]?.parameters).toEqual(['{"a","b"}']);
+    });
+
+    test("should run a query without parameters and report its rows", async () => {
+      const { client, calls } = recordingClient();
+
+      expect(await sqlite.query(client, "SELECT 1")).toEqual({ records: [], affected: 0, lastInsertRowid: null });
+      expect(calls[0]).toEqual({ sql: "SELECT 1", parameters: [] });
     });
   });
 

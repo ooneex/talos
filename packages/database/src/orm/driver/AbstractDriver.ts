@@ -67,6 +67,7 @@ export interface IDriver {
   createClient: () => DatabaseClientType;
   connect: (client: DatabaseClientType) => Promise<void>;
   disconnect: (client: DatabaseClientType) => Promise<void>;
+  /** Runs `sql` with its parameters bound in the driver's own wire format. */
   query: <Row = ObjectLiteralType>(
     client: DatabaseClientType | ReservedSQL,
     sql: string,
@@ -349,12 +350,21 @@ export abstract class AbstractDriver implements IDriver {
     await (client as SQL).close();
   }
 
+  /**
+   * Runs `sql` through Bun's client, binding every parameter in the wire format
+   * the driver writes its own values in — an array becomes the database array
+   * literal instead of the `a,b,c` string Bun would serialise it as, so raw SQL
+   * such as `WHERE "id" = ANY($1::varchar[])` binds the way the query builder does.
+   */
   public async query<Row = ObjectLiteralType>(
     client: DatabaseClientType | ReservedSQL,
     sql: string,
     parameters: unknown[] = [],
   ): Promise<QueryResultType<Row>> {
-    const result = (await (client as SQL | ReservedSQL).unsafe(sql, parameters as never)) as BunResultType;
+    const result = (await (client as SQL | ReservedSQL).unsafe(
+      sql,
+      parameters.map((parameter) => this.prepareParameter(parameter)) as never,
+    )) as BunResultType;
 
     return normalizeBunResult<Row>(result);
   }

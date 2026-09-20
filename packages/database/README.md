@@ -240,6 +240,12 @@ await sql.begin(async (tx) => {
 
 Pass an existing native client through `options.client` when it is shared with other code; the data source then neither opens nor closes it. For Bun SQL drivers, pool size, timeouts, TLS, `prepare` and `bigint` map onto the Bun options (`poolSize`, `connectTimeoutMS`, `ssl`, `prepare`, `bigint`); anything else goes through `extra`. `QueryFailedError` keeps the native driver error in `driverError` and exposes `code` and `sqlState` when the adapter reports them.
 
+Raw statements run through `Repository.query()`, `EntityManager.query()`, `QueryRunner.query()` and `DataSource.query()` bind their parameters the way the query builder does: the driver writes each value in its own format, so an array reaches PostgreSQL as the `{a,b}` literal `WHERE "id" = ANY($1::varchar[])` expects, a dictionary is serialised as JSON and `undefined` binds as `NULL`.
+
+```typescript
+const rows = await repository.query(`SELECT * FROM "users" WHERE "id" = ANY($1::varchar[])`, [["u1", "u2"]]);
+```
+
 ### Coming from TypeORM
 
 The decorators, `DataSource`, `EntityManager`, `Repository`, find options and query-builder APIs follow TypeORM's names, so most call sites port unchanged. Differences worth knowing:
