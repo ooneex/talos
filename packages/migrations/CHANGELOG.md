@@ -85,3 +85,9 @@
 
 - Preserve ordered migration execution| — Franck ([01460b42](https://github.com/ooneex/talos/commit/01460b42))
 
+## [1.2.7](https://github.com/ooneex/talos/releases/tag/@talosjs/migrations@1.2.7) - 2026-09-20
+
+### Changed
+
+- @talosjs/migrations@1.2.6| — Franck ([f432c36c](https://github.com/ooneex/talos/commit/f432c36c))
+
