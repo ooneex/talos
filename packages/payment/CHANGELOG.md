@@ -42,3 +42,9 @@
 
 - Disable test coverage by default in bunfig| — Franck ([8677a826](https://github.com/ooneex/talos/commit/8677a826))
 
+## [1.1.6](https://github.com/ooneex/talos/releases/tag/@talosjs/payment@1.1.6) - 2026-09-20
+
+### Changed
+
+- Fix changelog links| — Franck ([9e965023](https://github.com/ooneex/talos/commit/9e965023))
+
