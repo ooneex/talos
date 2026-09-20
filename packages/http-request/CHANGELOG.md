@@ -51,3 +51,9 @@
 
 - Fix changelog links| — Franck ([a9902b94](https://github.com/ooneex/talos/commit/a9902b94))
 
+## [1.1.7](https://github.com/ooneex/talos/releases/tag/@talosjs/http-request@1.1.7) - 2026-09-20
+
+### Changed
+
+- @talosjs/http-request@1.1.6| — Franck ([851c4564](https://github.com/ooneex/talos/commit/851c4564))
+
