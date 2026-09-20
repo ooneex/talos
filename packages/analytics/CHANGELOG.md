@@ -41,3 +41,9 @@
 
 - Fix changelog links| — Franck ([e4e7bc60](https://github.com/ooneex/talos/commit/e4e7bc60))
 
+## [1.1.6](https://github.com/ooneex/talos/releases/tag/@talosjs/analytics@1.1.6) - 2026-09-20
+
+### Changed
+
+- @talosjs/analytics@1.1.5| — Franck ([642c07f9](https://github.com/ooneex/talos/commit/642c07f9))
+
