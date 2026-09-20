@@ -55,3 +55,9 @@
 
 - Fix changelog links| — Franck ([de694539](https://github.com/ooneex/talos/commit/de694539))
 
+## [1.3.3](https://github.com/ooneex/talos/releases/tag/@talosjs/role@1.3.3) - 2026-09-20
+
+### Changed
+
+- @talosjs/role@1.3.2| — Franck ([6aca6574](https://github.com/ooneex/talos/commit/6aca6574))
+
