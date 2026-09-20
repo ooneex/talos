@@ -140,3 +140,14 @@
 
 - Cover swallowed logging errors| — Franck ([414ce5f3](https://github.com/ooneex/talos/commit/414ce5f3))
 
+## [1.7.0](https://github.com/ooneex/talos/releases/tag/@talosjs/app@1.7.0) - 2026-09-20
+
+### Added
+
+- Key rate limits on IP and authenticated user instead of IP alone|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([6aa4395f](https://github.com/ooneex/talos/commit/6aa4395f))
+
+### Changed
+
+- Update the tests preload comment after the Inversify removal|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([b57bbbb6](https://github.com/ooneex/talos/commit/b57bbbb6))
+- Resolve serial asynchronous work| — Franck ([8cf2b7a7](https://github.com/ooneex/talos/commit/8cf2b7a7))
+
