@@ -41,3 +41,9 @@
 
 - Fix changelog links| — Franck ([4f00ec96](https://github.com/ooneex/talos/commit/4f00ec96))
 
+## [1.1.6](https://github.com/ooneex/talos/releases/tag/@talosjs/rate-limit@1.1.6) - 2026-09-20
+
+### Changed
+
+- @talosjs/rate-limit@1.1.5| — Franck ([ebc58266](https://github.com/ooneex/talos/commit/ebc58266))
+
