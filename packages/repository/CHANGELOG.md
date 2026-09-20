@@ -41,3 +41,9 @@
 
 - Fix changelog links| — Franck ([2d3e7489](https://github.com/ooneex/talos/commit/2d3e7489))
 
+## [1.1.6](https://github.com/ooneex/talos/releases/tag/@talosjs/repository@1.1.6) - 2026-09-20
+
+### Changed
+
+- @talosjs/repository@1.1.5| — Franck ([c5d4f81f](https://github.com/ooneex/talos/commit/c5d4f81f))
+
