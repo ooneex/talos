@@ -748,3 +748,13 @@
 
 - Accept the Linear API key under the name Linear gives it|`credentials:create --provider=linear --api-key=...` prompted for a key that — Julien ([5f176cc6](https://github.com/ooneex/talos/commit/5f176cc6))
 
+## [0.16.1](https://github.com/ooneex/talos/releases/tag/@talos/cli@0.16.1) - 2026-09-20
+
+### Changed
+
+- Update Cargo.lock| — Franck ([b2331ce4](https://github.com/ooneex/talos/commit/b2331ce4))
+
+### Fixed
+
+- Remove orphan container removal from docker compose down|Simplifies the docker compose stop sequence by removing --remove-orphans flag, — Franck ([4a2ef87a](https://github.com/ooneex/talos/commit/4a2ef87a))
+
