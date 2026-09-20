@@ -57,3 +57,9 @@
 
 - Fix changelog links| — Franck ([77e47a88](https://github.com/ooneex/talos/commit/77e47a88))
 
+## [1.2.5](https://github.com/ooneex/talos/releases/tag/@talosjs/mailer@1.2.5) - 2026-09-20
+
+### Changed
+
+- @talosjs/mailer@1.2.4| — Franck ([45d2c49e](https://github.com/ooneex/talos/commit/45d2c49e))
+
