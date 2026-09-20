@@ -41,3 +41,9 @@
 
 - Fix changelog links| — Franck ([f00c3715](https://github.com/ooneex/talos/commit/f00c3715))
 
+## [1.1.6](https://github.com/ooneex/talos/releases/tag/@talosjs/jwt@1.1.6) - 2026-09-20
+
+### Changed
+
+- @talosjs/jwt@1.1.5| — Franck ([5298910f](https://github.com/ooneex/talos/commit/5298910f))
+
