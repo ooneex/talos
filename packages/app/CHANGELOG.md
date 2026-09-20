@@ -151,3 +151,9 @@
 - Update the tests preload comment after the Inversify removal|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([b57bbbb6](https://github.com/ooneex/talos/commit/b57bbbb6))
 - Resolve serial asynchronous work| — Franck ([8cf2b7a7](https://github.com/ooneex/talos/commit/8cf2b7a7))
 
+## [1.7.1](https://github.com/ooneex/talos/releases/tag/@talosjs/app@1.7.1) - 2026-09-20
+
+### Changed
+
+- @talosjs/app@1.7.0| — Franck ([81f11e6a](https://github.com/ooneex/talos/commit/81f11e6a))
+
