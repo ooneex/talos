@@ -43,3 +43,9 @@
 
 - Fix changelog links| — Franck ([0b8e13e9](https://github.com/ooneex/talos/commit/0b8e13e9))
 
+## [1.1.6](https://github.com/ooneex/talos/releases/tag/@talosjs/http-header@1.1.6) - 2026-09-20
+
+### Changed
+
+- @talosjs/http-header@1.1.5| — Franck ([4ae6ae51](https://github.com/ooneex/talos/commit/4ae6ae51))
+
