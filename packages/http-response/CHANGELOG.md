@@ -43,3 +43,9 @@
 
 - Fix changelog links| — Franck ([0d9d68f1](https://github.com/ooneex/talos/commit/0d9d68f1))
 
+## [1.1.6](https://github.com/ooneex/talos/releases/tag/@talosjs/http-response@1.1.6) - 2026-09-20
+
+### Changed
+
+- @talosjs/http-response@1.1.5| — Franck ([73e369b7](https://github.com/ooneex/talos/commit/73e369b7))
+
