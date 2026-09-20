@@ -67,3 +67,13 @@
 
 - Complete LanceDB embedding mock| — Franck ([7f22ba23](https://github.com/ooneex/talos/commit/7f22ba23))
 
+## [1.3.0](https://github.com/ooneex/talos/releases/tag/@talosjs/rag@1.3.0) - 2026-09-20
+
+### Added
+
+- Add Cloudflare Vectorize database support| — Franck ([fd09a5ac](https://github.com/ooneex/talos/commit/fd09a5ac))
+
+### Fixed
+
+- Read OpenRouter credentials through AppEnv| — Franck ([0d90967f](https://github.com/ooneex/talos/commit/0d90967f))
+
