@@ -715,3 +715,21 @@
 - Force coverage for disabled package configs| — Franck ([1d4c7bf2](https://github.com/ooneex/talos/commit/1d4c7bf2))
 - Run tests in check command| — Franck ([4fae3a7f](https://github.com/ooneex/talos/commit/4fae3a7f))
 
+## [0.15.0](https://github.com/ooneex/talos/releases/tag/@talos/cli@0.15.0) - 2026-09-20
+
+### Added
+
+- Add Turso database scaffolding| — Franck ([788c494d](https://github.com/ooneex/talos/commit/788c494d))
+- Add MongoDB database scaffolding support| — Franck ([74963f9e](https://github.com/ooneex/talos/commit/74963f9e))
+- Add Cloudflare database scaffolding| — Franck ([ad92a2da](https://github.com/ooneex/talos/commit/ad92a2da))
+- Add ClickHouse database scaffolding| — Franck ([bc2117cd](https://github.com/ooneex/talos/commit/bc2117cd))
+- Free required ports before application startup| — Franck ([610502ea](https://github.com/ooneex/talos/commit/610502ea))
+
+### Changed
+
+- Update Cargo.lock| — Franck ([4bb9e382](https://github.com/ooneex/talos/commit/4bb9e382))
+
+### Fixed
+
+- Correct strict checks and release links| — Franck ([739ae6f0](https://github.com/ooneex/talos/commit/739ae6f0))
+
