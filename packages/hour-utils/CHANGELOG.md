@@ -43,3 +43,9 @@
 
 - Fix changelog links| — Franck ([a47b55de](https://github.com/ooneex/talos/commit/a47b55de))
 
+## [1.1.6](https://github.com/ooneex/talos/releases/tag/@talosjs/hour-utils@1.1.6) - 2026-09-20
+
+### Changed
+
+- @talosjs/hour-utils@1.1.5| — Franck ([65062d3b](https://github.com/ooneex/talos/commit/65062d3b))
+
