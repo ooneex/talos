@@ -62,3 +62,9 @@
 
 - Fix changelog links| — Franck ([e7a1b9af](https://github.com/ooneex/talos/commit/e7a1b9af))
 
+## [1.3.4](https://github.com/ooneex/talos/releases/tag/@talosjs/routing@1.3.4) - 2026-09-20
+
+### Changed
+
+- @talosjs/routing@1.3.3| — Franck ([9169f949](https://github.com/ooneex/talos/commit/9169f949))
+
