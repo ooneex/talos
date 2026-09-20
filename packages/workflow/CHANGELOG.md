@@ -58,3 +58,9 @@
 
 - Fix changelog links| — Franck ([95974aa5](https://github.com/ooneex/talos/commit/95974aa5))
 
+## [1.1.8](https://github.com/ooneex/talos/releases/tag/@talosjs/workflow@1.1.8) - 2026-09-20
+
+### Changed
+
+- @talosjs/workflow@1.1.7| — Franck ([9a29e6aa](https://github.com/ooneex/talos/commit/9a29e6aa))
+
