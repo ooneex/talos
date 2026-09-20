@@ -40,3 +40,9 @@
 
 - Fix changelog links| — Franck ([4a8c9cea](https://github.com/ooneex/talos/commit/4a8c9cea))
 
+## [1.1.6](https://github.com/ooneex/talos/releases/tag/@talosjs/youtube-utils@1.1.6) - 2026-09-20
+
+### Changed
+
+- @talosjs/youtube-utils@1.1.5| — Franck ([98286b17](https://github.com/ooneex/talos/commit/98286b17))
+
