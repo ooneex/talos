@@ -42,3 +42,9 @@
 
 - Fix changelog links| — Franck ([9063bf47](https://github.com/ooneex/talos/commit/9063bf47))
 
+## [1.1.6](https://github.com/ooneex/talos/releases/tag/@talosjs/csv@1.1.6) - 2026-09-20
+
+### Changed
+
+- @talosjs/csv@1.1.5| — Franck ([892d3e70](https://github.com/ooneex/talos/commit/892d3e70))
+
