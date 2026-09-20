@@ -42,3 +42,9 @@
 
 - Fix changelog links| — Franck ([0b6df891](https://github.com/ooneex/talos/commit/0b6df891))
 
+## [1.1.6](https://github.com/ooneex/talos/releases/tag/@talosjs/linear@1.1.6) - 2026-09-20
+
+### Changed
+
+- @talosjs/linear@1.1.5| — Franck ([29826bb3](https://github.com/ooneex/talos/commit/29826bb3))
+
