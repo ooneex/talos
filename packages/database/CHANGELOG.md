@@ -81,3 +81,9 @@
 
 - @talosjs/database@1.3.0| — Franck ([a46242e6](https://github.com/ooneex/talos/commit/a46242e6))
 
+## [1.4.0](https://github.com/ooneex/talos/releases/tag/@talosjs/database@1.4.0) - 2026-09-20
+
+### Added
+
+- Export decorator types and enhance generic typing|Exports DateColumnDecoratorType and RelationDecoratorType for decorator factories; — Franck ([89c4cadc](https://github.com/ooneex/talos/commit/89c4cadc))
+
