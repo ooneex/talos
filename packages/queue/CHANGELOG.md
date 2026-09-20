@@ -46,3 +46,9 @@
 
 - Fix changelog links| — Franck ([b21553e4](https://github.com/ooneex/talos/commit/b21553e4))
 
+## [1.1.6](https://github.com/ooneex/talos/releases/tag/@talosjs/queue@1.1.6) - 2026-09-20
+
+### Changed
+
+- @talosjs/queue@1.1.5| — Franck ([ebd3cc86](https://github.com/ooneex/talos/commit/ebd3cc86))
+
