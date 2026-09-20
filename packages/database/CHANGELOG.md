@@ -75,3 +75,9 @@
 
 - Normalize Bun SQL arrays and expose driver error codes| — Franck ([5491158e](https://github.com/ooneex/talos/commit/5491158e))
 
+## [1.3.1](https://github.com/ooneex/talos/releases/tag/@talosjs/database@1.3.1) - 2026-09-20
+
+### Changed
+
+- @talosjs/database@1.3.0| — Franck ([a46242e6](https://github.com/ooneex/talos/commit/a46242e6))
+
