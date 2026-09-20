@@ -1,40 +1,10 @@
 import { ContainerException } from "./ContainerException";
 import { getInjections } from "./inject";
+import { type ArgumentsPlanType, type InstanceBindingType, registry, UNRESOLVED } from "./registry";
 import { type ClassType, EContainerScope, type IContainer, type ServiceIdentifierType } from "./types";
 
-/** Placeholder held by a singleton binding until its instance is built; avoids boxing the instance. */
-const UNRESOLVED: unique symbol = Symbol("unresolved");
-
-/** One entry per constructor parameter: the token to resolve, or `undefined` to let the default value apply. */
-type ArgumentsPlanType = readonly (ServiceIdentifierType | undefined)[];
-
-type InstanceBindingType = {
-  kind: "instance";
-  target: ClassType;
-  scope: EContainerScope;
-  /** Validated on the first instantiation, then reused by every later one. */
-  plan: ArgumentsPlanType | undefined;
-  /** The singleton instance, `UNRESOLVED` until built; unused by the other scopes. */
-  instance: unknown;
-};
-
-type ConstantBindingType = {
-  kind: "constant";
-  value: unknown;
-};
-
-type BindingType = InstanceBindingType | ConstantBindingType;
-
-// Shared across every Container instance so decorators, packages and the application register into one graph.
-const bindings = new Map<ServiceIdentifierType, BindingType>();
-
-// Resolution is synchronous, so a single chain of the classes under construction (innermost last) serves every
-// `get()`, including one issued from inside a constructor: no context object is allocated per call, and a cycle
-// that goes through such a nested call is caught instead of overflowing the stack.
-const chain: ClassType[] = [];
-
-// Request-scoped instances of the `get()` in progress, created on the first request-scoped binding met.
-let request: Map<InstanceBindingType, unknown> | undefined;
+// Every copy of this package in the process shares one graph; see `registry.ts`.
+const { bindings, chain } = registry;
 
 const stringify = (identifier: ServiceIdentifierType): string =>
   typeof identifier === "function" ? identifier.name : identifier.toString();
@@ -148,8 +118,8 @@ const resolve = (identifier: ServiceIdentifierType): unknown => {
   }
 
   if (binding.scope === EContainerScope.Request) {
-    request ??= new Map();
-    const cached = request.get(binding);
+    registry.request ??= new Map();
+    const cached = registry.request.get(binding);
 
     // A constructor never yields `undefined`, so one lookup is enough.
     if (cached !== undefined) {
@@ -157,7 +127,7 @@ const resolve = (identifier: ServiceIdentifierType): unknown => {
     }
 
     const value = instantiate(binding);
-    request.set(binding, value);
+    registry.request.set(binding, value);
 
     return value;
   }
@@ -176,8 +146,8 @@ export class Container implements IContainer {
 
   public get<T>(target: ClassType<T>): T {
     // Every get() is its own request, even one issued from inside a constructor while another is in progress.
-    const outer = request;
-    request = undefined;
+    const outer = registry.request;
+    registry.request = undefined;
 
     try {
       return resolve(target) as T;
@@ -187,7 +157,7 @@ export class Container implements IContainer {
         "SERVICE_RESOLVE_FAILED",
       );
     } finally {
-      request = outer;
+      registry.request = outer;
     }
   }
 
