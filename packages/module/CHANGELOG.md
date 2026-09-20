@@ -44,3 +44,9 @@
 
 - Fix changelog links| — Franck ([fb446d91](https://github.com/ooneex/talos/commit/fb446d91))
 
+## [1.2.4](https://github.com/ooneex/talos/releases/tag/@talosjs/module@1.2.4) - 2026-09-20
+
+### Changed
+
+- @talosjs/module@1.2.3| — Franck ([7c8f69d2](https://github.com/ooneex/talos/commit/7c8f69d2))
+
