@@ -42,3 +42,9 @@
 
 - Fix changelog links| — Franck ([2c20a8c3](https://github.com/ooneex/talos/commit/2c20a8c3))
 
+## [1.1.6](https://github.com/ooneex/talos/releases/tag/@talosjs/exception@1.1.6) - 2026-09-20
+
+### Changed
+
+- @talosjs/exception@1.1.5| — Franck ([a60bce7e](https://github.com/ooneex/talos/commit/a60bce7e))
+
