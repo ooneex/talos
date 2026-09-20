@@ -46,3 +46,9 @@
 
 - Fix changelog links| — Franck ([bd75d258](https://github.com/ooneex/talos/commit/bd75d258))
 
+## [1.2.3](https://github.com/ooneex/talos/releases/tag/@talosjs/controller@1.2.3) - 2026-09-20
+
+### Changed
+
+- @talosjs/controller@1.2.2| — Franck ([c3c75776](https://github.com/ooneex/talos/commit/c3c75776))
+
