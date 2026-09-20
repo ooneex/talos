@@ -79,3 +79,9 @@
 - Disable test coverage by default in bunfig| — Franck ([8677a826](https://github.com/ooneex/talos/commit/8677a826))
 - Run package tests with parallel isolated workers| — Franck ([aee22840](https://github.com/ooneex/talos/commit/aee22840))
 
+## [1.2.6](https://github.com/ooneex/talos/releases/tag/@talosjs/migrations@1.2.6) - 2026-09-20
+
+### Changed
+
+- Preserve ordered migration execution| — Franck ([01460b42](https://github.com/ooneex/talos/commit/01460b42))
+
