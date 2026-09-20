@@ -41,3 +41,9 @@
 
 - Fix changelog links| — Franck ([6b43705e](https://github.com/ooneex/talos/commit/6b43705e))
 
+## [1.1.6](https://github.com/ooneex/talos/releases/tag/@talosjs/fetcher@1.1.6) - 2026-09-20
+
+### Changed
+
+- @talosjs/fetcher@1.1.5| — Franck ([267f3070](https://github.com/ooneex/talos/commit/267f3070))
+
