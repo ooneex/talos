@@ -42,3 +42,9 @@
 
 - Fix changelog links| — Franck ([ddd918f8](https://github.com/ooneex/talos/commit/ddd918f8))
 
+## [1.1.6](https://github.com/ooneex/talos/releases/tag/@talosjs/currencies@1.1.6) - 2026-09-20
+
+### Changed
+
+- @talosjs/currencies@1.1.5| — Franck ([e508fedd](https://github.com/ooneex/talos/commit/e508fedd))
+
