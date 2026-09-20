@@ -52,3 +52,9 @@
 - Disable test coverage by default in bunfig| — Franck ([8677a826](https://github.com/ooneex/talos/commit/8677a826))
 - Run package tests with parallel isolated workers| — Franck ([aee22840](https://github.com/ooneex/talos/commit/aee22840))
 
+## [1.1.7](https://github.com/ooneex/talos/releases/tag/@talosjs/workflow@1.1.7) - 2026-09-20
+
+### Changed
+
+- Fix changelog links| — Franck ([95974aa5](https://github.com/ooneex/talos/commit/95974aa5))
+
