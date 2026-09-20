@@ -40,3 +40,9 @@
 
 - Fix changelog links| — Franck ([b71b556d](https://github.com/ooneex/talos/commit/b71b556d))
 
+## [1.1.6](https://github.com/ooneex/talos/releases/tag/@talosjs/socket@1.1.6) - 2026-09-20
+
+### Changed
+
+- @talosjs/socket@1.1.5| — Franck ([2a3e6f59](https://github.com/ooneex/talos/commit/2a3e6f59))
+
