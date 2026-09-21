@@ -167,6 +167,7 @@ pub fn execute(options: AppInitOptions) -> Option<PathBuf> {
     let install_hook = ask_confirm("Install the commit-msg hook?", true);
 
     let agent_dirs = resolve_agent_dirs(silent);
+    prune_unselected_assistant_dirs(&destination, &agent_dirs);
 
     let actions = build_init_actions(
         &destination,
@@ -393,6 +394,27 @@ fn make_executable(path: &Path) -> Result<(), String> {
 #[cfg(not(unix))]
 fn make_executable(_path: &Path) -> Result<(), String> {
     Ok(())
+}
+
+/// The assistant config directories the skeleton ships as native sources. They
+/// land in the destination with the rest of the skeleton copy, so any of them
+/// the user did not pick has to be removed again — otherwise choosing only
+/// Claude still leaves a `.codex/` tree in the new project.
+pub const SKELETON_ASSISTANT_DIRS: [&str; 2] = [".claude", ".codex"];
+
+/// Removes the skeleton-shipped assistant directories that are not among the
+/// chosen `agent_dirs`. The chosen ones are left in place and refreshed by the
+/// agent-skills step; a directory that is not there is not an error.
+pub fn prune_unselected_assistant_dirs(destination: &Path, agent_dirs: &[String]) {
+    for dir in SKELETON_ASSISTANT_DIRS {
+        if agent_dirs.iter().any(|selected| selected == dir) {
+            continue;
+        }
+        let path = destination.join(dir);
+        if path.is_dir() {
+            let _ = fs::remove_dir_all(&path);
+        }
+    }
 }
 
 fn resolve_agent_dirs(silent: bool) -> Vec<String> {
