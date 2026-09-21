@@ -21,7 +21,7 @@ describe("createAdapter", () => {
   test("should build an OpenRouter adapter for the given model", () => {
     Bun.env.OPENROUTER_API_KEY ??= "test-key";
 
-    const adapter = createAdapter("anthropic/claude-sonnet-4.5");
+    const adapter = createAdapter("deepseek/deepseek-v4.1-flash");
 
     expect(adapter).toBeDefined();
   });

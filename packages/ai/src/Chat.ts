@@ -47,7 +47,7 @@ type SkillEntryType = { Skill: AiSkillClassType; skill: ISkill };
  * ```ts
  * @decorator.chat()
  * class SupportChat extends Chat {
- *   public getModel = () => "anthropic/claude-sonnet-4.5";
+ *   public getModel = () => "deepseek/deepseek-v4.1-flash";
  *   public getSystemPrompts = () => ["You are a concise support agent."];
  *   public getTools = () => [];
  *   public getMiddlewares = () => [];

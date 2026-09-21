@@ -71,7 +71,7 @@ type ESummaryResponse = {
  * ```ts
  * @decorator.chat()
  * class ResearchChat extends Chat {
- *   public getModel = () => "anthropic/claude-sonnet-4.5";
+ *   public getModel = () => "deepseek/deepseek-v4.1-flash";
  *   public getSystemPrompts = () => ["You research biomedical literature."];
  *   public getTools = () => [PubMedSearchTool];
  *   public getMiddlewares = () => [];

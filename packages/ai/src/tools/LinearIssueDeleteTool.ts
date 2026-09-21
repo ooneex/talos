@@ -26,7 +26,7 @@ export type LinearIssueDeleteResultType = {
  * ```ts
  * @decorator.chat()
  * class TriageChat extends Chat {
- *   public getModel = () => "anthropic/claude-sonnet-4.5";
+ *   public getModel = () => "deepseek/deepseek-v4.1-flash";
  *   public getSystemPrompts = () => ["You triage Linear issues."];
  *   public getTools = () => [LinearIssueDeleteTool];
  *   public getMiddlewares = () => [];

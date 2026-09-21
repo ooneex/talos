@@ -50,7 +50,7 @@ const { skillJudgementSchema } = await import("@/utils");
 import type { AiMiddlewareClassType, AiSkillClassType, AiToolClassType, IMiddleware, ISkill, ITool } from "@/types";
 
 class TestChat extends Chat {
-  public getModel = (): string => "anthropic/claude-sonnet-4.5";
+  public getModel = (): string => "deepseek/deepseek-v4.1-flash";
   public getSystemPrompts = (): string[] => ["base prompt"];
   public getTools = (): AiToolClassType[] => [];
   public getMiddlewares = (): AiMiddlewareClassType[] => [];
@@ -85,7 +85,7 @@ describe("Chat.run", () => {
   test("should forward the adapter built from getModel", async () => {
     await new TestChat().run({ prompt: "hi" });
 
-    expect(lastCall().adapter).toEqual({ __model: "anthropic/claude-sonnet-4.5" });
+    expect(lastCall().adapter).toEqual({ __model: "deepseek/deepseek-v4.1-flash" });
   });
 
   test("should append the prompt as a trailing user message", async () => {
