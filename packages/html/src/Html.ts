@@ -1,16 +1,15 @@
-import type { CheerioAPI } from "cheerio";
-import * as cheerio from "cheerio";
+import { type DomQueryType, type DomSelection, fromUrl, load, toMarkdown } from "./dom";
 import { HtmlException } from "./HtmlException";
 import type { HtmlHeadingType, HtmlImageType, HtmlLinkType, HtmlTaskType, HtmlVideoType, IHtml } from "./types";
 
 /**
- * HTML document parser and analyzer using Cheerio
+ * HTML document parser and analyzer
  */
 export class Html implements IHtml {
-  private $: CheerioAPI;
+  private $: DomQueryType;
 
   constructor(html?: string) {
-    this.$ = cheerio.load(html ?? "");
+    this.$ = load(html ?? "");
   }
 
   /**
@@ -19,12 +18,12 @@ export class Html implements IHtml {
    * @returns this instance for chaining
    */
   public load(html: string): this {
-    this.$ = cheerio.load(html);
+    this.$ = load(html);
     return this;
   }
 
   /**
-   * Load HTML from a URL using Cheerio's fromURL method
+   * Fetch a page and load its HTML
    * @param url - URL to fetch HTML from
    * @returns Promise resolving to this instance for chaining
    */
@@ -32,7 +31,7 @@ export class Html implements IHtml {
     const urlString = url instanceof URL ? url.toString() : url;
 
     try {
-      this.$ = await cheerio.fromURL(urlString);
+      this.$ = await fromUrl(urlString);
       return this;
     } catch (error) {
       throw new HtmlException(`Failed to fetch URL: ${urlString}`, "HTML_FETCH_FAILED", {
@@ -58,7 +57,15 @@ export class Html implements IHtml {
    * @returns HTML string
    */
   public getHtml(): string {
-    return this.$.html().trim() ?? "";
+    return this.$.html().trim();
+  }
+
+  /**
+   * Convert the HTML document to GitHub-flavored Markdown
+   * @returns Markdown string
+   */
+  public toMarkdown(): string {
+    return toMarkdown(this.$.document);
   }
 
   /**
@@ -66,11 +73,10 @@ export class Html implements IHtml {
    * @returns Array of image information
    */
   public getImages(): HtmlImageType[] {
-    const $ = this.$;
     const images: HtmlImageType[] = [];
 
-    $("img").each((_, element) => {
-      const $img = $(element);
+    for (const element of this.$("img")) {
+      const $img = this.$(element);
       const src = $img.attr("src");
 
       if (src) {
@@ -82,7 +88,7 @@ export class Html implements IHtml {
           height: $img.attr("height") || null,
         });
       }
-    });
+    }
 
     return images;
   }
@@ -92,11 +98,10 @@ export class Html implements IHtml {
    * @returns Array of link information
    */
   public getLinks(): HtmlLinkType[] {
-    const $ = this.$;
     const links: HtmlLinkType[] = [];
 
-    $("a").each((_, element) => {
-      const $link = $(element);
+    for (const element of this.$("a")) {
+      const $link = this.$(element);
       const href = $link.attr("href");
 
       if (href) {
@@ -108,7 +113,7 @@ export class Html implements IHtml {
           rel: $link.attr("rel") || null,
         });
       }
-    });
+    }
 
     return links;
   }
@@ -118,22 +123,13 @@ export class Html implements IHtml {
    * @returns Array of heading information
    */
   public getHeadings(): HtmlHeadingType[] {
-    const $ = this.$;
-    const headings: HtmlHeadingType[] = [];
-
-    for (const element of $("h1, h2, h3, h4, h5, h6").toArray()) {
-      const $heading = $(element);
-      const tagName = element.tagName.toLowerCase();
-      const level = Number.parseInt(tagName.charAt(1), 10);
-
-      headings.push({
-        level,
-        text: $heading.text().trim(),
-        id: $heading.attr("id") || null,
-      });
-    }
-
-    return headings;
+    return this.$("h1, h2, h3, h4, h5, h6")
+      .elements()
+      .map((element) => ({
+        level: Number.parseInt(element.tagName.charAt(1), 10),
+        text: element.textContent.trim(),
+        id: element.getAttribute("id") || null,
+      }));
   }
 
   /**
@@ -141,11 +137,10 @@ export class Html implements IHtml {
    * @returns Array of video information
    */
   public getVideos(): HtmlVideoType[] {
-    const $ = this.$;
     const videos: HtmlVideoType[] = [];
 
-    for (const element of $("video").toArray()) {
-      const $video = $(element);
+    for (const element of this.$("video")) {
+      const $video = this.$(element);
       videos.push({
         src: $video.attr("src") || null,
         poster: $video.attr("poster") || null,
@@ -167,29 +162,25 @@ export class Html implements IHtml {
    * @returns Array of task information
    */
   public getTasks(): HtmlTaskType[] {
-    const $ = this.$;
     const tasks: HtmlTaskType[] = [];
 
-    for (const element of $('input[type="checkbox"]').toArray()) {
-      const $checkbox = $(element);
-      const $parent = $checkbox.parent();
-      const checked = $checkbox.attr("checked") !== undefined;
+    for (const element of this.$('input[type="checkbox"]')) {
+      const $checkbox = this.$(element);
 
       tasks.push({
-        text: $parent.text().trim(),
-        checked,
+        text: $checkbox.parent().text().trim(),
+        checked: $checkbox.attr("checked") !== undefined,
       });
     }
 
     return tasks;
   }
 
-  private getVideoSources($video: ReturnType<CheerioAPI>): Array<{ src: string; type: string | null }> {
-    const $ = this.$;
+  private getVideoSources($video: DomSelection): Array<{ src: string; type: string | null }> {
     const sources: Array<{ src: string; type: string | null }> = [];
 
-    for (const sourceElement of $video.find("source").toArray()) {
-      const $source = $(sourceElement);
+    for (const element of $video.find("source")) {
+      const $source = this.$(element);
       const src = $source.attr("src");
 
       if (src) {

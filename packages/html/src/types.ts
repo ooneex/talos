@@ -136,7 +136,7 @@ export interface IHtml {
   load(html: string): this;
 
   /**
-   * Load HTML from a URL using Cheerio's fromURL method
+   * Fetch a page and load its HTML
    * @param url - URL to fetch HTML from
    * @returns Promise resolving to this instance for chaining
    */
@@ -153,6 +153,12 @@ export interface IHtml {
    * @returns HTML string
    */
   getHtml(): string;
+
+  /**
+   * Convert the HTML document to GitHub-flavored Markdown
+   * @returns Markdown string
+   */
+  toMarkdown(): string;
 
   /**
    * Extract all images from the HTML document

@@ -1,10 +1,9 @@
 {
   "dependencies": {
     "@talosjs/exception": "workspace:^",
-    "@talosjs/http-status": "workspace:^",
-    "cheerio": "^1.1.2"
+    "@talosjs/http-status": "workspace:^"
   },
-  "description": "HTML parsing and DOM manipulation toolkit powered by Cheerio — extract, transform, and query HTML content with a jQuery-like API",
+  "description": "Dependency-free HTML parsing and DOM manipulation toolkit — an HTML5 parser, CSS selector engine, and jQuery-like API to extract, transform, and query HTML content",
   "exports": {
     ".": {
       "import": {
@@ -22,7 +21,7 @@
   ],
   "keywords": [
     "bun",
-    "cheerio",
+    "css-selector",
     "dom",
     "html",
     "markup",

@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import type { HtmlHeadingType, HtmlImageType, HtmlLinkType, HtmlTaskType, HtmlVideoType, IHtml } from "@/index";
 import { Html, HtmlException } from "@/index";
 
@@ -11,6 +11,7 @@ describe("Html", () => {
       expect(typeof html.loadUrl).toBe("function");
       expect(typeof html.getContent).toBe("function");
       expect(typeof html.getHtml).toBe("function");
+      expect(typeof html.toMarkdown).toBe("function");
       expect(typeof html.getImages).toBe("function");
       expect(typeof html.getLinks).toBe("function");
       expect(typeof html.getHeadings).toBe("function");
@@ -143,11 +144,45 @@ describe("Html", () => {
   });
 
   describe("loadUrl", () => {
-    test("should throw HtmlException for invalid URL", async () => {
+    const unreachableUrl = "http://127.0.0.1:1";
+    let server: ReturnType<typeof Bun.serve>;
+
+    beforeAll(() => {
+      server = Bun.serve({
+        port: 0,
+        fetch: (request) =>
+          new URL(request.url).pathname === "/missing"
+            ? new Response("Not found", { status: 404 })
+            : new Response('<h1 id="remote">Remote page</h1><a href="/next">Next</a>', {
+                headers: { "content-type": "text/html; charset=utf-8" },
+              }),
+      });
+    });
+
+    afterAll(() => {
+      server.stop(true);
+    });
+
+    test("should load HTML from a URL", async () => {
+      const html = new Html();
+      const result = await html.loadUrl(server.url.toString());
+
+      expect(result).toBe(html);
+      expect(html.getHeadings()).toEqual([{ level: 1, text: "Remote page", id: "remote" }]);
+      expect(html.getLinks()[0]?.href).toBe("/next");
+    });
+
+    test("should throw HtmlException for a non-2xx response", async () => {
+      const html = new Html();
+
+      await expect(html.loadUrl(new URL("/missing", server.url))).rejects.toThrow("Failed to fetch URL");
+    });
+
+    test("should throw HtmlException for unreachable URL", async () => {
       const html = new Html();
 
       try {
-        await html.loadUrl("http://invalid-url-that-does-not-exist.local");
+        await html.loadUrl(unreachableUrl);
         expect(true).toBe(false);
       } catch (error) {
         expect(error).toBeInstanceOf(HtmlException);
@@ -159,26 +194,41 @@ describe("Html", () => {
       const html = new Html();
 
       try {
-        await html.loadUrl(new URL("http://invalid-url.local"));
+        await html.loadUrl(new URL(unreachableUrl));
         expect(true).toBe(false);
       } catch (error) {
         expect(error).toBeInstanceOf(HtmlException);
         const data = (error as HtmlException).data?.data as { url: string; error: string } | undefined;
-        expect(data?.url).toBe("http://invalid-url.local/");
+        expect(data?.url).toBe("http://127.0.0.1:1/");
       }
     });
 
     test("should include URL in error data", async () => {
       const html = new Html();
-      const testUrl = "http://nonexistent-domain-12345.local";
 
       try {
-        await html.loadUrl(testUrl);
+        await html.loadUrl(unreachableUrl);
         expect(true).toBe(false);
       } catch (error) {
         const data = (error as HtmlException).data?.data as { url: string; error: string } | undefined;
-        expect(data?.url).toBe(testUrl);
+        expect(data?.url).toBe(unreachableUrl);
         expect(data?.error).toBeDefined();
+      }
+    });
+
+    test("should keep a non-Error rejection message", async () => {
+      const html = new Html();
+      const originalFetch = globalThis.fetch;
+      globalThis.fetch = (() => Promise.reject("offline")) as unknown as typeof fetch;
+
+      try {
+        await html.loadUrl(unreachableUrl);
+        expect(true).toBe(false);
+      } catch (error) {
+        const data = (error as HtmlException).data?.data as { url: string; error: string } | undefined;
+        expect(data?.error).toBe("offline");
+      } finally {
+        globalThis.fetch = originalFetch;
       }
     });
   });
@@ -255,6 +305,23 @@ describe("Html", () => {
       const result = html.getHtml();
       expect(result).toContain('class="container"');
       expect(result).toContain('id="test"');
+    });
+  });
+
+  describe("toMarkdown", () => {
+    test("should convert the document to Markdown", () => {
+      const html = new Html(`
+        <head><title>Ignored</title></head>
+        <h1>Title</h1>
+        <p>Some <strong>bold</strong> and a <a href="/link">link</a>.</p>
+        <ul><li><input type="checkbox" checked> Done</li><li>Item</li></ul>
+      `);
+
+      expect(html.toMarkdown()).toBe("# Title\n\nSome **bold** and a [link](/link).\n\n- [x] Done\n- Item");
+    });
+
+    test("should return an empty string for an empty document", () => {
+      expect(new Html().toMarkdown()).toBe("");
     });
   });
 

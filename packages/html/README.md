@@ -1,6 +1,6 @@
 # @talosjs/html
 
-HTML parsing and DOM manipulation toolkit powered by Cheerio — extract, transform, and query HTML content with a jQuery-like API
+Dependency-free HTML parsing and DOM manipulation toolkit — an HTML5 parser, CSS selector engine, and jQuery-like API to extract, transform, and query HTML content
 
 ## Installation
 
