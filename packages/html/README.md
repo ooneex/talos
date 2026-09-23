@@ -1,6 +1,6 @@
 # @talosjs/html
 
-Dependency-free HTML parsing and DOM manipulation toolkit — an HTML5 parser, CSS selector engine, and jQuery-like API to extract, transform, and query HTML content
+Dependency-free HTML parsing and DOM manipulation toolkit for the browser and Bun — an HTML5 parser, CSS selector engine, and jQuery-like API to extract, transform, and query HTML content
 
 ## Installation
 

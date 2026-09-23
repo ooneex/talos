@@ -3,7 +3,7 @@
     "@talosjs/exception": "workspace:^",
     "@talosjs/http-status": "workspace:^"
   },
-  "description": "Dependency-free HTML parsing and DOM manipulation toolkit — an HTML5 parser, CSS selector engine, and jQuery-like API to extract, transform, and query HTML content",
+  "description": "Dependency-free HTML parsing and DOM manipulation toolkit for the browser and Bun — an HTML5 parser, CSS selector engine, and jQuery-like API to extract, transform, and query HTML content",
   "exports": {
     ".": {
       "import": {
@@ -20,6 +20,7 @@
     "package.json"
   ],
   "keywords": [
+    "browser",
     "bun",
     "css-selector",
     "dom",

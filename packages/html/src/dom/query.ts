@@ -86,7 +86,7 @@ const detectCharset = (bytes: Uint8Array, contentType: string | null): string =>
     return fromHeader;
   }
 
-  const head = String.fromCharCode(...bytes.subarray(0, 1024));
+  const head = new TextDecoder("iso-8859-1").decode(bytes.subarray(0, 1024));
   return /<meta[^>]+charset=["']?([^"'\s/>;]+)/i.exec(head)?.[1] ?? "utf-8";
 };
 
