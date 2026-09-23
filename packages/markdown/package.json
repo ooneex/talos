@@ -1,0 +1,47 @@
+{
+  "dependencies": {
+    "@talosjs/exception": "workspace:^",
+    "@talosjs/html": "workspace:^",
+    "@talosjs/http-status": "workspace:^"
+  },
+  "description": "Dependency-free Markdown toolkit for the browser and Bun — a CommonMark + GFM parser and HTML renderer with front matter, sanitizing, and extraction of headings, links, images, tasks, and code blocks",
+  "exports": {
+    ".": {
+      "import": {
+        "default": "./dist/index.js",
+        "types": "./dist/index.d.ts"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md",
+    "package.json"
+  ],
+  "keywords": [
+    "browser",
+    "bun",
+    "commonmark",
+    "front-matter",
+    "gfm",
+    "markdown",
+    "md",
+    "parser",
+    "talos",
+    "typescript"
+  ],
+  "license": "MIT",
+  "module": "./dist/index.js",
+  "name": "@talosjs/markdown",
+  "scripts": {
+    "build": "bunup",
+    "fmt": "bunx biome check --write",
+    "lint": "tsc --noEmit && bunx biome lint",
+    "test": "bun test --parallel=4 --isolate tests"
+  },
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "version": "1.0.0"
+}

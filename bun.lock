@@ -400,6 +400,15 @@
         "resend": "^6.4.2",
       },
     },
+    "packages/markdown": {
+      "name": "@talosjs/markdown",
+      "version": "1.0.0",
+      "dependencies": {
+        "@talosjs/exception": "workspace:^",
+        "@talosjs/html": "workspace:^",
+        "@talosjs/http-status": "workspace:^",
+      },
+    },
     "packages/middleware": {
       "name": "@talosjs/middleware",
       "version": "1.1.9",
@@ -1092,6 +1101,8 @@
     "@talosjs/logger": ["@talosjs/logger@workspace:packages/logger"],
 
     "@talosjs/mailer": ["@talosjs/mailer@workspace:packages/mailer"],
+
+    "@talosjs/markdown": ["@talosjs/markdown@workspace:packages/markdown"],
 
     "@talosjs/middleware": ["@talosjs/middleware@workspace:packages/middleware"],
 
