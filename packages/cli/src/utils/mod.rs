@@ -21,6 +21,7 @@ mod process;
 mod prompts;
 mod provider;
 mod publish_targets;
+mod recipe;
 mod report_output;
 mod rng;
 mod runnable_modules;
@@ -101,6 +102,7 @@ pub use provider::{Provider, resolve_provider_client};
 pub use publish_targets::{
     PublishTarget, discover_publish_targets, resolve_publish_targets, split_csv,
 };
+pub use recipe::{RECIPE_ACTIONS, Recipe, RecipeStep, parse_recipe, recipe_to_yaml};
 pub use report_output::{OUTPUT_DIR, OutputFormat, announce_report_file, write_report_file};
 pub use runnable_modules::{
     RunnableModule, RunnableModuleType, collect_runnable_modules, find_app_module,

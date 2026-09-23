@@ -157,7 +157,7 @@ fn tests_are_held_to_the_layout_they_mirror() {
 #[test]
 fn a_module_root_holds_only_the_folders_it_is_given() {
     let backend = folders::Layout::Backend;
-    for folder in ["src", "bin", "tests", "e2e", "issues"] {
+    for folder in ["src", "bin", "tests", "e2e", "issues", "recipes"] {
         assert!(accepts(backend, folder), "{folder}");
     }
     for folder in ["docs", "scripts", "assets", "public"] {

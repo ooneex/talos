@@ -30,10 +30,10 @@ const MAX_DEPTH: usize = 12;
 /// What a module may hold at its root. `bin/` sits beside `src/` and holds the
 /// runnable scripts a module ships — entry points invoked directly rather than
 /// bound by the container — and groups them however it likes below.
-const MODULE_ROOT: &[&str] = &["src", "bin", "tests", "e2e", "issues"];
+const MODULE_ROOT: &[&str] = &["src", "bin", "tests", "e2e", "issues", "recipes"];
 
 /// The same, for a module that ships a browser bundle.
-const FRONTEND_ROOT: &[&str] = &["public", "src", "bin", "tests", "e2e", "issues"];
+const FRONTEND_ROOT: &[&str] = &["public", "src", "bin", "tests", "e2e", "issues", "recipes"];
 
 /// The artifact folders of a backend module — one per kind the container
 /// binds, plus `exceptions/` and `types/`, which hold plain classes and type

@@ -455,3 +455,48 @@ fn marketing_create_is_reachable_by_its_command_name() {
         text(&output)
     );
 }
+
+#[test]
+fn recipe_create_is_reachable_and_writes_a_recipe_in_the_module() {
+    let sandbox = sandbox();
+
+    let output = sandbox.run(&[
+        "recipe:create",
+        "--module=user",
+        "--title=Sign in",
+        "--step=navigate http://localhost:3033",
+    ]);
+
+    assert!(output.status.success(), "{}", text(&output));
+    let recipe = fs::read_dir(sandbox.root.join("modules/user/recipes"))
+        .expect("the recipes directory was created")
+        .flatten()
+        .find(|entry| entry.file_name().to_string_lossy().ends_with(".yml"))
+        .expect("a recipe was written");
+    let yaml = fs::read_to_string(recipe.path()).expect("recipe yaml");
+    assert!(
+        yaml.contains("steps:\n  - action: \"navigate\"\n    url: \"http://localhost:3033\"\n"),
+        "{yaml}"
+    );
+}
+
+#[test]
+fn recipe_run_is_reachable_and_replays_the_recipes_with_bun() {
+    let sandbox = sandbox();
+    let created = sandbox.run(&[
+        "recipe:create",
+        "--module=user",
+        "--step=navigate http://localhost:3033",
+    ]);
+    assert!(created.status.success(), "{}", text(&created));
+
+    let output = sandbox.run(&["recipe:run", "--module=user"]);
+
+    // Nothing is on the sandbox PATH, so it stops at the bun check.
+    assert_eq!(output.status.code(), Some(1), "{}", text(&output));
+    assert!(
+        text(&output).contains("\"bun\" is required but was not found on the PATH"),
+        "{}",
+        text(&output)
+    );
+}

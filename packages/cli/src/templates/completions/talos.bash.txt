@@ -67,6 +67,20 @@ _talos_sdk_modules() {
   _talos_yaml_modules microservice
 }
 
+# Recipe IDs (modules/*/recipes/<ID>.yml) not yet listed before the last comma
+# of $1, each prefixed with that list so a comma-separated value keeps growing.
+_talos_recipe_ids() {
+  [[ -d modules ]] || return
+  local prefix="" f
+  [[ $1 == *,* ]] && prefix="${1%,*},"
+  for f in modules/*/recipes/*.yml; do
+    [[ -f $f ]] || continue
+    f=${f##*/}
+    f=${f%.yml}
+    [[ ,$prefix == *,"$f",* ]] || printf '%s%s\n' "$prefix" "$f"
+  done | command sort -u
+}
+
 _talos_custom_commands() {
   [[ -d modules ]] || return
   command grep -rh -A1 getName modules/*/src/commands/*Command.ts 2>/dev/null \
@@ -147,7 +161,7 @@ coverage \
 performance:check \
 project:check \
 entity:create flag:create logger:create mailer:create marketing:create middleware:create permission:create \
-queue:create rate-limit:create event:create release:create repository:create sdk:create \
+queue:create rate-limit:create event:create recipe:create recipe:run release:create repository:create sdk:create \
 service:create spa:create spa:feature:create spa:remove admin:create admin:remove storybook:create storybook:remove swagger:create swagger:remove storage:create storage:push storage:pull translation:create \
 vector-database:create workflow:create workflow:transition:create microservice:create \
 microservice:remove migration:create migration:up migration:down module:create module:remove \
@@ -240,6 +254,17 @@ seed:create seed:run"
       [[ $flag == --platform ]] && candidates="X Instagram Facebook LinkedIn TikTok Threads WhatsApp Telegram Messenger Discord Reddit Medium"
       [[ $flag == --state ]] && candidates="Todo in-review Published"
       [[ $flag == --module ]] && candidates="$(_talos_modules)"
+      ;;
+    recipe:create)
+      opts="--title --description --step --dependency --module --cwd"
+      [[ $flag == --module ]] && candidates="$(_talos_modules)"
+      [[ $flag == --cwd ]] && dirs=1
+      ;;
+    recipe:run)
+      opts="--id --module --base-url --timeout --width --height --cwd"
+      [[ $flag == --id ]] && candidates="$(_talos_recipe_ids "$value")"
+      [[ $flag == --module ]] && candidates="$(_talos_modules)"
+      [[ $flag == --cwd ]] && dirs=1
       ;;
     ai:chat:create | ai:tool:create | ai:middleware:create | analytics:create | cache:create | \
       command:create | cron:create | flag:create | logger:create | \

@@ -64,6 +64,8 @@ pub mod project_check;
 pub mod queue_create;
 pub mod rate_limit_create;
 pub mod react_component_create;
+pub mod recipe_create;
+pub mod recipe_run;
 pub mod release_create;
 pub mod repository_create;
 pub mod run;
@@ -206,6 +208,14 @@ pub enum Commands {
     /// Create a marketing post resource inside a module
     #[command(name = "marketing:create")]
     MarketingCreate(marketing_create::MarketingCreateArgs),
+
+    /// Create a YAML recipe listing the steps to test a feature
+    #[command(name = "recipe:create")]
+    RecipeCreate(recipe_create::RecipeCreateArgs),
+
+    /// Replay recipe steps in a headless browser
+    #[command(name = "recipe:run")]
+    RecipeRun(recipe_run::RecipeRunArgs),
 
     #[command(name = "microservice:create")]
     MicroserviceCreate(microservice_create::MicroserviceCreateArgs),
@@ -456,6 +466,8 @@ impl Commands {
             Commands::IssueConvert(args) => issue_convert::run(args),
             Commands::IssueCheck(args) => issue_check::run(args),
             Commands::MarketingCreate(args) => marketing_create::run(args),
+            Commands::RecipeCreate(args) => recipe_create::run(args),
+            Commands::RecipeRun(args) => recipe_run::run(args),
             Commands::MicroserviceCreate(args) => microservice_create::run(args),
             Commands::MicroserviceRemove(args) => microservice_remove::run(args),
             Commands::CommandCreate(args) => command_create::run(args),

@@ -145,6 +145,11 @@ const COMMANDS: &[(&str, &str)] = &[
     ),
     ("queue:create", "Generate a new queue class"),
     ("rate-limit:create", "Generate a new rate limiter class"),
+    (
+        "recipe:create",
+        "Create a YAML recipe listing the steps to test a feature",
+    ),
+    ("recipe:run", "Replay recipe steps in a headless browser"),
     ("repository:create", "Generate a new repository class"),
     (
         "react:component:create",

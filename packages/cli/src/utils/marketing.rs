@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use super::rng::Rng;
-use super::yaml::{quote_scalar, yaml_literal};
+use super::yaml::{push_sequence, quote_scalar, yaml_literal};
 
 const LETTERS: &[u8] = b"ABCDEF";
 const MEDIA_ALPHABET: &[u8] = b"abcdef0123456789";
@@ -101,17 +101,6 @@ pub struct MarketingYaml {
     pub videos: Option<Vec<String>>,
     pub platforms: Option<Vec<String>>,
     pub state: Option<String>,
-}
-
-fn push_sequence(lines: &mut Vec<String>, key: &str, values: &[String]) {
-    if values.is_empty() {
-        lines.push(format!("{key}: []"));
-        return;
-    }
-    lines.push(format!("{key}:"));
-    for value in values {
-        lines.push(format!("  - {}", quote_scalar(Some(value))));
-    }
 }
 
 pub fn marketing_to_yaml(marketing: &MarketingYaml) -> String {

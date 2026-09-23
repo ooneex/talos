@@ -113,6 +113,51 @@ _talos_runnable_modules() {
   fi
 }
 
+_talos_recipe_ids() {
+  local -a files recipes
+  files=(modules/*/recipes/*.yml(N))
+  (( ${#files} )) || return
+  # One "ID[module · title]" value per recipe, escaped for _values; an ID
+  # found in several modules lists each of them.
+  recipes=(${(@f)"$(command awk -v sq="'" '
+    BEGIN { bs = sprintf("%c", 92) }
+    function unescape(v,  out, i, c) {
+      out = ""
+      for (i = 1; i <= length(v); i++) {
+        c = substr(v, i, 1)
+        if (c == bs && i < length(v)) c = substr(v, ++i, 1)
+        out = out c
+      }
+      return out
+    }
+    function flush() {
+      if (file == "") return
+      entry = module (title == "" ? "" : " · " title)
+      desc[id] = (id in desc) ? desc[id] "; " entry : entry
+    }
+    FNR == 1 {
+      flush(); file = FILENAME; title = ""; seen = 0
+      id = file; sub(/.*\//, "", id); sub(/\.yml$/, "", id)
+      module = file; sub(/^modules\//, "", module); sub(/\/.*/, "", module)
+    }
+    /^title:/ && !seen {
+      seen = 1; v = substr($0, 7); sub(/^[ \t]+/, "", v); sub(/[ \t]+$/, "", v)
+      q = substr(v, 1, 1)
+      if (v == "null" || v == "~") v = ""
+      else if ((q == "\"" || q == sq) && length(v) > 1 && substr(v, length(v), 1) == q) {
+        v = substr(v, 2, length(v) - 2)
+        if (q == sq) gsub(sq sq, sq, v); else v = unescape(v)
+      }
+      title = v
+    }
+    END {
+      flush()
+      for (id in desc) { d = desc[id]; gsub(/[][\\:]/, "\\\\&", d); print id "[" d "]" }
+    }
+  ' $files 2>/dev/null | sort)"})
+  _values -s , 'recipes' $recipes
+}
+
 _talos_agent_dirs() {
   local -a dirs
   dirs=(
@@ -193,6 +238,8 @@ _talos() {
     'logger\:create:Generate a new logger class'
     'mailer\:create:Generate a new mailer class'
     'marketing\:create:Create a marketing post resource inside a module'
+    'recipe\:create:Create a YAML recipe listing the steps to test a feature'
+    'recipe\:run:Replay recipe steps in a headless browser'
     'middleware\:create:Generate a new middleware class'
     'permission\:create:Generate a new permission class'
     'queue\:create:Generate a new queue class'
@@ -334,6 +381,25 @@ _talos() {
             '*--video=[Path to a .mp4 video (repeatable)]:video:_files -g "*.mp4"' \
             '--state=[Post state]:state:(Todo in-review Published)' \
             '--module=[Module name]:module:_talos_modules' \
+            '--cwd=[Working directory]:cwd:_files -/'
+          ;;
+        recipe:create)
+          _arguments -s \
+            '--title=[Recipe title]:title' \
+            '--description=[Recipe description]:description' \
+            '*--step=[Browser step: navigate, click, fill, press, scroll or wait (repeatable)]:step' \
+            '*--dependency=[ID of a recipe to run first (repeatable or comma-separated)]:dependency' \
+            '--module=[Module name]:module:_talos_modules' \
+            '--cwd=[Working directory]:cwd:_files -/'
+          ;;
+        recipe:run)
+          _arguments -s \
+            '*--id=[Recipe IDs to run, comma-separated (default: all)]:id:_talos_recipe_ids' \
+            '*--module=[Only run recipes of these modules, comma-separated]:module:_talos_modules' \
+            '--base-url=[Origin relative URLs resolve against (default: $E2E_BASE_URL)]:url' \
+            '--timeout=[Milliseconds a step may wait (default: 10000)]:milliseconds' \
+            '--width=[Viewport width in pixels (default: 1440)]:pixels' \
+            '--height=[Viewport height in pixels (default: 900)]:pixels' \
             '--cwd=[Working directory]:cwd:_files -/'
           ;;
         react:component:create)

@@ -88,6 +88,47 @@ function __talos_custom_commands
         | command sed -n 's/.*return "\(.*\)".*/\1/p' | command sort -u
 end
 
+# Recipe IDs (modules/*/recipes/<ID>.yml), described by "module · title"; an
+# ID found in several modules lists each of them.
+function __talos_recipe_ids
+    test -d modules; or return
+    set -l files modules/*/recipes/*.yml
+    test (count $files) -gt 0; or return
+    command awk -v sq="'" '
+        BEGIN { bs = sprintf("%c", 92) }
+        function unescape(v,  out, i, c) {
+            out = ""
+            for (i = 1; i <= length(v); i++) {
+                c = substr(v, i, 1)
+                if (c == bs && i < length(v)) c = substr(v, ++i, 1)
+                out = out c
+            }
+            return out
+        }
+        function flush() {
+            if (file == "") return
+            entry = module (title == "" ? "" : " · " title)
+            desc[id] = (id in desc) ? desc[id] "; " entry : entry
+        }
+        FNR == 1 {
+            flush(); file = FILENAME; title = ""; seen = 0
+            id = file; sub(/.*\//, "", id); sub(/\.yml$/, "", id)
+            module = file; sub(/^modules\//, "", module); sub(/\/.*/, "", module)
+        }
+        /^title:/ && !seen {
+            seen = 1; v = substr($0, 7); sub(/^[ \t]+/, "", v); sub(/[ \t]+$/, "", v)
+            q = substr(v, 1, 1)
+            if (v == "null" || v == "~") v = ""
+            else if ((q == "\"" || q == sq) && length(v) > 1 && substr(v, length(v), 1) == q) {
+                v = substr(v, 2, length(v) - 2)
+                if (q == sq) gsub(sq sq, sq, v); else v = unescape(v)
+            }
+            title = v
+        }
+        END { flush(); for (id in desc) print id "\t" desc[id] }
+    ' $files 2>/dev/null | command sort
+end
+
 function __talos_agent_dirs
     printf '%s\n' \
         '.claude'\t'Claude' \
@@ -180,6 +221,8 @@ for cmd in oo talos
     complete -c $cmd -f -n __fish_use_subcommand -a logger:create -d 'Generate a new logger class'
     complete -c $cmd -f -n __fish_use_subcommand -a mailer:create -d 'Generate a new mailer class'
     complete -c $cmd -f -n __fish_use_subcommand -a marketing:create -d 'Create a marketing post resource inside a module'
+    complete -c $cmd -f -n __fish_use_subcommand -a recipe:create -d 'Create a YAML recipe listing the steps to test a feature'
+    complete -c $cmd -f -n __fish_use_subcommand -a recipe:run -d 'Replay recipe steps in a headless browser'
     complete -c $cmd -f -n __fish_use_subcommand -a middleware:create -d 'Generate a new middleware class'
     complete -c $cmd -f -n __fish_use_subcommand -a permission:create -d 'Generate a new permission class'
     complete -c $cmd -f -n __fish_use_subcommand -a queue:create -d 'Generate a new queue class'
@@ -261,6 +304,20 @@ for cmd in oo talos
     complete -c $cmd -n '__fish_seen_subcommand_from marketing:create' -l state -x -a 'Todo in-review Published' -d 'Post state'
     complete -c $cmd -n '__fish_seen_subcommand_from marketing:create' -l module -x -a '(__talos_modules)' -d 'Module name'
     complete -c $cmd -n '__fish_seen_subcommand_from marketing:create' -l cwd -r -d 'Working directory'
+
+    complete -c $cmd -n '__fish_seen_subcommand_from recipe:create' -l title -x -d 'Recipe title'
+    complete -c $cmd -n '__fish_seen_subcommand_from recipe:create' -l description -x -d 'Recipe description'
+    complete -c $cmd -n '__fish_seen_subcommand_from recipe:create' -l step -x -d 'Browser step: navigate, click, fill, press, scroll or wait (repeatable)'
+    complete -c $cmd -n '__fish_seen_subcommand_from recipe:create' -l dependency -x -d 'ID of a recipe to run first (repeatable or comma-separated)'
+    complete -c $cmd -n '__fish_seen_subcommand_from recipe:create' -l module -x -a '(__talos_modules)' -d 'Module name'
+    complete -c $cmd -n '__fish_seen_subcommand_from recipe:create' -l cwd -r -f -a '(__fish_complete_directories)' -d 'Working directory'
+    complete -c $cmd -n '__fish_seen_subcommand_from recipe:run' -l id -x -a '(__talos_recipe_ids)' -d 'Recipe IDs to run, comma-separated (default: all)'
+    complete -c $cmd -n '__fish_seen_subcommand_from recipe:run' -l module -x -a '(__talos_modules)' -d 'Only run recipes of these modules, comma-separated'
+    complete -c $cmd -n '__fish_seen_subcommand_from recipe:run' -l base-url -x -d 'Origin relative URLs resolve against (default: $E2E_BASE_URL)'
+    complete -c $cmd -n '__fish_seen_subcommand_from recipe:run' -l timeout -x -d 'Milliseconds a step may wait (default: 10000)'
+    complete -c $cmd -n '__fish_seen_subcommand_from recipe:run' -l width -x -d 'Viewport width in pixels (default: 1440)'
+    complete -c $cmd -n '__fish_seen_subcommand_from recipe:run' -l height -x -d 'Viewport height in pixels (default: 900)'
+    complete -c $cmd -n '__fish_seen_subcommand_from recipe:run' -l cwd -r -f -a '(__fish_complete_directories)' -d 'Working directory'
 
     complete -c $cmd -n '__fish_seen_subcommand_from issue:pull' -l id -x -d 'Comma-separated issue IDs or identifiers'
     complete -c $cmd -n '__fish_seen_subcommand_from issue:pull' -l module -x -a '(__talos_modules)' -d 'Module name'

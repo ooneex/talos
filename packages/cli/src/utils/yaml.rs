@@ -51,6 +51,18 @@ pub(crate) fn yaml_literal(text: &str) -> String {
     format!("|\n{indented}")
 }
 
+/// Push `key` as a sequence of double-quoted scalars, or `key: []` when empty.
+pub(crate) fn push_sequence(lines: &mut Vec<String>, key: &str, values: &[String]) {
+    if values.is_empty() {
+        lines.push(format!("{key}: []"));
+        return;
+    }
+    lines.push(format!("{key}:"));
+    for value in values {
+        lines.push(format!("  - {}", quote_scalar(Some(value))));
+    }
+}
+
 pub fn map_to_yaml(map: &[(String, String)], indent: usize) -> String {
     let pad = "  ".repeat(indent);
     map.iter()
