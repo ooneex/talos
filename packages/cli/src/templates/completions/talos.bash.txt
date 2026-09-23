@@ -326,8 +326,9 @@ threads whatsapp telegram messenger discord reddit medium cloudflare bunny s3 op
       [[ $flag == --audit-level ]] && candidates="low moderate high critical"
       ;;
     update)
-      opts="--deps --latest --force --audit-level --skip-audit --no-cache --cwd"
+      opts="--deps --latest --force --audit-level --skip-audit --no-cache --output --logs --cwd"
       [[ $flag == --audit-level ]] && candidates="low moderate high critical"
+      [[ $flag == --output ]] && candidates="md json"
       ;;
     add)
       opts="--deps --dev --optional --peer --exact --force --audit-level --skip-audit --no-cache --cwd"

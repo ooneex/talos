@@ -491,6 +491,8 @@ _talos() {
             '--audit-level=[Minimum severity that blocks the update]:level:(low moderate high critical)' \
             '--skip-audit[Skip the vulnerability audit and update directly]' \
             '--no-cache[Bypass the cached audit result and re-query OSV.dev]' \
+            '--output=[Also write the report to var/outputs/talos_update.md or .json]:format:(md json)' \
+            '--logs[Print the output of every step that fails]' \
             '--cwd=[Working directory]:cwd:_files -/'
           ;;
         add)

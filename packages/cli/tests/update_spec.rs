@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 use clap::Parser;
 
 use cli::commands::update::{UpdateArgs, restore_files, snapshot_files, split_deps};
+use cli::utils::OutputFormat;
 
 #[derive(Parser)]
 struct TestCli {
@@ -57,6 +58,9 @@ fn update_parses_all_flags_and_deps() {
         "critical",
         "--skip-audit",
         "--no-cache",
+        "--logs",
+        "--output",
+        "md",
         "--cwd",
         "./here",
     ])
@@ -68,6 +72,8 @@ fn update_parses_all_flags_and_deps() {
     assert_eq!(cli.args.audit_level.as_deref(), Some("critical"));
     assert!(cli.args.skip_audit);
     assert!(cli.args.no_cache);
+    assert!(cli.args.logs);
+    assert_eq!(cli.args.output, Some(OutputFormat::Md));
     assert_eq!(cli.args.cwd.as_deref(), Some("./here"));
 }
 
@@ -81,6 +87,8 @@ fn update_defaults_are_empty() {
     assert!(cli.args.audit_level.is_none());
     assert!(!cli.args.skip_audit);
     assert!(!cli.args.no_cache);
+    assert!(!cli.args.logs);
+    assert!(cli.args.output.is_none());
     assert!(cli.args.cwd.is_none());
 }
 

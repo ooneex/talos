@@ -365,6 +365,16 @@ for cmd in oo talos
     complete -c $cmd -n '__fish_seen_subcommand_from workspace:check check' -l output -x -a 'md json' -d 'Also write the report to var/outputs/talos_check.md or .json'
     complete -c $cmd -n '__fish_seen_subcommand_from workspace:check check' -l cwd -d 'Working directory'
 
+    complete -c $cmd -n '__fish_seen_subcommand_from update' -l deps -x -d 'Dependencies to update, comma-separated (default: all)'
+    complete -c $cmd -n '__fish_seen_subcommand_from update' -l latest -d 'Update to the latest version, ignoring the range in package.json'
+    complete -c $cmd -n '__fish_seen_subcommand_from update' -l force -d 'Update anyway even when the audit finds vulnerable dependencies'
+    complete -c $cmd -n '__fish_seen_subcommand_from update' -l audit-level -x -a 'low moderate high critical' -d 'Minimum severity that blocks the update'
+    complete -c $cmd -n '__fish_seen_subcommand_from update' -l skip-audit -d 'Skip the vulnerability audit and update directly'
+    complete -c $cmd -n '__fish_seen_subcommand_from update' -l no-cache -d 'Bypass the cached audit result and re-query OSV.dev'
+    complete -c $cmd -n '__fish_seen_subcommand_from update' -l logs -d 'Print the output of every step that fails'
+    complete -c $cmd -n '__fish_seen_subcommand_from update' -l output -x -a 'md json' -d 'Also write the report to var/outputs/talos_update.md or .json'
+    complete -c $cmd -n '__fish_seen_subcommand_from update' -l cwd -d 'Working directory'
+
     complete -c $cmd -n '__fish_seen_subcommand_from security:check' -l issues -d 'Create a YAML issue per vulnerability instead of printing the report'
     complete -c $cmd -n '__fish_seen_subcommand_from security:check' -l modules -a '(__talos_pkg_modules)' -d 'Module name(s), comma-separated'
     complete -c $cmd -n '__fish_seen_subcommand_from security:check' -l packages -a '(__talos_packages)' -d 'Alias for --modules, comma-separated'
