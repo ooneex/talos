@@ -59,3 +59,5 @@
 
 - @talosjs/country@1.2.2| — Franck ([611dda43](https://github.com/ooneex/talos/commit/611dda43))
 
+## [1.2.4](https://github.com/ooneex/talos/releases/tag/@talosjs/country@1.2.4) - 2026-09-25
+
