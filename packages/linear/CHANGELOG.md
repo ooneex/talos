@@ -48,3 +48,5 @@
 
 - @talosjs/linear@1.1.5| — Franck ([29826bb3](https://github.com/ooneex/talos/commit/29826bb3))
 
+## [1.1.7](https://github.com/ooneex/talos/releases/tag/@talosjs/linear@1.1.7) - 2026-09-25
+
