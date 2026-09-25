@@ -50,3 +50,5 @@
 
 - @talosjs/module@1.2.3| — Franck ([7c8f69d2](https://github.com/ooneex/talos/commit/7c8f69d2))
 
+## [1.2.5](https://github.com/ooneex/talos/releases/tag/@talosjs/module@1.2.5) - 2026-09-25
+
