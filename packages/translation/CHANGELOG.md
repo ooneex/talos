@@ -58,3 +58,5 @@
 
 - @talosjs/translation@1.1.6| — Franck ([f86f9567](https://github.com/ooneex/talos/commit/f86f9567))
 
+## [1.1.8](https://github.com/ooneex/talos/releases/tag/@talosjs/translation@1.1.8) - 2026-09-25
+
