@@ -58,3 +58,5 @@
 
 - @talosjs/validation@1.2.2| — Franck ([28df3ea3](https://github.com/ooneex/talos/commit/28df3ea3))
 
+## [1.2.4](https://github.com/ooneex/talos/releases/tag/@talosjs/validation@1.2.4) - 2026-09-25
+
