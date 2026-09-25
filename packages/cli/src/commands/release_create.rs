@@ -7,6 +7,7 @@ use serde_json::Value;
 
 use crate::commands::build::{self, BuildArgs};
 use crate::commands::check::{self, CheckArgs};
+use crate::commands::install::{self, InstallArgs};
 use crate::commands::npm_publish::{self, NpmPublishArgs};
 use crate::utils::{Spinner, ask_confirm, run_spinner_step};
 
@@ -263,8 +264,16 @@ pub fn run(args: &ReleaseCreateArgs) {
     let target_dirs = discover_target_dirs(&cwd, args);
     remove_release_artifacts(&cwd, &target_dirs);
     let cwd_arg = Some(cwd.to_string_lossy().to_string());
+    install::run(&InstallArgs {
+        force: false,
+        audit_level: None,
+        skip_audit: false,
+        no_cache: false,
+        cwd: cwd_arg.clone(),
+    });
     // `dist` was just removed. A cache hit would skip the build and leave
-    // the package without output, so this run always rebuilds before check.
+    // the package without output, so this run always rebuilds after install
+    // and before check.
     build::run(&BuildArgs {
         packages: args.packages.clone(),
         modules: args.modules.clone(),
@@ -322,8 +331,8 @@ pub fn run(args: &ReleaseCreateArgs) {
 }
 
 /// Removes `dist` and `node_modules` from each selected package or module,
-/// and `node_modules` from the project root, so the build and check that
-/// follow reinstall from the lockfile. Nested folders are left in place.
+/// and `node_modules` from the project root, so the install that follows
+/// reinstalls from the lockfile. Nested folders are left in place.
 fn remove_release_artifacts(cwd: &Path, target_dirs: &[TargetDir]) {
     let spinner = Spinner::start("Removing dist and node_modules");
     let mut paths = vec![cwd.join("node_modules")];
