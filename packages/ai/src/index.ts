@@ -7,4 +7,5 @@ export type {
 export { AiException } from "./AiException";
 export { Chat } from "./Chat";
 export { decorator } from "./decorators";
+export { Image } from "./Image";
 export * from "./types";

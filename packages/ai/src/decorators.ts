@@ -1,5 +1,11 @@
 import { container, EContainerScope } from "@talosjs/container";
-import type { AiChatClassType, AiMiddlewareClassType, AiSkillClassType, AiToolClassType } from "./types";
+import type {
+  AiChatClassType,
+  AiImageClassType,
+  AiMiddlewareClassType,
+  AiSkillClassType,
+  AiToolClassType,
+} from "./types";
 
 export const decorator = {
   chat: (scope: EContainerScope = EContainerScope.Singleton) => {
@@ -19,6 +25,11 @@ export const decorator = {
   },
   skill: (scope: EContainerScope = EContainerScope.Singleton) => {
     return (target: AiSkillClassType): void => {
+      container.add(target, scope);
+    };
+  },
+  image: (scope: EContainerScope = EContainerScope.Singleton) => {
+    return (target: AiImageClassType): void => {
       container.add(target, scope);
     };
   },

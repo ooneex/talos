@@ -11,6 +11,8 @@ import type {
   ContentPart,
   ErrorInfo,
   FinishInfo,
+  GeneratedImage,
+  ImageGenerationResult,
   IterationInfo,
   StreamChunk,
   StructuredOutputMiddlewareConfig,
@@ -30,6 +32,9 @@ export type AiMiddlewareClassType = new (...args: any[]) => IMiddleware;
 
 // biome-ignore lint/suspicious/noExplicitAny: trust me
 export type AiSkillClassType = new (...args: any[]) => ISkill;
+
+// biome-ignore lint/suspicious/noExplicitAny: trust me
+export type AiImageClassType = new (...args: any[]) => IImage;
 
 export type ChatInputType = {
   /** User message prompt to send to the model. */
@@ -135,6 +140,48 @@ export type MessageType = {
   role: "user" | "assistant";
   content: string | ContentPart[];
 };
+
+/**
+ * Output frame in `WIDTHxHEIGHT` form. OpenRouter only takes an aspect ratio,
+ * so each size stands for the ratio next to it: `1024x1024` (1:1), `832x1248`
+ * (2:3), `1248x832` (3:2), `864x1184` (3:4), `1184x864` (4:3), `896x1152` (4:5),
+ * `1152x896` (5:4), `768x1344` (9:16), `1344x768` (16:9), `1536x672` (21:9).
+ */
+export type ImageSizeType =
+  | "1024x1024"
+  | "832x1248"
+  | "1248x832"
+  | "864x1184"
+  | "1184x864"
+  | "896x1152"
+  | "1152x896"
+  | "768x1344"
+  | "1344x768"
+  | "1536x672";
+
+export type ImageInputType = {
+  /** Description of the image to generate, appended after the image's own {@link IImage.getPrompts}. */
+  prompt: string;
+  /** Number of images to generate. Providers that paint one image per call ignore it. */
+  numberOfImages?: number;
+  /** Output frame; the model's default applies when omitted. */
+  size?: ImageSizeType;
+  /** Resolution tier, for the models that expose one (Gemini). */
+  resolution?: "1K" | "2K" | "4K";
+  /** Give up on the provider after this many milliseconds. No limit when omitted. */
+  timeoutMs?: number;
+};
+
+/** A generated image — either base64 bytes (`b64Json`) or a hosted `url`. */
+export type GeneratedImageType = GeneratedImage;
+
+export type ImageResultType = ImageGenerationResult;
+
+export interface IImage {
+  run: (input?: ImageInputType) => Promise<ImageResultType>;
+  getModel: () => string;
+  getPrompts: () => string[];
+}
 
 export interface ITool<P = unknown, R = unknown> {
   getName: () => string;

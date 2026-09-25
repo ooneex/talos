@@ -1,7 +1,7 @@
 import { Assert, type AssertSchemaType } from "@talosjs/validation";
 import { type ChatMiddleware, toolDefinition } from "@tanstack/ai";
-import { type OpenRouterTextModelOptions, openRouterText } from "@tanstack/ai-openrouter";
-import type { ChatInputType, IMiddleware, ISkill, ITool, MessageType } from "./types";
+import { type OpenRouterTextModelOptions, openRouterImage, openRouterText } from "@tanstack/ai-openrouter";
+import type { ChatInputType, IMiddleware, ImageInputType, ISkill, ITool, MessageType } from "./types";
 
 /** AdapterType created by {@link openRouterText}, used as the chat transport. */
 export type AdapterType = ReturnType<typeof openRouterText>;
@@ -9,6 +9,28 @@ export type AdapterType = ReturnType<typeof openRouterText>;
 /** Create the OpenRouter adapter for a `provider/model` identifier. */
 export const createAdapter = (model: string): AdapterType =>
   openRouterText(model as Parameters<typeof openRouterText>[0]);
+
+/** ImageAdapterType created by {@link openRouterImage}, used as the image transport. */
+export type ImageAdapterType = ReturnType<typeof openRouterImage>;
+
+/**
+ * Create the OpenRouter image adapter for a `provider/model` identifier.
+ *
+ * The adapter hands its whole config to the OpenRouter SDK client, which
+ * honours `timeoutMs` even though the adapter's config type does not declare it.
+ */
+export const createImageAdapter = (model: string, timeoutMs?: number): ImageAdapterType =>
+  openRouterImage(
+    model as Parameters<typeof openRouterImage>[0],
+    timeoutMs === undefined ? undefined : ({ timeoutMs } as Parameters<typeof openRouterImage>[1]),
+  );
+
+/** Join an image's own prompts with the request's prompt, dropping blank ones. */
+export const buildImagePrompt = (prompts: string[], input?: ImageInputType): string =>
+  [...prompts, input?.prompt ?? ""]
+    .map((prompt) => prompt.trim())
+    .filter(Boolean)
+    .join("\n\n");
 
 /** Build the conversation messages, appending the prompt as a trailing user turn. */
 export const buildMessages = (input?: ChatInputType): MessageType[] => {

@@ -40,6 +40,7 @@ mock.module("@tanstack/ai", () => ({
 
 mock.module("@tanstack/ai-openrouter", () => ({
   openRouterText: (model: string) => ({ __model: model }),
+  openRouterImage: (model: string) => ({ __model: model }),
 }));
 
 const { Chat } = await import("@/Chat");

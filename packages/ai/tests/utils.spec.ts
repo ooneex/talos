@@ -2,12 +2,14 @@ import { describe, expect, test } from "bun:test";
 import type { ChatMiddlewareConfig, ChatMiddlewareContext } from "@tanstack/ai";
 import type { AiToolClassType, IMiddleware, ISkill, ITool, MessageType } from "@/types";
 import {
+  buildImagePrompt,
   buildJudgePrompt,
   buildMessages,
   buildModelOptions,
   buildSkillPrompts,
   composeOnConfig,
   createAdapter,
+  createImageAdapter,
   isJudged,
   skillJudgementSchema,
   toChatMiddleware,
@@ -22,6 +24,39 @@ describe("createAdapter", () => {
     const adapter = createAdapter("anthropic/claude-sonnet-4.5");
 
     expect(adapter).toBeDefined();
+  });
+});
+
+describe("createImageAdapter", () => {
+  test("should build an OpenRouter image adapter for the given model", () => {
+    Bun.env.OPENROUTER_API_KEY ??= "test-key";
+
+    const adapter = createImageAdapter("google/gemini-2.5-flash-image");
+
+    expect(adapter.kind).toBe("image");
+    expect(adapter.model).toBe("google/gemini-2.5-flash-image");
+  });
+
+  test("should build an adapter when a timeout is set", () => {
+    Bun.env.OPENROUTER_API_KEY ??= "test-key";
+
+    expect(createImageAdapter("google/gemini-2.5-flash-image", 60_000).kind).toBe("image");
+  });
+});
+
+describe("buildImagePrompt", () => {
+  test("should join the image prompts and the request prompt with blank lines", () => {
+    expect(buildImagePrompt(["Style.", "No text."], { prompt: "A lighthouse" })).toBe(
+      "Style.\n\nNo text.\n\nA lighthouse",
+    );
+  });
+
+  test("should drop blank prompts and trim the rest", () => {
+    expect(buildImagePrompt(["  Style.  ", " "], { prompt: "  A lighthouse " })).toBe("Style.\n\nA lighthouse");
+  });
+
+  test("should return the image prompts alone when there is no input", () => {
+    expect(buildImagePrompt(["Style."])).toBe("Style.");
   });
 });
 

@@ -2,7 +2,16 @@ import { beforeEach, describe, expect, test } from "bun:test";
 import { Container, EContainerScope } from "@talosjs/container";
 import type { AGUIEvent } from "@tanstack/ai";
 import { decorator } from "@/decorators";
-import type { AiSkillClassType, ChatInputType, IChat, IMiddleware, ISkill, ITool } from "@/types";
+import type {
+  AiSkillClassType,
+  ChatInputType,
+  IChat,
+  IImage,
+  IMiddleware,
+  ImageResultType,
+  ISkill,
+  ITool,
+} from "@/types";
 
 class StubChat implements IChat {
   public run<T>(_input?: ChatInputType): Promise<T> {
@@ -33,6 +42,12 @@ class StubSkill implements ISkill {
   public getWhenToUse = (): string => "never";
   public getTools = () => [];
   public getPrompt = (): string => "";
+}
+
+class StubImage implements IImage {
+  public run = (): Promise<ImageResultType> => Promise.resolve({ id: "stub", model: "stub", images: [] });
+  public getModel = (): string => "stub";
+  public getPrompts = (): string[] => [];
 }
 
 describe("decorator.chat", () => {
@@ -237,5 +252,42 @@ describe("decorator.skill", () => {
     class VoidSkill extends StubSkill {}
 
     expect(decorator.skill()(VoidSkill)).toBeUndefined();
+  });
+});
+
+describe("decorator.image", () => {
+  let container: Container;
+
+  beforeEach(() => {
+    container = new Container();
+  });
+
+  test("should register an image class with the default singleton scope", () => {
+    class DefaultImage extends StubImage {}
+
+    decorator.image()(DefaultImage);
+
+    const instance1 = container.get(DefaultImage);
+    const instance2 = container.get(DefaultImage);
+
+    expect(instance1).toBeInstanceOf(DefaultImage);
+    expect(instance1).toBe(instance2);
+  });
+
+  test("should register an image class with a transient scope", () => {
+    class TransientImage extends StubImage {}
+
+    decorator.image(EContainerScope.Transient)(TransientImage);
+
+    const instance1 = container.get(TransientImage);
+    const instance2 = container.get(TransientImage);
+
+    expect(instance1).not.toBe(instance2);
+  });
+
+  test("should return void", () => {
+    class VoidImage extends StubImage {}
+
+    expect(decorator.image()(VoidImage)).toBeUndefined();
   });
 });
