@@ -38,6 +38,7 @@ talos performance:check               # performance rules over the sources
 talos project:check --strict          # the whole-project gate, every check aggregated
 talos project:check --output=md       # also write var/outputs/talos_project_check.md for an agent to fix
 talos release:create                  # detect unreleased commits, bump, changelog, tag, push
+talos release:create --bump           # force a patch bump of every package and module
 ```
 
 `talos help` and `talos <command> --help` list what exists — check there before writing a manual procedure. Inside a single package, `bun test tests`, `bunx biome check --write` and `bun run build` still work.
