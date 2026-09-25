@@ -63,3 +63,5 @@
 
 - @talosjs/storage@1.2.1| — Franck ([bc2ff240](https://github.com/ooneex/talos/commit/bc2ff240))
 
+## [1.2.3](https://github.com/ooneex/talos/releases/tag/@talosjs/storage@1.2.3) - 2026-09-25
+
