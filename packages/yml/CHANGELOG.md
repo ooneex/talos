@@ -48,3 +48,5 @@
 
 - @talosjs/yml@1.1.5| — Franck ([143f19c6](https://github.com/ooneex/talos/commit/143f19c6))
 
+## [1.1.7](https://github.com/ooneex/talos/releases/tag/@talosjs/yml@1.1.7) - 2026-09-25
+
