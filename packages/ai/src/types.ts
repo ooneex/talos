@@ -266,38 +266,38 @@ export interface IMiddleware<TContext = unknown> {
    * Observe or transform the chat configuration. Called once at `init` and once
    * per agent iteration at `beforeModel` (and again at the structured-output
    * boundary when `outputSchema` is set). Return a partial config to
-   * shallow-merge, or void to pass through.
+   * shallow-merge, or undefined to pass through.
    */
   onConfig?: (
     ctx: ChatMiddlewareContext<TContext>,
     config: ChatMiddlewareConfig,
-  ) => void | null | Partial<ChatMiddlewareConfig> | Promise<void | null | Partial<ChatMiddlewareConfig>>;
+  ) => undefined | null | Partial<ChatMiddlewareConfig> | Promise<undefined | null | Partial<ChatMiddlewareConfig>>;
   /**
    * Transform the final structured-output call's config — including the JSON
    * Schema sent to the provider. Fires only when `outputSchema` is set and the
    * adapter takes the legacy finalization path. Fires before the
-   * `structuredOutput`-phase `onConfig`. Return a partial to merge, or void.
+   * `structuredOutput`-phase `onConfig`. Return a partial to merge, or undefined.
    */
   onStructuredOutputConfig?: (
     ctx: ChatMiddlewareContext<TContext>,
     config: StructuredOutputMiddlewareConfig,
   ) =>
-    | void
+    | undefined
     | null
     | Partial<StructuredOutputMiddlewareConfig>
-    | Promise<void | null | Partial<StructuredOutputMiddlewareConfig>>;
+    | Promise<undefined | null | Partial<StructuredOutputMiddlewareConfig>>;
   /**
    * Observe or transform the configuration immediately before each model call,
    * once per agent iteration (`ctx.phase === "beforeModel"`). A focused slice of
    * {@link IMiddleware.onConfig} that skips the `init` and `structuredOutput`
    * boundaries — use it to adjust per-iteration knobs (e.g. raising temperature
    * on retries or filtering tools). Return a partial config to shallow-merge, or
-   * void to pass through.
+   * undefined to pass through.
    */
   onBeforeModel?: (
     ctx: ChatMiddlewareContext<TContext>,
     config: ChatMiddlewareConfig,
-  ) => void | null | Partial<ChatMiddlewareConfig> | Promise<void | null | Partial<ChatMiddlewareConfig>>;
+  ) => undefined | null | Partial<ChatMiddlewareConfig> | Promise<undefined | null | Partial<ChatMiddlewareConfig>>;
   /** Called once when the run starts, after the initial `onConfig`. */
   onStart?: (ctx: ChatMiddlewareContext<TContext>) => void | Promise<void>;
   /** Called at the start of each agent loop iteration, after its message ID is created. */
@@ -305,13 +305,18 @@ export interface IMiddleware<TContext = unknown> {
   /**
    * Called for every chunk streamed by `chat()`. Narrow on `chunk.type`.
    *
-   * @returns void to pass through, a chunk to replace, a chunk array to expand,
+   * @returns undefined to pass through, a chunk to replace, a chunk array to expand,
    * or null to drop. Dropped chunks are not seen by later middleware.
    */
   onChunk?: (
     ctx: ChatMiddlewareContext<TContext>,
     chunk: StreamChunk,
-  ) => void | StreamChunk | Array<StreamChunk> | null | Promise<void | StreamChunk | Array<StreamChunk> | null>;
+  ) =>
+    | undefined
+    | StreamChunk
+    | Array<StreamChunk>
+    | null
+    | Promise<undefined | StreamChunk | Array<StreamChunk> | null>;
   /** Called after all tool calls in an iteration have been processed. */
   onToolPhaseComplete?: (ctx: ChatMiddlewareContext<TContext>, info: ToolPhaseCompleteInfo) => void | Promise<void>;
   /** Called once per model iteration that reports usage in its RUN_FINISHED chunk. */
