@@ -88,3 +88,5 @@
 
 - @talosjs/seeds@1.2.7| — Franck ([f6b6dd9e](https://github.com/ooneex/talos/commit/f6b6dd9e))
 
+## [1.2.9](https://github.com/ooneex/talos/releases/tag/@talosjs/seeds@1.2.9) - 2026-09-25
+
