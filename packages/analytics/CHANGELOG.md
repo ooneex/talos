@@ -47,3 +47,5 @@
 
 - @talosjs/analytics@1.1.5| — Franck ([642c07f9](https://github.com/ooneex/talos/commit/642c07f9))
 
+## [1.1.7](https://github.com/ooneex/talos/releases/tag/@talosjs/analytics@1.1.7) - 2026-09-25
+
