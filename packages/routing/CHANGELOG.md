@@ -68,3 +68,5 @@
 
 - @talosjs/routing@1.3.3| — Franck ([9169f949](https://github.com/ooneex/talos/commit/9169f949))
 
+## [1.3.5](https://github.com/ooneex/talos/releases/tag/@talosjs/routing@1.3.5) - 2026-09-25
+
