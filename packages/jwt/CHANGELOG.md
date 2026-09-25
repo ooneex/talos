@@ -47,3 +47,5 @@
 
 - @talosjs/jwt@1.1.5| — Franck ([5298910f](https://github.com/ooneex/talos/commit/5298910f))
 
+## [1.1.7](https://github.com/ooneex/talos/releases/tag/@talosjs/jwt@1.1.7) - 2026-09-25
+
