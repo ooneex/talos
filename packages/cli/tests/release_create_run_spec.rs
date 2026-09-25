@@ -467,6 +467,68 @@ fn asking_for_a_package_that_is_not_there_stops_the_release() {
 }
 
 #[test]
+fn a_release_drops_stale_artifacts_and_rebuilds_the_package() {
+    let (_dir, root) = repository();
+    write(
+        &root.join(".gitignore"),
+        ".remote.git/\nnode_modules/\ndist/\nbun.lock\n",
+    );
+    write(
+        &root.join("packages/core/package.json"),
+        "{\n  \"name\": \"@scratch/core\",\n  \"version\": \"1.2.3\",\n  \"scripts\": {\n    \"build\": \"mkdir -p dist && printf fresh > dist/marker.txt\"\n  }\n}\n",
+    );
+    write(
+        &root.join("packages/core/src/index.ts"),
+        "export const one = 11;\n",
+    );
+    commit(&root, "feat(core): Add the thing");
+
+    write(&root.join("packages/core/dist/stale.txt"), "stale\n");
+    write(
+        &root.join("packages/core/node_modules/left-pad/index.js"),
+        "module.exports = 1;\n",
+    );
+    write(
+        &root.join("packages/core/src/node_modules/nested/index.js"),
+        "keep\n",
+    );
+    write(&root.join("modules/user/dist/keep.txt"), "keep\n");
+    write(
+        &root.join("modules/user/node_modules/pkg/index.js"),
+        "keep\n",
+    );
+    write(&root.join("node_modules/marker.txt"), "stale\n");
+
+    let output = talos(&root, &["release:create", "--packages=core"]);
+
+    assert!(output.status.success(), "{}", text(&output));
+    assert!(
+        !root.join("packages/core/dist/stale.txt").exists(),
+        "the stale build output is removed before the package is rebuilt"
+    );
+    assert_eq!(
+        read(&root.join("packages/core/dist/marker.txt")),
+        "fresh",
+        "the package build runs after checks and writes a fresh dist"
+    );
+    assert!(!root.join("packages/core/node_modules").exists());
+    assert!(
+        root.join("packages/core/src/node_modules/nested/index.js")
+            .is_file(),
+        "a node_modules folder nested under the package root is left in place"
+    );
+    assert!(root.join("modules/user/dist/keep.txt").is_file());
+    assert!(
+        root.join("modules/user/node_modules/pkg/index.js")
+            .is_file()
+    );
+    assert!(
+        !root.join("node_modules/marker.txt").exists(),
+        "the project root node_modules is removed before checks reinstall it"
+    );
+}
+
+#[test]
 fn a_repository_with_no_packages_or_modules_stops_the_release() {
     let dir = tempfile::tempdir().expect("create temp dir");
     let root = dir.path().to_path_buf();

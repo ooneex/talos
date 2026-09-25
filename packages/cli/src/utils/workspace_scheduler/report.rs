@@ -360,14 +360,14 @@ error: script \"test\" exited with code 1
 ";
         let excerpt = failure_excerpt(output);
 
-        assert!(excerpt.iter().any(|line| line.contains("expect(1).toBe(2)")));
+        assert!(
+            excerpt
+                .iter()
+                .any(|line| line.contains("expect(1).toBe(2)"))
+        );
         assert!(excerpt.iter().any(|line| line.contains('^')));
         assert!(excerpt.iter().any(|line| line.contains("Expected: 2")));
-        assert!(
-            !excerpt
-                .iter()
-                .any(|line| line.contains("exited with code"))
-        );
+        assert!(!excerpt.iter().any(|line| line.contains("exited with code")));
     }
 
     #[test]

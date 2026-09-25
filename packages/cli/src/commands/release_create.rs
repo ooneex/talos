@@ -5,9 +5,10 @@ use std::process::Command;
 use clap::Args;
 use serde_json::Value;
 
+use crate::commands::build::{self, BuildArgs};
 use crate::commands::check::{self, CheckArgs};
 use crate::commands::npm_publish::{self, NpmPublishArgs};
-use crate::utils::{ask_confirm, run_spinner_step};
+use crate::utils::{Spinner, ask_confirm, run_spinner_step};
 
 #[derive(Clone)]
 struct TargetDir {
@@ -247,13 +248,25 @@ pub fn run(args: &ReleaseCreateArgs) {
         std::process::exit(1);
     }
     let target_dirs = discover_target_dirs(&cwd, args);
+    remove_release_artifacts(&cwd, &target_dirs);
+    let cwd_arg = Some(cwd.to_string_lossy().to_string());
     check::run(&CheckArgs {
         packages: args.packages.clone(),
         modules: args.modules.clone(),
         logs: false,
         no_cache: false,
         output: None,
-        cwd: Some(cwd.to_string_lossy().to_string()),
+        cwd: cwd_arg.clone(),
+    });
+    // `dist` was just removed. A cache hit would skip the build and leave
+    // the package without output, so this run always rebuilds.
+    build::run(&BuildArgs {
+        packages: args.packages.clone(),
+        modules: args.modules.clone(),
+        logs: false,
+        no_cache: true,
+        output: None,
+        cwd: cwd_arg,
     });
 
     let repo_url = get_repo_url(&cwd);
@@ -286,6 +299,36 @@ pub fn run(args: &ReleaseCreateArgs) {
             }
         }
     }
+}
+
+/// Removes `dist` and `node_modules` from each selected package or module,
+/// and `node_modules` from the project root, so the check that follows
+/// reinstalls from the lockfile. Nested folders are left in place.
+fn remove_release_artifacts(cwd: &Path, target_dirs: &[TargetDir]) {
+    let spinner = Spinner::start("Removing dist and node_modules");
+    let mut paths = vec![cwd.join("node_modules")];
+    for dir in target_dirs {
+        let full_dir = cwd.join(&dir.base);
+        paths.push(full_dir.join("dist"));
+        paths.push(full_dir.join("node_modules"));
+    }
+    for path in &paths {
+        if let Err(message) = remove_dir(path) {
+            drop(spinner);
+            crate::utils::error(message);
+            std::process::exit(1);
+        }
+    }
+    drop(spinner);
+}
+
+/// Removes a directory when it exists. A missing path is already clean.
+fn remove_dir(path: &Path) -> Result<(), String> {
+    if !path.is_dir() {
+        return Ok(());
+    }
+    fs::remove_dir_all(path)
+        .map_err(|error| format!("Failed to remove {}: {error}", path.display()))
 }
 
 /// Discovers every `packages/*` and `modules/*` directory, then narrows the
