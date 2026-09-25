@@ -49,14 +49,20 @@ pub fn finish_lines(task: &Task) -> (Vec<String>, bool) {
 }
 
 pub fn failure_excerpt(output: &str) -> Vec<String> {
-    let normalized = output.replace('\r', "");
+    // A carriage return is Bun rewriting a progress line in place. Kept as a
+    // line break, each update stays a line the excerpt can keep or drop.
+    let normalized = output.replace('\r', "\n");
     let lines: Vec<String> = normalized.lines().map(str::to_string).collect();
     let signal = Regex::new(
         r"(?i)\b(?:error|fail(?:ed|ure|s|ing)?|panic|exception|uncaught|unhandled|throw(?:s|n)?|assert\w*|not ok|refus\w*)\b|error TS\d|\(fail\)|[✗✕×✖✘]",
     )
     .expect("the failure signal pattern is valid");
-    let noise = Regex::new(r"\(pass\)|^\s*\^+\s*$").expect("the failure-noise pattern is valid");
-    let before = 1i64;
+    // `(pass)` lines are noise. So is Bun's wrapper (`error: script "test"
+    // exited with code 1`): it only repeats the exit status already printed
+    // above the excerpt, and treating it as the signal hides the assertion.
+    let noise = Regex::new(r"\(pass\)|(?i)^error: .* exited with code \d+\s*$")
+        .expect("the failure-noise pattern is valid");
+    let before = 2i64;
     let after = 3i64;
     let max_lines = 120;
 
@@ -194,7 +200,8 @@ fn print_rows(ran: &[&Task]) {
     }
 }
 
-/// The tasks that failed, with their output under `--logs`.
+/// The tasks that failed. The excerpt is the part that says why; `--logs`
+/// prints the captured output in full.
 fn print_failures(ran: &[&Task], logs: bool) {
     let broken: Vec<&&Task> = ran
         .iter()
@@ -214,14 +221,30 @@ fn print_failures(ran: &[&Task], logs: bool) {
             style(format!("failed  exit {}", task.exit_code.unwrap_or(1))).red()
         );
 
-        if !logs {
-            println!("  {}", style("re-run with --logs to see the output").dim());
+        let lines = if logs {
+            full_log(&task.output)
+        } else {
+            failure_excerpt(&task.output)
+        };
+        if lines.is_empty() {
+            println!("  {}", style("(no output captured)").dim());
             continue;
         }
-        for line in failure_excerpt(&task.output) {
-            println!("  {}", style(line).dim());
+        for line in lines {
+            println!("  {line}");
         }
     }
+}
+
+/// Every non-empty line of a captured run, with in-place progress updates
+/// split into their own lines.
+fn full_log(output: &str) -> Vec<String> {
+    output
+        .replace('\r', "\n")
+        .lines()
+        .filter(|line| !line.trim().is_empty())
+        .map(str::to_string)
+        .collect()
 }
 
 fn print_summary(ran: &[&Task], skipped: usize) {
@@ -305,9 +328,46 @@ mod tests {
     }
 
     #[test]
-    fn print_failures_hints_at_the_logs_flag_without_it() {
-        let failed = task(TaskStatus::Failed);
+    fn print_failures_shows_the_excerpt_without_the_logs_flag() {
+        let mut failed = task(TaskStatus::Failed);
+        failed.output = "\
+tests/add.spec.ts:
+2 | test(\"adds\", () => { expect(1).toBe(2); });
+                                   ^
+error: expect(received).toBe(expected)
+
+Expected: 2
+Received: 1
+(fail) adds
+error: script \"test\" exited with code 1
+"
+        .to_string();
         print_failures(&[&failed], false);
+    }
+
+    #[test]
+    fn failure_excerpt_keeps_the_assertion_and_drops_buns_script_wrapper() {
+        let output = "\
+tests/add.spec.ts:
+2 | test(\"adds\", () => { expect(1).toBe(2); });
+                                   ^
+error: expect(received).toBe(expected)
+
+Expected: 2
+Received: 1
+(fail) adds
+error: script \"test\" exited with code 1
+";
+        let excerpt = failure_excerpt(output);
+
+        assert!(excerpt.iter().any(|line| line.contains("expect(1).toBe(2)")));
+        assert!(excerpt.iter().any(|line| line.contains('^')));
+        assert!(excerpt.iter().any(|line| line.contains("Expected: 2")));
+        assert!(
+            !excerpt
+                .iter()
+                .any(|line| line.contains("exited with code"))
+        );
     }
 
     #[test]
