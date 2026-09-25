@@ -49,3 +49,5 @@
 
 - @talosjs/http-response@1.1.5| — Franck ([73e369b7](https://github.com/ooneex/talos/commit/73e369b7))
 
+## [1.1.7](https://github.com/ooneex/talos/releases/tag/@talosjs/http-response@1.1.7) - 2026-09-25
+
