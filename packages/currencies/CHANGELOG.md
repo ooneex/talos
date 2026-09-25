@@ -48,3 +48,5 @@
 
 - @talosjs/currencies@1.1.5| — Franck ([e508fedd](https://github.com/ooneex/talos/commit/e508fedd))
 
+## [1.1.7](https://github.com/ooneex/talos/releases/tag/@talosjs/currencies@1.1.7) - 2026-09-25
+
