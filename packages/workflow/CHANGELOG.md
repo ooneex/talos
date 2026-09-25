@@ -64,3 +64,5 @@
 
 - @talosjs/workflow@1.1.7| — Franck ([9a29e6aa](https://github.com/ooneex/talos/commit/9a29e6aa))
 
+## [1.1.9](https://github.com/ooneex/talos/releases/tag/@talosjs/workflow@1.1.9) - 2026-09-25
+
