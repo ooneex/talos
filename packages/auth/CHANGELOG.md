@@ -72,3 +72,5 @@
 
 - @talosjs/auth@1.3.3| — Franck ([c85794e8](https://github.com/ooneex/talos/commit/c85794e8))
 
+## [1.3.5](https://github.com/ooneex/talos/releases/tag/@talosjs/auth@1.3.5) - 2026-09-25
+
