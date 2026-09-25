@@ -764,3 +764,13 @@
 
 - Update Cargo.lock| — Franck ([be6ac5b0](https://github.com/ooneex/talos/commit/be6ac5b0))
 
+## [0.16.3](https://github.com/ooneex/talos/releases/tag/@talos/cli@0.16.3) - 2026-09-25
+
+### Changed
+
+- Update Cargo.lock| — Franck ([9d82654e](https://github.com/ooneex/talos/commit/9d82654e))
+
+### Fixed
+
+- Improve task failure excerpt with better signal detection and full log support|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([5083870f](https://github.com/ooneex/talos/commit/5083870f))
+
