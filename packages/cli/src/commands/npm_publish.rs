@@ -15,6 +15,10 @@ use crate::utils::{
 
 const NPM_REGISTRY: &str = "registry.npmjs.org";
 
+/// Overrides the registry `published_version` reads, so a test can stand in
+/// for npm. Unset, the public registry is used.
+pub const NPM_REGISTRY_URL_ENV: &str = "TALOS_NPM_REGISTRY";
+
 #[derive(Args, Debug)]
 pub struct NpmPublishArgs {
     #[arg(long)]
@@ -64,6 +68,60 @@ fn read_token() -> Option<String> {
     profile
         .into_iter()
         .find_map(|(key, value)| (key == "token").then_some(value))
+}
+
+/// The version npm currently publishes for `name`.
+///
+/// `Ok(None)` means the package has never been published. Any other failure
+/// is returned, because guessing a version from the manifest can skip numbers
+/// npm never saw. `base` overrides the public registry the lookup normally
+/// goes to.
+pub fn published_version(name: &str, base: Option<&str>) -> Result<Option<String>, String> {
+    let root = base
+        .map(str::to_string)
+        .or_else(|| std::env::var(NPM_REGISTRY_URL_ENV).ok())
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or_else(|| format!("https://{NPM_REGISTRY}"));
+    let url = format!(
+        "{}/{}/latest",
+        root.trim().trim_end_matches('/'),
+        percent_encode(name)
+    );
+    let mut request = ureq::get(&url).header("Accept", "application/json");
+    if let Some(token) = read_token() {
+        request = request.header("Authorization", &format!("Bearer {token}"));
+    }
+
+    match request.call() {
+        Ok(response) => {
+            let body: Value = response.into_body().read_json().map_err(|error| {
+                format!("npm returned an unreadable version for {name}: {error}")
+            })?;
+            let version = body
+                .get("version")
+                .and_then(Value::as_str)
+                .map(str::trim)
+                .filter(|version| !version.is_empty())
+                .ok_or_else(|| format!("npm returned no version for {name}"))?;
+            let core = version
+                .trim_start_matches('v')
+                .split(['-', '+'])
+                .next()
+                .unwrap_or(version);
+            if !core.split('.').all(is_numeric_part) || core.is_empty() {
+                return Err(format!(
+                    "npm returned a version for {name} that is not a release number: {version}"
+                ));
+            }
+            Ok(Some(core.to_string()))
+        }
+        Err(ureq::Error::StatusCode(404)) => Ok(None),
+        Err(error) => Err(format!("Failed to read the npm version of {name}: {error}")),
+    }
+}
+
+fn is_numeric_part(part: &str) -> bool {
+    !part.is_empty() && part.chars().all(|character| character.is_ascii_digit())
 }
 
 /// Whether the registry already published that exact version. `base` overrides

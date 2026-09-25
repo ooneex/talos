@@ -10,10 +10,14 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 
+mod support;
+
+use cli::commands::npm_publish::published_version;
 use cli::commands::release_create::{
-    CommitInfo, bump_version, determine_bump_type, publish_args_for, update_cargo_version,
-    update_changelog,
+    CommitInfo, bump_version, determine_bump_type, publish_args_for, release_base,
+    update_cargo_version, update_changelog,
 };
+use support::http::{Reply, Server};
 
 fn write(path: &Path, content: &str) {
     fs::create_dir_all(path.parent().expect("a parent")).expect("create parent");
@@ -94,12 +98,20 @@ fn repository() -> (tempfile::TempDir, PathBuf) {
     (dir, root)
 }
 
+/// Runs a release against a registry that has never published the package, so
+/// the bump stays on the manifest version.
 fn talos(root: &Path, args: &[&str]) -> Output {
+    let registry = Server::start(|_| Reply::status(404, "{\"error\":\"Not found\"}"));
+    talos_with_registry(root, args, registry.base())
+}
+
+fn talos_with_registry(root: &Path, args: &[&str], registry: &str) -> Output {
     Command::new(env!("CARGO_BIN_EXE_talos"))
         .args(args)
         .arg(format!("--cwd={}", root.display()))
         .current_dir(root)
         .env("NO_COLOR", "1")
+        .env("TALOS_NPM_REGISTRY", registry)
         .env("GIT_AUTHOR_NAME", "Tester")
         .env("GIT_AUTHOR_EMAIL", "tester@example.com")
         .env("GIT_COMMITTER_NAME", "Tester")
@@ -169,6 +181,57 @@ fn a_fix_is_a_patch_a_feature_is_a_minor_and_a_break_is_a_major() {
         "patch",
         "no commit at all still bumps the patch"
     );
+}
+
+#[test]
+fn a_release_bumps_the_version_npm_has_published() {
+    assert_eq!(
+        bump_version(release_base("1.3.9", Some("1.3.2")), "patch"),
+        "1.3.3",
+        "a manifest ahead of npm must not skip the numbers npm never published"
+    );
+    assert_eq!(
+        bump_version(release_base("1.9.0", Some("1.3.2")), "minor"),
+        "1.4.0"
+    );
+    assert_eq!(
+        bump_version(release_base("3.0.0", Some("1.3.2")), "major"),
+        "2.0.0"
+    );
+    assert_eq!(
+        bump_version(release_base("1.2.3", None), "patch"),
+        "1.2.4",
+        "a package npm has never published keeps the manifest version"
+    );
+}
+
+#[test]
+fn published_version_reads_the_latest_release_and_ignores_a_missing_package() {
+    let registry = Server::start(|request| {
+        if request.path.contains("missing") {
+            return Reply::status(404, "{\"error\":\"Not found\"}");
+        }
+        Reply::json(serde_json::json!({ "version": "v1.3.2-rc.1" }))
+    });
+
+    assert_eq!(
+        published_version("@scratch/core", Some(registry.base())).expect("lookup"),
+        Some("1.3.2".to_string())
+    );
+    assert_eq!(
+        published_version("@scratch/missing", Some(registry.base())).expect("lookup"),
+        None
+    );
+}
+
+#[test]
+fn published_version_reports_a_registry_that_cannot_be_read() {
+    let registry = Server::start(|_| Reply::status(500, "nope"));
+
+    let error = published_version("@scratch/core", Some(registry.base()))
+        .expect_err("a broken registry is not an unpublished package");
+
+    assert!(error.contains("@scratch/core"), "{error}");
 }
 
 #[test]
@@ -357,6 +420,60 @@ fn a_manifest_with_no_package_version_is_left_untouched() {
 // ---------------------------------------------------------------------------
 // The command
 // ---------------------------------------------------------------------------
+
+#[test]
+fn a_patch_release_follows_the_version_npm_published() {
+    let (_dir, root) = repository();
+    write(
+        &root.join("packages/core/package.json"),
+        "{\n  \"name\": \"@scratch/core\",\n  \"version\": \"1.3.9\"\n}\n",
+    );
+    write(
+        &root.join("packages/core/src/index.ts"),
+        "export const one = 11;\n",
+    );
+    commit(&root, "fix(core): Repair the thing");
+
+    let registry = Server::start(|_| Reply::json(serde_json::json!({ "version": "1.3.2" })));
+    let output = talos_with_registry(
+        &root,
+        &["release:create", "--packages=core"],
+        registry.base(),
+    );
+
+    assert!(output.status.success(), "{}", text(&output));
+    assert_eq!(version(&root.join("packages/core/package.json")), "1.3.3");
+    assert!(
+        text(&output).contains("@scratch/core is 1.3.2 on npm"),
+        "{}",
+        text(&output)
+    );
+}
+
+#[test]
+fn a_registry_that_cannot_be_read_stops_the_release_before_the_version_changes() {
+    let (_dir, root) = repository();
+    write(
+        &root.join("packages/core/src/index.ts"),
+        "export const one = 11;\n",
+    );
+    commit(&root, "fix(core): Repair the thing");
+
+    let registry = Server::start(|_| Reply::status(500, "nope"));
+    let output = talos_with_registry(
+        &root,
+        &["release:create", "--packages=core"],
+        registry.base(),
+    );
+
+    assert!(!output.status.success(), "{}", text(&output));
+    assert!(
+        text(&output).contains("Failed to read the npm version"),
+        "{}",
+        text(&output)
+    );
+    assert_eq!(version(&root.join("packages/core/package.json")), "1.2.3");
+}
 
 #[test]
 fn a_feature_commit_releases_a_minor_version_and_tags_it() {

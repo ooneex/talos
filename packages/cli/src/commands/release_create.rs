@@ -173,6 +173,13 @@ pub fn determine_bump_type(commits: &[CommitInfo]) -> &'static str {
     bump
 }
 
+/// The version a release bumps from. npm's published version wins, so the
+/// next number sits directly after what the registry already has. A package
+/// npm has never published keeps the version written in its manifest.
+pub fn release_base<'a>(local: &'a str, published: Option<&'a str>) -> &'a str {
+    published.unwrap_or(local)
+}
+
 pub fn bump_version(version: &str, kind: &str) -> String {
     let parts: Vec<u64> = version
         .split('.')
@@ -394,7 +401,9 @@ fn split_names(value: Option<&str>) -> Vec<String> {
 
 /// Builds a release plan for every target directory that has unreleased
 /// commits: reads its `package.json`, computes the semver bump from the
-/// commits since its last tag, and stages the new version in memory.
+/// commits since its last tag, and stages the new version in memory. The
+/// bump starts from the version npm has published, so the next number
+/// follows it.
 fn build_release_plans(cwd: &Path, target_dirs: &[TargetDir]) -> Vec<ReleasePlan> {
     let mut plans = Vec::new();
     for dir in target_dirs.iter().cloned() {
@@ -426,7 +435,21 @@ fn build_release_plans(cwd: &Path, target_dirs: &[TargetDir]) -> Vec<ReleasePlan
             continue;
         }
         let bump_type = determine_bump_type(&commits);
-        let new_version = bump_version(&version, bump_type);
+        let published = match npm_publish::published_version(&package_name, None) {
+            Ok(published) => published,
+            Err(message) => {
+                crate::utils::error(message);
+                std::process::exit(1);
+            }
+        };
+        let base = release_base(&version, published.as_deref()).to_string();
+        if published
+            .as_deref()
+            .is_some_and(|published| published != version)
+        {
+            println!("{package_name} is {base} on npm");
+        }
+        let new_version = bump_version(&base, bump_type);
         if let Some(root) = package_json.as_object_mut() {
             root.insert("version".to_string(), Value::String(new_version.clone()));
         }
