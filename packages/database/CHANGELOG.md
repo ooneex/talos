@@ -93,3 +93,5 @@
 
 - Bind raw query parameters through the driver|Bun serialises an array parameter as `a,b,c`, which Postgres rejects as a — Franck ([220dec31](https://github.com/ooneex/talos/commit/220dec31))
 
+## [1.4.2](https://github.com/ooneex/talos/releases/tag/@talosjs/database@1.4.2) - 2026-09-25
+
