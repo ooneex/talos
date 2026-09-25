@@ -49,3 +49,5 @@
 
 - @talosjs/http-mimes@1.1.5| — Franck ([80a66e54](https://github.com/ooneex/talos/commit/80a66e54))
 
+## [1.1.7](https://github.com/ooneex/talos/releases/tag/@talosjs/http-mimes@1.1.7) - 2026-09-25
+
