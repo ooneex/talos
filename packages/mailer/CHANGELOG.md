@@ -63,3 +63,5 @@
 
 - @talosjs/mailer@1.2.4| — Franck ([45d2c49e](https://github.com/ooneex/talos/commit/45d2c49e))
 
+## [1.2.6](https://github.com/ooneex/talos/releases/tag/@talosjs/mailer@1.2.6) - 2026-09-25
+
