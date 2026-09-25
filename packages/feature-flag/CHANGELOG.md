@@ -47,3 +47,5 @@
 
 - @talosjs/feature-flag@1.1.5| — Franck ([45396322](https://github.com/ooneex/talos/commit/45396322))
 
+## [1.1.7](https://github.com/ooneex/talos/releases/tag/@talosjs/feature-flag@1.1.7) - 2026-09-25
+
