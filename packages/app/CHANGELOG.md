@@ -169,3 +169,5 @@
 
 - Bump version to 1.7.3|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([bcb1cd4b](https://github.com/ooneex/talos/commit/bcb1cd4b))
 
+## [1.7.5](https://github.com/ooneex/talos/releases/tag/@talosjs/app@1.7.5) - 2026-09-25
+
