@@ -47,3 +47,5 @@
 
 - @talosjs/repository@1.1.5| — Franck ([c5d4f81f](https://github.com/ooneex/talos/commit/c5d4f81f))
 
+## [1.1.7](https://github.com/ooneex/talos/releases/tag/@talosjs/repository@1.1.7) - 2026-09-25
+
