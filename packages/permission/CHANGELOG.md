@@ -48,3 +48,5 @@
 
 - @talosjs/permission@1.1.5| — Franck ([a3e456a4](https://github.com/ooneex/talos/commit/a3e456a4))
 
+## [1.1.7](https://github.com/ooneex/talos/releases/tag/@talosjs/permission@1.1.7) - 2026-09-25
+
