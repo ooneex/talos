@@ -774,3 +774,9 @@
 
 - Improve task failure excerpt with better signal detection and full log support|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([5083870f](https://github.com/ooneex/talos/commit/5083870f))
 
+## [0.16.4](https://github.com/ooneex/talos/releases/tag/@talos/cli@0.16.4) - 2026-09-25
+
+### Changed
+
+- Update Cargo.lock| — Franck ([197c13d3](https://github.com/ooneex/talos/commit/197c13d3))
+
