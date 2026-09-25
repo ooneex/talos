@@ -49,3 +49,5 @@
 
 - @talosjs/cron@1.1.5| — Franck ([dd7e6da4](https://github.com/ooneex/talos/commit/dd7e6da4))
 
+## [1.1.7](https://github.com/ooneex/talos/releases/tag/@talosjs/cron@1.1.7) - 2026-09-25
+
