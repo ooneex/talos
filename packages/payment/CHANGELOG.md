@@ -54,3 +54,5 @@
 
 - @talosjs/payment@1.1.6| — Franck ([a9d0e42b](https://github.com/ooneex/talos/commit/a9d0e42b))
 
+## [1.1.8](https://github.com/ooneex/talos/releases/tag/@talosjs/payment@1.1.8) - 2026-09-25
+
