@@ -51,3 +51,5 @@
 - @talosjs/container@1.1.5| — Franck ([387722d5](https://github.com/ooneex/talos/commit/387722d5))
 - Extract shared registry to Symbol.for global state|Moves bindings, injections, and request-scoped state to a new registry module — Franck ([6290d747](https://github.com/ooneex/talos/commit/6290d747))
 
+## [1.1.7](https://github.com/ooneex/talos/releases/tag/@talosjs/container@1.1.7) - 2026-09-25
+
