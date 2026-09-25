@@ -49,3 +49,5 @@
 
 - @talosjs/http-status@1.1.5| — Franck ([deada94d](https://github.com/ooneex/talos/commit/deada94d))
 
+## [1.1.7](https://github.com/ooneex/talos/releases/tag/@talosjs/http-status@1.1.7) - 2026-09-25
+
