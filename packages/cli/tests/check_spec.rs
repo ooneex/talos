@@ -43,6 +43,7 @@ fn check_defaults_are_empty() {
     assert!(!cli.args.no_cache);
     assert!(cli.args.output.is_none());
     assert!(cli.args.cwd.is_none());
+    assert!(!cli.args.skip_install);
 }
 
 #[test]
@@ -80,6 +81,7 @@ fn check_forwards_all_flags_to_workspace_check() {
         no_cache: true,
         output: Some(OutputFormat::Json),
         cwd: Some("./here".to_string()),
+        skip_install: true,
     };
 
     let forwarded = forwarded_args(&args);
@@ -90,6 +92,7 @@ fn check_forwards_all_flags_to_workspace_check() {
     assert!(forwarded.no_cache);
     assert_eq!(forwarded.output, Some(OutputFormat::Json));
     assert_eq!(forwarded.cwd.as_deref(), Some("./here"));
+    assert!(forwarded.skip_install);
     // Nothing the gate runs reads any of these — see `forwarded_args`.
     assert!(forwarded.threshold.is_none());
     assert!(forwarded.concurrency.is_none());
@@ -105,6 +108,7 @@ fn check_forwards_shared_flags_to_test() {
         no_cache: true,
         output: Some(OutputFormat::Json),
         cwd: Some("./here".to_string()),
+        skip_install: false,
     };
 
     let forwarded = forwarded_test_args(&args);

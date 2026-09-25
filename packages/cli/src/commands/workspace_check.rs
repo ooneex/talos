@@ -73,6 +73,11 @@ pub struct WorkspaceCheckArgs {
     #[arg(skip)]
     pub strict: bool,
 
+    /// When set, lint uses dependencies the caller already installed. Release
+    /// installs ahead of the build, then sets this.
+    #[arg(skip)]
+    pub skip_install: bool,
+
     /// Also write the report to var/outputs/talos_check.md or .json, ready to
     /// hand to an agent.
     #[arg(long, value_enum)]
@@ -170,7 +175,11 @@ pub fn execute(args: &WorkspaceCheckArgs) -> bool {
 /// `check` can add its test verdict to the same report.
 pub fn audit(args: &WorkspaceCheckArgs) -> WorkspaceCheckExecution {
     let started = Instant::now();
-    let install_passed = install::execute(&install_args(args));
+    let install_passed = if args.skip_install {
+        true
+    } else {
+        install::execute(&install_args(args))
+    };
 
     let root = root(args);
     let lint = lint::audit(

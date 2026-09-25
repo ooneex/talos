@@ -20,6 +20,7 @@ fn args() -> WorkspaceCheckArgs {
         threshold: Some(85.0),
         concurrency: Some(4),
         strict: true,
+        skip_install: false,
         output: None,
         cwd: Some("./here".to_string()),
     }
@@ -64,6 +65,7 @@ fn workspace_check_defaults_are_empty() {
     assert!(cli.args.threshold.is_none());
     assert!(cli.args.concurrency.is_none());
     assert!(!cli.args.strict);
+    assert!(!cli.args.skip_install);
 }
 
 #[test]
@@ -155,6 +157,7 @@ fn scoring_args() -> WorkspaceCheckArgs {
         threshold: None,
         concurrency: None,
         strict: false,
+        skip_install: false,
         output: None,
         cwd: None,
     }

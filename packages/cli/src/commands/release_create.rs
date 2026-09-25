@@ -264,8 +264,9 @@ pub fn run(args: &ReleaseCreateArgs) {
     let target_dirs = discover_target_dirs(&cwd, args);
     remove_release_artifacts(&cwd, &target_dirs);
     let cwd_arg = Some(cwd.to_string_lossy().to_string());
-    // `dist` and `node_modules` were just removed. Every gate step bypasses
-    // its cache so a prior run cannot skip install, build, lint, or test.
+    // `dist` and `node_modules` were just removed. Install once so the build
+    // has dependencies, then lint and test through check with that install
+    // already done. Every step bypasses its cache so a prior run cannot skip it.
     install::run(&InstallArgs {
         force: false,
         audit_level: None,
@@ -288,6 +289,7 @@ pub fn run(args: &ReleaseCreateArgs) {
         no_cache: true,
         output: None,
         cwd: cwd_arg,
+        skip_install: true,
     });
 
     let repo_url = get_repo_url(&cwd);

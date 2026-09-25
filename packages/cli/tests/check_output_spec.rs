@@ -131,6 +131,7 @@ fn the_command_line_is_the_gate_without_its_own_output_flag() {
         threshold: Some(85.0),
         concurrency: Some(4),
         strict: true,
+        skip_install: false,
         output: Some(OutputFormat::Md),
         cwd: Some("./here".to_string()),
     };
@@ -153,6 +154,7 @@ fn the_command_line_of_a_bare_gate_is_bare() {
         threshold: None,
         concurrency: None,
         strict: false,
+        skip_install: false,
         output: None,
         cwd: None,
     };

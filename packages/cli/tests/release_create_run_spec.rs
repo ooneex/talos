@@ -698,6 +698,12 @@ fn a_release_drops_stale_artifacts_and_rebuilds_the_package() {
     let output = talos(&root, &["release:create", "--packages=core"]);
 
     assert!(output.status.success(), "{}", text(&output));
+    assert_eq!(
+        text(&output).matches("Installing dependencies").count(),
+        1,
+        "dependencies are installed once: {}",
+        text(&output)
+    );
     assert!(
         !root.join("packages/core/dist/stale.txt").exists(),
         "the stale build output is removed before the package is rebuilt"

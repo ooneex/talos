@@ -21,6 +21,11 @@ pub struct CheckArgs {
     pub output: Option<OutputFormat>,
     #[arg(long)]
     pub cwd: Option<String>,
+
+    /// When set, lint and test use dependencies the caller already installed.
+    /// Release installs ahead of the build, then sets this.
+    #[arg(skip)]
+    pub skip_install: bool,
 }
 
 pub fn forwarded_args(args: &CheckArgs) -> WorkspaceCheckArgs {
@@ -37,6 +42,7 @@ pub fn forwarded_args(args: &CheckArgs) -> WorkspaceCheckArgs {
         strict: false,
         output: args.output,
         cwd: args.cwd.clone(),
+        skip_install: args.skip_install,
     }
 }
 
