@@ -529,6 +529,40 @@ fn a_crate_beside_the_manifest_has_its_version_kept_in_step() {
 }
 
 #[test]
+fn a_rust_module_is_released_from_its_manifest_and_not_pushed_to_npm() {
+    let (_dir, root) = repository();
+    write(
+        &root.join("packages/core/Cargo.toml"),
+        "[package]\nname = \"core\"\nversion = \"1.2.3\"\n",
+    );
+    write(
+        &root.join("packages/core/src/index.ts"),
+        "export const one = 11;\n",
+    );
+    commit(&root, "fix(core): Repair the thing");
+
+    let registry = Server::start(|_| Reply::json(serde_json::json!({ "version": "9.9.9" })));
+    let output = talos_with_registry(
+        &root,
+        &["release:create", "--packages=core", "--publish"],
+        registry.base(),
+    );
+
+    assert!(output.status.success(), "{}", text(&output));
+    assert_eq!(version(&root.join("packages/core/package.json")), "1.2.4");
+    assert!(
+        text(&output).contains("Skipped @scratch/core (rust module)"),
+        "{}",
+        text(&output)
+    );
+    assert!(
+        text(&output).contains("No npm-publishable packages or modules were released"),
+        "{}",
+        text(&output)
+    );
+}
+
+#[test]
 fn a_package_with_no_commit_since_its_tag_is_left_alone() {
     let (_dir, root) = repository();
     write(

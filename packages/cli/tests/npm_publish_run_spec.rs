@@ -143,3 +143,90 @@ fn run_publishes_selected_targets_when_versions_are_not_declared() {
 
     assert!(package_dir.join("dist/pkg-1.0.0.tgz").is_file());
 }
+
+#[test]
+fn run_ignores_a_rust_module_and_publishes_the_other_package() {
+    let root = tempfile::tempdir().expect("tempdir");
+    let bin = root.path().join("bin");
+    let log = root.path().join("publish.log");
+    let package_dir = root.path().join("packages/core");
+    let rust_dir = root.path().join("modules/cli");
+    fs::create_dir_all(&package_dir).expect("package dir");
+    fs::create_dir_all(&rust_dir).expect("rust module dir");
+    fs::write(
+        package_dir.join("package.json"),
+        "{ \"name\": \"@scope/core\", \"version\": \"1.0.0\" }\n",
+    )
+    .expect("package");
+    fs::write(
+        rust_dir.join("package.json"),
+        "{ \"name\": \"@scope/cli\", \"version\": \"0.1.0\" }\n",
+    )
+    .expect("rust package manifest");
+    fs::write(
+        rust_dir.join("Cargo.toml"),
+        "[package]\nname = \"cli\"\nversion = \"0.1.0\"\n",
+    )
+    .expect("cargo manifest");
+    seed_publish_scripts(&bin, &log);
+
+    with_env(root.path(), &bin, || {
+        save_credentials(
+            "npm.yml",
+            "npm",
+            &[("token".to_string(), "secret".to_string())],
+            true,
+        )
+        .expect("credentials");
+        run(&NpmPublishArgs {
+            packages: Some("core".to_string()),
+            modules: Some("cli".to_string()),
+            access: "public".to_string(),
+            silent: true,
+            cwd: Some(root.path().display().to_string()),
+        });
+    });
+
+    let log_text = fs::read_to_string(&log).unwrap_or_default();
+    assert_eq!(
+        log_text.matches("bun:pm pack").count(),
+        1,
+        "the rust module is not packed: {log_text}"
+    );
+    assert!(package_dir.join("dist/pkg-1.0.0.tgz").is_file());
+    assert!(
+        !rust_dir.join("dist").exists(),
+        "a rust module is not published to npm"
+    );
+}
+
+#[test]
+fn run_ignores_a_rust_module_without_asking_npm_for_a_token() {
+    let root = tempfile::tempdir().expect("tempdir");
+    let bin = root.path().join("bin");
+    let log = root.path().join("publish.log");
+    let rust_dir = root.path().join("modules/cli");
+    fs::create_dir_all(&rust_dir).expect("rust module dir");
+    fs::write(
+        rust_dir.join("Cargo.toml"),
+        "[package]\nname = \"cli\"\nversion = \"0.1.0\"\n",
+    )
+    .expect("cargo manifest");
+    seed_publish_scripts(&bin, &log);
+
+    with_env(root.path(), &bin, || {
+        run(&NpmPublishArgs {
+            packages: None,
+            modules: Some("cli".to_string()),
+            access: "public".to_string(),
+            silent: true,
+            cwd: Some(root.path().display().to_string()),
+        });
+    });
+
+    assert!(
+        !log.exists(),
+        "a rust module is ignored before anything is published"
+    );
+    assert!(!rust_dir.join("dist").exists());
+}

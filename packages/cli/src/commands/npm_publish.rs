@@ -9,8 +9,8 @@ use tar::Archive;
 
 pub use crate::utils::split_csv;
 use crate::utils::{
-    Action, PublishTarget, current_dir, discover_publish_targets, ensure_bin, read_credentials,
-    resolve_publish_targets, run_actions_rendered,
+    Action, PublishTarget, current_dir, discover_publish_targets, ensure_bin, is_rust_module,
+    read_credentials, resolve_publish_targets, run_actions_rendered,
 };
 
 const NPM_REGISTRY: &str = "registry.npmjs.org";
@@ -182,7 +182,8 @@ pub fn extract_tarball_stripping_root(tarball: &Path, destination: &Path) -> std
 
 /// Reads a target's `package.json` and builds the publish action for it,
 /// or reports why it should be skipped/ignored. `ignored` is bumped when the
-/// version is already published on the registry.
+/// version is already published on the registry. A Rust module never reaches
+/// this step.
 fn build_publish_action(
     cwd: &Path,
     target: &Target,
@@ -233,6 +234,18 @@ fn build_publish_action(
     }))
 }
 
+/// A Rust module is not published to npm. Counts it as ignored.
+fn ignore_rust_module(cwd: &Path, target: &Target, silent: bool, ignored: &mut usize) -> bool {
+    if !is_rust_module(&cwd.join(&target.base)) {
+        return false;
+    }
+    *ignored += 1;
+    if !silent {
+        println!("Skipped {} (rust module)", target.name);
+    }
+    true
+}
+
 pub fn run(args: &NpmPublishArgs) {
     let cwd = args
         .cwd
@@ -247,6 +260,17 @@ pub fn run(args: &NpmPublishArgs) {
         crate::utils::error("No packages or modules found to publish");
         std::process::exit(1);
     }
+    let mut ignored = 0;
+    let publishable: Vec<Target> = targets
+        .into_iter()
+        .filter(|target| !ignore_rust_module(&cwd, target, args.silent, &mut ignored))
+        .collect();
+    if publishable.is_empty() {
+        if !args.silent {
+            println!("Summary: 0 published, {ignored} ignored");
+        }
+        return;
+    }
     let token = match read_token() {
         Some(token) => token,
         None => {
@@ -256,8 +280,7 @@ pub fn run(args: &NpmPublishArgs) {
             std::process::exit(1);
         }
     };
-    let mut ignored = 0;
-    let actions: Vec<Action> = targets
+    let actions: Vec<Action> = publishable
         .iter()
         .filter_map(|target| {
             build_publish_action(

@@ -314,6 +314,15 @@ pub fn run(args: &ReleaseCreateArgs) {
         push_to_remote(&cwd);
     }
     if args.publish {
+        for plan in plans.iter().filter(|plan| plan.cargo_toml_path.is_some()) {
+            let fallback = base_name(&plan.dir.base);
+            let name = plan
+                .package_json
+                .get("name")
+                .and_then(Value::as_str)
+                .unwrap_or(fallback.as_str());
+            println!("Skipped {name} (rust module)");
+        }
         match publish_args_for(&released_packages, &released_modules) {
             Some((packages, modules)) => {
                 npm_publish::run(&NpmPublishArgs {
@@ -468,11 +477,19 @@ fn build_release_plans(
         } else {
             determine_bump_type(&commits)
         };
-        let published = match npm_publish::published_version(&package_name, None) {
-            Ok(published) => published,
-            Err(message) => {
-                crate::utils::error(message);
-                std::process::exit(1);
+        let cargo_toml_path = full_dir.join("Cargo.toml");
+        let cargo_toml_path = cargo_toml_path.is_file().then_some(cargo_toml_path);
+        // A Rust module is released from its own manifest. npm is not a
+        // source of its version and it is not published there.
+        let published = if cargo_toml_path.is_some() {
+            None
+        } else {
+            match npm_publish::published_version(&package_name, None) {
+                Ok(published) => published,
+                Err(message) => {
+                    crate::utils::error(message);
+                    std::process::exit(1);
+                }
             }
         };
         let base = release_base(&version, published.as_deref()).to_string();
@@ -487,8 +504,6 @@ fn build_release_plans(
             root.insert("version".to_string(), Value::String(new_version.clone()));
         }
         let tag = format!("{package_name}@{new_version}");
-        let cargo_toml_path = full_dir.join("Cargo.toml");
-        let cargo_toml_path = cargo_toml_path.is_file().then_some(cargo_toml_path);
         plans.push(ReleasePlan {
             dir,
             full_dir,
