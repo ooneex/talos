@@ -157,3 +157,9 @@
 
 - @talosjs/app@1.7.0| — Franck ([81f11e6a](https://github.com/ooneex/talos/commit/81f11e6a))
 
+## [1.7.2](https://github.com/ooneex/talos/releases/tag/@talosjs/app@1.7.2) - 2026-09-25
+
+### Changed
+
+- Clean up whitespace and add clarifying comments|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([7d19365f](https://github.com/ooneex/talos/commit/7d19365f))
+
