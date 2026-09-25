@@ -49,3 +49,5 @@
 
 - @talosjs/event@1.1.5| — Franck ([db774df4](https://github.com/ooneex/talos/commit/db774df4))
 
+## [1.1.7](https://github.com/ooneex/talos/releases/tag/@talosjs/event@1.1.7) - 2026-09-25
+
