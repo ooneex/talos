@@ -1,3 +1,4 @@
+use std::collections::VecDeque;
 use std::io::{Write, stdout};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
@@ -55,11 +56,21 @@ pub fn run_actions(actions: Vec<Action>) -> Vec<(String, String)> {
 }
 
 pub fn run_actions_rendered(actions: Vec<Action>, render: bool) -> Vec<(String, String)> {
+    run_actions_rendered_limited(actions, render, None)
+}
+
+/// Runs every action, at most `limit` at a time. `None` starts them all together.
+pub fn run_actions_rendered_limited(
+    actions: Vec<Action>,
+    render: bool,
+    limit: Option<usize>,
+) -> Vec<(String, String)> {
     if actions.is_empty() {
         return Vec::new();
     }
 
     let count = actions.len();
+    let worker_count = limit.unwrap_or(count).clamp(1, count);
     let labels: Vec<String> = actions.iter().map(|action| action.label.clone()).collect();
     let statuses: Arc<Vec<Mutex<ActionStatus>>> = Arc::new(
         (0..count)
@@ -67,20 +78,30 @@ pub fn run_actions_rendered(actions: Vec<Action>, render: bool) -> Vec<(String, 
             .collect(),
     );
     let errors: Arc<Mutex<Vec<(String, String)>>> = Arc::new(Mutex::new(Vec::new()));
+    let queue = Arc::new(Mutex::new(
+        actions.into_iter().enumerate().collect::<VecDeque<_>>(),
+    ));
 
-    let mut workers = Vec::with_capacity(count);
-    for (index, action) in actions.into_iter().enumerate() {
+    let mut workers = Vec::with_capacity(worker_count);
+    for _ in 0..worker_count {
+        let queue = queue.clone();
         let statuses = statuses.clone();
         let errors = errors.clone();
         workers.push(thread::spawn(move || {
-            let status = match (action.work)() {
-                Ok(()) => ActionStatus::Success,
-                Err(message) => {
-                    errors.lock().unwrap().push((action.label, message));
-                    ActionStatus::Failed
-                }
-            };
-            *statuses[index].lock().unwrap() = status;
+            loop {
+                let next = queue.lock().unwrap().pop_front();
+                let Some((index, action)) = next else {
+                    break;
+                };
+                let status = match (action.work)() {
+                    Ok(()) => ActionStatus::Success,
+                    Err(message) => {
+                        errors.lock().unwrap().push((action.label, message));
+                        ActionStatus::Failed
+                    }
+                };
+                *statuses[index].lock().unwrap() = status;
+            }
         }));
     }
 

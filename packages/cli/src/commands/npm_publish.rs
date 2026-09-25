@@ -10,10 +10,15 @@ use tar::Archive;
 pub use crate::utils::split_csv;
 use crate::utils::{
     Action, PublishTarget, current_dir, discover_publish_targets, ensure_bin, is_rust_module,
-    read_credentials, resolve_publish_targets, run_actions_rendered,
+    read_credentials, resolve_publish_targets, run_actions_rendered_limited,
 };
 
 const NPM_REGISTRY: &str = "registry.npmjs.org";
+
+/// How many packages publish at once. Each one spawns `bun` and `npm` and
+/// unpacks a tarball; starting every package together exhausts the process
+/// file-descriptor limit (`EMFILE`, os error 24).
+const PUBLISH_CONCURRENCY: usize = 4;
 
 /// Overrides the registry `published_version` reads, so a test can stand in
 /// for npm. Unset, the public registry is used.
@@ -295,7 +300,7 @@ pub fn run(args: &NpmPublishArgs) {
         .collect();
 
     let total = actions.len();
-    let failures = run_actions_rendered(actions, !args.silent);
+    let failures = run_actions_rendered_limited(actions, !args.silent, Some(PUBLISH_CONCURRENCY));
     if !args.silent {
         for (label, message) in &failures {
             crate::utils::error(label.clone());

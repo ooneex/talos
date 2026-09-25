@@ -84,7 +84,7 @@ pub use module_scripts::{
     ModuleScript, ModuleScriptsOptions, ScriptAudit, ScriptStatus, run_module_scripts,
 };
 pub use onboarding::print_onboarding;
-pub use parallel::{Action, run_actions, run_actions_rendered};
+pub use parallel::{Action, run_actions, run_actions_rendered, run_actions_rendered_limited};
 pub use ports::{
     ModulePort, collect_module_ports, free_port, listening_pids, module_ports, parse_compose_ports,
     parse_env_port, parse_netstat_pids, parse_script_ports, parse_unix_pids,
