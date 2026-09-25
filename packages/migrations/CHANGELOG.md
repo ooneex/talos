@@ -91,3 +91,5 @@
 
 - @talosjs/migrations@1.2.6| — Franck ([f432c36c](https://github.com/ooneex/talos/commit/f432c36c))
 
+## [1.2.8](https://github.com/ooneex/talos/releases/tag/@talosjs/migrations@1.2.8) - 2026-09-25
+
