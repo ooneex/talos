@@ -12,7 +12,6 @@ export type RouteValidationErrorType = { message: string; status: StatusCodeType
 
 export const validateConstraint = (constraint: AssertType | IAssert, value: unknown): string | null => {
   const result = validateAssert(constraint, value);
-
   return result.isValid ? null : result.message || "Validation failed";
 };
 
@@ -21,7 +20,6 @@ export const validateRouteAccess = async (
   route: RouteConfigType,
   currentEnv: EnvironmentNameType,
 ): Promise<RouteValidationErrorType | null> => {
-  // Check params
   if (route.params) {
     const error = validateConstraint(route.params, context.params);
     if (error) {
@@ -32,8 +30,6 @@ export const validateRouteAccess = async (
       };
     }
   }
-
-  // Check queries
   if (route.queries) {
     const error = validateConstraint(route.queries, context.queries);
     if (error) {
@@ -44,8 +40,6 @@ export const validateRouteAccess = async (
       };
     }
   }
-
-  // Check payload
   if (route.payload) {
     const error = validateConstraint(route.payload, context.payload);
     if (error) {
@@ -56,8 +50,6 @@ export const validateRouteAccess = async (
       };
     }
   }
-
-  // Check files
   if (route.files) {
     const error = validateConstraint(route.files, context.files);
     if (error) {
@@ -68,8 +60,6 @@ export const validateRouteAccess = async (
       };
     }
   }
-
-  // Check env
   if (route.env && route.env.length > 0 && !route.env.includes(currentEnv)) {
     return {
       message: `Route "${route.name}" is not available in "${currentEnv}" environment`,
@@ -77,8 +67,6 @@ export const validateRouteAccess = async (
       key: "ROUTE_ENV_NOT_ALLOWED",
     };
   }
-
-  // Check ip
   if (route.ip && route.ip.length > 0 && (!context.ip || !route.ip.includes(context.ip))) {
     return {
       message: `Route "${route.name}" is not available for IP "${context.ip}"`,
@@ -86,8 +74,6 @@ export const validateRouteAccess = async (
       key: "ROUTE_IP_NOT_ALLOWED",
     };
   }
-
-  // Check host
   if (route.host && route.host.length > 0 && !route.host.includes(context.host)) {
     return {
       message: `Route "${route.name}" is not available for host "${context.host}"`,
@@ -95,13 +81,10 @@ export const validateRouteAccess = async (
       key: "ROUTE_HOST_NOT_ALLOWED",
     };
   }
-
-  // Check roles
   if (route.roles && route.roles.length > 0) {
     const rolesConfig = container.hasConstant("app.roles") ? container.getConstant<IRolesConfig>("app.roles") : null;
     const guestRole = rolesConfig?.roles.GUEST ?? GUEST_ROLE;
     const isPublicRoute = route.roles.includes(guestRole);
-
     if (!isPublicRoute) {
       if (!context.user || !context.user.roles || context.user.roles.length === 0) {
         return {
@@ -110,14 +93,12 @@ export const validateRouteAccess = async (
           key: "AUTHENTICATION_REQUIRED",
         };
       }
-
       const userRoles = context.user.roles;
       const hasRequiredRole = route.roles.some(
         (requiredRole) =>
           userRoles.includes(requiredRole) ||
           (rolesConfig !== null && userRoles.some((userRole) => role.hasRole(userRole, requiredRole, rolesConfig))),
       );
-
       if (!hasRequiredRole) {
         return {
           message: `Route "${route.name}" is not accessible for user roles`,
@@ -127,7 +108,6 @@ export const validateRouteAccess = async (
       }
     }
   }
-
   return null;
 };
 

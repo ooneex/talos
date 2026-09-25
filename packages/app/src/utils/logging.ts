@@ -16,18 +16,15 @@ type LevelLoggerType = {
 
 export const logSwallowedError = (operation: string, error: unknown): void => {
   const logger = container.hasConstant("logger") ? container.getConstant<LevelLoggerType>("logger") : undefined;
-
   if (!logger) {
     return;
   }
-
   const message = error instanceof Error ? error.message : String(error);
   logger.error(`${operation} failed: ${message}`);
 };
 
 const serializeForm = (form: FormData): Record<string, unknown> => {
   const result: Record<string, unknown> = {};
-
   for (const [key, value] of form.entries()) {
     if (typeof value === "string") {
       result[key] = value;
@@ -36,7 +33,6 @@ const serializeForm = (form: FormData): Record<string, unknown> => {
       result[key] = { name: file.name, size: file.size, type: file.type };
     }
   }
-
   return result;
 };
 
@@ -131,9 +127,8 @@ export const logRequest = (context: ContextType, statusOverride?: StatusCodeType
   }
 };
 
+// Bun.color(..., "ansi") returns an empty string when the terminal has no color support.
 const colorize = (text: string, color: string): string => {
-  // Bun.color(..., "ansi") auto-detects the terminal color depth and returns an empty
-  // string when colors are unsupported, so the reset only applies when a color was emitted.
   const ansi = Bun.color(color, "ansi");
   return ansi ? `${ansi}${text}\u001b[0m` : text;
 };
@@ -147,10 +142,8 @@ export type ServerStartInfoType = {
 
 export const logServerStart = (info: ServerStartInfoType): void => {
   const { baseUrl, appEnv, port, isLocal } = info;
-
   const ready = colorize("✔", "#00C851");
   const label = (text: string): string => colorize(text.padEnd(9), "#79B");
-
   const lines = [
     "",
     `  ${ready} ${label("Ready")}${colorize(baseUrl, "#00C851")}`,
@@ -158,20 +151,16 @@ export const logServerStart = (info: ServerStartInfoType): void => {
     `    ${label("Port")}${colorize(String(port), "#8E8E93")}`,
     "",
   ];
-
   process.stdout.write(`${lines.join("\n")}\n`);
 };
 
 export const logException = (context: ContextType, error: unknown): void => {
   const exceptionLogger = context.exceptionLogger as LevelLoggerType | undefined;
-
   if (!exceptionLogger) {
     return;
   }
-
   const status = (error instanceof Exception ? error.status : HttpStatus.Code.InternalServerError) as StatusCodeType;
   const logData = buildLogData(context, status);
-
   if (error instanceof Error) {
     logData.exceptionName = error.constructor.name;
   }
@@ -179,8 +168,6 @@ export const logException = (context: ContextType, error: unknown): void => {
     const stackTrace = error.stackToJson();
     if (stackTrace) logData.stackTrace = stackTrace;
   }
-
   const message = error instanceof Error ? error.message : "An unknown error occurred";
-
   exceptionLogger.error(message, logData);
 };

@@ -22,6 +22,7 @@ import { validateResponse, validateRouteAccess } from "./utils/validation";
 type SocketRouteHandlerType = (req: BunRequest, server: Server<unknown>) => Promise<Response | undefined>;
 type SocketRoutesMapType = Record<string, SocketRouteHandlerType>;
 
+// A failed upgrade never fires close, so the handler drops its constant instead of leaking it.
 export const formatSocketRoutes = (
   socketRoutes: Map<string, RouteConfigType>,
   prefix?: string,
@@ -34,17 +35,13 @@ export const formatSocketRoutes = (
       const context = await buildHttpContext({ req, server, route });
       const id = random.nanoid(30);
       container.addConstant(id, { context, route });
-
       if (!server.upgrade(req, { data: { id } })) {
-        // The close handler never fires for a connection that was never established,
-        // so the constant must be removed here to avoid leaking it
         container.removeConstant(id);
         return new Response(JSON.stringify({ message: "WebSocket upgrade failed", key: "UPGRADE_FAILED" }), {
           status: HttpStatus.Code.UpgradeRequired,
           headers: { "Content-Type": "application/json" },
         });
       }
-
       return undefined;
     };
   }

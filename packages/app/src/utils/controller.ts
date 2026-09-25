@@ -72,13 +72,14 @@ const executeController = async (
   }
 };
 
+// Cache lookup runs only after access checks, so a cached response cannot bypass them.
+// Streaming responses are consumed once and are not buffered for caching.
 export const httpRouteHandler = async ({
   context,
   route,
   cacheKey = null,
 }: HttpRouteHandlerOptionsType): Promise<Response> => {
   const currentEnv = context.env.APP_ENV;
-
   const validationError = await validateRouteAccess(context, route, currentEnv);
   if (validationError) {
     const httpResponse = buildExceptionResponse(
@@ -91,12 +92,8 @@ export const httpRouteHandler = async ({
     logRequest(context);
     return httpResponse;
   }
-
-  // Cache lookup runs only after middlewares and all access checks have passed,
-  // so a cached response can never bypass auth, allowed-user, or permission checks
   if (cacheKey && context.cache) {
     const cached = await safeCacheGet<CachedResponseType>(context.cache, cacheKey);
-
     if (cached) {
       logRequest(context, cached.status as StatusCodeType);
       return new Response(cached.body, {
@@ -105,9 +102,7 @@ export const httpRouteHandler = async ({
       });
     }
   }
-
   const controller = container.get(route.controller);
-
   const [response, controllerError] = await executeController(controller, context);
   if (controllerError) {
     const httpResponse = buildExceptionResponse(
@@ -120,9 +115,7 @@ export const httpRouteHandler = async ({
     logRequest(context);
     return httpResponse;
   }
-
   const isStream = response.isStream();
-
   if (!isStream) {
     const responseValidationError = validateResponse(route, response.getData());
     if (responseValidationError) {
@@ -137,10 +130,7 @@ export const httpRouteHandler = async ({
       return httpResponse;
     }
   }
-
   const httpResponse = response.get(currentEnv);
-
-  // Streaming responses are consumed once and cannot be buffered for caching
   if (!isStream && cacheKey && context.cache && httpResponse.ok) {
     const headers: Record<string, string> = {};
     httpResponse.headers.forEach((value, key) => {
@@ -148,7 +138,6 @@ export const httpRouteHandler = async ({
         headers[key] = value;
       }
     });
-
     await safeCacheSet(
       context.cache,
       cacheKey,
@@ -160,8 +149,6 @@ export const httpRouteHandler = async ({
       DEFAULT_CACHE_TTL,
     );
   }
-
   logRequest(context);
-
   return httpResponse;
 };

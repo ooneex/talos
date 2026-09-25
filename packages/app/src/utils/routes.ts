@@ -49,26 +49,22 @@ const buildRateLimitResponse = (
     .set("X-RateLimit-Limit", String(result.total))
     .set("X-RateLimit-Remaining", "0")
     .set("X-RateLimit-Reset", String(Math.ceil(result.resetAt.getTime() / 1000)));
-
   return buildHttpErrorResponse(context, "Too Many Requests", HttpStatus.Code.TooManyRequests, "RATE_LIMITED");
 };
 
+// Fail open when the rate-limiter backend throws, and log it so operators can see the outage.
 const checkRateLimit = async (context: Awaited<ReturnType<typeof buildHttpContext>>): Promise<Response | null> => {
   if (!context.rateLimiter) {
     return null;
   }
-
   try {
     const result = await context.rateLimiter.check(buildRateLimitKey(context));
-
     if (result.limited) {
       return buildRateLimitResponse(context, result);
     }
   } catch (error: unknown) {
-    // Fail open, but leave a trace so operators can detect a broken rate-limiter backend
     logSwallowedError("Rate limiter check", error);
   }
-
   return null;
 };
 
@@ -104,11 +100,9 @@ const applyHttpMiddlewares = async (
 
 const checkAllowedRouteUsers = (context: Awaited<ReturnType<typeof buildHttpContext>>): Response | null => {
   const allowedUsersError = checkAllowedUsers(context);
-
   if (!allowedUsersError) {
     return null;
   }
-
   return buildHttpErrorResponse(context, allowedUsersError.message, allowedUsersError.status, allowedUsersError.key);
 };
 
@@ -119,16 +113,13 @@ const checkRoutePermission = async (
   if (!route.permission) {
     return null;
   }
-
   const permission = container.get(route.permission);
   const allowed = await permission.allow();
   const userPermissions = await allowed.setUserPermissions(context);
   context.permission = await userPermissions.build();
-
   if (await context.permission.check(context)) {
     return null;
   }
-
   return buildHttpErrorResponse(context, "Forbidden", HttpStatus.Code.Forbidden, "PERMISSION_DENIED");
 };
 
@@ -140,7 +131,6 @@ const buildCacheKey = (
   if (!route.cache || !context.cache) {
     return null;
   }
-
   return Cache.keyFromRoute(route.cache, route.method, req.url, context.user?.id);
 };
 
