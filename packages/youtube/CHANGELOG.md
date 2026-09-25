@@ -48,3 +48,5 @@
 
 - @talosjs/youtube@1.1.5| — Franck ([4675945e](https://github.com/ooneex/talos/commit/4675945e))
 
+## [1.1.7](https://github.com/ooneex/talos/releases/tag/@talosjs/youtube@1.1.7) - 2026-09-25
+
