@@ -47,3 +47,5 @@
 
 - @talosjs/rate-limit@1.1.5| — Franck ([ebc58266](https://github.com/ooneex/talos/commit/ebc58266))
 
+## [1.1.7](https://github.com/ooneex/talos/releases/tag/@talosjs/rate-limit@1.1.7) - 2026-09-25
+
