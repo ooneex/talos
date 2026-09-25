@@ -57,3 +57,5 @@
 
 - @talosjs/http-request@1.1.6| — Franck ([851c4564](https://github.com/ooneex/talos/commit/851c4564))
 
+## [1.1.8](https://github.com/ooneex/talos/releases/tag/@talosjs/http-request@1.1.8) - 2026-09-25
+
