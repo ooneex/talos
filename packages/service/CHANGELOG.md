@@ -47,3 +47,5 @@
 
 - @talosjs/service@1.1.5| — Franck ([6f3619a0](https://github.com/ooneex/talos/commit/6f3619a0))
 
+## [1.1.7](https://github.com/ooneex/talos/releases/tag/@talosjs/service@1.1.7) - 2026-09-25
+
