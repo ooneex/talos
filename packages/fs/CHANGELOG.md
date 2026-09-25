@@ -50,3 +50,5 @@
 
 - @talosjs/fs@1.1.5| — Franck ([55dc7bf7](https://github.com/ooneex/talos/commit/55dc7bf7))
 
+## [1.1.7](https://github.com/ooneex/talos/releases/tag/@talosjs/fs@1.1.7) - 2026-09-25
+
