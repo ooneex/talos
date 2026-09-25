@@ -47,3 +47,5 @@
 
 - @talosjs/types@1.1.5| — Franck ([41977fc0](https://github.com/ooneex/talos/commit/41977fc0))
 
+## [1.1.7](https://github.com/ooneex/talos/releases/tag/@talosjs/types@1.1.7) - 2026-09-25
+
