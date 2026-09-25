@@ -70,3 +70,13 @@
 
 - @talosjs/ai@1.2.2| — Franck ([42e50c94](https://github.com/ooneex/talos/commit/42e50c94))
 
+## [1.3.0](https://github.com/ooneex/talos/releases/tag/@talosjs/ai@1.3.0) - 2026-09-25
+
+### Added
+
+- Add image generation through OpenRouter|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([9776e541](https://github.com/ooneex/talos/commit/9776e541))
+
+### Fixed
+
+- Replace void with undefined in middleware return types|Middleware hooks should return undefined, not void, to match actual — Franck ([4dd40f3b](https://github.com/ooneex/talos/commit/4dd40f3b))
+
