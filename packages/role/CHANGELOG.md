@@ -63,3 +63,5 @@
 
 ## [1.3.4](https://github.com/ooneex/talos/releases/tag/@talosjs/role@1.3.4) - 2026-09-25
 
+## [1.3.4](https://github.com/ooneex/talos/releases/tag/@talosjs/role@1.3.4) - 2026-09-25
+
