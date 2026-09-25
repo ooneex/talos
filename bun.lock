@@ -60,7 +60,7 @@
     },
     "packages/app": {
       "name": "@talosjs/app",
-      "version": "1.7.2",
+      "version": "1.7.3",
       "dependencies": {
         "@talosjs/app-env": "workspace:^",
         "@talosjs/cache": "workspace:^",
