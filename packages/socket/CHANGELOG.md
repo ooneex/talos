@@ -46,3 +46,5 @@
 
 - @talosjs/socket@1.1.5| — Franck ([2a3e6f59](https://github.com/ooneex/talos/commit/2a3e6f59))
 
+## [1.1.7](https://github.com/ooneex/talos/releases/tag/@talosjs/socket@1.1.7) - 2026-09-25
+
