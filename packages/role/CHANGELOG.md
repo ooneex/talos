@@ -61,3 +61,5 @@
 
 - @talosjs/role@1.3.2| — Franck ([6aca6574](https://github.com/ooneex/talos/commit/6aca6574))
 
+## [1.3.4](https://github.com/ooneex/talos/releases/tag/@talosjs/role@1.3.4) - 2026-09-25
+
