@@ -264,16 +264,15 @@ pub fn run(args: &ReleaseCreateArgs) {
     let target_dirs = discover_target_dirs(&cwd, args);
     remove_release_artifacts(&cwd, &target_dirs);
     let cwd_arg = Some(cwd.to_string_lossy().to_string());
+    // `dist` and `node_modules` were just removed. Every gate step bypasses
+    // its cache so a prior run cannot skip install, build, lint, or test.
     install::run(&InstallArgs {
         force: false,
         audit_level: None,
         skip_audit: false,
-        no_cache: false,
+        no_cache: true,
         cwd: cwd_arg.clone(),
     });
-    // `dist` was just removed. A cache hit would skip the build and leave
-    // the package without output, so this run always rebuilds after install
-    // and before check.
     build::run(&BuildArgs {
         packages: args.packages.clone(),
         modules: args.modules.clone(),
@@ -286,7 +285,7 @@ pub fn run(args: &ReleaseCreateArgs) {
         packages: args.packages.clone(),
         modules: args.modules.clone(),
         logs: false,
-        no_cache: false,
+        no_cache: true,
         output: None,
         cwd: cwd_arg,
     });
