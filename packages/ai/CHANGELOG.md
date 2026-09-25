@@ -80,3 +80,5 @@
 
 - Replace void with undefined in middleware return types|Middleware hooks should return undefined, not void, to match actual — Franck ([4dd40f3b](https://github.com/ooneex/talos/commit/4dd40f3b))
 
+## [1.3.1](https://github.com/ooneex/talos/releases/tag/@talosjs/ai@1.3.1) - 2026-09-25
+
