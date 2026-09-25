@@ -46,3 +46,5 @@
 
 - @talosjs/color@1.1.5| — Franck ([cd6f61ed](https://github.com/ooneex/talos/commit/cd6f61ed))
 
+## [1.1.7](https://github.com/ooneex/talos/releases/tag/@talosjs/color@1.1.7) - 2026-09-25
+
