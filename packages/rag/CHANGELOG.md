@@ -83,3 +83,5 @@
 
 - @talosjs/rag@1.3.0| — Franck ([2044acef](https://github.com/ooneex/talos/commit/2044acef))
 
+## [1.3.2](https://github.com/ooneex/talos/releases/tag/@talosjs/rag@1.3.2) - 2026-09-25
+
