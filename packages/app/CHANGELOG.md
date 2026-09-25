@@ -163,3 +163,9 @@
 
 - Clean up whitespace and add clarifying comments|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([7d19365f](https://github.com/ooneex/talos/commit/7d19365f))
 
+## [1.7.4](https://github.com/ooneex/talos/releases/tag/@talosjs/app@1.7.4) - 2026-09-25
+
+### Changed
+
+- Bump version to 1.7.3|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([bcb1cd4b](https://github.com/ooneex/talos/commit/bcb1cd4b))
+
