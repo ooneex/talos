@@ -53,3 +53,5 @@
 
 - @talosjs/user@1.2.2| — Franck ([7831a820](https://github.com/ooneex/talos/commit/7831a820))
 
+## [1.2.4](https://github.com/ooneex/talos/releases/tag/@talosjs/user@1.2.4) - 2026-09-25
+
