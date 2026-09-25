@@ -71,3 +71,5 @@
 
 - @talosjs/cache@1.3.3| — Franck ([25c59594](https://github.com/ooneex/talos/commit/25c59594))
 
+## [1.3.5](https://github.com/ooneex/talos/releases/tag/@talosjs/cache@1.3.5) - 2026-09-25
+
