@@ -52,3 +52,5 @@
 
 - @talosjs/queue@1.1.5| — Franck ([ebd3cc86](https://github.com/ooneex/talos/commit/ebd3cc86))
 
+## [1.1.7](https://github.com/ooneex/talos/releases/tag/@talosjs/queue@1.1.7) - 2026-09-25
+
