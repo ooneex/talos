@@ -60,3 +60,5 @@
 
 - Replace external nanoid with dependency-free implementation|Implements custom nanoid algorithm with customAlphabet and randomInt functions, — Franck ([c56320fd](https://github.com/ooneex/talos/commit/c56320fd))
 
+## [1.3.1](https://github.com/ooneex/talos/releases/tag/@talosjs/utils@1.3.1) - 2026-09-25
+
