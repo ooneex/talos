@@ -780,3 +780,23 @@
 
 - Update Cargo.lock| — Franck ([197c13d3](https://github.com/ooneex/talos/commit/197c13d3))
 
+## [0.16.5](https://github.com/ooneex/talos/releases/tag/@talos/cli@0.16.5) - 2026-09-25
+
+### Added
+
+- Add a --bump flag that forces a patch release|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([c571f56e](https://github.com/ooneex/talos/commit/c571f56e))
+- Bump releases from npm's published version|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([7544f7fe](https://github.com/ooneex/talos/commit/7544f7fe))
+
+### Changed
+
+- Extract test cases into separate test files|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([6b9ba3ae](https://github.com/ooneex/talos/commit/6b9ba3ae))
+- Update Cargo.lock| — Franck ([08f1c5b6](https://github.com/ooneex/talos/commit/08f1c5b6))
+
+### Fixed
+
+- Skip npm publish for Rust modules|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([05389edc](https://github.com/ooneex/talos/commit/05389edc))
+- Install dependencies once during release|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([c4cfd826](https://github.com/ooneex/talos/commit/c4cfd826))
+- Bypass cache for install and check during release|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([68fbcb81](https://github.com/ooneex/talos/commit/68fbcb81))
+- Reinstall dependencies before the release build|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([fd922c11](https://github.com/ooneex/talos/commit/fd922c11))
+- Rebuild packages before the release check|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([a9200b6b](https://github.com/ooneex/talos/commit/a9200b6b))
+
