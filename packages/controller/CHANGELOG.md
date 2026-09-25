@@ -52,3 +52,5 @@
 
 - @talosjs/controller@1.2.2| — Franck ([c3c75776](https://github.com/ooneex/talos/commit/c3c75776))
 
+## [1.2.4](https://github.com/ooneex/talos/releases/tag/@talosjs/controller@1.2.4) - 2026-09-25
+
