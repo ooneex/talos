@@ -54,3 +54,5 @@
 
 - @talosjs/pdf@1.1.5| — Franck ([870b347d](https://github.com/ooneex/talos/commit/870b347d))
 
+## [1.1.7](https://github.com/ooneex/talos/releases/tag/@talosjs/pdf@1.1.7) - 2026-09-25
+
