@@ -47,3 +47,5 @@
 
 - @talosjs/fetcher@1.1.5| — Franck ([267f3070](https://github.com/ooneex/talos/commit/267f3070))
 
+## [1.1.7](https://github.com/ooneex/talos/releases/tag/@talosjs/fetcher@1.1.7) - 2026-09-25
+
