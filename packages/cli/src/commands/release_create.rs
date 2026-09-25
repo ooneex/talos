@@ -263,21 +263,21 @@ pub fn run(args: &ReleaseCreateArgs) {
     let target_dirs = discover_target_dirs(&cwd, args);
     remove_release_artifacts(&cwd, &target_dirs);
     let cwd_arg = Some(cwd.to_string_lossy().to_string());
-    check::run(&CheckArgs {
-        packages: args.packages.clone(),
-        modules: args.modules.clone(),
-        logs: false,
-        no_cache: false,
-        output: None,
-        cwd: cwd_arg.clone(),
-    });
     // `dist` was just removed. A cache hit would skip the build and leave
-    // the package without output, so this run always rebuilds.
+    // the package without output, so this run always rebuilds before check.
     build::run(&BuildArgs {
         packages: args.packages.clone(),
         modules: args.modules.clone(),
         logs: false,
         no_cache: true,
+        output: None,
+        cwd: cwd_arg.clone(),
+    });
+    check::run(&CheckArgs {
+        packages: args.packages.clone(),
+        modules: args.modules.clone(),
+        logs: false,
+        no_cache: false,
         output: None,
         cwd: cwd_arg,
     });
@@ -322,8 +322,8 @@ pub fn run(args: &ReleaseCreateArgs) {
 }
 
 /// Removes `dist` and `node_modules` from each selected package or module,
-/// and `node_modules` from the project root, so the check that follows
-/// reinstalls from the lockfile. Nested folders are left in place.
+/// and `node_modules` from the project root, so the build and check that
+/// follow reinstall from the lockfile. Nested folders are left in place.
 fn remove_release_artifacts(cwd: &Path, target_dirs: &[TargetDir]) {
     let spinner = Spinner::start("Removing dist and node_modules");
     let mut paths = vec![cwd.join("node_modules")];
