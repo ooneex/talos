@@ -87,3 +87,5 @@
 
 - @talosjs/command@1.6.3| — Franck ([a985b924](https://github.com/ooneex/talos/commit/a985b924))
 
+## [1.6.5](https://github.com/ooneex/talos/releases/tag/@talosjs/command@1.6.5) - 2026-09-25
+
