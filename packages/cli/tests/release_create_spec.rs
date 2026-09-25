@@ -15,6 +15,7 @@ fn release_create_parses_all_flags() {
         "user",
         "--packages",
         "core",
+        "--bump",
         "--publish",
         "--cwd",
         "./here",
@@ -23,6 +24,7 @@ fn release_create_parses_all_flags() {
 
     assert_eq!(cli.args.modules.as_deref(), Some("user"));
     assert_eq!(cli.args.packages.as_deref(), Some("core"));
+    assert!(cli.args.bump);
     assert!(cli.args.publish);
     assert_eq!(cli.args.cwd.as_deref(), Some("./here"));
 }
@@ -33,6 +35,7 @@ fn release_create_defaults_are_empty() {
 
     assert!(cli.args.modules.is_none());
     assert!(cli.args.packages.is_none());
+    assert!(!cli.args.bump);
     assert!(!cli.args.publish);
     assert!(cli.args.cwd.is_none());
 }

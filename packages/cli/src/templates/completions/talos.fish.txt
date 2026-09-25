@@ -426,6 +426,7 @@ for cmd in oo talos
 
     complete -c $cmd -n '__fish_seen_subcommand_from release:create' -l packages -a '(__talos_packages)' -d 'Package name(s), comma-separated'
     complete -c $cmd -n '__fish_seen_subcommand_from release:create' -l modules -a '(__talos_pkg_modules)' -d 'Module name(s), comma-separated'
+    complete -c $cmd -n '__fish_seen_subcommand_from release:create' -l bump -d 'Force a patch bump (default: every package and module)'
     complete -c $cmd -n '__fish_seen_subcommand_from release:create' -l publish -d 'Publish released packages to npm'
 
     complete -c $cmd -n '__fish_seen_subcommand_from migration:up' -l modules -x -a '(__talos_modules)' -d 'Module name(s), comma-separated'

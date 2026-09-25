@@ -376,7 +376,7 @@ threads whatsapp telegram messenger discord reddit medium cloudflare bunny s3 op
       [[ $flag == --module ]] && candidates="$(_talos_modules)"
       ;;
     release:create)
-      opts="--packages --modules --publish"
+      opts="--packages --modules --bump --publish"
       [[ $flag == --packages ]] && candidates="$(_talos_packages)"
       [[ $flag == --modules ]] && candidates="$(_talos_pkg_modules)"
       ;;

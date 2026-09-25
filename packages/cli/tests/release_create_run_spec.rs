@@ -551,6 +551,85 @@ fn a_package_with_no_commit_since_its_tag_is_left_alone() {
 }
 
 #[test]
+fn bump_releases_a_patch_when_nothing_new_has_been_committed() {
+    let (_dir, root) = repository();
+    write(
+        &root.join("packages/core/src/index.ts"),
+        "export const one = 11;\n",
+    );
+    commit(&root, "fix(core): Repair the thing");
+
+    talos(&root, &["release:create", "--packages=core"]);
+    assert_eq!(version(&root.join("packages/core/package.json")), "1.2.4");
+
+    let output = talos(&root, &["release:create", "--packages=core", "--bump"]);
+
+    assert!(output.status.success(), "{}", text(&output));
+    assert_eq!(version(&root.join("packages/core/package.json")), "1.2.5");
+    assert!(
+        tags(&root).contains("@scratch/core@1.2.5"),
+        "{}",
+        tags(&root)
+    );
+    assert!(
+        read(&root.join("packages/core/CHANGELOG.md")).contains("1.2.5"),
+        "the forced patch is recorded in the changelog"
+    );
+    assert_eq!(
+        version(&root.join("modules/user/package.json")),
+        "0.1.0",
+        "a module that was not selected stays on its current version"
+    );
+}
+
+#[test]
+fn bump_keeps_a_feature_commit_on_a_patch_for_a_module() {
+    let (_dir, root) = repository();
+    write(
+        &root.join("modules/user/src/index.ts"),
+        "export const two = 22;\n",
+    );
+    commit(&root, "feat(user): Add the thing");
+
+    let output = talos(&root, &["release:create", "--modules=user", "--bump"]);
+
+    assert!(output.status.success(), "{}", text(&output));
+    assert_eq!(version(&root.join("modules/user/package.json")), "0.1.1");
+    assert!(
+        tags(&root).contains("@module/user@0.1.1"),
+        "{}",
+        tags(&root)
+    );
+    assert_eq!(version(&root.join("packages/core/package.json")), "1.2.3");
+}
+
+#[test]
+fn bump_without_a_filter_releases_every_package_and_module() {
+    let (_dir, root) = repository();
+    write(
+        &root.join("packages/core/src/index.ts"),
+        "export const one = 11;\n",
+    );
+    commit(&root, "fix(core): Repair the thing");
+
+    talos(&root, &["release:create"]);
+
+    let output = talos(&root, &["release:create", "--bump"]);
+
+    assert!(output.status.success(), "{}", text(&output));
+    assert!(
+        text(&output).contains("2 package(s) released"),
+        "{}",
+        text(&output)
+    );
+    assert_eq!(version(&root.join("packages/core/package.json")), "1.2.5");
+    assert_eq!(version(&root.join("modules/user/package.json")), "0.1.2");
+    let tags = tags(&root);
+    assert!(tags.contains("@scratch/core@1.2.5"), "{tags}");
+    assert!(tags.contains("@module/user@0.1.2"), "{tags}");
+}
+
+#[test]
 fn a_dirty_working_tree_stops_the_release_before_anything_is_written() {
     let (_dir, root) = repository();
     write(

@@ -53,6 +53,12 @@ pub struct ReleaseCreateArgs {
     #[arg(long)]
     pub packages: Option<String>,
 
+    /// Force a patch bump. With no `--packages` or `--modules`, every
+    /// package and module is bumped, including ones with no unreleased
+    /// commits. A larger bump from those commits is not applied.
+    #[arg(long, default_value_t = false)]
+    pub bump: bool,
+
     #[arg(long, default_value_t = false)]
     pub publish: bool,
 
@@ -277,9 +283,16 @@ pub fn run(args: &ReleaseCreateArgs) {
     });
 
     let repo_url = get_repo_url(&cwd);
-    let plans = build_release_plans(&cwd, &target_dirs);
+    let plans = build_release_plans(&cwd, &target_dirs, args.bump);
     if plans.is_empty() {
-        println!("No packages have unreleased commits");
+        println!(
+            "{}",
+            if args.bump {
+                "No packages or modules to bump"
+            } else {
+                "No packages have unreleased commits"
+            }
+        );
         return;
     }
 
@@ -339,9 +352,10 @@ fn remove_dir(path: &Path) -> Result<(), String> {
 }
 
 /// Discovers every `packages/*` and `modules/*` directory, then narrows the
-/// list down to the ones the caller asked for (or all of them, if neither
-/// `--packages` nor `--modules` was given). Exits the process when nothing
-/// is found, since there is nothing left to release.
+/// list down to the ones the caller asked for. Neither `--packages` nor
+/// `--modules` means all of them, so a bare `--bump` patches every package
+/// and module. Exits the process when nothing is found, since there is
+/// nothing left to release.
 fn discover_target_dirs(cwd: &Path, args: &ReleaseCreateArgs) -> Vec<TargetDir> {
     let mut dirs = Vec::new();
     for (name, kind) in [("packages", "package"), ("modules", "module")] {
@@ -403,8 +417,13 @@ fn split_names(value: Option<&str>) -> Vec<String> {
 /// commits: reads its `package.json`, computes the semver bump from the
 /// commits since its last tag, and stages the new version in memory. The
 /// bump starts from the version npm has published, so the next number
-/// follows it.
-fn build_release_plans(cwd: &Path, target_dirs: &[TargetDir]) -> Vec<ReleasePlan> {
+/// follows it. `force_patch` plans every target as a patch bump, including
+/// ones with no unreleased commits.
+fn build_release_plans(
+    cwd: &Path,
+    target_dirs: &[TargetDir],
+    force_patch: bool,
+) -> Vec<ReleasePlan> {
     let mut plans = Vec::new();
     for dir in target_dirs.iter().cloned() {
         let full_dir = cwd.join(&dir.base);
@@ -431,10 +450,14 @@ fn build_release_plans(cwd: &Path, target_dirs: &[TargetDir]) -> Vec<ReleasePlan
         };
         let last_tag = get_last_tag(cwd, &package_name);
         let commits = get_commits_since_tag(cwd, last_tag.as_deref(), &dir.base);
-        if commits.is_empty() {
+        if commits.is_empty() && !force_patch {
             continue;
         }
-        let bump_type = determine_bump_type(&commits);
+        let bump_type = if force_patch {
+            "patch"
+        } else {
+            determine_bump_type(&commits)
+        };
         let published = match npm_publish::published_version(&package_name, None) {
             Ok(published) => published,
             Err(message) => {

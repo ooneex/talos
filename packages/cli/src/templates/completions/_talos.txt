@@ -585,6 +585,7 @@ _talos() {
           _arguments -s \
             '--packages=-[Package name(s), comma-separated (default: all)]::packages:_talos_publish_packages' \
             '--modules=-[Module name(s), comma-separated (default: all)]::modules:_talos_publish_modules' \
+            '--bump[Force a patch bump (default: every package and module)]' \
             '--publish[Publish released packages to npm]'
           ;;
         migration:up)
