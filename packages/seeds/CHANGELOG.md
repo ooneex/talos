@@ -92,3 +92,9 @@
 
 ## [1.2.10](https://github.com/ooneex/talos/releases/tag/@talosjs/seeds@1.2.10) - 2026-09-26
 
+## [1.3.0](https://github.com/ooneex/talos/releases/tag/@talosjs/seeds@1.3.0) - 2026-09-26
+
+### Added
+
+- Load the app env and close the injected database|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([78244b4e](https://github.com/ooneex/talos/commit/78244b4e))
+
