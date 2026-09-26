@@ -55,3 +55,5 @@
 
 ## [1.2.4](https://github.com/ooneex/talos/releases/tag/@talosjs/user@1.2.4) - 2026-09-25
 
+## [1.2.5](https://github.com/ooneex/talos/releases/tag/@talosjs/user@1.2.5) - 2026-09-26
+
