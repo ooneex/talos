@@ -51,3 +51,5 @@
 
 ## [1.1.7](https://github.com/ooneex/talos/releases/tag/@talosjs/http-mimes@1.1.7) - 2026-09-25
 
+## [1.1.8](https://github.com/ooneex/talos/releases/tag/@talosjs/http-mimes@1.1.8) - 2026-09-26
+
