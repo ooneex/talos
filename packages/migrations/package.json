@@ -1,9 +1,11 @@
 {
   "dependencies": {
+    "@talosjs/app-env": "workspace:^",
     "@talosjs/container": "workspace:^"
   },
   "description": "Database migration runner with versioned schema changes, rollback support, execution logging, and container-aware lifecycle management",
   "devDependencies": {
+    "@talosjs/database": "workspace:^",
     "@talosjs/exception": "workspace:^"
   },
   "exports": {

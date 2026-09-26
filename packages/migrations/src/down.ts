@@ -1,17 +1,14 @@
 import { parseArgs } from "node:util";
 import type { IException } from "@talosjs/exception";
-import { SQL } from "bun";
 import { createMigrationTable } from "./createMigrationTable";
+import "./loadMigrationEnv";
+import { migrationSource, openMigrationDatabase } from "./database";
 import { getMigrations } from "./getMigrations";
 import { deleteMigrationCache, migrationCacheDir } from "./migrationCache";
 import { terminalLogger } from "./terminalLogger";
+import type { MigrationDownConfigType } from "./types";
 
-export const down = async (config?: {
-  databaseUrl?: string;
-  tableName?: string;
-  version?: string;
-  cacheDir?: string;
-}): Promise<void> => {
+export const down = async (config: MigrationDownConfigType): Promise<void> => {
   const { values } = parseArgs({
     args: Bun.argv,
     options: {
@@ -26,29 +23,13 @@ export const down = async (config?: {
     allowPositionals: true,
   });
 
-  const tableName = config?.tableName || "migrations";
-  const version = config?.version || (values.version as string | undefined);
+  const tableName = config.tableName || "migrations";
+  const version = config.version || (values.version as string | undefined);
   // Mirror `up`'s cache directory so the entry is dropped from where it was
   // written; fall back to the cwd-relative default for direct invocation.
-  const cacheDir = config?.cacheDir || (values["cache-dir"] as string | undefined) || migrationCacheDir();
+  const cacheDir = config.cacheDir || (values["cache-dir"] as string | undefined) || migrationCacheDir();
 
-  const sql = new SQL({
-    url: config?.databaseUrl || Bun.env.DATABASE_URL,
-
-    // Connection pool settings.
-    // Migrations roll back sequentially (one transaction at a time), so a small
-    // pool is enough — a single reusable connection avoids the cost of
-    // opening/closing a connection per query while keeping headroom for the
-    // lookup queries.
-    max: 5, // Maximum connections in pool
-    idleTimeout: 0, // Keep connections open for the whole rollback run
-    maxLifetime: 0, // Connection lifetime in seconds (0 = forever)
-    connectionTimeout: 30, // Timeout when establishing new connections
-
-    // Migration statements differ on every run, so caching named prepared
-    // statements on the server adds overhead without a reuse benefit.
-    prepare: false,
-  });
+  const { sql, close } = await openMigrationDatabase(migrationSource(config.database, config.name));
 
   const logger = terminalLogger;
 
@@ -59,7 +40,7 @@ export const down = async (config?: {
 
   if (appliedIds.size === 0) {
     logger.info("No migrations to roll back\n");
-    await sql.close();
+    await close();
     process.exit(0);
   }
 
@@ -73,7 +54,7 @@ export const down = async (config?: {
 
     if (!target) {
       logger.info(`Migration ${version} is not applied\n`);
-      await sql.close();
+      await close();
       process.exit(0);
     }
 
@@ -101,10 +82,10 @@ export const down = async (config?: {
     } catch (error: unknown) {
       logger.error(`Migration ${migrationName} rollback failed\n`);
       logger.error(error as IException);
-      await sql.close({ timeout: 0 });
+      await close(0);
       process.exit(1);
     }
   }
 
-  await sql.close();
+  await close();
 };

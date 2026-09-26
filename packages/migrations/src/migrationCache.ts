@@ -14,7 +14,7 @@ import type { IMigration } from "./types";
  * `var/cache/migrations/`, so editing a single migration invalidates only that
  * migration's entry (unlike a per-module cache, which any change would drop).
  *
- * The fingerprint includes the target database URL and table name, so pointing
+ * The fingerprint includes the target database identity and table name, so pointing
  * at a different database is always a miss. Like any cache decoupled from live
  * database state it can go stale if the database is reset out of band — `--drop`
  * and `--no-cache` bypass it for that reason, and `migration:down` deletes the
@@ -45,15 +45,16 @@ const cacheFile = (dir: string, id: string): string => join(dir, `${id.replace(/
  * Fingerprint a migration: its version and the source of its `up`/`down`
  * methods, scoped to the target database. Any change to the migration's code (or
  * to the database it targets) yields a new hash and therefore a cache miss.
+ * `database` is that target's identity: its URL, or the dialect plus name or file.
  */
-export const computeMigrationHash = (migration: IMigration, tableName: string, databaseUrl?: string): string => {
+export const computeMigrationHash = (migration: IMigration, tableName: string, database?: string): string => {
   const hasher = new Bun.CryptoHasher("sha256");
   hasher.update(
     [
       `version=${MIGRATION_CACHE_VERSION}`,
       `id=${migration.getVersion()}`,
       `table=${tableName}`,
-      `db=${databaseUrl ?? ""}`,
+      `db=${database ?? ""}`,
       `up=${migration.up.toString()}`,
       `down=${migration.down.toString()}`,
     ].join("\n"),

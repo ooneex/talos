@@ -418,9 +418,11 @@
       "name": "@talosjs/migrations",
       "version": "1.2.10",
       "dependencies": {
+        "@talosjs/app-env": "workspace:^",
         "@talosjs/container": "workspace:^",
       },
       "devDependencies": {
+        "@talosjs/database": "workspace:^",
         "@talosjs/exception": "workspace:^",
       },
     },

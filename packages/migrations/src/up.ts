@@ -1,11 +1,13 @@
 import { parseArgs } from "node:util";
 import type { IException } from "@talosjs/exception";
-import { SQL } from "bun";
+import type { SQL } from "bun";
 import { createMigrationTable } from "./createMigrationTable";
+import "./loadMigrationEnv";
+import { databaseIdentity, migrationSource, openMigrationDatabase } from "./database";
 import { getMigrations } from "./getMigrations";
 import { computeMigrationHash, isMigrationCached, migrationCacheDir, writeMigrationCache } from "./migrationCache";
 import { COLORS, colorize, formatDuration, runLogger, SYMBOLS } from "./runLogger";
-import type { IMigration } from "./types";
+import type { IMigration, MigrationConfigType } from "./types";
 
 type UpOptionsType = {
   drop?: boolean;
@@ -43,21 +45,10 @@ const logNoMigrationsAndExit = (): never => {
   process.exit(0);
 };
 
-const buildSqlClient = (databaseUrl?: string): SQL => {
-  return new SQL({
-    url: databaseUrl,
-    max: 5,
-    idleTimeout: 0,
-    maxLifetime: 0,
-    connectionTimeout: 30,
-    prepare: false,
-  });
-};
-
 const warmMigrationCache = async (
   migrations: IMigration[],
   tableName: string,
-  databaseUrl: string | undefined,
+  database: string,
   cacheDir: string,
   cacheEnabled: boolean,
 ): Promise<{
@@ -74,7 +65,7 @@ const warmMigrationCache = async (
   await Promise.all(
     migrations.map(async (migration) => {
       const id = migration.getVersion();
-      const hash = computeMigrationHash(migration, tableName, databaseUrl);
+      const hash = computeMigrationHash(migration, tableName, database);
       hashById.set(id, hash);
       if (await isMigrationCached(cacheDir, id, hash)) {
         cachedIds.add(id);
@@ -144,16 +135,15 @@ const handleDrop = async (sql: SQL): Promise<void> => {
   runLogger.persist(colorize(`${SYMBOLS.success} Database dropped`, COLORS.success));
 };
 
-const handleEmptyMigrations = async (sql: SQL): Promise<never> => {
+const handleEmptyMigrations = async (close: () => Promise<void>): Promise<never> => {
   runLogger.persist(colorize(`${SYMBOLS.skipped} No migrations found`, COLORS.dim));
-  await sql.close();
+  await close();
   process.exit(0);
 };
 
-export const up = async (config?: { databaseUrl?: string; tableName?: string; cacheDir?: string }): Promise<void> => {
+export const up = async (config: MigrationConfigType): Promise<void> => {
   const options = readOptions();
-  const tableName = config?.tableName || "migrations";
-  const databaseUrl = config?.databaseUrl || Bun.env.DATABASE_URL;
+  const tableName = config.tableName || "migrations";
   const migrations = getMigrations();
 
   if (migrations.length === 0 && !options.drop) {
@@ -168,8 +158,15 @@ export const up = async (config?: { databaseUrl?: string; tableName?: string; ca
   // The runner (`migration:up`) passes an explicit, per-module cache directory
   // under the workspace root; fall back to the cwd-relative default when `up` is
   // invoked directly.
-  const cacheDir = config?.cacheDir || options.cacheDir || migrationCacheDir();
-  const { hashById, cachedIds } = await warmMigrationCache(migrations, tableName, databaseUrl, cacheDir, cacheEnabled);
+  const cacheDir = config.cacheDir || options.cacheDir || migrationCacheDir();
+  const source = migrationSource(config.database, config.name);
+  const { hashById, cachedIds } = await warmMigrationCache(
+    migrations,
+    tableName,
+    databaseIdentity(source),
+    cacheDir,
+    cacheEnabled,
+  );
 
   // Fast path: when every migration is already recorded as applied and
   // unchanged, there is nothing to run — skip opening a database connection.
@@ -177,14 +174,14 @@ export const up = async (config?: { databaseUrl?: string; tableName?: string; ca
     logCachedMigrationsAndExit(migrations);
   }
 
-  const sql = buildSqlClient(databaseUrl);
+  const { sql, close } = await openMigrationDatabase(source);
 
   if (options.drop) {
     await handleDrop(sql);
   }
 
   if (migrations.length === 0) {
-    await handleEmptyMigrations(sql);
+    await handleEmptyMigrations(close);
   }
 
   await createMigrationTable(sql, tableName);
@@ -221,10 +218,10 @@ export const up = async (config?: { databaseUrl?: string; tableName?: string; ca
       );
       const detail = (error as IException)?.message ?? String(error);
       runLogger.persist(...detail.split("\n").map((line) => `${colorize("┃", COLORS.error)} ${line}`));
-      await sql.close({ timeout: 0 });
+      await close(0);
       process.exit(1);
     }
   }, Promise.resolve());
 
-  await sql.close();
+  await close();
 };
