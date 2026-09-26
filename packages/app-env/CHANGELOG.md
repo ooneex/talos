@@ -112,3 +112,5 @@
 
 ## [1.7.2](https://github.com/ooneex/talos/releases/tag/@talosjs/app-env@1.7.2) - 2026-09-25
 
+## [1.7.3](https://github.com/ooneex/talos/releases/tag/@talosjs/app-env@1.7.3) - 2026-09-26
+
