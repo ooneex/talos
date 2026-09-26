@@ -75,5 +75,6 @@ fn execute_skips_registration_when_module_is_its_own_destination() {
 
     assert!(cwd.join("modules/app/src/AppModule.ts").exists());
     let content = fs::read_to_string(cwd.join("modules/app/src/AppModule.ts")).unwrap();
-    assert_eq!(content.matches("import {").count(), 0);
+    assert!(content.contains("MainDatabase.registerEntities(...AppModule.entities)"));
+    assert!(!content.contains("import { AppModule }"));
 }

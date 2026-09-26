@@ -1,3 +1,4 @@
+import { MainDatabase } from "@module/shared/databases/MainDatabase";
 import type { ModuleType } from "@talosjs/module";
 
 export const {{NAME}}Module: ModuleType = {
@@ -7,3 +8,5 @@ export const {{NAME}}Module: ModuleType = {
   cronJobs: [],
   events: [],
 };
+
+MainDatabase.registerEntities(...{{NAME}}Module.entities);
