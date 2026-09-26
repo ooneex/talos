@@ -129,7 +129,7 @@
     },
     "packages/cli": {
       "name": "@talos/cli",
-      "version": "0.16.7",
+      "version": "0.16.8",
     },
     "packages/color": {
       "name": "@talosjs/color",
@@ -218,7 +218,7 @@
     },
     "packages/database": {
       "name": "@talosjs/database",
-      "version": "1.4.4",
+      "version": "1.5.0",
       "dependencies": {
         "@clickhouse/client": "^1.23.1",
         "@libsql/client": "^0.18.0",
