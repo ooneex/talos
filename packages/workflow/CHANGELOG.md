@@ -66,3 +66,5 @@
 
 ## [1.1.9](https://github.com/ooneex/talos/releases/tag/@talosjs/workflow@1.1.9) - 2026-09-25
 
+## [1.1.10](https://github.com/ooneex/talos/releases/tag/@talosjs/workflow@1.1.10) - 2026-09-26
+
