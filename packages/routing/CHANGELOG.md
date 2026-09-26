@@ -70,3 +70,5 @@
 
 ## [1.3.5](https://github.com/ooneex/talos/releases/tag/@talosjs/routing@1.3.5) - 2026-09-25
 
+## [1.3.6](https://github.com/ooneex/talos/releases/tag/@talosjs/routing@1.3.6) - 2026-09-26
+
