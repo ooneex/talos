@@ -834,3 +834,14 @@
 
 - Update Cargo.lock| — Franck ([af2f95c3](https://github.com/ooneex/talos/commit/af2f95c3))
 
+## [0.16.10](https://github.com/ooneex/talos/releases/tag/@talos/cli@0.16.10) - 2026-09-26
+
+### Changed
+
+- Note that seed scripts load the app env first|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([24ba17f9](https://github.com/ooneex/talos/commit/24ba17f9))
+- Update Cargo.lock| — Franck ([62193f5c](https://github.com/ooneex/talos/commit/62193f5c))
+
+### Fixed
+
+- Remove unselected assistant dirs when scaffolding an app| — Julien ([7b7b919a](https://github.com/ooneex/talos/commit/7b7b919a))
+
