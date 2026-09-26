@@ -97,3 +97,13 @@
 
 ## [1.2.10](https://github.com/ooneex/talos/releases/tag/@talosjs/migrations@1.2.10) - 2026-09-26
 
+## [1.3.0](https://github.com/ooneex/talos/releases/tag/@talosjs/migrations@1.3.0) - 2026-09-26
+
+### Added
+
+- Run migrations against an application database source|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([79e453c2](https://github.com/ooneex/talos/commit/79e453c2))
+
+### Changed
+
+- Inline migration templates and drop text-file fixtures|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([ae7d288d](https://github.com/ooneex/talos/commit/ae7d288d))
+
