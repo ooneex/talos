@@ -171,3 +171,5 @@
 
 ## [1.7.5](https://github.com/ooneex/talos/releases/tag/@talosjs/app@1.7.5) - 2026-09-25
 
+## [1.7.6](https://github.com/ooneex/talos/releases/tag/@talosjs/app@1.7.6) - 2026-09-26
+
