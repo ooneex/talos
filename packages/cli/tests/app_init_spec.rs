@@ -4,7 +4,8 @@ use std::process::Command;
 
 use clap::Parser;
 use cli::commands::app_init::{
-    AppInitArgs, AppType, install_commitlint_hook, scaffold_destination,
+    AppInitArgs, AppType, install_commitlint_hook, prune_unselected_assistant_dirs,
+    scaffold_destination,
 };
 use tempfile::tempdir;
 
@@ -277,4 +278,46 @@ fn install_commitlint_hook_writes_an_executable_hook() {
 fn install_commitlint_hook_fails_outside_a_git_repository() {
     let not_a_repo = tempdir().unwrap();
     assert!(install_commitlint_hook(not_a_repo.path()).is_err());
+}
+
+#[test]
+fn prune_unselected_assistant_dirs_removes_only_the_skeleton_dirs_not_chosen() {
+    let destination = tempdir().unwrap();
+    for dir in [".claude", ".codex", ".zed", "modules"] {
+        fs::create_dir_all(destination.path().join(dir)).unwrap();
+        fs::write(destination.path().join(dir).join("marker.txt"), dir).unwrap();
+    }
+
+    prune_unselected_assistant_dirs(destination.path(), &[".claude".to_string()]);
+
+    assert!(destination.path().join(".claude").is_dir());
+    assert!(!destination.path().join(".codex").exists());
+    assert!(destination.path().join(".zed").is_dir());
+    assert!(destination.path().join("modules").is_dir());
+}
+
+#[test]
+fn prune_unselected_assistant_dirs_keeps_every_chosen_dir_and_ignores_missing_ones() {
+    let destination = tempdir().unwrap();
+    fs::create_dir_all(destination.path().join(".claude")).unwrap();
+
+    prune_unselected_assistant_dirs(
+        destination.path(),
+        &[".claude".to_string(), ".codex".to_string()],
+    );
+
+    assert!(destination.path().join(".claude").is_dir());
+    assert!(!destination.path().join(".codex").exists());
+}
+
+#[test]
+fn prune_unselected_assistant_dirs_with_no_selection_removes_both_skeleton_dirs() {
+    let destination = tempdir().unwrap();
+    fs::create_dir_all(destination.path().join(".claude")).unwrap();
+    fs::create_dir_all(destination.path().join(".codex")).unwrap();
+
+    prune_unselected_assistant_dirs(destination.path(), &[]);
+
+    assert!(!destination.path().join(".claude").exists());
+    assert!(!destination.path().join(".codex").exists());
 }
