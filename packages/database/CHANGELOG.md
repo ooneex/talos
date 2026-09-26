@@ -97,3 +97,5 @@
 
 ## [1.4.3](https://github.com/ooneex/talos/releases/tag/@talosjs/database@1.4.3) - 2026-09-25
 
+## [1.4.4](https://github.com/ooneex/talos/releases/tag/@talosjs/database@1.4.4) - 2026-09-26
+
