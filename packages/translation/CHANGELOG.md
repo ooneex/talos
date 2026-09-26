@@ -60,3 +60,5 @@
 
 ## [1.1.8](https://github.com/ooneex/talos/releases/tag/@talosjs/translation@1.1.8) - 2026-09-25
 
+## [1.1.9](https://github.com/ooneex/talos/releases/tag/@talosjs/translation@1.1.9) - 2026-09-26
+
