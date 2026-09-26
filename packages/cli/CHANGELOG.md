@@ -821,3 +821,10 @@
 
 - Push Rust module tags so GitHub builds the binaries|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([20a3222e](https://github.com/ooneex/talos/commit/20a3222e))
 
+## [0.16.8](https://github.com/ooneex/talos/releases/tag/@talos/cli@0.16.8) - 2026-09-26
+
+### Changed
+
+- Expect modules to register entities on MainDatabase|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([aa8d9b10](https://github.com/ooneex/talos/commit/aa8d9b10))
+- Update Cargo.lock| — Franck ([441f181c](https://github.com/ooneex/talos/commit/441f181c))
+
