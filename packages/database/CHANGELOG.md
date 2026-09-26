@@ -99,3 +99,9 @@
 
 ## [1.4.4](https://github.com/ooneex/talos/releases/tag/@talosjs/database@1.4.4) - 2026-09-26
 
+## [1.5.0](https://github.com/ooneex/talos/releases/tag/@talosjs/database@1.5.0) - 2026-09-26
+
+### Added
+
+- Share one data source and entity registry per class|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([9f1db556](https://github.com/ooneex/talos/commit/9f1db556))
+
