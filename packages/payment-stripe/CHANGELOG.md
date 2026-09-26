@@ -28,3 +28,5 @@
 
 ## [0.1.4](https://github.com/ooneex/talos/releases/tag/@talosjs/payment-stripe@0.1.4) - 2026-09-25
 
+## [0.1.5](https://github.com/ooneex/talos/releases/tag/@talosjs/payment-stripe@0.1.5) - 2026-09-26
+
