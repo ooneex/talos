@@ -31,6 +31,29 @@ export class StripeCheckoutSession {
       params.metadata = data.metadata;
     }
 
+    if (data.allowPromotionCodes !== undefined) {
+      params.allow_promotion_codes = data.allowPromotionCodes;
+    }
+
+    if (data.invoiceCreation && data.mode === "payment") {
+      const invoiceData = data.invoiceCreation === true ? {} : data.invoiceCreation;
+      params.invoice_creation = { enabled: true, invoice_data: invoiceData };
+    }
+
+    if (data.billingAddressCollection) {
+      params.billing_address_collection = data.billingAddressCollection;
+    }
+
+    if (data.taxIdCollection) {
+      params.tax_id_collection = { enabled: true };
+    }
+
+    // An existing customer keeps what they type at checkout — Stripe requires it for tax ID
+    // collection, and it is what puts the collected address and company name on the invoice.
+    if (data.customerId && (data.billingAddressCollection || data.taxIdCollection)) {
+      params.customer_update = { address: "auto", name: "auto" };
+    }
+
     const session = await this.client.sdk.checkout.sessions.create(params);
 
     return this.mapSession(session);

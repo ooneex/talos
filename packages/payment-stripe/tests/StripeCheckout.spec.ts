@@ -135,6 +135,97 @@ describe("StripeCheckoutSession", () => {
 
       expect(getCreateArgs().metadata).toEqual({ plan: "pro" });
     });
+
+    test("should leave promotion codes, invoice, address and tax ID to Stripe defaults", async () => {
+      await checkout.create({
+        lineItems: [{ price: "price_test123" }],
+        mode: "payment",
+        successUrl: "https://example.com/success",
+        customerId: "cus_test123",
+      });
+
+      const args = getCreateArgs();
+      expect(args.allow_promotion_codes).toBeUndefined();
+      expect(args.invoice_creation).toBeUndefined();
+      expect(args.billing_address_collection).toBeUndefined();
+      expect(args.tax_id_collection).toBeUndefined();
+      expect(args.customer_update).toBeUndefined();
+    });
+
+    test("should forward allowPromotionCodes when provided", async () => {
+      await checkout.create({
+        lineItems: [{ price: "price_test123" }],
+        mode: "payment",
+        successUrl: "https://example.com/success",
+        allowPromotionCodes: false,
+      });
+
+      expect(getCreateArgs().allow_promotion_codes).toBe(false);
+    });
+
+    test("should enable invoice creation for a one-time payment", async () => {
+      await checkout.create({
+        lineItems: [{ price: "price_test123" }],
+        mode: "payment",
+        successUrl: "https://example.com/success",
+        invoiceCreation: true,
+      });
+
+      expect(getCreateArgs().invoice_creation).toEqual({ enabled: true, invoice_data: {} });
+    });
+
+    test("should forward invoice data", async () => {
+      await checkout.create({
+        lineItems: [{ price: "price_test123" }],
+        mode: "payment",
+        successUrl: "https://example.com/success",
+        invoiceCreation: { description: "Pro pack", footer: "Thank you", metadata: { orderId: "ord_1" } },
+      });
+
+      expect(getCreateArgs().invoice_creation).toEqual({
+        enabled: true,
+        invoice_data: { description: "Pro pack", footer: "Thank you", metadata: { orderId: "ord_1" } },
+      });
+    });
+
+    test("should ignore invoice creation outside payment mode", async () => {
+      await checkout.create({
+        lineItems: [{ price: "price_test123" }],
+        mode: "subscription",
+        successUrl: "https://example.com/success",
+        invoiceCreation: true,
+      });
+
+      expect(getCreateArgs().invoice_creation).toBeUndefined();
+    });
+
+    test("should collect the billing address and tax ID without updating a guest customer", async () => {
+      await checkout.create({
+        lineItems: [{ price: "price_test123" }],
+        mode: "payment",
+        successUrl: "https://example.com/success",
+        customerEmail: "user@example.com",
+        billingAddressCollection: "required",
+        taxIdCollection: true,
+      });
+
+      const args = getCreateArgs();
+      expect(args.billing_address_collection).toBe("required");
+      expect(args.tax_id_collection).toEqual({ enabled: true });
+      expect(args.customer_update).toBeUndefined();
+    });
+
+    test("should save collected details on an existing customer", async () => {
+      await checkout.create({
+        lineItems: [{ price: "price_test123" }],
+        mode: "payment",
+        successUrl: "https://example.com/success",
+        customerId: "cus_test123",
+        billingAddressCollection: "required",
+      });
+
+      expect(getCreateArgs().customer_update).toEqual({ address: "auto", name: "auto" });
+    });
   });
 
   describe("get", () => {
