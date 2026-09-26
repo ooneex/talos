@@ -65,3 +65,5 @@
 
 ## [1.2.3](https://github.com/ooneex/talos/releases/tag/@talosjs/storage@1.2.3) - 2026-09-25
 
+## [1.2.4](https://github.com/ooneex/talos/releases/tag/@talosjs/storage@1.2.4) - 2026-09-26
+
