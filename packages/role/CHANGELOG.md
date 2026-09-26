@@ -65,3 +65,9 @@
 
 ## [1.3.4](https://github.com/ooneex/talos/releases/tag/@talosjs/role@1.3.4) - 2026-09-25
 
+## [1.3.5](https://github.com/ooneex/talos/releases/tag/@talosjs/role@1.3.5) - 2026-09-26
+
+### Changed
+
+- @talosjs/role@1.3.4| — Franck ([eec4219f](https://github.com/ooneex/talos/commit/eec4219f))
+
