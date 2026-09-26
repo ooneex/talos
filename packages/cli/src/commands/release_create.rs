@@ -107,6 +107,13 @@ fn get_last_tag(cwd: &Path, package_name: &str) -> Option<String> {
     .map(str::to_string)
 }
 
+/// The version carried by a `{package_name}@{version}` tag.
+fn version_from_tag<'a>(tag: &'a str, package_name: &str) -> Option<&'a str> {
+    tag.strip_prefix(package_name)
+        .and_then(|rest| rest.strip_prefix('@'))
+        .filter(|version| !version.is_empty())
+}
+
 fn get_commits_since_tag(cwd: &Path, tag: Option<&str>, dir_path: &str) -> Vec<CommitInfo> {
     let range = tag
         .map(|tag| format!("{tag}..HEAD"))
@@ -180,11 +187,33 @@ pub fn determine_bump_type(commits: &[CommitInfo]) -> &'static str {
     bump
 }
 
-/// The version a release bumps from. npm's published version wins, so the
-/// next number sits directly after what the registry already has. A package
-/// npm has never published keeps the version written in its manifest.
-pub fn release_base<'a>(local: &'a str, published: Option<&'a str>) -> &'a str {
-    published.unwrap_or(local)
+/// The version a release bumps from. npm's published version wins over the
+/// manifest, so the next number sits directly after what the registry already
+/// has. A package npm has never published keeps the version written in its
+/// manifest. A git tag newer than both wins, so a version that was already
+/// tagged is not tagged again.
+pub fn release_base<'a>(
+    local: &'a str,
+    published: Option<&'a str>,
+    tagged: Option<&'a str>,
+) -> &'a str {
+    let base = published.unwrap_or(local);
+    match tagged {
+        Some(tagged) if version_is_newer(tagged, base) => tagged,
+        _ => base,
+    }
+}
+
+fn version_parts(version: &str) -> [u64; 3] {
+    let mut parts = version.split('.');
+    let major = parts.next().and_then(|part| part.parse().ok()).unwrap_or(0);
+    let minor = parts.next().and_then(|part| part.parse().ok()).unwrap_or(0);
+    let patch = parts.next().and_then(|part| part.parse().ok()).unwrap_or(0);
+    [major, minor, patch]
+}
+
+fn version_is_newer(left: &str, right: &str) -> bool {
+    version_parts(left) > version_parts(right)
 }
 
 pub fn bump_version(version: &str, kind: &str) -> String {
@@ -436,8 +465,9 @@ fn split_names(value: Option<&str>) -> Vec<String> {
 /// commits: reads its `package.json`, computes the semver bump from the
 /// commits since its last tag, and stages the new version in memory. The
 /// bump starts from the version npm has published, so the next number
-/// follows it. `force_patch` plans every target as a patch bump, including
-/// ones with no unreleased commits.
+/// follows it, unless a git tag is already newer — then it starts there, so
+/// the release does not try to create that tag again. `force_patch` plans
+/// every target as a patch bump, including ones with no unreleased commits.
 fn build_release_plans(
     cwd: &Path,
     target_dirs: &[TargetDir],
@@ -492,12 +522,14 @@ fn build_release_plans(
                 }
             }
         };
-        let base = release_base(&version, published.as_deref()).to_string();
-        if published
+        let tagged = last_tag
             .as_deref()
-            .is_some_and(|published| published != version)
+            .and_then(|tag| version_from_tag(tag, &package_name));
+        let base = release_base(&version, published.as_deref(), tagged).to_string();
+        if let Some(published) = published.as_deref()
+            && published != version
         {
-            println!("{package_name} is {base} on npm");
+            println!("{package_name} is {published} on npm");
         }
         let new_version = bump_version(&base, bump_type);
         if let Some(root) = package_json.as_object_mut() {

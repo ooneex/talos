@@ -186,22 +186,40 @@ fn a_fix_is_a_patch_a_feature_is_a_minor_and_a_break_is_a_major() {
 #[test]
 fn a_release_bumps_the_version_npm_has_published() {
     assert_eq!(
-        bump_version(release_base("1.3.9", Some("1.3.2")), "patch"),
+        bump_version(release_base("1.3.9", Some("1.3.2"), None), "patch"),
         "1.3.3",
         "a manifest ahead of npm must not skip the numbers npm never published"
     );
     assert_eq!(
-        bump_version(release_base("1.9.0", Some("1.3.2")), "minor"),
+        bump_version(release_base("1.9.0", Some("1.3.2"), None), "minor"),
         "1.4.0"
     );
     assert_eq!(
-        bump_version(release_base("3.0.0", Some("1.3.2")), "major"),
+        bump_version(release_base("3.0.0", Some("1.3.2"), None), "major"),
         "2.0.0"
     );
     assert_eq!(
-        bump_version(release_base("1.2.3", None), "patch"),
+        bump_version(release_base("1.2.3", None, None), "patch"),
         "1.2.4",
         "a package npm has never published keeps the manifest version"
+    );
+}
+
+#[test]
+fn a_release_bumps_past_a_tag_newer_than_npm() {
+    assert_eq!(
+        bump_version(release_base("1.3.4", Some("1.3.3"), Some("1.3.4")), "patch"),
+        "1.3.5",
+        "a tag that already exists must not be created again"
+    );
+    assert_eq!(
+        bump_version(release_base("1.3.9", Some("1.3.2"), Some("1.3.0")), "patch"),
+        "1.3.3",
+        "npm still wins when it is ahead of the latest tag"
+    );
+    assert_eq!(
+        bump_version(release_base("1.2.3", None, Some("1.2.3")), "minor"),
+        "1.3.0"
     );
 }
 
@@ -420,6 +438,46 @@ fn a_manifest_with_no_package_version_is_left_untouched() {
 // ---------------------------------------------------------------------------
 // The command
 // ---------------------------------------------------------------------------
+
+#[test]
+fn a_release_does_not_recreate_a_tag_ahead_of_npm() {
+    let (_dir, root) = repository();
+    git(
+        &root,
+        &[
+            "tag",
+            "-a",
+            "@scratch/core@1.3.4",
+            "-m",
+            "chore(release): @scratch/core@1.3.4",
+        ],
+    );
+    write(
+        &root.join("packages/core/src/index.ts"),
+        "export const one = 11;\n",
+    );
+    commit(&root, "fix(core): Repair the thing");
+
+    let registry = Server::start(|_| Reply::json(serde_json::json!({ "version": "1.3.3" })));
+    let output = talos_with_registry(
+        &root,
+        &["release:create", "--packages=core"],
+        registry.base(),
+    );
+
+    assert!(output.status.success(), "{}", text(&output));
+    assert_eq!(version(&root.join("packages/core/package.json")), "1.3.5");
+    assert!(
+        tags(&root).contains("@scratch/core@1.3.5"),
+        "{}",
+        tags(&root)
+    );
+    assert!(
+        !text(&output).contains("already exists"),
+        "{}",
+        text(&output)
+    );
+}
 
 #[test]
 fn a_patch_release_follows_the_version_npm_published() {
