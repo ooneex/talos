@@ -800,3 +800,14 @@
 - Reinstall dependencies before the release build|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([fd922c11](https://github.com/ooneex/talos/commit/fd922c11))
 - Rebuild packages before the release check|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([a9200b6b](https://github.com/ooneex/talos/commit/a9200b6b))
 
+## [0.16.6](https://github.com/ooneex/talos/releases/tag/@talos/cli@0.16.6) - 2026-09-26
+
+### Changed
+
+- Update Cargo.lock| — Franck ([6798ff46](https://github.com/ooneex/talos/commit/6798ff46))
+
+### Fixed
+
+- Bump releases past a tag newer than npm|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([f51cb198](https://github.com/ooneex/talos/commit/f51cb198))
+- Cap npm publish concurrency to avoid EMFILE|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([9df10131](https://github.com/ooneex/talos/commit/9df10131))
+
