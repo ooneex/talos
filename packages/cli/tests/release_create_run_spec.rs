@@ -149,6 +149,15 @@ fn tags(root: &Path) -> String {
     String::from_utf8_lossy(&output.stdout).to_string()
 }
 
+fn remote_tags(root: &Path) -> String {
+    let output = Command::new("git")
+        .args(["ls-remote", "--tags", "origin"])
+        .current_dir(root)
+        .output()
+        .expect("git ls-remote should run");
+    String::from_utf8_lossy(&output.stdout).to_string()
+}
+
 // ---------------------------------------------------------------------------
 // The bump
 // ---------------------------------------------------------------------------
@@ -609,7 +618,17 @@ fn a_rust_module_is_released_from_its_manifest_and_not_pushed_to_npm() {
     assert!(output.status.success(), "{}", text(&output));
     assert_eq!(version(&root.join("packages/core/package.json")), "1.2.4");
     assert!(
-        text(&output).contains("Skipped @scratch/core (rust module)"),
+        tags(&root).contains("@scratch/core@1.2.4"),
+        "{}",
+        tags(&root)
+    );
+    assert!(
+        remote_tags(&root).contains("refs/tags/@scratch/core@1.2.4"),
+        "{}",
+        remote_tags(&root)
+    );
+    assert!(
+        text(&output).contains("Pushed @scratch/core@1.2.4 to GitHub"),
         "{}",
         text(&output)
     );

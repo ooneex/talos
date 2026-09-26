@@ -343,14 +343,24 @@ pub fn run(args: &ReleaseCreateArgs) {
         push_to_remote(&cwd);
     }
     if args.publish {
-        for plan in plans.iter().filter(|plan| plan.cargo_toml_path.is_some()) {
-            let fallback = base_name(&plan.dir.base);
-            let name = plan
-                .package_json
-                .get("name")
-                .and_then(Value::as_str)
-                .unwrap_or(fallback.as_str());
-            println!("Skipped {name} (rust module)");
+        // A Rust module has no npm package. Pushing its tag is what publishes
+        // it: the GitHub release workflow builds the binaries from that tag.
+        let rust_plans: Vec<_> = plans
+            .iter()
+            .filter(|plan| plan.cargo_toml_path.is_some())
+            .collect();
+        if !rust_plans.is_empty() {
+            ensure_https_push_auth(&cwd);
+            for plan in rust_plans {
+                if git(
+                    &cwd,
+                    &["push", "origin", &format!("refs/tags/{}", plan.tag)],
+                ) {
+                    crate::utils::success(format!("Pushed {} to GitHub", plan.tag));
+                } else {
+                    crate::utils::error(format!("Failed to push {} to GitHub", plan.tag));
+                }
+            }
         }
         match publish_args_for(&released_packages, &released_modules) {
             Some((packages, modules)) => {
@@ -651,6 +661,18 @@ fn refresh_cargo_lock(crate_dir: &Path) {
     }
 }
 
+/// An `https://` origin needs a credential helper to push non-interactively.
+/// `gh auth setup-git` wires git to the CLI's stored token for that. An
+/// `ssh://` or `git@` origin already authenticates with the user's SSH key.
+fn ensure_https_push_auth(cwd: &Path) {
+    if crate::utils::git_origin_url(cwd).is_some_and(|url| url.starts_with("https://")) {
+        let _ = Command::new("gh")
+            .args(["auth", "setup-git"])
+            .current_dir(cwd)
+            .status();
+    }
+}
+
 /// Refreshes `bun.lock`, commits it along with any refreshed `Cargo.lock`, and
 /// pushes the release commits and tags to the remote.
 fn push_to_remote(cwd: &Path) {
@@ -664,16 +686,7 @@ fn push_to_remote(cwd: &Path) {
     let _ = git(cwd, &["add", "--", "*Cargo.lock"]);
     let _ = git(cwd, &["commit", "-m", "chore(common): Update Cargo.lock"]);
 
-    // An `https://` origin needs a credential helper to push non-interactively;
-    // `gh auth setup-git` wires git to use the CLI's stored token for that.
-    // An `ssh://`/`git@` origin already authenticates through the user's SSH
-    // key, so a plain push is enough.
-    if crate::utils::git_origin_url(cwd).is_some_and(|url| url.starts_with("https://")) {
-        let _ = Command::new("gh")
-            .args(["auth", "setup-git"])
-            .current_dir(cwd)
-            .status();
-    }
+    ensure_https_push_auth(cwd);
 
     let pushed = git(cwd, &["push"]) && git(cwd, &["push", "--tags"]);
     if !pushed {
