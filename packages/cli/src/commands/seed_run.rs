@@ -1,6 +1,9 @@
 // `seed:run` — run every module's seeds, one module at a time, streaming
 // each seed as it lands under a progress bar, then a report. See
 // [`module_scripts`](crate::utils) for the run itself.
+//
+// Each module's `bin/seed/run.ts` resolves `MainDatabase` from the container.
+// The seeds package loads the app env before that script body runs.
 
 use std::path::PathBuf;
 
