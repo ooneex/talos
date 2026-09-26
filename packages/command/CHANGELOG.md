@@ -89,3 +89,5 @@
 
 ## [1.6.5](https://github.com/ooneex/talos/releases/tag/@talosjs/command@1.6.5) - 2026-09-25
 
+## [1.6.6](https://github.com/ooneex/talos/releases/tag/@talosjs/command@1.6.6) - 2026-09-26
+
