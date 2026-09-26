@@ -1,3 +1,5 @@
+import type Stripe from "stripe";
+
 export enum EStripeEvent {
   CheckoutSessionCompleted = "checkout.session.completed",
   InvoicePaid = "invoice.paid",
@@ -14,6 +16,8 @@ export type LineItemType = {
   price: string;
   quantity?: number;
 };
+
+export type CheckoutLocaleType = Stripe.Checkout.SessionCreateParams.Locale;
 
 export type CheckoutInvoiceCreationType = {
   description?: string;
@@ -37,6 +41,8 @@ export type CheckoutSessionCreateType = {
   invoiceCreation?: boolean | CheckoutInvoiceCreationType;
   billingAddressCollection?: "auto" | "required";
   taxIdCollection?: boolean;
+  /** Language of the hosted checkout page. */
+  locale?: CheckoutLocaleType;
 };
 
 export type CheckoutSessionType = {
@@ -169,6 +175,7 @@ export type StripeCustomerCreateType = {
   phone?: string;
   billingAddress?: StripeCustomerAddressType;
   metadata?: Record<string, string>;
+  preferredLocales?: string[];
 };
 
 export type StripeCustomerUpdateType = {
@@ -177,6 +184,7 @@ export type StripeCustomerUpdateType = {
   phone?: string;
   billingAddress?: StripeCustomerAddressType;
   metadata?: Record<string, string>;
+  preferredLocales?: string[];
 };
 
 export type StripeCustomerType = {
@@ -187,6 +195,7 @@ export type StripeCustomerType = {
   billingAddress?: StripeCustomerAddressType;
   metadata?: Record<string, string>;
   createdAt?: Date;
+  preferredLocales?: string[];
 };
 
 export type StripeCustomerListOptionsType = {

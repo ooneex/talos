@@ -44,6 +44,10 @@ export class StripeCheckoutSession {
       params.billing_address_collection = data.billingAddressCollection;
     }
 
+    if (data.locale) {
+      params.locale = data.locale;
+    }
+
     if (data.taxIdCollection) {
       params.tax_id_collection = { enabled: true };
     }
