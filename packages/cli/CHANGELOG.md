@@ -811,3 +811,13 @@
 - Bump releases past a tag newer than npm|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([f51cb198](https://github.com/ooneex/talos/commit/f51cb198))
 - Cap npm publish concurrency to avoid EMFILE|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([9df10131](https://github.com/ooneex/talos/commit/9df10131))
 
+## [0.16.7](https://github.com/ooneex/talos/releases/tag/@talos/cli@0.16.7) - 2026-09-26
+
+### Changed
+
+- Update Cargo.lock| — Franck ([d1138853](https://github.com/ooneex/talos/commit/d1138853))
+
+### Fixed
+
+- Push Rust module tags so GitHub builds the binaries|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([20a3222e](https://github.com/ooneex/talos/commit/20a3222e))
+
