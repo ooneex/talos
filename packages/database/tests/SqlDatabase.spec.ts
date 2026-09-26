@@ -86,3 +86,129 @@ describe("SqlDatabase", () => {
     expect(database.getEntityManager()).toBe(database.getSource().manager);
   });
 });
+
+class CatalogDatabase extends SqlDatabase {
+  public created = 0;
+
+  public getSource(identity = "catalog"): DataSource {
+    return this.sharedSource(identity, () => {
+      this.created += 1;
+
+      return new DataSource({
+        type: "sqlite",
+        database: ":memory:",
+        entities: this.registeredEntities(),
+      });
+    });
+  }
+}
+
+class OtherCatalogDatabase extends SqlDatabase {
+  public getSource(): DataSource {
+    return this.sharedSource("other-catalog", () => {
+      return new DataSource({
+        type: "sqlite",
+        database: ":memory:",
+        entities: this.registeredEntities(),
+      });
+    });
+  }
+}
+
+class ConnectedDatabase extends SqlDatabase {
+  public getSource(identity: string): DataSource {
+    return this.sharedSource(identity, () => {
+      return new DataSource({
+        type: "sqlite",
+        database: ":memory:",
+        entities: this.registeredEntities(),
+      });
+    });
+  }
+}
+
+const processSourceOf = (name: string): { identity: string; source: DataSource } | undefined => {
+  return (globalThis as Record<symbol, { identity: string; source: DataSource } | undefined>)[
+    Symbol.for(`@talosjs/database:source:${name}`)
+  ];
+};
+
+describe("SqlDatabase.registerEntities", () => {
+  test("should store each entity once and keep registries separate", () => {
+    class Item {}
+    class OtherItem {}
+    class ForeignItem {}
+
+    CatalogDatabase.registerEntities(Item);
+    CatalogDatabase.registerEntities(OtherItem, Item);
+    OtherCatalogDatabase.registerEntities(ForeignItem);
+
+    const entities = new CatalogDatabase().getSource().options.entities as unknown[];
+    const foreign = new OtherCatalogDatabase().getSource().options.entities as unknown[];
+    const key = Symbol.for("@talosjs/database:entities:CatalogDatabase");
+    const registry = (globalThis as Record<symbol, Set<unknown> | undefined>)[key];
+
+    expect(entities).toContain(Item);
+    expect(entities).toContain(OtherItem);
+    expect(entities).not.toContain(ForeignItem);
+    expect(entities.filter((entity) => entity === Item)).toHaveLength(1);
+    expect(foreign).toEqual([ForeignItem]);
+    expect(registry?.has(Item)).toBe(true);
+  });
+});
+
+describe("SqlDatabase.sharedSource", () => {
+  afterEach(async () => {
+    for (const name of ["CatalogDatabase", "OtherCatalogDatabase", "ConnectedDatabase"]) {
+      const cached = processSourceOf(name);
+
+      if (cached?.source.isInitialized) {
+        await cached.source.destroy();
+      }
+
+      delete (globalThis as Record<symbol, unknown>)[Symbol.for(`@talosjs/database:source:${name}`)];
+    }
+  });
+
+  test("should reuse one source across instances with the same identity", () => {
+    const first = new CatalogDatabase();
+    const second = new CatalogDatabase();
+    const source = first.getSource("shared");
+
+    expect(second.getSource("shared")).toBe(source);
+    expect(first.created).toBe(1);
+    expect(second.created).toBe(0);
+    expect(processSourceOf("CatalogDatabase")?.source).toBe(source);
+  });
+
+  test("should keep the instance source when asked again", () => {
+    const database = new CatalogDatabase();
+    const source = database.getSource("sticky");
+
+    expect(database.getSource("other")).toBe(source);
+    expect(database.created).toBe(1);
+  });
+
+  test("should open a new source when the identity changes and the previous one is closed", () => {
+    const first = new CatalogDatabase().getSource("closed-a");
+    const second = new CatalogDatabase().getSource("closed-b");
+
+    expect(second).not.toBe(first);
+    expect(first.isInitialized).toBe(false);
+    expect(processSourceOf("CatalogDatabase")?.identity).toBe("closed-b");
+  });
+
+  test("should close the previous source when the identity changes and it is connected", async () => {
+    const first = new ConnectedDatabase().getSource("open-a");
+
+    await first.initialize();
+
+    const second = new ConnectedDatabase().getSource("open-b");
+
+    expect(second).not.toBe(first);
+    expect(first.isInitialized).toBe(false);
+    expect(second.isInitialized).toBe(false);
+
+    await Bun.sleep(20);
+  });
+});

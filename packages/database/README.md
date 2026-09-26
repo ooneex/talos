@@ -73,6 +73,33 @@ await dataSource.transaction(async (manager) => {
 });
 ```
 
+## A shared source for the process
+
+`SqlDatabase` is the base class for an application database. Modules declare the entities they persist on the concrete class, and every instance in the process reuses one data source for a given connection identity (a URL or a file path). The database never imports those modules.
+
+```typescript
+import { DataSource, decorator, SqlDatabase } from "@talosjs/database";
+
+@decorator.database()
+export class MainDatabase extends SqlDatabase {
+  public getSource(): DataSource {
+    const url = process.env.DATABASE_URL ?? "";
+
+    return this.sharedSource(url, () => {
+      return new DataSource({
+        type: "postgres",
+        url,
+        entities: this.registeredEntities(),
+      });
+    });
+  }
+}
+
+MainDatabase.registerEntities(User, Post);
+```
+
+`registerEntities()` stores each class once, on `globalThis`, under the database class name, so a bundled copy and the source loaded beside it still see one registry. `sharedSource()` returns the existing source when the identity matches. A different identity replaces it and closes the previous source when that source is already connected. Register entities before the source is created; an open source keeps the list it was built with.
+
 ## What is in the box
 
 | Area | Surface |
