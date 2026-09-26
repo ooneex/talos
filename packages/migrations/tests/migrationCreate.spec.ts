@@ -127,4 +127,40 @@ describe("migrationCreate", () => {
       expect(versionMatch[1]?.length).toBe(17);
     }
   });
+
+  test("should write the class name and version from the same timestamp", async () => {
+    const result = await migrationCreate();
+
+    const version = result.migrationPath.match(/Migration(\d+)\.ts$/)?.[1];
+    const content = await Bun.file(join(testDir, result.migrationPath)).text();
+
+    expect(version).toHaveLength(17);
+    expect(content).toContain(`export class Migration${version} implements IMigration`);
+    expect(content).toContain(`return '${version}'`);
+    expect(content).toContain("async up(tx: TransactionSQL): Promise<void>");
+    expect(content).toContain("async down(tx: TransactionSQL): Promise<void>");
+    expect(content).toContain("public getDependencies(): MigrationClassType[]");
+    expect(content).toContain("return [];");
+  });
+
+  test("should fall back to the migrations directory when migrationsDir is empty", async () => {
+    const result = await migrationCreate({ migrationsDir: "" });
+
+    expect(result.migrationPath).toMatch(/^migrations\/Migration\d+\.ts$/);
+    expect(existsSync(join(testDir, result.migrationPath))).toBe(true);
+  });
+
+  test("should keep an existing migration in the sorted barrel", async () => {
+    await Bun.write(
+      join(testDir, "migrations", "Migration20200101000000000.ts"),
+      "export class Migration20200101000000000 {}\n",
+    );
+
+    await migrationCreate();
+
+    const lines = (await Bun.file(join(testDir, "migrations", "migrations.ts")).text()).trim().split("\n");
+    expect(lines).toHaveLength(2);
+    expect(lines[0]).toBe("export { Migration20200101000000000 } from './Migration20200101000000000';");
+    expect(lines[1]).toMatch(/^export \{ Migration\d+ \} from '\.\/Migration\d+';$/);
+  });
 });

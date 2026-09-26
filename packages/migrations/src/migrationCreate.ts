@@ -1,7 +1,29 @@
 import { join } from "node:path";
 import { Glob } from "bun";
 import { generateMigrationVersion } from "./generateMigrationVersion";
-import template from "./migration.txt";
+
+const migrationTemplate = `import { decorator, type IMigration, type MigrationClassType } from '@talosjs/migrations';
+import type { TransactionSQL } from 'bun';
+
+@decorator.migration()
+export class {{ name }} implements IMigration {
+  public async up(tx: TransactionSQL): Promise<void> {
+    // await tx\`...\`;
+  }
+
+  public async down(tx: TransactionSQL): Promise<void> {
+    // await tx\`...\`;
+  }
+
+  public getVersion(): string {
+    return '{{ version }}';
+  }
+
+  public getDependencies(): MigrationClassType[] {
+    return [];
+  }
+}
+`;
 
 export const migrationCreate = async (config?: { migrationsDir?: string }): Promise<{ migrationPath: string }> => {
   const version = generateMigrationVersion();
@@ -10,7 +32,7 @@ export const migrationCreate = async (config?: { migrationsDir?: string }): Prom
 
   await Bun.write(
     join(process.cwd(), migrationsDir, `${name}.ts`),
-    template.replaceAll("{{ name }}", name).replaceAll("{{ version }}", version),
+    migrationTemplate.replaceAll("{{ name }}", name).replaceAll("{{ version }}", version),
   );
 
   const imports: string[] = [];
