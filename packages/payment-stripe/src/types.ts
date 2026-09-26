@@ -15,6 +15,12 @@ export type LineItemType = {
   quantity?: number;
 };
 
+export type CheckoutInvoiceCreationType = {
+  description?: string;
+  footer?: string;
+  metadata?: Record<string, string>;
+};
+
 export type CheckoutSessionCreateType = {
   lineItems: LineItemType[];
   mode: "payment" | "subscription" | "setup";
@@ -23,6 +29,14 @@ export type CheckoutSessionCreateType = {
   customerId?: string;
   customerEmail?: string;
   metadata?: Record<string, string>;
+  allowPromotionCodes?: boolean;
+  /**
+   * Issue a paid invoice for a one-time payment (`mode: "payment"` only — subscriptions always get
+   * an invoice per cycle). Without it Stripe only sends a receipt.
+   */
+  invoiceCreation?: boolean | CheckoutInvoiceCreationType;
+  billingAddressCollection?: "auto" | "required";
+  taxIdCollection?: boolean;
 };
 
 export type CheckoutSessionType = {
