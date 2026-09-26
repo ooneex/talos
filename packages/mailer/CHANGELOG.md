@@ -65,3 +65,5 @@
 
 ## [1.2.6](https://github.com/ooneex/talos/releases/tag/@talosjs/mailer@1.2.6) - 2026-09-25
 
+## [1.2.7](https://github.com/ooneex/talos/releases/tag/@talosjs/mailer@1.2.7) - 2026-09-26
+
