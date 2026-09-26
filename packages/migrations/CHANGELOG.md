@@ -95,3 +95,5 @@
 
 ## [1.2.9](https://github.com/ooneex/talos/releases/tag/@talosjs/migrations@1.2.9) - 2026-09-25
 
+## [1.2.10](https://github.com/ooneex/talos/releases/tag/@talosjs/migrations@1.2.10) - 2026-09-26
+
