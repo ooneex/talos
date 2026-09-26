@@ -1,11 +1,11 @@
 {
   "dependencies": {
+    "@talosjs/app-env": "workspace:^",
     "@talosjs/container": "workspace:^",
     "@talosjs/utils": "workspace:^"
   },
   "description": "Database seeding framework for populating initial data, fixtures, and test datasets with execution logging and idempotent operations",
   "devDependencies": {
-    "@talosjs/app-env": "workspace:^",
     "@talosjs/exception": "workspace:^"
   },
   "exports": {

@@ -2,9 +2,10 @@ import { parseArgs } from "node:util";
 import { container } from "@talosjs/container";
 import type { IException } from "@talosjs/exception";
 import { getSeeds } from "./getSeeds";
+import "./loadSeedEnv";
 import { COLORS, colorize, formatDuration, runLogger, SYMBOLS } from "./runLogger";
 import { computeSeedHash, isSeedCached, seedCacheDir, writeSeedCache } from "./seedCache";
-import type { ISeed } from "./types";
+import type { ISeed, ISeedDatabase, SeedRunConfigType } from "./types";
 
 type SeedRunOptionsType = {
   /**
@@ -37,16 +38,12 @@ const runSeed = async (seed: ISeed, resultBySeed: Map<ISeed, unknown>): Promise<
   resultBySeed.set(seed, await seed.run(data));
 };
 
-// Best-effort close of the registered database connection. Never throws — a
-// module without a `database` constant simply has nothing to close.
-const closeDatabase = async (): Promise<void> => {
+/** Returns the pool. A close failure must not hide the seed result. */
+const closeDatabase = async (database: ISeedDatabase): Promise<void> => {
   try {
-    const database = container.getConstant<{ close: () => Promise<void> }>("database");
-    if (database) {
-      await database.close();
-    }
+    await database.close();
   } catch {
-    // No database constant registered — nothing to close
+    // A close failure must not hide the seed result.
   }
 };
 
@@ -128,12 +125,13 @@ const logCachedSeeds = (seeds: ISeed[]): void => {
   }
 };
 
-export const run = async (config?: { cacheDir?: string }): Promise<void> => {
+export const run = async (config: SeedRunConfigType): Promise<void> => {
   const options = readOptions();
   const seeds = await getSeeds();
 
   if (seeds.length === 0) {
     runLogger.persist(colorize(`${SYMBOLS.skipped} No seeds found`, COLORS.dim));
+    await closeDatabase(config.database);
     return;
   }
 
@@ -146,14 +144,14 @@ export const run = async (config?: { cacheDir?: string }): Promise<void> => {
   // The runner (`seed:run`) passes an explicit, per-module cache directory under
   // the workspace root; fall back to the cwd-relative default when `run` is
   // invoked directly.
-  const cacheDir = config?.cacheDir || options.cacheDir || seedCacheDir();
+  const cacheDir = config.cacheDir || options.cacheDir || seedCacheDir();
   const { hashByName, cachedNames } = await warmSeedCache(seeds, env, cacheDir, cacheEnabled);
 
   // Fast path: when every seed has already run unchanged, there is nothing to
   // do — report each as cached and return.
   if (cachedNames.size === seeds.length) {
     logCachedSeeds(seeds);
-    await closeDatabase();
+    await closeDatabase(config.database);
     return;
   }
 
@@ -193,10 +191,10 @@ export const run = async (config?: { cacheDir?: string }): Promise<void> => {
       );
       const detail = (error as IException)?.message ?? String(error);
       runLogger.persist(...detail.split("\n").map((line) => `${colorize("┃", COLORS.error)} ${line}`));
-      await closeDatabase();
+      await closeDatabase(config.database);
       process.exit(1);
     }
   }
 
-  await closeDatabase();
+  await closeDatabase(config.database);
 };

@@ -10,3 +10,13 @@ export interface ISeed {
   getDependencies: () => Promise<SeedClassType[]> | SeedClassType[];
   getEnv: () => Promise<Environment[]> | Environment[];
 }
+
+/** The application database a seed run closes when it finishes, such as `MainDatabase`. */
+export interface ISeedDatabase {
+  close: () => Promise<void>;
+}
+
+export type SeedRunConfigType = {
+  database: ISeedDatabase;
+  cacheDir?: string;
+};
