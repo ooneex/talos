@@ -173,3 +173,9 @@
 
 ## [1.7.6](https://github.com/ooneex/talos/releases/tag/@talosjs/app@1.7.6) - 2026-09-26
 
+## [1.8.0](https://github.com/ooneex/talos/releases/tag/@talosjs/app@1.8.0) - 2026-09-28
+
+### Added
+
+- Keep handshake context and honor channel-only replies|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([59fda4f5](https://github.com/ooneex/talos/commit/59fda4f5))
+
