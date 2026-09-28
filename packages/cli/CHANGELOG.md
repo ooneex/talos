@@ -845,3 +845,9 @@
 
 - Remove unselected assistant dirs when scaffolding an app| — Julien ([7b7b919a](https://github.com/ooneex/talos/commit/7b7b919a))
 
+## [0.16.11](https://github.com/ooneex/talos/releases/tag/@talos/cli@0.16.11) - 2026-09-28
+
+### Changed
+
+- Update Cargo.lock| — Franck ([4a6079f8](https://github.com/ooneex/talos/commit/4a6079f8))
+
