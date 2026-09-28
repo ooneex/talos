@@ -124,9 +124,14 @@ export const socketRouteHandler = async ({
     return sendException(context, "Invalid JSON message", HttpStatus.Code.BadRequest, "INVALID_JSON");
   }
 
-  context.queries = requestData.queries as Record<string, ScalarType>;
-  context.payload = requestData.payload as Record<string, ScalarType>;
-  context.lang = requestData.lang as LocaleInfoType;
+  // Handshake values (e.g. ?bearerToken= on the upgrade URL, Accept-Language) stay the
+  // defaults for every message, since a browser WebSocket cannot send custom headers.
+  context.queries = {
+    ...(context.request?.queries as Record<string, ScalarType> | undefined),
+    ...(requestData.queries as Record<string, ScalarType> | undefined),
+  };
+  context.payload = (requestData.payload ?? {}) as Record<string, ScalarType>;
+  context.lang = (requestData.lang ?? context.request?.lang) as LocaleInfoType;
 
   try {
     context = await runMiddlewares(context, middlewares);
@@ -186,13 +191,21 @@ export const socketRouteHandler = async ({
 
   const controller = container.get(route.controller);
 
+  let response: IResponse | undefined;
   try {
-    context.response = await controller.index(context);
+    response = (await controller.index(context)) as IResponse | undefined;
   } catch (error: unknown) {
     const controllerError = toControllerError(error);
     logSocketRequest(context, controllerError.status);
     return sendException(context, controllerError.message, controllerError.status, controllerError.key);
   }
+
+  // Nothing returned: the controller already answered through context.channel.
+  if (!response) {
+    logSocketRequest(context, HttpStatus.Code.OK);
+    return;
+  }
+  context.response = response;
 
   const responseValidationError = validateResponse(route, context.response.getData());
   if (responseValidationError) {

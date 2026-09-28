@@ -527,6 +527,68 @@ describe("socketRouteUtils", () => {
       expect((ctx.lang as Record<string, unknown>).region).toBe("FR");
     });
 
+    test("sends nothing more when the controller answered through the channel itself", async () => {
+      const wsSendMock = mock(() => {});
+      const context = createMockSocketContext();
+
+      class ChannelOnlyController {
+        async index(ctx: ContextType): Promise<void> {
+          await ctx.channel.publish(ctx.response.json({ broadcast: true }));
+        }
+      }
+      container.add(ChannelOnlyController);
+
+      const route = createMockSocketRoute({ controller: ChannelOnlyController });
+      const wsId = `test-ws-id-channel-only-${Date.now()}`;
+      container.addConstant(wsId, { context, route });
+      const mockServer = createMockServer();
+
+      await socketRouteHandler({
+        message: JSON.stringify({ payload: {} }),
+        ws: createMockWs(wsId, wsSendMock) as unknown as import("bun").ServerWebSocket<{ id: string }>,
+        server: mockServer as unknown as import("bun").Server<{ id: string }>,
+      });
+
+      expect(mockServer.publish).toHaveBeenCalledTimes(1);
+      expect(wsSendMock).not.toHaveBeenCalled();
+    });
+
+    test("keeps handshake queries and lang as defaults for each message", async () => {
+      const wsSendMock = mock(() => {});
+      const handshakeLang = { code: "en", region: "US" };
+      const context = createMockSocketContext({
+        request: {
+          queries: { bearerToken: "handshake-token", page: "1" },
+          lang: handshakeLang,
+        } as unknown as ContextType["request"],
+      });
+      let capturedContext: ContextType | null = null;
+
+      class HandshakeContextController {
+        index(ctx: ContextType): IResponse {
+          capturedContext = ctx;
+          ctx.response.done = true;
+          return ctx.response.json({ captured: true });
+        }
+      }
+      container.add(HandshakeContextController);
+
+      const route = createMockSocketRoute({ controller: HandshakeContextController });
+      const wsId = `test-ws-id-handshake-${Date.now()}`;
+      container.addConstant(wsId, { context, route });
+
+      await socketRouteHandler({
+        message: JSON.stringify({ queries: { page: "2" } }),
+        ws: createMockWs(wsId, wsSendMock) as unknown as import("bun").ServerWebSocket<{ id: string }>,
+        server: createMockServer() as unknown as import("bun").Server<{ id: string }>,
+      });
+
+      const ctx = capturedContext as unknown as ContextType;
+      expect(ctx.queries).toEqual({ bearerToken: "handshake-token", page: "2" } as unknown as ContextType["queries"]);
+      expect(ctx.payload).toEqual({});
+      expect(ctx.lang).toEqual(handshakeLang as unknown as ContextType["lang"]);
+    });
+
     test("uses PRODUCTION environment as default when app.env.env is undefined", async () => {
       const wsSendMock = mock(() => {});
       const context = createMockSocketContext({
