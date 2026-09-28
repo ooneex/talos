@@ -60,7 +60,7 @@
     },
     "packages/app": {
       "name": "@talosjs/app",
-      "version": "1.7.6",
+      "version": "1.8.0",
       "dependencies": {
         "@talosjs/app-env": "workspace:^",
         "@talosjs/cache": "workspace:^",
@@ -129,7 +129,7 @@
     },
     "packages/cli": {
       "name": "@talos/cli",
-      "version": "0.16.10",
+      "version": "0.16.11",
     },
     "packages/color": {
       "name": "@talosjs/color",
@@ -590,7 +590,7 @@
     },
     "packages/socket": {
       "name": "@talosjs/socket",
-      "version": "1.1.8",
+      "version": "1.2.0",
       "devDependencies": {
         "@talosjs/controller": "workspace:^",
         "@talosjs/http-request": "workspace:^",
