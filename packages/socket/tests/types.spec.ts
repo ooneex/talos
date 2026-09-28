@@ -46,6 +46,18 @@ describe("socket public types", () => {
     expect(controller.index).toBeTypeOf("function");
   });
 
+  test("accepts a controller that returns its response for the framework to send", () => {
+    const controller: IController<ChatContextConfigType> = {
+      index: async (context) => {
+        context.response.done = true;
+
+        return context.response.json({ event: "message", roomId: context.params.roomId });
+      },
+    };
+
+    expect(controller.index).toBeTypeOf("function");
+  });
+
   test("rejects responses that do not match the configured response shape", () => {
     const controller: IController<ChatContextConfigType> = {
       index: async (context) => {

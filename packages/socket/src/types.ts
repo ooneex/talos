@@ -7,7 +7,12 @@ import type { ServerWebSocket } from "bun";
 export type ControllerClassType = new (...args: any[]) => IController<any>;
 
 export interface IController<T extends ContextConfigType = ContextConfigType> {
-  index: (context: ContextType<T>) => Promise<void> | void;
+  /**
+   * Return a response to have it validated and sent to this client, or return nothing
+   * when the controller already answered through `context.channel`.
+   */
+  // biome-ignore lint/suspicious/noConfusingVoidType: `async index(): Promise<void>` must stay assignable
+  index: (context: ContextType<T>) => Promise<IResponse<T["response"]> | void> | IResponse<T["response"]> | void;
 }
 
 export type ContextConfigType = {
