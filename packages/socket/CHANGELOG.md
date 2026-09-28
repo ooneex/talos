@@ -50,3 +50,9 @@
 
 ## [1.1.8](https://github.com/ooneex/talos/releases/tag/@talosjs/socket@1.1.8) - 2026-09-26
 
+## [1.2.0](https://github.com/ooneex/talos/releases/tag/@talosjs/socket@1.2.0) - 2026-09-28
+
+### Added
+
+- Allow controllers to return a response|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([57e8a1cc](https://github.com/ooneex/talos/commit/57e8a1cc))
+
