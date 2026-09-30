@@ -7,6 +7,7 @@ use console::style;
 use serde::Serialize;
 
 use super::RecipeRunArgs;
+use super::browser::{Browser, default_browser};
 use super::plan::{RecipeLoader, RunPlan, discover_recipes, plan_recipe, select_recipes};
 use super::report::{Report, RunOutcome};
 use crate::utils::{OUTPUT_DIR, RecipeStep, current_dir, ensure_bin, format_duration};
@@ -22,6 +23,8 @@ pub struct RunnerOptions {
     pub width: u32,
     pub height: u32,
     pub screenshot_dir: PathBuf,
+    /// The browser `--headed` replays in; headless when `None`.
+    pub browser: Option<Browser>,
 }
 
 #[derive(Serialize)]
@@ -32,6 +35,7 @@ struct RunnerPlan<'a> {
     width: u32,
     height: u32,
     screenshot_dir: String,
+    browser: Option<&'a Browser>,
     runs: Vec<RunnerRun<'a>>,
 }
 
@@ -49,6 +53,7 @@ pub fn runner_plan_json(runs: &[RunPlan], options: &RunnerOptions) -> String {
         width: options.width,
         height: options.height,
         screenshot_dir: options.screenshot_dir.display().to_string(),
+        browser: options.browser.as_ref(),
         runs: runs
             .iter()
             .map(|run| RunnerRun {
@@ -181,6 +186,23 @@ pub fn run(args: &RecipeRunArgs) {
         if !ensure_bin("bun") {
             std::process::exit(1);
         }
+        let browser = if args.headed {
+            match default_browser() {
+                Ok(browser) => {
+                    crate::utils::info(format!(
+                        "Replaying in {} — each recipe opens in a new tab",
+                        browser.name
+                    ));
+                    Some(browser)
+                }
+                Err(message) => {
+                    crate::utils::error(message);
+                    std::process::exit(1);
+                }
+            }
+        } else {
+            None
+        };
         let env_base_url = std::env::var(BASE_URL_ENV).ok();
         let options = RunnerOptions {
             base_url: resolve_base_url(args.base_url.as_deref(), env_base_url.as_deref()),
@@ -188,6 +210,7 @@ pub fn run(args: &RecipeRunArgs) {
             width: args.width,
             height: args.height,
             screenshot_dir: root.join(OUTPUT_DIR).join("recipes"),
+            browser,
         };
         match replay(&root, &runs, &options) {
             Ok(outcomes) => {

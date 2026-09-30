@@ -239,7 +239,7 @@ _talos() {
     'mailer\:create:Generate a new mailer class'
     'marketing\:create:Create a marketing post resource inside a module'
     'recipe\:create:Create a YAML recipe listing the steps to test a feature'
-    'recipe\:run:Replay recipe steps in a headless browser'
+    'recipe\:run:Replay recipe steps in a headless or visible browser'
     'middleware\:create:Generate a new middleware class'
     'permission\:create:Generate a new permission class'
     'queue\:create:Generate a new queue class'
@@ -398,6 +398,7 @@ _talos() {
             '*--module=[Only run recipes of these modules, comma-separated]:module:_talos_modules' \
             '--base-url=[Origin relative URLs resolve against (default: $E2E_BASE_URL)]:url' \
             '--timeout=[Milliseconds a step may wait (default: 10000)]:milliseconds' \
+            '--headed[Replay in a new tab of your default browser]' \
             '--width=[Viewport width in pixels (default: 1440)]:pixels' \
             '--height=[Viewport height in pixels (default: 900)]:pixels' \
             '--cwd=[Working directory]:cwd:_files -/'

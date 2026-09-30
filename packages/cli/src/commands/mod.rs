@@ -213,7 +213,7 @@ pub enum Commands {
     #[command(name = "recipe:create")]
     RecipeCreate(recipe_create::RecipeCreateArgs),
 
-    /// Replay recipe steps in a headless browser
+    /// Replay recipe steps in a headless or visible browser
     #[command(name = "recipe:run")]
     RecipeRun(recipe_run::RecipeRunArgs),
 

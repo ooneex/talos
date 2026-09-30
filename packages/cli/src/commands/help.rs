@@ -149,7 +149,10 @@ const COMMANDS: &[(&str, &str)] = &[
         "recipe:create",
         "Create a YAML recipe listing the steps to test a feature",
     ),
-    ("recipe:run", "Replay recipe steps in a headless browser"),
+    (
+        "recipe:run",
+        "Replay recipe steps in a headless or visible browser",
+    ),
     ("repository:create", "Generate a new repository class"),
     (
         "react:component:create",

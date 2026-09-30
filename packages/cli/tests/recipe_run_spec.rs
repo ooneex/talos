@@ -3,9 +3,9 @@ use std::process::{Command, Output};
 
 use clap::Parser;
 use cli::commands::recipe_run::{
-    PlannedStep, RecipeFile, RecipeLoader, RecipeRunArgs, Report, RunOutcome, RunPlan, RunnerEvent,
-    RunnerOptions, StepStatus, discover_recipes, plan_recipe, resolve_base_url, runner_plan_json,
-    select_recipes,
+    Browser, PlannedStep, RecipeFile, RecipeLoader, RecipeRunArgs, Report, RunOutcome, RunPlan,
+    RunnerEvent, RunnerOptions, StepStatus, chromium_browser, discover_recipes,
+    parse_devtools_active_port, plan_recipe, resolve_base_url, runner_plan_json, select_recipes,
 };
 use cli::utils::{Recipe, RecipeStep, recipe_to_yaml};
 
@@ -91,6 +91,7 @@ fn args_default_to_every_recipe_in_a_desktop_viewport() {
     assert_eq!(args.base_url, None);
     assert_eq!(args.timeout, 10_000);
     assert_eq!((args.width, args.height), (1440, 900));
+    assert!(!args.headed);
     assert_eq!(args.cwd, None);
 }
 
@@ -110,12 +111,14 @@ fn args_split_ids_and_modules_on_commas() {
         "390",
         "--height",
         "844",
+        "--headed",
     ]);
 
     assert_eq!(args.id, ["AAA-000001", "AAA-000002", "AAA-000003"]);
     assert_eq!(args.module, ["user", "shop"]);
     assert_eq!(args.base_url.as_deref(), Some("http://localhost:3033"));
     assert_eq!((args.timeout, args.width, args.height), (500, 390, 844));
+    assert!(args.headed);
 }
 
 #[test]
@@ -457,6 +460,7 @@ fn runner_plan_json_carries_the_settings_and_the_steps_of_every_run() {
         width: 390,
         height: 844,
         screenshot_dir: PathBuf::from("/project/var/outputs/recipes"),
+        browser: None,
     };
 
     let plan: serde_json::Value =
@@ -470,6 +474,7 @@ fn runner_plan_json_carries_the_settings_and_the_steps_of_every_run() {
             "width": 390,
             "height": 844,
             "screenshotDir": "/project/var/outputs/recipes",
+            "browser": null,
             "runs": [
                 {
                     "id": "AAA-000001",
@@ -708,6 +713,81 @@ fn report_echoes_stray_output_and_ignores_unknown_indexes() {
     assert_eq!(outcomes, [RunOutcome::Pending]);
 }
 
+#[test]
+fn runner_plan_names_the_browser_to_connect_to() {
+    let options = RunnerOptions {
+        base_url: None,
+        timeout: 500,
+        width: 390,
+        height: 844,
+        screenshot_dir: PathBuf::from("/project/var/outputs/recipes"),
+        browser: Some(Browser {
+            name: "Dia".to_string(),
+            url: "ws://127.0.0.1:9222/devtools/browser/abc".to_string(),
+        }),
+    };
+
+    let plan: serde_json::Value =
+        serde_json::from_str(&runner_plan_json(&[], &options)).expect("json");
+
+    assert_eq!(
+        plan["browser"],
+        serde_json::json!({ "name": "Dia", "url": "ws://127.0.0.1:9222/devtools/browser/abc" })
+    );
+}
+
+#[test]
+fn devtools_active_port_names_the_browser_websocket() {
+    assert_eq!(
+        parse_devtools_active_port("9222\n/devtools/browser/abc-123\n"),
+        Some((
+            9222,
+            "ws://127.0.0.1:9222/devtools/browser/abc-123".to_string()
+        ))
+    );
+    assert_eq!(
+        parse_devtools_active_port(" 51234 \r\n/devtools/browser/x\r\n"),
+        Some((51234, "ws://127.0.0.1:51234/devtools/browser/x".to_string()))
+    );
+    assert_eq!(parse_devtools_active_port(""), None);
+    assert_eq!(parse_devtools_active_port("9222\n"), None);
+    assert_eq!(parse_devtools_active_port("0\n/devtools/browser/x"), None);
+    assert_eq!(
+        parse_devtools_active_port("port\n/devtools/browser/x"),
+        None
+    );
+    assert_eq!(parse_devtools_active_port("9222\ndevtools/browser/x"), None);
+}
+
+#[cfg(target_os = "macos")]
+#[test]
+fn chromium_browsers_are_known_by_their_bundle_id() {
+    assert_eq!(
+        chromium_browser("company.thebrowser.dia"),
+        Some(("Dia", "Dia/User Data"))
+    );
+    assert_eq!(
+        chromium_browser("com.Google.Chrome"),
+        Some(("Google Chrome", "Google/Chrome"))
+    );
+    assert_eq!(chromium_browser("com.apple.Safari"), None);
+    assert_eq!(chromium_browser("org.mozilla.firefox"), None);
+}
+
+#[cfg(all(unix, not(target_os = "macos")))]
+#[test]
+fn chromium_browsers_are_known_by_their_desktop_entry() {
+    assert_eq!(
+        chromium_browser("chromium-browser"),
+        Some(("Chromium", "chromium"))
+    );
+    assert_eq!(
+        chromium_browser("google-chrome"),
+        Some(("Google Chrome", "google-chrome"))
+    );
+    assert_eq!(chromium_browser("firefox"), None);
+}
+
 fn talos(root: &Path, path: &str, args: &[&str]) -> Output {
     Command::new(env!("CARGO_BIN_EXE_talos"))
         .args(args)
@@ -928,6 +1008,141 @@ fn cli_fails_the_runs_a_crashed_runner_left_behind() {
         output_text.contains("2 of 2 recipes failed"),
         "{output_text}"
     );
+}
+
+/// A home whose LaunchServices preferences make `bundle_id` the default
+/// browser (none: Safari, the macOS fallback).
+#[cfg(target_os = "macos")]
+fn home_with_default_browser(root: &Path, bundle_id: Option<&str>) -> PathBuf {
+    let home = root.join("home");
+    let preferences = home.join("Library/Preferences/com.apple.LaunchServices");
+    std::fs::create_dir_all(&preferences).expect("preferences");
+    let handler = bundle_id.map_or(String::new(), |id| {
+        format!(
+            "<dict><key>LSHandlerURLScheme</key><string>https</string>\
+             <key>LSHandlerRoleAll</key><string>{id}</string></dict>"
+        )
+    });
+    std::fs::write(
+        preferences.join("com.apple.launchservices.secure.plist"),
+        format!(
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n\
+             <plist version=\"1.0\"><dict><key>LSHandlers</key><array>\
+             <dict><key>LSHandlerURLScheme</key><string>mailto</string>\
+             <key>LSHandlerRoleAll</key><string>com.apple.mail</string></dict>\
+             {handler}</array></dict></plist>\n"
+        ),
+    )
+    .expect("plist");
+    home
+}
+
+#[cfg(target_os = "macos")]
+fn write_devtools_active_port(home: &Path, port: u16) {
+    let profile = home.join("Library/Application Support/Google/Chrome");
+    std::fs::create_dir_all(&profile).expect("profile");
+    std::fs::write(
+        profile.join("DevToolsActivePort"),
+        format!("{port}\n/devtools/browser/abc-123\n"),
+    )
+    .expect("DevToolsActivePort");
+}
+
+#[cfg(target_os = "macos")]
+fn talos_headed(root: &Path, path: &str, home: &Path) -> Output {
+    Command::new(env!("CARGO_BIN_EXE_talos"))
+        .args(["recipe:run", "--headed"])
+        .current_dir(root)
+        .env("NO_COLOR", "1")
+        .env("PATH", path)
+        .env("HOME", home)
+        .env_remove("E2E_BASE_URL")
+        .output()
+        .expect("talos should run")
+}
+
+#[cfg(target_os = "macos")]
+#[test]
+fn cli_headed_hands_the_default_browser_devtools_endpoint_to_the_runner() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    write_recipe(dir.path(), "user", "AAA-000001", &[], vec![wait(1)]);
+    let path = fake_bun(
+        dir.path(),
+        &[
+            r#"{"type":"run","run":0}"#,
+            r#"{"type":"step","run":0,"step":0,"status":"passed","duration":1}"#,
+        ],
+        0,
+    );
+    let home = home_with_default_browser(dir.path(), Some("com.google.chrome"));
+    let browser = std::net::TcpListener::bind("127.0.0.1:0").expect("listener");
+    let port = browser.local_addr().expect("address").port();
+    write_devtools_active_port(&home, port);
+
+    let output = talos_headed(dir.path(), &path, &home);
+
+    let output_text = text(&output);
+    assert!(output.status.success(), "{output_text}");
+    assert!(
+        output_text.contains("Replaying in Google Chrome"),
+        "{output_text}"
+    );
+    let plan: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(dir.path().join("plan.json")).expect("plan"))
+            .expect("json");
+    assert_eq!(
+        plan["browser"],
+        serde_json::json!({
+            "name": "Google Chrome",
+            "url": format!("ws://127.0.0.1:{port}/devtools/browser/abc-123"),
+        })
+    );
+}
+
+#[cfg(target_os = "macos")]
+#[test]
+fn cli_headed_explains_why_the_default_browser_cannot_be_driven() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    write_recipe(dir.path(), "user", "AAA-000001", &[], vec![wait(1)]);
+    let path = fake_bun(dir.path(), &[], 0);
+
+    let safari = talos_headed(
+        dir.path(),
+        &path,
+        &home_with_default_browser(&dir.path().join("safari"), None),
+    );
+    let chrome_home =
+        home_with_default_browser(&dir.path().join("chrome"), Some("com.google.chrome"));
+    let debugging_off = talos_headed(dir.path(), &path, &chrome_home);
+    let closed_port = std::net::TcpListener::bind("127.0.0.1:0")
+        .and_then(|listener| listener.local_addr())
+        .expect("port")
+        .port();
+    write_devtools_active_port(&chrome_home, closed_port);
+    let not_running = talos_headed(dir.path(), &path, &chrome_home);
+
+    for (output, expected) in [
+        (&safari, "com.apple.Safari is not a Chromium browser"),
+        (
+            &debugging_off,
+            "Google Chrome does not accept remote debugging",
+        ),
+        (
+            &not_running,
+            "Google Chrome is not running with remote debugging on",
+        ),
+    ] {
+        assert_eq!(output.status.code(), Some(1), "{}", text(output));
+        assert!(text(output).contains(expected), "{}", text(output));
+    }
+    for output in [&debugging_off, &not_running] {
+        assert!(
+            text(output).contains("chrome://inspect/#remote-debugging"),
+            "{}",
+            text(output)
+        );
+    }
+    assert!(!dir.path().join("plan.json").exists());
 }
 
 #[cfg(target_os = "macos")]

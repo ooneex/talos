@@ -2,8 +2,10 @@
 //
 // The CLI embeds this file, writes it to a temporary directory together with a
 // JSON plan, and runs `bun run.ts plan.json`. Every run gets a fresh browser
-// view; its steps run in order and the first failure stops the run. Progress
-// goes to stdout as one JSON event per line, which the CLI renders.
+// view — headless, or with `--headed` a new tab in the open window of the
+// user's own browser, reached over its DevTools endpoint; its steps run in
+// order and the first failure stops the run. Progress goes to stdout as one
+// JSON event per line, which the CLI renders.
 
 type Step =
   | { action: "navigate"; url: string }
@@ -19,6 +21,7 @@ type Plan = {
   width: number;
   height: number;
   screenshotDir: string;
+  browser: { name: string; url: string } | null;
   runs: { id: string; steps: Step[] }[];
 };
 
@@ -250,15 +253,77 @@ const screenshot = async (view: Bun.WebView, plan: Plan, id: string): Promise<st
   }
 };
 
-const replay = async (plan: Plan, index: number, run: Plan["runs"][number]): Promise<void> => {
-  emit({ type: "run", run: index });
+const WINDOW_ONLY_PARAMS = new Set(["newWindow", "width", "height"]);
 
-  await using view = new Bun.WebView({
-    backend: process.platform === "darwin" ? "webkit" : { type: "chrome", url: false },
-    width: plan.width,
-    height: plan.height,
-    dataStore: "ephemeral",
+const asTab = (message: string): string => {
+  if (!message.includes('"Target.createTarget"')) {
+    return message;
+  }
+  const command = JSON.parse(message) as { method?: string; params?: Record<string, unknown> };
+  if (command.method !== "Target.createTarget") {
+    return message;
+  }
+  const params = Object.fromEntries(
+    Object.entries(command.params ?? {}).filter(([name]) => !WINDOW_ONLY_PARAMS.has(name)),
+  );
+  return JSON.stringify({ ...command, params });
+};
+
+type Relay = { browser: WebSocket; opened: Promise<void> };
+
+// Bun.WebView opens every Chrome view with `Target.createTarget { newWindow:
+// true, width, height }`. Its DevTools traffic goes through this local relay,
+// which drops those fields, so each recipe opens as a new tab of the window the
+// user already has open instead of a window of its own.
+const relayAsTabs = (browserUrl: string): string => {
+  const server = Bun.serve({
+    hostname: "127.0.0.1",
+    port: 0,
+    fetch: (request, server) =>
+      server.upgrade(request, { data: {} as Relay })
+        ? undefined
+        : new Response("Expected a DevTools WebSocket", { status: 426 }),
+    websocket: {
+      data: {} as Relay,
+      // DevTools stays silent through long waits, and screenshots are large.
+      idleTimeout: 0,
+      backpressureLimit: 1024 ** 3,
+      open: (client) => {
+        const browser = new WebSocket(browserUrl);
+        client.data.browser = browser;
+        client.data.opened = new Promise((resolve) => browser.addEventListener("open", () => resolve()));
+        browser.addEventListener("message", (event) => client.send(event.data));
+        browser.addEventListener("close", () => client.close());
+      },
+      message: (client, message) => {
+        const { browser, opened } = client.data;
+        const relayed = asTab(String(message));
+        void opened.then(() => browser.send(relayed));
+      },
+      close: (client) => {
+        const { browser, opened } = client.data;
+        void opened.then(() => browser.close());
+      },
+    },
   });
+  server.unref();
+  return `ws://127.0.0.1:${server.port}${new URL(browserUrl).pathname}`;
+};
+
+// `devtools` is the user's browser, reached through `relayAsTabs`: its views
+// are tabs of its own profile, so a login the user already has carries over.
+// Only the tabs the runner opened are ever closed — the browser, the user's
+// tabs, cookies and storage stay as they were.
+const openView = (plan: Plan, devtools: string | null): Bun.WebView => {
+  const { width, height } = plan;
+  if (devtools !== null) {
+    return new Bun.WebView({ backend: { type: "chrome", url: devtools }, width, height });
+  }
+  const backend: Bun.WebView.Backend = process.platform === "darwin" ? "webkit" : { type: "chrome", url: false };
+  return new Bun.WebView({ backend, width, height, dataStore: "ephemeral" });
+};
+
+const replay = async (plan: Plan, index: number, run: Plan["runs"][number], view: Bun.WebView): Promise<void> => {
   const tracker = track(view);
 
   for (const [position, step] of run.steps.entries()) {
@@ -304,14 +369,27 @@ const main = async (): Promise<void> => {
     return;
   }
 
-  for (const [index, run] of plan.runs.entries()) {
-    try {
-      await replay(plan, index, run);
-    } catch (error) {
-      // The view itself failed (no browser, crashed renderer): the CLI marks
-      // what this run had left as not run and moves on to the next one.
-      emit({ type: "fatal", run: index, error: messageOf(error) });
+  // A view closes only once the next one exists: closing the last view drops
+  // the DevTools connection, and a browser whose remote debugging was turned
+  // on at chrome://inspect asks the user to allow every new connection.
+  const devtools = plan.browser === null ? null : relayAsTabs(plan.browser.url);
+  let previous: Bun.WebView | undefined;
+  try {
+    for (const [index, run] of plan.runs.entries()) {
+      emit({ type: "run", run: index });
+      try {
+        const view = openView(plan, devtools);
+        previous?.close();
+        previous = view;
+        await replay(plan, index, run, view);
+      } catch (error) {
+        // The view itself failed (no browser, crashed renderer): the CLI marks
+        // what this run had left as not run and moves on to the next one.
+        emit({ type: "fatal", run: index, error: messageOf(error) });
+      }
     }
+  } finally {
+    previous?.close();
   }
 };
 

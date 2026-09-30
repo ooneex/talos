@@ -261,7 +261,7 @@ seed:create seed:run"
       [[ $flag == --cwd ]] && dirs=1
       ;;
     recipe:run)
-      opts="--id --module --base-url --timeout --width --height --cwd"
+      opts="--id --module --base-url --timeout --headed --width --height --cwd"
       [[ $flag == --id ]] && candidates="$(_talos_recipe_ids "$value")"
       [[ $flag == --module ]] && candidates="$(_talos_modules)"
       [[ $flag == --cwd ]] && dirs=1
