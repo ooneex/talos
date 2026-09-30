@@ -1,7 +1,7 @@
 // Replays recipes — `modules/<module>/recipes/<ID>.yml`, written by
 // `recipe:create` — in a headless Bun.WebView browser, or with `--headed` in a
-// new tab of the user's default browser, in the window they have open, so they
-// can watch. A headed run shares that browser's profile, so it starts signed in
+// new tab of the user's default browser, in the window they have open, brought
+// to the front so they can watch. A headed run shares that browser's profile, so it starts signed in
 // wherever the user already is, and only ever closes the tabs it opened — all
 // but the last, which stays on the page the run ended on.
 //

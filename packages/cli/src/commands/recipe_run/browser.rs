@@ -14,8 +14,28 @@ use serde::Serialize;
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Browser {
     pub name: String,
+    /// What the OS reports as the default browser (see `KnownBrowser::ids`).
+    #[serde(skip)]
+    pub id: String,
     /// `ws://127.0.0.1:<port>/devtools/browser/<id>`.
     pub url: String,
+}
+
+impl Browser {
+    /// Brings the browser to the front, so the user watches the run from its
+    /// first step. Elsewhere than macOS, the tab the runner opens already
+    /// raises its window.
+    pub fn focus(&self) {
+        #[cfg(target_os = "macos")]
+        {
+            let script = format!("tell application id \"{}\" to activate", self.id);
+            let _ = Command::new("osascript")
+                .args(["-e", &script])
+                .stdout(std::process::Stdio::null())
+                .stderr(std::process::Stdio::null())
+                .status();
+        }
+    }
 }
 
 /// A Chromium browser `--headed` can drive.
@@ -331,6 +351,7 @@ pub fn default_browser() -> Result<Browser, String> {
     }
     Ok(Browser {
         name: name.to_string(),
+        id,
         url,
     })
 }

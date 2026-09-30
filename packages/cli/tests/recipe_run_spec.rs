@@ -818,6 +818,7 @@ fn runner_plan_names_the_browser_to_connect_to() {
         screenshot_dir: PathBuf::from("/project/var/outputs/recipes"),
         browser: Some(Browser {
             name: "Dia".to_string(),
+            id: "company.thebrowser.dia".to_string(),
             url: "ws://127.0.0.1:9222/devtools/browser/abc".to_string(),
         }),
     };

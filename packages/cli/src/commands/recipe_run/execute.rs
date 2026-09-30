@@ -212,6 +212,7 @@ pub fn run(args: &RecipeRunArgs) {
                         "Replaying in {} — each recipe opens in a new tab",
                         browser.name
                     ));
+                    browser.focus();
                     Some(browser)
                 }
                 Err(message) => {
