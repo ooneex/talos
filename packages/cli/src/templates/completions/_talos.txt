@@ -670,7 +670,7 @@ _talos() {
             '--modules=-[Module name(s), comma-separated (default: all)]::modules:_talos_modules' \
             '--packages=-[Alias for --modules, comma-separated]::packages:_talos_modules' \
             '--drop[Re-run every seed from scratch, ignoring the cache]' \
-            '--env=[APP_ENV the seeds run under]:env' \
+            '--env=[APP_ENV the seeds run under]:env:(local development staging testing test qa uat integration preview demo sandbox beta canary hotfix production)' \
             '--logs[Print the output of every module that fails]' \
             '--no-cache[Skip the per-seed run cache]'
           ;;

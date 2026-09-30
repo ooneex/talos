@@ -413,6 +413,7 @@ threads whatsapp telegram messenger discord reddit medium cloudflare bunny s3 op
     seed:run)
       opts="--modules --packages --drop --env --logs --no-cache"
       [[ $flag == --modules || $flag == --packages ]] && candidates="$(_talos_modules)"
+      [[ $flag == --env ]] && candidates="local development staging testing test qa uat integration preview demo sandbox beta canary hotfix production"
       ;;
     migration:down)
       opts="--modules --packages --logs --version"
