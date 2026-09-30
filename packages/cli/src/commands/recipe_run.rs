@@ -2,10 +2,13 @@
 // `recipe:create` — in a headless Bun.WebView browser, or with `--headed` in a
 // new tab of the user's default browser, in the window they have open, so they
 // can watch. A headed run shares that browser's profile, so it starts signed in
-// wherever the user already is, and only ever closes the tabs it opened.
+// wherever the user already is, and only ever closes the tabs it opened — all
+// but the last, which stays on the page the run ended on.
 //
 // Each target runs in a fresh view: the steps of its dependencies first (depth
-// first, each recipe once), then its own. The first failing step stops that
+// first, each recipe once), then its own. Without `--id`, a recipe that another
+// run already replays first, as its dependency, is not replayed on its own
+// again. The first failing step stops that
 // run and leaves a screenshot in `var/outputs/recipes/<ID>.png`. The browser
 // work happens in an embedded Bun script (`templates/recipe/run.ts`) that
 // streams one JSON event per line, which this command renders.
@@ -20,13 +23,15 @@ pub(super) mod report;
 pub use browser::{Browser, chromium_browser, default_browser, parse_devtools_active_port};
 pub use execute::{BASE_URL_ENV, RunnerOptions, replay, resolve_base_url, run, runner_plan_json};
 pub use plan::{
-    PlannedStep, RecipeFile, RecipeLoader, RunPlan, discover_recipes, plan_recipe, select_recipes,
+    CoveredRun, PlannedStep, RecipeFile, RecipeLoader, RunPlan, discover_recipes,
+    drop_covered_runs, plan_recipe, select_recipes,
 };
 pub use report::{Report, RunOutcome, RunnerEvent, StepStatus};
 
 #[derive(Args, Debug)]
 pub struct RecipeRunArgs {
-    /// Recipe IDs to run, in this order (comma-separated; defaults to every recipe).
+    /// Recipe IDs to run, in this order (comma-separated; defaults to every
+    /// recipe, except those another run already replays as its dependency).
     #[arg(long, value_delimiter = ',', num_args = 1..)]
     pub id: Vec<String>,
 
@@ -46,7 +51,8 @@ pub struct RecipeRunArgs {
     /// Replay in a new tab of your default browser's open window, where you can
     /// watch, instead of headless. It must be a Chromium browser with remote debugging on
     /// (chrome://inspect/#remote-debugging); runs reuse the session you are
-    /// signed in with and leave it, the browser and your tabs untouched.
+    /// signed in with and leave it, the browser and your tabs untouched. The
+    /// last recipe's tab stays open on the page the run ended on.
     #[arg(long)]
     pub headed: bool,
 

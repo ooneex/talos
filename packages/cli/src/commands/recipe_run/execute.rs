@@ -8,7 +8,9 @@ use serde::Serialize;
 
 use super::RecipeRunArgs;
 use super::browser::{Browser, default_browser};
-use super::plan::{RecipeLoader, RunPlan, discover_recipes, plan_recipe, select_recipes};
+use super::plan::{
+    RecipeLoader, RunPlan, discover_recipes, drop_covered_runs, plan_recipe, select_recipes,
+};
 use super::report::{Report, RunOutcome};
 use crate::utils::{OUTPUT_DIR, RecipeStep, current_dir, ensure_bin, format_duration};
 
@@ -182,6 +184,23 @@ pub fn run(args: &RecipeRunArgs) {
         }
     }
 
+    // Recipes picked with --id all run as asked; otherwise a recipe another
+    // run replays first, as its dependency, is not replayed again on its own.
+    let covered = if args.id.is_empty() {
+        let (kept, covered) = drop_covered_runs(runs);
+        runs = kept;
+        covered
+    } else {
+        Vec::new()
+    };
+    for run in &covered {
+        crate::utils::info(format!(
+            "{} runs at the start of {}; not replayed on its own",
+            run.id, run.by
+        ));
+    }
+    let total = targets.len() - covered.len();
+
     if !runs.is_empty() {
         if !ensure_bin("bun") {
             std::process::exit(1);
@@ -227,7 +246,7 @@ pub fn run(args: &RecipeRunArgs) {
         println!();
     }
 
-    let passed = targets.len() - failed - skipped;
+    let passed = total - failed - skipped;
     let elapsed = style(format!(
         "({})",
         format_duration(started.elapsed().as_millis() as u64)
@@ -243,9 +262,8 @@ pub fn run(args: &RecipeRunArgs) {
             "{} {} {elapsed}",
             style("✖").red().bold(),
             style(format!(
-                "{failed} of {} {} failed{skipped_note}",
-                targets.len(),
-                plural(targets.len())
+                "{failed} of {total} {} failed{skipped_note}",
+                plural(total)
             ))
             .red()
         );

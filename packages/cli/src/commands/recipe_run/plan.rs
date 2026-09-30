@@ -284,3 +284,45 @@ pub fn plan_recipe<'a>(
         steps: planner.steps,
     })
 }
+
+/// A run left out because a longer run already replays it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CoveredRun {
+    pub id: String,
+    pub by: String,
+}
+
+/// Leaves out the runs another run already replays. Every run starts in a
+/// fresh view, so a run whose steps open with all of another run's steps —
+/// a recipe replayed first as a dependency — covers it, and replaying that
+/// one on its own again would only repeat it. Each covered run names the
+/// longest run covering it, which is itself never covered.
+pub fn drop_covered_runs(runs: Vec<RunPlan>) -> (Vec<RunPlan>, Vec<CoveredRun>) {
+    let covers = |longer: &RunPlan, shorter: &RunPlan| {
+        longer.steps.len() > shorter.steps.len()
+            && longer
+                .steps
+                .iter()
+                .zip(&shorter.steps)
+                .all(|(left, right)| left.step == right.step)
+    };
+    let covering: Vec<Option<String>> = runs
+        .iter()
+        .map(|run| {
+            runs.iter()
+                .filter(|other| covers(other, run))
+                .max_by_key(|other| other.steps.len())
+                .map(|other| other.id.clone())
+        })
+        .collect();
+
+    let mut kept = Vec::new();
+    let mut covered = Vec::new();
+    for (run, by) in runs.into_iter().zip(covering) {
+        match by {
+            Some(by) => covered.push(CoveredRun { id: run.id, by }),
+            None => kept.push(run),
+        }
+    }
+    (kept, covered)
+}

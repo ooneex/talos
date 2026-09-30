@@ -3,9 +3,10 @@ use std::process::{Command, Output};
 
 use clap::Parser;
 use cli::commands::recipe_run::{
-    Browser, PlannedStep, RecipeFile, RecipeLoader, RecipeRunArgs, Report, RunOutcome, RunPlan,
-    RunnerEvent, RunnerOptions, StepStatus, chromium_browser, discover_recipes,
-    parse_devtools_active_port, plan_recipe, resolve_base_url, runner_plan_json, select_recipes,
+    Browser, CoveredRun, PlannedStep, RecipeFile, RecipeLoader, RecipeRunArgs, Report, RunOutcome,
+    RunPlan, RunnerEvent, RunnerOptions, StepStatus, chromium_browser, discover_recipes,
+    drop_covered_runs, parse_devtools_active_port, plan_recipe, resolve_base_url, runner_plan_json,
+    select_recipes,
 };
 use cli::utils::{Recipe, RecipeStep, recipe_to_yaml};
 
@@ -434,6 +435,100 @@ fn run_plan(id: &str, steps: &[(&str, RecipeStep)]) -> RunPlan {
             })
             .collect(),
     }
+}
+
+fn run_ids(runs: &[RunPlan]) -> Vec<&str> {
+    runs.iter().map(|run| run.id.as_str()).collect()
+}
+
+#[test]
+fn drop_covered_runs_leaves_out_a_run_another_one_opens_with() {
+    let runs = vec![
+        run_plan("AAA-000001", &[("AAA-000001", wait(1))]),
+        run_plan(
+            "AAA-000002",
+            &[("AAA-000001", wait(1)), ("AAA-000002", click("#go"))],
+        ),
+        run_plan("AAA-000003", &[("AAA-000003", wait(3))]),
+    ];
+
+    let (kept, covered) = drop_covered_runs(runs);
+
+    assert_eq!(run_ids(&kept), ["AAA-000002", "AAA-000003"]);
+    assert_eq!(
+        covered,
+        [CoveredRun {
+            id: "AAA-000001".to_string(),
+            by: "AAA-000002".to_string(),
+        }]
+    );
+}
+
+#[test]
+fn drop_covered_runs_compares_steps_not_their_source_labels() {
+    let runs = vec![
+        run_plan("AAA-000001", &[("AAA-000001", wait(1))]),
+        run_plan(
+            "BBB-000001",
+            &[("user/AAA-000001", wait(1)), ("BBB-000001", wait(2))],
+        ),
+    ];
+
+    let (kept, covered) = drop_covered_runs(runs);
+
+    assert_eq!(run_ids(&kept), ["BBB-000001"]);
+    assert_eq!(covered[0].id, "AAA-000001");
+}
+
+#[test]
+fn drop_covered_runs_names_the_longest_run_which_is_kept() {
+    let runs = vec![
+        run_plan("AAA-000001", &[("AAA-000001", wait(1))]),
+        run_plan(
+            "AAA-000002",
+            &[("AAA-000001", wait(1)), ("AAA-000002", wait(2))],
+        ),
+        run_plan(
+            "AAA-000003",
+            &[
+                ("AAA-000001", wait(1)),
+                ("AAA-000002", wait(2)),
+                ("AAA-000003", wait(3)),
+            ],
+        ),
+    ];
+
+    let (kept, covered) = drop_covered_runs(runs);
+
+    assert_eq!(run_ids(&kept), ["AAA-000003"]);
+    assert!(covered.iter().all(|run| run.by == "AAA-000003"));
+}
+
+#[test]
+fn drop_covered_runs_keeps_runs_a_dependency_does_not_open() {
+    // A dependency listed after another does not start from a fresh view.
+    let runs = vec![
+        run_plan("AAA-000001", &[("AAA-000001", wait(1))]),
+        run_plan("AAA-000002", &[("AAA-000002", wait(2))]),
+        run_plan(
+            "AAA-000003",
+            &[("AAA-000001", wait(1)), ("AAA-000002", wait(2))],
+        ),
+        run_plan("AAA-000004", &[("AAA-000004", wait(4))]),
+        run_plan("AAA-000005", &[("AAA-000005", wait(4))]),
+    ];
+
+    let (kept, covered) = drop_covered_runs(runs);
+
+    assert_eq!(
+        run_ids(&kept),
+        ["AAA-000002", "AAA-000003", "AAA-000004", "AAA-000005"]
+    );
+    assert_eq!(run_ids_of(&covered), ["AAA-000001"]);
+}
+
+fn run_ids_of(covered: &[CoveredRun]) -> Vec<&str> {
+    covered.iter().map(|run| run.id.as_str()).collect()
 }
 
 #[test]
@@ -954,6 +1049,72 @@ fn cli_hands_the_plan_to_bun_outside_the_project_and_renders_its_events() {
 
     let cwd = std::fs::read_to_string(root.join("cwd.txt")).expect("cwd");
     assert!(!Path::new(cwd.trim()).starts_with(&root), "{cwd}");
+}
+
+#[cfg(unix)]
+#[test]
+fn cli_does_not_replay_a_dependency_another_run_opens_with() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let root = std::fs::canonicalize(dir.path()).expect("root");
+    write_recipe(
+        &root,
+        "user",
+        "AAA-000002",
+        &["AAA-000003"],
+        vec![click("#go")],
+    );
+    write_recipe(&root, "user", "AAA-000003", &[], vec![wait(1)]);
+    let path = fake_bun(
+        &root,
+        &[
+            r#"{"type":"run","run":0}"#,
+            r#"{"type":"step","run":0,"step":0,"status":"passed","duration":4}"#,
+            r#"{"type":"step","run":0,"step":1,"status":"passed","duration":8}"#,
+        ],
+        0,
+    );
+
+    let output = talos(&root, &path, &["recipe:run"]);
+
+    let output_text = text(&output);
+    assert!(output.status.success(), "{output_text}");
+    assert!(
+        output_text.contains("AAA-000003 runs at the start of AAA-000002; not replayed on its own"),
+        "{output_text}"
+    );
+    assert!(output_text.contains("1 recipe passed"), "{output_text}");
+    let plan: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(root.join("plan.json")).expect("plan"))
+            .expect("json");
+    assert_eq!(plan["runs"].as_array().map(Vec::len), Some(1));
+    assert_eq!(plan["runs"][0]["id"], "AAA-000002");
+}
+
+#[cfg(unix)]
+#[test]
+fn cli_replays_every_recipe_picked_with_id() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let root = std::fs::canonicalize(dir.path()).expect("root");
+    write_recipe(
+        &root,
+        "user",
+        "AAA-000002",
+        &["AAA-000003"],
+        vec![click("#go")],
+    );
+    write_recipe(&root, "user", "AAA-000003", &[], vec![wait(1)]);
+    let path = fake_bun(&root, &[], 0);
+
+    talos(
+        &root,
+        &path,
+        &["recipe:run", "--id", "AAA-000002,AAA-000003"],
+    );
+
+    let plan: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(root.join("plan.json")).expect("plan"))
+            .expect("json");
+    assert_eq!(plan["runs"].as_array().map(Vec::len), Some(2));
 }
 
 #[cfg(unix)]

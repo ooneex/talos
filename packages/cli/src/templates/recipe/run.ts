@@ -312,8 +312,9 @@ const relayAsTabs = (browserUrl: string): string => {
 
 // `devtools` is the user's browser, reached through `relayAsTabs`: its views
 // are tabs of its own profile, so a login the user already has carries over.
-// Only the tabs the runner opened are ever closed — the browser, the user's
-// tabs, cookies and storage stay as they were.
+// Only the tabs the runner opened are ever closed, and the last one stays open
+// on the page the run ended on — the browser, the user's tabs, cookies and
+// storage stay as they were.
 const openView = (plan: Plan, devtools: string | null): Bun.WebView => {
   const { width, height } = plan;
   if (devtools !== null) {
@@ -389,7 +390,12 @@ const main = async (): Promise<void> => {
       }
     }
   } finally {
-    previous?.close();
+    // A headed run leaves its last tab on the page the run ended on, so the
+    // user sees where the recipe finished instead of being dropped back on a
+    // tab of their own.
+    if (devtools === null) {
+      previous?.close();
+    }
   }
 };
 
