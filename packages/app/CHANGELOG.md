@@ -179,3 +179,9 @@
 
 - Keep handshake context and honor channel-only replies|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([59fda4f5](https://github.com/ooneex/talos/commit/59fda4f5))
 
+## [1.9.0](https://github.com/ooneex/talos/releases/tag/@talosjs/app@1.9.0) - 2026-10-01
+
+### Added
+
+- Add onStop lifecycle and Bun server options|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([0c2c528f](https://github.com/ooneex/talos/commit/0c2c528f))
+
