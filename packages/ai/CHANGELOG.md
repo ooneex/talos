@@ -84,3 +84,9 @@
 
 ## [1.3.2](https://github.com/ooneex/talos/releases/tag/@talosjs/ai@1.3.2) - 2026-09-26
 
+## [1.3.3](https://github.com/ooneex/talos/releases/tag/@talosjs/ai@1.3.3) - 2026-10-01
+
+### Changed
+
+- Update model references to deepseek-v4.1-flash|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([55b6edd0](https://github.com/ooneex/talos/commit/55b6edd0))
+
