@@ -78,12 +78,17 @@ class MockOnStart {
   handle = mock(() => {});
 }
 
+class MockOnStop {
+  handle = mock((_server: unknown): void | Promise<void> => {});
+}
+
 // Register mock classes with the container before tests run
 container.add(MockLogger);
 container.add(MockCache);
 container.add(MockRateLimiter);
 container.add(MockOnException);
 container.add(MockOnStart);
+container.add(MockOnStop);
 
 const createMockConfig = (overrides: Record<string, unknown> = {}): AppConfigType => {
   const base = {
@@ -213,6 +218,17 @@ describe("App", () => {
 
       expect(container.has(MockOnStart)).toBe(true);
       expect(container.hasConstant("app.event.start")).toBe(true);
+    });
+
+    test("adds onStop to container and registers app.event.stop constant when provided", async () => {
+      const config = createMockConfig({
+        onStop: MockOnStop as unknown as AppConfigType["onStop"],
+      });
+
+      await new App(config).init();
+
+      expect(container.has(MockOnStop)).toBe(true);
+      expect(container.hasConstant("app.event.stop")).toBe(true);
     });
 
     test("registers logger constant", async () => {
@@ -843,6 +859,91 @@ hierarchy:
       exitSpy.mockRestore();
     });
 
+    describe("onStop", () => {
+      type SignalListenerType = () => Promise<void>;
+
+      const runWithOnStop = async (handle?: (server: unknown) => void | Promise<void>) => {
+        const serveSpy = spyOn(Bun, "serve").mockReturnValue(fakeServer as unknown as ReturnType<typeof Bun.serve>);
+        const exitSpy = spyOn(process, "exit").mockImplementation((() => undefined) as never);
+        const listeners = new Map<string, SignalListenerType>();
+        const onceSpy = spyOn(process, "once").mockImplementation(((event: string, listener: SignalListenerType) => {
+          listeners.set(event, listener);
+          return process;
+        }) as never);
+        const offSpy = spyOn(process, "off");
+
+        const app = new App(createMockConfig({ onStop: MockOnStop as unknown as AppConfigType["onStop"] }));
+        const onStop = container.getConstant("app.event.stop") as MockOnStop;
+        onStop.handle.mockReset();
+        if (handle) {
+          onStop.handle.mockImplementation(handle);
+        }
+
+        await app.run();
+
+        const restore = () => {
+          serveSpy.mockRestore();
+          exitSpy.mockRestore();
+          onceSpy.mockRestore();
+          offSpy.mockRestore();
+        };
+
+        return { listeners, onStop, exitSpy, offSpy, restore };
+      };
+
+      test("listens for SIGINT and SIGTERM when onStop is provided", async () => {
+        const { listeners, onStop, restore } = await runWithOnStop();
+
+        expect([...listeners.keys()].sort()).toEqual(["SIGINT", "SIGTERM"]);
+        expect(onStop.handle).not.toHaveBeenCalled();
+
+        restore();
+      });
+
+      test("calls the onStop handler with the server then exits with 0 on a signal", async () => {
+        const { listeners, onStop, exitSpy, offSpy, restore } = await runWithOnStop();
+        const stop = listeners.get("SIGTERM") as SignalListenerType;
+
+        await stop();
+
+        expect(onStop.handle).toHaveBeenCalledTimes(1);
+        expect(onStop.handle).toHaveBeenCalledWith(fakeServer);
+        expect(offSpy).toHaveBeenCalledWith("SIGINT", stop);
+        expect(offSpy).toHaveBeenCalledWith("SIGTERM", stop);
+        expect(exitSpy).toHaveBeenCalledWith(0);
+
+        restore();
+      });
+
+      test("exits with 1 when the onStop handler throws", async () => {
+        const { listeners, exitSpy, restore } = await runWithOnStop(() => {
+          throw new Exception("Stop failed");
+        });
+
+        await (listeners.get("SIGINT") as SignalListenerType)();
+
+        expect(exitSpy).toHaveBeenCalledWith(1);
+        expect(exitSpy).not.toHaveBeenCalledWith(0);
+
+        restore();
+      });
+
+      test("does not listen for signals when onStop is not provided", async () => {
+        const serveSpy = spyOn(Bun, "serve").mockReturnValue(fakeServer as unknown as ReturnType<typeof Bun.serve>);
+        const exitSpy = spyOn(process, "exit").mockImplementation((() => undefined) as never);
+        const onceSpy = spyOn(process, "once");
+
+        await new App(createMockConfig()).run();
+
+        expect(onceSpy).not.toHaveBeenCalledWith("SIGINT", expect.any(Function));
+        expect(onceSpy).not.toHaveBeenCalledWith("SIGTERM", expect.any(Function));
+
+        serveSpy.mockRestore();
+        exitSpy.mockRestore();
+        onceSpy.mockRestore();
+      });
+    });
+
     test("starts every configured cron job", async () => {
       const serveSpy = spyOn(Bun, "serve").mockReturnValue(fakeServer as unknown as ReturnType<typeof Bun.serve>);
       const exitSpy = spyOn(process, "exit").mockImplementation((() => undefined) as never);
@@ -1125,6 +1226,52 @@ hierarchy:
         sendPings: false,
         perMessageDeflate: false,
       });
+
+      serveSpy.mockRestore();
+      exitSpy.mockRestore();
+    });
+
+    test("passes server config options through to Bun.serve", async () => {
+      const serveSpy = spyOn(Bun, "serve").mockReturnValue({
+        ...fakeServer,
+        publish: mock(() => {}),
+      } as unknown as ReturnType<typeof Bun.serve>);
+      const exitSpy = spyOn(process, "exit").mockImplementation((() => undefined) as never);
+
+      const server = {
+        maxRequestBodySize: 512 * 1024 * 1024,
+        idleTimeout: 30,
+        http1: true,
+        http2: true,
+        http3: false,
+        reusePort: true,
+        ipv6Only: false,
+        id: "app",
+      };
+      const app = new App(createMockConfig({ server }));
+      await app.run();
+
+      const serveOptions = (serveSpy.mock.calls as unknown[][])[0]?.[0] as object;
+
+      expect(serveOptions).toMatchObject(server);
+
+      serveSpy.mockRestore();
+      exitSpy.mockRestore();
+    });
+
+    test("leaves maxRequestBodySize to Bun's default when not configured", async () => {
+      const serveSpy = spyOn(Bun, "serve").mockReturnValue({
+        ...fakeServer,
+        publish: mock(() => {}),
+      } as unknown as ReturnType<typeof Bun.serve>);
+      const exitSpy = spyOn(process, "exit").mockImplementation((() => undefined) as never);
+
+      const app = new App(createMockConfig());
+      await app.run();
+
+      const serveOptions = (serveSpy.mock.calls as unknown[][])[0]?.[0] as object;
+
+      expect(serveOptions).not.toHaveProperty("maxRequestBodySize");
 
       serveSpy.mockRestore();
       exitSpy.mockRestore();

@@ -16,7 +16,7 @@ import { AssertPort } from "@talosjs/validation/constraints/AssertPort";
 import type { BunRequest, Server, ServerWebSocket } from "bun";
 import { logger as loggerFunc } from "./logger";
 import { formatSocketRoutes, socketRouteHandler } from "./socketRouteUtils";
-import type { AppConfigType, IAppEventStart } from "./types";
+import type { AppConfigType, IAppEventStart, IAppEventStop } from "./types";
 import type { HttpRouteHandlerType } from "./utils";
 import {
   buildHttpContext,
@@ -34,7 +34,7 @@ export class App {
   // (e.g. RedisCache needs CACHE_REDIS_URL), so this must never run before the
   // environment files have been layered onto Bun.env.
   private registerServices(): void {
-    const { loggers, cronJobs, cache, rateLimiter, onException, onStart } = this.config;
+    const { loggers, cronJobs, cache, rateLimiter, onException, onStart, onStop } = this.config;
 
     loggers.forEach((log) => {
       if (!container.has(log)) {
@@ -57,6 +57,13 @@ export class App {
         container.add(onStart);
       }
       container.addConstant("app.event.start", container.get(onStart));
+    }
+
+    if (onStop) {
+      if (!container.has(onStop)) {
+        container.add(onStop);
+      }
+      container.addConstant("app.event.stop", container.get(onStop));
     }
 
     if (cache) {
@@ -173,6 +180,7 @@ export class App {
     const server = this.createServer(env, middlewares as MiddlewareClassType[], trim(routing.prefix, "/"));
 
     await this.handleStart(server);
+    this.registerStop(server, logger);
 
     logServerStart(this.buildServerStartInfo(server, env));
     this.startCronJobs();
@@ -229,6 +237,7 @@ export class App {
       port: env.PORT,
       hostname: env.HOST_NAME,
       development: env.isLocal,
+      ...this.config.server,
       routes: this.buildRoutes(prefix, middlewares),
       websocket: this.buildWebsocketHandlers(() => server, middlewares),
     });
@@ -299,6 +308,33 @@ export class App {
 
     const appEventStart = container.getConstant<IAppEventStart>("app.event.start");
     await appEventStart.handle(server);
+  }
+
+  /**
+   * Listeners are registered with `once`, so a second signal while `onStop` is
+   * still running falls back to Bun's default handling and kills the process.
+   */
+  private registerStop(server: Server<unknown>, logger: TerminalLogger): void {
+    if (!this.config.onStop) {
+      return;
+    }
+
+    const appEventStop = container.getConstant<IAppEventStop>("app.event.stop");
+    const stop = async (): Promise<void> => {
+      process.off("SIGINT", stop);
+      process.off("SIGTERM", stop);
+
+      try {
+        await appEventStop.handle(server);
+        process.exit(0);
+      } catch (error: unknown) {
+        logger.error(error as IException);
+        process.exit(1);
+      }
+    };
+
+    process.once("SIGINT", stop);
+    process.once("SIGTERM", stop);
   }
 
   private buildServerStartInfo(server: Server<unknown>, env: IAppEnv) {

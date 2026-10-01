@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { Container, EContainerScope } from "@talosjs/container";
 import type { Server } from "bun";
 import { decorator } from "@/decorators";
-import type { IAppEventStart } from "@/types";
+import type { IAppEventStart, IAppEventStop } from "@/types";
 
 describe("decorator.app.event.start", () => {
   const container = new Container();
@@ -97,5 +97,37 @@ describe("decorator.app.event.start", () => {
 
     const result = decorator.app.event.start()(VoidReturnOnAppStart);
     expect(result).toBeUndefined();
+  });
+});
+
+describe("decorator.app.event.stop", () => {
+  const container = new Container();
+
+  test("should register with default singleton scope", () => {
+    class SingletonOnAppStop implements IAppEventStop {
+      public handle(_server: Server<unknown>): void {
+        // noop
+      }
+    }
+
+    decorator.app.event.stop()(SingletonOnAppStop);
+
+    const instance1 = container.get(SingletonOnAppStop);
+    const instance2 = container.get(SingletonOnAppStop);
+
+    expect(instance1).toBeInstanceOf(SingletonOnAppStop);
+    expect(instance1).toBe(instance2);
+  });
+
+  test("should register with transient scope", () => {
+    class TransientOnAppStop implements IAppEventStop {
+      public handle(_server: Server<unknown>): void {
+        // noop
+      }
+    }
+
+    decorator.app.event.stop(EContainerScope.Transient)(TransientOnAppStop);
+
+    expect(container.get(TransientOnAppStop)).not.toBe(container.get(TransientOnAppStop));
   });
 });
