@@ -52,3 +52,10 @@
 
 ## [1.1.8](https://github.com/ooneex/talos/releases/tag/@talosjs/html@1.1.8) - 2026-09-26
 
+## [1.2.0](https://github.com/ooneex/talos/releases/tag/@talosjs/html@1.2.0) - 2026-10-01
+
+### Added
+
+- Add browser support and fix charset detection|- Add browser compatibility to package description and keywords — Franck ([6745093b](https://github.com/ooneex/talos/commit/6745093b))
+- Add DOM API with parser, selector, and serializer|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([261a5365](https://github.com/ooneex/talos/commit/261a5365))
+
