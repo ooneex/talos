@@ -851,3 +851,19 @@
 
 - Update Cargo.lock| — Franck ([4a6079f8](https://github.com/ooneex/talos/commit/4a6079f8))
 
+## [0.17.0](https://github.com/ooneex/talos/releases/tag/@talos/cli@0.17.0) - 2026-10-01
+
+### Added
+
+- Complete seed:run --env with known APP_ENV values|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([79effb0c](https://github.com/ooneex/talos/commit/79effb0c))
+- Bring the headed recipe browser to the front|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([fac1b45b](https://github.com/ooneex/talos/commit/fac1b45b))
+- Skip recipes already replayed and keep the last headed tab|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([4345bd86](https://github.com/ooneex/talos/commit/4345bd86))
+- Replay recipes in a visible browser with --headed|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([0af1c2c0](https://github.com/ooneex/talos/commit/0af1c2c0))
+- Add recipe create and recipe run commands|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([7ec0a2ca](https://github.com/ooneex/talos/commit/7ec0a2ca))
+- Add output module to update command and update completions|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([1f4c67d8](https://github.com/ooneex/talos/commit/1f4c67d8))
+
+### Changed
+
+- Integrate recipe commands and update help system|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([ac22279d](https://github.com/ooneex/talos/commit/ac22279d))
+- Update Cargo.lock| — Franck ([fce5feca](https://github.com/ooneex/talos/commit/fce5feca))
+
