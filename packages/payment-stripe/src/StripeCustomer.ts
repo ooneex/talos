@@ -23,6 +23,7 @@ export class StripeCustomer {
     if (data.phone) params.phone = data.phone;
     if (data.metadata) params.metadata = data.metadata;
     if (data.billingAddress) params.address = this.toStripeAddress(data.billingAddress);
+    if (data.preferredLocales) params.preferred_locales = data.preferredLocales;
 
     const customer = await this.client.sdk.customers.create(params);
 
@@ -37,6 +38,7 @@ export class StripeCustomer {
     if (data.phone !== undefined) params.phone = data.phone;
     if (data.metadata) params.metadata = data.metadata;
     if (data.billingAddress) params.address = this.toStripeAddress(data.billingAddress);
+    if (data.preferredLocales) params.preferred_locales = data.preferredLocales;
 
     const customer = await this.client.sdk.customers.update(id, params);
 
@@ -96,6 +98,7 @@ export class StripeCustomer {
     if (customer.name) result.name = customer.name;
     if (customer.phone) result.phone = customer.phone;
     if (customer.metadata) result.metadata = customer.metadata as Record<string, string>;
+    if (customer.preferred_locales?.length) result.preferredLocales = customer.preferred_locales;
     if (customer.created) result.createdAt = new Date(customer.created * 1000);
 
     if (customer.address) {

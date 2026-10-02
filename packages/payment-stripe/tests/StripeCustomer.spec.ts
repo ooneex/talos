@@ -176,6 +176,44 @@ describe("StripeCustomer", () => {
     });
   });
 
+  describe("preferred locales", () => {
+    test("should pass preferred locales on create", async () => {
+      await customer.create({ email: "customer@example.com", preferredLocales: ["fr"] });
+
+      expect(getCreateArgs().preferred_locales).toEqual(["fr"]);
+    });
+
+    test("should not send preferred locales when absent", async () => {
+      await customer.create({ email: "customer@example.com" });
+
+      expect(getCreateArgs().preferred_locales).toBeUndefined();
+    });
+
+    test("should pass preferred locales on update", async () => {
+      await customer.update("cus_test123", { preferredLocales: ["en"] });
+
+      expect(getUpdateArgs().params.preferred_locales).toEqual(["en"]);
+    });
+
+    test("should map preferred locales from the response", async () => {
+      mockCustomersCreate.mockImplementation(() =>
+        Promise.resolve(createMockCustomer({ preferred_locales: ["fr", "en"] })),
+      );
+
+      const result = await customer.create({ email: "customer@example.com" });
+
+      expect(result.preferredLocales).toEqual(["fr", "en"]);
+    });
+
+    test("should omit empty preferred locales from the response", async () => {
+      mockCustomersCreate.mockImplementation(() => Promise.resolve(createMockCustomer({ preferred_locales: [] })));
+
+      const result = await customer.create({ email: "customer@example.com" });
+
+      expect(result.preferredLocales).toBeUndefined();
+    });
+  });
+
   describe("update", () => {
     test("should update a customer successfully", async () => {
       const result = await customer.update("cus_test123", { name: "Updated Name" });

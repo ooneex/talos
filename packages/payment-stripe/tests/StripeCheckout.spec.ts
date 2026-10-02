@@ -150,6 +150,7 @@ describe("StripeCheckoutSession", () => {
       expect(args.billing_address_collection).toBeUndefined();
       expect(args.tax_id_collection).toBeUndefined();
       expect(args.customer_update).toBeUndefined();
+      expect(args.locale).toBeUndefined();
     });
 
     test("should forward allowPromotionCodes when provided", async () => {
@@ -172,6 +173,17 @@ describe("StripeCheckoutSession", () => {
       });
 
       expect(getCreateArgs().invoice_creation).toEqual({ enabled: true, invoice_data: {} });
+    });
+
+    test("should set the checkout page locale when provided", async () => {
+      await checkout.create({
+        lineItems: [{ price: "price_test123" }],
+        mode: "payment",
+        successUrl: "https://example.com/success",
+        locale: "fr",
+      });
+
+      expect(getCreateArgs().locale).toBe("fr");
     });
 
     test("should forward invoice data", async () => {
