@@ -143,7 +143,8 @@ impl<'a> Report<'a> {
                                 style(format!("Screenshot: {}", self.relative(&screenshot))).dim()
                             )?;
                         }
-                        self.fail(run, step + 1, out)
+                        self.outcomes[run] = RunOutcome::Failed;
+                        Ok(())
                     }
                 }
             }
@@ -205,31 +206,15 @@ impl<'a> Report<'a> {
         Ok(())
     }
 
-    /// Fails a pending or running run with `error`, listing what it had left.
+    /// Fails a pending or running run with `error`.
     fn abort(&mut self, run: usize, error: &str, out: &mut impl Write) -> io::Result<()> {
-        let next = match self.outcomes[run] {
+        match self.outcomes[run] {
             RunOutcome::Passed | RunOutcome::Failed => return Ok(()),
-            RunOutcome::Pending => {
-                self.start(run, out)?;
-                0
-            }
-            RunOutcome::Running { next } => next,
-        };
-        writeln!(out, "  {} {}", style("✖").red().bold(), style(error).red())?;
-        self.fail(run, next, out)
-    }
-
-    fn fail(&mut self, run: usize, from: usize, out: &mut impl Write) -> io::Result<()> {
-        self.outcomes[run] = RunOutcome::Failed;
-        let plan = &self.runs[run];
-        let width = label_width(plan);
-        for planned in plan.steps.iter().skip(from) {
-            writeln!(
-                out,
-                "  {}",
-                style(format!("○ {}", step_text(plan, planned, width, "skipped"))).dim()
-            )?;
+            RunOutcome::Pending => self.start(run, out)?,
+            RunOutcome::Running { .. } => {}
         }
+        writeln!(out, "  {} {}", style("✖").red().bold(), style(error).red())?;
+        self.outcomes[run] = RunOutcome::Failed;
         Ok(())
     }
 
