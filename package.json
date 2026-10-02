@@ -4,7 +4,6 @@
   "dependencies": {
     "@upstash/redis": "^1.39.0",
     "arktype": "^2.2.5",
-    "enquirer": "^2.4.1",
     "pluralize": "^8.0.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
