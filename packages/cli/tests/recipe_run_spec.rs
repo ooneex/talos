@@ -673,7 +673,7 @@ fn report_renders_a_passing_run_with_dependency_steps_marked() {
 }
 
 #[test]
-fn report_renders_a_failed_step_and_skips_the_rest() {
+fn report_renders_a_failed_step_without_listing_the_rest() {
     let runs = [run_plan(
         "AAA-000001",
         &[
@@ -699,8 +699,7 @@ fn report_renders_a_failed_step_and_skips_the_rest() {
          \x20 ✔ click #go    3ms\n\
          \x20 ✖ click #next  500ms\n\
          \x20   timeout waiting for '#next' to appear\n\
-         \x20   Screenshot: var/outputs/recipes/AAA-000001.png\n\
-         \x20 ○ wait 5ms     skipped\n"
+         \x20   Screenshot: var/outputs/recipes/AAA-000001.png\n"
     );
     assert_eq!(outcomes, [RunOutcome::Failed]);
 }
@@ -727,7 +726,6 @@ fn report_fails_a_run_the_runner_gave_up_on() {
         text,
         "▸ AAA-000001 Title AAA-000001\n\
          \x20 ✖ no browser\n\
-         \x20 ○ click #a  skipped\n\
          \n\
          ▸ AAA-000002 Title AAA-000002\n\
          \x20 ✔ click #b  1ms\n"
@@ -761,11 +759,9 @@ fn report_finish_fails_every_run_left_unfinished() {
          \x20 ✔ click #a  1ms\n\
          ✖ Recipe runner: Could not read the plan\n\
          \x20 ✖ The runner exited with exit status: 1\n\
-         \x20 ○ click #b  skipped\n\
          \n\
          ▸ AAA-000002 Title AAA-000002\n\
-         \x20 ✖ The runner exited with exit status: 1\n\
-         \x20 ○ click #c  skipped\n"
+         \x20 ✖ The runner exited with exit status: 1\n"
     );
     assert_eq!(outcomes, [RunOutcome::Failed, RunOutcome::Failed]);
 }
@@ -1165,7 +1161,7 @@ fn cli_fails_the_runs_a_crashed_runner_left_behind() {
         output_text.contains("The runner exited with exit status: 3"),
         "{output_text}"
     );
-    assert!(output_text.contains("○ click #go"), "{output_text}");
+    assert!(!output_text.contains("○"), "{output_text}");
     assert!(
         output_text.contains("2 of 2 recipes failed"),
         "{output_text}"

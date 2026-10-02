@@ -386,7 +386,6 @@
 - Strip inline YAML comments when reading a module's type|read_module_type took the whole 'type: ...' line verbatim, so a module.yml — Franck ([bcdc59ba](https://github.com/ooneex/talos/commit/bcdc59ba))
 - Upgrade via the GitHub release installer instead of npm|The binary is no longer published to npm, so 'bun add -g @talosjs/cli' — Franck ([06fed16f](https://github.com/ooneex/talos/commit/06fed16f))
 - Avoid tmp directory clashes on concurrent scaffold invocations| — Franck ([4df0b058](https://github.com/ooneex/talos/commit/4df0b058))
-- Resolve enquirer's prompt export reliably under Bun| — Franck ([f8c7618c](https://github.com/ooneex/talos/commit/f8c7618c))
 - Always show spawnStep spinner even in silent mode| — Franck ([2713decc](https://github.com/ooneex/talos/commit/2713decc))
 - Skip commit-msg hook prompt in silent app init| — Franck ([96f24ea8](https://github.com/ooneex/talos/commit/96f24ea8))
 - Register path alias and preserve yml fields for design and spa modules| — Franck ([31b59654](https://github.com/ooneex/talos/commit/31b59654))
