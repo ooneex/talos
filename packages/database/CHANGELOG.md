@@ -105,3 +105,9 @@
 
 - Share one data source and entity registry per class|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([9f1db556](https://github.com/ooneex/talos/commit/9f1db556))
 
+## [1.6.0](https://github.com/ooneex/talos/releases/tag/@talosjs/database@1.6.0) - 2026-10-10
+
+### Added
+
+- Add Bunny driver and Cloudflare D1 HTTP access|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([ac496335](https://github.com/ooneex/talos/commit/ac496335))
+
