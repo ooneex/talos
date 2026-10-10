@@ -25,6 +25,7 @@ export {
   type RelationDecoratorType,
 } from "./orm/decorators/relations";
 export type { IDriver } from "./orm/driver/AbstractDriver";
+export { BunnyDriver } from "./orm/driver/BunnyDriver";
 export { ClickHouseDriver } from "./orm/driver/ClickHouseDriver";
 export { CloudflareDriver } from "./orm/driver/CloudflareDriver";
 export { MongoDriver } from "./orm/driver/MongoDriver";

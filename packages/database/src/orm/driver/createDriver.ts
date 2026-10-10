@@ -1,6 +1,7 @@
 import type { DataSourceOptionsType } from "../../types";
 import { MissingDriverError } from "../errors";
 import type { IDriver } from "./AbstractDriver";
+import { BunnyDriver } from "./BunnyDriver";
 import { ClickHouseDriver } from "./ClickHouseDriver";
 import { CloudflareDriver } from "./CloudflareDriver";
 import { MongoDriver } from "./MongoDriver";
@@ -25,6 +26,8 @@ export const createDriver = (options: DataSourceOptionsType): IDriver => {
       return new MongoDriver(options);
     case "turso":
       return new TursoDriver(options);
+    case "bunny":
+      return new BunnyDriver(options);
     case "mysql":
     case "mariadb":
       return new MysqlDriver(options);
