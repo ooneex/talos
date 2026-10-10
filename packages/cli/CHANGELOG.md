@@ -866,3 +866,13 @@
 - Integrate recipe commands and update help system|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([ac22279d](https://github.com/ooneex/talos/commit/ac22279d))
 - Update Cargo.lock| — Franck ([fce5feca](https://github.com/ooneex/talos/commit/fce5feca))
 
+## [0.17.1](https://github.com/ooneex/talos/releases/tag/@talos/cli@0.17.1) - 2026-10-10
+
+### Changed
+
+- Update Cargo.lock| — Franck ([03db947a](https://github.com/ooneex/talos/commit/03db947a))
+
+### Fixed
+
+- Omit remaining steps after a recipe run fails|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([b2a1182f](https://github.com/ooneex/talos/commit/b2a1182f))
+
