@@ -118,6 +118,42 @@ describe("loadEnv", () => {
     expect(Bun.env.TURSO_AUTH_TOKEN).toBe("secret");
   });
 
+  test("maps Bunny database settings", async () => {
+    await Bun.write(
+      `${testDir}/.env.yml`,
+      'database:\n  bunny:\n    url: "libsql://01jxyz-app.lite.bunnydb.net"\n    token: "bunny-token"\n',
+    );
+    await loadEnv();
+    expect(Bun.env.DATABASE_BUNNY_URL).toBe("libsql://01jxyz-app.lite.bunnydb.net");
+    expect(Bun.env.DATABASE_BUNNY_TOKEN).toBe("bunny-token");
+  });
+
+  test("maps Cloudflare D1 database settings", async () => {
+    await Bun.write(
+      `${testDir}/.env.yml`,
+      [
+        "database:",
+        "  cloudflare:",
+        '    account_id: "023e105f4ecef8ad9ca31a8372d0c353"',
+        '    api_token: "cloudflare-token"',
+        '    database_id: "f8d5b2a1-6c3e-4b7a-9d2f-0e1c3b5a7d9e"',
+        '    database_name: "my-database"',
+        '    jurisdiction: "eu"',
+        '    primary_location_hint: "weur"',
+        '    read_replication_mode: "auto"',
+        "",
+      ].join("\n"),
+    );
+    await loadEnv();
+    expect(Bun.env.DATABASE_CLOUDFLARE_ACCOUNT_ID).toBe("023e105f4ecef8ad9ca31a8372d0c353");
+    expect(Bun.env.DATABASE_CLOUDFLARE_API_TOKEN).toBe("cloudflare-token");
+    expect(Bun.env.DATABASE_CLOUDFLARE_DATABASE_ID).toBe("f8d5b2a1-6c3e-4b7a-9d2f-0e1c3b5a7d9e");
+    expect(Bun.env.DATABASE_CLOUDFLARE_DATABASE_NAME).toBe("my-database");
+    expect(Bun.env.DATABASE_CLOUDFLARE_JURISDICTION).toBe("eu");
+    expect(Bun.env.DATABASE_CLOUDFLARE_PRIMARY_LOCATION_HINT).toBe("weur");
+    expect(Bun.env.DATABASE_CLOUDFLARE_READ_REPLICATION_MODE).toBe("auto");
+  });
+
   test("maps stream.bunny keys to the STREAM_BUNNY_ names", async () => {
     await Bun.write(
       `${testDir}/.env.yml`,

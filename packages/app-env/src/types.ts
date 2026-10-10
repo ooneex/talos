@@ -98,6 +98,13 @@ export interface IAppEnv {
   readonly SQLITE_DATABASE_PATH: string | undefined;
   readonly DATABASE_BUNNY_URL: string | undefined;
   readonly DATABASE_BUNNY_TOKEN: string | undefined;
+  readonly DATABASE_CLOUDFLARE_ACCOUNT_ID: string | undefined;
+  readonly DATABASE_CLOUDFLARE_API_TOKEN: string | undefined;
+  readonly DATABASE_CLOUDFLARE_DATABASE_ID: string | undefined;
+  readonly DATABASE_CLOUDFLARE_DATABASE_NAME: string | undefined;
+  readonly DATABASE_CLOUDFLARE_JURISDICTION: string | undefined;
+  readonly DATABASE_CLOUDFLARE_PRIMARY_LOCATION_HINT: string | undefined;
+  readonly DATABASE_CLOUDFLARE_READ_REPLICATION_MODE: string | undefined;
 
   // Mailer
   readonly MAILER_SENDER_NAME: string | undefined;

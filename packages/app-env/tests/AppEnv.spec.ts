@@ -617,6 +617,13 @@ describe("AppEnv", () => {
       delete Bun.env.SQLITE_DATABASE_PATH;
       delete Bun.env.DATABASE_BUNNY_URL;
       delete Bun.env.DATABASE_BUNNY_TOKEN;
+      delete Bun.env.DATABASE_CLOUDFLARE_ACCOUNT_ID;
+      delete Bun.env.DATABASE_CLOUDFLARE_API_TOKEN;
+      delete Bun.env.DATABASE_CLOUDFLARE_DATABASE_ID;
+      delete Bun.env.DATABASE_CLOUDFLARE_DATABASE_NAME;
+      delete Bun.env.DATABASE_CLOUDFLARE_JURISDICTION;
+      delete Bun.env.DATABASE_CLOUDFLARE_PRIMARY_LOCATION_HINT;
+      delete Bun.env.DATABASE_CLOUDFLARE_READ_REPLICATION_MODE;
       delete Bun.env.MAILER_SENDER_NAME;
       delete Bun.env.MAILER_SENDER_ADDRESS;
       delete Bun.env.RESEND_API_KEY;
@@ -700,6 +707,13 @@ describe("AppEnv", () => {
       expect(appEnv.SQLITE_DATABASE_PATH).toBeUndefined();
       expect(appEnv.DATABASE_BUNNY_URL).toBeUndefined();
       expect(appEnv.DATABASE_BUNNY_TOKEN).toBeUndefined();
+      expect(appEnv.DATABASE_CLOUDFLARE_ACCOUNT_ID).toBeUndefined();
+      expect(appEnv.DATABASE_CLOUDFLARE_API_TOKEN).toBeUndefined();
+      expect(appEnv.DATABASE_CLOUDFLARE_DATABASE_ID).toBeUndefined();
+      expect(appEnv.DATABASE_CLOUDFLARE_DATABASE_NAME).toBeUndefined();
+      expect(appEnv.DATABASE_CLOUDFLARE_JURISDICTION).toBeUndefined();
+      expect(appEnv.DATABASE_CLOUDFLARE_PRIMARY_LOCATION_HINT).toBeUndefined();
+      expect(appEnv.DATABASE_CLOUDFLARE_READ_REPLICATION_MODE).toBeUndefined();
       expect(appEnv.MAILER_SENDER_NAME).toBeUndefined();
       expect(appEnv.MAILER_SENDER_ADDRESS).toBeUndefined();
       expect(appEnv.RESEND_API_KEY).toBeUndefined();
@@ -809,6 +823,13 @@ describe("AppEnv", () => {
       Bun.env.SQLITE_DATABASE_PATH = "/data/app.db";
       Bun.env.DATABASE_BUNNY_URL = "libsql://db.bunny.net";
       Bun.env.DATABASE_BUNNY_TOKEN = "bunny-token";
+      Bun.env.DATABASE_CLOUDFLARE_ACCOUNT_ID = "023e105f4ecef8ad9ca31a8372d0c353";
+      Bun.env.DATABASE_CLOUDFLARE_API_TOKEN = "cloudflare-token";
+      Bun.env.DATABASE_CLOUDFLARE_DATABASE_ID = "f8d5b2a1-6c3e-4b7a-9d2f-0e1c3b5a7d9e";
+      Bun.env.DATABASE_CLOUDFLARE_DATABASE_NAME = "my-database";
+      Bun.env.DATABASE_CLOUDFLARE_JURISDICTION = "eu";
+      Bun.env.DATABASE_CLOUDFLARE_PRIMARY_LOCATION_HINT = "weur";
+      Bun.env.DATABASE_CLOUDFLARE_READ_REPLICATION_MODE = "auto";
 
       const appEnv = new AppEnv();
 
@@ -818,6 +839,13 @@ describe("AppEnv", () => {
       expect(appEnv.TURSO_AUTH_TOKEN).toBe("turso-token");
       expect(appEnv.DATABASE_BUNNY_URL).toBe("libsql://db.bunny.net");
       expect(appEnv.DATABASE_BUNNY_TOKEN).toBe("bunny-token");
+      expect(appEnv.DATABASE_CLOUDFLARE_ACCOUNT_ID).toBe("023e105f4ecef8ad9ca31a8372d0c353");
+      expect(appEnv.DATABASE_CLOUDFLARE_API_TOKEN).toBe("cloudflare-token");
+      expect(appEnv.DATABASE_CLOUDFLARE_DATABASE_ID).toBe("f8d5b2a1-6c3e-4b7a-9d2f-0e1c3b5a7d9e");
+      expect(appEnv.DATABASE_CLOUDFLARE_DATABASE_NAME).toBe("my-database");
+      expect(appEnv.DATABASE_CLOUDFLARE_JURISDICTION).toBe("eu");
+      expect(appEnv.DATABASE_CLOUDFLARE_PRIMARY_LOCATION_HINT).toBe("weur");
+      expect(appEnv.DATABASE_CLOUDFLARE_READ_REPLICATION_MODE).toBe("auto");
       expect(appEnv.SQLITE_DATABASE_PATH).toBe("/data/app.db");
     });
 
@@ -1040,6 +1068,13 @@ describe("AppEnv", () => {
       Bun.env.SQLITE_DATABASE_PATH = "  /data/app.db  ";
       Bun.env.DATABASE_BUNNY_URL = "  libsql://db.bunny.net  ";
       Bun.env.DATABASE_BUNNY_TOKEN = "  bunny-token  ";
+      Bun.env.DATABASE_CLOUDFLARE_ACCOUNT_ID = "  023e105f4ecef8ad9ca31a8372d0c353  ";
+      Bun.env.DATABASE_CLOUDFLARE_API_TOKEN = "  cloudflare-token  ";
+      Bun.env.DATABASE_CLOUDFLARE_DATABASE_ID = "  f8d5b2a1-6c3e-4b7a-9d2f-0e1c3b5a7d9e  ";
+      Bun.env.DATABASE_CLOUDFLARE_DATABASE_NAME = "  my-database  ";
+      Bun.env.DATABASE_CLOUDFLARE_JURISDICTION = "  eu  ";
+      Bun.env.DATABASE_CLOUDFLARE_PRIMARY_LOCATION_HINT = "  weur  ";
+      Bun.env.DATABASE_CLOUDFLARE_READ_REPLICATION_MODE = "  auto  ";
 
       const appEnv = new AppEnv();
 
@@ -1050,6 +1085,13 @@ describe("AppEnv", () => {
       expect(appEnv.SQLITE_DATABASE_PATH).toBe("/data/app.db");
       expect(appEnv.DATABASE_BUNNY_URL).toBe("libsql://db.bunny.net");
       expect(appEnv.DATABASE_BUNNY_TOKEN).toBe("bunny-token");
+      expect(appEnv.DATABASE_CLOUDFLARE_ACCOUNT_ID).toBe("023e105f4ecef8ad9ca31a8372d0c353");
+      expect(appEnv.DATABASE_CLOUDFLARE_API_TOKEN).toBe("cloudflare-token");
+      expect(appEnv.DATABASE_CLOUDFLARE_DATABASE_ID).toBe("f8d5b2a1-6c3e-4b7a-9d2f-0e1c3b5a7d9e");
+      expect(appEnv.DATABASE_CLOUDFLARE_DATABASE_NAME).toBe("my-database");
+      expect(appEnv.DATABASE_CLOUDFLARE_JURISDICTION).toBe("eu");
+      expect(appEnv.DATABASE_CLOUDFLARE_PRIMARY_LOCATION_HINT).toBe("weur");
+      expect(appEnv.DATABASE_CLOUDFLARE_READ_REPLICATION_MODE).toBe("auto");
     });
 
     test("should trim mailer env vars", () => {
