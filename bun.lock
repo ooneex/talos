@@ -90,7 +90,7 @@
     },
     "packages/app-env": {
       "name": "@talosjs/app-env",
-      "version": "1.8.0",
+      "version": "1.9.0",
       "dependencies": {
         "@talosjs/container": "workspace:^",
         "@talosjs/exception": "workspace:^",
@@ -128,7 +128,7 @@
     },
     "packages/cli": {
       "name": "@talos/cli",
-      "version": "0.17.1",
+      "version": "0.17.2",
     },
     "packages/color": {
       "name": "@talosjs/color",
@@ -217,7 +217,7 @@
     },
     "packages/database": {
       "name": "@talosjs/database",
-      "version": "1.6.0",
+      "version": "1.7.0",
       "dependencies": {
         "@clickhouse/client": "^1.23.1",
         "@libsql/client": "^0.18.0",
@@ -462,7 +462,7 @@
     },
     "packages/payment-stripe": {
       "name": "@talosjs/payment-stripe",
-      "version": "0.1.5",
+      "version": "0.2.0",
       "dependencies": {
         "@talosjs/app-env": "workspace:^",
         "@talosjs/container": "workspace:^",
