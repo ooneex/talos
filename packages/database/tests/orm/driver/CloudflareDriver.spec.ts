@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, type Mock, spyOn, test } from "bun:test";
 import type {
   CloudflareResultType,
   CloudflareValueType,
@@ -6,12 +6,13 @@ import type {
   ICloudflarePreparedStatement,
   QueryResultType,
 } from "../../../src";
+import { DatabaseException } from "../../../src/DatabaseException";
 import { DataSource } from "../../../src/orm/DataSource";
+import { Column, PrimaryColumn } from "../../../src/orm/decorators/columns";
+import { Entity } from "../../../src/orm/decorators/Entity";
 import { CloudflareDriver } from "../../../src/orm/driver/CloudflareDriver";
 import { DriverFeatureNotSupportedError, TransactionsNotSupportedError } from "../../../src/orm/errors";
 import type { QueryRunner } from "../../../src/orm/QueryRunner";
-import { Column, PrimaryColumn } from "../../../src/orm/decorators/columns";
-import { Entity } from "../../../src/orm/decorators/Entity";
 import { fakeColumn } from "../../fixtures/metadata";
 
 @Entity("cloudflare_users")
@@ -42,10 +43,11 @@ const fakeCloudflare = (
         run: async <Row>() => {
           calls.push({ sql, parameters });
 
-          return (resolve?.(sql, parameters) ?? results.shift() ?? {
-            success: true,
-            results: [],
-          }) as CloudflareResultType<Row>;
+          return (resolve?.(sql, parameters) ??
+            results.shift() ?? {
+              success: true,
+              results: [],
+            }) as CloudflareResultType<Row>;
         },
       };
 
@@ -57,6 +59,13 @@ const fakeCloudflare = (
 };
 
 type RecordedQueryType = { sql: string; parameters: unknown[] };
+
+const D1_API = "https://api.cloudflare.com/client/v4/accounts/account-1/d1/database";
+
+const apiResponse = (result: unknown): Response => Response.json({ success: true, errors: [], messages: [], result });
+
+const apiError = (status: number, code: number, message: string): Response =>
+  Response.json({ success: false, errors: [{ code, message }], messages: [], result: null }, { status });
 
 const recordingRunner = (records: unknown[] = []): { runner: QueryRunner; queries: RecordedQueryType[] } => {
   const queries: RecordedQueryType[] = [];
@@ -209,5 +218,177 @@ describe("CloudflareDriver", () => {
     expect(binding.calls.some(({ sql }) => sql.startsWith('INSERT INTO "cloudflare_users"'))).toBe(true);
 
     await dataSource.destroy();
+  });
+});
+
+describe("CloudflareDriver over the D1 HTTP API", () => {
+  const settings = { type: "cloudflare", accountId: "account-1", apiToken: "token-1" } as const;
+  let fetchMock: Mock<typeof fetch>;
+
+  const respond = (...responses: Response[]): void => {
+    for (const response of responses) {
+      fetchMock.mockResolvedValueOnce(response);
+    }
+  };
+
+  const sentRequests = () =>
+    fetchMock.mock.calls.map(([input, init]) => ({
+      method: init?.method,
+      url: String(input),
+      headers: Object.fromEntries(new Headers(init?.headers).entries()),
+      body: typeof init?.body === "string" ? JSON.parse(init.body) : undefined,
+    }));
+
+  const sentRoutes = (): string[] => sentRequests().map(({ method, url }) => `${method} ${url}`);
+
+  beforeEach(() => {
+    fetchMock = spyOn(globalThis, "fetch").mockRejectedValue(new Error("Unexpected Cloudflare API request"));
+  });
+
+  afterEach(() => {
+    fetchMock.mockRestore();
+  });
+
+  test("should query the configured database with bearer auth and binding-compatible parameters", async () => {
+    respond(apiResponse([{ success: true, results: [{ id: 7, name: "Ada" }], meta: { changes: 0, last_row_id: 7 } }]));
+    const driver = new CloudflareDriver({ ...settings, databaseId: "db-1" });
+    const client = driver.createClient();
+
+    expect(
+      await driver.query(client, "SELECT * FROM users WHERE id = ?1 AND active = ?2 AND avatar = ?3 AND note = ?4", [
+        7,
+        true,
+        new Uint8Array([1, 2]),
+        undefined,
+      ]),
+    ).toEqual({ records: [{ id: 7, name: "Ada" }], affected: 0, lastInsertRowid: 7 });
+    expect(sentRequests()).toEqual([
+      {
+        method: "POST",
+        url: `${D1_API}/db-1/query`,
+        headers: { authorization: "Bearer token-1", "content-type": "application/json" },
+        body: {
+          sql: "SELECT * FROM users WHERE id = ?1 AND active = ?2 AND avatar = ?3 AND note = ?4",
+          params: [7, 1, [1, 2], null],
+        },
+      },
+    ]);
+  });
+
+  test("should find the database by exact name once and reuse its id", async () => {
+    respond(
+      apiResponse([
+        { uuid: "db-staging", name: "app-staging" },
+        { uuid: "db-app", name: "app" },
+      ]),
+      apiResponse([{ success: true, results: [] }]),
+      apiResponse([{ success: true, results: [] }]),
+    );
+    const driver = new CloudflareDriver({ ...settings, databaseName: "app" });
+    const client = driver.createClient();
+
+    await driver.query(client, "SELECT 1");
+    await driver.query(client, "SELECT 2");
+
+    expect(sentRoutes()).toEqual([
+      `GET ${D1_API}?name=app&per_page=10000`,
+      `POST ${D1_API}/db-app/query`,
+      `POST ${D1_API}/db-app/query`,
+    ]);
+  });
+
+  test("should create a missing database once, with its jurisdiction, location hint and read replication", async () => {
+    respond(
+      apiResponse([{ uuid: "db-staging", name: "app-staging" }]),
+      apiResponse({ uuid: "db-new", name: "app" }),
+      apiResponse([{ success: true, results: [] }]),
+      apiResponse([{ success: true, results: [] }]),
+    );
+    const driver = new CloudflareDriver({
+      ...settings,
+      databaseName: "app",
+      jurisdiction: "eu",
+      primaryLocationHint: "weur",
+      readReplicationMode: "auto",
+    });
+    const client = driver.createClient();
+
+    await Promise.all([driver.query(client, "SELECT 1"), driver.query(client, "SELECT 2")]);
+
+    expect(sentRoutes()).toEqual([
+      `GET ${D1_API}?name=app&per_page=10000`,
+      `POST ${D1_API}`,
+      `POST ${D1_API}/db-new/query`,
+      `POST ${D1_API}/db-new/query`,
+    ]);
+    expect(sentRequests()[1]?.body).toEqual({
+      name: "app",
+      jurisdiction: "eu",
+      primary_location_hint: "weur",
+      read_replication: { mode: "auto" },
+    });
+  });
+
+  test("should report Cloudflare API errors and retry a failed database lookup", async () => {
+    respond(
+      apiError(403, 10000, "Authentication error"),
+      new Response("<html>Bad gateway</html>", { status: 502, statusText: "Bad Gateway" }),
+      apiResponse([{ uuid: "db-app", name: "app" }]),
+      apiError(400, 7500, 'near "SELEC": syntax error at offset 0: SQLITE_ERROR'),
+    );
+    const driver = new CloudflareDriver({ ...settings, databaseName: "app" });
+    const client = driver.createClient();
+
+    await expect(driver.query(client, "SELECT 1")).rejects.toThrow(
+      "Cloudflare D1 API request failed (403): Authentication error [10000]",
+    );
+    await expect(driver.query(client, "SELECT 1")).rejects.toThrow(
+      "Cloudflare D1 API request failed (502): Bad Gateway",
+    );
+    const error = await driver.query(client, "SELEC 1").catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(DatabaseException);
+    expect(error).toMatchObject({
+      message: 'Cloudflare D1 API request failed (400): near "SELEC": syntax error at offset 0: SQLITE_ERROR [7500]',
+      key: "CLOUDFLARE_REQUEST_FAILED",
+      data: { status: 400, errors: [{ code: 7500, message: 'near "SELEC": syntax error at offset 0: SQLITE_ERROR' }] },
+    });
+    expect(sentRoutes()).toEqual([
+      `GET ${D1_API}?name=app&per_page=10000`,
+      `GET ${D1_API}?name=app&per_page=10000`,
+      `GET ${D1_API}?name=app&per_page=10000`,
+      `POST ${D1_API}/db-app/query`,
+    ]);
+  });
+
+  test("should require a binding or complete D1 HTTP API settings", async () => {
+    expect(() => new CloudflareDriver({ type: "cloudflare", accountId: "account-1" }).createClient()).toThrow(
+      "Missing: apiToken, databaseId or databaseName.",
+    );
+    expect(() => new CloudflareDriver({ ...settings, apiToken: "" }).createClient()).toThrow(DatabaseException);
+    await expect(new DataSource({ type: "cloudflare", entities: [CloudflareUser] }).initialize()).rejects.toThrow(
+      "Could not connect to the cloudflare database: The cloudflare driver needs a Worker binding as client, or D1 HTTP API settings. Missing: accountId, apiToken, databaseId or databaseName.",
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  test("should initialize DataSource and run repositories over the D1 HTTP API", async () => {
+    respond(
+      apiResponse([{ success: true, results: [{ 1: 1 }] }]),
+      apiResponse([{ success: true, results: [{ cloudflare_users_id: 1, cloudflare_users_name: "Ada" }] }]),
+    );
+    const dataSource = new DataSource({ ...settings, databaseId: "db-1", entities: [CloudflareUser] });
+
+    await dataSource.initialize();
+
+    expect(await dataSource.getRepository(CloudflareUser).find()).toEqual([
+      Object.assign(new CloudflareUser(), { id: 1, name: "Ada" }),
+    ]);
+    await dataSource.destroy();
+
+    expect(sentRequests().map(({ body }) => body.sql)).toEqual([
+      "SELECT 1",
+      expect.stringContaining('FROM "cloudflare_users" "cloudflare_users"'),
+    ]);
   });
 });

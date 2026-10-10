@@ -22,7 +22,9 @@ export const createDialectDataSource = (type: Exclude<DatabaseTypeType, "cloudfl
       ? new DataSource({ type, database: ":memory:", entities: fixtureEntities })
       : type === "turso"
         ? new DataSource({ type, url: ":memory:", entities: fixtureEntities })
-        : new DataSource({ type, entities: fixtureEntities });
+        : type === "bunny"
+          ? new DataSource({ type, url: "libsql://fixture.lite.bunnydb.net", entities: fixtureEntities })
+          : new DataSource({ type, entities: fixtureEntities });
 
   dataSource.entityMetadatas = buildFixtureMetadatas();
 

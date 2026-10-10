@@ -81,6 +81,7 @@ export type DatabaseTypeType =
   | "redis"
   | "mongodb"
   | "turso"
+  | "bunny"
   | "cloudflare";
 
 export type CloudflareValueType = string | number | boolean | null | ArrayBuffer;
@@ -102,6 +103,14 @@ export interface ICloudflarePreparedStatement {
 export interface ICloudflareDatabase {
   prepare: (query: string) => ICloudflarePreparedStatement;
 }
+
+/** Where a D1 database runs and stores its data. */
+export type CloudflareJurisdictionType = "eu" | "fedramp" | "us";
+
+/** Region of a D1 database's primary instance: western/eastern North America, western/eastern Europe, Asia-Pacific, Oceania. */
+export type CloudflareLocationHintType = "wnam" | "enam" | "weur" | "eeur" | "apac" | "oc";
+
+export type CloudflareReadReplicationModeType = "auto" | "disabled";
 
 export type DatabaseClientType =
   | SQL
@@ -578,10 +587,38 @@ export type TursoDataSourceOptionsType = BaseDataSourceOptionsType & {
   client?: LibsqlClient;
 };
 
+export type BunnyDataSourceOptionsType = BaseDataSourceOptionsType & {
+  type: "bunny";
+  /** Database URL from Dashboard > Edge Platform > Database > Access: `libsql:`, `https:` or `wss:`. */
+  url: string;
+  /** Access token generated from the same Access page. */
+  authToken?: string;
+  concurrency?: number;
+  intMode?: LibsqlConfig["intMode"];
+  /** Remaining options forwarded to the `@libsql/client/web` client. */
+  extra?: Omit<LibsqlConfig, "url" | "authToken" | "concurrency" | "intMode" | "syncUrl" | "syncInterval">;
+  /** Bring your own libSQL client — the data source then neither creates nor closes it. */
+  client?: LibsqlClient;
+};
+
 export type CloudflareDataSourceOptionsType = BaseDataSourceOptionsType & {
   type: "cloudflare";
-  /** Cloudflare Worker database binding, such as `env.DB`. */
-  client: ICloudflareDatabase;
+  /** Cloudflare Worker database binding, such as `env.DB`. Without one, queries go through the D1 HTTP API. */
+  client?: ICloudflareDatabase;
+  /** Account that owns the database. Required by the HTTP API. */
+  accountId?: string;
+  /** API token with the D1 Write permission (D1 Read is enough for read-only queries). Required by the HTTP API. */
+  apiToken?: string;
+  /** Database UUID. Takes precedence over `databaseName`. */
+  databaseId?: string;
+  /** Database looked up by exact name when `databaseId` is omitted, and created when missing. */
+  databaseName?: string;
+  /** Applied when the driver creates the database. Overrides `primaryLocationHint`. */
+  jurisdiction?: CloudflareJurisdictionType;
+  /** Applied when the driver creates the database. Defaults to the region closest to the caller. */
+  primaryLocationHint?: CloudflareLocationHintType;
+  /** Applied when the driver creates the database. */
+  readReplicationMode?: CloudflareReadReplicationModeType;
 };
 
 export type DataSourceOptionsType =
@@ -592,6 +629,7 @@ export type DataSourceOptionsType =
   | RedisDataSourceOptionsType
   | MongoDataSourceOptionsType
   | TursoDataSourceOptionsType
+  | BunnyDataSourceOptionsType
   | CloudflareDataSourceOptionsType;
 
 export type DataSourceClientType<Options extends DataSourceOptionsType> =
@@ -601,7 +639,7 @@ export type DataSourceClientType<Options extends DataSourceOptionsType> =
       ? RedisClient
       : Options extends MongoDataSourceOptionsType
         ? MongoClient
-        : Options extends TursoDataSourceOptionsType
+        : Options extends TursoDataSourceOptionsType | BunnyDataSourceOptionsType
           ? LibsqlClient
           : Options extends CloudflareDataSourceOptionsType
             ? ICloudflareDatabase

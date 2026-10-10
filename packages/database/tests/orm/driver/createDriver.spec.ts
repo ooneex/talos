@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { DataSourceOptionsType, ICloudflareDatabase } from "../../../src";
+import { BunnyDriver } from "../../../src/orm/driver/BunnyDriver";
 import { ClickHouseDriver } from "../../../src/orm/driver/ClickHouseDriver";
 import { CloudflareDriver } from "../../../src/orm/driver/CloudflareDriver";
 import { createDriver } from "../../../src/orm/driver/createDriver";
@@ -24,6 +25,7 @@ describe("createDriver", () => {
     expect(createDriver({ type: "redis" })).toBeInstanceOf(RedisDriver);
     expect(createDriver({ type: "mongodb" })).toBeInstanceOf(MongoDriver);
     expect(createDriver({ type: "turso", url: ":memory:" })).toBeInstanceOf(TursoDriver);
+    expect(createDriver({ type: "bunny", url: "libsql://app.lite.bunnydb.net" })).toBeInstanceOf(BunnyDriver);
     expect(createDriver(options)).toBeInstanceOf(SqliteDriver);
     expect(createDriver(options).options).toBe(options);
   });

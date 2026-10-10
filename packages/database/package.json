@@ -8,7 +8,7 @@
     "@talosjs/utils": "workspace:^",
     "mongodb": "^7.6.0"
   },
-  "description": "Database layer with a decorator-based ORM for PostgreSQL, MySQL, SQLite, Turso, Cloudflare and ClickHouse, plus Redis and MongoDB drivers",
+  "description": "Database layer with a decorator-based ORM for PostgreSQL, MySQL, SQLite, Turso, Bunny, Cloudflare and ClickHouse, plus Redis and MongoDB drivers",
   "exports": {
     ".": {
       "import": {
@@ -26,6 +26,7 @@
   ],
   "keywords": [
     "bun",
+    "bunny",
     "clickhouse",
     "cloudflare",
     "database",
