@@ -120,3 +120,13 @@
 
 - Add Cloudflare D1 environment variables|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([f96e94c0](https://github.com/ooneex/talos/commit/f96e94c0))
 
+## [1.9.0](https://github.com/ooneex/talos/releases/tag/@talosjs/app-env@1.9.0) - 2026-10-10
+
+### Added
+
+- Add Cloudflare D1 environment variables|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([e186ecf9](https://github.com/ooneex/talos/commit/e186ecf9))
+
+### Changed
+
+- @talosjs/app-env@1.8.0| — Franck ([83cecc76](https://github.com/ooneex/talos/commit/83cecc76))
+
