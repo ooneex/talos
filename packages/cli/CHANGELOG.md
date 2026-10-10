@@ -876,3 +876,14 @@
 
 - Omit remaining steps after a recipe run fails|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([b2a1182f](https://github.com/ooneex/talos/commit/b2a1182f))
 
+## [0.17.2](https://github.com/ooneex/talos/releases/tag/@talos/cli@0.17.2) - 2026-10-10
+
+### Changed
+
+- Update Cargo.lock| — Franck ([8658cb14](https://github.com/ooneex/talos/commit/8658cb14))
+- @talos/cli@0.17.1| — Franck ([8e62f221](https://github.com/ooneex/talos/commit/8e62f221))
+
+### Fixed
+
+- Omit remaining steps after a recipe run fails|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([37806e5e](https://github.com/ooneex/talos/commit/37806e5e))
+
