@@ -111,3 +111,13 @@
 
 - Add Bunny driver and Cloudflare D1 HTTP access|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([ac496335](https://github.com/ooneex/talos/commit/ac496335))
 
+## [1.7.0](https://github.com/ooneex/talos/releases/tag/@talosjs/database@1.7.0) - 2026-10-10
+
+### Added
+
+- Add Bunny driver and Cloudflare D1 HTTP access|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([a600215c](https://github.com/ooneex/talos/commit/a600215c))
+
+### Changed
+
+- @talosjs/database@1.6.0| — Franck ([31a52fe9](https://github.com/ooneex/talos/commit/31a52fe9))
+
