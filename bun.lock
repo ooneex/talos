@@ -90,7 +90,7 @@
     },
     "packages/app-env": {
       "name": "@talosjs/app-env",
-      "version": "1.7.3",
+      "version": "1.8.0",
       "dependencies": {
         "@talosjs/container": "workspace:^",
         "@talosjs/exception": "workspace:^",
@@ -128,7 +128,7 @@
     },
     "packages/cli": {
       "name": "@talos/cli",
-      "version": "0.17.0",
+      "version": "0.17.1",
     },
     "packages/color": {
       "name": "@talosjs/color",
@@ -217,7 +217,7 @@
     },
     "packages/database": {
       "name": "@talosjs/database",
-      "version": "1.5.0",
+      "version": "1.6.0",
       "dependencies": {
         "@clickhouse/client": "^1.23.1",
         "@libsql/client": "^0.18.0",
