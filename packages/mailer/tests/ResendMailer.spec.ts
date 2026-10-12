@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 
-const mockSend = mock(() => Promise.resolve({ data: { id: "test-id" }, error: null }));
+type SendResultType = { data: { id: string } | null; error: { name: string; message: string } | null };
+const mockSend = mock((): Promise<SendResultType> => Promise.resolve({ data: { id: "test-id" }, error: null }));
 
 mock.module("resend", () => ({
   Resend: class {
@@ -104,6 +105,19 @@ describe("ResendMailer", () => {
           from: "Override Sender <override@example.com>",
         }),
       );
+    });
+
+    test("should throw MailerException when Resend answers with an error", async () => {
+      mockSend.mockResolvedValueOnce({ data: null, error: { name: "rate_limit_exceeded", message: "Too many requests" } });
+      const mailer = new ResendMailer(new AppEnv());
+
+      expect(
+        mailer.send({
+          to: ["recipient@example.com"],
+          subject: "Test",
+          content: "Hello",
+        }),
+      ).rejects.toThrow("Resend refused the email: Too many requests");
     });
 
     test("should throw MailerException when sender name is missing", async () => {
