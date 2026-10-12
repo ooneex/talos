@@ -32,15 +32,26 @@ export class ClerkAuth implements IAuth {
       return null;
     }
 
-    const { sub: userId } = await verifyToken(token, {
-      secretKey: this.secretKey,
-    });
+    const userId = (await this.verify(token))?.sub;
 
     if (!userId) {
       return null;
     }
 
     return await this.getUser(userId);
+  }
+
+  /**
+   * Verifies a token and returns its claims, or null when the token is malformed,
+   * forged or expired. A token that cannot be verified is an authentication
+   * failure (401 through the middleware), never a server error.
+   */
+  private async verify(token: string): Promise<Awaited<ReturnType<typeof verifyToken>> | null> {
+    try {
+      return await verifyToken(token, { secretKey: this.secretKey });
+    } catch {
+      return null;
+    }
   }
 
   public async banUser(userId: string): Promise<User> {
@@ -124,9 +135,7 @@ export class ClerkAuth implements IAuth {
   }
 
   public async getCurrentUserSession(token: string): Promise<Session | null> {
-    const { sid: sessionId } = await verifyToken(token, {
-      secretKey: this.secretKey,
-    });
+    const sessionId = (await this.verify(token))?.sid;
 
     if (!sessionId) {
       return null;
