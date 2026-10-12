@@ -202,3 +202,17 @@ fn add_gitlab_include_is_idempotent() {
 
     assert_eq!(dir.read("ci.yml"), before);
 }
+
+#[test]
+fn rename_microservice_identifiers_rewrites_module_alias_and_route_name() {
+    use cli::commands::microservice_create::rename_microservice_identifiers;
+
+    let content = "import { MicroserviceModule } from \"../src/MicroserviceModule\";\nimport { HealthController } from \"@module/microservice/controllers/HealthController\";\nname: \"microservice.health.check\",\n";
+
+    let renamed = rename_microservice_identifiers(content, "Billing", "billing");
+
+    assert!(renamed.contains("import { BillingModule } from \"../src/BillingModule\";"));
+    assert!(renamed.contains("@module/billing/controllers/HealthController"));
+    assert!(renamed.contains("name: \"billing.health.check\","));
+    assert!(!renamed.contains("microservice"));
+}

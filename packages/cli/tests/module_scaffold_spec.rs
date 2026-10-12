@@ -80,7 +80,7 @@ fn seed(home: &Path) {
     );
     write(
         &microservice.join("src/MicroserviceModule.ts"),
-        "export const MicroserviceModule = {};\n",
+        "export const MicroserviceModule = { controllers: [HealthController] };\n",
     );
     write(
         &microservice.join("src/index.ts"),
@@ -88,7 +88,7 @@ fn seed(home: &Path) {
     );
     write(
         &microservice.join("tests/MicroserviceModule.spec.ts"),
-        "// MicroserviceModule\n",
+        "import { HealthController } from \"@module/microservice/controllers/HealthController\";\n// MicroserviceModule\n",
     );
     write(
         &skeleton.join("modules/app/.env.example.yml"),
@@ -268,7 +268,8 @@ fn every_skeleton_generator_lands_a_renamed_module_in_the_workspace() {
     );
     assert_eq!(
         read(&billing.join("src/BillingModule.ts")),
-        "export const BillingModule = {};\n"
+        "export const BillingModule = { controllers: [HealthController] };\n",
+        "the template module is renamed in place and keeps its controllers"
     );
     assert!(
         !billing.join("src/MicroserviceModule.ts").exists(),
@@ -278,9 +279,15 @@ fn every_skeleton_generator_lands_a_renamed_module_in_the_workspace() {
         read(&billing.join("src/index.ts")).contains("BillingModule"),
         "the entry point points at the renamed module"
     );
+    let billing_spec = read(&billing.join("tests/BillingModule.spec.ts"));
     assert!(
-        read(&billing.join("tests/BillingModule.spec.ts")).contains("billing"),
-        "the spec is rendered with both cases of the name"
+        billing_spec.contains("@module/billing/controllers/HealthController")
+            && billing_spec.contains("// BillingModule"),
+        "the spec imports through the renamed alias and names the renamed module: {billing_spec}"
+    );
+    assert!(
+        !billing.join("tests/MicroserviceModule.spec.ts").exists(),
+        "the template spec is renamed"
     );
     assert!(
         read(&billing.join(".env.yml")).contains("port:"),
