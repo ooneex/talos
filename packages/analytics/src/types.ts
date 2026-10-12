@@ -15,6 +15,15 @@ export type PostHogConfigType = {
 export type PostHogCaptureOptionsType = {
   id: string;
   event: string;
+  /** Properties of the event itself, filed on the event in PostHog. */
   properties?: Record<string, unknown>;
+  /** Person properties to set on the profile (`$set`). */
+  set?: Record<string, unknown>;
+  /** Person properties to set only once on the profile (`$set_once`). */
+  setOnce?: Record<string, unknown>;
   groups?: Record<string, string | number>;
+  /** When the event happened; defaults to now. */
+  timestamp?: Date;
+  /** A stable id so PostHog drops a duplicate delivery of the same event. */
+  uuid?: string;
 };

@@ -31,9 +31,12 @@ export class PostHogAnalytics<T extends PostHogCaptureOptionsType = PostHogCaptu
       distinctId: options.id,
       event: options.event,
       properties: {
-        $set: options.properties,
+        ...options.properties,
+        ...(options.set && { $set: options.set }),
+        ...(options.setOnce && { $set_once: options.setOnce }),
       },
-      timestamp: new Date(),
+      timestamp: options.timestamp ?? new Date(),
+      ...(options.uuid && { uuid: options.uuid }),
       ...(options.groups && { groups: options.groups }),
     });
   }
