@@ -3,9 +3,9 @@ use std::path::PathBuf;
 use clap::Args;
 
 use crate::utils::{
-    add_path_alias, add_to_app_module, add_to_microservice_module, add_to_shared_module,
-    ask_destination_module, ask_input, current_dir, find_app_module_name, read_template,
-    skeleton_templates_dir, to_kebab_case, to_pascal_case,
+    add_path_alias, add_to_app_module, add_to_microservice_module, ask_destination_module,
+    ask_input, current_dir, find_app_module_name, read_template, skeleton_templates_dir,
+    to_kebab_case, to_pascal_case,
 };
 
 #[derive(Args, Debug)]
@@ -101,17 +101,6 @@ fn wire_module_into_destination(
             .join("AppModule.ts");
         if app_module_path.exists() {
             let _ = add_to_app_module(&app_module_path, pascal_name, kebab_name);
-        }
-
-        if kebab_name != "shared" {
-            let shared_module_path = cwd
-                .join("modules")
-                .join("shared")
-                .join("src")
-                .join("SharedModule.ts");
-            if shared_module_path.exists() {
-                let _ = add_to_shared_module(&shared_module_path, pascal_name, kebab_name);
-            }
         }
     } else {
         let destination_pascal = to_pascal_case(destination_kebab);
