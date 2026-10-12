@@ -42,9 +42,12 @@ class PostHogAnalytics<T extends PostHogCaptureOptionsType = PostHogCaptureOptio
       distinctId: options.id,
       event: options.event,
       properties: {
-        $set: options.properties,
+        ...options.properties,
+        ...(options.set && { $set: options.set }),
+        ...(options.setOnce && { $set_once: options.setOnce }),
       },
-      timestamp: new Date(),
+      timestamp: options.timestamp ?? new Date(),
+      ...(options.uuid && { uuid: options.uuid }),
       ...(options.groups && { groups: options.groups }),
     });
     this.client?.shutdown();
@@ -170,12 +173,34 @@ describe("PostHogAnalytics", () => {
       expect(mockPostHogInstance.capture).toHaveBeenCalledWith({
         distinctId: "user-123",
         event: "button_clicked",
-        properties: {
-          $set: { buttonId: "submit", page: "checkout" },
-        },
+        properties: { buttonId: "submit", page: "checkout" },
         timestamp: expect.any(Date),
         groups: { company: "acme-corp", plan: "enterprise" },
       });
+    });
+
+    test("should file person properties under $set and $set_once, apart from the event properties", () => {
+      analytics.capture({
+        id: "user-123",
+        event: "signed_up",
+        properties: { plan: "free" },
+        set: { email: "a@b.c" },
+        setOnce: { firstSeen: "2026-10-12" },
+      });
+
+      expect(mockPostHogInstance.capture).toHaveBeenCalledWith(
+        expect.objectContaining({
+          properties: { plan: "free", $set: { email: "a@b.c" }, $set_once: { firstSeen: "2026-10-12" } },
+        }),
+      );
+    });
+
+    test("should forward a caller-provided uuid and timestamp", () => {
+      const timestamp = new Date("2026-10-12T10:00:00Z");
+
+      analytics.capture({ id: "user-123", event: "email_opened", uuid: "evt-1", timestamp });
+
+      expect(mockPostHogInstance.capture).toHaveBeenCalledWith(expect.objectContaining({ uuid: "evt-1", timestamp }));
     });
 
     test("should handle capture with minimal data", () => {
@@ -189,9 +214,7 @@ describe("PostHogAnalytics", () => {
       expect(mockPostHogInstance.capture).toHaveBeenCalledWith({
         distinctId: "user-456",
         event: "page_view",
-        properties: {
-          $set: undefined,
-        },
+        properties: {},
         timestamp: expect.any(Date),
       });
     });
@@ -208,9 +231,7 @@ describe("PostHogAnalytics", () => {
       expect(mockPostHogInstance.capture).toHaveBeenCalledWith({
         distinctId: "user-789",
         event: "form_submit",
-        properties: {
-          $set: {},
-        },
+        properties: {},
         timestamp: expect.any(Date),
       });
     });
@@ -227,9 +248,7 @@ describe("PostHogAnalytics", () => {
       expect(mockPostHogInstance.capture).toHaveBeenCalledWith({
         distinctId: "user-000",
         event: "purchase",
-        properties: {
-          $set: undefined,
-        },
+        properties: {},
         timestamp: expect.any(Date),
         groups: {},
       });
@@ -255,9 +274,7 @@ describe("PostHogAnalytics", () => {
       expect(mockPostHogInstance.capture).toHaveBeenCalledWith({
         distinctId: "user-complex",
         event: "complex_event",
-        properties: {
-          $set: captureData.properties,
-        },
+        properties: captureData.properties,
         timestamp: expect.any(Date),
       });
     });
@@ -278,9 +295,7 @@ describe("PostHogAnalytics", () => {
       expect(mockPostHogInstance.capture).toHaveBeenCalledWith({
         distinctId: "user-numeric",
         event: "numeric_groups_event",
-        properties: {
-          $set: undefined,
-        },
+        properties: {},
         timestamp: expect.any(Date),
         groups: {
           companyId: 123,
@@ -352,9 +367,7 @@ describe("PostHogAnalytics", () => {
       expect(mockPostHogInstance.capture).toHaveBeenCalledWith(
         expect.objectContaining({
           event: "special_event_with_émojis",
-          properties: {
-            $set: captureData.properties,
-          },
+          properties: captureData.properties,
         }),
       );
     });
@@ -483,9 +496,7 @@ describe("PostHogAnalytics", () => {
       expect(mockPostHogInstance.capture).toHaveBeenCalledWith({
         distinctId: "new-user-123",
         event: "user_signup",
-        properties: {
-          $set: signupData.properties,
-        },
+        properties: signupData.properties,
         timestamp: expect.any(Date),
         groups: signupData.groups,
       });
@@ -517,9 +528,7 @@ describe("PostHogAnalytics", () => {
         expect.objectContaining({
           distinctId: "customer-456",
           event: "purchase_completed",
-          properties: {
-            $set: purchaseData.properties,
-          },
+          properties: purchaseData.properties,
           groups: purchaseData.groups,
         }),
       );
@@ -549,9 +558,7 @@ describe("PostHogAnalytics", () => {
         expect.objectContaining({
           distinctId: "power-user-789",
           event: "feature_used",
-          properties: {
-            $set: featureData.properties,
-          },
+          properties: featureData.properties,
           groups: featureData.groups,
         }),
       );
@@ -611,9 +618,7 @@ describe("PostHogAnalytics", () => {
       expect(() => analytics.capture(captureData)).not.toThrow();
       expect(mockPostHogInstance.capture).toHaveBeenCalledWith(
         expect.objectContaining({
-          properties: {
-            $set: largeProperties,
-          },
+          properties: largeProperties,
         }),
       );
     });
@@ -643,9 +648,7 @@ describe("PostHogAnalytics", () => {
       expect(() => analytics.capture(captureData)).not.toThrow();
       expect(mockPostHogInstance.capture).toHaveBeenCalledWith(
         expect.objectContaining({
-          properties: {
-            $set: nestedProperties,
-          },
+          properties: nestedProperties,
         }),
       );
     });
@@ -732,9 +735,7 @@ describe("PostHogAnalytics", () => {
 
       expect(mockPostHogInstance.capture).toHaveBeenCalledWith(
         expect.objectContaining({
-          properties: {
-            $set: mixedData.properties,
-          },
+          properties: mixedData.properties,
         }),
       );
     });
@@ -761,9 +762,7 @@ describe("PostHogAnalytics", () => {
 
       expect(mockPostHogInstance.capture).toHaveBeenCalledWith(
         expect.objectContaining({
-          properties: {
-            $set: numericData.properties,
-          },
+          properties: numericData.properties,
         }),
       );
     });
