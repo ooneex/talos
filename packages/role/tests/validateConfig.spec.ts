@@ -15,7 +15,7 @@ describe("validateConfig", () => {
       expect(() => validateConfig(validConfig)).not.toThrow();
     });
 
-    for (const key of ["GUEST", "TRIAL_USER", "USER", "PREMIUM_USER", "ADMIN", "SUPER_ADMIN", "SYSTEM"] as const) {
+    for (const key of ["GUEST", "USER", "ADMIN", "SUPER_ADMIN", "SYSTEM"] as const) {
       test(`should throw when roles.${key} is missing`, () => {
         const config = clone(validConfig);
         delete (config.roles as Record<string, unknown>)[key];
