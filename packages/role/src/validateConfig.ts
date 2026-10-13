@@ -1,7 +1,12 @@
 import { RoleException } from "./RoleException";
 import type { IRolesConfig, RoleType } from "./types";
 
-const REQUIRED_ROLES = ["GUEST", "TRIAL_USER", "USER", "PREMIUM_USER", "ADMIN", "SUPER_ADMIN", "SYSTEM"] as const;
+/**
+ * The role keys the framework itself reads: the guest fallback, the default role of an
+ * authenticated user, and the three keys the app maps `*_USERS` environment lists onto.
+ * Product roles (trial, premium, coach, manager…) belong to the project's `roles.yml`.
+ */
+const REQUIRED_ROLES = ["GUEST", "USER", "ADMIN", "SUPER_ADMIN", "SYSTEM"] as const;
 
 export const validateConfig = (config: IRolesConfig): void => {
   for (const key of REQUIRED_ROLES) {
