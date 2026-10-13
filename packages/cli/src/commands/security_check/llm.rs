@@ -17,7 +17,9 @@
 
 use std::collections::{BTreeMap, HashSet};
 use std::fs;
+use std::io::Write;
 use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
 use std::sync::OnceLock;
 
 use regex::Regex;
@@ -420,7 +422,11 @@ pub fn collect(root: &Path) -> (Vec<LlmFinding>, usize) {
             }
             let mut files = Vec::new();
             collect_files(&path, 0, &mut files);
+            let ignored = git_ignored(root, &files);
             for file in files {
+                if ignored.contains(&file) {
+                    continue;
+                }
                 if !visited.insert(file.clone()) {
                     continue;
                 }
@@ -437,6 +443,54 @@ pub fn collect(root: &Path) -> (Vec<LlmFinding>, usize) {
             .then_with(|| left.hit.id.cmp(right.hit.id))
     });
     (findings, scanned)
+}
+
+/// The subset of `files` git ignores under `root`. Ignored files (agent
+/// memory, local notes, caches) are never shared through the repository, so
+/// they are not part of its supply chain. Outside a git checkout, or without
+/// git, nothing is treated as ignored.
+fn git_ignored(root: &Path, files: &[PathBuf]) -> HashSet<PathBuf> {
+    if files.is_empty() {
+        return HashSet::new();
+    }
+    let Ok(mut child) = Command::new("git")
+        .args(["check-ignore", "--stdin", "-z"])
+        .current_dir(root)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
+    else {
+        return HashSet::new();
+    };
+    if let Some(mut stdin) = child.stdin.take() {
+        let mut input = Vec::new();
+        for file in files {
+            input.extend_from_slice(file.to_string_lossy().as_bytes());
+            input.push(0);
+        }
+        if stdin.write_all(&input).is_err() {
+            let _ = child.kill();
+            let _ = child.wait();
+            return HashSet::new();
+        }
+    }
+    let Ok(output) = child.wait_with_output() else {
+        return HashSet::new();
+    };
+    output
+        .stdout
+        .split(|byte| *byte == 0)
+        .filter(|entry| !entry.is_empty())
+        .map(|entry| {
+            let path = PathBuf::from(String::from_utf8_lossy(entry).into_owned());
+            if path.is_absolute() {
+                path
+            } else {
+                root.join(path)
+            }
+        })
+        .collect()
 }
 
 /// Collect the directories that may hold an assistant configuration: the root
