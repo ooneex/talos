@@ -3997,6 +3997,39 @@ fn an_await_inside_a_loop_is_reported_once() {
 }
 
 #[test]
+fn a_justified_opt_out_silences_a_serial_await() {
+    for source in [
+        "const run = async (steps) => {\n  // talos-ignore async.serial: each step depends on the last\n  for (const step of steps) {\n    await step.run();\n  }\n};\n",
+        "const run = async (steps) => {\n  for (const step of steps) { // talos-ignore async.serial: rate limited\n    await step.run();\n  }\n};\n",
+        "const run = async (steps) => {\n  /* talos-ignore perf.await-in-loop: ordered writes */\n  for (const step of steps) {\n    await step.run();\n  }\n};\n",
+    ] {
+        assert!(asynchrony::scan(source).is_empty(), "{source}");
+    }
+}
+
+#[test]
+fn an_opt_out_without_a_reason_is_still_reported() {
+    for directive in [
+        "// talos-ignore async.serial",
+        "// talos-ignore async.serial:",
+    ] {
+        let findings = asynchrony::scan(&format!(
+            "const run = async (steps) => {{\n  {directive}\n  for (const step of steps) {{\n    await step.run();\n  }}\n}};\n"
+        ));
+        assert_eq!(findings.len(), 1, "{directive}");
+        assert_eq!(findings[0].rule, "async.serial");
+    }
+}
+
+#[test]
+fn an_opt_out_far_from_the_loop_does_not_apply() {
+    let findings = asynchrony::scan(
+        "// talos-ignore async.serial: unrelated\n\nconst run = async (steps) => {\n  for (const step of steps) {\n    await step.run();\n  }\n};\n",
+    );
+    assert_eq!(findings.len(), 1);
+}
+
+#[test]
 fn an_async_iterator_is_serial_by_design() {
     let findings = asynchrony::scan(
         "export const read = async (stream) => {\n  for await (const chunk of stream) {\n    await sink.write(chunk);\n  }\n};\n",
