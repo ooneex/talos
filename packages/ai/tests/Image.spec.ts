@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 
 const generateCalls: Array<Record<string, unknown>> = [];
-const adapterCalls: Array<{ model: string; config: unknown }> = [];
+const adapterCalls: Array<{ model: string; config: unknown; apiKey?: string }> = [];
 let generateResult: unknown = { id: "img-1", model: "m", images: [] };
 let generateError: Error | null = null;
 
@@ -15,8 +15,13 @@ mock.module("@tanstack/ai", () => ({
 
 mock.module("@tanstack/ai-openrouter", () => ({
   openRouterText: (model: string) => ({ __model: model }),
+  createOpenRouterText: (model: string) => ({ __model: model }),
   openRouterImage: (model: string, config?: unknown) => {
     adapterCalls.push({ model, config });
+    return { __model: model };
+  },
+  createOpenRouterImage: (model: string, apiKey: string, config?: unknown) => {
+    adapterCalls.push({ model, config, apiKey });
     return { __model: model };
   },
 }));
@@ -88,6 +93,24 @@ describe("Image.run", () => {
     await new TestImage().run({ prompt: "A lighthouse" });
 
     expect(adapterCalls[0]?.config).toBeUndefined();
+  });
+
+  test("should build the adapter from getClientOptions, the request timeout winning", async () => {
+    class ConfiguredImage extends TestImage {
+      public override getClientOptions = () => ({
+        apiKey: "sk-image",
+        baseUrl: "https://gw.test/api/v1",
+        timeoutMs: 5,
+      });
+    }
+
+    await new ConfiguredImage().run({ prompt: "A lighthouse", timeoutMs: 60_000 });
+
+    expect(adapterCalls[0]).toEqual({
+      model: "google/gemini-2.5-flash-image",
+      apiKey: "sk-image",
+      config: { serverURL: "https://gw.test/api/v1", timeoutMs: 60_000 },
+    });
   });
 
   test("should run with the image's own prompts only when no input is given", async () => {

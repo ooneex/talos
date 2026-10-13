@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import type { ChatMiddlewareConfig, ChatMiddlewareContext } from "@tanstack/ai";
 import type { AiToolClassType, IMiddleware, ISkill, ITool, MessageType } from "@/types";
 import {
+  buildClientConfig,
   buildImagePrompt,
   buildJudgePrompt,
   buildMessages,
@@ -24,6 +25,36 @@ describe("createAdapter", () => {
     const adapter = createAdapter("deepseek/deepseek-v4.1-flash");
 
     expect(adapter).toBeDefined();
+  });
+});
+
+describe("buildClientConfig", () => {
+  test("should return an empty config when no option is set", () => {
+    expect(buildClientConfig()).toEqual({});
+    expect(buildClientConfig({ apiKey: "sk-test" })).toEqual({});
+  });
+
+  test("should map base URL, timeout and retry onto the SDK options", () => {
+    const retry = { strategy: "none" } as const;
+
+    expect(buildClientConfig({ baseUrl: "https://gw.test/api/v1", timeoutMs: 1_000, retry })).toEqual({
+      serverURL: "https://gw.test/api/v1",
+      timeoutMs: 1_000,
+      retryConfig: retry,
+    });
+  });
+});
+
+describe("createAdapter with client options", () => {
+  test("should build an adapter from an explicit API key without the env var", () => {
+    const previous = Bun.env.OPENROUTER_API_KEY;
+    delete Bun.env.OPENROUTER_API_KEY;
+
+    try {
+      expect(createAdapter("deepseek/deepseek-v4.1-flash", { apiKey: "sk-test", timeoutMs: 1_000 })).toBeDefined();
+    } finally {
+      if (previous !== undefined) Bun.env.OPENROUTER_API_KEY = previous;
+    }
   });
 });
 

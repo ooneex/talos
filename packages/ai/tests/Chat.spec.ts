@@ -41,6 +41,8 @@ mock.module("@tanstack/ai", () => ({
 mock.module("@tanstack/ai-openrouter", () => ({
   openRouterText: (model: string) => ({ __model: model }),
   openRouterImage: (model: string) => ({ __model: model }),
+  createOpenRouterText: (model: string, apiKey: string, config: unknown) => ({ __model: model, apiKey, config }),
+  createOpenRouterImage: (model: string) => ({ __model: model }),
 }));
 
 const { Chat } = await import("@/Chat");
@@ -86,6 +88,26 @@ describe("Chat.run", () => {
     await new TestChat().run({ prompt: "hi" });
 
     expect(lastCall().adapter).toEqual({ __model: "deepseek/deepseek-v4.1-flash" });
+  });
+
+  test("should build the adapter from getClientOptions", async () => {
+    const retry = { strategy: "backoff", retryConnectionErrors: true } as const;
+    class ConfiguredChat extends TestChat {
+      public override getClientOptions = () => ({
+        apiKey: "sk-test",
+        baseUrl: "https://gw.test/api/v1",
+        timeoutMs: 30_000,
+        retry,
+      });
+    }
+
+    await new ConfiguredChat().run({ prompt: "hi" });
+
+    expect(lastCall().adapter).toEqual({
+      __model: "deepseek/deepseek-v4.1-flash",
+      apiKey: "sk-test",
+      config: { serverURL: "https://gw.test/api/v1", timeoutMs: 30_000, retryConfig: retry },
+    });
   });
 
   test("should append the prompt as a trailing user message", async () => {

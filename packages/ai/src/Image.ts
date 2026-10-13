@@ -1,5 +1,5 @@
 import { generateImage } from "@tanstack/ai";
-import type { IImage, ImageInputType, ImageResultType } from "./types";
+import type { AiClientOptionsType, IImage, ImageInputType, ImageResultType } from "./types";
 import { buildImagePrompt, createImageAdapter } from "./utils";
 
 /**
@@ -35,6 +35,15 @@ export abstract class Image implements IImage {
   public abstract getPrompts(): string[];
 
   /**
+   * Transport options of the OpenRouter client — API key, base URL, timeout and
+   * retry policy. Override to set them; the default keeps the SDK defaults and
+   * reads the key from `OPENROUTER_API_KEY`.
+   */
+  public getClientOptions(): AiClientOptionsType {
+    return {};
+  }
+
+  /**
    * Generate the image(s) described by the request.
    *
    * Each image comes back either as base64 bytes (`b64Json`) or as a hosted
@@ -43,7 +52,7 @@ export abstract class Image implements IImage {
    */
   public async run(input?: ImageInputType): Promise<ImageResultType> {
     return await generateImage({
-      adapter: createImageAdapter(this.getModel(), input?.timeoutMs),
+      adapter: createImageAdapter(this.getModel(), input?.timeoutMs, this.getClientOptions()),
       prompt: buildImagePrompt(this.getPrompts(), input),
       ...(input?.numberOfImages === undefined ? {} : { numberOfImages: input.numberOfImages }),
       // TanStack types the non-square sizes with `×`, while its adapter looks them up with `x`.
