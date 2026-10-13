@@ -20,6 +20,7 @@ import type {
   ToolPhaseCompleteInfo,
   UsageInfo,
 } from "@tanstack/ai";
+import type { openRouterText } from "@tanstack/ai-openrouter";
 
 // biome-ignore lint/suspicious/noExplicitAny: trust me
 export type AiChatClassType = new (...args: any[]) => IChat;
@@ -158,6 +159,24 @@ export type ImageSizeType =
   | "768x1344"
   | "1344x768"
   | "1536x672";
+
+/** Options of the OpenRouter SDK client, as the TanStack text adapter takes them. */
+export type OpenRouterSdkOptionsType = NonNullable<Parameters<typeof openRouterText>[1]>;
+
+/**
+ * Transport options of the OpenRouter client behind a chat or an image. Every
+ * field is optional and falls back to the SDK default.
+ */
+export type AiClientOptionsType = {
+  /** API key. Read from the `OPENROUTER_API_KEY` env var when omitted. */
+  apiKey?: string;
+  /** Base URL of the OpenRouter-compatible API (a proxy or gateway). */
+  baseUrl?: string;
+  /** Give up on each provider request after this many milliseconds. */
+  timeoutMs?: number;
+  /** Retry policy of the SDK, e.g. `{ strategy: "backoff", retryConnectionErrors: true }`. */
+  retry?: OpenRouterSdkOptionsType["retryConfig"];
+};
 
 export type ImageInputType = {
   /** Description of the image to generate, appended after the image's own {@link IImage.getPrompts}. */

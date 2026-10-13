@@ -1,14 +1,49 @@
 import { Assert, type AssertSchemaType } from "@talosjs/validation";
 import { type ChatMiddleware, toolDefinition } from "@tanstack/ai";
-import { type OpenRouterTextModelOptions, openRouterImage, openRouterText } from "@tanstack/ai-openrouter";
-import type { ChatInputType, IMiddleware, ImageInputType, ISkill, ITool, MessageType } from "./types";
+import {
+  createOpenRouterImage,
+  createOpenRouterText,
+  type OpenRouterTextModelOptions,
+  openRouterImage,
+  openRouterText,
+} from "@tanstack/ai-openrouter";
+import type {
+  AiClientOptionsType,
+  ChatInputType,
+  IMiddleware,
+  ImageInputType,
+  ISkill,
+  ITool,
+  MessageType,
+  OpenRouterSdkOptionsType,
+} from "./types";
 
 /** AdapterType created by {@link openRouterText}, used as the chat transport. */
 export type AdapterType = ReturnType<typeof openRouterText>;
 
-/** Create the OpenRouter adapter for a `provider/model` identifier. */
-export const createAdapter = (model: string): AdapterType =>
-  openRouterText(model as Parameters<typeof openRouterText>[0]);
+/** Map the client options onto the OpenRouter SDK options, omitting unset values. */
+export const buildClientConfig = (options: AiClientOptionsType = {}): OpenRouterSdkOptionsType => {
+  const config: OpenRouterSdkOptionsType = {};
+
+  if (options.baseUrl !== undefined) config.serverURL = options.baseUrl;
+  if (options.timeoutMs !== undefined) config.timeoutMs = options.timeoutMs;
+  if (options.retry !== undefined) config.retryConfig = options.retry;
+
+  return config;
+};
+
+/**
+ * Create the OpenRouter adapter for a `provider/model` identifier. The API key
+ * comes from `options.apiKey`, else from the `OPENROUTER_API_KEY` env var.
+ */
+export const createAdapter = (model: string, options: AiClientOptionsType = {}): AdapterType => {
+  const textModel = model as Parameters<typeof openRouterText>[0];
+  const config = buildClientConfig(options);
+
+  return options.apiKey === undefined
+    ? openRouterText(textModel, config)
+    : createOpenRouterText(textModel, options.apiKey, config);
+};
 
 /** ImageAdapterType created by {@link openRouterImage}, used as the image transport. */
 export type ImageAdapterType = ReturnType<typeof openRouterImage>;
@@ -17,13 +52,22 @@ export type ImageAdapterType = ReturnType<typeof openRouterImage>;
  * Create the OpenRouter image adapter for a `provider/model` identifier.
  *
  * The adapter hands its whole config to the OpenRouter SDK client, which
- * honours `timeoutMs` even though the adapter's config type does not declare it.
+ * honours `timeoutMs` and `retryConfig` even though the adapter's config type does not declare them.
+ * A per-request `timeoutMs` wins over the client options' one.
  */
-export const createImageAdapter = (model: string, timeoutMs?: number): ImageAdapterType =>
-  openRouterImage(
-    model as Parameters<typeof openRouterImage>[0],
-    timeoutMs === undefined ? undefined : ({ timeoutMs } as Parameters<typeof openRouterImage>[1]),
-  );
+export const createImageAdapter = (
+  model: string,
+  timeoutMs?: number,
+  options: AiClientOptionsType = {},
+): ImageAdapterType => {
+  const imageModel = model as Parameters<typeof openRouterImage>[0];
+  const config = buildClientConfig(timeoutMs === undefined ? options : { ...options, timeoutMs });
+  const imageConfig = (Object.keys(config).length === 0 ? undefined : config) as Parameters<typeof openRouterImage>[1];
+
+  return options.apiKey === undefined
+    ? openRouterImage(imageModel, imageConfig)
+    : createOpenRouterImage(imageModel, options.apiKey, imageConfig);
+};
 
 /** Join an image's own prompts with the request's prompt, dropping blank ones. */
 export const buildImagePrompt = (prompts: string[], input?: ImageInputType): string =>

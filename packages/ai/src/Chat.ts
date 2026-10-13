@@ -1,6 +1,7 @@
 import { container } from "@talosjs/container";
 import { type AGUIEvent, type ChatMiddleware, chat, createChatOptions } from "@tanstack/ai";
 import type {
+  AiClientOptionsType,
   AiMiddlewareClassType,
   AiSkillClassType,
   AiToolClassType,
@@ -75,6 +76,17 @@ export abstract class Chat implements IChat {
 
   /** Skill classes the chat can draw on — each a set of instructions plus its tools. */
   public abstract getSkills(): AiSkillClassType[];
+
+  /**
+   * Transport options of the OpenRouter client — API key, base URL, timeout and
+   * retry policy. Override to set them; the default keeps the SDK defaults and
+   * reads the key from `OPENROUTER_API_KEY`. Abort a run with
+   * {@link ChatInputType.abortController}, and read token usage and cost from a
+   * middleware's `onUsage` / `onFinish` hooks.
+   */
+  public getClientOptions(): AiClientOptionsType {
+    return {};
+  }
 
   /**
    * Run the chat to completion and return the result.
@@ -155,7 +167,7 @@ export abstract class Chat implements IChat {
    */
   private buildBaseOptions(input?: ChatInputType) {
     return {
-      adapter: createAdapter(this.getModel()),
+      adapter: createAdapter(this.getModel(), this.getClientOptions()),
       messages: buildMessages(input),
       conversationId: input?.conversationId,
       abortController: input?.abortController,
