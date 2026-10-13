@@ -13,7 +13,7 @@ use crate::commands::project_check::modules::{
     WorkspaceModule, collect_files, discover_modules, filter_modules, relative, wanted_names,
 };
 use crate::commands::project_check::{
-    CheckId, CheckOutcome, CheckStatus, ProjectCheckArgs, static_outcome,
+    CheckId, CheckOutcome, CheckStatus, NOTE_DETAIL, ProjectCheckArgs, static_outcome,
 };
 
 pub fn run(args: &ProjectCheckArgs, root: &Path) -> CheckOutcome {
@@ -33,6 +33,7 @@ pub fn run(args: &ProjectCheckArgs, root: &Path) -> CheckOutcome {
 
     let mut errors = Vec::new();
     let mut warnings = Vec::new();
+    let mut notes = Vec::new();
     let (keys, defined, parsed) = parse_dictionaries(root, &files, &mut errors, &mut warnings);
 
     // Each file is read against the dictionary that actually serves it — the
@@ -52,6 +53,7 @@ pub fn run(args: &ProjectCheckArgs, root: &Path) -> CheckOutcome {
             &defined,
             &mut errors,
             &mut warnings,
+            &mut notes,
         );
     }
 
@@ -62,14 +64,23 @@ pub fn run(args: &ProjectCheckArgs, root: &Path) -> CheckOutcome {
         if keys == 1 { "" } else { "s" }
     );
 
-    static_outcome(
+    let mut outcome = static_outcome(
         CheckId::Translations,
         &scope,
         "every locale is complete",
         errors,
         warnings,
-    )
-    .with_hint("Complete the dictionaries with the `translation-translate` skill")
+    );
+    // A key built at runtime is a limit of the static pass, not a defect in
+    // the module: it is reported, but never moves the status — so `--strict`
+    // (which hardens warnings) does not fail on it, and locale completeness
+    // is still what decides the outcome.
+    if !notes.is_empty() {
+        let mut details = std::mem::take(&mut outcome.details);
+        details.extend(notes.into_iter().map(|note| format!("{NOTE_DETAIL}{note}")));
+        outcome = outcome.with_details(details);
+    }
+    outcome.with_hint("Complete the dictionaries with the `translation-translate` skill")
 }
 
 /// Parses every discovered dictionary file, flattening each into its keys and
@@ -151,6 +162,7 @@ fn check_usage(
     defined: &BTreeSet<String>,
     errors: &mut Vec<String>,
     warnings: &mut Vec<String>,
+    notes: &mut Vec<String>,
 ) {
     let reached = selection.reached();
     for key in missing_keys(&selection.lookups, defined) {
@@ -174,7 +186,7 @@ fn check_usage(
         }
 
         if usage.dynamic {
-            warnings.push(format!(
+            notes.push(format!(
                 "{label}: unused keys not checked — a `trans()` call in its scope builds the key at runtime"
             ));
             continue;

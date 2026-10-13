@@ -269,8 +269,8 @@ pub use commits::{CommitProblem, lint_commits};
 pub use hygiene::{HygieneFinding, HygieneSeverity, bare_marker, scan_source};
 pub use orchestrate::{execute, run};
 pub use outcome::{
-    CheckOutcome, CheckStatus, ERROR_DETAIL, ProjectReport, WARN_DETAIL, cap_details, harden,
-    parse_ids, select_checks, split_csv, static_outcome,
+    CheckOutcome, CheckStatus, ERROR_DETAIL, NOTE_DETAIL, ProjectReport, WARN_DETAIL, cap_details,
+    harden, parse_ids, select_checks, split_csv, static_outcome,
 };
 pub use output::command_line;
 pub use render::{render_json, render_llm, render_report};

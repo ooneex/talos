@@ -17,10 +17,10 @@ use cli::commands::project_check::{
     A11yDiagnostic, CheckId, CheckOutcome, CheckStatus, HygieneSeverity, ProjectCheckArgs,
     ProjectReport, asynchrony, boundaries, branches, bundle, classify_a11y, complexity, container,
     contrast, dependencies, disabled_a11y_rules, discover_ui_modules, docker, docs, e2e_coverage,
-    entities, env, exceptions, execute, graph, health, imports, lint_commits, lockfile, migrations,
-    modules_with_e2e, orphans, outdated, parse_biome_a11y, queries, registration, render_json,
-    render_llm, render_report, restricted, roles, routes, scan_source, sdk, secrets, select_checks,
-    sql, stories, structure, transactions, translations, tsconfig, validation,
+    entities, env, exceptions, execute, graph, harden, health, imports, lint_commits, lockfile,
+    migrations, modules_with_e2e, orphans, outdated, parse_biome_a11y, queries, registration,
+    render_json, render_llm, render_report, restricted, roles, routes, scan_source, sdk, secrets,
+    select_checks, sql, stories, structure, transactions, translations, tsconfig, validation,
 };
 
 #[derive(Parser)]
@@ -3370,6 +3370,66 @@ fn a_key_built_at_runtime_suspends_the_unused_check() {
         "{:?}",
         outcome.details
     );
+}
+
+#[test]
+fn a_runtime_key_is_a_note_that_strict_does_not_harden() {
+    let (_guard, root) = root();
+    let dir = workspace(&root, "user", "module");
+    write(
+        &dir.join("src/translations.yml"),
+        "welcome:\n  en: \"Welcome\"\n  fr: \"Bienvenue\"\n",
+    );
+    write(
+        &dir.join("src/Menu.tsx"),
+        "export const Menu = (id: string) => trans(`nav.${id}`);\n",
+    );
+
+    let outcome = translations::run(&ProjectCheckArgs::default(), &root);
+
+    assert_eq!(outcome.status, CheckStatus::Passed, "{:?}", outcome.details);
+    let hardened = harden(outcome);
+    assert_eq!(hardened.status, CheckStatus::Passed);
+    assert!(
+        hardened
+            .details
+            .iter()
+            .any(|detail| detail.starts_with("note") && detail.contains("unused keys not checked")),
+        "{:?}",
+        hardened.details
+    );
+}
+
+#[test]
+fn a_runtime_key_still_checks_locale_completeness() {
+    let (_guard, root) = root();
+    let dir = workspace(&root, "user", "module");
+    write(
+        &dir.join("src/translations.yml"),
+        "welcome:\n  en: \"Welcome\"\n  fr: \"Bienvenue\"\nbye:\n  en: \"Bye\"\n",
+    );
+    write(
+        &dir.join("src/Menu.tsx"),
+        "export const Menu = (id: string) => trans(`nav.${id}`);\n",
+    );
+
+    let outcome = translations::run(&ProjectCheckArgs::default(), &root);
+
+    assert_ne!(outcome.status, CheckStatus::Passed, "{:?}", outcome.details);
+    assert!(
+        outcome.details.iter().any(|detail| detail.contains("bye")),
+        "{:?}",
+        outcome.details
+    );
+}
+
+#[test]
+fn collection_has_calls_and_comments_are_not_runtime_keys() {
+    let usage = translations::scan_usage(
+        "const seen = new Set<string>();\nif (seen.has(id)) return;\nmap.has(key);\n// trans(key) resolves the message\n/**\n * trans(key)\n */\nexport class UserTranslation {\n  public trans(key: string): string { return key; }\n}\n",
+    );
+
+    assert!(!usage.dynamic);
 }
 
 #[test]
