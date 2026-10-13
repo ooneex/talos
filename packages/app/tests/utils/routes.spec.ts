@@ -892,6 +892,62 @@ describe("formatHttpRoutes rate limit", () => {
     container.removeConstant("logger");
   });
 
+  test("keys requests with the configured rateLimitKey resolver", async () => {
+    container.addConstant("logger", createMockLogger());
+    container.add(AppEnv);
+
+    const rateLimiter = createLimitedRateLimiter();
+    container.addConstant("rateLimiter", rateLimiter);
+    const resolver = mock((context: ContextType, defaultKey: string) => `${context.route?.path}:${defaultKey}`);
+    container.addConstant("rateLimitKey", resolver);
+
+    class ResolvedKeyController {
+      index(): IResponse {
+        return new HttpResponse().json({ ok: true });
+      }
+    }
+    container.add(ResolvedKeyController);
+
+    const handler = buildHandler("/resolved-key", ResolvedKeyController);
+    const response = await handler(createReq("http://localhost/v1/resolved-key"), createServer());
+
+    expect(response.status).toBe(HttpStatus.Code.TooManyRequests);
+    expect(resolver).toHaveBeenCalledTimes(1);
+    expect(rateLimiter.check).toHaveBeenCalledWith("/resolved-key:192.168.1.1:anon");
+
+    container.removeConstant("rateLimitKey");
+    container.removeConstant("rateLimiter");
+    container.removeConstant("logger");
+  });
+
+  test("skips the quota when the rateLimitKey resolver returns null", async () => {
+    container.addConstant("logger", createMockLogger());
+    container.add(AppEnv);
+
+    const rateLimiter = createLimitedRateLimiter();
+    container.addConstant("rateLimiter", rateLimiter);
+    container.addConstant("rateLimitKey", (context: ContextType, defaultKey: string) =>
+      context.route?.path.startsWith("/webhooks") ? null : defaultKey,
+    );
+
+    class WebhookController {
+      index(): IResponse {
+        return new HttpResponse().json({ ok: true });
+      }
+    }
+    container.add(WebhookController);
+
+    const handler = buildHandler("/webhooks/clerk", WebhookController);
+    const response = await handler(createReq("http://localhost/v1/webhooks/clerk"), createServer());
+
+    expect(response.status).toBe(HttpStatus.Code.OK);
+    expect(rateLimiter.check).not.toHaveBeenCalled();
+
+    container.removeConstant("rateLimitKey");
+    container.removeConstant("rateLimiter");
+    container.removeConstant("logger");
+  });
+
   test("keeps the headers a middleware set on the 429 response", async () => {
     container.addConstant("logger", createMockLogger());
     container.add(AppEnv);

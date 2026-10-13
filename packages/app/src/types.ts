@@ -1,4 +1,5 @@
 import type { CacheClassType } from "@talosjs/cache";
+import type { ContextType } from "@talosjs/controller";
 import type { CronClassType } from "@talosjs/cron";
 import type { LoggerClassType } from "@talosjs/logger";
 import type { MiddlewareClassType, SocketMiddlewareClassType } from "@talosjs/middleware";
@@ -130,6 +131,14 @@ export type AppServerConfigType = {
   id?: string | null;
 };
 
+/**
+ * Picks the rate-limit bucket of an HTTP request once its middlewares have run.
+ * `defaultKey` is the built-in `<ip>:<user id or "anon">` key. Prefix it with
+ * `context.route?.name` to give each route its own quota, or return `null` to
+ * exempt the request, e.g. a webhook a provider sends from a few shared IPs.
+ */
+export type RateLimitKeyResolverType = (context: ContextType, defaultKey: string) => string | null;
+
 export type AppConfigType = {
   routing: {
     prefix: string;
@@ -138,6 +147,7 @@ export type AppConfigType = {
   onException?: LoggerClassType;
   cache?: CacheClassType;
   rateLimiter?: RateLimiterClassType;
+  rateLimitKey?: RateLimitKeyResolverType;
   cronJobs?: CronClassType[];
   middlewares?: MiddlewareClassType[] | SocketMiddlewareClassType[];
   cors?: MiddlewareClassType;
