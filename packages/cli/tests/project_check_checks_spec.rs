@@ -1212,6 +1212,36 @@ fn a_unique_column_needs_a_unique_constraint() {
     assert!(satisfied.is_empty());
 }
 
+#[test]
+fn every_unindexed_column_is_reported_in_one_pass() {
+    let entity = r#"
+@ManyToOne(() => UserEntity)
+@JoinColumn({ name: "user_id" })
+public user!: UserEntity;
+
+@ManyToOne(() => ShopEntity)
+@JoinColumn({ name: "shop_id" })
+public shop!: ShopEntity;
+
+@Column({ name: "email", type: "varchar", unique: true })
+public email!: string;
+"#;
+    let found = indexes::lookups(entity, "a.ts");
+    assert_eq!(found.len(), 3);
+
+    // Only `created_at` is indexed and unique; the statements right after it
+    // merely mention the other columns and must not count as indexing them.
+    let migrations = r#"
+await queryRunner.query(`CREATE UNIQUE INDEX "IDX_order_created" ON "order" ("created_at")`);
+await queryRunner.query(`ALTER TABLE "order" ADD CONSTRAINT "FK_order_user" FOREIGN KEY ("user_id") REFERENCES "user"("id")`);
+await queryRunner.query(`ALTER TABLE "order" ADD CONSTRAINT "FK_order_shop" FOREIGN KEY ("shop_id") REFERENCES "shop"("id")`);
+await queryRunner.query(`ALTER TABLE "order" ADD "email" varchar`);
+"#;
+    let mut warnings = Vec::new();
+    indexes::inspect(&found, migrations, &mut warnings);
+    assert_eq!(warnings.len(), 3, "{warnings:#?}");
+}
+
 // ---------------------------------------------------------------------------
 // Transactions
 // ---------------------------------------------------------------------------
