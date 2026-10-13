@@ -71,3 +71,9 @@
 
 - @talosjs/role@1.3.4| — Franck ([eec4219f](https://github.com/ooneex/talos/commit/eec4219f))
 
+## [1.3.6](https://github.com/ooneex/talos/releases/tag/@talosjs/role@1.3.6) - 2026-10-13
+
+### Changed
+
+- Run package lint through bun check|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([de3ee05c](https://github.com/ooneex/talos/commit/de3ee05c))
+
