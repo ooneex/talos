@@ -58,3 +58,13 @@
 
 ## [1.1.9](https://github.com/ooneex/talos/releases/tag/@talosjs/payment@1.1.9) - 2026-09-26
 
+## [1.1.10](https://github.com/ooneex/talos/releases/tag/@talosjs/payment@1.1.10) - 2026-10-13
+
+### Changed
+
+- Run package lint through bun check|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([de3ee05c](https://github.com/ooneex/talos/commit/de3ee05c))
+
+### Fixed
+
+- Map Polar product prices to amountType payloads|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([ba54198d](https://github.com/ooneex/talos/commit/ba54198d))
+
