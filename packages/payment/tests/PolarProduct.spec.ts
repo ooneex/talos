@@ -142,8 +142,21 @@ describe("PolarProduct", () => {
       expect(mockProductsCreate).toHaveBeenCalledTimes(1);
       const callArgs = getCreateCallArgs();
       expect(callArgs.prices).toHaveLength(1);
-      expect(callArgs.prices[0].type).toBe("fixed");
+      expect(callArgs.prices[0].amountType).toBe("fixed");
       expect(callArgs.prices[0].priceAmount).toBe(1999);
+    });
+
+    test("should map free prices with only the amount type", async () => {
+      await product.create({ name: "Free Product", prices: [{ type: "free", priceAmount: 0 }] } as IProduct);
+
+      expect(getCreateCallArgs().prices).toEqual([{ amountType: "free" }]);
+    });
+
+    test("should reject fixed prices without an amount", async () => {
+      await expect(product.create({ name: "Broken", prices: [{ type: "fixed" }] } as IProduct)).rejects.toThrow(
+        PaymentException,
+      );
+      expect(mockProductsCreate).not.toHaveBeenCalled();
     });
 
     test("should handle recurring interval for monthly subscription", async () => {
@@ -259,8 +272,7 @@ describe("PolarProduct", () => {
       await product.update("prod_123", {
         prices: [
           {
-            type: "fixed",
-            priceAmount: 2999,
+            type: "custom",
             minimumAmount: 1999,
             maximumAmount: 3999,
             presetAmount: 2499,
@@ -272,9 +284,8 @@ describe("PolarProduct", () => {
       const callArgs = getUpdateCallArgs();
       expect(callArgs.productUpdate.prices).toEqual([
         {
-          type: "fixed",
+          amountType: "custom",
           priceCurrency: "usd",
-          priceAmount: 2999,
           minimumAmount: 1999,
           maximumAmount: 3999,
           presetAmount: 2499,

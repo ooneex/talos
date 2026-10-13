@@ -1,4 +1,7 @@
 import { Polar } from "@polar-sh/sdk";
+import type { ProductPriceCustomCreate } from "@polar-sh/sdk/models/components/productpricecustomcreate.js";
+import type { ProductPriceFixedCreate } from "@polar-sh/sdk/models/components/productpricefixedcreate.js";
+import type { ProductPriceFreeCreate } from "@polar-sh/sdk/models/components/productpricefreecreate.js";
 import type { SubscriptionRecurringInterval } from "@polar-sh/sdk/models/components/subscriptionrecurringinterval.js";
 import { AppEnv } from "@talosjs/app-env";
 import { inject, injectable } from "@talosjs/container";
@@ -38,20 +41,35 @@ export class PolarProduct {
     }
   }
 
+  private toPriceCreate(price: PriceType): ProductPriceFixedCreate | ProductPriceCustomCreate | ProductPriceFreeCreate {
+    const priceCurrency = price.priceCurrency ?? "usd";
+
+    switch (price.type) {
+      case "fixed":
+        if (price.priceAmount === undefined) {
+          throw new PaymentException("Fixed prices require a price amount.", "PRICE_AMOUNT_REQUIRED");
+        }
+
+        return { amountType: "fixed", priceCurrency, priceAmount: price.priceAmount };
+      case "custom":
+        return {
+          amountType: "custom",
+          priceCurrency,
+          minimumAmount: price.minimumAmount,
+          maximumAmount: price.maximumAmount,
+          presetAmount: price.presetAmount,
+        };
+      case "free":
+        return { amountType: "free" };
+    }
+  }
+
   public async create(data: IProduct): Promise<Omit<IProduct, "id">> {
     const response = await this.client.products.create({
       name: data.name,
       description: data.description ?? null,
       recurringInterval: this.toRecurringInterval(data.recurringInterval),
-      prices:
-        data.prices?.map((price) => ({
-          type: price.type,
-          priceCurrency: price.priceCurrency ?? "usd",
-          priceAmount: price.priceAmount,
-          minimumAmount: price.minimumAmount,
-          maximumAmount: price.maximumAmount,
-          presetAmount: price.presetAmount,
-        })) ?? [],
+      prices: data.prices?.map((price) => this.toPriceCreate(price)) ?? [],
       medias: data.images?.map((image) => image.url) ?? null,
       organizationId: data.organizationId ?? null,
       metadata: data.metadata,
@@ -72,15 +90,7 @@ export class PolarProduct {
         description: data.description ?? null,
         isArchived: data.isArchived ?? null,
         recurringInterval: this.toRecurringInterval(data.recurringInterval),
-        prices:
-          data.prices?.map((price) => ({
-            type: price.type,
-            priceCurrency: price.priceCurrency ?? "usd",
-            priceAmount: price.priceAmount,
-            minimumAmount: price.minimumAmount,
-            maximumAmount: price.maximumAmount,
-            presetAmount: price.presetAmount,
-          })) ?? null,
+        prices: data.prices?.map((price) => this.toPriceCreate(price)) ?? null,
         medias: data.images?.map((image) => image.url) ?? null,
         metadata: data.metadata,
         attachedCustomFields:
