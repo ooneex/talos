@@ -784,3 +784,29 @@ fn inside_a_git_repository_the_branch_and_commit_checks_have_something_to_read()
         "the repository and the issue file are both there"
     );
 }
+
+#[test]
+fn a_dictionary_larger_than_the_source_size_cap_is_still_checked() {
+    let (_dir, root) = workspace();
+    let path = root.join("modules/web/src/shared/translations/translations.json");
+    let mut entries: Vec<String> = (0..12_000)
+        .map(|index| format!(r#""key{index}": {{ "en": "Value number {index} padded out", "fr": "Valeur {index}" }}"#))
+        .collect();
+    entries.push(r#""bye": { "en": "Bye" }"#.to_string());
+    let content = format!("{{ {} }}", entries.join(", "));
+    assert!(content.len() > 512 * 1024, "the fixture exceeds the cap");
+    write(&path, &content);
+
+    let report = execute(&args(&root), &[CheckId::Translations]);
+    let outcome = &report.outcomes[0];
+
+    assert!(
+        outcome.summary.contains("12001 keys")
+            || outcome.details.iter().any(|d| d.contains("12001 keys")),
+        "{outcome:?}"
+    );
+    assert!(
+        outcome.details.iter().any(|detail| detail.contains("bye")),
+        "{outcome:?}"
+    );
+}
