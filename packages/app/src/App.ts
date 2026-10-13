@@ -155,7 +155,12 @@ export class App {
       // source tree at boot fails on read-only filesystems in production containers
       if (env.isLocal) {
         const rolesTypesFile = join(candidate.rolesDir, "roles.types.ts");
-        await Bun.write(rolesTypesFile, generateRolesTypes(rolesConfig));
+        const rolesTypes = generateRolesTypes(rolesConfig);
+        const existingTypes = Bun.file(rolesTypesFile);
+        // Rewriting an unchanged file on every boot dirties the working tree and retriggers watchers
+        if (!(await existingTypes.exists()) || (await existingTypes.text()) !== rolesTypes) {
+          await Bun.write(rolesTypesFile, rolesTypes);
+        }
       }
     }
 
