@@ -38,6 +38,11 @@ const mockCreateClerkClient = mock(() => ({
     getSession: mock(() => Promise.resolve({ id: "sess_1" })),
     revokeSession: mock(() => Promise.resolve({ id: "sess_1" })),
   },
+  invitations: {
+    createInvitation: mock(() => Promise.resolve({ id: "inv_1", emailAddress: "jane@example.com", status: "pending" })),
+    revokeInvitation: mock(() => Promise.resolve({ id: "inv_1", status: "revoked" })),
+    getInvitationList: mock(() => Promise.resolve({ data: [{ id: "inv_1" }], totalCount: 1 })),
+  },
   signInTokens: {
     createSignInToken: mock(() => Promise.resolve({ id: "sit_1", token: "sign-in-token" })),
   },
@@ -299,6 +304,54 @@ describe("ClerkAuth", () => {
     });
   });
 
+  describe("Invitation operations", () => {
+    let auth: ClerkAuth;
+    let client: MockClient;
+
+    beforeEach(() => {
+      auth = new ClerkAuth(createMockEnv());
+      client = mockCreateClerkClient.mock.results.at(-1)?.value as MockClient;
+    });
+
+    test("should create an invitation with the given params", async () => {
+      const params = { emailAddress: "jane@example.com", redirectUrl: "https://app.example.com/accept" };
+      const result = await auth.createInvitation(params);
+
+      expect(client.invitations.createInvitation).toHaveBeenCalledWith(params);
+      expect(result.id).toBe("inv_1");
+    });
+
+    test("should revoke an invitation by id", async () => {
+      const result = await auth.revokeInvitation("inv_1");
+
+      expect(client.invitations.revokeInvitation).toHaveBeenCalledWith("inv_1");
+      expect(result.status).toBe("revoked");
+    });
+
+    test("should list invitations with filters", async () => {
+      const result = await auth.getInvitationList({ status: "pending", query: "jane@example.com" });
+
+      expect(client.invitations.getInvitationList).toHaveBeenCalledWith({
+        status: "pending",
+        query: "jane@example.com",
+      });
+      expect(result.totalCount).toBe(1);
+      expect(result.data).toHaveLength(1);
+    });
+
+    test("should list invitations without params", async () => {
+      await auth.getInvitationList();
+
+      expect(client.invitations.getInvitationList).toHaveBeenCalledWith(undefined);
+    });
+
+    test("should propagate a Clerk error", async () => {
+      client.invitations.revokeInvitation.mockImplementationOnce(() => Promise.reject(new Error("not found")));
+
+      await expect(auth.revokeInvitation("inv_missing")).rejects.toThrow("not found");
+    });
+  });
+
   describe("Instance creation", () => {
     test("should create ClerkAuth instance", () => {
       const instance = new ClerkAuth(createMockEnv());
@@ -326,6 +379,9 @@ describe("ClerkAuth", () => {
       expect(typeof auth.getSession).toBe("function");
       expect(typeof auth.signIn).toBe("function");
       expect(typeof auth.signOut).toBe("function");
+      expect(typeof auth.createInvitation).toBe("function");
+      expect(typeof auth.revokeInvitation).toBe("function");
+      expect(typeof auth.getInvitationList).toBe("function");
     });
   });
 });
