@@ -158,7 +158,7 @@ describe("PostgresDriver", () => {
         max: 4,
         connectionTimeout: 3000,
         idleTimeout: 2000,
-        tls: true,
+        tls: { serverName: "db.example" },
         prepare: false,
         bigint: true,
       });

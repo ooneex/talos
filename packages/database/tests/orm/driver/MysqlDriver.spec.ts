@@ -111,7 +111,7 @@ describe("MysqlDriver", () => {
         database: "shop",
         max: 3,
         connectionTimeout: 2000,
-        tls: true,
+        tls: { serverName: "db.example" },
         bigint: true,
       });
     });
