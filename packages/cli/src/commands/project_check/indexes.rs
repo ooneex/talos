@@ -125,6 +125,22 @@ pub fn lookups(content: &str, file: &str) -> Vec<Lookup> {
     found
 }
 
+/// The statement starting at `start`: at most [`STATEMENT_WINDOW`] bytes, cut
+/// at the first `;` so the columns of the statements that follow — a foreign
+/// key added right after an index, another table's DDL — are not read as part
+/// of it and silently hide every finding behind them.
+fn statement_at(migrations: &str, start: usize) -> &str {
+    let end = (start + STATEMENT_WINDOW).min(migrations.len());
+    // Slicing on a char boundary keeps a migration holding non-ASCII text
+    // from panicking the check.
+    let end = (start..=end)
+        .rev()
+        .find(|position| migrations.is_char_boundary(*position))
+        .unwrap_or(start);
+    let window = &migrations[start..end];
+    window.find(';').map_or(window, |stop| &window[..stop])
+}
+
 /// The parts of the migrations that create an index, concatenated.
 ///
 /// Only these windows are searched, so a column merely *created* by a migration
@@ -136,14 +152,7 @@ pub fn index_statements(migrations: &str) -> String {
 
     while let Some(offset) = lowercase[from..].find("index") {
         let start = from + offset;
-        let end = (start + STATEMENT_WINDOW).min(migrations.len());
-        // Slicing on a char boundary keeps a migration holding non-ASCII text
-        // from panicking the check.
-        let end = (start..=end)
-            .rev()
-            .find(|position| migrations.is_char_boundary(*position))
-            .unwrap_or(start);
-        statements.push_str(&migrations[start..end]);
+        statements.push_str(statement_at(migrations, start));
         statements.push('\n');
         from = start + "index".len();
     }
@@ -158,12 +167,7 @@ pub fn has_unique(migrations: &str, column: &str) -> bool {
 
     while let Some(offset) = lowercase[from..].find("unique") {
         let start = from + offset;
-        let end = (start + STATEMENT_WINDOW).min(migrations.len());
-        let end = (start..=end)
-            .rev()
-            .find(|position| migrations.is_char_boundary(*position))
-            .unwrap_or(start);
-        if mentions(&migrations[start..end], column) {
+        if mentions(statement_at(migrations, start), column) {
             return true;
         }
         from = start + "unique".len();
