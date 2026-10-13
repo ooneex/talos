@@ -56,7 +56,7 @@
   "scripts": {
     "build": "bunup",
     "fmt": "bunx biome check --write",
-    "lint": "tsc --noEmit && bunx biome lint",
+    "lint": "bun check && bunx biome lint",
     "test": "bun test --parallel=4 --isolate tests"
   },
   "type": "module",
