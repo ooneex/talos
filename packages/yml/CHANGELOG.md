@@ -52,3 +52,9 @@
 
 ## [1.1.8](https://github.com/ooneex/talos/releases/tag/@talosjs/yml@1.1.8) - 2026-09-26
 
+## [1.1.9](https://github.com/ooneex/talos/releases/tag/@talosjs/yml@1.1.9) - 2026-10-13
+
+### Changed
+
+- Run package lint through bun check|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([de3ee05c](https://github.com/ooneex/talos/commit/de3ee05c))
+
