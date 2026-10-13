@@ -232,19 +232,34 @@ impl SourceIndex {
                 .unwrap_or_else(|| root.to_path_buf());
 
             for import in &mut self.files[index].imports {
-                let base = if import.specifier.starts_with('.') {
-                    Some(dir.join(&import.specifier))
-                } else {
-                    expand_alias(&aliases, &import.specifier)
-                };
-                let Some(base) = base else {
-                    continue;
-                };
-                let base = normalize(&base);
-                import.resolved = resolve_file(&base, &known);
-                import.module = module_of(root, import.resolved.as_deref().unwrap_or(&base));
+                resolve_import(import, &dir, root, &aliases, &known);
             }
         }
+    }
+
+    /// The imports of every test file under the modules' `tests/`, resolved
+    /// against the indexed sources. Tests are kept out of the index itself so
+    /// the layering and registration rules never see them, but a name only a
+    /// test imports is still in use.
+    pub fn test_imports(&self, root: &Path, modules: &[WorkspaceModule]) -> Vec<Import> {
+        let known: BTreeSet<PathBuf> = self.files.iter().map(|file| file.path.clone()).collect();
+        let mut imports = Vec::new();
+
+        for module in modules {
+            let tests = module.dir.join("tests");
+            for path in collect_files(&tests, TS_EXTENSIONS, MAX_SOURCE_DEPTH) {
+                let Ok(content) = fs::read_to_string(&path) else {
+                    continue;
+                };
+                let dir = path.parent().unwrap_or(root).to_path_buf();
+                for mut import in parse_imports(&content) {
+                    resolve_import(&mut import, &dir, root, &self.aliases, &known);
+                    imports.push(import);
+                }
+            }
+        }
+
+        imports
     }
 
     pub fn file(&self, path: &Path) -> Option<&IndexedFile> {
@@ -255,6 +270,27 @@ impl SourceIndex {
     pub fn module_files(&self, module: &str) -> impl Iterator<Item = &IndexedFile> {
         self.files.iter().filter(move |file| file.module == module)
     }
+}
+
+/// Point one import at the file it loads, relative to the importing `dir`.
+fn resolve_import(
+    import: &mut Import,
+    dir: &Path,
+    root: &Path,
+    aliases: &BTreeMap<String, PathBuf>,
+    known: &BTreeSet<PathBuf>,
+) {
+    let base = if import.specifier.starts_with('.') {
+        Some(dir.join(&import.specifier))
+    } else {
+        expand_alias(aliases, &import.specifier)
+    };
+    let Some(base) = base else {
+        return;
+    };
+    let base = normalize(&base);
+    import.resolved = resolve_file(&base, known);
+    import.module = module_of(root, import.resolved.as_deref().unwrap_or(&base));
 }
 
 /// The `@module/<name>/*` style aliases declared by the root `tsconfig.json`.
