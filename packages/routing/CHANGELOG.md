@@ -72,3 +72,9 @@
 
 ## [1.3.6](https://github.com/ooneex/talos/releases/tag/@talosjs/routing@1.3.6) - 2026-09-26
 
+## [1.3.7](https://github.com/ooneex/talos/releases/tag/@talosjs/routing@1.3.7) - 2026-10-13
+
+### Changed
+
+- Run package lint through bun check|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([de3ee05c](https://github.com/ooneex/talos/commit/de3ee05c))
+
