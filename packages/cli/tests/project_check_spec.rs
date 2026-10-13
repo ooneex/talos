@@ -1239,8 +1239,29 @@ fn only_modules_declaring_an_e2e_script_are_run() {
         &root.join("modules/spa/package.json"),
         "{ \"name\": \"@module/spa\", \"scripts\": { \"e2e\": \"playwright test\" } }\n",
     );
+    write(&root.join("modules/spa/e2e/Home.spec.ts"), "");
 
     assert_eq!(modules_with_e2e(&root), vec!["modules/spa".to_string()]);
+}
+
+#[test]
+fn modules_with_an_e2e_script_but_no_e2e_specs_are_not_run() {
+    let (_guard, root) = root();
+    scaffold_root(&root);
+    scaffold_module(
+        &root,
+        "modules",
+        "ai",
+        Some("microservice"),
+        Some("@module/ai"),
+    );
+    write(
+        &root.join("modules/ai/package.json"),
+        "{ \"name\": \"@module/ai\", \"scripts\": { \"e2e\": \"bunx playwright test\" } }\n",
+    );
+    write(&root.join("modules/ai/tests/AiService.spec.ts"), "");
+
+    assert!(modules_with_e2e(&root).is_empty());
 }
 
 // ---------------------------------------------------------------------------
