@@ -6,9 +6,11 @@ use crate::utils::WorkspaceTarget;
 
 pub const INSTALL_COMMAND: &str = "install";
 pub const TEST_COMMAND: &str = "test";
+pub const E2E_COMMAND: &str = "e2e";
 pub const ORDER_INDEPENDENT_COMMANDS: &[&str] = &["fmt", "lint", "test"];
 
-fn tests_dir_is_empty(dir: &Path) -> bool {
+/// Whether `dir/<suite>` holds no file at any depth (or does not exist).
+pub fn suite_dir_is_empty(dir: &Path, suite: &str) -> bool {
     fn has_file(dir: &Path) -> bool {
         let Ok(entries) = std::fs::read_dir(dir) else {
             return false;
@@ -27,7 +29,20 @@ fn tests_dir_is_empty(dir: &Path) -> bool {
         false
     }
 
-    !has_file(&dir.join("tests"))
+    !has_file(&dir.join(suite))
+}
+
+/// A `test` script with nothing under `tests/`, or an `e2e` script with
+/// nothing under `e2e/`, is skipped rather than run. Without its own suite,
+/// a runner like `playwright test` falls back to scanning the whole target,
+/// picks up the `bun:test` specs under `tests/` and leaves a `test-results/`
+/// folder behind.
+fn has_no_suite(target: &WorkspaceTarget, command: &str) -> bool {
+    match command {
+        TEST_COMMAND => suite_dir_is_empty(&target.dir, "tests"),
+        E2E_COMMAND => suite_dir_is_empty(&target.dir, "e2e"),
+        _ => false,
+    }
 }
 
 /// `bun run <command>` only works for a script `package.json` actually
@@ -60,7 +75,7 @@ pub fn build_group(
         .iter()
         .filter(|target| target.scripts.contains_key(command))
         .map(|target| {
-            let skipped = command == TEST_COMMAND && tests_dir_is_empty(&target.dir);
+            let skipped = has_no_suite(target, command);
             Task {
                 key: format!("{}#{command}", target.key),
                 label: format!("{}:{command}", target.name),

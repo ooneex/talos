@@ -125,7 +125,7 @@ pub use workspace::{
     save_file_hash_cache, sort_targets_by_dependencies, write_cache_entry,
 };
 pub use workspace_footer::{BAR_WIDTH, FooterState, build_footer_lines};
-pub use workspace_group::{INSTALL_COMMAND, build_group, build_install_group};
+pub use workspace_group::{INSTALL_COMMAND, build_group, build_install_group, suite_dir_is_empty};
 pub(crate) use workspace_scheduler::{
     SchedulerContext, default_concurrency, print_task_report, run_group,
 };

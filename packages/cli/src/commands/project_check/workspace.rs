@@ -20,6 +20,7 @@ use crate::commands::lint::{self, LintArgs};
 use crate::commands::test::{self, TestArgs};
 use crate::commands::workspace_check::{self, WorkspaceCheckArgs};
 use crate::commands::workspace_run::{self, WorkspaceRunArgs};
+use crate::utils::suite_dir_is_empty;
 
 // ---------------------------------------------------------------------------
 // Workspace — the `workspace:check` gate: install, build, lint, test
@@ -338,7 +339,8 @@ fn run_tasks_detached(
 // End-to-end — the browser suite, opt-in because it boots the application
 // ---------------------------------------------------------------------------
 
-/// Modules declaring an `e2e` script, which is what `workspace:run` would run.
+/// Modules declaring an `e2e` script and holding specs under `e2e/` — what
+/// `workspace:run` actually runs, since an `e2e` script without a suite is skipped.
 pub fn modules_with_e2e(root: &Path) -> Vec<String> {
     modules::discover_modules(root)
         .into_iter()
@@ -347,6 +349,7 @@ pub fn modules_with_e2e(root: &Path) -> Vec<String> {
                 .package_json()
                 .and_then(|manifest| manifest.pointer("/scripts/e2e").cloned())
                 .is_some()
+                && !suite_dir_is_empty(&module.dir, "e2e")
         })
         .map(|module| module.label())
         .collect()
@@ -358,7 +361,7 @@ pub(super) fn check_e2e(args: &ProjectCheckArgs, root: &Path) -> CheckOutcome {
         return CheckOutcome::new(
             CheckId::E2e,
             CheckStatus::Skipped,
-            "no module declares an `e2e` script",
+            "no module declares an `e2e` script with specs under `e2e/`",
         )
         .with_hint("Scaffold one with `talos e2e:create --module=<name>`");
     }

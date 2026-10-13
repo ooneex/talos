@@ -97,6 +97,32 @@ fn build_group_runs_test_when_tests_dir_has_nested_files() {
 }
 
 #[test]
+fn build_group_skips_e2e_when_only_unit_specs_exist() {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::create_dir_all(dir.path().join("tests")).unwrap();
+    std::fs::write(dir.path().join("tests/core.spec.ts"), "").unwrap();
+    let targets = vec![target_in(dir.path(), "core", &["e2e"])];
+
+    let tasks = build_group(&targets, &included(&targets), "e2e");
+
+    assert_eq!(tasks.len(), 1);
+    assert_eq!(tasks[0].status, TaskStatus::Skipped);
+}
+
+#[test]
+fn build_group_runs_e2e_when_e2e_dir_has_specs() {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::create_dir_all(dir.path().join("e2e")).unwrap();
+    std::fs::write(dir.path().join("e2e/Home.spec.ts"), "").unwrap();
+    let targets = vec![target_in(dir.path(), "spa", &["e2e"])];
+
+    let tasks = build_group(&targets, &included(&targets), "e2e");
+
+    assert_eq!(tasks.len(), 1);
+    assert_eq!(tasks[0].status, TaskStatus::Pending);
+}
+
+#[test]
 fn build_group_drops_targets_without_the_script() {
     let targets = vec![target("core", &[], &[]), target("app", &["lint"], &[])];
 
