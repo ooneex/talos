@@ -121,3 +121,10 @@
 
 - @talosjs/database@1.6.0| — Franck ([31a52fe9](https://github.com/ooneex/talos/commit/31a52fe9))
 
+## [1.7.1](https://github.com/ooneex/talos/releases/tag/@talosjs/database@1.7.1) - 2026-10-13
+
+### Changed
+
+- Pass a TLS serverName in driver options|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([d2a0628b](https://github.com/ooneex/talos/commit/d2a0628b))
+- Run package lint through bun check|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([de3ee05c](https://github.com/ooneex/talos/commit/de3ee05c))
+
