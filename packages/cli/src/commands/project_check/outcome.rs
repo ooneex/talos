@@ -241,6 +241,9 @@ pub fn split_csv(value: Option<&str>) -> Vec<String> {
 /// the messages line up under each other.
 pub const ERROR_DETAIL: &str = "error  ";
 pub const WARN_DETAIL: &str = "warn   ";
+/// A detail that informs without affecting the status, so `harden` leaves it
+/// alone under `--strict`.
+pub const NOTE_DETAIL: &str = "note   ";
 
 /// Build the outcome of a check that only reads the repository.
 ///

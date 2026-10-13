@@ -179,8 +179,12 @@ fn dynamic_pattern() -> &'static Regex {
     static PATTERN: OnceLock<Regex> = OnceLock::new();
     PATTERN.get_or_init(|| {
         // A key assembled at runtime — `trans(key)`, `trans(`nav.${id}`)`. No
-        // static pass can tell which entries it reaches.
-        Regex::new(r#"\b(?:trans|has)\(\s*(?:[A-Za-z_$][A-Za-z0-9_$.\[\]]*\s*[,)]|`[^`]*\$\{)"#)
+        // static pass can tell which entries it reaches. `has()` only counts
+        // when called bare: `map.has(id)` / `set.has(key)` are collections, not
+        // the translation helper, and must not suspend the unused-key check.
+        Regex::new(
+            r#"(?:\btrans|(?:^|[^.\w$])has)\(\s*(?:[A-Za-z_$][A-Za-z0-9_$.\[\]]*\s*[,)]|`[^`]*\$\{)"#,
+        )
             .expect("the dynamic translation usage pattern is valid")
     })
 }
@@ -211,6 +215,13 @@ impl Usage {
     }
 }
 
+/// A line that only documents code — a `//` comment or a JSDoc body line —
+/// which a `trans(key)` example inside it must not turn into a runtime key.
+fn is_comment(line: &str) -> bool {
+    let line = line.trim_start();
+    line.starts_with("//") || line.starts_with('*') || line.starts_with("/*")
+}
+
 /// The keys a source file names, split by the call that named them.
 pub fn scan_usage(content: &str) -> Usage {
     if content.contains(PLUMBING_IMPORT) {
@@ -218,7 +229,10 @@ pub fn scan_usage(content: &str) -> Usage {
     }
 
     let mut usage = Usage {
-        dynamic: dynamic_pattern().is_match(content),
+        dynamic: content
+            .lines()
+            .filter(|line| !is_comment(line))
+            .any(|line| dynamic_pattern().is_match(line)),
         ..Usage::default()
     };
 
