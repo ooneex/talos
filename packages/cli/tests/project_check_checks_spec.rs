@@ -1666,6 +1666,67 @@ export class ReadUserController {}
     assert!(!endpoint.returns_collection);
 }
 
+#[test]
+fn a_collection_route_whose_queries_is_a_constant_is_paginated() {
+    let source = r#"
+const PAGE_QUERIES = { page: "number", limit: "number" };
+const LIST_QUERIES = type({ ...PAGE_QUERIES, q: "string?" });
+
+@Route.get("/users", {
+  name: "user.list",
+  queries: LIST_QUERIES,
+  response: Assert("UserType[]"),
+  roles: ["ROLE_ADMIN"],
+})
+export class ListUsersController {}
+"#;
+    let endpoint = pagination::parse(source, "a.ts").expect("the route parses");
+    assert_eq!(endpoint.accepts, vec!["page", "limit"]);
+}
+
+#[test]
+fn a_collection_route_spreading_an_imported_constant_is_paginated() {
+    let dir = tempfile::tempdir().expect("create temp dir");
+    fs::write(
+        dir.path().join("queries.ts"),
+        "export const PAGE_QUERIES = {\n  page: \"number\",\n  limit: \"number\",\n} as const;\n",
+    )
+    .expect("write constants");
+    let source = r#"
+import { PAGE_QUERIES as PAGING } from "./queries";
+
+@Route.get("/users", {
+  name: "user.list",
+  queries: type({ ...PAGING, q: "string?" }),
+  response: Assert("UserType[]"),
+  roles: ["ROLE_ADMIN"],
+})
+export class ListUsersController {}
+"#;
+    let endpoint =
+        pagination::parse_at(source, "a.ts", Some(dir.path())).expect("the route parses");
+    let mut warnings = Vec::new();
+    pagination::inspect(&[endpoint], &mut warnings);
+    assert!(warnings.is_empty(), "{warnings:?}");
+}
+
+#[test]
+fn an_unresolved_queries_constant_still_warns() {
+    let source = r#"
+@Route.get("/users", {
+  name: "user.list",
+  queries: UNKNOWN_QUERIES,
+  response: Assert("UserType[]"),
+  roles: ["ROLE_ADMIN"],
+})
+export class ListUsersController {}
+"#;
+    let endpoint = pagination::parse(source, "a.ts").expect("the route parses");
+    let mut warnings = Vec::new();
+    pagination::inspect(&[endpoint], &mut warnings);
+    assert_eq!(warnings.len(), 1);
+}
+
 // ---------------------------------------------------------------------------
 // OpenAPI
 // ---------------------------------------------------------------------------

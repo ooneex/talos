@@ -40,6 +40,136 @@ pub fn section<'a>(body: &'a str, name: &str) -> Option<&'a str> {
     config_body(body, open)
 }
 
+/// How deep constants are followed before giving up.
+const MAX_RESOLVE_DEPTH: usize = 4;
+
+/// The source text of a route's `queries`, with every constant it names or
+/// spreads (`queries: PAGE_QUERIES`, `type({ ...PAGE_QUERIES, q: "string" })`)
+/// replaced by that constant's definition.
+pub fn queries_text(config: &str, content: &str, dir: Option<&Path>) -> String {
+    let Some(start) = config.find("queries:") else {
+        return String::new();
+    };
+    let expression = expression(&config[start + "queries:".len()..]);
+    expand(expression, content, dir, 0)
+}
+
+/// The leading expression of `text`, up to the first top-level `,` or `;`.
+fn expression(text: &str) -> &str {
+    let mut depth = 0i32;
+    let mut quote: Option<char> = None;
+    for (offset, character) in text.char_indices() {
+        if let Some(open) = quote {
+            if character == open {
+                quote = None;
+            }
+            continue;
+        }
+        match character {
+            '"' | '\'' | '`' => quote = Some(character),
+            '{' | '(' | '[' => depth += 1,
+            '}' | ')' | ']' => {
+                depth -= 1;
+                if depth < 0 {
+                    return text[..offset].trim();
+                }
+            }
+            ',' | ';' if depth == 0 => return text[..offset].trim(),
+            _ => {}
+        }
+    }
+    text.trim()
+}
+
+fn is_identifier(text: &str) -> bool {
+    let mut characters = text.chars();
+    characters
+        .next()
+        .is_some_and(|first| first.is_ascii_alphabetic() || first == '_' || first == '$')
+        && characters.all(|character| {
+            character.is_ascii_alphanumeric() || character == '_' || character == '$'
+        })
+}
+
+/// The constants an expression stands for: itself when it is a bare name,
+/// plus every `...NAME` spread.
+fn referenced(expression: &str) -> Vec<String> {
+    let mut names = Vec::new();
+    let trimmed = expression.trim();
+    if is_identifier(trimmed) {
+        names.push(trimmed.to_string());
+    }
+    let mut rest = expression;
+    while let Some(position) = rest.find("...") {
+        rest = &rest[position + 3..];
+        let name: String = rest
+            .trim_start()
+            .chars()
+            .take_while(|character| {
+                character.is_ascii_alphanumeric() || *character == '_' || *character == '$'
+            })
+            .collect();
+        if is_identifier(&name) {
+            names.push(name);
+        }
+    }
+    names
+}
+
+fn expand(expression: &str, content: &str, dir: Option<&Path>, depth: usize) -> String {
+    let mut text = expression.to_string();
+    if depth >= MAX_RESOLVE_DEPTH {
+        return text;
+    }
+    for name in referenced(expression) {
+        if let Some(resolved) = resolve(&name, content, dir, depth) {
+            text.push('\n');
+            text.push_str(&resolved);
+        }
+    }
+    text
+}
+
+/// The expanded definition of constant `name`, looked up in `content` and
+/// then through the relative import that brings it in.
+fn resolve(name: &str, content: &str, dir: Option<&Path>, depth: usize) -> Option<String> {
+    let definition = regex::Regex::new(&format!(
+        r"(?:const|let|var)\s+{}\s*(?::[^=]+)?=",
+        regex::escape(name)
+    ))
+    .ok()?;
+    if let Some(found) = definition.find(content) {
+        let value = expression(&content[found.end()..]);
+        return Some(expand(value, content, dir, depth + 1));
+    }
+
+    let dir = dir?;
+    let import =
+        regex::Regex::new(r#"import\s*(?:type\s*)?\{([^}]*)\}\s*from\s*["'](\.[^"']*)["']"#)
+            .ok()?;
+    for captured in import.captures_iter(content) {
+        let local = captured[1].split(',').find_map(|item| {
+            let mut parts = item.split(" as ").map(str::trim);
+            let original = parts.next()?;
+            let alias = parts.next().unwrap_or(original);
+            (alias == name).then(|| original.to_string())
+        });
+        let Some(original) = local else { continue };
+        let base = dir.join(&captured[2]);
+        let candidates = [
+            base.clone(),
+            std::path::PathBuf::from(format!("{}.ts", base.display())),
+            base.join("index.ts"),
+        ];
+        let Some(path) = candidates.iter().find(|path| path.is_file()) else {
+            continue;
+        };
+        let imported = fs::read_to_string(path).ok()?;
+        return resolve(&original, &imported, path.parent(), depth + 1);
+    }
+    None
+}
+
 /// Whether a route hands back more than one of something.
 ///
 /// Three things say so and any one is enough: the response is an arktype array,
@@ -64,14 +194,20 @@ pub fn returns_collection(config: &str, content: &str, route: &Route) -> bool {
         .unwrap_or(false)
 }
 
-/// Read one controller file.
+/// Read one controller file, resolving `queries` constants within the file only.
 pub fn parse(content: &str, file: &str) -> Option<Endpoint> {
+    parse_at(content, file, None)
+}
+
+/// Read one controller file living in `dir`, so constants that `queries`
+/// names or spreads can also be followed through relative imports.
+pub fn parse_at(content: &str, file: &str, dir: Option<&Path>) -> Option<Endpoint> {
     let route = routes::parse(content, file)?;
     let start = content.find("@Route.")?;
     let open = content[start..].find('{').map(|offset| start + offset)?;
     let config = config_body(content, open)?;
 
-    let queries = section(config, "queries").unwrap_or_default();
+    let queries = queries_text(config, content, dir);
     Some(Endpoint {
         returns_collection: returns_collection(config, content, &route),
         accepts: REQUIRED_QUERIES
@@ -94,7 +230,7 @@ pub fn collect(root: &Path, modules: &[WorkspaceModule]) -> Vec<Endpoint> {
         })
         .filter_map(|path| {
             let content = fs::read_to_string(&path).ok()?;
-            parse(&content, &relative(root, &path))
+            parse_at(&content, &relative(root, &path), path.parent())
         })
         .collect()
 }
