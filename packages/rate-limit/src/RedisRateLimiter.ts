@@ -8,12 +8,30 @@ import type { IRateLimiter, RateLimitResultType, RedisRateLimiterOptionsType } f
 export class RedisRateLimiter implements IRateLimiter {
   private readonly client: Bun.RedisClient;
   private readonly namespace: string;
+  private readonly limit: number;
+  private readonly windowSeconds: number;
 
   constructor(
     @inject(AppEnv) private readonly env: AppEnv,
     options: RedisRateLimiterOptionsType = {},
   ) {
     this.namespace = options.namespace ?? "ratelimit";
+    this.limit = options.limit ?? 120;
+    this.windowSeconds = options.windowSeconds ?? 60;
+
+    if (!Number.isInteger(this.limit) || this.limit < 1) {
+      throw new RateLimitException(
+        `Invalid rate limit "${this.limit}": the limit must be a positive integer.`,
+        "RATE_LIMIT_INVALID_OPTIONS",
+      );
+    }
+
+    if (!Number.isInteger(this.windowSeconds) || this.windowSeconds < 1) {
+      throw new RateLimitException(
+        `Invalid rate limit window "${this.windowSeconds}": the window must be a positive number of seconds.`,
+        "RATE_LIMIT_INVALID_OPTIONS",
+      );
+    }
     const connectionString = options.connectionString || this.env.RATE_LIMIT_REDIS_URL;
 
     if (!connectionString) {
@@ -23,7 +41,7 @@ export class RedisRateLimiter implements IRateLimiter {
       );
     }
 
-    const { connectionString: _, namespace: __, ...userOptions } = options;
+    const { connectionString: _, namespace: __, limit: ___, windowSeconds: ____, ...userOptions } = options;
 
     this.client = new Bun.RedisClient(connectionString, {
       // Max time (ms) to wait for initial connection
@@ -47,8 +65,7 @@ export class RedisRateLimiter implements IRateLimiter {
   }
 
   public async check(key: string): Promise<RateLimitResultType> {
-    const limit = 120;
-    const windowSeconds = 60;
+    const { limit, windowSeconds } = this;
     try {
       const rateLimitKey = this.getKey(key);
 

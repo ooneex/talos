@@ -5,6 +5,10 @@ export type RateLimiterClassType = new (...args: any[]) => IRateLimiter;
 
 export type RedisRateLimiterOptionsType = {
   namespace?: string;
+  /** Requests allowed per key within one window. Defaults to 120. */
+  limit?: number;
+  /** Length of the fixed window, in seconds. Defaults to 60. */
+  windowSeconds?: number;
   connectionString?: string;
   connectionTimeout?: number;
   idleTimeout?: number;
