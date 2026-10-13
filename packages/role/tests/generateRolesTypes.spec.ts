@@ -68,7 +68,7 @@ describe("generateRolesTypes", () => {
       const output = generateRolesTypes(config);
       expect(output).toContain("export type TypedRolesConfigType = {");
       expect(output).toContain("roles: RolesMapType;");
-      expect(output).toContain("hierarchy: Record<RoleHierarchyRoleType, {");
+      expect(output).toContain("hierarchy: Record<\n    RoleHierarchyRoleType,\n    {");
       expect(output).toContain("inherits?: RoleHierarchyRoleType[];");
       expect(output).toContain("description: string;");
     });
@@ -93,5 +93,60 @@ describe("generateRolesTypes", () => {
       expect(output).toContain("export type RoleType = ;");
       expect(output).toContain("export type RoleHierarchyRoleType = ;");
     });
+  });
+});
+
+describe("generateRolesTypes formatting", () => {
+  test("should emit Biome-formatted output with a trailing newline", () => {
+    const output = generateRolesTypes(minimalConfig);
+    expect(output).toBe(
+      [
+        'export type RoleType = "GUEST" | "ADMIN";',
+        "",
+        'export type RoleHierarchyRoleType = "ROLE_GUEST" | "ROLE_ADMIN";',
+        "",
+        "export type RolesMapType = Record<RoleType, RoleHierarchyRoleType>;",
+        "",
+        "export type TypedRolesConfigType = {",
+        "  roles: RolesMapType;",
+        "  hierarchy: Record<",
+        "    RoleHierarchyRoleType,",
+        "    {",
+        "      inherits?: RoleHierarchyRoleType[];",
+        "      description: string;",
+        "    }",
+        "  >;",
+        "};",
+        "",
+      ].join("\n"),
+    );
+  });
+
+  test("should break a union over 120 columns onto one member per line", () => {
+    const hierarchy = Object.fromEntries(
+      ["GUEST", "USER", "COACH", "MANAGER", "ADMIN", "SUPER_ADMIN", "SYSTEM"].map((name) => [
+        `ROLE_${name}`,
+        { description: name },
+      ]),
+    );
+    const output = generateRolesTypes({ roles: { GUEST: "ROLE_GUEST" }, hierarchy } as IRolesConfig);
+    expect(output).toContain(
+      'export type RoleHierarchyRoleType =\n  | "ROLE_GUEST"\n  | "ROLE_USER"\n  | "ROLE_COACH"\n  | "ROLE_MANAGER"\n  | "ROLE_ADMIN"\n  | "ROLE_SUPER_ADMIN"\n  | "ROLE_SYSTEM";',
+    );
+  });
+
+  test("should only contain roles declared in the config", () => {
+    const output = generateRolesTypes(minimalConfig);
+    expect(output).not.toContain("TRIAL_USER");
+    expect(output).not.toContain("PREMIUM_USER");
+  });
+
+  test("should be stable under biome format", async () => {
+    const output = generateRolesTypes(config);
+    const proc = Bun.spawn(["bunx", "biome", "format", "--stdin-file-path=roles.types.ts"], {
+      stdin: new Blob([output]),
+      stdout: "pipe",
+    });
+    expect(await new Response(proc.stdout).text()).toBe(output);
   });
 });
