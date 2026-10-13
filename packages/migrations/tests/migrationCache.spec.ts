@@ -4,6 +4,7 @@ import { join } from "node:path";
 import type { SQL, TransactionSQL } from "bun";
 import {
   computeMigrationHash,
+  confirmCachedIds,
   deleteMigrationCache,
   isMigrationCached,
   MIGRATION_CACHE_VERSION,
@@ -147,5 +148,19 @@ describe("migration cache entries", () => {
     // ...but the untouched sibling stays a hit — a per-module cache would have
     // dropped it too.
     expect(await isMigrationCached(cacheDir, second.getVersion(), secondHash)).toBe(true);
+  });
+});
+
+describe("confirmCachedIds", () => {
+  test("should keep cache hits the migrations table still records", () => {
+    expect(confirmCachedIds(new Set(["1", "2"]), ["1", "2", "3"])).toEqual(new Set(["1", "2"]));
+  });
+
+  test("should drop every hit when the database was recreated empty", () => {
+    expect(confirmCachedIds(new Set(["1", "2"]), [])).toEqual(new Set());
+  });
+
+  test("should drop only the hits missing from the migrations table", () => {
+    expect(confirmCachedIds(new Set(["1", "2"]), ["2"])).toEqual(new Set(["2"]));
   });
 });

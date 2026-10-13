@@ -5,7 +5,12 @@ import { createMigrationTable } from "./createMigrationTable";
 import "./loadMigrationEnv";
 import { databaseIdentity, migrationSource, openMigrationDatabase } from "./database";
 import { getMigrations } from "./getMigrations";
-import { computeMigrationHash, isMigrationCached, migrationCacheDir, writeMigrationCache } from "./migrationCache";
+import {
+  computeMigrationHash,
+  confirmCachedIds,
+  isMigrationCached, migrationCacheDir,
+  writeMigrationCache,
+} from "./migrationCache";
 import { COLORS, colorize, formatDuration, runLogger, SYMBOLS } from "./runLogger";
 import type { IMigration, MigrationConfigType } from "./types";
 
@@ -160,19 +165,13 @@ export const up = async (config: MigrationConfigType): Promise<void> => {
   // invoked directly.
   const cacheDir = config.cacheDir || options.cacheDir || migrationCacheDir();
   const source = migrationSource(config.database, config.name);
-  const { hashById, cachedIds } = await warmMigrationCache(
+  const { hashById, cachedIds: cacheHits } = await warmMigrationCache(
     migrations,
     tableName,
     databaseIdentity(source),
     cacheDir,
     cacheEnabled,
   );
-
-  // Fast path: when every migration is already recorded as applied and
-  // unchanged, there is nothing to run — skip opening a database connection.
-  if (cachedIds.size === migrations.length) {
-    logCachedMigrationsAndExit(migrations);
-  }
 
   const { sql, close } = await openMigrationDatabase(source);
 
@@ -185,6 +184,22 @@ export const up = async (config: MigrationConfigType): Promise<void> => {
   }
 
   await createMigrationTable(sql, tableName);
+
+  // A database dropped and recreated under the same URL keeps its identity, so
+  // the cache alone cannot tell it was reset. Trust a hit only when the
+  // migrations table still records that version.
+  const cachedIds =
+    cacheHits.size > 0
+      ? confirmCachedIds(
+          cacheHits,
+          (await sql`SELECT id FROM ${sql(tableName)}`).map((row: { id: string }) => row.id),
+        )
+      : cacheHits;
+
+  if (cachedIds.size === migrations.length) {
+    await close();
+    logCachedMigrationsAndExit(migrations);
+  }
 
   await migrations.reduce<Promise<void>>(async (previousMigration, migration) => {
     await previousMigration;

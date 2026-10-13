@@ -15,9 +15,10 @@ import type { IMigration } from "./types";
  * migration's entry (unlike a per-module cache, which any change would drop).
  *
  * The fingerprint includes the target database identity and table name, so pointing
- * at a different database is always a miss. Like any cache decoupled from live
- * database state it can go stale if the database is reset out of band — `--drop`
- * and `--no-cache` bypass it for that reason, and `migration:down` deletes the
+ * at a different database is always a miss. A database dropped and recreated
+ * under the same identity keeps that identity, so a hit is only trusted once the
+ * migrations table confirms the version is recorded (see {@link confirmCachedIds}).
+ * `--drop` and `--no-cache` bypass the cache, and `migration:down` deletes the
  * entry it rolls back.
  */
 
@@ -96,4 +97,15 @@ export const deleteMigrationCache = async (dir: string, id: string): Promise<voi
   try {
     await rm(cacheFile(dir, id), { force: true });
   } catch {}
+};
+
+/**
+ * The cache hits the database still records as applied. A hit whose version is
+ * missing from the migrations table is stale — the database was reset out of
+ * band — so the migration must run again.
+ */
+export const confirmCachedIds = (cachedIds: Set<string>, appliedIds: Iterable<string>): Set<string> => {
+  const applied = new Set(appliedIds);
+
+  return new Set([...cachedIds].filter((id) => applied.has(id)));
 };
