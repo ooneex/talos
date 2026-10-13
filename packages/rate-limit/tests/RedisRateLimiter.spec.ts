@@ -225,6 +225,34 @@ describe("RedisRateLimiter", () => {
       expect(mockRedisClient.incr).toHaveBeenCalledWith("myapp:ip:192.168.1.1");
     });
 
+    test("should apply a configured limit and window", async () => {
+      const customLimiter = new RedisRateLimiter(createMockEnv(), {
+        connectionString: "redis://localhost:6379/1",
+        limit: 10,
+        windowSeconds: 1,
+      });
+      mockRedisClient.incr.mockResolvedValueOnce(1).mockResolvedValueOnce(11);
+      mockRedisClient.ttl.mockResolvedValue(1);
+
+      const first = await customLimiter.check(testKey);
+      const second = await customLimiter.check(testKey);
+
+      expect(mockRedisClient.expire).toHaveBeenCalledWith("ratelimit:user:123", 1);
+      expect(first).toMatchObject({ limited: false, remaining: 9, total: 10 });
+      expect(second).toMatchObject({ limited: true, remaining: 0, total: 10 });
+    });
+
+    test.each([
+      [{ limit: 0 }, "Invalid rate limit"],
+      [{ limit: 1.5 }, "Invalid rate limit"],
+      [{ windowSeconds: 0 }, "Invalid rate limit window"],
+      [{ windowSeconds: -60 }, "Invalid rate limit window"],
+    ])("should reject invalid options %o", (options, message) => {
+      expect(
+        () => new RedisRateLimiter(createMockEnv(), { connectionString: "redis://localhost:6379/1", ...options }),
+      ).toThrow(message);
+    });
+
     test("should throw RateLimitException on Redis error", async () => {
       mockRedisClient.incr.mockRejectedValue(new Error("Redis connection failed"));
 
