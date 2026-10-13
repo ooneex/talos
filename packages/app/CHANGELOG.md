@@ -185,3 +185,9 @@
 
 - Add onStop lifecycle and Bun server options|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([0c2c528f](https://github.com/ooneex/talos/commit/0c2c528f))
 
+## [1.9.1](https://github.com/ooneex/talos/releases/tag/@talosjs/app@1.9.1) - 2026-10-13
+
+### Changed
+
+- Run package lint through bun check|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([de3ee05c](https://github.com/ooneex/talos/commit/de3ee05c))
+
