@@ -90,3 +90,9 @@
 
 - Update model references to deepseek-v4.1-flash|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([55b6edd0](https://github.com/ooneex/talos/commit/55b6edd0))
 
+## [1.3.4](https://github.com/ooneex/talos/releases/tag/@talosjs/ai@1.3.4) - 2026-10-13
+
+### Changed
+
+- Run package lint through bun check|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([de3ee05c](https://github.com/ooneex/talos/commit/de3ee05c))
+
