@@ -276,6 +276,27 @@ describe("FilesystemStorage", () => {
       expect(bytesWritten).toBe(8);
     });
 
+    test("should write Uint8Array content", async () => {
+      const storage = new FilesystemStorage(new AppEnv());
+      storage.setBucket("put-bucket");
+
+      const bytes = new Uint8Array([1, 2, 3, 4]);
+      const bytesWritten = await storage.put("uint8array.bin", bytes);
+
+      expect(bytesWritten).toBe(4);
+      expect(new Uint8Array(await storage.getAsArrayBuffer("uint8array.bin"))).toEqual(bytes);
+    });
+
+    test("should write Buffer content", async () => {
+      const storage = new FilesystemStorage(new AppEnv());
+      storage.setBucket("put-bucket");
+
+      const bytesWritten = await storage.put("buffer.txt", Buffer.from("buffered"));
+
+      expect(bytesWritten).toBe(8);
+      expect(new TextDecoder().decode(await storage.getAsArrayBuffer("buffer.txt"))).toBe("buffered");
+    });
+
     test("should write SharedArrayBuffer content", async () => {
       const storage = new FilesystemStorage(new AppEnv());
       storage.setBucket("put-bucket");

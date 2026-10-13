@@ -173,7 +173,7 @@ export class FilesystemStorage extends Storage {
 
   public override async put(
     key: string,
-    content: string | ArrayBuffer | SharedArrayBuffer | Request | Response | BunFile | S3File | Blob,
+    content: string | ArrayBufferView | ArrayBuffer | SharedArrayBuffer | Request | Response | BunFile | S3File | Blob,
   ): Promise<number> {
     const filePath = this.getFilePath(key);
     await this.ensureDirectory(dirname(filePath), "STORAGE_UPLOAD_FAILED");
@@ -308,10 +308,14 @@ export class FilesystemStorage extends Storage {
   }
 
   private async normalizeContent(
-    content: string | ArrayBuffer | SharedArrayBuffer | Request | Response | BunFile | S3File | Blob,
-  ): Promise<string | ArrayBuffer | Blob> {
+    content: string | ArrayBufferView | ArrayBuffer | SharedArrayBuffer | Request | Response | BunFile | S3File | Blob,
+  ): Promise<string | Uint8Array | ArrayBuffer | Blob> {
     if (typeof content === "string" || content instanceof ArrayBuffer || content instanceof Blob) {
       return content;
+    }
+
+    if (ArrayBuffer.isView(content)) {
+      return new Uint8Array(content.buffer, content.byteOffset, content.byteLength);
     }
 
     if (content instanceof SharedArrayBuffer) {
