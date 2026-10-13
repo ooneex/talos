@@ -1,4 +1,4 @@
-import { createClerkClient, type Session, type User, verifyToken } from "@clerk/backend";
+import { createClerkClient, type Invitation, type Session, type User, verifyToken } from "@clerk/backend";
 import { AppEnv } from "@talosjs/app-env";
 import { inject } from "@talosjs/container";
 import { HttpStatus } from "@talosjs/http-status";
@@ -177,5 +177,21 @@ export class ClerkAuth implements IAuth {
 
   public async signOut(sessionId: string): Promise<Session> {
     return await this.client.sessions.revokeSession(sessionId);
+  }
+
+  public async createInvitation(
+    params: Parameters<typeof this.client.invitations.createInvitation>[0],
+  ): Promise<Invitation> {
+    return await this.client.invitations.createInvitation(params);
+  }
+
+  public async revokeInvitation(invitationId: string): Promise<Invitation> {
+    return await this.client.invitations.revokeInvitation(invitationId);
+  }
+
+  public async getInvitationList(
+    params?: Parameters<typeof this.client.invitations.getInvitationList>[0],
+  ): ReturnType<typeof this.client.invitations.getInvitationList> {
+    return await this.client.invitations.getInvitationList(params);
   }
 }
