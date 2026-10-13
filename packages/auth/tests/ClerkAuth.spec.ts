@@ -111,6 +111,14 @@ describe("ClerkAuth", () => {
 
       expect(user).toBeNull();
     });
+
+    test("should return null when the token cannot be verified", async () => {
+      mockVerifyToken.mockImplementation(() => Promise.reject(new Error("JWT malformed")));
+      const auth = new ClerkAuth(createMockEnv());
+      const user = await auth.getCurrentUser("not-a-jwt");
+
+      expect(user).toBeNull();
+    });
   });
 
   describe("getCurrentUserSession", () => {
@@ -126,6 +134,14 @@ describe("ClerkAuth", () => {
       mockVerifyToken.mockImplementation(() => Promise.resolve({ sub: "", sid: "" }));
       const auth = new ClerkAuth(createMockEnv());
       const session = await auth.getCurrentUserSession("invalid-token");
+
+      expect(session).toBeNull();
+    });
+
+    test("should return null when the token cannot be verified", async () => {
+      mockVerifyToken.mockImplementation(() => Promise.reject(new Error("JWT malformed")));
+      const auth = new ClerkAuth(createMockEnv());
+      const session = await auth.getCurrentUserSession("not-a-jwt");
 
       expect(session).toBeNull();
     });
