@@ -275,4 +275,6 @@ pub use outcome::{
 pub use output::command_line;
 pub use render::{render_json, render_llm, render_report};
 pub use types::{Category, CheckId, Reads};
-pub use workspace::modules_with_e2e;
+pub use workspace::{
+    WORKSPACE_LOG_LINES, WorkspaceFailure, modules_with_e2e, workspace_failure_details,
+};
