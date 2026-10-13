@@ -56,3 +56,9 @@
 
 - Allow controllers to return a response|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([57e8a1cc](https://github.com/ooneex/talos/commit/57e8a1cc))
 
+## [1.2.1](https://github.com/ooneex/talos/releases/tag/@talosjs/socket@1.2.1) - 2026-10-13
+
+### Changed
+
+- Run package lint through bun check|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([de3ee05c](https://github.com/ooneex/talos/commit/de3ee05c))
+
