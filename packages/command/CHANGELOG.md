@@ -91,3 +91,9 @@
 
 ## [1.6.6](https://github.com/ooneex/talos/releases/tag/@talosjs/command@1.6.6) - 2026-09-26
 
+## [1.6.7](https://github.com/ooneex/talos/releases/tag/@talosjs/command@1.6.7) - 2026-10-13
+
+### Changed
+
+- Run package lint through bun check|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([de3ee05c](https://github.com/ooneex/talos/commit/de3ee05c))
+
