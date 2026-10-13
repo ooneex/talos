@@ -130,3 +130,9 @@
 
 - @talosjs/app-env@1.8.0| — Franck ([83cecc76](https://github.com/ooneex/talos/commit/83cecc76))
 
+## [1.9.1](https://github.com/ooneex/talos/releases/tag/@talosjs/app-env@1.9.1) - 2026-10-13
+
+### Changed
+
+- Run package lint through bun check|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([de3ee05c](https://github.com/ooneex/talos/commit/de3ee05c))
+
