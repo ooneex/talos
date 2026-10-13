@@ -1140,4 +1140,36 @@ describe("run", () => {
       expect(route.method).toBeUndefined();
     });
   });
+  describe("Custom Options", () => {
+    test("forwards flags outside the built-in list, camel-cased, without overriding built-ins", async () => {
+      const runFn = mock(async () => {});
+
+      class CustomOptionsCommand implements ICommand {
+        public run = runFn;
+        public getName(): string {
+          return "custom-options-cmd";
+        }
+        public getDescription(): string {
+          return "custom options command";
+        }
+      }
+
+      container.add(CustomOptionsCommand);
+      COMMANDS_CONTAINER.push(CustomOptionsCommand);
+
+      mockParseArgsResult = {
+        values: { diarize: true, prompt: "Say hi", "feature-name": "billing", module: "Foo" },
+        positionals: ["bun", "script.ts", "custom-options-cmd"],
+      };
+
+      await run();
+
+      const args = runFn.mock.calls[0] as unknown as [Record<string, unknown>];
+      expect(args[0].diarize).toBe(true);
+      expect(args[0].prompt).toBe("Say hi");
+      expect(args[0].featureName).toBe("billing");
+      expect(args[0]["feature-name"]).toBeUndefined();
+      expect(args[0].module).toBe("foo");
+    });
+  });
 });

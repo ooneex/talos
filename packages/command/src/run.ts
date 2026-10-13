@@ -4,6 +4,7 @@ import type { IException } from "@talosjs/exception";
 import { Exception } from "@talosjs/exception";
 import { TerminalLogger } from "@talosjs/logger";
 import type { HttpMethodType } from "@talosjs/types";
+import { toCamelCase } from "@talosjs/utils/toCamelCase";
 import { toKebabCase } from "@talosjs/utils/toKebabCase";
 import { getCommand } from "./getCommand";
 
@@ -177,8 +178,19 @@ const toOptionalKebabCsv = (value: unknown): string | undefined => {
   return typeof value === "string" ? toKebabCsv(value) : undefined;
 };
 
+// Flags outside COMMAND_OPTIONS (`--diarize`, `--prompt=...`) still reach the command,
+// camel-cased, so project commands can declare their own options.
+const collectCustomValues = (values: ParsedArgsType["values"]): Record<string, unknown> => {
+  return Object.fromEntries(
+    Object.entries(values)
+      .filter(([key]) => !(key in COMMAND_OPTIONS))
+      .map(([key, value]) => [toCamelCase(key), value]),
+  );
+};
+
 const buildParsedValues = ({ values, positionals }: ParsedArgsType) => {
   return {
+    ...collectCustomValues(values),
     name: values.name,
     dir: values.dir,
     channel: values.channel,
