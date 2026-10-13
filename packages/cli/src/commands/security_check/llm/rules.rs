@@ -74,9 +74,11 @@ pub const RULES: &[Rule] = &[
         reference: LLM02,
         config_only: false,
         patterns: &[
-            r"(?i)(curl|wget|http(ie)?|nc|netcat|invoke-webrequest)\b[^\n]*\b(webhook\.site|requestbin|requestcatcher|pipedream\.net|ngrok(-free)?\.(io|app|dev)|burpcollaborator|oastify|interact\.sh|pastebin\.com|paste\.ee|transfer\.sh|termbin\.com|file\.io|0x0\.st)",
-            r"(?i)\b(curl|wget|http)\b[^\n]*(-d|--data(-raw|-binary|-urlencode)?|-F|--form|-T|--upload-file)[^\n]*(\$\(\s*cat|\$\{?[A-Za-z_]*(TOKEN|SECRET|KEY|PASSWORD|CREDENTIAL)|process\.env|\.env\b|id_[re][sd]a?|\.aws/credentials|\.npmrc)",
-            r"(?i)(cat|tar|zip|base64|printenv|env)\b[^\n|]*\|\s*(curl|wget|nc|netcat|ssh|mail|sendmail)\b",
+            r"(?i)\b(curl|wget|http(ie)?|nc|netcat|invoke-webrequest)\b[^\n]*\b(webhook\.site|requestbin|requestcatcher|pipedream\.net|ngrok(-free)?\.(io|app|dev)|burpcollaborator|oastify|interact\.sh|pastebin\.com|paste\.ee|transfer\.sh|termbin\.com|file\.io|0x0\.st)",
+            // Flags must stand alone (`-d`, `--form=`), so prose such as
+            // "HTTP SDK ... byte-for-byte ... `.env.example.yml`" is not a send.
+            r"(?i)\b(curl|wget|http)\b[^\n]*\s(-d|--data(-raw|-binary|-urlencode)?|-F|--form|-T|--upload-file)(\s|=|@|$)[^\n]*(\$\(\s*cat|\$\{?[A-Za-z_]*(TOKEN|SECRET|KEY|PASSWORD|CREDENTIAL)|process\.env|\.env\b|id_[re][sd]a?|\.aws/credentials|\.npmrc)",
+            r"(?i)\b(cat|tar|zip|base64|printenv|env)\b[^\n|]*\|\s*(curl|wget|nc|netcat|ssh|mail|sendmail)\b",
             r"(?i)!\[[^\]]*\]\(\s*https?://[^)\s]*(\$\{|\$\(|\{\{|%7B)",
             r"(?i)\b(send|post|upload|transmit|forward|leak|share|report)\b[^\n]{0,40}(\.env\b|\b(secrets?|credentials?|api\s?keys?|access\s+tokens?|tokens?|passwords?|environment\s+variables?|env\s+vars?|source\s+code|repository\s+contents?)\b)[^\n]{0,40}\b(to|into)\b\s+(https?://|[a-z0-9-]+\.[a-z]{2,}\b|my\s+(server|endpoint|webhook|bot))",
             r"(?i)\bdns\s*(exfil|tunnel)|\.(oast|dnslog)\b",
