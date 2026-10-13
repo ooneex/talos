@@ -2516,6 +2516,56 @@ fn a_file_nothing_imports_is_reported_but_an_entry_is_not() {
 }
 
 #[test]
+fn an_export_only_a_test_imports_is_in_use() {
+    let (_guard, root) = root();
+    let dir = workspace(&root, "user", "module");
+    write(
+        &dir.join("src/index.ts"),
+        "import { format } from \"./helpers/format\";\nexport const value = format();\n",
+    );
+    write(
+        &dir.join("src/helpers/format.ts"),
+        "export const format = () => 1;\nexport const pad = () => 2;\n",
+    );
+    write(
+        &dir.join("src/helpers/clock.ts"),
+        "export const now = () => 0;\n",
+    );
+    write(
+        &dir.join("tests/helpers/format.spec.ts"),
+        "import { pad } from \"../../src/helpers/format\";\nimport { now } from \"../../src/helpers/clock\";\n",
+    );
+
+    let outcome = orphans::run(&ProjectCheckArgs::default(), &root);
+
+    assert_eq!(outcome.status, CheckStatus::Passed, "{:?}", outcome.details);
+}
+
+#[test]
+fn logs_list_every_orphan_rather_than_a_capped_preview() {
+    let (_guard, root) = root();
+    let dir = workspace(&root, "user", "module");
+    write(&dir.join("src/index.ts"), "export const value = 1;\n");
+    for index in 0..20 {
+        write(
+            &dir.join(format!("src/helpers/dead{index}.ts")),
+            "export const dead = () => 1;\n",
+        );
+    }
+
+    let capped = orphans::run(&ProjectCheckArgs::default(), &root);
+    assert!(capped.details.len() < 20);
+
+    let args = ProjectCheckArgs {
+        logs: true,
+        ..ProjectCheckArgs::default()
+    };
+    let full = orphans::run(&args, &root);
+    assert_eq!(full.details.len(), 20);
+    assert!(!full.details.iter().any(|detail| detail.contains("more")));
+}
+
+#[test]
 fn a_design_module_publishes_its_components_rather_than_orphaning_them() {
     let (_guard, root) = root();
     let dir = workspace(&root, "design", "design");
