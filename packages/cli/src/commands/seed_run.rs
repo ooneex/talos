@@ -49,15 +49,22 @@ pub fn run(args: &SeedRunArgs) {
     }
 }
 
-/// The `APP_ENV` the seeds will actually run under: what `--env` asks for,
-/// otherwise whatever the shell already exports, otherwise the same
-/// `production` the app falls back to when the variable is unset.
-fn active_env(args: &SeedRunArgs) -> String {
-    args.env
-        .clone()
-        .or_else(|| std::env::var("APP_ENV").ok())
+/// The `APP_ENV` the seeds will run under: what `--env` asks for, otherwise
+/// whatever the shell already exports. `None` when neither sets it — the
+/// seeds runtime then applies no environment filter (a module's own `.env`
+/// may still set one), so the CLI must not claim `production`.
+fn active_env(cli_env: Option<&str>, shell_env: Option<&str>) -> Option<String> {
+    cli_env
+        .or(shell_env)
         .filter(|env| !env.is_empty())
-        .unwrap_or_else(|| "production".to_string())
+        .map(str::to_string)
+}
+
+fn env_banner(env: Option<&str>) -> String {
+    match env {
+        Some(env) => format!("Seeding under APP_ENV={env}"),
+        None => "Seeding with APP_ENV unset — seeds are not filtered by environment unless a module's .env sets it".to_string(),
+    }
 }
 
 /// Run every module's seeds and print the report, returning whether the run
@@ -69,7 +76,9 @@ pub fn execute(args: &SeedRunArgs) -> bool {
         .map(PathBuf::from)
         .unwrap_or_else(current_dir);
 
-    info(format!("Seeding under APP_ENV={}", active_env(args)));
+    let shell_env = std::env::var("APP_ENV").ok();
+    let env = active_env(args.env.as_deref(), shell_env.as_deref());
+    info(env_banner(env.as_deref()));
 
     run_module_scripts(
         &root,
@@ -90,4 +99,35 @@ pub fn execute(args: &SeedRunArgs) -> bool {
         },
         args.logs,
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn active_env_prefers_flag_then_shell() {
+        assert_eq!(
+            active_env(Some("test"), Some("staging")).as_deref(),
+            Some("test")
+        );
+        assert_eq!(
+            active_env(None, Some("staging")).as_deref(),
+            Some("staging")
+        );
+    }
+
+    #[test]
+    fn active_env_does_not_default_to_production() {
+        assert_eq!(active_env(None, None), None);
+        assert_eq!(active_env(None, Some("")), None);
+    }
+
+    #[test]
+    fn banner_reports_unfiltered_run_when_unset() {
+        assert_eq!(env_banner(Some("local")), "Seeding under APP_ENV=local");
+        let unset = env_banner(None);
+        assert!(!unset.contains("production"));
+        assert!(unset.contains("not filtered"));
+    }
 }
