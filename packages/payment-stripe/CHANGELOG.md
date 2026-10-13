@@ -36,3 +36,9 @@
 
 - Add invoice, billing address and tax ID options to checkout sessions| — Julien ([8d1c421a](https://github.com/ooneex/talos/commit/8d1c421a))
 
+## [0.2.1](https://github.com/ooneex/talos/releases/tag/@talosjs/payment-stripe@0.2.1) - 2026-10-13
+
+### Changed
+
+- Run package lint through bun check|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([de3ee05c](https://github.com/ooneex/talos/commit/de3ee05c))
+
