@@ -5,6 +5,7 @@ import type { MiddlewareClassType } from "@talosjs/middleware";
 import type { RateLimitResultType } from "@talosjs/rate-limit";
 import type { RouteConfigType } from "@talosjs/routing";
 import type { BunRequest, Server } from "bun";
+import type { RateLimitKeyResolverType } from "../types";
 import { applyEnvRoles, checkAllowedUsers } from "./auth";
 import { buildHttpContext } from "./context";
 import { buildExceptionResponse, httpRouteHandler, toControllerError } from "./controller";
@@ -36,8 +37,12 @@ const buildHttpErrorResponse = (
  * to the authenticated user as well gives each of them their own budget; the
  * anonymous requests from that IP still share one.
  */
-const buildRateLimitKey = (context: Awaited<ReturnType<typeof buildHttpContext>>): string => {
-  return `${context.ip ?? "unknown"}:${context.user?.id ?? "anon"}`;
+const buildRateLimitKey = (context: Awaited<ReturnType<typeof buildHttpContext>>): string | null => {
+  const defaultKey = `${context.ip ?? "unknown"}:${context.user?.id ?? "anon"}`;
+  if (!container.hasConstant("rateLimitKey")) {
+    return defaultKey;
+  }
+  return container.getConstant<RateLimitKeyResolverType>("rateLimitKey")(context, defaultKey);
 };
 
 const buildRateLimitResponse = (
@@ -58,7 +63,11 @@ const checkRateLimit = async (context: Awaited<ReturnType<typeof buildHttpContex
     return null;
   }
   try {
-    const result = await context.rateLimiter.check(buildRateLimitKey(context));
+    const key = buildRateLimitKey(context);
+    if (key === null) {
+      return null;
+    }
+    const result = await context.rateLimiter.check(key);
     if (result.limited) {
       return buildRateLimitResponse(context, result);
     }

@@ -34,7 +34,7 @@ export class App {
   // (e.g. RedisCache needs CACHE_REDIS_URL), so this must never run before the
   // environment files have been layered onto Bun.env.
   private registerServices(): void {
-    const { loggers, cronJobs, cache, rateLimiter, onException, onStart, onStop } = this.config;
+    const { loggers, cronJobs, cache, rateLimiter, rateLimitKey, onException, onStart, onStop } = this.config;
 
     loggers.forEach((log) => {
       if (!container.has(log)) {
@@ -78,6 +78,10 @@ export class App {
         container.add(rateLimiter);
       }
       container.addConstant("rateLimiter", container.get(rateLimiter));
+    }
+
+    if (rateLimitKey) {
+      container.addConstant("rateLimitKey", rateLimitKey);
     }
 
     cronJobs?.forEach((cronJob) => {

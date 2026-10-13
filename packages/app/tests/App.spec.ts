@@ -198,6 +198,15 @@ describe("App", () => {
       expect(container.hasConstant("rateLimiter")).toBe(true);
     });
 
+    test("registers the rateLimitKey resolver as a constant when provided", async () => {
+      const rateLimitKey = (_context: unknown, defaultKey: string): string => defaultKey;
+      const config = createMockConfig({ rateLimitKey });
+
+      await new App(config).init();
+
+      expect(container.getConstant<typeof rateLimitKey>("rateLimitKey")).toBe(rateLimitKey);
+    });
+
     test("adds onException to container and registers exception.logger constant when provided", async () => {
       const config = createMockConfig({
         onException: MockOnException as unknown as AppConfigType["onException"],
