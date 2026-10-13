@@ -203,6 +203,26 @@ fn rolling_back_walks_the_modules_in_the_reverse_order_it_applied_them() {
 }
 
 #[test]
+fn rolling_back_undoes_a_module_before_the_modules_its_migrations_depend_on() {
+    let (_dir, root) = two_module_workspace("bin/migration/down.ts");
+    let log = root.join("order.log");
+    record_run_order(&root, "bin/migration/down.ts", &log);
+    write(
+        &root.join("modules/alpha/src/migrations/Migration20260101000000000.ts"),
+        "import { Migration20250101000000000 } from \"@module/beta/migrations/Migration20250101000000000\";\n",
+    );
+
+    let output = talos(&root, &["migration:down"]);
+
+    assert!(output.status.success(), "{}", text(&output));
+    assert_eq!(
+        calls(&log),
+        "start alpha\nend alpha\nstart beta\nend beta\n",
+        "alpha's tables reference beta's, so alpha has to be undone before beta"
+    );
+}
+
+#[test]
 fn seeding_runs_one_module_at_a_time_in_the_order_the_migrations_did() {
     let (_dir, root) = two_module_workspace("bin/seed/run.ts");
     let log = root.join("order.log");
