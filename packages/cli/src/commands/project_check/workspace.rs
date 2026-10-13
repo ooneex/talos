@@ -45,26 +45,75 @@ pub(super) fn check_workspace(args: &ProjectCheckArgs, root: &Path) -> CheckOutc
     let scope = CHECK_COMMANDS.replace(',', ", ");
 
     match run_workspace_commands(args, root) {
-        Ok(true) => CheckOutcome::new(CheckId::Workspace, CheckStatus::Passed, scope),
-        Ok(false) => CheckOutcome::new(CheckId::Workspace, CheckStatus::Failed, scope)
-            .with_details(vec![format!(
-                "{ERROR_DETAIL}A workspace task failed — the failing task output is printed above"
-            )])
+        Ok(failures) if failures.is_empty() => {
+            CheckOutcome::new(CheckId::Workspace, CheckStatus::Passed, scope)
+        }
+        Ok(failures) => CheckOutcome::new(CheckId::Workspace, CheckStatus::Failed, scope)
+            .with_details(workspace_failure_details(&failures, args.logs))
             .with_hint("Re-run the failing step alone, e.g. `talos lint --modules=<name> --logs`"),
         Err(message) => CheckOutcome::new(CheckId::Workspace, CheckStatus::Failed, scope)
             .with_details(vec![format!("{ERROR_DETAIL}{message}")]),
     }
 }
 
+/// One workspace step that exited non-zero, with the output it printed when
+/// that output was captured.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WorkspaceFailure {
+    pub command: String,
+    pub output: Option<String>,
+}
+
+/// The most trailing lines of a failing step's output kept under `--logs`;
+/// the errors a tool reports sit at the end of what it prints.
+pub const WORKSPACE_LOG_LINES: usize = 200;
+
+/// The details of a failed Workspace check: one error per failing step and,
+/// under `--logs`, that step's captured output printed directly beneath it so
+/// the failing `tsc` / lint findings sit next to the error rather than far
+/// above the report.
+pub fn workspace_failure_details(failures: &[WorkspaceFailure], logs: bool) -> Vec<String> {
+    failures
+        .iter()
+        .map(|failure| {
+            let mut detail = format!("{ERROR_DETAIL}`talos {}` failed", failure.command);
+            let output = failure
+                .output
+                .as_deref()
+                .map(str::trim_end)
+                .filter(|output| logs && !output.trim().is_empty());
+            match output {
+                Some(output) => {
+                    let lines: Vec<&str> = output.lines().collect();
+                    let start = lines.len().saturating_sub(WORKSPACE_LOG_LINES);
+                    if start > 0 {
+                        detail.push_str(&format!("\n        … {start} earlier lines omitted"));
+                    }
+                    for line in &lines[start..] {
+                        detail.push_str("\n        ");
+                        detail.push_str(line);
+                    }
+                }
+                None if !logs => detail.push_str(" — re-run with --logs to print its output here"),
+                None => {}
+            }
+            detail
+        })
+        .collect()
+}
+
 /// Runs [`CHECK_COMMANDS`] in order, each through its own standalone command.
 /// A failed step is remembered but never prevents the remaining steps from
 /// running, so the workspace outcome contains the whole gate rather than its
 /// first error.
-fn run_workspace_commands(args: &ProjectCheckArgs, root: &Path) -> Result<bool, String> {
-    // In JSON mode the interactive runner would pollute stdout, so each
-    // command runs as its own child process and its logs are captured
-    // instead.
-    if args.json {
+fn run_workspace_commands(
+    args: &ProjectCheckArgs,
+    root: &Path,
+) -> Result<Vec<WorkspaceFailure>, String> {
+    // In JSON mode the interactive runner would pollute stdout, and under
+    // `--logs` the failing output belongs beneath the Workspace error, so each
+    // command runs as its own child process and its logs are captured instead.
+    if args.json || args.logs {
         return run_workspace_commands_detached(args, root);
     }
 
@@ -104,11 +153,14 @@ fn run_workspace_commands(args: &ProjectCheckArgs, root: &Path) -> Result<bool, 
             }),
             other => unreachable!("{other} is not part of CHECK_COMMANDS"),
         };
-        Ok(passed)
+        Ok((passed, None))
     })
 }
 
-fn run_workspace_commands_detached(args: &ProjectCheckArgs, root: &Path) -> Result<bool, String> {
+fn run_workspace_commands_detached(
+    args: &ProjectCheckArgs,
+    root: &Path,
+) -> Result<Vec<WorkspaceFailure>, String> {
     let Ok(exe) = std::env::current_exe() else {
         return Err("Could not locate the talos executable to run the workspace tasks".to_string());
     };
@@ -132,7 +184,11 @@ fn run_workspace_commands_detached(args: &ProjectCheckArgs, root: &Path) -> Resu
         }
 
         match cmd.output() {
-            Ok(output) => Ok(output.status.success()),
+            Ok(output) => {
+                let mut log = String::from_utf8_lossy(&output.stdout).into_owned();
+                log.push_str(&String::from_utf8_lossy(&output.stderr));
+                Ok((output.status.success(), Some(log)))
+            }
             Err(err) => Err(format!("Could not run \"talos {command}\": {err}")),
         }
     })
@@ -142,23 +198,24 @@ fn run_workspace_commands_detached(args: &ProjectCheckArgs, root: &Path) -> Resu
 /// and commands that could not be started. Startup errors are returned after
 /// the remaining commands have still been attempted.
 fn run_all_workspace_commands(
-    mut run: impl FnMut(&str) -> Result<bool, String>,
-) -> Result<bool, String> {
-    let mut passed = true;
+    mut run: impl FnMut(&str) -> Result<(bool, Option<String>), String>,
+) -> Result<Vec<WorkspaceFailure>, String> {
+    let mut failures = Vec::new();
     let mut errors = Vec::new();
 
     for command in CHECK_COMMANDS.split(',') {
         match run(command) {
-            Ok(command_passed) => passed &= command_passed,
-            Err(message) => {
-                passed = false;
-                errors.push(message);
-            }
+            Ok((true, _)) => {}
+            Ok((false, output)) => failures.push(WorkspaceFailure {
+                command: command.to_string(),
+                output,
+            }),
+            Err(message) => errors.push(message),
         }
     }
 
     if errors.is_empty() {
-        Ok(passed)
+        Ok(failures)
     } else {
         Err(errors.join("; "))
     }
@@ -398,14 +455,37 @@ mod check_commands_tests {
         let result = run_all_workspace_commands(|command| {
             ran.push(command.to_string());
             match command {
-                "install" => Ok(false),
+                "install" => Ok((false, None)),
                 "lint" => Err("lint could not start".to_string()),
-                _ => Ok(true),
+                _ => Ok((true, None)),
             }
         });
 
         assert_eq!(ran, vec!["install", "build", "lint", "test"]);
         assert_eq!(result, Err("lint could not start".to_string()));
+    }
+
+    #[test]
+    fn check_commands_collect_every_failing_step_with_its_output() {
+        let result = run_all_workspace_commands(|command| match command {
+            "build" => Ok((false, Some("TS2322: bad type".to_string()))),
+            "lint" => Ok((false, None)),
+            _ => Ok((true, Some("ok".to_string()))),
+        });
+
+        assert_eq!(
+            result,
+            Ok(vec![
+                WorkspaceFailure {
+                    command: "build".to_string(),
+                    output: Some("TS2322: bad type".to_string()),
+                },
+                WorkspaceFailure {
+                    command: "lint".to_string(),
+                    output: None,
+                },
+            ])
+        );
     }
 }
 
