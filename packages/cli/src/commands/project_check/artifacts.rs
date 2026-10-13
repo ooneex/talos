@@ -299,3 +299,77 @@ pub fn is_frontend(module: &WorkspaceModule) -> bool {
 pub fn line_of(content: &str, offset: usize) -> usize {
     content[..offset.min(content.len())].lines().count().max(1)
 }
+
+/// What a named method returns, following a constant back to its string.
+///
+/// `getChannel()` may return `USER_CREATED_CHANNEL` rather than a literal; the
+/// constant is looked up in the same file first, then through a relative import.
+pub fn returned_string_resolved(artifact: &Artifact, method: &str) -> Option<String> {
+    if let Some(literal) = returned_string(&artifact.content, method) {
+        return Some(literal);
+    }
+    let identifier = returned_identifier(&artifact.content, method)?;
+    resolve_constant(&artifact.content, &artifact.path, &identifier)
+}
+
+/// The bare identifier a method returns, in either the block or the arrow form.
+fn returned_identifier(content: &str, method: &str) -> Option<String> {
+    let identifier = r"([A-Za-z_$][A-Za-z0-9_$]*)\s*;?\s*(?:$|\})";
+    if let Some(body) = method_body(content, method) {
+        let pattern = Regex::new(&format!(r"return\s+{identifier}")).ok()?;
+        if let Some(captured) = pattern.captures(body) {
+            return Some(captured.get(1)?.as_str().to_string());
+        }
+    }
+    let pattern = Regex::new(&format!(
+        r"(?m){}\s*=\s*\([^)]*\)\s*(?::[^=]+)?=>\s*{identifier}",
+        regex::escape(method)
+    ))
+    .ok()?;
+    Some(pattern.captures(content)?.get(1)?.as_str().to_string())
+}
+
+/// The string a `const` holds, declared in `content` or imported relatively
+/// from a sibling file of `path`.
+pub fn resolve_constant(content: &str, path: &Path, identifier: &str) -> Option<String> {
+    if let Some(value) = declared_constant(content, identifier) {
+        return Some(value);
+    }
+    let import =
+        Regex::new(r#"import\s+(?:type\s+)?\{([^}]*)\}\s*from\s*["'](\.[^"']*)["']"#).ok()?;
+    for captured in import.captures_iter(content) {
+        let names = captured.get(1)?.as_str();
+        let source = captured.get(2)?.as_str();
+        let exported = names.split(',').map(str::trim).find_map(|name| {
+            let mut parts = name.split(" as ").map(str::trim);
+            let original = parts.next()?;
+            let local = parts.next().unwrap_or(original);
+            (local == identifier).then(|| original.to_string())
+        });
+        let Some(exported) = exported else { continue };
+        let base = path.parent()?.join(source);
+        let candidates = [
+            base.clone(),
+            PathBuf::from(format!("{}.ts", base.display())),
+            PathBuf::from(format!("{}.tsx", base.display())),
+            base.join("index.ts"),
+        ];
+        for candidate in candidates {
+            if let Ok(imported) = fs::read_to_string(&candidate)
+                && let Some(value) = declared_constant(&imported, &exported)
+            {
+                return Some(value);
+            }
+        }
+    }
+    None
+}
+
+fn declared_constant(content: &str, identifier: &str) -> Option<String> {
+    let pattern = Regex::new(&format!(
+        r#"(?m)^\s*(?:export\s+)?const\s+{}\s*(?::[^=]+)?=\s*["'`]([^"'`]*)["'`]"#,
+        regex::escape(identifier)
+    ))
+    .ok()?;
+    Some(pattern.captures(content)?.get(1)?.as_str().to_string())
+}
