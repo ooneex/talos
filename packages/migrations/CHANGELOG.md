@@ -107,3 +107,9 @@
 
 - Inline migration templates and drop text-file fixtures|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([ae7d288d](https://github.com/ooneex/talos/commit/ae7d288d))
 
+## [1.3.1](https://github.com/ooneex/talos/releases/tag/@talosjs/migrations@1.3.1) - 2026-10-13
+
+### Changed
+
+- Run package lint through bun check|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([de3ee05c](https://github.com/ooneex/talos/commit/de3ee05c))
+
