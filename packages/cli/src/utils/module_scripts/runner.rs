@@ -43,11 +43,78 @@ pub(super) fn collect_targets(root: &Path, options: &ModuleScriptsOptions) -> Ve
         names.reverse();
     }
 
-    names
+    let targets: Vec<Target> = names
         .into_iter()
         .filter(|name| options.modules.is_empty() || options.modules.contains(name))
         .filter_map(|name| target(&modules_dir, name, options.bin_path))
+        .collect();
+
+    if options.reverse {
+        dependents_first(targets)
+    } else {
+        targets
+    }
+}
+
+/// Reorders a rollback so a module whose migrations import another module's
+/// migrations (its `getDependencies()`) is undone before that module — the
+/// one underneath would otherwise drop a table the other still references.
+/// Modules that do not depend on each other keep their reverse alphabetical
+/// order, and a dependency cycle falls back to it.
+fn dependents_first(targets: Vec<Target>) -> Vec<Target> {
+    let sources: Vec<String> = targets
+        .iter()
+        .map(|target| migration_sources(&target.dir.join("src").join("migrations")))
+        .collect();
+    let depends_on = |dependent: usize, dependency: usize| {
+        dependent != dependency && imports_package(&sources[dependent], &targets[dependency].name)
+    };
+
+    let mut remaining: Vec<usize> = (0..targets.len()).collect();
+    let mut order = Vec::with_capacity(targets.len());
+    while !remaining.is_empty() {
+        let next = remaining
+            .iter()
+            .position(|&candidate| !remaining.iter().any(|&other| depends_on(other, candidate)))
+            .unwrap_or(0);
+        order.push(remaining.remove(next));
+    }
+
+    let mut slots: Vec<Option<Target>> = targets.into_iter().map(Some).collect();
+    order
+        .into_iter()
+        .filter_map(|index| slots[index].take())
         .collect()
+}
+
+/// Every `.ts` file under a module's migrations folder, concatenated.
+fn migration_sources(dir: &Path) -> String {
+    let mut sources = String::new();
+    let mut pending = vec![dir.to_path_buf()];
+    while let Some(dir) = pending.pop() {
+        let Ok(entries) = std::fs::read_dir(&dir) else {
+            continue;
+        };
+        for path in entries.flatten().map(|entry| entry.path()) {
+            if path.is_dir() {
+                pending.push(path);
+            } else if path.extension().is_some_and(|extension| extension == "ts")
+                && let Ok(source) = std::fs::read_to_string(&path)
+            {
+                sources.push_str(&source);
+                sources.push('\n');
+            }
+        }
+    }
+    sources
+}
+
+/// Whether the source imports the package or one of its subpaths.
+fn imports_package(source: &str, package: &str) -> bool {
+    ['"', '\''].iter().any(|quote| {
+        source.contains(&format!("{quote}{package}/"))
+            || source.contains(&format!("{quote}{package}{quote}"))
+    })
 }
 
 /// The target a module directory holds, or `None` when it carries no

@@ -54,9 +54,10 @@ pub struct ModuleScriptsOptions<'a> {
     /// The directory names the run is narrowed to — what `--modules` and
     /// `--packages` selected. Empty runs every module.
     pub modules: Vec<String>,
-    /// Walks the modules from last to first. Rolling back has to mirror
-    /// applying: a module whose migrations sit on top of another module's
-    /// tables must be undone before the module underneath it.
+    /// Walks the modules from last to first, and a module whose migrations
+    /// import another module's migrations before that module. Rolling back has
+    /// to mirror applying: a module whose migrations sit on top of another
+    /// module's tables must be undone before the module underneath it.
     pub reverse: bool,
 }
 
