@@ -29,7 +29,7 @@ pub struct Subscription {
 pub fn parse(event: &Artifact) -> Subscription {
     Subscription {
         class: event.class.clone(),
-        channel: artifacts::returned_string(&event.content, "getChannel"),
+        channel: artifacts::returned_string_resolved(event, "getChannel"),
         handles: artifacts::method_body(&event.content, "handler")
             .map(|body| !artifacts::is_empty_body(body))
             .unwrap_or(false),

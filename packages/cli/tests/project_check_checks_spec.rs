@@ -1947,3 +1947,74 @@ fn only_the_workspace_gate_and_the_suites_run_alone() {
         .collect();
     assert_eq!(serial, vec!["workspace", "coverage", "e2e"]);
 }
+
+fn constant_artifact(
+    dir: &std::path::Path,
+    kind: &str,
+    content: &str,
+) -> cli::commands::project_check::artifacts::Artifact {
+    let path = dir.join("Artifact.ts");
+    fs::write(&path, content).expect("the artifact is written");
+    cli::commands::project_check::artifacts::Artifact {
+        kind: kind.to_string(),
+        class: "UserCreatedEvent".to_string(),
+        file: "Artifact.ts".to_string(),
+        path,
+        module: "user".to_string(),
+        label: "modules/user".to_string(),
+        content: content.to_string(),
+    }
+}
+
+#[test]
+fn an_event_channel_may_be_a_constant_declared_or_imported() {
+    let dir = tempfile::tempdir().expect("a temp dir");
+    fs::write(
+        dir.path().join("channels.ts"),
+        "export const USER_DELETED_CHANNEL = \"user.deleted\";\n",
+    )
+    .expect("the constants are written");
+
+    let same_file = constant_artifact(
+        dir.path(),
+        "event",
+        "const USER_CREATED_CHANNEL = \"user.created\";\nexport class UserCreatedEvent {\n  public getChannel(): string {\n    return USER_CREATED_CHANNEL;\n  }\n}\n",
+    );
+    assert_eq!(
+        events::parse(&same_file).channel.as_deref(),
+        Some("user.created")
+    );
+
+    let imported = constant_artifact(
+        dir.path(),
+        "event",
+        "import { USER_DELETED_CHANNEL as CHANNEL } from \"./channels\";\nexport class UserCreatedEvent {\n  public getChannel = (): string => CHANNEL;\n}\n",
+    );
+    assert_eq!(
+        events::parse(&imported).channel.as_deref(),
+        Some("user.deleted")
+    );
+
+    let unknown = constant_artifact(
+        dir.path(),
+        "event",
+        "export class UserCreatedEvent {\n  public getChannel(): string {\n    return MISSING;\n  }\n}\n",
+    );
+    assert_eq!(events::parse(&unknown).channel, None);
+}
+
+#[test]
+fn a_queue_name_may_be_an_imported_constant() {
+    let dir = tempfile::tempdir().expect("a temp dir");
+    fs::write(
+        dir.path().join("queues.constants.ts"),
+        "export const EMAIL_QUEUE: string = 'email';\n",
+    )
+    .expect("the constants are written");
+    let queue = constant_artifact(
+        dir.path(),
+        "queue",
+        "import { EMAIL_QUEUE } from './queues.constants';\nexport class EmailQueue {\n  private readonly name = EMAIL_QUEUE;\n}\n",
+    );
+    assert_eq!(queues::parse(&queue).name.as_deref(), Some("email"));
+}

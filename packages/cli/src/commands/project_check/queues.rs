@@ -24,7 +24,7 @@ fn name_pattern() -> &'static Regex {
     PATTERN.get_or_init(|| {
         // The generated class holds the queue's name in a field, which is what
         // both the `BullQueue` and the `Worker` are constructed with.
-        Regex::new(r#"(?m)^\s*(?:private|protected|public)?\s*(?:readonly\s+)?name\s*(?::[^=]+)?=\s*["'`]([^"'`]+)["'`]"#)
+        Regex::new(r#"(?m)^\s*(?:private|protected|public)?\s*(?:readonly\s+)?name\s*(?::[^=]+)?=\s*(?:["'`]([^"'`]+)["'`]|([A-Za-z_$][A-Za-z0-9_$]*)\s*;)"#)
             .expect("the queue name pattern is valid")
     })
 }
@@ -47,8 +47,13 @@ pub fn parse(queue: &Artifact) -> QueueDefinition {
         class: queue.class.clone(),
         name: name_pattern()
             .captures(&queue.content)
-            .and_then(|captured| captured.get(1))
-            .map(|group| group.as_str().to_string()),
+            .and_then(|captured| match (captured.get(1), captured.get(2)) {
+                (Some(literal), _) => Some(literal.as_str().to_string()),
+                (None, Some(constant)) => {
+                    artifacts::resolve_constant(&queue.content, &queue.path, constant.as_str())
+                }
+                _ => None,
+            }),
         handles: artifacts::method_body(&queue.content, "handler")
             .map(|body| !artifacts::is_empty_body(body))
             .unwrap_or(false),
