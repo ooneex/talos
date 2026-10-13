@@ -98,3 +98,9 @@
 
 - Load the app env and close the injected database|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([78244b4e](https://github.com/ooneex/talos/commit/78244b4e))
 
+## [1.3.1](https://github.com/ooneex/talos/releases/tag/@talosjs/seeds@1.3.1) - 2026-10-13
+
+### Changed
+
+- Run package lint through bun check|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([de3ee05c](https://github.com/ooneex/talos/commit/de3ee05c))
+
