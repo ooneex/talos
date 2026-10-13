@@ -143,12 +143,36 @@ pub fn wanted_names(modules: Option<&str>, packages: Option<&str>) -> Vec<String
 /// output, dependencies and anything too large to be hand-written.
 pub fn collect_files(dir: &Path, extensions: &[&str], max_depth: usize) -> Vec<PathBuf> {
     let mut files = Vec::new();
-    walk(dir, extensions, max_depth, 0, &mut files);
+    walk(
+        dir,
+        extensions,
+        Some(MAX_SCANNED_FILE_BYTES),
+        max_depth,
+        0,
+        &mut files,
+    );
     files.sort();
     files
 }
 
-fn walk(dir: &Path, extensions: &[&str], max_depth: usize, depth: usize, files: &mut Vec<PathBuf>) {
+/// Like [`collect_files`], but keeps files of any size. Data files such as
+/// translation dictionaries legitimately grow past the hand-written-source
+/// cap and must not silently drop out of a check.
+pub fn collect_files_any_size(dir: &Path, extensions: &[&str], max_depth: usize) -> Vec<PathBuf> {
+    let mut files = Vec::new();
+    walk(dir, extensions, None, max_depth, 0, &mut files);
+    files.sort();
+    files
+}
+
+fn walk(
+    dir: &Path,
+    extensions: &[&str],
+    max_bytes: Option<u64>,
+    max_depth: usize,
+    depth: usize,
+    files: &mut Vec<PathBuf>,
+) {
     if depth > max_depth {
         return;
     }
@@ -166,7 +190,7 @@ fn walk(dir: &Path, extensions: &[&str], max_depth: usize, depth: usize, files: 
             if name.starts_with('.') || EXCLUDED_DIRS.contains(&name) {
                 continue;
             }
-            walk(&path, extensions, max_depth, depth + 1, files);
+            walk(&path, extensions, max_bytes, max_depth, depth + 1, files);
             continue;
         }
 
@@ -174,7 +198,9 @@ fn walk(dir: &Path, extensions: &[&str], max_depth: usize, depth: usize, files: 
         if !extensions.contains(&extension) {
             continue;
         }
-        if fs::metadata(&path).map(|meta| meta.len()).unwrap_or(0) > MAX_SCANNED_FILE_BYTES {
+        if let Some(limit) = max_bytes
+            && fs::metadata(&path).map(|meta| meta.len()).unwrap_or(0) > limit
+        {
             continue;
         }
         files.push(path);

@@ -12,7 +12,7 @@ use std::sync::OnceLock;
 use regex::Regex;
 use serde_json::Value;
 
-use super::modules::{WorkspaceModule, collect_files};
+use super::modules::{WorkspaceModule, collect_files, collect_files_any_size};
 
 /// The locale every dictionary must define, because `trans()` falls back to it.
 pub const FALLBACK_LOCALE: &str = "en";
@@ -326,7 +326,7 @@ pub(super) fn owning_scope(
 pub fn discover_dictionaries(modules: &[WorkspaceModule]) -> Vec<PathBuf> {
     let mut files: Vec<PathBuf> = modules
         .iter()
-        .flat_map(|module| collect_files(&module.dir, &["yml", "yaml", "json"], 8))
+        .flat_map(|module| collect_files_any_size(&module.dir, &["yml", "yaml", "json"], 8))
         .filter(|path| {
             path.file_name()
                 .and_then(|name| name.to_str())
