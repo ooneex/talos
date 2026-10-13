@@ -122,10 +122,14 @@ export class PostgresDriver extends AbstractDriver {
     return super.escapePath(tableName, schema ?? (this.options as PostgresDataSourceOptionsType).schema);
   }
 
-  /** JSON and array values are bound as text; the cast lets the server accept them for the column type. */
+  /**
+   * JSON and array values are bound as text; the cast lets the server accept them for the column type.
+   * A JSON document goes through `::text` first: bound straight to a `json`/`jsonb` parameter, Bun
+   * encodes the already serialized string once more and the column stores a JSON string.
+   */
   public override parameterCast(column?: ColumnMetadata): string {
     if (column && isJsonColumn(column) && column.type !== "simple-json") {
-      return `::${typeName(column.type)}`;
+      return `::text::${typeName(column.type)}`;
     }
 
     if (column?.isArray) {
