@@ -887,3 +887,10 @@
 
 - Omit remaining steps after a recipe run fails|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([37806e5e](https://github.com/ooneex/talos/commit/37806e5e))
 
+## [0.17.3](https://github.com/ooneex/talos/releases/tag/@talos/cli@0.17.3) - 2026-10-13
+
+### Changed
+
+- Run package lint through bun check|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([de3ee05c](https://github.com/ooneex/talos/commit/de3ee05c))
+- Update Cargo.lock| — Franck ([0670ee36](https://github.com/ooneex/talos/commit/0670ee36))
+
