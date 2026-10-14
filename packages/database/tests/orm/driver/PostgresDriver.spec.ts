@@ -68,8 +68,8 @@ describe("PostgresDriver", () => {
   });
 
   test("parameterCast should cast JSON documents and arrays to the column type", () => {
-    expect(driver.parameterCast(fakeColumn({ type: "jsonb" }))).toBe("::jsonb");
-    expect(driver.parameterCast(fakeColumn({ type: "json" }))).toBe("::json");
+    expect(driver.parameterCast(fakeColumn({ type: "jsonb" }))).toBe("::text::jsonb");
+    expect(driver.parameterCast(fakeColumn({ type: "json" }))).toBe("::text::json");
     expect(driver.parameterCast(fakeColumn({ type: "simple-json" }))).toBe("");
     expect(driver.parameterCast(fakeColumn({ type: "integer", array: true }))).toBe("::integer[]");
     expect(driver.parameterCast(fakeColumn({ type: "varchar" }))).toBe("");
