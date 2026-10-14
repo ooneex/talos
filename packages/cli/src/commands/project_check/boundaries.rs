@@ -95,12 +95,14 @@ pub fn verdict(from: Option<&str>, to: Option<&str>) -> Option<(bool, String)> {
     }
 }
 
-/// Every module-to-module edge, with the file that first draws it.
+/// Every module-to-module edge, with the file that first draws it. A type-only
+/// import is erased before the code runs, so it draws no edge: that is how an
+/// sdk reads its target's route types without bundling the target.
 pub fn edges(index: &SourceIndex) -> BTreeMap<(String, String), String> {
     let mut edges = BTreeMap::new();
 
     for file in &index.files {
-        for import in &file.imports {
+        for import in file.imports.iter().filter(|import| !import.type_only) {
             let Some(target) = &import.module else {
                 continue;
             };

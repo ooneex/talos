@@ -3745,6 +3745,34 @@ fn a_browser_module_importing_a_server_one_fails() {
 }
 
 #[test]
+fn a_type_only_import_draws_no_boundary() {
+    // An sdk imports its target's route types, and a type import is erased
+    // before anything runs: no code crosses the boundary.
+    let (_guard, root) = root();
+    let sdk = workspace(&root, "sdk", "sdk");
+    let api = root.join("modules/api");
+    write(&api.join("api.yml"), "type: \"api\"\n");
+    write(&api.join("package.json"), "{ \"name\": \"api\" }\n");
+    write(
+        &api.join("src/controllers/UserController.ts"),
+        "export type UserRouteType = { response: null };\n",
+    );
+    write(
+        &root.join("tsconfig.json"),
+        "{ \"compilerOptions\": { \"paths\": { \"@module/api/*\": [\"./modules/api/src/*\"] } } }\n",
+    );
+    write(
+        &sdk.join("src/app.ts"),
+        "import type { UserRouteType } from \"@module/api/controllers/UserController\";\nexport type UserType = UserRouteType;\n",
+    );
+
+    let outcome = boundaries::run(&ProjectCheckArgs::default(), &root);
+
+    assert_eq!(outcome.status, CheckStatus::Passed, "{:?}", outcome.details);
+    assert!(outcome.details.is_empty(), "{:?}", outcome.details);
+}
+
+#[test]
 fn the_runtime_of_a_module_decides_how_bad_a_crossing_is() {
     // Crossing the runtime is an error; the architectural rules only warn.
     assert!(matches!(
