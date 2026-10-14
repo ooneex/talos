@@ -14,8 +14,16 @@ pub struct ControllerDefinition {
     pub path: String,
     pub is_socket: bool,
     pub type_name: String,
-    pub type_declaration: String,
+    /// The `import type` line that brings the route type in from its controller.
+    pub type_import: String,
+    /// Whether the controller already exports the route type the import names.
+    pub type_exported: bool,
+    /// The request parts the route type declares: `params`, `payload`, `queries`.
+    pub inputs: Vec<String>,
 }
+
+/// The request parts a route type can declare, in the order the client takes them.
+const INPUT_KEYS: [&str; 3] = ["params", "payload", "queries"];
 
 pub fn to_camel_case(value: &str) -> String {
     let mut result = String::new();
@@ -122,17 +130,73 @@ fn parse_config_fields(config_body: &str) -> (i64, String, Vec<String>) {
     (version, description, roles)
 }
 
-pub fn parse_controller(content: &str, module_name: &str) -> Option<ControllerDefinition> {
-    let type_match = regex::Regex::new(r"export\s+type\s+(\w+RouteType)\s*=\s*\{")
+/// The keys declared at the top level of a type literal body, so
+/// `{ params: { id: string }; queries?: {…} }` yields `params` and `queries`.
+fn top_level_keys(body: &str) -> Vec<String> {
+    let key = regex::Regex::new(r"^\s*(?:readonly\s+)?(\w+)\??\s*:").ok();
+    let mut keys = Vec::new();
+    let mut depth = 0i32;
+    let mut start = 0;
+    for (index, ch) in body.char_indices() {
+        match ch {
+            '{' | '[' | '(' => depth += 1,
+            '}' | ']' | ')' => depth -= 1,
+            _ => {}
+        }
+        if depth == 0 && matches!(ch, ';' | ',' | '\n') || index + ch.len_utf8() == body.len() {
+            if let Some(name) = key
+                .as_ref()
+                .and_then(|re| re.captures(&body[start..index + ch.len_utf8()]))
+                .and_then(|caps| caps.get(1))
+            {
+                keys.push(name.as_str().to_string());
+            }
+            start = index + ch.len_utf8();
+        }
+    }
+    keys
+}
+
+/// Exports the route type `type_name` the controller declares without
+/// `export`, so the generated SDK can import it. Returns `None` when there is
+/// nothing to change.
+pub fn export_route_type(content: &str, type_name: &str) -> Option<String> {
+    let re = regex::Regex::new(&format!(r"(?m)^(\s*)type\s+{type_name}\s*=")).ok()?;
+    let found = re.captures(content)?;
+    let whole = found.get(0)?;
+    let indent = found.get(1)?.as_str();
+    Some(format!(
+        "{}{indent}export type {type_name} ={}",
+        &content[..whole.start()],
+        &content[whole.end()..]
+    ))
+}
+
+/// Reads a controller's `@Route` decorator and its `…RouteType`. `import_path`
+/// is the specifier the SDK imports the route type from, such as
+/// `@module/user/controllers/UserListController`.
+pub fn parse_controller(
+    content: &str,
+    module_name: &str,
+    import_path: &str,
+) -> Option<ControllerDefinition> {
+    let type_match = regex::Regex::new(r"(?m)^\s*(export\s+)?type\s+(\w+RouteType)\s*=\s*\{")
         .ok()?
         .captures(content)?;
     let decorator_match = regex::Regex::new(r#"@Route\.(\w+)\(\s*"([^"]+)"\s*,\s*\{"#)
         .ok()?
         .captures(content)?;
-    let type_name = type_match.get(1)?.as_str().to_string();
+    let type_exported = type_match.get(1).is_some();
+    let type_name = type_match.get(2)?.as_str().to_string();
     let type_index = type_match.get(0)?.end().saturating_sub(1);
     let (type_body, _) = match_balanced(content, type_index)?;
-    let type_declaration = format!("type {type_name} = {{{type_body}}};");
+    let declared = top_level_keys(&type_body);
+    let inputs = INPUT_KEYS
+        .iter()
+        .filter(|key| declared.iter().any(|name| name == *key))
+        .map(|key| key.to_string())
+        .collect();
+    let type_import = format!("import type {{ {type_name} }} from \"{import_path}\";");
     let method = decorator_match.get(1)?.as_str().to_lowercase();
     let path = decorator_match.get(2)?.as_str().to_string();
     let is_socket = method == "socket";
@@ -159,7 +223,9 @@ pub fn parse_controller(content: &str, module_name: &str) -> Option<ControllerDe
         path,
         is_socket,
         type_name,
-        type_declaration,
+        type_import,
+        type_exported,
+        inputs,
     })
 }
 
@@ -169,12 +235,15 @@ pub fn build_api_entry(def: &ControllerDefinition) -> String {
     } else {
         "\n        bearerToken: string;".to_string()
     };
+    let inputs = def
+        .inputs
+        .iter()
+        .map(|key| format!("\n        {key}: {}[\"{key}\"];", def.type_name))
+        .collect::<String>();
     format!(
-        "    {}: (\n      input: {{\n        baseURL: string;\n        params: {}[\"params\"];\n        payload: {}[\"payload\"];\n        queries: {}[\"queries\"];{}\n        onSuccess?: (response: ResponseDataType<{}[\"response\"]>) => void;\n        onMessage?: (response: ResponseDataType<{}[\"response\"]>) => void;\n        onOpen?: (event?: Event) => void;\n        onClose?: (event?: CloseEvent) => void;\n        onError?: (event?: Event, response?: ResponseDataType<{}[\"response\"]>) => void;\n      }},\n    ): Promise<{}[\"response\"]> => {{\n      // TODO: use {} api according to controller definition\n      throw new Error(\"Not implemented\");\n    }},",
+        "    {}: (\n      input: {{\n        baseURL: string;{}{}\n        onSuccess?: (response: ResponseDataType<{}[\"response\"]>) => void;\n        onMessage?: (response: ResponseDataType<{}[\"response\"]>) => void;\n        onOpen?: (event?: Event) => void;\n        onClose?: (event?: CloseEvent) => void;\n        onError?: (event?: Event, response?: ResponseDataType<{}[\"response\"]>) => void;\n      }},\n    ): Promise<{}[\"response\"]> => {{\n      // TODO: use {} api according to controller definition\n      throw new Error(\"Not implemented\");\n    }},",
         def.method,
-        def.type_name,
-        def.type_name,
-        def.type_name,
+        inputs,
         bearer_token,
         def.type_name,
         def.type_name,
@@ -208,9 +277,9 @@ pub fn build_definition_entry(def: &ControllerDefinition) -> String {
 pub fn build_module_file(const_name: &str, definitions: &[ControllerDefinition]) -> String {
     let types = definitions
         .iter()
-        .map(|def| def.type_declaration.clone())
+        .map(|def| def.type_import.clone())
         .collect::<Vec<_>>()
-        .join("\n\n");
+        .join("\n");
     let api_entries = definitions
         .iter()
         .map(build_api_entry)
@@ -241,9 +310,9 @@ pub fn extract_existing_keys(content: &str) -> std::collections::BTreeSet<String
 pub fn merge_module_file(existing: &str, new_defs: &[ControllerDefinition]) -> String {
     let types = new_defs
         .iter()
-        .map(|def| def.type_declaration.clone())
+        .map(|def| def.type_import.clone())
         .collect::<Vec<_>>()
-        .join("\n\n");
+        .join("\n");
     let api_entries = new_defs
         .iter()
         .map(build_api_entry)

@@ -44,9 +44,11 @@ use std::path::{Path, PathBuf};
 
 use cli::commands::sdk_create::{
     ControllerDefinition, build_api_entry, build_definition_entry, build_module_file,
-    collect_controller_files, extract_existing_keys, match_balanced, merge_module_file,
-    parse_controller, read_module_type, to_camel_case,
+    collect_controller_files, export_route_type, extract_existing_keys, match_balanced,
+    merge_module_file, parse_controller, read_module_type, to_camel_case,
 };
+
+const IMPORT: &str = "@module/user/controllers/UserFindController";
 
 const CONTROLLER: &str = r#"
 export type UserFindRouteType = {
@@ -112,7 +114,11 @@ fn definition(method: &str, roles: &[&str], is_socket: bool) -> ControllerDefini
         path: "/users".to_string(),
         is_socket,
         type_name: "UserRouteType".to_string(),
-        type_declaration: "type UserRouteType = { response: null };".to_string(),
+        type_import:
+            "import type { UserRouteType } from \"@module/user/controllers/UserController\";"
+                .to_string(),
+        type_exported: true,
+        inputs: vec!["params".to_string()],
     }
 }
 
@@ -175,7 +181,7 @@ fn collect_controller_files_walks_nested_directories() {
 
 #[test]
 fn parse_controller_reads_the_route_type_and_decorator() {
-    let def = parse_controller(CONTROLLER, "user").expect("the controller should parse");
+    let def = parse_controller(CONTROLLER, "user", IMPORT).expect("the controller should parse");
 
     assert_eq!(def.type_name, "UserFindRouteType");
     assert_eq!(def.key, "user.find.one");
@@ -186,10 +192,51 @@ fn parse_controller_reads_the_route_type_and_decorator() {
     assert!(!def.is_socket);
     // The module prefix is stripped before the method name is built.
     assert_eq!(def.method, "findOne");
-    assert!(
-        def.type_declaration
-            .starts_with("type UserFindRouteType = {")
+    assert_eq!(
+        def.type_import,
+        "import type { UserFindRouteType } from \"@module/user/controllers/UserFindController\";"
     );
+    assert!(def.type_exported);
+    assert_eq!(def.inputs, ["params", "payload", "queries"]);
+}
+
+#[test]
+fn parse_controller_reads_a_route_type_the_controller_does_not_export() {
+    let content = CONTROLLER.replace("export type", "type");
+
+    let def = parse_controller(&content, "user", IMPORT).expect("the controller should parse");
+
+    assert_eq!(def.type_name, "UserFindRouteType");
+    assert!(!def.type_exported);
+}
+
+#[test]
+fn parse_controller_lists_only_the_request_parts_the_route_type_declares() {
+    let content = r#"
+type InvoiceListRouteType = {
+  queries?: { page: number; filter: { status: string } };
+  response: { params: string[]; payload: () => void };
+};
+@Route.get("/invoices", { name: "billing.invoice.list" })
+"#;
+
+    let def = parse_controller(content, "billing", IMPORT).expect("the controller should parse");
+
+    // Keys nested inside `queries` or `response` are not request parts.
+    assert_eq!(def.inputs, ["queries"]);
+}
+
+#[test]
+fn export_route_type_exports_the_named_declaration_only() {
+    let content = "type HelperType = string;\n\ntype PingRouteType = { response: null };\n";
+
+    let exported = export_route_type(content, "PingRouteType").expect("a declaration to export");
+
+    assert_eq!(
+        exported,
+        "type HelperType = string;\n\nexport type PingRouteType = { response: null };\n"
+    );
+    assert!(export_route_type("type OtherRouteType = {};", "PingRouteType").is_none());
 }
 
 #[test]
@@ -201,7 +248,7 @@ export type PingRouteType = { response: null };
 })
 "#;
 
-    let def = parse_controller(content, "user").expect("the controller should parse");
+    let def = parse_controller(content, "user", IMPORT).expect("the controller should parse");
 
     assert_eq!(def.version, 1);
     assert_eq!(def.description, "");
@@ -216,7 +263,7 @@ export type ChatRouteType = { response: null };
 @Route.socket("/chat", { name: "user.chat" })
 "#;
 
-    let def = parse_controller(content, "user").expect("the controller should parse");
+    let def = parse_controller(content, "user", IMPORT).expect("the controller should parse");
 
     assert!(def.is_socket);
     assert_eq!(def.method, "chat");
@@ -224,8 +271,8 @@ export type ChatRouteType = { response: null };
 
 #[test]
 fn parse_controller_is_none_without_a_route_type_or_decorator() {
-    assert!(parse_controller("export class Nothing {}", "user").is_none());
-    assert!(parse_controller("export type XRouteType = { a: 1 };", "user").is_none());
+    assert!(parse_controller("export class Nothing {}", "user", IMPORT).is_none());
+    assert!(parse_controller("export type XRouteType = { a: 1 };", "user", IMPORT).is_none());
 }
 
 #[test]
@@ -234,6 +281,15 @@ fn build_api_entry_requests_a_bearer_token_only_for_guarded_routes() {
         build_api_entry(&definition("findOne", &["admin"], false)).contains("bearerToken: string;")
     );
     assert!(!build_api_entry(&definition("findOne", &[], false)).contains("bearerToken"));
+}
+
+#[test]
+fn build_api_entry_takes_only_the_request_parts_the_route_declares() {
+    let entry = build_api_entry(&definition("findOne", &[], false));
+
+    assert!(entry.contains("params: UserRouteType[\"params\"];"));
+    assert!(!entry.contains("payload"));
+    assert!(!entry.contains("queries"));
 }
 
 #[test]
@@ -265,7 +321,9 @@ fn build_module_file_emits_types_api_and_definition_blocks() {
     let out = build_module_file("userSdk", &[definition("findOne", &["admin"], false)]);
 
     assert!(out.starts_with("import type { ResponseDataType } from \"@talosjs/http-response\";"));
-    assert!(out.contains("type UserRouteType = { response: null };"));
+    assert!(out.contains(
+        "import type { UserRouteType } from \"@module/user/controllers/UserController\";"
+    ));
     assert!(out.contains("export const userSdk = {"));
     assert!(out.contains("  api: {"));
     assert!(out.contains("  definition: {"));

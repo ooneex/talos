@@ -15,6 +15,9 @@ use cli::commands::sdk_create::{
     build_module_file, extract_existing_keys, merge_module_file, parse_controller, to_camel_case,
 };
 
+/// Where the SDK imports the route type of [`CONTROLLER`] from.
+const IMPORT: &str = "@module/app/controllers/UserController";
+
 /// A controller with one route, written the way the generator expects to read it.
 const CONTROLLER: &str = r#"import { Route } from "@talosjs/controller";
 
@@ -104,7 +107,7 @@ fn read(path: &Path) -> String {
 
 #[test]
 fn a_controller_yields_the_route_its_decorator_and_its_type_describe() {
-    let definition = parse_controller(CONTROLLER, "user").expect("the controller parses");
+    let definition = parse_controller(CONTROLLER, "user", IMPORT).expect("the controller parses");
 
     assert_eq!(definition.method, "list", "the module prefix is dropped");
     assert_eq!(definition.key, "user.list");
@@ -114,18 +117,18 @@ fn a_controller_yields_the_route_its_decorator_and_its_type_describe() {
     assert_eq!(definition.path, "/users");
     assert_eq!(definition.type_name, "UserListRouteType");
     assert!(!definition.is_socket);
-    assert!(
-        definition.type_declaration.contains("queries"),
-        "the whole type body comes along: {}",
-        definition.type_declaration
+    assert_eq!(
+        definition.type_import,
+        "import type { UserListRouteType } from \"@module/app/controllers/UserController\";"
     );
+    assert_eq!(definition.inputs, ["params", "payload", "queries"]);
 }
 
 #[test]
 fn a_socket_route_is_marked_as_one() {
     let socket = CONTROLLER.replace("@Route.get(", "@Route.socket(");
 
-    let definition = parse_controller(&socket, "user").expect("the controller parses");
+    let definition = parse_controller(&socket, "user", IMPORT).expect("the controller parses");
 
     assert!(definition.is_socket);
     assert_eq!(definition.method, "list");
@@ -141,7 +144,7 @@ fn a_route_declaring_no_version_or_roles_takes_the_defaults() {
 export class PingController {}
 "#;
 
-    let definition = parse_controller(bare, "health").expect("the controller parses");
+    let definition = parse_controller(bare, "health", IMPORT).expect("the controller parses");
 
     assert_eq!(definition.version, 1);
     assert!(definition.roles.is_empty());
@@ -150,9 +153,9 @@ export class PingController {}
 
 #[test]
 fn a_file_that_is_not_a_controller_yields_nothing() {
-    assert!(parse_controller("export const x = 1;\n", "user").is_none());
+    assert!(parse_controller("export const x = 1;\n", "user", IMPORT).is_none());
     assert!(
-        parse_controller("export type UserRouteType = { a: 1 };\n", "user").is_none(),
+        parse_controller("export type UserRouteType = { a: 1 };\n", "user", IMPORT).is_none(),
         "a type with no route decorator is not a controller"
     );
 }
@@ -170,7 +173,7 @@ fn a_kebab_name_becomes_the_camel_case_method_name() {
 
 #[test]
 fn the_generated_module_file_carries_the_api_and_the_definitions() {
-    let definition = parse_controller(CONTROLLER, "user").expect("the controller parses");
+    let definition = parse_controller(CONTROLLER, "user", IMPORT).expect("the controller parses");
 
     let file = build_module_file("app", &[definition]);
 
@@ -185,7 +188,7 @@ fn the_generated_module_file_carries_the_api_and_the_definitions() {
 
 #[test]
 fn a_route_that_is_already_in_the_file_is_not_added_twice() {
-    let definition = parse_controller(CONTROLLER, "user").expect("the controller parses");
+    let definition = parse_controller(CONTROLLER, "user", IMPORT).expect("the controller parses");
     let existing = build_module_file("app", std::slice::from_ref(&definition));
 
     let keys = extract_existing_keys(&existing);
@@ -195,7 +198,7 @@ fn a_route_that_is_already_in_the_file_is_not_added_twice() {
 
 #[test]
 fn merging_appends_only_the_routes_the_file_does_not_have_yet() {
-    let first = parse_controller(CONTROLLER, "user").expect("the controller parses");
+    let first = parse_controller(CONTROLLER, "user", IMPORT).expect("the controller parses");
     let existing = build_module_file("app", &[first]);
     let second = parse_controller(
         &CONTROLLER
@@ -203,6 +206,7 @@ fn merging_appends_only_the_routes_the_file_does_not_have_yet() {
             .replace("user.list", "user.create")
             .replace("@Route.get", "@Route.post"),
         "user",
+        IMPORT,
     )
     .expect("the second controller parses");
 
@@ -259,11 +263,66 @@ fn one_file_per_module_is_generated_and_re_exported_from_the_index() {
 
     let generated = read(&root.join("modules/sdk/src/app.ts"));
     assert!(generated.contains("user.list"), "{generated}");
-    assert!(generated.contains("UserListRouteType"), "{generated}");
+    assert!(
+        generated.contains(
+            "import type { UserListRouteType } from \"@module/app/controllers/UserController\";"
+        ),
+        "the route type is imported, not copied: {generated}"
+    );
 
     let index = read(&root.join("modules/sdk/src/index.ts"));
     assert!(index.contains("import { app } from \"./app\""), "{index}");
     assert!(index.contains("export const sdk"), "{index}");
+}
+
+#[test]
+fn a_route_type_the_controller_does_not_export_is_exported_and_imported() {
+    let (_dir, root) = workspace();
+    let (_templates, templates) = templates();
+    let controller = root.join("modules/app/src/controllers/UserController.ts");
+    write(&controller, &CONTROLLER.replace("export type", "type"));
+
+    talos(
+        &root,
+        &templates,
+        &["sdk:create", "--name=sdk", "--module=app", "--silent"],
+    );
+
+    assert!(
+        read(&controller).contains("\nexport type UserListRouteType = {"),
+        "{}",
+        read(&controller)
+    );
+    let generated = read(&root.join("modules/sdk/src/app.ts"));
+    assert!(generated.contains("key: \"user.list\""), "{generated}");
+    assert!(
+        generated.contains("import type { UserListRouteType }"),
+        "{generated}"
+    );
+}
+
+#[test]
+fn a_nested_controller_is_imported_from_its_path_under_src() {
+    let (_dir, root) = workspace();
+    let (_templates, templates) = templates();
+    fs::remove_file(root.join("modules/app/src/controllers/UserController.ts"))
+        .expect("remove the flat controller");
+    write(
+        &root.join("modules/app/src/controllers/admin/UserController.ts"),
+        CONTROLLER,
+    );
+
+    talos(
+        &root,
+        &templates,
+        &["sdk:create", "--name=sdk", "--module=app", "--silent"],
+    );
+
+    let generated = read(&root.join("modules/sdk/src/app.ts"));
+    assert!(
+        generated.contains("from \"@module/app/controllers/admin/UserController\";"),
+        "{generated}"
+    );
 }
 
 #[test]
