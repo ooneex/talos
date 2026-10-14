@@ -1304,6 +1304,7 @@ fn validation_reports_missing_and_extra_fields() {
             "params".to_string(),
             ["id".to_string(), "slug".to_string()].into_iter().collect(),
         )],
+        ..Default::default()
     };
 
     let mut errors = Vec::new();

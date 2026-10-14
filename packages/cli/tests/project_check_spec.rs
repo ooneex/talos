@@ -3838,6 +3838,140 @@ fn a_typed_field_with_no_assertion_is_unvalidated() {
 }
 
 #[test]
+fn a_route_type_the_controller_does_not_export_is_still_compared() {
+    let (_guard, root) = root();
+    let dir = workspace(&root, "user", "module");
+    write(
+        &dir.join("src/controllers/UserController.ts"),
+        "type UserRouteType = { queries: { page: number } };\n@Route.get(\"/users\", { name: \"user.read\", roles: [\"ROLE_USER\"] })\nexport class UserController {}\n",
+    );
+
+    let outcome = validation::run(&ProjectCheckArgs::default(), &root);
+
+    assert_eq!(outcome.status, CheckStatus::Failed, "{:?}", outcome.details);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("`queries` is typed but the route asserts no schema"))
+    );
+}
+
+#[test]
+fn a_schema_held_in_a_constant_is_read_from_the_constant() {
+    let contract = validation::parse(
+        "const ID_PARAMS = { id: Assert(\"string\") } as const;\nexport const EMAIL_PAYLOAD = Assert({ email: \"string\" });\n\nexport type ReadRouteType = {\n  params: { id: string };\n  payload: { email: string };\n};\n\n@Route.post(\"/users/:id\", {\n  name: \"user.read\",\n  params: ID_PARAMS,\n  payload: EMAIL_PAYLOAD,\n  response: Assert({ answer: \"string\" }),\n})\nexport class ReadController {}\n",
+    )
+    .expect("a contract");
+
+    let mut errors = Vec::new();
+    let mut warnings = Vec::new();
+    validation::inspect("controller.ts", &contract, &mut errors, &mut warnings);
+
+    assert!(errors.is_empty(), "{errors:?}");
+    assert!(warnings.is_empty(), "{warnings:?}");
+}
+
+#[test]
+fn a_schema_constant_imported_from_a_sibling_file_is_followed() {
+    let (_guard, root) = root();
+    let dir = workspace(&root, "user", "module");
+    write(
+        &dir.join("src/constraints/user.ts"),
+        "export const USER_PAYLOAD = { email: Assert(\"string\") } as const;\n",
+    );
+    write(
+        &dir.join("src/types/UserType.ts"),
+        "export type UserPayloadType = {\n  email: string;\n  name: string;\n};\n",
+    );
+    write(
+        &dir.join("src/controllers/UserController.ts"),
+        "import { USER_PAYLOAD } from \"../constraints/user\";\nimport type { UserPayloadType } from \"../types/UserType\";\n\nexport type UserRouteType = { payload: UserPayloadType };\n@Route.post(\"/users\", {\n  name: \"user.create\",\n  payload: USER_PAYLOAD,\n  roles: [\"ROLE_USER\"],\n})\nexport class UserController {}\n",
+    );
+
+    let outcome = validation::run(&ProjectCheckArgs::default(), &root);
+
+    // Both sides resolve, so the one real gap is reported, and nothing else.
+    assert_eq!(
+        outcome
+            .details
+            .iter()
+            .filter(|detail| detail.contains("UserController"))
+            .count(),
+        1,
+        "{:?}",
+        outcome.details
+    );
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("`payload.name` is typed but never validated")),
+        "{:?}",
+        outcome.details
+    );
+}
+
+#[test]
+fn a_section_value_stops_at_the_end_of_its_field() {
+    let source = "\n  params: ID_PARAMS\n  payload:\n    Assert({ email: \"string\" }),\n  response: { payload: string },\n";
+
+    assert_eq!(
+        validation::section_value(source, "params"),
+        Some("ID_PARAMS")
+    );
+    assert_eq!(
+        validation::section_value(source, "payload"),
+        Some("Assert({ email: \"string\" })")
+    );
+    assert_eq!(validation::section_value(source, "queries"), None);
+}
+
+#[test]
+fn shorthand_properties_and_spread_constants_count_as_asserted_keys() {
+    let contract = validation::parse(
+        "const id = Assert(\"string\");\nconst PAGE = { page: Assert(\"number\"), limit: Assert(\"number\") };\nconst LIST_QUERIES = { ...PAGE, q: Assert(\"string\") };\n\nexport type ListRouteType = {\n  params: { id: string };\n  queries: { page: number; limit: number; q: string };\n};\n\n@Route.get(\"/users/:id/items\", {\n  name: \"user.item.list\",\n  params: { id },\n  queries: LIST_QUERIES,\n})\nexport class ListController {}\n",
+    )
+    .expect("a contract");
+
+    let mut errors = Vec::new();
+    let mut warnings = Vec::new();
+    validation::inspect("controller.ts", &contract, &mut errors, &mut warnings);
+
+    assert!(errors.is_empty(), "{errors:?}");
+    assert!(warnings.is_empty(), "{warnings:?}");
+}
+
+#[test]
+fn a_spread_that_cannot_be_resolved_leaves_its_section_uncompared() {
+    let contract = validation::parse(
+        "import { PAGE } from \"@talosjs/validation\";\n\nexport type ListRouteType = { queries: { page: number; q: string } };\n\n@Route.get(\"/items\", {\n  name: \"user.item.list\",\n  queries: { ...PAGE, q: Assert(\"string\") },\n})\nexport class ListController {}\n",
+    )
+    .expect("a contract");
+
+    let mut errors = Vec::new();
+    let mut warnings = Vec::new();
+    validation::inspect("controller.ts", &contract, &mut errors, &mut warnings);
+
+    assert!(errors.is_empty(), "{errors:?}");
+}
+
+#[test]
+fn a_schema_that_cannot_be_resolved_is_not_reported_as_missing() {
+    let contract = validation::parse(
+        "import { ID_PARAMS } from \"@talosjs/validation\";\n\nexport type ReadRouteType = { params: { id: string } };\n\n@Route.get(\"/users/:id\", {\n  name: \"user.read\",\n  params: ID_PARAMS,\n})\nexport class ReadController {}\n",
+    )
+    .expect("a contract");
+
+    let mut errors = Vec::new();
+    let mut warnings = Vec::new();
+    validation::inspect("controller.ts", &contract, &mut errors, &mut warnings);
+
+    assert!(errors.is_empty(), "{errors:?}");
+    assert!(warnings.is_empty(), "{warnings:?}");
+}
+
+#[test]
 fn a_commented_out_assertion_does_not_count_as_one() {
     let keys = validation::keys(&validation::strip_comments(
         "\n  // id: Assert(\"string\"),\n  email: Assert(\"string\"),\n",
