@@ -177,6 +177,65 @@ describe("Fetcher", () => {
     });
   });
 
+  describe("per-request abort signal", () => {
+    beforeEach(() => {
+      mockFetch.mockResolvedValue(new MockResponse({}, 200));
+    });
+
+    test("should abort a request through the signal passed with it", async () => {
+      const controller = new AbortController();
+
+      await fetcher.get(testPath, { signal: controller.signal });
+      const signal = mockFetch.mock.calls[0]?.[1].signal as AbortSignal;
+      expect(signal.aborted).toBe(false);
+
+      controller.abort();
+      expect(signal.aborted).toBe(true);
+    });
+
+    test("should leave other requests running when one request's signal aborts", async () => {
+      const controller = new AbortController();
+
+      await fetcher.post(testPath, testData, { signal: controller.signal });
+      await fetcher.put(testPath, testData);
+      controller.abort();
+
+      expect((mockFetch.mock.calls[0]?.[1].signal as AbortSignal).aborted).toBe(true);
+      expect((mockFetch.mock.calls[1]?.[1].signal as AbortSignal).aborted).toBe(false);
+    });
+
+    test("should still abort a request carrying its own signal through abort()", async () => {
+      await fetcher.request("PATCH", testPath, testData, { signal: new AbortController().signal });
+      const signal = mockFetch.mock.calls[0]?.[1].signal as AbortSignal;
+
+      fetcher.abort();
+
+      expect(signal.aborted).toBe(true);
+    });
+
+    test("should start a request whose signal is already aborted as aborted", async () => {
+      const controller = new AbortController();
+      controller.abort();
+
+      await fetcher.upload(testPath, new Blob(["content"]), "file", { signal: controller.signal });
+
+      expect((mockFetch.mock.calls[0]?.[1].signal as AbortSignal).aborted).toBe(true);
+    });
+
+    test("should pass the signal of delete, head and options requests", async () => {
+      const controller = new AbortController();
+      controller.abort();
+
+      await fetcher.delete(testPath, { signal: controller.signal });
+      await fetcher.head(testPath, { signal: controller.signal });
+      await fetcher.options(testPath, { signal: controller.signal });
+
+      for (const call of mockFetch.mock.calls) {
+        expect((call[1].signal as AbortSignal).aborted).toBe(true);
+      }
+    });
+  });
+
   describe("clone method", () => {
     test("should create new Fetcher instance with same base URL", () => {
       const cloned = fetcher.clone();
