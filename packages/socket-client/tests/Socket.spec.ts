@@ -336,6 +336,60 @@ describe("Socket", () => {
       expect(messageHandler).toHaveBeenCalledWith(testResponse);
     });
 
+    test("should hand a frame that is not a response envelope to the push handler", () => {
+      const socket = new Socket("ws://localhost:8080");
+      const ws = (socket as unknown as SocketPrivate).ws;
+      const pushHandler = mock();
+      const messageHandler = mock();
+      const errorHandler = mock();
+      socket.onPush(pushHandler);
+      socket.onMessage(messageHandler);
+      socket.onError(errorHandler);
+
+      ws.dispatchEvent(new MessageEvent("message", { data: JSON.stringify({ logs: ["joined"] }) }));
+
+      expect(pushHandler).toHaveBeenCalledWith({ logs: ["joined"] }, expect.any(MessageEvent));
+      expect(messageHandler).not.toHaveBeenCalled();
+      expect(errorHandler).not.toHaveBeenCalled();
+    });
+
+    test("should not report a frame that is not a response envelope as an error without a push handler", () => {
+      const socket = new Socket("ws://localhost:8080");
+      const ws = (socket as unknown as SocketPrivate).ws;
+      const errorHandler = mock();
+      socket.onMessage(mock());
+      socket.onError(errorHandler);
+
+      ws.dispatchEvent(new MessageEvent("message", { data: JSON.stringify({ logs: ["joined"] }) }));
+
+      expect(errorHandler).not.toHaveBeenCalled();
+    });
+
+    test("should hand a failed response envelope to the error handler without a message handler", () => {
+      const socket = new Socket("ws://localhost:8080");
+      const ws = (socket as unknown as SocketPrivate).ws;
+      const errorHandler = mock();
+      socket.onError(errorHandler);
+      const failure: ResponseDataType<Record<string, unknown>> = {
+        key: "PERMISSION_DENIED",
+        data: {},
+        message: "Forbidden",
+        success: false,
+        done: false,
+        status: 403,
+        isClientError: true,
+        isServerError: false,
+        isNotFound: false,
+        isUnauthorized: false,
+        isForbidden: true,
+        app: { env: Environment.DEVELOPMENT },
+      };
+
+      ws.simulateMessage(failure);
+
+      expect(errorHandler).toHaveBeenCalledWith(expect.any(MessageEvent), failure);
+    });
+
     test("should call open handler when connection opens", async () => {
       const openHandler = mock();
       const socket = new Socket("ws://localhost:8080");
