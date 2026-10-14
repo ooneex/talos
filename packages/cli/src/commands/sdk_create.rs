@@ -36,16 +36,16 @@ pub struct SdkCreateArgs {
     pub no_cache: bool,
 }
 
-const BUNUP_CONFIG: &str = r#"import { defineConfig } from \"bunup\";
+const BUNUP_CONFIG: &str = r#"import { defineConfig } from "bunup";
 
 export default defineConfig({
-  target: \"browser\",
-  format: [\"esm\"],
-  drop: [\"console\", \"debugger\"],
-  packages: \"external\",
-  sourcemap: \"external\",
+  target: "browser",
+  format: ["esm"],
+  drop: ["console", "debugger"],
+  packages: "external",
+  sourcemap: "external",
   unused: {
-    level: \"error\",
+    level: "error",
   },
   exports: true,
   minify: false,
