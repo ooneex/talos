@@ -222,13 +222,66 @@ fn collect_controller_files(dir: &Path, files: &mut Vec<PathBuf>) {
 ///
 /// Nested objects, unions and generics all live inside the member's type, so
 /// the split tracks bracket depth rather than looking for the next separator.
-/// The prose of a JSDoc block, with the decoration every line carries removed.
+/// Whether a line opens a Markdown list item: `- `, `* `, `+ `, `1. ` or `1) `.
+fn is_list_item(line: &str) -> bool {
+    if ["- ", "* ", "+ "]
+        .iter()
+        .any(|marker| line.starts_with(marker))
+    {
+        return true;
+    }
+    let digits = line.chars().take_while(char::is_ascii_digit).count();
+    digits > 0 && (line[digits..].starts_with(". ") || line[digits..].starts_with(") "))
+}
+
+/// The prose of a JSDoc block as Markdown, with the decoration every line
+/// carries removed.
+///
+/// The prose is published as an OpenAPI description, which is CommonMark, so
+/// its structure is kept: lines of one paragraph are joined, a blank line
+/// separates paragraphs, a list item starts its own line, and a fenced code
+/// block keeps its lines and their indentation.
 fn clean_jsdoc(body: &str) -> String {
-    body.lines()
-        .map(|line| line.trim().trim_start_matches('*').trim())
-        .filter(|line| !line.is_empty())
-        .collect::<Vec<_>>()
-        .join(" ")
+    let mut prose = String::new();
+    let mut in_fence = false;
+    let mut continues = false;
+    let mut blank = false;
+
+    for raw in body.lines() {
+        let line = raw.trim_start();
+        let line = line.strip_prefix('*').unwrap_or(line);
+        let line = line.strip_prefix(' ').unwrap_or(line).trim_end();
+        let trimmed = line.trim();
+
+        if in_fence {
+            prose.push('\n');
+            prose.push_str(line);
+            in_fence = !trimmed.starts_with("```");
+            continue;
+        }
+        if trimmed.is_empty() {
+            blank = !prose.is_empty();
+            continues = false;
+            continue;
+        }
+
+        let fence = trimmed.starts_with("```");
+        if !prose.is_empty() {
+            prose.push_str(if blank {
+                "\n\n"
+            } else if continues && !fence && !is_list_item(trimmed) {
+                " "
+            } else {
+                "\n"
+            });
+        }
+        prose.push_str(trimmed);
+        blank = false;
+        in_fence = fence;
+        continues = !fence;
+    }
+
+    prose
 }
 
 /// The JSDoc block written immediately above `index`, if there is one.
@@ -1300,6 +1353,43 @@ export class FavoriteController {}
     }
 
     #[test]
+    fn keeps_the_paragraphs_lists_and_code_of_a_jsdoc_block() {
+        let content = r#"
+type ExportRouteType = { response: { url: string } };
+
+/**
+ * Export the report of a campaign.
+ * The file is built on the fly.
+ *
+ * It costs one query per participant:
+ * - call it once a day at most;
+ * - prefer the list route for a dashboard.
+ *
+ * ```ts
+ * const { url } = await sdk.campaign.export({ id });
+ *   console.log(url);
+ * ```
+ */
+@Route.get("/campaigns/:id/export", {
+  name: "campaign.report.export",
+  roles: ["ROLE_ADMIN"],
+})
+export class ExportController {}
+"#;
+
+        let route = parse_controller(content, "campaign", "api").expect("a route");
+
+        assert_eq!(
+            route.prose,
+            "Export the report of a campaign. The file is built on the fly.\n\nIt costs one query per participant:\n- call it once a day at most;\n- prefer the list route for a dashboard.\n\n```ts\nconst { url } = await sdk.campaign.export({ id });\n  console.log(url);\n```"
+        );
+        // The route file holds the prose on one line, its breaks escaped.
+        assert!(render_route_file(&route, "Campaign").contains(
+            "description: \"Export the report of a campaign. The file is built on the fly.\\n\\nIt costs"
+        ));
+    }
+
+    #[test]
     fn reads_the_decorator_a_controller_declares() {
         let route = parse_controller(HEALTH_CONTROLLER, "app", "api").expect("a route");
 
@@ -1440,10 +1530,14 @@ export class FavoriteController {}
     #[test]
     fn joins_a_jsdoc_block_written_across_several_lines() {
         let members = split_members(
-            "/**\n   * Which slice to read.\n   *\n   * 1-based.\n   */\n  page: number;",
+            "/**\n   * Which slice to read,\n   * 1-based.\n   *\n   * 20 per page.\n   */\n  page: number;",
         );
 
-        assert_eq!(members[0].description, "Which slice to read. 1-based.");
+        // Lines of a paragraph are joined; a blank line still separates two.
+        assert_eq!(
+            members[0].description,
+            "Which slice to read, 1-based.\n\n20 per page."
+        );
     }
 
     #[test]
@@ -1464,7 +1558,7 @@ export class GrantController {}
         assert_eq!(route.description, "Grant");
         assert_eq!(
             route.prose,
-            "Grant an entitlement. Charges the card on file. Prefer `entitlement.preview` to check first."
+            "Grant an entitlement.\n\nCharges the card on file. Prefer `entitlement.preview` to check first."
         );
 
         let operation = only_operation(&render_openapi(&[("app".to_string(), route)], "api"));
