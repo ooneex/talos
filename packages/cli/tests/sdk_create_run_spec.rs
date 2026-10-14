@@ -247,6 +247,29 @@ fn the_sdk_module_is_scaffolded_and_typed_as_an_sdk_pointing_at_its_target() {
 }
 
 #[test]
+fn the_sdk_keeps_no_backend_module_file_or_its_spec() {
+    let (_dir, root) = workspace();
+    let (_templates, templates) = templates();
+
+    talos(
+        &root,
+        &templates,
+        &["sdk:create", "--name=sdk", "--module=app", "--silent"],
+    );
+
+    let sdk = root.join("modules/sdk");
+    assert!(
+        sdk.join("src/index.ts").is_file(),
+        "the sdk itself is generated"
+    );
+    assert!(
+        !sdk.join("src/SdkModule.ts").exists(),
+        "a browser package has no module file reaching into @module/shared"
+    );
+    assert!(!sdk.join("tests/SdkModule.spec.ts").exists());
+}
+
+#[test]
 fn one_file_per_module_is_generated_and_re_exported_from_the_index() {
     let (_dir, root) = workspace();
     let (_templates, templates) = templates();
