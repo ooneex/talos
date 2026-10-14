@@ -1,5 +1,5 @@
 import type { ResponseDataType } from "@talosjs/http-response";
-import type { ISocket, RequestDataType } from "./types";
+import type { ISocket, RequestDataType, SocketOptionsType } from "./types";
 
 export class Socket<
   SendData extends RequestDataType = RequestDataType,
@@ -13,7 +13,10 @@ export class Socket<
   private closeHandler?: (event: CloseEvent) => void;
   private queuedMessages: (string | Blob | BufferSource)[] = [];
 
-  constructor(private readonly url: string) {
+  constructor(
+    private readonly url: string,
+    private readonly options: SocketOptionsType = {},
+  ) {
     const fullURL = this.buildURL(this.url);
     this.ws = new WebSocket(fullURL);
     this.setupEventHandlers();
@@ -61,16 +64,16 @@ export class Socket<
       url = `wss://${url}`;
     }
 
-    return this.encodeBearerToken(url);
+    return this.withBearerToken(url);
   }
 
-  private encodeBearerToken(url: string): string {
-    const parsed = new URL(url);
-    const bearerToken = parsed.searchParams.get("bearerToken");
-    if (!bearerToken) {
+  /** Writes the `bearerToken` option into the query string, encoded, replacing any token already there. */
+  private withBearerToken(url: string): string {
+    if (!this.options.bearerToken) {
       return url;
     }
-    parsed.searchParams.set("bearerToken", bearerToken);
+    const parsed = new URL(url);
+    parsed.searchParams.set("bearerToken", this.options.bearerToken);
     return parsed.toString();
   }
 

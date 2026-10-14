@@ -7,6 +7,14 @@ export type RequestDataType = {
   lang?: LocaleInfoType;
 };
 
+export type SocketOptionsType = {
+  /**
+   * The token the server reads from the `bearerToken` query parameter, since a browser WebSocket
+   * cannot send an `Authorization` header. It is encoded into the URL for you.
+   */
+  bearerToken?: string;
+};
+
 export interface ISocket<
   SendData extends RequestDataType = RequestDataType,
   Response extends Record<string, unknown> = Record<string, unknown>,
