@@ -17,7 +17,7 @@ import { buildHttpContext } from "./utils/context";
 import { buildException, toControllerError } from "./utils/controller";
 import { logRequest } from "./utils/logging";
 import { runMiddlewares } from "./utils/middleware";
-import { validateResponse, validateRouteAccess } from "./utils/validation";
+import { keepDeclaredInput, validateResponse, validateRouteAccess } from "./utils/validation";
 
 type SocketRouteHandlerType = (req: BunRequest, server: Server<unknown>) => Promise<Response | undefined>;
 type SocketRoutesMapType = Record<string, SocketRouteHandlerType>;
@@ -141,6 +141,7 @@ export const socketRouteHandler = async ({
     return sendException(context, middlewareError.message, middlewareError.status, middlewareError.key);
   }
 
+  keepDeclaredInput(context, route);
   applyEnvRoles(context);
 
   // Check allowed users

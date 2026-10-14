@@ -4,7 +4,7 @@ import type { ContextType } from "@talosjs/controller";
 import { HttpStatus, type StatusCodeType } from "@talosjs/http-status";
 import { GUEST_ROLE, type IRolesConfig, Role } from "@talosjs/role";
 import type { RouteConfigType } from "@talosjs/routing";
-import { type AssertType, type IAssert, validateAssert } from "@talosjs/validation";
+import { type AssertType, type IAssert, isAssert, isAssertRecord, validateAssert } from "@talosjs/validation";
 
 const role = new Role();
 
@@ -13,6 +13,76 @@ export type RouteValidationErrorType = { message: string; status: StatusCodeType
 export const validateConstraint = (constraint: AssertType | IAssert, value: unknown): string | null => {
   const result = validateAssert(constraint, value);
   return result.isValid ? null : result.message || "Validation failed";
+};
+
+type SchemaJsonType = {
+  domain?: unknown;
+  index?: unknown;
+  undeclared?: unknown;
+  required?: { key: unknown }[];
+  optional?: { key: unknown }[];
+};
+
+const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+  value !== null && typeof value === "object" && !Array.isArray(value);
+
+const isObjectSchema = (json: unknown): json is SchemaJsonType => isPlainObject(json) && json.domain === "object";
+
+const keysOfSchemaJson = (json: unknown): string[] | null => {
+  if (Array.isArray(json)) {
+    const branches = json.filter(isObjectSchema).map(keysOfSchemaJson);
+    if (branches.length === 0 || branches.some((keys) => keys === null)) {
+      return null;
+    }
+    return branches.flatMap((keys) => keys ?? []);
+  }
+  // An index signature or `"+": "reject"` keeps the undeclared keys: the schema accepts them,
+  // or validation rejects the request before a controller can read them
+  if (!isObjectSchema(json) || json.index !== undefined || json.undeclared === "reject") {
+    return null;
+  }
+  const keys = [...(json.required ?? []), ...(json.optional ?? [])].map(({ key }) => String(key));
+  return keys.length > 0 ? keys : null;
+};
+
+/**
+ * The keys an object constraint declares, or null when it declares none — a scalar, an empty
+ * or open object (`"object"`, `{}`, an index signature) — and so accepts any key
+ */
+export const declaredKeys = (constraint: AssertType | IAssert): string[] | null => {
+  if (isAssert(constraint)) {
+    return declaredKeys(constraint.getConstraint());
+  }
+  if (isAssertRecord(constraint)) {
+    const keys = Object.keys(constraint);
+    return keys.length > 0 ? keys : null;
+  }
+  return keysOfSchemaJson(constraint.json);
+};
+
+const pickDeclared = (constraint: AssertType | IAssert | undefined, value: unknown): Record<string, unknown> | null => {
+  if (!constraint || !isPlainObject(value)) {
+    return null;
+  }
+  const keys = declaredKeys(constraint);
+  return keys ? Object.fromEntries(Object.entries(value).filter(([key]) => keys.includes(key))) : null;
+};
+
+/**
+ * Keep in `context.queries` and `context.payload` only the keys the route declares, so a controller
+ * that spreads them after a trusted value (`{ userId, ...context.queries }`) cannot have it replaced
+ * by the caller. A route without a constraint, or with an open one (see `declaredKeys`), keeps
+ * everything; `context.request.queries` and `context.request.payload` always hold the raw input.
+ */
+export const keepDeclaredInput = (context: ContextType, route: RouteConfigType): void => {
+  const queries = pickDeclared(route.queries, context.queries);
+  if (queries) {
+    context.queries = queries as ContextType["queries"];
+  }
+  const payload = pickDeclared(route.payload, context.payload);
+  if (payload) {
+    context.payload = payload as ContextType["payload"];
+  }
 };
 
 export const validateRouteAccess = async (

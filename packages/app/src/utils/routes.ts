@@ -10,6 +10,7 @@ import { buildHttpContext } from "./context";
 import { buildExceptionResponse, httpRouteHandler, toControllerError } from "./controller";
 import { logException, logRequest, logSwallowedError } from "./logging";
 import { runMiddlewares } from "./middleware";
+import { keepDeclaredInput } from "./validation";
 
 export type HttpRouteHandlerType = (req: BunRequest, server: Server<unknown>) => Promise<Response>;
 export type HttpMethodHandlersType = Partial<Record<string, HttpRouteHandlerType | Response>>;
@@ -161,6 +162,9 @@ export const formatHttpRoutes = (
           return middlewareResult;
         }
         context = middlewareResult;
+        // Middlewares still read the raw input (a bearer token in the query string); everything
+        // after them — permissions, the controller — sees only the keys the route declares
+        keepDeclaredInput(context, route);
 
         // The authenticated user is only known once the middlewares have run, so the
         // quota check waits for them; it still precedes every access check below
