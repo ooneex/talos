@@ -316,3 +316,43 @@ fn a_target_module_with_no_controller_generates_an_empty_sdk() {
     let index = read(&root.join("modules/sdk/src/index.ts"));
     assert_eq!(index, "export const sdk = {\n\n};\n", "{index}");
 }
+
+#[cfg(unix)]
+#[test]
+fn the_dependencies_are_installed_at_the_versions_the_workspace_root_pins() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let (_dir, root) = workspace();
+    let (_templates, templates) = templates();
+    write(
+        &root.join("package.json"),
+        "{\n  \"name\": \"scratch\",\n  \"dependencies\": { \"@talosjs/fetcher\": \"^1.1.3\" },\n  \"devDependencies\": { \"bunup\": \"^0.16.32\" }\n}\n",
+    );
+    // A `bun` that only records the arguments it is called with.
+    let bin = tempfile::tempdir().expect("create temp dir");
+    let calls = bin.path().join("calls.txt");
+    let bun = bin.path().join("bun");
+    write(
+        &bun,
+        &format!("#!/bin/sh\necho \"$@\" >> {}\n", calls.display()),
+    );
+    fs::set_permissions(&bun, fs::Permissions::from_mode(0o755)).expect("make bun executable");
+
+    let output = Command::new(env!("CARGO_BIN_EXE_talos"))
+        .args(["sdk:create", "--name=sdk", "--module=app", "--silent"])
+        .arg(format!("--cwd={}", root.display()))
+        .env("TALOS_TEMPLATES_DIR", &templates)
+        .env("PATH", format!("{}:/usr/bin:/bin", bin.path().display()))
+        .env("NO_COLOR", "1")
+        .stdin(Stdio::null())
+        .output()
+        .expect("the talos binary should run");
+    assert!(output.status.success(), "{output:?}");
+
+    let calls = read(&calls);
+    assert!(
+        calls.contains("add @talosjs/fetcher@^1.1.3 @talosjs/http-response @talosjs/socket-client"),
+        "{calls}"
+    );
+    assert!(calls.contains("add -D bunup@^0.16.32"), "{calls}");
+}

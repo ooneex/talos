@@ -44,8 +44,8 @@ use std::path::{Path, PathBuf};
 
 use cli::commands::sdk_create::{
     ControllerDefinition, build_api_entry, build_definition_entry, build_module_file,
-    collect_controller_files, extract_existing_keys, match_balanced, merge_module_file,
-    parse_controller, read_module_type, to_camel_case,
+    collect_controller_files, dependency_specs, extract_existing_keys, match_balanced,
+    merge_module_file, parse_controller, read_module_type, to_camel_case,
 };
 
 const CONTROLLER: &str = r#"
@@ -294,4 +294,35 @@ fn merge_module_file_splices_new_entries_into_an_existing_file() {
     assert!(merged.contains("key: \"user.findOne\""));
     assert!(merged.contains("key: \"user.createOne\""));
     assert!(merged.ends_with("};\n"));
+}
+
+#[test]
+fn dependency_specs_pin_the_ranges_the_workspace_root_declares() {
+    let root = r#"{
+  "dependencies": { "@talosjs/fetcher": "^1.1.3" },
+  "devDependencies": { "bunup": "^0.16.32" }
+}"#;
+
+    let specs = dependency_specs(
+        root,
+        &["@talosjs/fetcher", "bunup", "@talosjs/socket-client"],
+    );
+
+    assert_eq!(
+        specs,
+        [
+            "@talosjs/fetcher@^1.1.3",
+            "bunup@^0.16.32",
+            "@talosjs/socket-client"
+        ]
+    );
+}
+
+#[test]
+fn dependency_specs_fall_back_to_bare_names_without_a_usable_root() {
+    assert_eq!(dependency_specs("", &["bunup"]), ["bunup"]);
+    assert_eq!(
+        dependency_specs("{ \"name\": \"app\" }", &["bunup"]),
+        ["bunup"]
+    );
 }
