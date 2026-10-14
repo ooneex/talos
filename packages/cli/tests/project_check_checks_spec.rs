@@ -1197,6 +1197,29 @@ fn an_indexed_column_is_not_reported() {
 }
 
 #[test]
+fn an_inline_unique_column_counts_as_an_index() {
+    let entity = r#"@Column({ name: "email", type: "varchar", unique: true })"#;
+    let found = indexes::lookups(entity, "a.ts");
+
+    for migration in [
+        "CREATE TABLE \"user\" (\n  id UUID PRIMARY KEY,\n  email VARCHAR(255) NOT NULL UNIQUE,\n  name TEXT\n)",
+        "ALTER TABLE \"user\" ADD COLUMN \"email\" TEXT UNIQUE",
+    ] {
+        let mut warnings = Vec::new();
+        indexes::inspect(&found, migration, &mut warnings);
+        assert!(warnings.is_empty(), "{migration}: {warnings:?}");
+    }
+
+    let mut warnings = Vec::new();
+    indexes::inspect(
+        &found,
+        "CREATE TABLE \"user\" (email TEXT, name TEXT UNIQUE)",
+        &mut warnings,
+    );
+    assert_eq!(warnings.len(), 1);
+}
+
+#[test]
 fn a_unique_column_needs_a_unique_constraint() {
     let entity = r#"@Column({ name: "email", type: "varchar", unique: true })"#;
     let found = indexes::lookups(entity, "a.ts");

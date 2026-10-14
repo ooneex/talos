@@ -172,11 +172,70 @@ pub fn has_unique(migrations: &str, column: &str) -> bool {
     false
 }
 
+/// Where the column definition ending at `before` starts, skipping over the
+/// parentheses of a type such as `VARCHAR(255)` or `NUMERIC(10, 2)`.
+fn clause_start(before: &str) -> usize {
+    let mut depth = 0usize;
+    for (position, byte) in before.bytes().enumerate().rev() {
+        match byte {
+            b')' => depth += 1,
+            b'(' if depth > 0 => depth -= 1,
+            b',' | b'(' | b';' | b'\n' if depth == 0 => return position + 1,
+            _ => {}
+        }
+    }
+    0
+}
+
+/// Whether a migration declares the column with an inline `UNIQUE` constraint,
+/// as in `email VARCHAR(255) NOT NULL UNIQUE` or `ADD COLUMN email TEXT UNIQUE`.
+///
+/// The database backs such a constraint with a unique index, so it satisfies
+/// both a unique and a plain lookup.
+pub fn has_inline_unique(migrations: &str, column: &str) -> bool {
+    let lowercase = migrations.to_ascii_lowercase();
+    let mut from = 0;
+
+    while let Some(offset) = lowercase[from..].find("unique") {
+        let start = from + offset;
+        from = start + "unique".len();
+        let mut clause = &lowercase[clause_start(&lowercase[..start])..start];
+        // `ALTER TABLE x ADD [COLUMN] name ...`: the definition follows `ADD`.
+        if let Some(add) = clause.rfind(" add ") {
+            clause = &clause[add..];
+        }
+        let mut words = clause.split_whitespace().peekable();
+        while let Some(word) = words.peek() {
+            if matches!(*word, "add" | "column" | "if" | "not" | "exists") {
+                words.next();
+            } else {
+                break;
+            }
+        }
+        let Some(name) = words.next() else {
+            continue;
+        };
+        // A table-level `CONSTRAINT x UNIQUE (...)` is not a column definition.
+        if name == "constraint" || words.next().is_none() {
+            continue;
+        }
+        let name = name.trim_matches(|c| c == '"' || c == '\'' || c == '`');
+        if name.eq_ignore_ascii_case(column) {
+            return true;
+        }
+    }
+
+    false
+}
+
 /// The lookups a module's migrations leave unindexed.
 pub fn inspect(lookups: &[Lookup], migrations: &str, warnings: &mut Vec<String>) {
     let statements = index_statements(migrations);
 
     for lookup in lookups {
+        if has_inline_unique(migrations, &lookup.column) {
+            continue;
+        }
         if lookup.unique {
             if has_unique(migrations, &lookup.column) || mentions(&statements, &lookup.column) {
                 continue;
