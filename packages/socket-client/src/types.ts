@@ -14,6 +14,7 @@ export interface ISocket<
   close: (code?: number, reason?: string) => void;
   send: (data: SendData) => void;
   onMessage: (handler: (response: ResponseDataType<Response>) => void) => void;
+  onPush: (handler: (data: unknown, event: MessageEvent) => void) => void;
   onOpen: (handler: (event: Event) => void) => void;
   onClose: (handler: (event: CloseEvent) => void) => void;
   onError: (handler: (event: Event, response?: ResponseDataType<Response>) => void) => void;

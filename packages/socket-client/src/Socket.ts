@@ -1,6 +1,10 @@
 import type { ResponseDataType } from "@talosjs/http-response";
 import type { ISocket, RequestDataType } from "./types";
 
+/** Whether a frame is the response envelope a controller answers with, as opposed to raw JSON. */
+const isEnvelope = <Response extends Record<string, unknown>>(frame: unknown): frame is ResponseDataType<Response> =>
+  typeof frame === "object" && frame !== null && typeof (frame as { success?: unknown }).success === "boolean";
+
 export class Socket<
   SendData extends RequestDataType = RequestDataType,
   Response extends Record<string, unknown> = Record<string, unknown>,
@@ -11,6 +15,7 @@ export class Socket<
   private openHandler?: (event: Event) => void;
   private errorHandler?: (event: Event, response?: ResponseDataType<Response>) => void;
   private closeHandler?: (event: CloseEvent) => void;
+  private pushHandler?: (data: unknown, event: MessageEvent) => void;
   private queuedMessages: (string | Blob | BufferSource)[] = [];
 
   constructor(private readonly url: string) {
@@ -38,6 +43,14 @@ export class Socket<
 
   public onMessage(handler: (response: ResponseDataType<Response>) => void): void {
     this.messageHandler = handler;
+  }
+
+  /**
+   * Receives the frames that are not a response envelope, such as the raw JSON a
+   * room publishes to its subscribers.
+   */
+  public onPush(handler: (data: unknown, event: MessageEvent) => void): void {
+    this.pushHandler = handler;
   }
 
   public onOpen(handler: (event: Event) => void): void {
@@ -76,23 +89,25 @@ export class Socket<
 
   private setupEventHandlers(): void {
     this.ws.onmessage = (event: MessageEvent) => {
-      if (this.messageHandler) {
-        const data = JSON.parse(event.data) as ResponseDataType<Response>;
+      const frame: unknown = JSON.parse(event.data);
 
-        if (data.done) {
-          this.ws.close();
-        }
+      if (!isEnvelope<Response>(frame)) {
+        this.pushHandler?.(frame, event);
 
-        if (data.success) {
-          this.messageHandler(data);
-
-          return;
-        }
-
-        if (this.errorHandler) {
-          this.errorHandler(event, data);
-        }
+        return;
       }
+
+      if (frame.done) {
+        this.ws.close();
+      }
+
+      if (frame.success) {
+        this.messageHandler?.(frame);
+
+        return;
+      }
+
+      this.errorHandler?.(event, frame);
     };
 
     this.ws.onopen = (event: Event) => {
