@@ -146,6 +146,42 @@ fn remove_from_shared_module_undoes_the_registration() {
 }
 
 #[test]
+fn removing_a_shared_registration_restores_the_file_byte_for_byte() {
+    let dir = TempDir::new("registry-shared-roundtrip");
+    let path = dir.write("shared.module.ts", SHARED_MODULE);
+
+    add_to_shared_module(&path, "User", "user").expect("the module should be registered");
+    remove_from_shared_module(&path, "User", "user").expect("the module should be removed");
+
+    // The blank line after the imports and the empty `entities: []` both survive.
+    assert_eq!(dir.read("shared.module.ts"), SHARED_MODULE);
+}
+
+#[test]
+fn removing_an_app_registration_restores_the_file_byte_for_byte() {
+    let dir = TempDir::new("registry-app-roundtrip");
+    let path = dir.write("app.module.ts", APP_MODULE);
+
+    add_to_app_module(&path, "User", "user").expect("the module should be registered");
+    remove_from_app_module(&path, "User", "user").expect("the module should be removed");
+
+    assert_eq!(dir.read("app.module.ts"), APP_MODULE);
+}
+
+#[test]
+fn removing_one_of_two_registrations_restores_the_file_with_the_other_one() {
+    let dir = TempDir::new("registry-app-roundtrip-two");
+    let path = dir.write("app.module.ts", APP_MODULE);
+    add_to_app_module(&path, "Billing", "billing").expect("billing should be registered");
+    let with_billing = dir.read("app.module.ts");
+
+    add_to_app_module(&path, "User", "user").expect("user should be registered");
+    remove_from_app_module(&path, "User", "user").expect("user should be removed");
+
+    assert_eq!(dir.read("app.module.ts"), with_billing);
+}
+
+#[test]
 fn remove_from_shared_module_is_fine_when_the_file_does_not_exist() {
     let dir = TempDir::new("registry-shared-missing");
 
