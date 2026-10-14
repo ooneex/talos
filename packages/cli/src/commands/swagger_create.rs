@@ -433,32 +433,108 @@ pub fn fields_of(body: &str) -> Vec<RouteField> {
                 };
             }
 
-            let trimmed = ty.trim();
-            let array = trimmed.ends_with("[]");
-            let inner = trimmed.trim_end_matches("[]").trim();
-            if inner.starts_with('{') && inner.ends_with('}') {
+            // `{ … } | null` is still one object, written across lines with
+            // its members documented: it is read like a bare `{ … }`.
+            let alternatives = union_alternatives(&ty);
+            let (empty, values): (Vec<&str>, Vec<&str>) = alternatives
+                .iter()
+                .map(String::as_str)
+                .partition(|alternative| matches!(*alternative, "null" | "undefined"));
+            if let [value] = values.as_slice()
+                && let Some((inner, array)) = object_literal(value)
+            {
+                let mut ty = if array { "object[]" } else { "object" }.to_string();
+                for alternative in empty {
+                    ty.push_str(" | ");
+                    ty.push_str(alternative);
+                }
                 return RouteField {
                     name,
-                    ty: if array {
-                        "object[]".to_string()
-                    } else {
-                        "object".to_string()
-                    },
+                    ty,
                     required,
                     description,
-                    fields: fields_of(&inner[1..inner.len() - 1]),
+                    fields: fields_of(inner),
                 };
             }
 
             RouteField {
                 name,
-                ty,
+                ty: one_line(&ty),
                 required,
                 description,
                 fields: Vec::new(),
             }
         })
         .collect()
+}
+
+/// The alternatives of a union at its top level, a leading `|` dropped, each
+/// on one line — so `| { … }\n | null` yields the object and `null`.
+fn union_alternatives(ty: &str) -> Vec<String> {
+    let mut alternatives = Vec::new();
+    let mut depth = 0i32;
+    let mut current = String::new();
+    let mut quote: Option<char> = None;
+
+    for ch in ty.chars() {
+        if let Some(open) = quote {
+            current.push(ch);
+            if ch == open {
+                quote = None;
+            }
+            continue;
+        }
+        match ch {
+            '"' | '\'' | '`' => {
+                quote = Some(ch);
+                current.push(ch);
+            }
+            '{' | '[' | '(' | '<' => {
+                depth += 1;
+                current.push(ch);
+            }
+            '}' | ']' | ')' | '>' => {
+                depth -= 1;
+                current.push(ch);
+            }
+            '|' if depth == 0 => alternatives.push(std::mem::take(&mut current)),
+            _ => current.push(ch),
+        }
+    }
+    alternatives.push(current);
+
+    alternatives
+        .iter()
+        .map(|alternative| alternative.trim().to_string())
+        .filter(|alternative| !alternative.is_empty())
+        .collect()
+}
+
+/// The body of a type that is one object literal, `[]` allowed after it, and
+/// whether it is an array. `{ a } | { b }` is not one: its first brace closes
+/// before the end.
+fn object_literal(ty: &str) -> Option<(&str, bool)> {
+    let trimmed = ty.trim();
+    let array = trimmed.ends_with("[]");
+    let inner = trimmed.trim_end_matches("[]").trim_end();
+    if !inner.starts_with('{') {
+        return None;
+    }
+    let (_, close) = match_balanced(inner, 0)?;
+    (close == inner.len() - 1).then(|| (&inner[1..close], array))
+}
+
+/// A type written across lines, as one line with its comments removed — the
+/// route file holds it in a double-quoted string.
+fn one_line(ty: &str) -> String {
+    let without_comments = regex::Regex::new(r"(?s)/\*.*?\*/|//[^\n]*")
+        .map(|pattern| pattern.replace_all(ty, " ").into_owned())
+        .unwrap_or_else(|_| ty.to_string());
+    let collapsed = without_comments
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ");
+    collapsed.trim_start_matches('|').trim().to_string()
 }
 
 /// The `:param` segments of a path, in the order they are served.
@@ -581,8 +657,18 @@ pub fn parse_controller(content: &str, module_name: &str, prefix: &str) -> Optio
     })
 }
 
+/// A TypeScript string literal holding `value`. A line break is escaped, not
+/// written, so a value read across lines cannot break the route file.
 fn quote(value: &str) -> String {
-    format!("\"{}\"", value.replace('\\', "\\\\").replace('"', "\\\""))
+    format!(
+        "\"{}\"",
+        value
+            .replace('\\', "\\\\")
+            .replace('"', "\\\"")
+            .replace('\n', "\\n")
+            .replace('\r', "\\r")
+            .replace('\t', "\\t")
+    )
 }
 
 /// One field, on one line when it is a leaf and as a block when it nests.
@@ -1147,6 +1233,71 @@ type GrantRouteType = {
 })
 export class GrantEntitlementController {}
 "#;
+
+    const UNION_CONTROLLER: &str = r#"
+type FavoriteRouteType = {
+  response: {
+    /** The favorite added, `null` when the call removed it. */
+    favorite:
+      | {
+          /** Its id. */
+          id: string;
+          /** When it was added. */
+          createdAt: string;
+        }
+      | null;
+    /** Where it points. */
+    target: { kind: "course" } | { kind: "resource"; url: string };
+  };
+};
+
+@Route.post("/favorites", {
+  name: "favorite.item.toggle",
+  version: 1,
+  roles: ["ROLE_USER"],
+})
+export class FavoriteController {}
+"#;
+
+    #[test]
+    fn reads_an_inline_object_in_a_union_as_a_nullable_object() {
+        let route = parse_controller(UNION_CONTROLLER, "favorite", "api").expect("a route");
+
+        let favorite = &route.response[0];
+        assert_eq!(favorite.ty, "object | null");
+        assert_eq!(
+            favorite.description,
+            "The favorite added, `null` when the call removed it."
+        );
+        assert_eq!(
+            favorite
+                .fields
+                .iter()
+                .map(|field| (field.name.as_str(), field.description.as_str()))
+                .collect::<Vec<_>>(),
+            vec![("id", "Its id."), ("createdAt", "When it was added.")]
+        );
+    }
+
+    #[test]
+    fn writes_a_union_that_spans_lines_as_a_one_line_type_string() {
+        let route = parse_controller(UNION_CONTROLLER, "favorite", "api").expect("a route");
+        let file = render_route_file(&route, "Favorite");
+
+        assert_eq!(
+            route.response[1].ty,
+            r#"{ kind: "course" } | { kind: "resource"; url: string }"#
+        );
+        // Every string the route file holds stays on one line, so it parses.
+        for line in file.lines() {
+            assert_eq!(
+                line.matches('"').count() % 2,
+                0,
+                "unbalanced quotes: {line}"
+            );
+        }
+        assert!(!file.contains("/**"), "{file}");
+    }
 
     #[test]
     fn reads_the_decorator_a_controller_declares() {
