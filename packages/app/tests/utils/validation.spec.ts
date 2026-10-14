@@ -7,7 +7,13 @@ import type { IRolesConfig, RoleType } from "@talosjs/role";
 import type { RouteConfigType } from "@talosjs/routing";
 import { type AssertType, type IAssert, type } from "@talosjs/validation";
 import { AssertFile } from "@talosjs/validation/constraints/AssertFile";
-import { validateConstraint, validateResponse, validateRouteAccess } from "@/utils/validation";
+import {
+  declaredKeys,
+  keepDeclaredInput,
+  validateConstraint,
+  validateResponse,
+  validateRouteAccess,
+} from "@/utils/validation";
 import { createMockContext, createMockRoute } from "./helpers";
 
 describe("validateConstraint", () => {
@@ -702,5 +708,109 @@ describe("validateResponse", () => {
     expect(result).not.toBeNull();
     expect(result?.message).toContain("Response validation failed");
     expect(result?.key).toBe("INVALID_RESPONSE");
+  });
+});
+
+describe("declaredKeys", () => {
+  test("returns the required and optional keys of an arktype object", () => {
+    expect(declaredKeys(type({ page: "number", "limit?": "number" }))).toEqual(["page", "limit"]);
+  });
+
+  test("returns the keys of a constraint record", () => {
+    expect(declaredKeys({ id: type("string"), email: type("string") })).toEqual(["id", "email"]);
+  });
+
+  test("reads the constraint of an IAssert", () => {
+    const constraint = {
+      getConstraint: () => type({ name: "string" }),
+      getErrorMessage: () => null,
+      validate: () => ({ isValid: true }),
+    } satisfies IAssert;
+
+    expect(declaredKeys(constraint)).toEqual(["name"]);
+  });
+
+  test("returns the keys of every object branch of a union", () => {
+    expect(declaredKeys(type({ id: "string" }).or({ name: "string" }).or("null"))).toEqual(["id", "name"]);
+  });
+
+  test("returns null for an open object, which accepts any key", () => {
+    expect(declaredKeys(type({ id: "string", "[string]": "unknown" }))).toBeNull();
+    expect(declaredKeys(type("Record<string, string>"))).toBeNull();
+    expect(declaredKeys(type("object"))).toBeNull();
+    expect(declaredKeys({})).toBeNull();
+  });
+
+  test("returns null when undeclared keys are rejected, so validation still sees them", () => {
+    expect(declaredKeys(type({ "+": "reject", id: "string" }))).toBeNull();
+  });
+
+  test("returns null for a constraint that is not an object", () => {
+    expect(declaredKeys(type("string"))).toBeNull();
+    expect(declaredKeys(type("string[]"))).toBeNull();
+  });
+});
+
+describe("keepDeclaredInput", () => {
+  test("drops the queries the route does not declare and keeps the declared ones", () => {
+    const context = createMockContext({
+      queries: { page: "2", userId: "someone-else" } as unknown as ContextType["queries"],
+    });
+
+    keepDeclaredInput(context, createMockRoute({ queries: type({ "page?": "string", "limit?": "string" }) }));
+
+    expect(context.queries).toEqual({ page: "2" } as unknown as ContextType["queries"]);
+  });
+
+  test("drops the payload keys the route does not declare and keeps the declared ones", () => {
+    const context = createMockContext({
+      payload: { title: "Note", userId: "someone-else", role: "ROLE_ADMIN" } as unknown as ContextType["payload"],
+    });
+
+    keepDeclaredInput(context, createMockRoute({ payload: { title: type("string") } }));
+
+    expect(context.payload).toEqual({ title: "Note" } as unknown as ContextType["payload"]);
+  });
+
+  test("leaves the raw input on context.request untouched", () => {
+    const queries = { page: "2", userId: "someone-else" };
+    const context = createMockContext({
+      request: { queries } as unknown as ContextType["request"],
+      queries: queries as unknown as ContextType["queries"],
+    });
+
+    keepDeclaredInput(context, createMockRoute({ queries: type({ page: "string" }) }));
+
+    expect(context.request.queries).toEqual(queries as unknown as ContextType["request"]["queries"]);
+  });
+
+  test("keeps everything when the route declares no constraint", () => {
+    const context = createMockContext({
+      queries: { userId: "u1" } as unknown as ContextType["queries"],
+      payload: { raw: true } as unknown as ContextType["payload"],
+    });
+
+    keepDeclaredInput(context, createMockRoute());
+
+    expect(context.queries).toEqual({ userId: "u1" } as unknown as ContextType["queries"]);
+    expect(context.payload).toEqual({ raw: true } as unknown as ContextType["payload"]);
+  });
+
+  test("keeps everything when the route declares an open object", () => {
+    const context = createMockContext({
+      payload: { event: "invoice.paid", data: {} } as unknown as ContextType["payload"],
+    });
+
+    keepDeclaredInput(context, createMockRoute({ payload: type({ event: "string", "[string]": "unknown" }) }));
+
+    expect(context.payload).toEqual({ event: "invoice.paid", data: {} } as unknown as ContextType["payload"]);
+  });
+
+  test("leaves a payload that is not an object for validation to reject", () => {
+    const context = createMockContext({ payload: ["a"] as unknown as ContextType["payload"] });
+
+    keepDeclaredInput(context, createMockRoute({ payload: type({ title: "string" }) }));
+
+    expect(context.payload).toEqual(["a"] as unknown as ContextType["payload"]);
   });
 });

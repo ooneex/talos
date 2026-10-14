@@ -10,4 +10,10 @@ export { runMiddlewares } from "./middleware";
 export type { HttpMethodHandlersType, HttpRouteHandlerType, HttpRoutesMapType } from "./routes";
 export { formatHttpRoutes } from "./routes";
 export type { RouteValidationErrorType } from "./validation";
-export { validateConstraint, validateResponse, validateRouteAccess } from "./validation";
+export {
+  declaredKeys,
+  keepDeclaredInput,
+  validateConstraint,
+  validateResponse,
+  validateRouteAccess,
+} from "./validation";

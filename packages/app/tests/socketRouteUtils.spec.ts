@@ -9,6 +9,7 @@ import { HttpStatus } from "@talosjs/http-status";
 import type { PermissionClassType } from "@talosjs/permission";
 import type { RouteConfigType } from "@talosjs/routing";
 import type { ContextType } from "@talosjs/socket";
+import { type } from "@talosjs/validation";
 import { formatSocketRoutes, socketRouteHandler } from "@/socketRouteUtils";
 
 class DefaultSocketController {
@@ -587,6 +588,43 @@ describe("socketRouteUtils", () => {
       expect(ctx.queries).toEqual({ bearerToken: "handshake-token", page: "2" } as unknown as ContextType["queries"]);
       expect(ctx.payload).toEqual({});
       expect(ctx.lang).toEqual(handshakeLang as unknown as ContextType["lang"]);
+    });
+
+    test("hands the controller only the queries and payload keys the route declares", async () => {
+      const wsSendMock = mock(() => {});
+      const context = createMockSocketContext({
+        request: { queries: { bearerToken: "handshake-token" } } as unknown as ContextType["request"],
+      });
+      let capturedContext: ContextType | null = null;
+
+      class DeclaredInputSocketController {
+        index(ctx: ContextType): IResponse {
+          capturedContext = ctx;
+          return ctx.response.json({ captured: true });
+        }
+      }
+      container.add(DeclaredInputSocketController);
+
+      const route = createMockSocketRoute({
+        controller: DeclaredInputSocketController,
+        queries: type({ "page?": "string" }),
+        payload: type({ text: "string" }),
+      });
+      const wsId = `test-ws-id-declared-input-${Date.now()}`;
+      container.addConstant(wsId, { context, route });
+
+      await socketRouteHandler({
+        message: JSON.stringify({
+          queries: { page: "2", userId: "someone-else" },
+          payload: { text: "Hello", userId: "someone-else" },
+        }),
+        ws: createMockWs(wsId, wsSendMock) as unknown as import("bun").ServerWebSocket<{ id: string }>,
+        server: createMockServer() as unknown as import("bun").Server<{ id: string }>,
+      });
+
+      const ctx = capturedContext as unknown as ContextType;
+      expect(ctx.queries).toEqual({ page: "2" } as unknown as ContextType["queries"]);
+      expect(ctx.payload).toEqual({ text: "Hello" } as unknown as ContextType["payload"]);
     });
 
     test("uses PRODUCTION environment as default when app.env.env is undefined", async () => {

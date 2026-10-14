@@ -8,6 +8,7 @@ import { HttpStatus } from "@talosjs/http-status";
 import type { PermissionClassType } from "@talosjs/permission";
 import type { IRateLimiter, RateLimitResultType } from "@talosjs/rate-limit";
 import type { RouteConfigType } from "@talosjs/routing";
+import { type } from "@talosjs/validation";
 import type { BunRequest, Server } from "bun";
 import { formatHttpRoutes } from "@/utils/routes";
 import { createMockLogger, createMockRoute } from "./helpers";
@@ -1127,5 +1128,86 @@ describe("formatHttpRoutes cache after access checks", () => {
 
     container.removeConstant("logger");
     container.removeConstant("cache");
+  });
+});
+
+describe("formatHttpRoutes declared input", () => {
+  const createJsonReq = (url: string, body: Record<string, unknown>): BunRequest =>
+    ({
+      cookies: { get: mock(() => null), set: mock(() => {}) },
+      headers: new Headers({ "content-type": "application/json" }),
+      method: "POST",
+      url,
+      params: {},
+      json: mock(() => Promise.resolve(body)),
+      formData: mock(() => Promise.resolve(new FormData())),
+    }) as unknown as BunRequest;
+
+  const createServer = (): Server<unknown> =>
+    ({ requestIP: mock(() => ({ address: "127.0.0.1" })) }) as unknown as Server<unknown>;
+
+  test("hands the permission and the controller only the queries and payload keys the route declares", async () => {
+    container.addConstant("logger", createMockLogger());
+    container.add(AppEnv);
+
+    const seen: { permission: ContextType | null; controller: ContextType | null } = {
+      permission: null,
+      controller: null,
+    };
+
+    const checkMock = mock((context: ContextType) => {
+      seen.permission = { ...context };
+      return Promise.resolve(true);
+    });
+    const buildMock = mock(() => Promise.resolve({ check: checkMock }));
+    const setUserPermissionsMock = mock(() => Promise.resolve({ build: buildMock }));
+
+    class DeclaredInputPermission {
+      allow = mock(() => Promise.resolve({ setUserPermissions: setUserPermissionsMock }));
+    }
+    container.add(DeclaredInputPermission);
+
+    class DeclaredInputController {
+      index(context: ContextType): IResponse {
+        seen.controller = context;
+        return new HttpResponse().json({ ok: true });
+      }
+    }
+    container.add(DeclaredInputController);
+
+    const handler = formatHttpRoutes(
+      new Map([
+        [
+          "/declared-input",
+          [
+            createMockRoute({
+              path: "/declared-input",
+              method: "POST",
+              controller: DeclaredInputController,
+              permission: DeclaredInputPermission as unknown as PermissionClassType,
+              queries: type({ "page?": "number" }),
+              payload: type({ title: "string" }),
+            } as Partial<RouteConfigType>),
+          ],
+        ],
+      ]),
+    )["/v1/declared-input"]?.POST;
+
+    // biome-ignore lint/complexity/noBannedTypes: trust me
+    const response = await (handler as Function)(
+      createJsonReq("http://localhost/v1/declared-input?page=2&userId=someone-else", {
+        title: "Note",
+        userId: "someone-else",
+      }),
+      createServer(),
+    );
+
+    expect(response.status).toBe(HttpStatus.Code.OK);
+    expect(seen.permission?.queries).toEqual({ page: 2 } as unknown as ContextType["queries"]);
+    expect(seen.controller?.queries).toEqual({ page: 2 } as unknown as ContextType["queries"]);
+    expect(seen.controller?.payload).toEqual({ title: "Note" } as unknown as ContextType["payload"]);
+    expect(seen.controller?.request.queries).toEqual({ page: 2, userId: "someone-else" });
+
+    container.removeConstant("logger");
   });
 });
