@@ -1699,6 +1699,40 @@ fn a_yaml_specification_is_read_by_indentation() {
 }
 
 #[test]
+fn a_large_specification_is_found_and_the_manifest_is_never_taken_for_one() {
+    // A specification documenting a real API easily passes the size cap of the
+    // source scans, and the manifest of `modules/swagger` is `swagger.yml`, one
+    // of the names a specification is published under.
+    let dir = tempfile::tempdir().expect("create temp dir");
+    let module_dir = dir.path().join("modules/swagger");
+    fs::create_dir_all(module_dir.join("public")).expect("create the module");
+    fs::write(
+        module_dir.join("swagger.yml"),
+        "type: \"swagger\"\ntarget: \"app\"\n",
+    )
+    .expect("write the manifest");
+    let description = "x".repeat(600 * 1024);
+    fs::write(
+        module_dir.join("public/openapi.json"),
+        format!(
+            r#"{{"info":{{"description":"{description}"}},"paths":{{"/users":{{"get":{{}}}}}}}}"#
+        ),
+    )
+    .expect("write the specification");
+    let module = WorkspaceModule {
+        name: "swagger".to_string(),
+        group: "modules".to_string(),
+        kind: Some("swagger".to_string()),
+        dir: module_dir.clone(),
+    };
+
+    assert_eq!(
+        openapi::find_spec(&module),
+        Some(module_dir.join("public/openapi.json"))
+    );
+}
+
+#[test]
 fn a_published_operation_no_controller_serves_fails() {
     let published = openapi::spec_operations(r#"{"paths":{"/ghost":{"get":{}}}}"#, true);
 
