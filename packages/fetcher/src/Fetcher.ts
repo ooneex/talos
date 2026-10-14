@@ -2,7 +2,7 @@ import { Header } from "@talosjs/http-header";
 import type { MimeType } from "@talosjs/http-mimes";
 import type { ResponseDataType } from "@talosjs/http-response";
 import type { HttpMethodType } from "@talosjs/types";
-import type { IFetcher } from "./types";
+import type { FetcherRequestOptionsType, IFetcher } from "./types";
 
 export class Fetcher implements IFetcher {
   private abortController: AbortController;
@@ -62,56 +62,64 @@ export class Fetcher implements IFetcher {
 
   public async get<T extends Record<string, unknown> = Record<string, unknown>>(
     path: string,
+    options?: FetcherRequestOptionsType,
   ): Promise<ResponseDataType<T>> {
-    return this.request<T>("GET", path);
+    return this.request<T>("GET", path, undefined, options);
   }
 
   public async post<T extends Record<string, unknown> = Record<string, unknown>>(
     path: string,
     data?: unknown,
+    options?: FetcherRequestOptionsType,
   ): Promise<ResponseDataType<T>> {
-    return this.request<T>("POST", path, data);
+    return this.request<T>("POST", path, data, options);
   }
 
   public async put<T extends Record<string, unknown> = Record<string, unknown>>(
     path: string,
     data?: unknown,
+    options?: FetcherRequestOptionsType,
   ): Promise<ResponseDataType<T>> {
-    return this.request<T>("PUT", path, data);
+    return this.request<T>("PUT", path, data, options);
   }
 
   public async patch<T extends Record<string, unknown> = Record<string, unknown>>(
     path: string,
     data?: unknown,
+    options?: FetcherRequestOptionsType,
   ): Promise<ResponseDataType<T>> {
-    return this.request<T>("PATCH", path, data);
+    return this.request<T>("PATCH", path, data, options);
   }
 
   public async delete<T extends Record<string, unknown> = Record<string, unknown>>(
     path: string,
+    options?: FetcherRequestOptionsType,
   ): Promise<ResponseDataType<T>> {
-    return this.request<T>("DELETE", path);
+    return this.request<T>("DELETE", path, undefined, options);
   }
 
   public async head<T extends Record<string, unknown> = Record<string, unknown>>(
     path: string,
+    options?: FetcherRequestOptionsType,
   ): Promise<ResponseDataType<T>> {
-    return this.request<T>("HEAD", path);
+    return this.request<T>("HEAD", path, undefined, options);
   }
 
   public async options<T extends Record<string, unknown> = Record<string, unknown>>(
     path: string,
+    options?: FetcherRequestOptionsType,
   ): Promise<ResponseDataType<T>> {
-    return this.request<T>("OPTIONS", path);
+    return this.request<T>("OPTIONS", path, undefined, options);
   }
 
   public async request<T extends Record<string, unknown> = Record<string, unknown>>(
     method: HttpMethodType,
     path: string,
     data?: unknown,
+    options?: FetcherRequestOptionsType,
   ): Promise<ResponseDataType<T>> {
     const fullURL = this.buildURL(path);
-    const requestOptions = this.buildRequestOptions(method, data);
+    const requestOptions = this.buildRequestOptions(method, data, options?.signal);
     const response = await fetch(fullURL, requestOptions);
 
     try {
@@ -125,6 +133,7 @@ export class Fetcher implements IFetcher {
     path: string,
     file: File | Blob,
     name = "file",
+    options?: FetcherRequestOptionsType,
   ): Promise<ResponseDataType<T>> {
     const formData = new FormData();
     formData.append(name, file);
@@ -133,7 +142,7 @@ export class Fetcher implements IFetcher {
     const originalContentType = this.header.get("Content-Type");
     this.header.remove("Content-Type");
 
-    const result = await this.request<T>("POST", path, formData);
+    const result = await this.request<T>("POST", path, formData, options);
 
     // Restore original Content-Type if it existed
     if (originalContentType) {
@@ -158,7 +167,7 @@ export class Fetcher implements IFetcher {
     return `${baseURL}${path}`;
   }
 
-  private buildRequestOptions(method: string, data?: unknown): RequestInit {
+  private buildRequestOptions(method: string, data?: unknown, signal?: AbortSignal): RequestInit {
     const headers = this.header.native;
 
     let body: BodyInit | undefined;
@@ -184,7 +193,8 @@ export class Fetcher implements IFetcher {
       method,
       headers,
       ...(body !== undefined && { body }),
-      signal: this.abortController.signal,
+      // abort() cancels every request in flight; a request's own signal cancels only that one.
+      signal: signal ? AbortSignal.any([this.abortController.signal, signal]) : this.abortController.signal,
     };
 
     return requestOptions;
