@@ -240,9 +240,14 @@ fn the_sdk_module_is_scaffolded_and_typed_as_an_sdk_pointing_at_its_target() {
         read(&sdk.join("package.json")).contains("\"@scratch/sdk\""),
         "the package takes the workspace's scope"
     );
+    let bunup = read(&sdk.join("bunup.config.ts"));
     assert!(
-        sdk.join("bunup.config.ts").is_file(),
-        "the bundler config is written"
+        bunup.starts_with("import { defineConfig } from \"bunup\";\n"),
+        "the bundler config is valid TypeScript: {bunup}"
+    );
+    assert!(
+        !bunup.contains('\\'),
+        "no escaped quote leaks into it: {bunup}"
     );
 }
 
