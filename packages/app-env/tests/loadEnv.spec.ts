@@ -37,6 +37,38 @@ describe("loadEnv", () => {
     expect(Bun.env.APP_ENV).toBe("local");
   });
 
+  test("keeps a variable the process environment already sets", async () => {
+    const original = Bun.env.DATABASE_URL;
+    Bun.env.DATABASE_URL = "postgres://shell/db";
+    await Bun.write(
+      `${testDir}/.env.yml`,
+      'database:\n  url: "postgres://file/db"\n  redis:\n    url: "redis://file"\n',
+    );
+
+    try {
+      await loadEnv();
+
+      expect(Bun.env.DATABASE_URL).toBe("postgres://shell/db");
+      expect(Bun.env.DATABASE_REDIS_URL).toBe("redis://file");
+    } finally {
+      if (original === undefined) {
+        delete Bun.env.DATABASE_URL;
+      } else {
+        Bun.env.DATABASE_URL = original;
+      }
+    }
+  });
+
+  test("lets a later call replace what an earlier call loaded", async () => {
+    await Bun.write(`${testDir}/first.env.yml`, 'app:\n  env: "local"\n');
+    await Bun.write(`${testDir}/second.env.yml`, 'app:\n  env: "staging"\n');
+
+    await loadEnv([`${testDir}/first.env.yml`]);
+    await loadEnv([`${testDir}/second.env.yml`]);
+
+    expect(Bun.env.APP_ENV).toBe("staging");
+  });
+
   test("loads only the project root .env.yml, ignoring modules/app/.env.yml", async () => {
     mkdirSync(`${testDir}/modules/app`, { recursive: true });
     await Bun.write(`${testDir}/.env.yml`, 'app:\n  env: "production"\n');
