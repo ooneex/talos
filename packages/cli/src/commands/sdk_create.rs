@@ -221,28 +221,60 @@ fn write_sdk_index(sdk_src_dir: &std::path::Path, generated: &[(String, String)]
     let _ = fs::write(sdk_src_dir.join("index.ts"), index_content);
 }
 
-/// Installs the SDK's runtime and build dependencies. Returns `false` when
-/// either install step failed.
-fn install_sdk_dependencies(sdk_dir: &std::path::Path, silent: bool) -> bool {
+/// The `bun add` specifier of each package: `name@range` when the workspace's
+/// root `package.json` already declares it (in `dependencies` or
+/// `devDependencies`), so the SDK resolves the same version as the rest of the
+/// workspace, and the bare name otherwise.
+pub fn dependency_specs(root_package_json: &str, names: &[&str]) -> Vec<String> {
+    let root = serde_json::from_str::<serde_json::Value>(root_package_json).ok();
+    names
+        .iter()
+        .map(|name| {
+            root.as_ref()
+                .and_then(|root| {
+                    ["dependencies", "devDependencies"]
+                        .iter()
+                        .find_map(|field| root.get(field)?.get(name)?.as_str())
+                })
+                .map(|range| format!("{name}@{range}"))
+                .unwrap_or_else(|| name.to_string())
+        })
+        .collect()
+}
+
+/// Installs the SDK's runtime and build dependencies, at the versions the
+/// workspace root pins. Returns `false` when either install step failed.
+fn install_sdk_dependencies(
+    cwd: &std::path::Path,
+    sdk_dir: &std::path::Path,
+    silent: bool,
+) -> bool {
+    let root_package_json = fs::read_to_string(cwd.join("package.json")).unwrap_or_default();
+    let runtime = dependency_specs(
+        &root_package_json,
+        &[
+            "@talosjs/fetcher",
+            "@talosjs/http-response",
+            "@talosjs/socket-client",
+        ],
+    );
     if !run_spinner_step(
         silent,
         "Installing dependencies",
         Command::new("bun")
-            .args([
-                "add",
-                "@talosjs/fetcher",
-                "@talosjs/http-response",
-                "@talosjs/socket-client",
-            ])
+            .arg("add")
+            .args(&runtime)
             .current_dir(sdk_dir),
     ) {
         return false;
     }
+    let build = dependency_specs(&root_package_json, &["bunup"]);
     run_spinner_step(
         silent,
         "Installing bunup",
         Command::new("bun")
-            .args(["add", "-D", "bunup"])
+            .args(["add", "-D"])
+            .args(&build)
             .current_dir(sdk_dir),
     )
 }
@@ -285,7 +317,7 @@ pub fn run(args: &SdkCreateArgs) {
 
     write_sdk_index(&sdk_src_dir, &generated);
 
-    if !install_sdk_dependencies(&sdk_dir, silent) {
+    if !install_sdk_dependencies(&cwd, &sdk_dir, silent) {
         return;
     }
 
