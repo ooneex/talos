@@ -8,8 +8,8 @@ mod controller;
 
 pub use controller::{
     ControllerDefinition, build_api_entry, build_definition_entry, build_module_file,
-    collect_controller_files, extract_existing_keys, match_balanced, merge_module_file,
-    parse_controller, read_module_type, to_camel_case,
+    collect_controller_files, export_route_type, extract_existing_keys, match_balanced,
+    merge_module_file, parse_controller, read_module_type, to_camel_case,
 };
 
 use crate::commands::module_create::{self, ModuleCreateOptions};
@@ -130,8 +130,28 @@ fn scaffold_sdk_module(
     let _ = fs::write(sdk_dir.join("bunup.config.ts"), BUNUP_CONFIG);
 }
 
+/// The `@module/<module>/…` specifier a controller's route type is imported
+/// from, mirroring its path under the module's `src/` without the extension.
+fn route_type_import_path(
+    src_dir: &std::path::Path,
+    file: &std::path::Path,
+    module_kebab: &str,
+) -> String {
+    let relative = file
+        .strip_prefix(src_dir)
+        .unwrap_or(file)
+        .with_extension("")
+        .components()
+        .map(|part| part.as_os_str().to_string_lossy().to_string())
+        .collect::<Vec<_>>()
+        .join("/");
+    format!("@module/{module_kebab}/{relative}")
+}
+
 /// Parses every eligible module's controllers into SDK client files under
-/// `sdk_src_dir`, merging with any file already generated there. Returns the
+/// `sdk_src_dir`, merging with any file already generated there. A route type
+/// the controller does not export yet is exported so the client can import it.
+/// Returns the
 /// `(module_kebab, const_name)` pairs written so the index can import them.
 fn generate_sdk_modules(
     modules_dir: &std::path::Path,
@@ -166,13 +186,22 @@ fn generate_sdk_modules(
         if controller_files.is_empty() {
             continue;
         }
+        let src_dir = entry.path().join("src");
         let mut definitions = Vec::new();
         for file in controller_files {
-            if let Ok(content) = fs::read_to_string(file)
-                && let Some(definition) = parse_controller(&content, &module_kebab)
+            let Ok(content) = fs::read_to_string(&file) else {
+                continue;
+            };
+            let import_path = route_type_import_path(&src_dir, &file, &module_kebab);
+            let Some(definition) = parse_controller(&content, &module_kebab, &import_path) else {
+                continue;
+            };
+            if !definition.type_exported
+                && let Some(exported) = export_route_type(&content, &definition.type_name)
             {
-                definitions.push(definition);
+                let _ = fs::write(&file, exported);
             }
+            definitions.push(definition);
         }
         if definitions.is_empty() {
             continue;
