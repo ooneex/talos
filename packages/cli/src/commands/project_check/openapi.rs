@@ -14,13 +14,11 @@ use std::sync::OnceLock;
 use regex::Regex;
 use serde_json::Value;
 
-use super::modules::{
-    WorkspaceModule, collect_files, discover_modules, filter_modules, relative, wanted_names,
-};
+use super::modules::{WorkspaceModule, discover_modules, filter_modules, relative, wanted_names};
 use super::routes::{self, Route};
 use super::sdk::target_of;
 use crate::commands::project_check::{
-    CheckId, CheckOutcome, CheckStatus, ProjectCheckArgs, static_outcome,
+    CheckId, CheckOutcome, CheckStatus, EXCLUDED_DIRS, ProjectCheckArgs, static_outcome,
 };
 
 /// The file names a specification is published under.
@@ -152,14 +150,39 @@ fn yaml_operations(content: &str) -> BTreeSet<String> {
 }
 
 /// The specification a swagger module publishes.
+///
+/// A specification is searched by name with no size cap — one documenting a
+/// real API passes the cap of the source scans — and the module's own manifest
+/// is never taken for one, although `modules/swagger/swagger.yml` bears a
+/// specification name.
 pub fn find_spec(module: &WorkspaceModule) -> Option<PathBuf> {
-    collect_files(&module.dir, &["json", "yml", "yaml"], 6)
-        .into_iter()
-        .find(|path| {
-            path.file_name()
-                .and_then(|name| name.to_str())
-                .is_some_and(|name| SPEC_NAMES.contains(&name))
-        })
+    let manifest = module.manifest_path();
+    let mut found = Vec::new();
+    spec_files(&module.dir, 0, &mut found);
+    found.sort();
+    found.into_iter().find(|path| *path != manifest)
+}
+
+fn spec_files(dir: &Path, depth: usize, found: &mut Vec<PathBuf>) {
+    if depth > 6 {
+        return;
+    }
+    let Ok(entries) = fs::read_dir(dir) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        let Some(name) = path.file_name().and_then(|name| name.to_str()) else {
+            continue;
+        };
+        if path.is_dir() {
+            if !name.starts_with('.') && !EXCLUDED_DIRS.contains(&name) {
+                spec_files(&path, depth + 1, found);
+            }
+        } else if SPEC_NAMES.contains(&name) {
+            found.push(path);
+        }
+    }
 }
 
 /// Compare a specification against the routes it claims to describe.
