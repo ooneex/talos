@@ -65,6 +65,11 @@ fn remove_spread_from_fields(content: &str, module_name: &str, fields: &[&str]) 
             content = re.replace_all(&content, "").into_owned();
         }
         content = content.replace(&format!("...{module_name}.{field}"), "");
+        // The last spread leaves only the line breaks `spread_into_field` added:
+        // fold them back into the `[]` the field started as.
+        if let Ok(re) = Regex::new(&format!(r"({field}:\s*\[)\s+\]")) {
+            content = re.replace_all(&content, "${1}]").into_owned();
+        }
     }
     content
 }
@@ -87,7 +92,10 @@ fn insert_import(content: &str, module_name: &str, import_path: &str) -> String 
 
 fn remove_import(content: &str, module_name: &str, import_path: &str) -> String {
     let escaped_path = regex::escape(import_path);
-    let pattern = format!(r#"import\s*\{{\s*{module_name}\s*\}}\s*from\s*"{escaped_path}";\s*\n"#);
+    // Only the import's own line break goes: a `\s*` here would also swallow
+    // the blank line that separates the imports from the code below them.
+    let pattern =
+        format!(r#"import\s*\{{\s*{module_name}\s*\}}\s*from\s*"{escaped_path}";[ \t]*\r?\n"#);
     match Regex::new(&pattern) {
         Ok(re) => re.replace_all(content, "").into_owned(),
         Err(_) => content.to_string(),
