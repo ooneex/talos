@@ -106,6 +106,10 @@ const flatten = (node: { [key: string]: YamlNode }, prefix = ""): Record<string,
   return result;
 };
 
+// The keys loadEnv itself wrote, so a later call may replace them while a value the
+// process environment set (`DATABASE_URL=… bun run src/index.ts`) is never overridden.
+const loadedKeys = new Set<string>();
+
 export const loadEnv = async (candidates?: string[]): Promise<void> => {
   const cwd = process.cwd();
   const paths = candidates ?? [join(cwd, ".env.yml")];
@@ -130,6 +134,10 @@ export const loadEnv = async (candidates?: string[]): Promise<void> => {
   }
 
   for (const [key, value] of Object.entries(vars)) {
+    if (Bun.env[key] !== undefined && !loadedKeys.has(key)) {
+      continue;
+    }
     Bun.env[key] = value;
+    loadedKeys.add(key);
   }
 };
