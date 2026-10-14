@@ -48,6 +48,28 @@ fn floating_map_pattern() -> &'static Regex {
     PATTERN.get_or_init(|| Regex::new(r"\.map\s*\(\s*async\b").expect("the map pattern is valid"))
 }
 
+/// `// talos-ignore async.serial: rows are written in order`, the same
+/// directive `performance:check` reads (its `perf.await-in-loop` id is
+/// accepted too). The reason is part of the pattern, so a bare directive
+/// silences nothing and the finding stays in the report.
+fn opt_out_pattern() -> &'static Regex {
+    static PATTERN: OnceLock<Regex> = OnceLock::new();
+    PATTERN.get_or_init(|| {
+        Regex::new(
+            r"(?://|/\*)\s*talos-ignore\s+(?:async\.serial|perf\.await-in-loop)\s*:\s*\S[^*]*?\s*(?:\*/)?\s*$",
+        )
+        .expect("the opt-out pattern is valid")
+    })
+}
+
+/// Whether the loop opened on `start` carries a justified opt-out, on its own
+/// line or the line above.
+fn opted_out(lines: &[&str], start: usize) -> bool {
+    lines[start.saturating_sub(1)..=start]
+        .iter()
+        .any(|line| opt_out_pattern().is_match(line))
+}
+
 /// Strip comments and the contents of strings, so prose about a loop is never
 /// read as one.
 fn code_only(line: &str) -> &str {
@@ -62,13 +84,6 @@ fn code_only(line: &str) -> &str {
 /// loop merely defines belong to that handler, while a stream reader must be
 /// consumed serially by design.
 fn serial_await_offset(lines: &[&str], start: usize, end: usize) -> Option<usize> {
-    if lines[start.saturating_sub(2)..=end]
-        .iter()
-        .any(|line| line.contains("talos-ignore perf.await-in-loop"))
-    {
-        return None;
-    }
-
     let mut depth: i64 = 0;
     let mut nested_async_depth: Option<i64> = None;
 
@@ -167,6 +182,9 @@ pub fn scan(content: &str) -> Vec<Serial> {
         if code.contains("for await") {
             continue;
         }
+        if opted_out(&lines, number) {
+            continue;
+        }
         let Some(end) = block_end(&lines, number) else {
             continue;
         };
@@ -177,7 +195,7 @@ pub fn scan(content: &str) -> Vec<Serial> {
                 line: number + offset + 1,
                 rule: "async.serial",
                 message: format!(
-                    "awaited inside a `{keyword}` loop — collect the promises and `Promise.all` them"
+                    "awaited inside a `{keyword}` loop — collect the promises and `Promise.all` them, or justify it with `// talos-ignore async.serial: <reason>` on the loop"
                 ),
             });
         }
@@ -240,5 +258,5 @@ pub fn run(args: &ProjectCheckArgs, root: &Path) -> CheckOutcome {
         Vec::new(),
         warnings,
     )
-    .with_hint("Where the order matters, the serial await is right — this is a prompt, not a rule")
+    .with_hint("Where the order matters, the serial await is right — mark the loop with `// talos-ignore async.serial: <reason>` (on its line or the line above); a directive without a reason is ignored")
 }
