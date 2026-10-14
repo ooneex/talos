@@ -8,7 +8,6 @@ interface SocketPrivate {
   ws: MockWebSocket;
   queuedMessages: (string | ArrayBufferLike | Blob | ArrayBufferView)[];
   buildURL: (url: string) => string;
-  encodeBearerToken: (url: string) => string;
   sendRaw: (payload: string | ArrayBufferLike | Blob | ArrayBufferView) => void;
   flushQueuedMessages: () => void;
 }
@@ -167,7 +166,7 @@ describe("Socket", () => {
       expect(buildURL("localhost:8080")).toBe("wss://localhost:8080");
     });
 
-    test("should encode bearerToken query param", () => {
+    test("should keep a bearerToken query param", () => {
       const socket = new Socket("ws://localhost:8080");
       const buildURL = (socket as unknown as SocketPrivate).buildURL.bind(socket);
       const result = buildURL("ws://localhost:8080?bearerToken=eyJhbGciOiJIUzI1NiJ9.payload.sig");
@@ -176,7 +175,7 @@ describe("Socket", () => {
       expect(parsed.searchParams.get("bearerToken")).toBe("eyJhbGciOiJIUzI1NiJ9.payload.sig");
     });
 
-    test("should convert protocol and encode bearerToken together", () => {
+    test("should convert protocol and keep bearerToken together", () => {
       const socket = new Socket("ws://localhost:8080");
       const buildURL = (socket as unknown as SocketPrivate).buildURL.bind(socket);
       const result = buildURL("https://example.com/path?bearerToken=a b&foo=bar");
@@ -187,41 +186,28 @@ describe("Socket", () => {
     });
   });
 
-  describe("encodeBearerToken", () => {
-    test("should return URL unchanged when bearerToken is absent", () => {
-      const socket = new Socket("ws://localhost:8080");
-      const encode = (socket as unknown as SocketPrivate).encodeBearerToken.bind(socket);
-      expect(encode("ws://localhost:8080/path?foo=bar")).toBe("ws://localhost:8080/path?foo=bar");
+  describe("bearerToken option", () => {
+    test("should put the token in the URL, encoded", () => {
+      const socket = new Socket("ws://localhost:8080/chat?room=1", { bearerToken: "a+b&c=d#e f" });
+      const parsed = new URL((socket as unknown as SocketPrivate).ws.url);
+
+      expect(parsed.searchParams.get("bearerToken")).toBe("a+b&c=d#e f");
+      expect(parsed.searchParams.get("room")).toBe("1");
+      expect(parsed.hash).toBe("");
     });
 
-    test("should return URL unchanged when there is no query string", () => {
-      const socket = new Socket("ws://localhost:8080");
-      const encode = (socket as unknown as SocketPrivate).encodeBearerToken.bind(socket);
-      expect(encode("ws://localhost:8080/path")).toBe("ws://localhost:8080/path");
+    test("should replace a token already in the URL", () => {
+      const socket = new Socket("https://example.com/chat?bearerToken=old", { bearerToken: "new" });
+      const parsed = new URL((socket as unknown as SocketPrivate).ws.url);
+
+      expect(parsed.protocol).toBe("wss:");
+      expect(parsed.searchParams.getAll("bearerToken")).toEqual(["new"]);
     });
 
-    test("should encode an unencoded bearerToken value", () => {
-      const socket = new Socket("ws://localhost:8080");
-      const encode = (socket as unknown as SocketPrivate).encodeBearerToken.bind(socket);
-      const result = encode("wss://example.com/?bearerToken=token/with=specials");
-      expect(new URL(result).searchParams.get("bearerToken")).toBe("token/with=specials");
-      expect(result).toContain("bearerToken=token%2Fwith%3Dspecials");
-    });
+    test("should leave the URL alone without a token", () => {
+      const socket = new Socket("ws://localhost:8080/chat?room=1", { bearerToken: "" });
 
-    test("should preserve other query params", () => {
-      const socket = new Socket("ws://localhost:8080");
-      const encode = (socket as unknown as SocketPrivate).encodeBearerToken.bind(socket);
-      const result = encode("wss://example.com/?foo=bar&bearerToken=x y&baz=qux");
-      const parsed = new URL(result);
-      expect(parsed.searchParams.get("foo")).toBe("bar");
-      expect(parsed.searchParams.get("bearerToken")).toBe("x y");
-      expect(parsed.searchParams.get("baz")).toBe("qux");
-    });
-
-    test("should leave URL untouched when bearerToken value is empty", () => {
-      const socket = new Socket("ws://localhost:8080");
-      const encode = (socket as unknown as SocketPrivate).encodeBearerToken.bind(socket);
-      expect(encode("wss://example.com/?bearerToken=")).toBe("wss://example.com/?bearerToken=");
+      expect((socket as unknown as SocketPrivate).ws.url).toBe("ws://localhost:8080/chat?room=1");
     });
   });
 
