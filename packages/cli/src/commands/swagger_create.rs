@@ -21,6 +21,10 @@ use std::path::{Path, PathBuf};
 
 use clap::Args;
 
+mod types;
+
+use types::{Resolved, TypeScope, resolve_object};
+
 use crate::utils::{
     add_module_alias_if_present, ask_input, clone_frontend_template, collect_used_ports,
     current_dir, ensure_design_module, finalize_module_yml, find_free_port,
@@ -443,17 +447,23 @@ pub fn is_file_type(ty: &str) -> bool {
 
 /// The members of one named block of a route type, e.g. its `queries`.
 pub fn extract_block(type_body: &str, block: &str) -> Vec<RouteField> {
-    let Ok(pattern) = regex::Regex::new(&format!(r"\b{block}\s*:\s*\{{")) else {
-        return Vec::new();
-    };
-    let Some(matched) = pattern.find(type_body) else {
-        return Vec::new();
-    };
-    let Some((body, _)) = match_balanced(type_body, matched.end().saturating_sub(1)) else {
+    extract_block_in(type_body, block, &TypeScope::default())
+}
+
+/// The members of one named block of a route type, following the alias, the
+/// generic, the intersection or the `ReturnType<typeof …>` it names through
+/// the controller and the files it imports.
+pub fn extract_block_in(type_body: &str, block: &str, scope: &TypeScope) -> Vec<RouteField> {
+    let Some(member) = split_members(type_body)
+        .into_iter()
+        .find(|member| member.name == block)
+    else {
         return Vec::new();
     };
 
-    fields_of(&body)
+    resolve_object(&member.ty, scope, types::MAX_DEPTH)
+        .map(|resolved| fields_in(&resolved.body, &resolved.scope, types::MAX_DEPTH - 1))
+        .unwrap_or_default()
 }
 
 /// Turn the members of one object literal into fields, recursing into nested
@@ -464,6 +474,12 @@ pub fn extract_block(type_body: &str, block: &str) -> Vec<RouteField> {
 /// spelled out — which is unreadable past two members and tells a reader
 /// nothing about which parts are optional.
 pub fn fields_of(body: &str) -> Vec<RouteField> {
+    fields_in(body, &TypeScope::default(), 0)
+}
+
+/// [`fields_of`], with a member typed by a named object (an alias, an
+/// interface, a generic) expanded through `scope`, down to `depth` levels.
+pub fn fields_in(body: &str, scope: &TypeScope, depth: u8) -> Vec<RouteField> {
     split_members(body)
         .into_iter()
         .map(|member| {
@@ -494,7 +510,7 @@ pub fn fields_of(body: &str) -> Vec<RouteField> {
                 .map(String::as_str)
                 .partition(|alternative| matches!(*alternative, "null" | "undefined"));
             if let [value] = values.as_slice()
-                && let Some((inner, array)) = object_literal(value)
+                && let Some((resolved, array)) = object_of(value, scope, depth)
             {
                 let mut ty = if array { "object[]" } else { "object" }.to_string();
                 for alternative in empty {
@@ -506,7 +522,7 @@ pub fn fields_of(body: &str) -> Vec<RouteField> {
                     ty,
                     required,
                     description,
-                    fields: fields_of(inner),
+                    fields: fields_in(&resolved.body, &resolved.scope, depth.saturating_sub(1)),
                 };
             }
 
@@ -577,6 +593,22 @@ fn object_literal(ty: &str) -> Option<(&str, bool)> {
     (close == inner.len() - 1).then(|| (&inner[1..close], array))
 }
 
+/// The object a member type stands for, inline or named, and whether it is an
+/// array of it.
+fn object_of(ty: &str, scope: &TypeScope, depth: u8) -> Option<(Resolved, bool)> {
+    if let Some((inner, array)) = object_literal(ty) {
+        let resolved = Resolved {
+            body: inner.to_string(),
+            scope: scope.clone(),
+        };
+        return Some((resolved, array));
+    }
+    let trimmed = ty.trim();
+    let array = trimmed.ends_with("[]");
+    let element = trimmed.trim_end_matches("[]").trim();
+    resolve_object(element, scope, depth).map(|resolved| (resolved, array))
+}
+
 /// A type written across lines, as one line with its comments removed — the
 /// route file holds it in a double-quoted string.
 fn one_line(ty: &str) -> String {
@@ -628,6 +660,18 @@ pub fn title_of(file_stem: &str) -> String {
 
 /// Read one controller into the route it serves.
 pub fn parse_controller(content: &str, module_name: &str, prefix: &str) -> Option<RouteDefinition> {
+    parse_controller_at(content, module_name, prefix, None)
+}
+
+/// [`parse_controller`] for a controller in `dir`, so the named types its route
+/// type points at are followed through its relative imports.
+pub fn parse_controller_at(
+    content: &str,
+    module_name: &str,
+    prefix: &str,
+    dir: Option<&Path>,
+) -> Option<RouteDefinition> {
+    let scope = TypeScope::new(content, dir);
     let decorator = regex::Regex::new(r#"@Route\.(\w+)\(\s*"([^"]+)"\s*,\s*\{"#)
         .ok()?
         .captures(content)?;
@@ -679,7 +723,7 @@ pub fn parse_controller(content: &str, module_name: &str, prefix: &str) -> Optio
         .map(|(body, _)| body)
         .unwrap_or_default();
 
-    let mut params = extract_block(&type_body, "params");
+    let mut params = extract_block_in(&type_body, "params", &scope);
     for name in path_params(&route_path) {
         if !params.iter().any(|field| field.name == name) {
             params.push(RouteField {
@@ -704,9 +748,9 @@ pub fn parse_controller(content: &str, module_name: &str, prefix: &str) -> Optio
         prose,
         roles,
         params,
-        queries: extract_block(&type_body, "queries"),
-        payload: extract_block(&type_body, "payload"),
-        response: extract_block(&type_body, "response"),
+        queries: extract_block_in(&type_body, "queries", &scope),
+        payload: extract_block_in(&type_body, "payload", &scope),
+        response: extract_block_in(&type_body, "response", &scope),
     })
 }
 
@@ -1091,7 +1135,7 @@ fn collect_routes(
         );
         controller_files.sort();
         for file in controller_files {
-            let Ok(content) = fs::read_to_string(file) else {
+            let Ok(content) = fs::read_to_string(&file) else {
                 continue;
             };
             // A controller file is not served by anything until the module's
@@ -1101,7 +1145,9 @@ fn collect_routes(
             {
                 continue;
             }
-            if let Some(definition) = parse_controller(&content, &module_kebab, prefix) {
+            if let Some(definition) =
+                parse_controller_at(&content, &module_kebab, prefix, file.parent())
+            {
                 routes.push((module_kebab.clone(), definition));
             }
         }
@@ -1387,6 +1433,121 @@ export class ExportController {}
         assert!(render_route_file(&route, "Campaign").contains(
             "description: \"Export the report of a campaign. The file is built on the fly.\\n\\nIt costs"
         ));
+    }
+
+    fn names(fields: &[RouteField]) -> Vec<(&str, &str)> {
+        fields
+            .iter()
+            .map(|field| (field.name.as_str(), field.ty.as_str()))
+            .collect()
+    }
+
+    #[test]
+    fn expands_an_alias_a_generic_and_an_intersection_declared_in_the_controller() {
+        let content = r#"
+type StepType = { done: boolean };
+type PageType<T> = { items: T[]; total: number };
+type PlanViewType = {
+  /** Its id. */
+  id: string;
+  steps: StepType[];
+};
+interface AuditType { createdAt: string }
+
+type PlanRouteType = {
+  params: PlanViewType & AuditType;
+  queries: PageType<{ id: string }>;
+  response: PlanViewType;
+};
+
+@Route.get("/plans/:id", { name: "plan.view.read", roles: [] })
+export class PlanController {}
+"#;
+
+        let route = parse_controller(content, "plan", "api").expect("a route");
+
+        assert_eq!(
+            names(&route.response),
+            vec![("id", "string"), ("steps", "object[]")]
+        );
+        assert_eq!(route.response[0].description, "Its id.");
+        assert_eq!(names(&route.response[1].fields), vec![("done", "boolean")]);
+        assert_eq!(
+            names(&route.queries),
+            vec![("items", "object[]"), ("total", "number")]
+        );
+        assert_eq!(names(&route.queries[0].fields), vec![("id", "string")]);
+        assert_eq!(
+            names(&route.params),
+            vec![
+                ("id", "string"),
+                ("steps", "object[]"),
+                ("createdAt", "string")
+            ]
+        );
+    }
+
+    #[test]
+    fn follows_an_imported_alias_and_the_return_type_of_an_imported_mapper() {
+        let dir = tempfile::tempdir().expect("create temp dir");
+        let controllers = dir.path().join("controllers");
+        fs::create_dir_all(&controllers).expect("create controllers");
+        fs::create_dir_all(dir.path().join("types")).expect("create types");
+        fs::create_dir_all(dir.path().join("utils")).expect("create utils");
+        fs::write(
+            dir.path().join("types/PlanType.ts"),
+            "export type PlanType = {\n  /** The name. */\n  name: string;\n};\n",
+        )
+        .expect("write the type");
+        fs::write(
+            dir.path().join("utils/profileView.ts"),
+            "export const toProfileView = (profile: ProfileType) => ({\n  id: profile.id,\n  email,\n  ...profile.extra,\n});\n",
+        )
+        .expect("write the mapper");
+        let content = r#"
+import type { PlanType } from "../types/PlanType";
+import { toProfileView } from "../utils/profileView";
+
+type ProfileRouteType = {
+  payload: PlanType;
+  response: ReturnType<typeof toProfileView>;
+};
+
+@Route.post("/profiles", { name: "user.profile.update", roles: ["ROLE_USER"] })
+export class ProfileController {}
+"#;
+
+        let route =
+            parse_controller_at(content, "user", "api", Some(&controllers)).expect("a route");
+
+        assert_eq!(names(&route.payload), vec![("name", "string")]);
+        assert_eq!(route.payload[0].description, "The name.");
+        assert_eq!(
+            names(&route.response),
+            vec![("id", "unknown"), ("email", "unknown")]
+        );
+    }
+
+    #[test]
+    fn leaves_a_type_it_cannot_follow_as_written() {
+        let content = r#"
+type ListRouteType = {
+  response: { rows: Record<string, unknown>; owner: UserType | null };
+};
+@Route.get("/rows", { name: "app.row.list", roles: [] })
+export class ListController {}
+"#;
+
+        let route = parse_controller(content, "app", "api").expect("a route");
+
+        assert_eq!(
+            names(&route.response),
+            vec![
+                ("rows", "Record<string, unknown>"),
+                ("owner", "UserType | null")
+            ]
+        );
+        assert!(route.response.iter().all(|field| field.fields.is_empty()));
     }
 
     #[test]
