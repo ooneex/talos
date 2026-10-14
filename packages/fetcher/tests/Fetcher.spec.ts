@@ -608,6 +608,17 @@ describe("Fetcher", () => {
       expect(response.data.uploaded).toBe(true);
     });
 
+    test("should upload with the method passed in the options", async () => {
+      const file = new File(["content"], "avatar.png", { type: "image/png" });
+
+      await fetcher.upload(testPath, file, "avatar", { method: "PUT" });
+      await fetcher.upload(testPath, file, "avatar", { method: "PATCH" });
+
+      expect(mockFetch.mock.calls[0]?.[1].method).toBe("PUT");
+      expect(mockFetch.mock.calls[1]?.[1].method).toBe("PATCH");
+      expect((mockFetch.mock.calls[0]?.[1].body as FormData).get("avatar")).toEqual(file);
+    });
+
     test("should handle Content-Type header properly during upload", async () => {
       fetcher.setContentType("application/json");
       const originalContentType = fetcher.header.get("Content-Type");
