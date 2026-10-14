@@ -13,6 +13,7 @@ use std::fs;
 use std::hash::{Hash, Hasher};
 use std::path::Path;
 
+use super::conventions::is_generated;
 use super::modules::{
     TS_EXTENSIONS, collect_files, discover_modules, filter_modules, relative, wanted_names,
 };
@@ -345,6 +346,11 @@ pub fn run(args: &ProjectCheckArgs, root: &Path) -> CheckOutcome {
             let Ok(content) = fs::read_to_string(&path) else {
                 continue;
             };
+            // A file can also say so itself, in its opening banner: the route
+            // files swagger:create writes share their whole shape.
+            if is_generated(&content) {
+                continue;
+            }
             files.push((label, content));
         }
     }
