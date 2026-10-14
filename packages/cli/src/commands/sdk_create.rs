@@ -56,7 +56,9 @@ export default defineConfig({
 "#;
 
 /// Scaffolds the empty SDK module (via `module_create`), removes it from
-/// the app/shared registrations it doesn't need, tags its `.yml` as an SDK
+/// the app/shared registrations it doesn't need, drops the backend module file
+/// and its spec (a browser package has no `ModuleType` and must not reach into
+/// `@module/shared`), tags its `.yml` as an SDK
 /// targeting `target_module`, renames its `package.json`, and writes the
 /// shared `bunup.config.ts`.
 fn scaffold_sdk_module(
@@ -93,6 +95,12 @@ fn scaffold_sdk_module(
     );
 
     let sdk_dir = modules_dir.join(sdk_name);
+    let _ = fs::remove_file(sdk_dir.join("src").join(format!("{pascal_name}Module.ts")));
+    let _ = fs::remove_file(
+        sdk_dir
+            .join("tests")
+            .join(format!("{pascal_name}Module.spec.ts")),
+    );
     let yml_path = sdk_dir.join(format!("{sdk_name}.yml"));
     if let Ok(yml_content) = fs::read_to_string(&yml_path) {
         let _ = fs::write(
