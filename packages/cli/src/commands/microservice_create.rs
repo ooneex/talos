@@ -197,6 +197,45 @@ fn resolve_microservice_names(args: &MicroserviceCreateArgs) -> Option<Microserv
     })
 }
 
+/// Rewrites the template's identifiers for the new microservice: the module
+/// class, the `@module/microservice` alias the specs import through, and the
+/// health route name.
+pub fn rename_microservice_identifiers(
+    content: &str,
+    pascal_name: &str,
+    kebab_name: &str,
+) -> String {
+    content
+        .replace("MicroserviceModule", &format!("{pascal_name}Module"))
+        .replace("@module/microservice/", &format!("@module/{kebab_name}/"))
+        .replace(
+            "\"microservice.health.check\"",
+            &format!("\"{kebab_name}.health.check\""),
+        )
+}
+
+fn rename_microservice_identifiers_in(dir: &Path, pascal_name: &str, kebab_name: &str) {
+    let Ok(entries) = fs::read_dir(dir) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            rename_microservice_identifiers_in(&path, pascal_name, kebab_name);
+            continue;
+        }
+        if path.extension().and_then(|e| e.to_str()) != Some("ts") {
+            continue;
+        }
+        if let Ok(content) = fs::read_to_string(&path) {
+            let updated = rename_microservice_identifiers(&content, pascal_name, kebab_name);
+            if updated != content {
+                let _ = fs::write(&path, updated);
+            }
+        }
+    }
+}
+
 /// Copies the microservice template into `module_dir` and writes the
 /// module/test/yml/package.json files, renamed for `names`. Returns `false`
 /// when scaffolding failed and `run` should bail out.
@@ -221,40 +260,29 @@ fn scaffold_microservice_files(
     }
 
     let _ = fs::remove_file(module_dir.join("microservice.yml"));
-    let _ = fs::remove_file(src_dir.join("MicroserviceModule.ts"));
-    let _ = fs::remove_file(tests_dir.join("MicroserviceModule.spec.ts"));
 
-    let Some(module_template) = read_template(templates_dir, "module/module.txt") else {
-        return false;
-    };
-    let Some(test_template) = read_template(templates_dir, "module/test.txt") else {
-        return false;
-    };
     let Some(yml_template) = read_template(templates_dir, "module/yml.txt") else {
         return false;
     };
-
-    let module_content = module_template.replace("{{NAME}}", pascal_name);
-    let test_content = test_template
-        .replace("{{NAME}}", pascal_name)
-        .replace("{{name}}", kebab_name);
     let yml_content = yml_template
         .replace("{{name}}", kebab_name)
         .replace("type: \"module\"", "type: \"microservice\"");
-    let _ = fs::write(
-        src_dir.join(format!("{pascal_name}Module.ts")),
-        module_content,
-    );
     let _ = fs::write(module_dir.join(format!("{kebab_name}.yml")), yml_content);
-    let _ = fs::write(
-        tests_dir.join(format!("{pascal_name}Module.spec.ts")),
-        test_content,
-    );
 
-    let index_path = src_dir.join("index.ts");
-    if let Ok(index_content) = fs::read_to_string(&index_path) {
-        let updated = index_content.replace("MicroserviceModule", &format!("{pascal_name}Module"));
-        let _ = fs::write(&index_path, updated);
+    // The template ships a complete, tested microservice (module file listing the
+    // health controller, bootstrap, specs). It is renamed in place rather than
+    // regenerated from the plain module template, which would drop the health
+    // controller and leave the specs pointing at `@module/microservice`.
+    let _ = fs::rename(
+        src_dir.join("MicroserviceModule.ts"),
+        src_dir.join(format!("{pascal_name}Module.ts")),
+    );
+    let _ = fs::rename(
+        tests_dir.join("MicroserviceModule.spec.ts"),
+        tests_dir.join(format!("{pascal_name}Module.spec.ts")),
+    );
+    for dir in [&src_dir, &tests_dir] {
+        rename_microservice_identifiers_in(dir, pascal_name, kebab_name);
     }
 
     let package_path = module_dir.join("package.json");
