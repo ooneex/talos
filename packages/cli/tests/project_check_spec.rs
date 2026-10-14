@@ -2737,6 +2737,39 @@ fn an_sdk_of_an_api_answers_for_the_routes_of_the_modules_it_aggregates() {
 }
 
 #[test]
+fn a_swagger_of_an_api_is_held_to_the_routes_of_the_modules_it_mounts() {
+    let (_guard, root) = root();
+    let app = workspace(&root, "app", "api");
+    controller(&app, "Read", "get", "/users", "  roles: [\"ROLE_USER\"],\n");
+    let billing = root.join("modules/billing");
+    write(&billing.join("billing.yml"), "type: \"module\"\n");
+    write(&billing.join("package.json"), "{ \"name\": \"billing\" }\n");
+    controller(
+        &billing,
+        "Pay",
+        "post",
+        "/payments",
+        "  roles: [\"ROLE_USER\"],\n",
+    );
+
+    let swagger = root.join("modules/swagger");
+    write(
+        &swagger.join("swagger.yml"),
+        "type: \"swagger\"\ntarget: \"app\"\n",
+    );
+    write(&swagger.join("package.json"), "{ \"name\": \"swagger\" }\n");
+    write(
+        &swagger.join("public/openapi.json"),
+        r#"{"paths":{"/v1/users":{"get":{}},"/v1/payments":{"post":{}}}}"#,
+    );
+
+    let outcome = cli::commands::project_check::openapi::run(&ProjectCheckArgs::default(), &root);
+
+    assert_eq!(outcome.status, CheckStatus::Passed, "{:?}", outcome.details);
+    assert!(outcome.summary.contains("2 served"), "{}", outcome.summary);
+}
+
+#[test]
 fn an_sdk_targeting_a_deleted_module_fails() {
     let (_guard, root) = root();
     write(
