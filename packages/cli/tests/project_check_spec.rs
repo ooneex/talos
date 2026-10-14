@@ -3847,6 +3847,39 @@ fn a_commented_out_assertion_does_not_count_as_one() {
 }
 
 #[test]
+fn a_comparison_inside_an_assertion_string_does_not_hide_the_next_keys() {
+    let keys = validation::keys(
+        "\n  question: Assert(\"1 <= string <= 2000\"),\n  position: Assert('number > 0'),\n  page: Assert(`number < 5`),\n",
+    );
+
+    assert_eq!(
+        keys,
+        [
+            "page".to_string(),
+            "position".to_string(),
+            "question".to_string()
+        ]
+        .into_iter()
+        .collect()
+    );
+}
+
+#[test]
+fn an_arrow_function_type_does_not_hide_the_next_keys() {
+    let keys = validation::keys(
+        "onDone: () => void;\n  email: string;\n  map: Map<string, number>;\n  id: string;",
+    );
+
+    assert_eq!(
+        keys,
+        ["email", "id", "map", "onDone"]
+            .into_iter()
+            .map(str::to_string)
+            .collect()
+    );
+}
+
+#[test]
 fn a_nested_shape_is_one_field_rather_than_its_parts() {
     let keys = validation::keys("address: { street: string, city: string }, email: string");
 
