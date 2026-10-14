@@ -3,6 +3,11 @@ import type { MimeType } from "@talosjs/http-mimes";
 import type { ResponseDataType } from "@talosjs/http-response";
 import type { HttpMethodType } from "@talosjs/types";
 
+export type FetcherUploadOptionsType = {
+  /** The method the upload is sent with, `POST` by default — `PUT` or `PATCH` to replace a file. */
+  method?: "POST" | "PUT" | "PATCH";
+};
+
 export interface IFetcher {
   readonly header: Header;
 
@@ -40,5 +45,6 @@ export interface IFetcher {
     path: string,
     file: File | Blob,
     name?: string,
+    options?: FetcherUploadOptionsType,
   ): Promise<ResponseDataType<T>>;
 }

@@ -2,7 +2,7 @@ import { Header } from "@talosjs/http-header";
 import type { MimeType } from "@talosjs/http-mimes";
 import type { ResponseDataType } from "@talosjs/http-response";
 import type { HttpMethodType } from "@talosjs/types";
-import type { IFetcher } from "./types";
+import type { FetcherUploadOptionsType, IFetcher } from "./types";
 
 export class Fetcher implements IFetcher {
   private abortController: AbortController;
@@ -125,6 +125,7 @@ export class Fetcher implements IFetcher {
     path: string,
     file: File | Blob,
     name = "file",
+    options: FetcherUploadOptionsType = {},
   ): Promise<ResponseDataType<T>> {
     const formData = new FormData();
     formData.append(name, file);
@@ -133,7 +134,7 @@ export class Fetcher implements IFetcher {
     const originalContentType = this.header.get("Content-Type");
     this.header.remove("Content-Type");
 
-    const result = await this.request<T>("POST", path, formData);
+    const result = await this.request<T>(options.method ?? "POST", path, formData);
 
     // Restore original Content-Type if it existed
     if (originalContentType) {
