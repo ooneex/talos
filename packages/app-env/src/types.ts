@@ -123,6 +123,11 @@ export interface IAppEnv {
   readonly STRIPE_SECRET_KEY: string | undefined;
   readonly STRIPE_API_VERSION: string | undefined;
   readonly STRIPE_WEBHOOK_SECRET: string | undefined;
+  /** Host of the Stripe API, to point the client at a local fake such as stripe-mock. */
+  readonly STRIPE_API_HOST: string | undefined;
+  readonly STRIPE_API_PORT: string | undefined;
+  /** `http` or `https`. */
+  readonly STRIPE_API_PROTOCOL: string | undefined;
 
   // Authentication
   readonly AUTH_TOKEN: string | undefined;

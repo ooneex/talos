@@ -95,6 +95,17 @@ describe("loadEnv", () => {
     expect(Bun.env.APP_PORT).toBeUndefined();
   });
 
+  test("maps payment.stripe.api_host, api_port and api_protocol to STRIPE_API_*", async () => {
+    await Bun.write(
+      `${testDir}/.env.yml`,
+      'payment:\n  stripe:\n    api_host: "localhost"\n    api_port: 12111\n    api_protocol: "http"\n',
+    );
+    await loadEnv();
+    expect(Bun.env.STRIPE_API_HOST).toBe("localhost");
+    expect(Bun.env.STRIPE_API_PORT).toBe("12111");
+    expect(Bun.env.STRIPE_API_PROTOCOL).toBe("http");
+  });
+
   test("maps deeply nested path analytics.posthog.project_token", async () => {
     await Bun.write(`${testDir}/.env.yml`, 'analytics:\n  posthog:\n    project_token: "phc_abc123"\n');
     await loadEnv();

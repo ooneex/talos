@@ -634,6 +634,9 @@ describe("AppEnv", () => {
       delete Bun.env.STRIPE_SECRET_KEY;
       delete Bun.env.STRIPE_API_VERSION;
       delete Bun.env.STRIPE_WEBHOOK_SECRET;
+      delete Bun.env.STRIPE_API_HOST;
+      delete Bun.env.STRIPE_API_PORT;
+      delete Bun.env.STRIPE_API_PROTOCOL;
       delete Bun.env.AUTH_TOKEN;
       delete Bun.env.CLERK_SECRET_KEY;
       delete Bun.env.LINEAR_API_KEY;
@@ -724,6 +727,9 @@ describe("AppEnv", () => {
       expect(appEnv.STRIPE_SECRET_KEY).toBeUndefined();
       expect(appEnv.STRIPE_API_VERSION).toBeUndefined();
       expect(appEnv.STRIPE_WEBHOOK_SECRET).toBeUndefined();
+      expect(appEnv.STRIPE_API_HOST).toBeUndefined();
+      expect(appEnv.STRIPE_API_PORT).toBeUndefined();
+      expect(appEnv.STRIPE_API_PROTOCOL).toBeUndefined();
       expect(appEnv.AUTH_TOKEN).toBeUndefined();
       expect(appEnv.CLERK_SECRET_KEY).toBeUndefined();
       expect(appEnv.LINEAR_API_KEY).toBeUndefined();
@@ -875,6 +881,9 @@ describe("AppEnv", () => {
       Bun.env.STRIPE_SECRET_KEY = "sk_test_123";
       Bun.env.STRIPE_API_VERSION = "2025-06-30.basil";
       Bun.env.STRIPE_WEBHOOK_SECRET = "whsec_123";
+      Bun.env.STRIPE_API_HOST = "localhost";
+      Bun.env.STRIPE_API_PORT = "12111";
+      Bun.env.STRIPE_API_PROTOCOL = "http";
 
       const appEnv = new AppEnv();
 
@@ -883,6 +892,9 @@ describe("AppEnv", () => {
       expect(appEnv.STRIPE_SECRET_KEY).toBe("sk_test_123");
       expect(appEnv.STRIPE_API_VERSION).toBe("2025-06-30.basil");
       expect(appEnv.STRIPE_WEBHOOK_SECRET).toBe("whsec_123");
+      expect(appEnv.STRIPE_API_HOST).toBe("localhost");
+      expect(appEnv.STRIPE_API_PORT).toBe("12111");
+      expect(appEnv.STRIPE_API_PROTOCOL).toBe("http");
     });
 
     test("should read logs env vars", () => {
