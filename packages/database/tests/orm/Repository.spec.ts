@@ -103,6 +103,14 @@ describe("Repository", () => {
     expect((await posts.delete({ views: MoreThan(5) })).affected).toBe(1);
     await expect(posts.delete({})).rejects.toBeInstanceOf(InvalidCriteriaError);
 
+    const missing = undefined as unknown as number;
+    const viewsBefore = (await posts.find({ order: { id: "ASC" } })).map((post) => post.views);
+    await expect(posts.delete({ id: missing })).rejects.toBeInstanceOf(InvalidCriteriaError);
+    await expect(posts.update({ id: missing }, { views: 0 })).rejects.toBeInstanceOf(InvalidCriteriaError);
+    await expect(posts.increment({ id: missing }, "views", 1)).rejects.toBeInstanceOf(InvalidCriteriaError);
+    await expect(posts.softDelete({ id: missing })).rejects.toBeInstanceOf(InvalidCriteriaError);
+    expect((await posts.find({ order: { id: "ASC" } })).map((post) => post.views)).toEqual(viewsBefore);
+
     await tags.clear();
     expect(await tags.count()).toBe(0);
   });
