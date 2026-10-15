@@ -17,6 +17,7 @@ const defaultOptions = {
 
 // Create mock subscriber client instance
 const mockSubscriberClient = {
+  onclose: null as ((error: Error) => void) | null,
   subscribe: mock(async (_channel: string, _handler: (message: string, channel: string) => void): Promise<void> => {}),
   unsubscribe: mock(async (_channel?: string): Promise<void> => {}),
   close: mock((): void => {}),
@@ -24,6 +25,10 @@ const mockSubscriberClient = {
 
 // Create mock Redis client instance
 const mockRedisClient = {
+  connected: true,
+  connect: mock(async (): Promise<void> => {
+    mockRedisClient.connected = true;
+  }),
   publish: mock(async (_channel: string, _message: string): Promise<void> => {}),
   duplicate: mock(async () => mockSubscriberClient),
   close: mock((): void => {}),
@@ -51,6 +56,7 @@ describe("RedisPubSubClient", () => {
   beforeEach(() => {
     // Reset all mocks
     const mocksToReset = [
+      mockRedisClient.connect,
       mockRedisClient.publish,
       mockRedisClient.duplicate,
       mockRedisClient.close,
@@ -67,6 +73,11 @@ describe("RedisPubSubClient", () => {
     });
 
     // Reset mock implementations to defaults
+    mockRedisClient.connected = true;
+    mockRedisClient.connect.mockImplementation(async (): Promise<void> => {
+      mockRedisClient.connected = true;
+    });
+    mockSubscriberClient.onclose = null;
     mockRedisClient.publish.mockImplementation(async (_channel: string, _message: string): Promise<void> => {});
     mockRedisClient.duplicate.mockImplementation(async () => mockSubscriberClient);
     mockSubscriberClient.subscribe.mockImplementation(
@@ -476,6 +487,138 @@ describe("RedisPubSubClient", () => {
       await client.publish({ channel: "ch2", data: { message: "b", count: 2 } });
 
       expect(mockRedisClient.publish).toHaveBeenCalledTimes(2);
+      expect(mockRedisClient.connect).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("reconnection", () => {
+    const closeSubscriber = (): void => {
+      mockSubscriberClient.onclose?.(new Error("Connection closed"));
+    };
+
+    test("should reconnect a client Redis closed before publishing", async () => {
+      mockRedisClient.connected = false;
+      const client = new RedisPubSubClient<TestData>(new AppEnv(), {
+        connectionString: "redis://localhost:6379",
+      });
+
+      await client.publish({ channel: "ch1", data: { message: "a", count: 1 } });
+
+      expect(mockRedisClient.connect).toHaveBeenCalledTimes(1);
+      expect(mockRedisClient.publish).toHaveBeenCalledTimes(1);
+    });
+
+    test("should share one reconnect attempt between concurrent publishes", async () => {
+      mockRedisClient.connected = false;
+      const { promise, resolve } = Promise.withResolvers<void>();
+      mockRedisClient.connect.mockImplementation(async (): Promise<void> => {
+        await promise;
+        mockRedisClient.connected = true;
+      });
+      const client = new RedisPubSubClient<TestData>(new AppEnv(), {
+        connectionString: "redis://localhost:6379",
+      });
+
+      const pending = Promise.all([
+        client.publish({ channel: "ch1", data: { message: "a", count: 1 } }),
+        client.publish({ channel: "ch2", data: { message: "b", count: 2 } }),
+      ]);
+      resolve();
+      await pending;
+
+      expect(mockRedisClient.connect).toHaveBeenCalledTimes(1);
+    });
+
+    test("should rebuild the subscriber and listen to every channel again after its connection drops", async () => {
+      const client = new RedisPubSubClient<TestData>(new AppEnv(), {
+        connectionString: "redis://localhost:6379",
+      });
+      const handler = mock(() => {});
+      await client.subscribe("channel-1", handler);
+      await client.subscribe("channel-2", handler);
+      mockSubscriberClient.subscribe.mockClear();
+
+      closeSubscriber();
+      await Bun.sleep(150);
+
+      expect(mockSubscriberClient.close).toHaveBeenCalledTimes(1);
+      expect(mockRedisClient.duplicate).toHaveBeenCalledTimes(2);
+      expect(mockSubscriberClient.subscribe).toHaveBeenCalledTimes(2);
+      expect(mockSubscriberClient.subscribe).toHaveBeenCalledWith("channel-1", expect.any(Function));
+      expect(mockSubscriberClient.subscribe).toHaveBeenCalledWith("channel-2", expect.any(Function));
+
+      const listener = mockSubscriberClient.subscribe.mock.calls[0]?.[1] as
+        | ((message: string, channel: string) => void)
+        | undefined;
+      listener?.(JSON.stringify({ message: "back", count: 1 }), "channel-1");
+
+      expect(handler).toHaveBeenCalledWith({ data: { message: "back", count: 1 }, channel: "channel-1" });
+      client.close();
+    });
+
+    test("should keep retrying while Redis is still down", async () => {
+      const client = new RedisPubSubClient<TestData>(new AppEnv(), {
+        connectionString: "redis://localhost:6379",
+      });
+      await client.subscribe(
+        "channel-1",
+        mock(() => {}),
+      );
+      mockSubscriberClient.subscribe.mockClear();
+      mockRedisClient.duplicate.mockImplementationOnce(async () => {
+        throw new Error("Connection closed");
+      });
+
+      closeSubscriber();
+      await Bun.sleep(150);
+
+      expect(mockSubscriberClient.subscribe).not.toHaveBeenCalled();
+
+      await Bun.sleep(250);
+
+      expect(mockRedisClient.duplicate).toHaveBeenCalledTimes(3);
+      expect(mockSubscriberClient.subscribe).toHaveBeenCalledWith("channel-1", expect.any(Function));
+      client.close();
+    });
+
+    test("should not resubscribe channels that were unsubscribed", async () => {
+      const client = new RedisPubSubClient<TestData>(new AppEnv(), {
+        connectionString: "redis://localhost:6379",
+      });
+      await client.subscribe(
+        "channel-1",
+        mock(() => {}),
+      );
+      await client.subscribe(
+        "channel-2",
+        mock(() => {}),
+      );
+      await client.unsubscribe("channel-1");
+      mockSubscriberClient.subscribe.mockClear();
+
+      closeSubscriber();
+      await Bun.sleep(150);
+
+      expect(mockSubscriberClient.subscribe).toHaveBeenCalledTimes(1);
+      expect(mockSubscriberClient.subscribe).toHaveBeenCalledWith("channel-2", expect.any(Function));
+      client.close();
+    });
+
+    test("should not rebuild the subscriber after close", async () => {
+      const client = new RedisPubSubClient<TestData>(new AppEnv(), {
+        connectionString: "redis://localhost:6379",
+      });
+      await client.subscribe(
+        "channel-1",
+        mock(() => {}),
+      );
+      const onclose = mockSubscriberClient.onclose;
+      client.close();
+
+      onclose?.(new Error("Connection closed"));
+      await Bun.sleep(150);
+
+      expect(mockRedisClient.duplicate).toHaveBeenCalledTimes(1);
     });
   });
 });
