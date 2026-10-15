@@ -231,7 +231,7 @@ describe("HttpResponse", () => {
         done: false,
         isClientError: true,
         isForbidden: false,
-        isNotFound: false,
+        isNotFound: true,
         isServerError: false,
         isUnauthorized: false,
         message,
@@ -256,7 +256,7 @@ describe("HttpResponse", () => {
         done: false,
         isClientError: true,
         isForbidden: false,
-        isNotFound: false,
+        isNotFound: true,
         isServerError: false,
         isUnauthorized: false,
         message,
@@ -640,6 +640,20 @@ describe("HttpResponse", () => {
         status: HttpStatus.Code.UnprocessableEntity,
         success: false,
       });
+    });
+
+    test.each([
+      [HttpStatus.Code.Unauthorized, { isUnauthorized: true, isForbidden: false, isNotFound: false }],
+      [HttpStatus.Code.Forbidden, { isUnauthorized: false, isForbidden: true, isNotFound: false }],
+      [HttpStatus.Code.NotFound, { isUnauthorized: false, isForbidden: false, isNotFound: true }],
+      [HttpStatus.Code.Conflict, { isUnauthorized: false, isForbidden: false, isNotFound: false }],
+      [HttpStatus.Code.InternalServerError, { isUnauthorized: false, isForbidden: false, isNotFound: false }],
+    ])("should derive the status flags of the envelope from status %d", async (status, flags) => {
+      response.exception("Denied", { status });
+
+      const responseData = await response.get().json();
+
+      expect(responseData).toMatchObject({ status, ...flags });
     });
 
     test("should return Web API Response with null body for empty JSON", () => {
