@@ -2,10 +2,12 @@
 //
 // The security check only knows about vulnerable *dependencies*. This one
 // looks at the repository itself: high-confidence credential formats, and any
-// environment or key file that git is actually tracking.
+// environment or key file that git is actually tracking. Files git ignores and
+// does not track, such as a module's local `.env.yml`, are where real keys are
+// meant to live, so their content is left alone.
 
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
 use regex::Regex;
@@ -203,8 +205,38 @@ fn tracked_secret_files(root: &Path) -> Vec<String> {
     tracked
 }
 
+/// The files that can reach the repository: those git tracks, and those it
+/// does not ignore. An ignored, untracked file never leaves the machine.
+fn versionable_files(root: &Path, files: Vec<PathBuf>) -> Vec<PathBuf> {
+    let Some(repo) = crate::utils::discover_git_repo(root) else {
+        return files;
+    };
+    let Some(workdir) = repo.workdir().and_then(|dir| dir.canonicalize().ok()) else {
+        return files;
+    };
+    let index = repo.index().ok();
+
+    files
+        .into_iter()
+        .filter(|path| {
+            let Some(in_repo) = path
+                .canonicalize()
+                .ok()
+                .and_then(|absolute| absolute.strip_prefix(&workdir).ok().map(Path::to_path_buf))
+            else {
+                return true;
+            };
+            let tracked = index
+                .as_ref()
+                .is_some_and(|index| index.get_path(&in_repo, 0).is_some());
+
+            tracked || !repo.is_path_ignored(&in_repo).unwrap_or(false)
+        })
+        .collect()
+}
+
 pub fn run(_args: &ProjectCheckArgs, root: &Path) -> CheckOutcome {
-    let files = collect_files(root, SCANNED_EXTENSIONS, 8);
+    let files = versionable_files(root, collect_files(root, SCANNED_EXTENSIONS, 8));
     let mut errors: Vec<String> = tracked_secret_files(root)
         .into_iter()
         .map(|path| format!("{path} is tracked by git — remove it from the index and rotate it"))
