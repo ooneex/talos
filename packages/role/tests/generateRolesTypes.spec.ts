@@ -68,9 +68,55 @@ describe("generateRolesTypes", () => {
       const output = generateRolesTypes(config);
       expect(output).toContain("export type TypedRolesConfigType = {");
       expect(output).toContain("roles: RolesMapType;");
-      expect(output).toContain("hierarchy: Record<RoleHierarchyRoleType, {");
+      expect(output).toContain("  hierarchy: Record<\n    RoleHierarchyRoleType,\n    {\n");
       expect(output).toContain("inherits?: RoleHierarchyRoleType[];");
       expect(output).toContain("description: string;");
+    });
+  });
+
+  describe("formatting", () => {
+    test("should lay out the file the way Biome formats it and end it with a newline", () => {
+      expect(generateRolesTypes(minimalConfig)).toBe(
+        [
+          'export type RoleType = "GUEST" | "ADMIN";',
+          "",
+          'export type RoleHierarchyRoleType = "ROLE_GUEST" | "ROLE_ADMIN";',
+          "",
+          "export type RolesMapType = Record<RoleType, RoleHierarchyRoleType>;",
+          "",
+          "export type TypedRolesConfigType = {",
+          "  roles: RolesMapType;",
+          "  hierarchy: Record<",
+          "    RoleHierarchyRoleType,",
+          "    {",
+          "      inherits?: RoleHierarchyRoleType[];",
+          "      description: string;",
+          "    }",
+          "  >;",
+          "};",
+          "",
+        ].join("\n"),
+      );
+    });
+
+    test("should put one member per line when a union does not fit in 120 columns", () => {
+      const roles = Object.fromEntries(
+        ["GUEST", "TRIAL_USER", "USER", "PREMIUM_USER", "ADMIN", "SUPER_ADMIN", "SYSTEM"].map((key) => [
+          key,
+          `ROLE_${key}`,
+        ]),
+      );
+      const hierarchy = Object.fromEntries(Object.values(roles).map((role) => [role, { description: role }]));
+      const output = generateRolesTypes({ roles, hierarchy } as IRolesConfig);
+
+      expect(output).toContain(
+        'export type RoleType = "GUEST" | "TRIAL_USER" | "USER" | "PREMIUM_USER" | "ADMIN" | "SUPER_ADMIN" | "SYSTEM";\n',
+      );
+      expect(output).toContain(
+        'export type RoleHierarchyRoleType =\n  | "ROLE_GUEST"\n  | "ROLE_TRIAL_USER"\n  | "ROLE_USER"\n',
+      );
+      expect(output).toContain('  | "ROLE_SYSTEM";\n');
+      expect(output.split("\n").every((line) => line.length <= 120)).toBe(true);
     });
   });
 
