@@ -6,6 +6,23 @@ import type { AliasType, QueryExpressionMap } from "./QueryExpressionMap";
 /** The raw column name a selected entity column gets: `alias_column`. */
 export const rawColumnName = (aliasName: string, databaseName: string): string => `${aliasName}_${databaseName}`;
 
+/**
+ * The raw column name a selected entity column comes back under: the alias `select("user.id", "id")`
+ * asked for, or `alias_column` when it named none.
+ */
+export const selectedColumnName = (
+  expressionMap: QueryExpressionMap,
+  alias: AliasType,
+  column: ColumnMetadata,
+): string => {
+  const selection = `${alias.name}.${column.propertyName}`;
+  const aliasName = expressionMap.selects.find(
+    (select) => select.selection === selection && select.aliasName,
+  )?.aliasName;
+
+  return aliasName ?? rawColumnName(alias.name, column.databaseName);
+};
+
 type ColumnSlotType = { column: ColumnMetadata; key: string };
 
 type ChildPlanType = {
@@ -95,7 +112,7 @@ export class RawSqlResultsToEntityTransformer {
     const primaryKeys: string[] = [];
 
     for (const column of metadata.columns) {
-      const key = rawColumnName(alias.name, column.databaseName);
+      const key = selectedColumnName(this.expressionMap, alias, column);
 
       if (!(key in sample)) {
         continue;

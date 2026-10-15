@@ -19,7 +19,11 @@ import { DeleteQueryBuilder } from "./DeleteQueryBuilder";
 import { InsertQueryBuilder } from "./InsertQueryBuilder";
 import { QueryBuilder } from "./QueryBuilder";
 import type { AliasType, JoinAttributeType, LockModeType, QueryExpressionMap } from "./QueryExpressionMap";
-import { RawSqlResultsToEntityTransformer, rawColumnName } from "./RawSqlResultsToEntityTransformer";
+import {
+  RawSqlResultsToEntityTransformer,
+  rawColumnName,
+  selectedColumnName,
+} from "./RawSqlResultsToEntityTransformer";
 import { RelationQueryBuilder } from "./RelationQueryBuilder";
 import { SoftDeleteQueryBuilder } from "./SoftDeleteQueryBuilder";
 import { UpdateQueryBuilder } from "./UpdateQueryBuilder";
@@ -946,7 +950,7 @@ export class SelectQueryBuilder<Entity extends ObjectLiteralType> extends QueryB
 
       for (const column of this.selectedColumns(alias)) {
         selections.push(
-          `${this.escape(alias.name)}.${this.escape(column.databaseName)} AS ${this.escape(rawColumnName(alias.name, column.databaseName))}`,
+          `${this.escape(alias.name)}.${this.escape(column.databaseName)} AS ${this.escape(selectedColumnName(this.expressionMap, alias, column))}`,
         );
       }
     }
@@ -1141,9 +1145,14 @@ export class SelectQueryBuilder<Entity extends ObjectLiteralType> extends QueryB
     inner.expressionMap.orderBys = {};
 
     const distinct = this.escape(DISTINCT_ALIAS);
+    const mainAlias = this.expressionMap.mainAlias;
+    const primaryKeyName = (column: ColumnMetadata): string =>
+      mainAlias
+        ? selectedColumnName(this.expressionMap, mainAlias, column)
+        : rawColumnName(this.alias, column.databaseName);
     const selections = metadata.primaryColumns.map(
       (column) =>
-        `${distinct}.${this.escape(rawColumnName(this.alias, column.databaseName))} AS ${this.escape(`ids_${rawColumnName(this.alias, column.databaseName)}`)}`,
+        `${distinct}.${this.escape(primaryKeyName(column))} AS ${this.escape(`ids_${rawColumnName(this.alias, column.databaseName)}`)}`,
     );
     const orderClauses: string[] = [];
 
@@ -1164,7 +1173,7 @@ export class SelectQueryBuilder<Entity extends ObjectLiteralType> extends QueryB
     }
 
     for (const column of metadata.primaryColumns) {
-      orderClauses.push(`${distinct}.${this.escape(rawColumnName(this.alias, column.databaseName))} ASC`);
+      orderClauses.push(`${distinct}.${this.escape(primaryKeyName(column))} ASC`);
     }
 
     const sql =
@@ -1196,7 +1205,7 @@ export class SelectQueryBuilder<Entity extends ObjectLiteralType> extends QueryB
       const column = alias?.metadata?.findColumnWithPropertyName(sort.slice(dot + 1));
 
       if (alias && column && this.selectedAliases.includes(alias)) {
-        return rawColumnName(alias.name, column.databaseName);
+        return selectedColumnName(this.expressionMap, alias, column);
       }
 
       return undefined;
