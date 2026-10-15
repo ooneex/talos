@@ -300,6 +300,24 @@ describe("TerminalLogger", () => {
     });
   });
 
+  describe("plain errors", () => {
+    test("should print a plain Error and its stack instead of throwing", () => {
+      const writeSpy = spyOn(process.stdout, "write").mockImplementation(() => true);
+      const error = new Error("EACCES: permission denied, open '/app/roles.types.ts'");
+      error.stack = "Error: EACCES: permission denied\n    at write (native)\n    at boot (/app/App.ts:10:5)";
+
+      try {
+        expect(() => new TerminalLogger().error(error as unknown as IException)).not.toThrow();
+        const output = String(writeSpy.mock.calls[0]?.[0]);
+
+        expect(output).toContain("EACCES: permission denied, open '/app/roles.types.ts'");
+        expect(output).toContain("at boot (/app/App.ts:10:5)");
+      } finally {
+        writeSpy.mockRestore();
+      }
+    });
+  });
+
   describe("stack trace formatting", () => {
     test("should handle frames without fileName", () => {
       const mockException: IException = {

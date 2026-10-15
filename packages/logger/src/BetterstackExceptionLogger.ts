@@ -5,6 +5,7 @@ import type { IException } from "@talosjs/exception";
 import type { ScalarType } from "@talosjs/types";
 import { decorator } from "./decorators";
 import { LoggerException } from "./LoggerException";
+import { readStackFrames } from "./stackFrames";
 import type { ILogger } from "./types";
 
 @decorator.logger()
@@ -92,8 +93,8 @@ export class BetterstackExceptionLogger implements ILogger {
     scope.setContext("exception", {
       name: message.name,
       status: message.status,
-      date: message.date.toISOString(),
-      stack: message.stackToJson(),
+      date: (message.date instanceof Date ? message.date : new Date()).toISOString(),
+      stack: readStackFrames(message),
     });
     this.applyExtras(scope, data);
     scope.addBreadcrumb({

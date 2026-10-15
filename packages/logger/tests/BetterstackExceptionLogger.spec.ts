@@ -142,6 +142,19 @@ describe("BetterstackExceptionLogger", () => {
       expect(mockSetExtras).not.toHaveBeenCalled();
     });
 
+    test("should capture a plain Error that has no stackToJson or date", () => {
+      const logger = new BetterstackExceptionLogger(new AppEnv());
+      const error = new Error("EACCES: permission denied");
+      error.stack = "Error: EACCES: permission denied\n    at boot (/app/App.ts:10:5)";
+
+      expect(() => logger.error(error as unknown as IException)).not.toThrow();
+      expect(mockCaptureException).toHaveBeenCalledWith(error);
+      expect(mockSetContext).toHaveBeenCalledWith(
+        "exception",
+        expect.objectContaining({ name: "Error", stack: [{ source: "at boot (/app/App.ts:10:5)" }] }),
+      );
+    });
+
     test("should log error with exception message", () => {
       const logger = new BetterstackExceptionLogger(new AppEnv());
 

@@ -5,6 +5,7 @@ import type { IException } from "@talosjs/exception";
 import type { ScalarType } from "@talosjs/types";
 import { decorator } from "./decorators";
 import { LoggerException } from "./LoggerException";
+import { readStackFrames } from "./stackFrames";
 import type { ILogger } from "./types";
 
 @decorator.logger()
@@ -70,7 +71,7 @@ export class BetterstackLogger implements ILogger {
     if (exception.name !== undefined) data.exceptionName = exception.name;
     if (exception.status !== undefined) data.status = exception.status;
 
-    const stackTrace = exception.stackToJson();
+    const stackTrace = readStackFrames(exception);
     if (stackTrace !== undefined && stackTrace !== null) {
       data.stackTrace = JSON.stringify(stackTrace);
     }
