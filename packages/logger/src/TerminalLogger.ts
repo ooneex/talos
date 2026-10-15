@@ -1,6 +1,7 @@
 import type { ExceptionStackFrameType, IException } from "@talosjs/exception";
 import type { ScalarType } from "@talosjs/types";
 import { decorator } from "./decorators";
+import { readStackFrames } from "./stackFrames";
 import type { ILogger, LoggerOptionsType } from "./types";
 
 interface WriteToConsoleConfig {
@@ -120,6 +121,12 @@ export class TerminalLogger implements ILogger {
 
       stackTrace.forEach((frame, index) => {
         const frameNumber = this.colorizeText(`  ${index + 1}.`, "#B2BEB5");
+
+        if (!frame.functionName && !frame.fileName) {
+          logMessage += `\n${frameNumber} ${this.colorizeText(frame.source, "#8E8E93")}`;
+          return;
+        }
+
         const functionName = frame.functionName
           ? this.colorizeText(frame.functionName, "#FFD93D")
           : this.colorizeText("<anonymous>", "#8E8E93");
@@ -170,7 +177,7 @@ export class TerminalLogger implements ILogger {
       }
 
       // Get stack trace as structured data for better formatting
-      const stackJson = message.stackToJson();
+      const stackJson = readStackFrames(message);
       this.writeToConsole({
         level: message.name,
         message: message.message,

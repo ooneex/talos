@@ -186,6 +186,16 @@ describe("BetterstackLogger", () => {
       expect(callData?.stackTrace).toBe(JSON.stringify(stackTrace));
     });
 
+    test("should log a plain Error that has no stackToJson", () => {
+      const logger = new BetterstackLogger(new AppEnv());
+      const error = new Error("EACCES: permission denied");
+      error.stack = "Error: EACCES: permission denied\n    at boot (/app/App.ts:10:5)";
+
+      expect(() => logger.error(error as unknown as IException)).not.toThrow();
+      const callData = mockError.mock.calls[0]?.[1] as Record<string, unknown>;
+      expect(callData?.stackTrace).toBe(JSON.stringify([{ source: "at boot (/app/App.ts:10:5)" }]));
+    });
+
     test("should not include stackTrace when stackToJson returns null", () => {
       const logger = new BetterstackLogger(new AppEnv());
 
