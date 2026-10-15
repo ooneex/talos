@@ -51,6 +51,15 @@ describe("SelectQueryBuilder", () => {
       );
     });
 
+    test("an entity column selected under an alias should come back under that alias", () => {
+      const sql = sqlite.createQueryBuilder(User, "user").select("user.id", "id").addSelect("user.name").getQuery();
+
+      expect(sql).toStartWith(`SELECT "user"."id" AS "id", "user"."name" AS "user_name" FROM`);
+      expect(sqlite.createQueryBuilder(User, "user").select("user.isActive", "active").getQuery()).toStartWith(
+        `SELECT "user"."is_active" AS "active" FROM`,
+      );
+    });
+
     test("selecting a whole alias should keep all of its columns", () => {
       const sql = sqlite.createQueryBuilder(User, "user").select("user").addSelect("1", "one").getQuery();
 
@@ -100,7 +109,7 @@ describe("SelectQueryBuilder", () => {
 
       expect(inSub.getQuery()).toBe(
         `SELECT "post"."id" AS "post_id", "post"."title" AS "post_title", "post"."views" AS "post_views", "post"."author_id" AS "post_author_id" FROM "posts" "post"` +
-          ` LEFT JOIN (SELECT "t"."id" AS "t_id" FROM "tags" "t") "tags" ON tags.tag_id = "post"."id"` +
+          ` LEFT JOIN (SELECT "t"."id" AS "tag_id" FROM "tags" "t") "tags" ON tags.tag_id = "post"."id"` +
           ` WHERE "post"."author_id" IN (SELECT "u"."id" AS "u_id" FROM "users" "u" WHERE "u"."deleted_at" IS NULL AND ("u"."age" = :orm_param_0))`,
       );
       expect(inSub.getParameters()).toEqual({ orm_param_0: 30 });
@@ -468,6 +477,37 @@ describe("SelectQueryBuilder", () => {
       expect(raw.map((row) => row.doubled)).toEqual([20, 10]);
       expect(entities.map((post) => post.id)).toEqual([1, 2]);
       expect(entities[0]).toBeInstanceOf(Post);
+    });
+
+    test("an entity column selected under an alias should be read back under that alias", async () => {
+      const row = await dataSource
+        .createQueryBuilder(User, "user")
+        .select("user.id", "id")
+        .where("user.name = :name", { name: "Bob" })
+        .getRawOne<{ id: string }>();
+
+      expect(row?.id).toBe("u2");
+
+      const users = await dataSource
+        .createQueryBuilder(User, "user")
+        .select("user.id", "id")
+        .addSelect("user.name", "name")
+        .orderBy("user.id")
+        .getMany();
+
+      expect(users.map((user) => user.name)).toEqual(["Alice", "Bob"]);
+
+      const page = await dataSource
+        .createQueryBuilder(Post, "post")
+        .select("post.id", "id")
+        .addSelect("post.title", "title")
+        .addSelect("post.views", "views")
+        .leftJoinAndSelect("post.tags", "tag")
+        .orderBy("post.views", "ASC")
+        .take(1)
+        .getMany();
+
+      expect(page.map((post) => post.title)).toEqual(["Second"]);
     });
 
     test("take / skip across a to-many join should page entities, not rows", async () => {
