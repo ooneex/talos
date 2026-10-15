@@ -3222,6 +3222,61 @@ fn real_secret_files_tracked_by_git_fail_the_check() {
 }
 
 #[test]
+fn secrets_in_files_git_ignores_are_not_reported_unless_tracked() {
+    let (_guard, root) = root();
+    let git = |args: &[&str]| {
+        std::process::Command::new("git")
+            .args(args)
+            .current_dir(&root)
+            .output()
+            .expect("git");
+    };
+    let token = concat!("ghp_abcdefghijklmnopqr", "stuvwxyz1234567890");
+    git(&["init"]);
+    write(
+        &root.join(".gitignore"),
+        "modules/*/.env.yml\n*.local.json\n",
+    );
+    write(
+        &root.join("modules/user/.env.yml"),
+        &format!("github:\n  token: \"{token}\"\n"),
+    );
+    write(
+        &root.join("modules/user/config.local.json"),
+        &format!("{{\"token\": \"{token}\"}}\n"),
+    );
+    write(&root.join("modules/user/src/index.ts"), "export {};\n");
+
+    assert_eq!(
+        secrets::run(&ProjectCheckArgs::default(), &root).status,
+        CheckStatus::Passed
+    );
+
+    write(
+        &root.join("modules/user/src/config.ts"),
+        &format!("export const token = '{token}';\n"),
+    );
+    let outcome = secrets::run(&ProjectCheckArgs::default(), &root);
+    assert_eq!(outcome.status, CheckStatus::Failed);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .all(|detail| !detail.contains(".env.yml") && !detail.contains("config.local.json"))
+    );
+
+    git(&["add", "-f", "modules/user/config.local.json"]);
+    let outcome = secrets::run(&ProjectCheckArgs::default(), &root);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("config.local.json")
+                && detail.contains("hardcoded credential"))
+    );
+}
+
+#[test]
 fn bare_git_repositories_do_not_crash_the_secrets_check() {
     let (_guard, root) = root();
     std::process::Command::new("git")
