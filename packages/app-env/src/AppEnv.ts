@@ -158,6 +158,9 @@ const buildScalarEnvValues = (
     STRIPE_SECRET_KEY: readString("STRIPE_SECRET_KEY"),
     STRIPE_API_VERSION: readString("STRIPE_API_VERSION"),
     STRIPE_WEBHOOK_SECRET: readString("STRIPE_WEBHOOK_SECRET"),
+    STRIPE_API_HOST: readString("STRIPE_API_HOST"),
+    STRIPE_API_PORT: readString("STRIPE_API_PORT"),
+    STRIPE_API_PROTOCOL: readString("STRIPE_API_PROTOCOL"),
     AUTH_TOKEN: readString("AUTH_TOKEN"),
     CLERK_SECRET_KEY: readString("CLERK_SECRET_KEY"),
     LINEAR_API_KEY: readString("LINEAR_API_KEY"),
@@ -275,6 +278,9 @@ export class AppEnv implements IAppEnv {
   public readonly STRIPE_SECRET_KEY: string | undefined;
   public readonly STRIPE_API_VERSION: string | undefined;
   public readonly STRIPE_WEBHOOK_SECRET: string | undefined;
+  public readonly STRIPE_API_HOST: string | undefined;
+  public readonly STRIPE_API_PORT: string | undefined;
+  public readonly STRIPE_API_PROTOCOL: string | undefined;
 
   // Authentication
   public readonly AUTH_TOKEN: string | undefined;
