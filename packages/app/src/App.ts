@@ -154,8 +154,7 @@ export class App {
       // Generated types are only useful at development time, and writing into the
       // source tree at boot fails on read-only filesystems in production containers
       if (env.isLocal) {
-        const rolesTypesFile = join(candidate.rolesDir, "roles.types.ts");
-        await Bun.write(rolesTypesFile, generateRolesTypes(rolesConfig));
+        await this.writeRolesTypes(join(candidate.rolesDir, "roles.types.ts"), generateRolesTypes(rolesConfig));
       }
     }
 
@@ -199,6 +198,27 @@ export class App {
    * Nothing outside `local` is touched, and this runs after the environment is
    * loaded, so a deployed app cannot reach it whatever its shell holds.
    */
+  /**
+   * Rewrites roles.types.ts only when its content changed, so a restart leaves the git tree clean. The file
+   * is a development aid: when it cannot be written (a read-only image, a non-root user), boot goes on
+   * with a warning instead of failing.
+   */
+  private async writeRolesTypes(path: string, content: string): Promise<void> {
+    try {
+      const file = Bun.file(path);
+
+      if ((await file.exists()) && (await file.text()) === content) {
+        return;
+      }
+
+      await Bun.write(path, content);
+    } catch (error: unknown) {
+      new TerminalLogger().warn(
+        `Could not write ${path}, the role types were not regenerated: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+
   private relaxLocalTls(): void {
     if (Bun.env.APP_ENV !== Environment.LOCAL) {
       return;

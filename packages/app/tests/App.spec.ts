@@ -753,6 +753,59 @@ hierarchy:
         spy.mockRestore();
       });
 
+      const mockRolesFiles = (rolesTypes: string | null) =>
+        spyOn(Bun, "file").mockImplementation(((path: string) => {
+          if (String(path).endsWith("roles.types.ts")) {
+            return {
+              exists: () => Promise.resolve(rolesTypes !== null),
+              text: () => Promise.resolve(rolesTypes ?? ""),
+            } as unknown as ReturnType<typeof Bun.file>;
+          }
+
+          return {
+            exists: () => Promise.resolve(true),
+            text: () => Promise.resolve(validRolesYml),
+          } as unknown as ReturnType<typeof Bun.file>;
+        }) as unknown as typeof Bun.file);
+
+      test("leaves roles.types.ts untouched when its content is already up to date", async () => {
+        Bun.env.APP_ENV = "local";
+        container.add(AppEnv);
+        const spy = mockRolesFiles("/* mocked role types */");
+
+        await new App(createMockConfig()).init();
+        await new App(createMockConfig()).init();
+
+        expect(generateRolesTypesMock).toHaveBeenCalledTimes(2);
+        expect(writeSpy).not.toHaveBeenCalled();
+        spy.mockRestore();
+      });
+
+      test("writes roles.types.ts when it is missing", async () => {
+        Bun.env.APP_ENV = "local";
+        container.add(AppEnv);
+        const spy = mockRolesFiles(null);
+
+        await new App(createMockConfig()).init();
+
+        expect(writeSpy).toHaveBeenCalledTimes(1);
+        spy.mockRestore();
+      });
+
+      test("keeps booting when roles.types.ts cannot be written", async () => {
+        Bun.env.APP_ENV = "local";
+        container.add(AppEnv);
+        const spy = mockRolesFiles("/* stale role types */");
+        writeSpy.mockRejectedValue(new Error("EACCES: permission denied, open 'roles.types.ts'"));
+
+        const app = await new App(createMockConfig()).init();
+
+        expect(app).toBeInstanceOf(App);
+        expect(writeSpy).toHaveBeenCalledTimes(1);
+        expect(container.hasConstant("app.roles")).toBe(true);
+        spy.mockRestore();
+      });
+
       test("does not write roles types in non-local env but still registers app.roles", async () => {
         const spy = spyOn(Bun, "file").mockImplementation(
           () =>
