@@ -36,6 +36,36 @@ const isPlainObject = (value: unknown): value is ObjectLiteralType =>
   !(value instanceof Date) &&
   !isFindOperator(value);
 
+/** The path of the first property a where object sets to `undefined`, e.g. `author.id`. */
+const findUndefinedWhereProperty = (where: unknown, path = ""): string | undefined => {
+  if (Array.isArray(where)) {
+    for (const group of where) {
+      const found = findUndefinedWhereProperty(group, path);
+
+      if (found) {
+        return found;
+      }
+    }
+
+    return undefined;
+  }
+
+  if (!isPlainObject(where)) {
+    return undefined;
+  }
+
+  for (const [key, value] of Object.entries(where)) {
+    const property = path ? `${path}.${key}` : key;
+    const found = value === undefined ? property : findUndefinedWhereProperty(value, property);
+
+    if (found) {
+      return found;
+    }
+  }
+
+  return undefined;
+};
+
 /**
  * Entity operations for every entity of a data source.
  *
@@ -539,10 +569,23 @@ export class EntityManager {
     return this.createFindQueryBuilder(target, {}).andWhereInIds(ids).getMany();
   }
 
+  /**
+   * A where property set to `undefined` is left out of the query, so `{ id: undefined }` would match
+   * every row and hand back the first one. findOne refuses it instead of returning an arbitrary entity.
+   */
   public async findOne<Entity extends ObjectLiteralType>(
     target: EntityTargetType<Entity>,
     options: FindOneOptionsType<Entity>,
   ): Promise<Entity | null> {
+    const property = findUndefinedWhereProperty(options.where);
+
+    if (property) {
+      throw new InvalidCriteriaError(
+        `Cannot find one ${this.connection.getMetadata(target).name} where "${property}" is undefined: pass a value, null or IsNull(), or leave the property out.`,
+        options.where,
+      );
+    }
+
     return this.createFindQueryBuilder(target, { ...options, take: 1 }).getOne();
   }
 

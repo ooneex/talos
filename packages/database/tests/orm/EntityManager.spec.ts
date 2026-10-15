@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import type { DataSource } from "../../src/orm/DataSource";
 import type { EntityManager } from "../../src/orm/EntityManager";
 import { EntityNotFoundError, InvalidCriteriaError, QueryFailedError } from "../../src/orm/errors";
-import { In, MoreThan } from "../../src/orm/FindOperator";
+import { In, IsNull, MoreThan } from "../../src/orm/FindOperator";
 import type { QueryRunner } from "../../src/orm/QueryRunner";
 import type { QueryBuilder } from "../../src/orm/query-builder/QueryBuilder";
 import { Repository } from "../../src/orm/Repository";
@@ -436,6 +436,35 @@ describe("EntityManager", () => {
       expect(failure).toBeInstanceOf(EntityNotFoundError);
       expect((failure as EntityNotFoundError).message).toContain("User");
       await expect(manager.findOneByOrFail(User, { id: "nope" })).rejects.toBeInstanceOf(EntityNotFoundError);
+    });
+
+    test("findOne family should refuse a where property set to undefined instead of matching any row", async () => {
+      // A value that is undefined at runtime, as an unset request field or a missing session claim would be
+      const missing = undefined as unknown as string;
+      const failure = await manager.findOneBy(User, { id: missing }).catch((error: unknown) => error);
+
+      expect(failure).toBeInstanceOf(InvalidCriteriaError);
+      expect((failure as InvalidCriteriaError).message).toContain('"id" is undefined');
+      await expect(
+        manager.findOne(User, { where: { name: "Bob", age: missing as unknown as number } }),
+      ).rejects.toBeInstanceOf(InvalidCriteriaError);
+      await expect(manager.findOneBy(User, [{ name: "Bob" }, { id: missing }])).rejects.toBeInstanceOf(
+        InvalidCriteriaError,
+      );
+      await expect(manager.findOneBy(Post, { author: { id: missing } })).rejects.toThrow('"author.id" is undefined');
+      await expect(manager.findOneOrFail(User, { where: { id: missing } })).rejects.toBeInstanceOf(
+        InvalidCriteriaError,
+      );
+      await expect(manager.findOneByOrFail(User, { id: missing })).rejects.toBeInstanceOf(InvalidCriteriaError);
+    });
+
+    test("findOne family should still match on null, operators and nested values", async () => {
+      expect((await manager.findOneBy(User, { name: "Bob", profile: IsNull() }))?.id).toBe("u2");
+      expect((await manager.findOneBy(User, { age: MoreThan(25), name: "Alice" }))?.id).toBe("u1");
+      expect((await manager.findOneBy(Post, { author: { id: "u1" } }))?.author).toBeUndefined();
+      expect((await manager.findOne(User, { where: { id: "u1" }, relations: { profile: true } }))?.profile?.bio).toBe(
+        "hello",
+      );
     });
 
     test("count and exists should respect where options", async () => {
