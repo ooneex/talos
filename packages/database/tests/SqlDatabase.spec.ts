@@ -43,6 +43,51 @@ describe("SqlDatabase", () => {
     expect(database.getSource().isInitialized).toBe(true);
   });
 
+  test("open should connect once when many callers find the source closed at the same time", async () => {
+    database = new MemoryDatabase();
+    const source = database.getSource();
+    const initialize = source.initialize.bind(source);
+    let calls = 0;
+
+    source.initialize = async () => {
+      calls += 1;
+      await Bun.sleep(10);
+
+      return initialize();
+    };
+
+    const repositories = await Promise.all(Array.from({ length: 50 }, () => database?.open(User)));
+
+    expect(calls).toBe(1);
+    expect(new Set(repositories).size).toBe(1);
+    expect(source.isInitialized).toBe(true);
+  });
+
+  test("open should hand a failed connection to every waiter and retry on the next call", async () => {
+    database = new MemoryDatabase();
+    const source = database.getSource();
+    const initialize = source.initialize.bind(source);
+    let calls = 0;
+
+    source.initialize = async () => {
+      calls += 1;
+      await Bun.sleep(10);
+
+      if (calls === 1) {
+        throw new Error("connection refused");
+      }
+
+      return initialize();
+    };
+
+    const results = await Promise.allSettled(Array.from({ length: 5 }, () => database?.open(User)));
+
+    expect(results.every((result) => result.status === "rejected")).toBe(true);
+    expect(calls).toBe(1);
+    expect(await database.open(User)).toBeInstanceOf(Repository);
+    expect(calls).toBe(2);
+  });
+
   test("open should expose a working repository", async () => {
     database = new MemoryDatabase();
     const users = await database.open(User);

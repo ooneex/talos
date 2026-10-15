@@ -5,6 +5,7 @@ import type { DataSourceOptionsType, EntityTargetType, ISqlDatabase, ObjectLiter
 
 const ENTITIES_PREFIX = "@talosjs/database:entities:";
 const SOURCE_PREFIX = "@talosjs/database:source:";
+const CONNECTING_KEY = Symbol.for("@talosjs/database:connecting");
 
 type ProcessSourceType = {
   identity: string;
@@ -40,6 +41,47 @@ const readProcessSource = (name: string): ProcessSourceType | undefined => {
 
 const writeProcessSource = (name: string, value: ProcessSourceType): void => {
   (globalThis as Record<symbol, ProcessSourceType | undefined>)[sourceSymbol(name)] = value;
+};
+
+/** The connection each source is opening, kept on `globalThis` like the sources themselves. */
+const pendingConnections = (): WeakMap<DataSource<DataSourceOptionsType>, Promise<unknown>> => {
+  const scope = globalThis as Record<symbol, WeakMap<DataSource<DataSourceOptionsType>, Promise<unknown>> | undefined>;
+  const existing = scope[CONNECTING_KEY];
+
+  if (existing) {
+    return existing;
+  }
+
+  const created = new WeakMap<DataSource<DataSourceOptionsType>, Promise<unknown>>();
+  scope[CONNECTING_KEY] = created;
+
+  return created;
+};
+
+/**
+ * Connects `source` once, however many callers find it closed at the same time.
+ *
+ * Each `initialize()` builds a client with its own pool and the source keeps only the last one, so
+ * concurrent callers each starting their own would leave the other pools open and unreachable. They
+ * wait on the connection already under way instead. When it fails, every waiter gets the error and
+ * the next call tries again.
+ */
+const connect = async (source: DataSource<DataSourceOptionsType>): Promise<void> => {
+  if (source.isInitialized) {
+    return;
+  }
+
+  const connections = pendingConnections();
+  let pending = connections.get(source);
+
+  if (!pending) {
+    pending = source.initialize().finally(() => {
+      connections.delete(source);
+    });
+    connections.set(source, pending);
+  }
+
+  await pending;
 };
 
 /**
@@ -101,9 +143,7 @@ export abstract class SqlDatabase<Options extends DataSourceOptionsType = DataSo
   ): Promise<Repository<Entity>> {
     const source = this.getSource(database);
 
-    if (!source.isInitialized) {
-      await source.initialize();
-    }
+    await connect(source);
 
     return source.getRepository(entity);
   }
