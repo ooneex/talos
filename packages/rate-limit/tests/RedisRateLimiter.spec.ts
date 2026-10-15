@@ -20,6 +20,10 @@ const defaultOptions = {
 
 // Create mock Redis client instance
 const mockRedisClient = {
+  connected: true,
+  connect: mock(async (): Promise<void> => {
+    mockRedisClient.connected = true;
+  }),
   get: mock(async (_key: string): Promise<string | null> => null),
   incr: mock(async (_key: string): Promise<number> => 1),
   del: mock(async (_key: string): Promise<number> => 1),
@@ -60,6 +64,7 @@ describe("RedisRateLimiter", () => {
 
     // Reset all mocks
     const mocksToReset = [
+      mockRedisClient.connect,
       mockRedisClient.get,
       mockRedisClient.incr,
       mockRedisClient.del,
@@ -75,6 +80,10 @@ describe("RedisRateLimiter", () => {
     });
 
     // Reset mock implementations to defaults
+    mockRedisClient.connected = true;
+    mockRedisClient.connect.mockImplementation(async (): Promise<void> => {
+      mockRedisClient.connected = true;
+    });
     mockRedisClient.get.mockImplementation(async (_key: string): Promise<string | null> => null);
     mockRedisClient.incr.mockImplementation(async (_key: string): Promise<number> => 1);
     mockRedisClient.del.mockImplementation(async (_key: string): Promise<number> => 1);
@@ -338,6 +347,54 @@ describe("RedisRateLimiter", () => {
 
       expect(limiter.getCount(testKey)).rejects.toThrow(RateLimitException);
       expect(limiter.getCount(testKey)).rejects.toThrow('Failed to get count for key "user:123"');
+    });
+  });
+
+  describe("reconnection", () => {
+    test("should reconnect a client Redis closed before checking", async () => {
+      mockRedisClient.connected = false;
+      mockRedisClient.incr.mockResolvedValue(1);
+
+      const result = await limiter.check(testKey);
+
+      expect(mockRedisClient.connect).toHaveBeenCalledTimes(1);
+      expect(mockRedisClient.incr).toHaveBeenCalledWith("ratelimit:user:123");
+      expect(result.limited).toBe(false);
+    });
+
+    test("should not reconnect a client that is still connected", async () => {
+      await limiter.getCount(testKey);
+
+      expect(mockRedisClient.connect).not.toHaveBeenCalled();
+    });
+
+    test("should share one reconnect attempt between concurrent commands", async () => {
+      mockRedisClient.connected = false;
+      const { promise, resolve } = Promise.withResolvers<void>();
+      mockRedisClient.connect.mockImplementation(async (): Promise<void> => {
+        await promise;
+        mockRedisClient.connected = true;
+      });
+
+      const pending = Promise.all([limiter.check(testKey), limiter.getCount(testKey), limiter.reset(testKey)]);
+      resolve();
+      await pending;
+
+      expect(mockRedisClient.connect).toHaveBeenCalledTimes(1);
+    });
+
+    test("should retry the connection on the next command after a failed attempt", async () => {
+      mockRedisClient.connected = false;
+      mockRedisClient.connect.mockImplementationOnce(async (): Promise<void> => {
+        throw new Error("Connection closed");
+      });
+
+      expect(limiter.check(testKey)).rejects.toThrow(RateLimitException);
+      await Bun.sleep(0);
+      const result = await limiter.check(testKey);
+
+      expect(mockRedisClient.connect).toHaveBeenCalledTimes(2);
+      expect(result.total).toBe(120);
     });
   });
 
