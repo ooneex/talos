@@ -6,6 +6,7 @@ import type {
   StripePriceListOptionsType,
   StripePriceListResultType,
   StripePriceType,
+  StripePriceUpdateType,
   StripeProductCreateType,
   StripeProductListOptionsType,
   StripeProductListResultType,
@@ -93,6 +94,18 @@ export class StripeProducts {
     return this.mapPrice(price);
   }
 
+  public async updatePrice(id: string, data: StripePriceUpdateType): Promise<StripePriceType> {
+    const params: Stripe.PriceUpdateParams = {};
+
+    if (data.active !== undefined) params.active = data.active;
+    if (data.metadata) params.metadata = data.metadata;
+    if (data.nickname !== undefined) params.nickname = data.nickname;
+
+    const price = await this.client.sdk.prices.update(id, params);
+
+    return this.mapPrice(price);
+  }
+
   public async getPrice(id: string): Promise<StripePriceType> {
     const price = await this.client.sdk.prices.retrieve(id);
 
@@ -146,6 +159,7 @@ export class StripeProducts {
       result.intervalCount = price.recurring.interval_count;
     }
 
+    if (price.nickname) result.nickname = price.nickname;
     if (price.metadata) result.metadata = price.metadata as Record<string, string>;
     if (price.created) result.createdAt = new Date(price.created * 1000);
 

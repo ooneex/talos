@@ -9,6 +9,7 @@ const mockProductsDel = mock(() => Promise.resolve({ id: "prod_test123", deleted
 const mockProductsList = mock(() => Promise.resolve(createMockProductList()));
 const mockPricesCreate = mock(() => Promise.resolve(createMockPrice()));
 const mockPricesRetrieve = mock(() => Promise.resolve(createMockPrice()));
+const mockPricesUpdate = mock(() => Promise.resolve(createMockPrice()));
 const mockPricesList = mock(() => Promise.resolve(createMockPriceList()));
 
 function createMockClient() {
@@ -24,6 +25,7 @@ function createMockClient() {
       prices: {
         create: mockPricesCreate,
         retrieve: mockPricesRetrieve,
+        update: mockPricesUpdate,
         list: mockPricesList,
       },
     },
@@ -115,6 +117,13 @@ const getPriceCreateArgs = (): any => {
 };
 
 // biome-ignore lint/suspicious/noExplicitAny: Mock requires flexible typing
+const getPriceUpdateArgs = (): { id: string; params: any } => {
+  const calls = mockPricesUpdate.mock.calls as unknown[][];
+  if (calls.length === 0) throw new Error("No calls recorded");
+  return { id: calls[0]?.[0] as string, params: calls[0]?.[1] };
+};
+
+// biome-ignore lint/suspicious/noExplicitAny: Mock requires flexible typing
 const getPriceListArgs = (): any => {
   const calls = mockPricesList.mock.calls as unknown[][];
   if (calls.length === 0) throw new Error("No calls recorded");
@@ -133,6 +142,7 @@ describe("StripeProducts", () => {
     mockProductsList.mockClear();
     mockPricesCreate.mockClear();
     mockPricesRetrieve.mockClear();
+    mockPricesUpdate.mockClear();
     mockPricesList.mockClear();
     mockProductsCreate.mockImplementation(() => Promise.resolve(createMockProduct()));
     mockProductsUpdate.mockImplementation(() => Promise.resolve(createMockProduct()));
@@ -141,6 +151,7 @@ describe("StripeProducts", () => {
     mockProductsList.mockImplementation(() => Promise.resolve(createMockProductList()));
     mockPricesCreate.mockImplementation(() => Promise.resolve(createMockPrice()));
     mockPricesRetrieve.mockImplementation(() => Promise.resolve(createMockPrice()));
+    mockPricesUpdate.mockImplementation(() => Promise.resolve(createMockPrice()));
     mockPricesList.mockImplementation(() => Promise.resolve(createMockPriceList()));
   });
 
@@ -403,6 +414,37 @@ describe("StripeProducts", () => {
 
       expect(result.currency).toBe("eur");
       expect(result.unitAmount).toBe(1999);
+    });
+  });
+
+  describe("updatePrice", () => {
+    test("should archive a price and return it mapped", async () => {
+      mockPricesUpdate.mockImplementation(() =>
+        Promise.resolve(createMockPrice({ active: false, nickname: "Legacy monthly" })),
+      );
+
+      const result = await products.updatePrice("price_test123", { active: false });
+
+      const { id, params } = getPriceUpdateArgs();
+      expect(id).toBe("price_test123");
+      expect(params).toEqual({ active: false });
+      expect(result.id).toBe("price_test123");
+      expect(result.active).toBe(false);
+      expect(result.nickname).toBe("Legacy monthly");
+    });
+
+    test("should send metadata and nickname, including an empty nickname that clears it", async () => {
+      await products.updatePrice("price_test123", { metadata: { plan: "" }, nickname: "" });
+
+      const { params } = getPriceUpdateArgs();
+      expect(params).toEqual({ metadata: { plan: "" }, nickname: "" });
+    });
+
+    test("should send no field when none is given", async () => {
+      await products.updatePrice("price_test123", {});
+
+      const { params } = getPriceUpdateArgs();
+      expect(params).toEqual({});
     });
   });
 

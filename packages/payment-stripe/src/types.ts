@@ -343,6 +343,17 @@ export type StripePriceCreateType = {
   metadata?: Record<string, string>;
 };
 
+/**
+ * The fields of a price Stripe lets change once it exists. The amount, currency and recurrence are
+ * fixed: create a new price and archive this one (`active: false`) instead. Metadata is merged into
+ * what the price holds, and an empty string removes a key; an empty `nickname` clears it.
+ */
+export type StripePriceUpdateType = {
+  active?: boolean;
+  metadata?: Record<string, string>;
+  nickname?: string;
+};
+
 export type StripePriceType = {
   id: string;
   productId: string;
@@ -352,6 +363,7 @@ export type StripePriceType = {
   interval?: StripePriceIntervalType;
   intervalCount?: number;
   active?: boolean;
+  nickname?: string;
   metadata?: Record<string, string>;
   createdAt?: Date;
 };
