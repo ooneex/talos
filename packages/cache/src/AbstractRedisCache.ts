@@ -17,6 +17,7 @@ type RedisCacheConnectionType = {
 export abstract class AbstractRedisCache extends AbstractCache {
   protected readonly client: Bun.RedisClient;
   protected readonly namespace: string | null;
+  private connecting: Promise<void> | null = null;
 
   protected constructor(
     connectionString: string | undefined,
@@ -54,12 +55,29 @@ export abstract class AbstractRedisCache extends AbstractCache {
     });
   }
 
+  /**
+   * Bun's client gives up for good once its reconnect attempts run out, so a Redis outage would
+   * otherwise fail every later call until the process restarts. Reconnect on demand instead,
+   * sharing one attempt between the calls that arrive while it is in flight.
+   */
+  protected async connection(): Promise<Bun.RedisClient> {
+    if (!this.client.connected) {
+      this.connecting ??= this.client.connect().finally(() => {
+        this.connecting = null;
+      });
+      await this.connecting;
+    }
+
+    return this.client;
+  }
+
   protected getKey(key: string): string {
     return this.namespace ? `${this.namespace}:${key}` : key;
   }
 
   public async get<T = unknown>(key: string): Promise<T | undefined> {
-    const value = await this.client.get(this.getKey(key));
+    const client = await this.connection();
+    const value = await client.get(this.getKey(key));
 
     if (value === null) {
       return;
@@ -80,7 +98,8 @@ export abstract class AbstractRedisCache extends AbstractCache {
   }
 
   public async has(key: string): Promise<boolean> {
-    const result = await this.client.exists(this.getKey(key));
+    const client = await this.connection();
+    const result = await client.exists(this.getKey(key));
 
     return result;
   }
