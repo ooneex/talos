@@ -23,21 +23,23 @@ export class DragonflyCache extends AbstractRedisCache {
   }
 
   public async set<T = unknown>(key: string, value: T, ttl?: number): Promise<void> {
+    const client = await this.connection();
     const namespacedKey = this.getKey(key);
     const serializedValue = this.serialize(value);
 
     if (ttl && ttl > 0) {
       // Dragonfly sets the value and its expiry atomically, so a crash can never leave a key immortal
-      await this.client.set(namespacedKey, serializedValue, "EX", Math.floor(ttl));
+      await client.set(namespacedKey, serializedValue, "EX", Math.floor(ttl));
 
       return;
     }
 
-    await this.client.set(namespacedKey, serializedValue);
+    await client.set(namespacedKey, serializedValue);
   }
 
   public async delete(key: string): Promise<boolean> {
-    const result = await this.client.unlink(this.getKey(key));
+    const client = await this.connection();
+    const result = await client.unlink(this.getKey(key));
 
     return result > 0;
   }
@@ -47,12 +49,13 @@ export class DragonflyCache extends AbstractRedisCache {
    * SCAN may hand back the same key twice, so the count comes from the server, not from the page.
    */
   protected async deleteMatching(pattern: string): Promise<number> {
+    const client = await this.connection();
     let cursor = "0";
     let deleted = 0;
 
     // talos-ignore perf.await-in-loop: SCAN is a cursor — a page cannot be asked for before the one that returns it
     do {
-      const [nextCursor, keys] = await this.client.scan(
+      const [nextCursor, keys] = await client.scan(
         cursor,
         "MATCH",
         pattern,
@@ -64,7 +67,7 @@ export class DragonflyCache extends AbstractRedisCache {
       cursor = nextCursor;
 
       if (keys.length > 0) {
-        deleted += await this.client.unlink(...keys);
+        deleted += await client.unlink(...keys);
       }
     } while (cursor !== "0");
 

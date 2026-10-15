@@ -630,6 +630,52 @@ describe("RedisCacheAdapter", () => {
 
       expect(mockRedisClient.get).toHaveBeenCalledTimes(3);
     });
+
+    test("should connect once and reuse the connection while it stays open", async () => {
+      await adapter.get(testKey);
+      await adapter.set(testKey, testValue);
+      await adapter.has(testKey);
+
+      expect(mockRedisClient.connect).toHaveBeenCalledTimes(1);
+    });
+
+    test("should reconnect a client Redis closed after an outage", async () => {
+      await adapter.get(testKey);
+      mockRedisClient.connected = false;
+      mockRedisClient.get.mockResolvedValue(testValue);
+
+      const result = await adapter.get(testKey);
+
+      expect(mockRedisClient.connect).toHaveBeenCalledTimes(2);
+      expect(result).toBe(testValue);
+    });
+
+    test("should share one reconnect attempt between concurrent calls", async () => {
+      const { promise, resolve } = Promise.withResolvers<void>();
+      mockRedisClient.connect.mockImplementation(async (): Promise<void> => {
+        await promise;
+        mockRedisClient.connected = true;
+      });
+
+      const pending = Promise.all([adapter.get(testKey), adapter.delete(testKey), adapter.clear()]);
+      resolve();
+      await pending;
+
+      expect(mockRedisClient.connect).toHaveBeenCalledTimes(1);
+    });
+
+    test("should retry the connection on the next call after a failed attempt", async () => {
+      mockRedisClient.connect.mockImplementationOnce(async (): Promise<void> => {
+        throw new Error("Connection closed");
+      });
+
+      expect(adapter.get(testKey)).rejects.toThrow("Connection closed");
+      await Bun.sleep(0);
+      await adapter.get(testKey);
+
+      expect(mockRedisClient.connect).toHaveBeenCalledTimes(2);
+      expect(mockRedisClient.get).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe("delete and has methods integration", () => {

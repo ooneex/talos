@@ -17,17 +17,19 @@ export class RedisCache extends AbstractRedisCache {
   }
 
   public async set<T = unknown>(key: string, value: T, ttl?: number): Promise<void> {
+    const client = await this.connection();
     const namespacedKey = this.getKey(key);
 
-    await this.client.set(namespacedKey, this.serialize(value));
+    await client.set(namespacedKey, this.serialize(value));
 
     if (ttl && ttl > 0) {
-      await this.client.expire(namespacedKey, ttl);
+      await client.expire(namespacedKey, ttl);
     }
   }
 
   public async delete(key: string): Promise<boolean> {
-    const result = await this.client.del(this.getKey(key));
+    const client = await this.connection();
+    const result = await client.del(this.getKey(key));
 
     return result > 0;
   }
@@ -36,16 +38,17 @@ export class RedisCache extends AbstractRedisCache {
    * Delete every key the pattern matches, one SCAN page at a time, and say how many went.
    */
   protected async deleteMatching(pattern: string): Promise<number> {
+    const client = await this.connection();
     let cursor = "0";
     let deleted = 0;
 
     // talos-ignore perf.await-in-loop: SCAN is a cursor — a page cannot be asked for before the one that returns it
     do {
-      const [nextCursor, keys] = await this.client.scan(cursor, "MATCH", pattern, "COUNT", SCAN_COUNT);
+      const [nextCursor, keys] = await client.scan(cursor, "MATCH", pattern, "COUNT", SCAN_COUNT);
       cursor = nextCursor;
 
       if (keys.length > 0) {
-        await this.client.del(...keys);
+        await client.del(...keys);
         deleted += keys.length;
       }
     } while (cursor !== "0");
