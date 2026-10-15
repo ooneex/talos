@@ -194,6 +194,42 @@ describe("decorator.repository", () => {
     expect(instance).toBeInstanceOf(TypedRepository);
   });
 
+  test("should register a repository whose find requires a criteria field", async () => {
+    type NoteEntity = {
+      id: string;
+      ownerId: string;
+    };
+
+    type NoteCriteria = {
+      ownerId: string;
+    };
+
+    class OwnedNoteRepository implements IRepository<NoteEntity, NoteCriteria> {
+      public async open(): Promise<unknown> {
+        return null;
+      }
+      public async close(): Promise<void> {
+        // noop
+      }
+      public async find(
+        criteria: NoteCriteria & { page?: number; limit?: number; q?: string },
+      ): Promise<FilterResultType<NoteEntity>> {
+        return {
+          resources: [{ id: "note-1", ownerId: criteria.ownerId }],
+          total: 1,
+          totalPages: 1,
+          page: criteria.page ?? 1,
+          limit: criteria.limit ?? 10,
+        };
+      }
+    }
+
+    decorator.repository()(OwnedNoteRepository);
+
+    const result = await container.get(OwnedNoteRepository).find({ ownerId: "user-1" });
+    expect(result.resources).toEqual([{ id: "note-1", ownerId: "user-1" }]);
+  });
+
   test("should return void from the decorator function", () => {
     class VoidReturnRepository implements IRepository {
       public async open(): Promise<unknown> {
