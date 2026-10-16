@@ -55,11 +55,14 @@ export class StripeWebhookEvent {
 
   private checkoutSessionCompleted(raw: Stripe.Event, created: Date): CheckoutSessionCompletedEventType {
     const obj = raw.data.object as Stripe.Checkout.Session;
+    const promotionCode = obj.discounts?.[0]?.promotion_code ?? null;
     const data: CheckoutSessionCompletedDataType = {
       id: obj.id,
       customerId: typeof obj.customer === "string" ? obj.customer : (obj.customer?.id ?? null),
       customerEmail: obj.customer_email ?? obj.customer_details?.email ?? null,
       amountTotal: obj.amount_total,
+      amountDiscount: obj.total_details?.amount_discount ?? null,
+      promotionCodeId: typeof promotionCode === "string" ? promotionCode : (promotionCode?.id ?? null),
       currency: obj.currency,
       paymentStatus: obj.payment_status,
       subscriptionId: typeof obj.subscription === "string" ? obj.subscription : (obj.subscription?.id ?? null),
