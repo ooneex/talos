@@ -7,7 +7,7 @@ const mockCouponsUpdate = mock(() => Promise.resolve(createMockCoupon()));
 const mockCouponsRetrieve = mock(() => Promise.resolve(createMockCoupon()));
 const mockCouponsDel = mock(() => Promise.resolve({ id: "coupon_test123", deleted: true }));
 const mockCouponsList = mock(() => Promise.resolve(createMockCouponList()));
-const mockPromotionCodesCreate = mock(() => Promise.resolve({ id: "promo_test123" }));
+const mockPromotionCodesCreate = mock(() => Promise.resolve({ id: "promo_test123", code: "SUMMER15" }));
 
 function createMockClient() {
   return {
@@ -107,7 +107,7 @@ describe("StripeDiscount", () => {
     mockCouponsRetrieve.mockImplementation(() => Promise.resolve(createMockCoupon()));
     mockCouponsDel.mockImplementation(() => Promise.resolve({ id: "coupon_test123", deleted: true }));
     mockCouponsList.mockImplementation(() => Promise.resolve(createMockCouponList()));
-    mockPromotionCodesCreate.mockImplementation(() => Promise.resolve({ id: "promo_test123" }));
+    mockPromotionCodesCreate.mockImplementation(() => Promise.resolve({ id: "promo_test123", code: "SUMMER15" }));
   });
 
   describe("create — percentage", () => {
@@ -222,6 +222,59 @@ describe("StripeDiscount", () => {
       const promoArgs = getPromoCodeArgs();
       expect(promoArgs.coupon).toBe("coupon_test123");
       expect(promoArgs.code).toBe("SUMMER15");
+    });
+
+    test("should return the promotion code it creates", async () => {
+      const result = await discount.create({
+        name: "Summer Sale",
+        type: "percentage",
+        amount: 15,
+        duration: "once",
+        code: "SUMMER15",
+      });
+
+      expect(result.id).toBe("coupon_test123");
+      expect(result.promotionCodeId).toBe("promo_test123");
+      expect(result.code).toBe("SUMMER15");
+    });
+
+    test("should delete the coupon and rethrow when the promotion code is refused", async () => {
+      const refusal = new Error("An active promotion code with `code: SUMMER15` already exists.");
+      mockPromotionCodesCreate.mockImplementation(() => Promise.reject(refusal));
+
+      const creation = discount.create({
+        name: "Summer Sale",
+        type: "percentage",
+        amount: 15,
+        duration: "once",
+        code: "SUMMER15",
+      });
+
+      await expect(creation).rejects.toBe(refusal);
+      expect(mockCouponsDel).toHaveBeenCalledWith("coupon_test123");
+    });
+
+    test("should rethrow the refusal even when the coupon cannot be deleted", async () => {
+      const refusal = new Error("code taken");
+      mockPromotionCodesCreate.mockImplementation(() => Promise.reject(refusal));
+      mockCouponsDel.mockImplementation(() => Promise.reject(new Error("network down")));
+
+      const creation = discount.create({
+        name: "Summer Sale",
+        type: "percentage",
+        amount: 15,
+        duration: "once",
+        code: "SUMMER15",
+      });
+
+      await expect(creation).rejects.toBe(refusal);
+    });
+
+    test("should not set a promotion code without a code", async () => {
+      const result = await discount.create({ name: "No Code", type: "percentage", amount: 10, duration: "once" });
+
+      expect(result.promotionCodeId).toBeUndefined();
+      expect(result.code).toBeUndefined();
     });
 
     test("should not create promotion code when code is absent", async () => {

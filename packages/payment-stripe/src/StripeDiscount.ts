@@ -38,20 +38,31 @@ export class StripeDiscount {
     if (data.appliesTo) params.applies_to = { products: data.appliesTo };
 
     const coupon = await this.client.sdk.coupons.create(params);
+    const discount = this.mapCoupon(coupon);
 
-    if (data.code) {
-      const promotionParams: Stripe.PromotionCodeCreateParams = {
-        coupon: coupon.id,
-        code: data.code,
-      };
-
-      if (data.maxRedemptions !== undefined) promotionParams.max_redemptions = data.maxRedemptions;
-      if (data.redeemBy) promotionParams.expires_at = Math.floor(data.redeemBy.getTime() / 1000);
-
-      await this.client.sdk.promotionCodes.create(promotionParams);
+    if (!data.code) {
+      return discount;
     }
 
-    return this.mapCoupon(coupon);
+    const promotionParams: Stripe.PromotionCodeCreateParams = {
+      coupon: coupon.id,
+      code: data.code,
+    };
+
+    if (data.maxRedemptions !== undefined) promotionParams.max_redemptions = data.maxRedemptions;
+    if (data.redeemBy) promotionParams.expires_at = Math.floor(data.redeemBy.getTime() / 1000);
+
+    let promotionCode: Stripe.PromotionCode;
+
+    try {
+      promotionCode = await this.client.sdk.promotionCodes.create(promotionParams);
+    } catch (error) {
+      await this.client.sdk.coupons.del(coupon.id).catch(() => undefined);
+
+      throw error;
+    }
+
+    return { ...discount, code: promotionCode.code, promotionCodeId: promotionCode.id };
   }
 
   public async update(id: string, data: StripeDiscountUpdateType): Promise<StripeDiscountType> {

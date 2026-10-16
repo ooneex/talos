@@ -258,7 +258,10 @@ export type StripeDiscountType = {
   currency?: string;
   duration: StripeDiscountDurationType;
   durationInMonths?: number;
+  /** The text a buyer types, set when `create` was given a `code`. */
   code?: string;
+  /** The Stripe promotion code (`promo_…`) created for `code`. */
+  promotionCodeId?: string;
   maxRedemptions?: number;
   timesRedeemed?: number;
   redeemBy?: Date;
