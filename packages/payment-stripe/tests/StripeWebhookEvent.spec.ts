@@ -104,6 +104,8 @@ describe("StripeWebhookEvent", () => {
         customer: "cus_test123",
         customer_email: "user@example.com",
         amount_total: 1999,
+        total_details: { amount_discount: 500, amount_shipping: 0, amount_tax: 0 },
+        discounts: [{ coupon: "coupon_test123", promotion_code: "promo_test123" }],
         currency: "eur",
         payment_status: "paid",
         subscription: "sub_test123",
@@ -120,6 +122,8 @@ describe("StripeWebhookEvent", () => {
         customerId: "cus_test123",
         customerEmail: "user@example.com",
         amountTotal: 1999,
+        amountDiscount: 500,
+        promotionCodeId: "promo_test123",
         currency: "eur",
         paymentStatus: "paid",
         subscriptionId: "sub_test123",
@@ -148,6 +152,35 @@ describe("StripeWebhookEvent", () => {
       expect(event.data.metadata).toEqual({});
     });
 
+    test("should unwrap an expanded promotion code", async () => {
+      respondWith(EStripeEvent.CheckoutSessionCompleted, {
+        id: "cs_test123",
+        amount_total: 800,
+        total_details: { amount_discount: 200 },
+        discounts: [{ coupon: "coupon_test123", promotion_code: { id: "promo_expanded", code: "SUMMER20" } }],
+        payment_status: "paid",
+      });
+
+      const event = (await webhook.construct("p", "s", "w")) as CheckoutSessionCompletedEventType;
+
+      expect(event.data.promotionCodeId).toBe("promo_expanded");
+      expect(event.data.amountDiscount).toBe(200);
+    });
+
+    test("should keep a coupon applied without a promotion code out of promotionCodeId", async () => {
+      respondWith(EStripeEvent.CheckoutSessionCompleted, {
+        id: "cs_test123",
+        total_details: { amount_discount: 300 },
+        discounts: [{ coupon: "coupon_test123", promotion_code: null }],
+        payment_status: "paid",
+      });
+
+      const event = (await webhook.construct("p", "s", "w")) as CheckoutSessionCompletedEventType;
+
+      expect(event.data.promotionCodeId).toBeNull();
+      expect(event.data.amountDiscount).toBe(300);
+    });
+
     test("should null out missing customer, email and subscription", async () => {
       respondWith(EStripeEvent.CheckoutSessionCompleted, {
         id: "cs_test123",
@@ -165,6 +198,8 @@ describe("StripeWebhookEvent", () => {
       expect(event.data.customerEmail).toBeNull();
       expect(event.data.subscriptionId).toBeNull();
       expect(event.data.amountTotal).toBeNull();
+      expect(event.data.amountDiscount).toBeNull();
+      expect(event.data.promotionCodeId).toBeNull();
     });
   });
 

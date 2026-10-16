@@ -58,6 +58,10 @@ export type CheckoutSessionCompletedDataType = {
   customerId: string | null;
   customerEmail: string | null;
   amountTotal: number | null;
+  /** What the discounts took off, in the smallest currency unit (`total_details.amount_discount`). */
+  amountDiscount: number | null;
+  /** The promotion code the buyer entered, when the session carries one in `discounts`. */
+  promotionCodeId: string | null;
   currency: string | null;
   paymentStatus: string;
   subscriptionId: string | null;
