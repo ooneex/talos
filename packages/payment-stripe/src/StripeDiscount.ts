@@ -9,6 +9,9 @@ import type {
   StripeDiscountType,
   StripeDiscountTypeType,
   StripeDiscountUpdateType,
+  StripePromotionCodeListOptionsType,
+  StripePromotionCodeListResultType,
+  StripePromotionCodeType,
 } from "./types";
 
 @injectable()
@@ -88,6 +91,55 @@ export class StripeDiscount {
       items: response.data.map((c) => this.mapCoupon(c)),
       hasMore: response.has_more,
     };
+  }
+
+  public async listPromotionCodes(
+    options?: StripePromotionCodeListOptionsType,
+  ): Promise<StripePromotionCodeListResultType> {
+    const params: Stripe.PromotionCodeListParams = {
+      limit: options?.limit ?? 10,
+    };
+
+    if (options?.startingAfter) params.starting_after = options.startingAfter;
+    if (options?.code) params.code = options.code;
+    if (options?.active !== undefined) params.active = options.active;
+
+    const response = await this.client.sdk.promotionCodes.list(params);
+
+    return {
+      items: response.data.map((p) => this.mapPromotionCode(p)),
+      hasMore: response.has_more,
+    };
+  }
+
+  public async getPromotionCode(id: string): Promise<StripePromotionCodeType> {
+    const promotionCode = await this.client.sdk.promotionCodes.retrieve(id);
+
+    return this.mapPromotionCode(promotionCode);
+  }
+
+  /** Stripe cannot delete a promotion code: it is made inactive and keeps its redemption history. */
+  public async disablePromotionCode(id: string): Promise<StripePromotionCodeType> {
+    const promotionCode = await this.client.sdk.promotionCodes.update(id, { active: false });
+
+    return this.mapPromotionCode(promotionCode);
+  }
+
+  private mapPromotionCode(promotionCode: Stripe.PromotionCode): StripePromotionCodeType {
+    const result: StripePromotionCodeType = {
+      id: promotionCode.id,
+      code: promotionCode.code,
+      coupon: this.mapCoupon(promotionCode.coupon),
+      active: promotionCode.active,
+      timesRedeemed: promotionCode.times_redeemed,
+      createdAt: new Date(promotionCode.created * 1000),
+    };
+
+    if (promotionCode.max_redemptions) result.maxRedemptions = promotionCode.max_redemptions;
+    if (promotionCode.expires_at) result.expiresAt = new Date(promotionCode.expires_at * 1000);
+    if (promotionCode.metadata) result.metadata = promotionCode.metadata as Record<string, string>;
+
+    return result;
   }
 
   private mapCoupon(coupon: Stripe.Coupon): StripeDiscountType {

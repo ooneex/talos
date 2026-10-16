@@ -277,6 +277,34 @@ export type StripeDiscountListResultType = {
   hasMore: boolean;
 };
 
+export type StripePromotionCodeType = {
+  id: string;
+  /** The text a buyer types at checkout. */
+  code: string;
+  /** The coupon the code applies. */
+  coupon: StripeDiscountType;
+  /** False once the code is disabled; Stripe refuses it at checkout from then on. */
+  active: boolean;
+  timesRedeemed: number;
+  maxRedemptions?: number;
+  expiresAt?: Date;
+  metadata?: Record<string, string>;
+  createdAt: Date;
+};
+
+export type StripePromotionCodeListOptionsType = {
+  limit?: number;
+  startingAfter?: string;
+  /** Only the codes with this text, compared without case. */
+  code?: string;
+  active?: boolean;
+};
+
+export type StripePromotionCodeListResultType = {
+  items: StripePromotionCodeType[];
+  hasMore: boolean;
+};
+
 // ─── Products ─────────────────────────────────────────────────────────────
 
 export type StripeProductCreateType = {

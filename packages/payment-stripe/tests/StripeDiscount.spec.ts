@@ -21,10 +21,17 @@ function createMockClient() {
       },
       promotionCodes: {
         create: mockPromotionCodesCreate,
+        list: mockPromotionCodesList,
+        retrieve: mockPromotionCodesRetrieve,
+        update: mockPromotionCodesUpdate,
       },
     },
   } as unknown as StripeClient;
 }
+
+const mockPromotionCodesList = mock(() => Promise.resolve(createMockPromotionCodeList()));
+const mockPromotionCodesRetrieve = mock(() => Promise.resolve(createMockPromotionCode()));
+const mockPromotionCodesUpdate = mock(() => Promise.resolve(createMockPromotionCode({ active: false })));
 
 function createMockCoupon(overrides = {}) {
   return {
@@ -42,6 +49,30 @@ function createMockCoupon(overrides = {}) {
     valid: true,
     metadata: { source: "campaign" },
     created: 1704067200,
+    ...overrides,
+  };
+}
+
+function createMockPromotionCode(overrides = {}) {
+  return {
+    id: "promo_test123",
+    object: "promotion_code",
+    active: true,
+    code: "SUMMER15",
+    coupon: createMockCoupon(),
+    created: 1704067200,
+    expires_at: null,
+    max_redemptions: null,
+    metadata: {},
+    times_redeemed: 3,
+    ...overrides,
+  };
+}
+
+function createMockPromotionCodeList(overrides = {}) {
+  return {
+    data: [createMockPromotionCode(), createMockPromotionCode({ id: "promo_test456", code: "WINTER10" })],
+    has_more: false,
     ...overrides,
   };
 }
@@ -102,6 +133,12 @@ describe("StripeDiscount", () => {
     mockCouponsDel.mockClear();
     mockCouponsList.mockClear();
     mockPromotionCodesCreate.mockClear();
+    mockPromotionCodesList.mockClear();
+    mockPromotionCodesRetrieve.mockClear();
+    mockPromotionCodesUpdate.mockClear();
+    mockPromotionCodesList.mockImplementation(() => Promise.resolve(createMockPromotionCodeList()));
+    mockPromotionCodesRetrieve.mockImplementation(() => Promise.resolve(createMockPromotionCode()));
+    mockPromotionCodesUpdate.mockImplementation(() => Promise.resolve(createMockPromotionCode({ active: false })));
     mockCouponsCreate.mockImplementation(() => Promise.resolve(createMockCoupon()));
     mockCouponsUpdate.mockImplementation(() => Promise.resolve(createMockCoupon()));
     mockCouponsRetrieve.mockImplementation(() => Promise.resolve(createMockCoupon()));
@@ -455,6 +492,84 @@ describe("StripeDiscount", () => {
       const result = await discount.list();
 
       expect(result.hasMore).toBe(true);
+    });
+  });
+
+  describe("listPromotionCodes", () => {
+    test("should list promotion codes with default limit of 10", async () => {
+      await discount.listPromotionCodes();
+
+      expect(mockPromotionCodesList).toHaveBeenCalledWith({ limit: 10 });
+    });
+
+    test("should pass limit, startingAfter, code and active", async () => {
+      await discount.listPromotionCodes({ limit: 1, startingAfter: "promo_prev", code: "SUMMER15", active: false });
+
+      expect(mockPromotionCodesList).toHaveBeenCalledWith({
+        limit: 1,
+        starting_after: "promo_prev",
+        code: "SUMMER15",
+        active: false,
+      });
+    });
+
+    test("should map items with their coupon and hasMore", async () => {
+      mockPromotionCodesList.mockImplementation(() => Promise.resolve(createMockPromotionCodeList({ has_more: true })));
+
+      const result = await discount.listPromotionCodes();
+
+      expect(result.hasMore).toBe(true);
+      expect(result.items.map((p) => p.code)).toEqual(["SUMMER15", "WINTER10"]);
+      expect(result.items[0]?.coupon.id).toBe("coupon_test123");
+      expect(result.items[0]?.coupon.amount).toBe(20);
+    });
+  });
+
+  describe("getPromotionCode", () => {
+    test("should retrieve and map a promotion code", async () => {
+      const expiresAt = 1735603200;
+      mockPromotionCodesRetrieve.mockImplementation(() =>
+        Promise.resolve(createMockPromotionCode({ expires_at: expiresAt, max_redemptions: 100 })),
+      );
+
+      const result = await discount.getPromotionCode("promo_test123");
+
+      expect(mockPromotionCodesRetrieve).toHaveBeenCalledWith("promo_test123");
+      expect(result).toEqual({
+        id: "promo_test123",
+        code: "SUMMER15",
+        coupon: expect.objectContaining({ id: "coupon_test123", type: "percentage" }),
+        active: true,
+        timesRedeemed: 3,
+        maxRedemptions: 100,
+        expiresAt: new Date(expiresAt * 1000),
+        metadata: {},
+        createdAt: new Date(1704067200 * 1000),
+      });
+    });
+
+    test("should leave out a missing expiry and redemption cap", async () => {
+      const result = await discount.getPromotionCode("promo_test123");
+
+      expect(result.expiresAt).toBeUndefined();
+      expect(result.maxRedemptions).toBeUndefined();
+    });
+
+    test("should propagate a Stripe error", async () => {
+      mockPromotionCodesRetrieve.mockImplementation(() => Promise.reject(new Error("No such promotion code")));
+
+      await expect(discount.getPromotionCode("promo_missing")).rejects.toThrow("No such promotion code");
+    });
+  });
+
+  describe("disablePromotionCode", () => {
+    test("should make the promotion code inactive without deleting its coupon", async () => {
+      const result = await discount.disablePromotionCode("promo_test123");
+
+      expect(mockPromotionCodesUpdate).toHaveBeenCalledWith("promo_test123", { active: false });
+      expect(mockCouponsDel).not.toHaveBeenCalled();
+      expect(result.active).toBe(false);
+      expect(result.timesRedeemed).toBe(3);
     });
   });
 
