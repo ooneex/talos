@@ -191,3 +191,9 @@
 
 - Run package lint through bun check|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([de3ee05c](https://github.com/ooneex/talos/commit/de3ee05c))
 
+## [1.10.0](https://github.com/ooneex/talos/releases/tag/@talosjs/app@1.10.0) - 2026-10-17
+
+### Added
+
+- Bind a lazy mailer token from app config|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([c6f24059](https://github.com/ooneex/talos/commit/c6f24059))
+
