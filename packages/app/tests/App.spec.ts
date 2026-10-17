@@ -4,6 +4,7 @@ import { container } from "@talosjs/container";
 import { Exception } from "@talosjs/exception";
 import { HttpResponse } from "@talosjs/http-response";
 import { HttpStatus } from "@talosjs/http-status";
+import type { IMailer } from "@talosjs/mailer";
 import { RoleException } from "@talosjs/role";
 import { router } from "@talosjs/routing";
 import { App } from "@/App";
@@ -62,6 +63,15 @@ class MockCache {
 
 class MockRateLimiter {
   check = mock(() => true);
+}
+
+const mailerConstructed = mock(() => {});
+
+class MockMailer {
+  constructor() {
+    mailerConstructed();
+  }
+  send = mock(async (_config: unknown) => {});
 }
 
 class MockOnException {
@@ -196,6 +206,53 @@ describe("App", () => {
 
       expect(container.has(MockRateLimiter)).toBe(true);
       expect(container.hasConstant("rateLimiter")).toBe(true);
+    });
+
+    test("binds the mailer token without building the mailer when provided", async () => {
+      container.removeConstant("mailer");
+      mailerConstructed.mockClear();
+
+      await new App(createMockConfig({ mailer: MockMailer as unknown as AppConfigType["mailer"] })).init();
+
+      expect(container.has(MockMailer)).toBe(true);
+      expect(container.hasConstant("mailer")).toBe(true);
+      expect(mailerConstructed).not.toHaveBeenCalled();
+    });
+
+    test("delegates each send on the mailer token to the configured mailer", async () => {
+      container.removeConstant("mailer");
+
+      await new App(createMockConfig({ mailer: MockMailer as unknown as AppConfigType["mailer"] })).init();
+
+      const config = { to: ["admin@example.com"], subject: "Welcome", content: "Hello" };
+      await container.getConstant<IMailer>("mailer").send(config);
+
+      expect(container.get<MockMailer>(MockMailer).send).toHaveBeenCalledWith(config);
+    });
+
+    test("rejects the send, not the token resolution, when the mailer cannot be built", async () => {
+      container.removeConstant("mailer");
+      class FailingMailer {
+        constructor() {
+          throw new Error("API key is required");
+        }
+        send = mock(async () => {});
+      }
+
+      await new App(createMockConfig({ mailer: FailingMailer as unknown as AppConfigType["mailer"] })).init();
+
+      const mailer = container.getConstant<IMailer>("mailer");
+      await expect(mailer.send({ to: ["admin@example.com"], subject: "Welcome", content: "Hello" })).rejects.toThrow(
+        "API key is required",
+      );
+    });
+
+    test("does not bind the mailer token when no mailer is configured", async () => {
+      container.removeConstant("mailer");
+
+      await new App(createMockConfig()).init();
+
+      expect(container.hasConstant("mailer")).toBe(false);
     });
 
     test("adds onException to container and registers exception.logger constant when provided", async () => {

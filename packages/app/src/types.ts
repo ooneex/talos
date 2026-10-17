@@ -1,6 +1,7 @@
 import type { CacheClassType } from "@talosjs/cache";
 import type { CronClassType } from "@talosjs/cron";
 import type { LoggerClassType } from "@talosjs/logger";
+import type { MailerClassType } from "@talosjs/mailer";
 import type { MiddlewareClassType, SocketMiddlewareClassType } from "@talosjs/middleware";
 import type { RateLimiterClassType } from "@talosjs/rate-limit";
 import type { Server, TLSOptions, WebSocketCompressor } from "bun";
@@ -138,6 +139,13 @@ export type AppConfigType = {
   onException?: LoggerClassType;
   cache?: CacheClassType;
   rateLimiter?: RateLimiterClassType;
+  /**
+   * Global mailer bound to the `"mailer"` token that module mailers inject.
+   * It is only built on the first send, so a misconfigured provider (e.g. a
+   * missing API key) rejects that send instead of failing every request whose
+   * services depend on a mailer.
+   */
+  mailer?: MailerClassType;
   cronJobs?: CronClassType[];
   middlewares?: MiddlewareClassType[] | SocketMiddlewareClassType[];
   cors?: MiddlewareClassType;

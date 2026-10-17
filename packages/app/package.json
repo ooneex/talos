@@ -11,6 +11,7 @@
     "@talosjs/http-response": "workspace:^",
     "@talosjs/http-status": "workspace:^",
     "@talosjs/logger": "workspace:^",
+    "@talosjs/mailer": "workspace:^",
     "@talosjs/middleware": "workspace:^",
     "@talosjs/rate-limit": "workspace:^",
     "@talosjs/role": "workspace:^",

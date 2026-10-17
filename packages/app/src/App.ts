@@ -5,6 +5,7 @@ import type { ICron } from "@talosjs/cron";
 import { Exception, type IException } from "@talosjs/exception";
 import { HttpStatus } from "@talosjs/http-status";
 import { type ILogger, type LogDataType, TerminalLogger } from "@talosjs/logger";
+import type { IMailer } from "@talosjs/mailer";
 import type { MiddlewareClassType, SocketMiddlewareClassType } from "@talosjs/middleware";
 import { generateRolesTypes, type IRolesConfig, validateConfig } from "@talosjs/role";
 import { router } from "@talosjs/routing";
@@ -34,7 +35,7 @@ export class App {
   // (e.g. RedisCache needs CACHE_REDIS_URL), so this must never run before the
   // environment files have been layered onto Bun.env.
   private registerServices(): void {
-    const { loggers, cronJobs, cache, rateLimiter, onException, onStart, onStop } = this.config;
+    const { loggers, cronJobs, cache, rateLimiter, mailer, onException, onStart, onStop } = this.config;
 
     loggers.forEach((log) => {
       if (!container.has(log)) {
@@ -78,6 +79,19 @@ export class App {
         container.add(rateLimiter);
       }
       container.addConstant("rateLimiter", container.get(rateLimiter));
+    }
+
+    if (mailer) {
+      if (!container.has(mailer)) {
+        container.add(mailer);
+      }
+      // Resolved on each send rather than here, so a provider that throws while being built
+      // rejects that send instead of every injection of the "mailer" token.
+      container.addConstant<IMailer>("mailer", {
+        send: async (config) => {
+          await container.get<IMailer>(mailer).send(config);
+        },
+      });
     }
 
     cronJobs?.forEach((cronJob) => {
