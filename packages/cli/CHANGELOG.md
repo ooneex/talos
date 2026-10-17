@@ -894,3 +894,9 @@
 - Run package lint through bun check|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([de3ee05c](https://github.com/ooneex/talos/commit/de3ee05c))
 - Update Cargo.lock| — Franck ([0670ee36](https://github.com/ooneex/talos/commit/0670ee36))
 
+## [0.17.4](https://github.com/ooneex/talos/releases/tag/@talos/cli@0.17.4) - 2026-10-17
+
+### Changed
+
+- Update Cargo.lock| — Franck ([eb4aca28](https://github.com/ooneex/talos/commit/eb4aca28))
+
