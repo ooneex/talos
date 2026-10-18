@@ -900,3 +900,17 @@
 
 - Update Cargo.lock| — Franck ([eb4aca28](https://github.com/ooneex/talos/commit/eb4aca28))
 
+## [0.17.5](https://github.com/ooneex/talos/releases/tag/@talos/cli@0.17.5) - 2026-10-18
+
+### Changed
+
+- Update Cargo.lock| — Franck ([21fcf2f1](https://github.com/ooneex/talos/commit/21fcf2f1))
+
+### Fixed
+
+- Find a large OpenAPI specification and never take the manifest for one|find_spec searched the swagger module through the source scan, which skips files over 512 KB. — Julien ([9ce75dd3](https://github.com/ooneex/talos/commit/9ce75dd3))
+- Read route types and schemas held in constants in the validation check|The validation check only read `export type …RouteType`, so a controller declaring its route — Julien ([4cafd9ec](https://github.com/ooneex/talos/commit/4cafd9ec))
+- Count only real brackets when the validation check reads keys|`keys` tracked `<` and `>` as generics, including inside string literals and in an arrow's `=>`. — Julien ([3c3d097f](https://github.com/ooneex/talos/commit/3c3d097f))
+- Ignore type-only imports in the boundaries check|The boundaries check drew an edge for every import, `import type` included, so an SDK importing — Julien ([3433c811](https://github.com/ooneex/talos/commit/3433c811))
+- Count test imports and list every orphan under --logs in the orphans check|The orphans check only walked the sources, so a helper or an export that only a spec under a — Julien ([1217a653](https://github.com/ooneex/talos/commit/1217a653))
+
