@@ -8,6 +8,7 @@ import type { IRateLimiter, RateLimitResultType, RedisRateLimiterOptionsType } f
 export class RedisRateLimiter implements IRateLimiter {
   private readonly client: Bun.RedisClient;
   private readonly namespace: string;
+  private connecting: Promise<void> | null = null;
 
   constructor(
     @inject(AppEnv) private readonly env: AppEnv,
@@ -42,6 +43,22 @@ export class RedisRateLimiter implements IRateLimiter {
     });
   }
 
+  /**
+   * Bun's client gives up for good once its reconnect attempts run out, so a Redis outage would
+   * otherwise fail every later check until the process restarts. Reconnect on demand instead,
+   * sharing one attempt between the commands that arrive while it is in flight.
+   */
+  private async connection(): Promise<Bun.RedisClient> {
+    if (!this.client.connected) {
+      this.connecting ??= this.client.connect().finally(() => {
+        this.connecting = null;
+      });
+      await this.connecting;
+    }
+
+    return this.client;
+  }
+
   private getKey(key: string): string {
     return `${this.namespace}:${key}`;
   }
@@ -51,17 +68,18 @@ export class RedisRateLimiter implements IRateLimiter {
     const windowSeconds = 60;
     try {
       const rateLimitKey = this.getKey(key);
+      const client = await this.connection();
 
       // Increment counter
-      const count = await this.client.incr(rateLimitKey);
+      const count = await client.incr(rateLimitKey);
 
       // Set expiry if this is the first request in window
       if (count === 1) {
-        await this.client.expire(rateLimitKey, windowSeconds);
+        await client.expire(rateLimitKey, windowSeconds);
       }
 
       // Get TTL for reset time calculation
-      const ttl = await this.client.ttl(rateLimitKey);
+      const ttl = await client.ttl(rateLimitKey);
       const resetAt = new Date(Date.now() + ttl * 1000);
 
       return {
@@ -84,7 +102,8 @@ export class RedisRateLimiter implements IRateLimiter {
   public async reset(key: string): Promise<boolean> {
     try {
       const rateLimitKey = this.getKey(key);
-      const result = await this.client.del(rateLimitKey);
+      const client = await this.connection();
+      const result = await client.del(rateLimitKey);
 
       return result > 0;
     } catch (error: unknown) {
@@ -95,7 +114,8 @@ export class RedisRateLimiter implements IRateLimiter {
   public async getCount(key: string): Promise<number> {
     try {
       const rateLimitKey = this.getKey(key);
-      const value = await this.client.get(rateLimitKey);
+      const client = await this.connection();
+      const value = await client.get(rateLimitKey);
 
       if (value === null) {
         return 0;
