@@ -16,7 +16,7 @@ use serde_json::Value;
 
 use super::modules::{WorkspaceModule, discover_modules, filter_modules, relative, wanted_names};
 use super::routes::{self, Route};
-use super::sdk::target_of;
+use super::sdk::{route_sources, target_of};
 use crate::commands::project_check::{
     CheckId, CheckOutcome, CheckStatus, EXCLUDED_DIRS, ProjectCheckArgs, static_outcome,
 };
@@ -257,14 +257,15 @@ pub fn run(args: &ProjectCheckArgs, root: &Path) -> CheckOutcome {
             path.extension().and_then(|ext| ext.to_str()) == Some("json"),
         );
 
-        // A swagger module documents the module its manifest targets, and every
-        // backend module when it names none.
+        // A swagger module documents the module its manifest targets — with
+        // every module an api mounts, as `swagger:create` reads them — and
+        // every backend module when it names none.
         let targets: Vec<WorkspaceModule> = match target_of(module) {
             Some(target) => modules
                 .iter()
-                .filter(|candidate| candidate.name == target)
-                .cloned()
-                .collect(),
+                .find(|candidate| candidate.name == target)
+                .map(|target| route_sources(target, &modules))
+                .unwrap_or_default(),
             None => modules
                 .iter()
                 .filter(|candidate| super::artifacts::is_backend(candidate))

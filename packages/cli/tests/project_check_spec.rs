@@ -2685,6 +2685,91 @@ fn a_route_the_sdk_does_not_wrap_is_reported() {
 }
 
 #[test]
+fn an_sdk_of_an_api_answers_for_the_routes_of_the_modules_it_aggregates() {
+    // `sdk:create` on an api reads the api's own controllers and those of every
+    // backend module it mounts; the check holds the SDK to the same set.
+    let (_guard, root) = root();
+    let app = workspace(&root, "app", "api");
+    controller(&app, "Read", "get", "/users", "  roles: [\"ROLE_USER\"],\n");
+    let billing = root.join("modules/billing");
+    write(&billing.join("billing.yml"), "type: \"module\"\n");
+    write(&billing.join("package.json"), "{ \"name\": \"billing\" }\n");
+    controller(
+        &billing,
+        "Pay",
+        "post",
+        "/payments",
+        "  roles: [\"ROLE_USER\"],\n",
+    );
+    let design = root.join("modules/design");
+    write(&design.join("design.yml"), "type: \"design\"\n");
+    write(&design.join("package.json"), "{ \"name\": \"design\" }\n");
+    controller(&design, "Skip", "get", "/skip", "  roles: [],\n");
+
+    let sdk = root.join("modules/sdk");
+    write(&sdk.join("sdk.yml"), "type: \"sdk\"\ntarget: \"app\"\n");
+    write(&sdk.join("package.json"), "{ \"name\": \"sdk\" }\n");
+    write(
+        &sdk.join("src/app.ts"),
+        "export const app = { definition: { read: { key: \"user.Read.handle\", endpoint: \"/api/v1/users\" } } };\n",
+    );
+
+    let outcome = sdk::run(&ProjectCheckArgs::default(), &root);
+
+    assert_eq!(outcome.status, CheckStatus::Failed, "{:?}", outcome.details);
+    assert!(
+        outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("`user.Pay.handle`")),
+        "{:?}",
+        outcome.details
+    );
+    assert!(
+        !outcome
+            .details
+            .iter()
+            .any(|detail| detail.contains("user.Skip.handle")),
+        "a browser module's file is not a route the sdk wraps: {:?}",
+        outcome.details
+    );
+    assert!(outcome.summary.contains("2 routes"), "{}", outcome.summary);
+}
+
+#[test]
+fn a_swagger_of_an_api_is_held_to_the_routes_of_the_modules_it_mounts() {
+    let (_guard, root) = root();
+    let app = workspace(&root, "app", "api");
+    controller(&app, "Read", "get", "/users", "  roles: [\"ROLE_USER\"],\n");
+    let billing = root.join("modules/billing");
+    write(&billing.join("billing.yml"), "type: \"module\"\n");
+    write(&billing.join("package.json"), "{ \"name\": \"billing\" }\n");
+    controller(
+        &billing,
+        "Pay",
+        "post",
+        "/payments",
+        "  roles: [\"ROLE_USER\"],\n",
+    );
+
+    let swagger = root.join("modules/swagger");
+    write(
+        &swagger.join("swagger.yml"),
+        "type: \"swagger\"\ntarget: \"app\"\n",
+    );
+    write(&swagger.join("package.json"), "{ \"name\": \"swagger\" }\n");
+    write(
+        &swagger.join("public/openapi.json"),
+        r#"{"paths":{"/v1/users":{"get":{}},"/v1/payments":{"post":{}}}}"#,
+    );
+
+    let outcome = cli::commands::project_check::openapi::run(&ProjectCheckArgs::default(), &root);
+
+    assert_eq!(outcome.status, CheckStatus::Passed, "{:?}", outcome.details);
+    assert!(outcome.summary.contains("2 served"), "{}", outcome.summary);
+}
+
+#[test]
 fn an_sdk_targeting_a_deleted_module_fails() {
     let (_guard, root) = root();
     write(

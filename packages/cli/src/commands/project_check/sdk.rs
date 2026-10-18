@@ -80,6 +80,23 @@ pub fn surface(module: &WorkspaceModule) -> SdkSurface {
     surface
 }
 
+/// The modules whose routes an SDK of `target` covers. An api mounts every
+/// backend module, so `sdk:create` reads the api's own controllers and those of
+/// each `module` / `api` module of the workspace; any other target stands alone.
+pub fn route_sources(target: &WorkspaceModule, all: &[WorkspaceModule]) -> Vec<WorkspaceModule> {
+    if target.kind.as_deref() != Some("api") {
+        return vec![target.clone()];
+    }
+    all.iter()
+        .filter(|module| {
+            module.name == target.name
+                || (module.group == "modules"
+                    && matches!(module.kind.as_deref().unwrap_or("module"), "module" | "api"))
+        })
+        .cloned()
+        .collect()
+}
+
 /// Compare an SDK against the routes it is supposed to cover.
 pub fn inspect(
     label: &str,
@@ -167,7 +184,7 @@ pub fn run(args: &ProjectCheckArgs, root: &Path) -> CheckOutcome {
             continue;
         };
 
-        let routes = routes::collect(root, std::slice::from_ref(module));
+        let routes = routes::collect(root, &route_sources(module, &all));
         if routes.is_empty() {
             warnings.push(format!("{label}: \"{target}\" declares no route to wrap"));
             continue;
