@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import type { DataSource } from "../../src/orm/DataSource";
 import { EntityNotFoundError, InvalidCriteriaError } from "../../src/orm/errors";
-import { MoreThan } from "../../src/orm/FindOperator";
+import { In, MoreThan } from "../../src/orm/FindOperator";
 import type { Repository } from "../../src/orm/Repository";
 import { createSqliteDataSource, Post, Profile, seedAlice, Tag, User } from "../fixtures/entities";
 
@@ -109,6 +109,8 @@ describe("Repository", () => {
     await expect(posts.update({ id: missing }, { views: 0 })).rejects.toBeInstanceOf(InvalidCriteriaError);
     await expect(posts.increment({ id: missing }, "views", 1)).rejects.toBeInstanceOf(InvalidCriteriaError);
     await expect(posts.softDelete({ id: missing })).rejects.toBeInstanceOf(InvalidCriteriaError);
+    await expect(posts.update({ id: In([1, missing]) }, { views: 0 })).rejects.toBeInstanceOf(InvalidCriteriaError);
+    await expect(posts.delete({ id: In([1, missing]) })).rejects.toBeInstanceOf(InvalidCriteriaError);
     expect((await posts.find({ order: { id: "ASC" } })).map((post) => post.views)).toEqual(viewsBefore);
 
     await tags.clear();

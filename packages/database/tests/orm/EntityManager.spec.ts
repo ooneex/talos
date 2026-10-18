@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import type { DataSource } from "../../src/orm/DataSource";
 import type { EntityManager } from "../../src/orm/EntityManager";
 import { EntityNotFoundError, InvalidCriteriaError, QueryFailedError } from "../../src/orm/errors";
-import { In, IsNull, MoreThan } from "../../src/orm/FindOperator";
+import { And, Any, In, IsNull, MoreThan, Not } from "../../src/orm/FindOperator";
 import type { QueryRunner } from "../../src/orm/QueryRunner";
 import type { QueryBuilder } from "../../src/orm/query-builder/QueryBuilder";
 import { Repository } from "../../src/orm/Repository";
@@ -362,6 +362,53 @@ describe("EntityManager", () => {
 
       expect(await snapshot()).toEqual(before);
       expect(await manager.count(Post)).toBe(postsBefore);
+    });
+
+    test("update and delete should refuse In() and list operands holding undefined and touch no row", async () => {
+      await seedAlice(dataSource);
+      await manager.save(User, { id: "u2", name: "Bob", age: 20 });
+      const snapshot = async () =>
+        (await manager.find(User, { withDeleted: true, order: { id: "ASC" } })).map((user) => ({
+          id: user.id,
+          age: user.age,
+          deletedAt: user.deletedAt?.toISOString() ?? null,
+        }));
+      const before = await snapshot();
+      const postsBefore = await manager.count(Post);
+      // An id list that lost one of its values, as a partly unset request payload would
+      const missing = undefined as unknown as string;
+
+      const failure = await manager
+        .update(User, { id: In(["u1", missing]) }, { age: 1 })
+        .catch((error: unknown) => error);
+      expect(failure).toBeInstanceOf(InvalidCriteriaError);
+      expect((failure as InvalidCriteriaError).key).toBe("INVALID_CRITERIA");
+      expect((failure as InvalidCriteriaError).message).toContain('"id[1]" is undefined');
+
+      await expect(manager.delete(User, { id: In(["u1", missing]) })).rejects.toThrow('"id[1]" is undefined');
+      await expect(manager.delete(User, { id: In([missing]) })).rejects.toThrow('"id[0]" is undefined');
+      await expect(manager.delete(User, { id: ["u2", missing] as never })).rejects.toThrow('"id[1]" is undefined');
+      await expect(manager.update(User, { id: Not(In(["u1", missing])) }, { age: 1 })).rejects.toBeInstanceOf(
+        InvalidCriteriaError,
+      );
+      await expect(
+        manager.update(User, { id: And(Not(IsNull()), Any(["u1", missing])) }, { age: 1 }),
+      ).rejects.toBeInstanceOf(InvalidCriteriaError);
+      await expect(manager.delete(Post, { author: { id: In(["u1", missing]) } })).rejects.toThrow(
+        '"author.id[1]" is undefined',
+      );
+      await expect(manager.softDelete(User, [{ id: "u1" }, { id: In([missing]) }])).rejects.toBeInstanceOf(
+        InvalidCriteriaError,
+      );
+      await expect(manager.increment(User, { id: In(["u1", missing]) }, "age", 5)).rejects.toBeInstanceOf(
+        InvalidCriteriaError,
+      );
+      await expect(manager.findOneBy(User, { id: In(["u1", missing]) })).rejects.toBeInstanceOf(InvalidCriteriaError);
+
+      expect(await snapshot()).toEqual(before);
+      expect(await manager.count(Post)).toBe(postsBefore);
+      expect((await manager.update(User, { id: In(["u1", "u2"]) }, { age: 50 })).affected).toBe(2);
+      expect((await manager.delete(User, { id: Not(In(["u1"])) })).affected).toBe(1);
     });
 
     test("upsert should insert new rows and update the conflicting ones", async () => {
