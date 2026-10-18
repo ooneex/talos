@@ -9,10 +9,10 @@
 use std::collections::BTreeSet;
 use std::path::Path;
 
-use super::graph::{IndexedFile, Layer, SourceIndex};
+use super::graph::{Import, IndexedFile, Layer, SourceIndex};
 use super::modules::{discover_modules, filter_modules, wanted_names};
 use crate::commands::project_check::{
-    CheckId, CheckOutcome, CheckStatus, ProjectCheckArgs, static_outcome,
+    CheckId, CheckOutcome, CheckStatus, ProjectCheckArgs, WARN_DETAIL, static_outcome,
 };
 
 /// File stems the runtime loads by name rather than through an import.
@@ -55,12 +55,22 @@ pub fn is_published(file: &IndexedFile) -> bool {
             .is_some_and(|kind| LIBRARY_TYPES.contains(&kind))
 }
 
-/// Files no other file imports and the runtime does not load on its own.
-pub fn unreachable(index: &SourceIndex) -> Vec<String> {
-    let imported: BTreeSet<&Path> = index
+/// Every import in the graph plus the ones made from `tests/`: a file or a
+/// name only a test reaches is still in use.
+fn all_imports<'a>(
+    index: &'a SourceIndex,
+    tests: &'a [Import],
+) -> impl Iterator<Item = &'a Import> {
+    index
         .files
         .iter()
         .flat_map(|file| file.imports.iter())
+        .chain(tests.iter())
+}
+
+/// Files no other file (or test) imports and the runtime does not load on its own.
+pub fn unreachable(index: &SourceIndex, tests: &[Import]) -> Vec<String> {
+    let imported: BTreeSet<&Path> = all_imports(index, tests)
         .filter_map(|import| import.resolved.as_deref())
         .collect();
 
@@ -74,11 +84,8 @@ pub fn unreachable(index: &SourceIndex) -> Vec<String> {
 }
 
 /// Exported names nobody imports, in the modules that are not libraries.
-pub fn unused_exports(index: &SourceIndex) -> Vec<String> {
-    let consumed: BTreeSet<&str> = index
-        .files
-        .iter()
-        .flat_map(|file| file.imports.iter())
+pub fn unused_exports(index: &SourceIndex, tests: &[Import]) -> Vec<String> {
+    let consumed: BTreeSet<&str> = all_imports(index, tests)
         .flat_map(|import| import.names.iter())
         .map(String::as_str)
         .collect();
@@ -130,8 +137,9 @@ pub fn run(args: &ProjectCheckArgs, root: &Path) -> CheckOutcome {
 
     // Dead code never breaks a build, so everything here warns: the call on
     // whether a file is kept for a reason the graph cannot see is the author's.
-    let mut warnings = unreachable(&index);
-    warnings.extend(unused_exports(&index));
+    let tests = index.test_imports(root, &modules);
+    let mut warnings = unreachable(&index, &tests);
+    warnings.extend(unused_exports(&index, &tests));
 
     let scope = format!(
         "{} file{}",
@@ -139,12 +147,21 @@ pub fn run(args: &ProjectCheckArgs, root: &Path) -> CheckOutcome {
         if index.files.len() == 1 { "" } else { "s" }
     );
 
-    static_outcome(
+    let mut outcome = static_outcome(
         CheckId::Orphans,
         &scope,
         "every file is reachable",
         Vec::new(),
-        warnings,
-    )
-    .with_hint("Delete what is dead, or export it from the module it belongs to")
+        warnings.clone(),
+    );
+    // `--logs` is read by whoever cleans the dead code up, so it gets every
+    // entry rather than the capped preview.
+    if args.logs {
+        outcome.details = warnings
+            .into_iter()
+            .map(|message| format!("{WARN_DETAIL}{message}"))
+            .collect();
+    }
+
+    outcome.with_hint("Delete what is dead, or export it from the module it belongs to")
 }
