@@ -138,6 +138,9 @@ describe("Repository", () => {
     expect((await users.findOneByOrFail({ id: "u2" })).name).toBe("Bob");
     await expect(users.findOneOrFail({ where: { id: "nope" } })).rejects.toBeInstanceOf(EntityNotFoundError);
     await expect(users.findOneByOrFail({ id: "nope" })).rejects.toBeInstanceOf(EntityNotFoundError);
+    const missing = undefined as unknown as string;
+    await expect(users.findOneBy({ id: missing })).rejects.toBeInstanceOf(InvalidCriteriaError);
+    await expect(users.findOne({ where: { id: missing } })).rejects.toBeInstanceOf(InvalidCriteriaError);
 
     expect(await users.count({ where: { age: MoreThan(25) } })).toBe(2);
     expect(await users.countBy({ name: "Bob" })).toBe(1);

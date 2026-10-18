@@ -569,10 +569,23 @@ export class EntityManager {
     return this.createFindQueryBuilder(target, {}).andWhereInIds(ids).getMany();
   }
 
+  /**
+   * A where property set to `undefined` is left out of the query, so `{ id: undefined }` would match
+   * every row and hand back the first one. findOne refuses it instead of returning an arbitrary entity.
+   */
   public async findOne<Entity extends ObjectLiteralType>(
     target: EntityTargetType<Entity>,
     options: FindOneOptionsType<Entity>,
   ): Promise<Entity | null> {
+    const property = findUndefinedWhereProperty(options.where);
+
+    if (property) {
+      throw new InvalidCriteriaError(
+        `Cannot find one ${this.connection.getMetadata(target).name} where "${property}" is undefined: pass a value, null or IsNull(), or leave the property out.`,
+        options.where,
+      );
+    }
+
     return this.createFindQueryBuilder(target, { ...options, take: 1 }).getOne();
   }
 
