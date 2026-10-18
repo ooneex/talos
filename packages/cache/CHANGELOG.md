@@ -81,3 +81,9 @@
 
 - Run package lint through bun check|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([de3ee05c](https://github.com/ooneex/talos/commit/de3ee05c))
 
+## [1.3.8](https://github.com/ooneex/talos/releases/tag/@talosjs/cache@1.3.8) - 2026-10-18
+
+### Fixed
+
+- Reconnect Redis and Dragonfly caches after the server comes back from an outage|Bun's RedisClient stops trying after maxRetries reconnect attempts and stays closed for good, so — Julien ([247f88d5](https://github.com/ooneex/talos/commit/247f88d5))
+
