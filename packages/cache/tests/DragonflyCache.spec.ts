@@ -13,6 +13,10 @@ const defaultOptions = {
 };
 
 const mockDragonflyClient = {
+  connected: true,
+  connect: mock(async (): Promise<void> => {
+    mockDragonflyClient.connected = true;
+  }),
   get: mock(async (_key: string): Promise<string | null> => null),
   set: mock(async (_key: string, _value: string, ..._options: (string | number)[]): Promise<"OK"> => "OK"),
   unlink: mock(async (..._keys: string[]): Promise<number> => 1),
@@ -55,6 +59,7 @@ describe("DragonflyCache", () => {
     });
 
     for (const mockFn of [
+      mockDragonflyClient.connect,
       mockDragonflyClient.get,
       mockDragonflyClient.set,
       mockDragonflyClient.unlink,
@@ -65,6 +70,7 @@ describe("DragonflyCache", () => {
       mockFn.mockClear();
     }
 
+    mockDragonflyClient.connected = true;
     mockDragonflyClient.get.mockImplementation(async (_key: string): Promise<string | null> => null);
     mockDragonflyClient.set.mockImplementation(
       async (_key: string, _value: string, ..._options: (string | number)[]): Promise<"OK"> => "OK",
@@ -148,6 +154,23 @@ describe("DragonflyCache", () => {
       mockDragonflyClient.get.mockRejectedValue(new Error("Dragonfly connection failed"));
 
       expect(adapter.get(testKey)).rejects.toThrow("Dragonfly connection failed");
+    });
+  });
+
+  describe("reconnection", () => {
+    test("should reconnect a client Dragonfly closed before writing", async () => {
+      mockDragonflyClient.connected = false;
+
+      await adapter.set(testKey, testValue, 60);
+
+      expect(mockDragonflyClient.connect).toHaveBeenCalledTimes(1);
+      expect(mockDragonflyClient.set).toHaveBeenCalledWith("cache:test-key", testValue, "EX", 60);
+    });
+
+    test("should not reconnect a client that is still connected", async () => {
+      await adapter.delete(testKey);
+
+      expect(mockDragonflyClient.connect).not.toHaveBeenCalled();
     });
   });
 
