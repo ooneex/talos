@@ -557,7 +557,7 @@ export class EntityManager {
     return this.findAndCount(target, { where });
   }
 
-  /** Entities with the given primary keys; missing ids are skipped. */
+  /** Entities with the given primary keys; ids with no row are skipped, an undefined id is refused. */
   public async findByIds<Entity extends ObjectLiteralType>(
     target: EntityTargetType<Entity>,
     ids: EntityIdType[],
@@ -566,17 +566,27 @@ export class EntityManager {
       return [];
     }
 
+    this.assertDefinedIds(target, ids, "find");
+
     return this.createFindQueryBuilder(target, {}).andWhereInIds(ids).getMany();
   }
 
   /**
    * A where property set to `undefined` is left out of the query, so `{ id: undefined }` would match
-   * every row and hand back the first one. findOne refuses it instead of returning an arbitrary entity.
+   * every row and hand back the first one. findOne refuses it instead of returning an arbitrary entity,
+   * and so it does for a `where` option given as `undefined`. Leaving the option out still reads the first row.
    */
   public async findOne<Entity extends ObjectLiteralType>(
     target: EntityTargetType<Entity>,
     options: FindOneOptionsType<Entity>,
   ): Promise<Entity | null> {
+    if (Object.hasOwn(options, "where") && (options.where === undefined || options.where === null)) {
+      throw new InvalidCriteriaError(
+        `Cannot find one ${this.connection.getMetadata(target).name} with an undefined where: pass a where object, or leave the option out to read the first row.`,
+        options.where,
+      );
+    }
+
     const property = findUndefinedWhereProperty(options.where);
 
     if (property) {
@@ -600,6 +610,8 @@ export class EntityManager {
     target: EntityTargetType<Entity>,
     id: EntityIdType,
   ): Promise<Entity | null> {
+    this.assertDefinedIds(target, [id], "find one");
+
     return this.createFindQueryBuilder(target, { take: 1 }).andWhereInIds(id).getOne();
   }
 
@@ -740,6 +752,29 @@ export class EntityManager {
     return this.update(target, criteria, {
       [propertyPath]: () => `${escaped} ${operator} ${amount}`,
     } as unknown as QueryDeepPartialEntityType<Entity>);
+  }
+
+  /** The where builder leaves out an undefined id, so a lost id would match every row instead of none. */
+  private assertDefinedIds<Entity extends ObjectLiteralType>(
+    target: EntityTargetType<Entity>,
+    ids: EntityIdType[],
+    operation: "find" | "find one",
+  ): void {
+    const metadata = this.connection.getMetadata(target);
+
+    for (const id of ids) {
+      const property =
+        id === undefined || id === null
+          ? (metadata.primaryColumns[0]?.propertyName ?? "id")
+          : findUndefinedWhereProperty(metadata.ensureEntityIdMap(id));
+
+      if (property) {
+        throw new InvalidCriteriaError(
+          `Cannot ${operation} ${metadata.name} where "${property}" is undefined: pass the id of a row.`,
+          ids,
+        );
+      }
+    }
   }
 
   /**

@@ -141,6 +141,11 @@ describe("Repository", () => {
     const missing = undefined as unknown as string;
     await expect(users.findOneBy({ id: missing })).rejects.toBeInstanceOf(InvalidCriteriaError);
     await expect(users.findOne({ where: { id: missing } })).rejects.toBeInstanceOf(InvalidCriteriaError);
+    await expect(users.findOne({ where: missing as unknown as { id: string } })).rejects.toBeInstanceOf(
+      InvalidCriteriaError,
+    );
+    await expect(users.findOneById(missing)).rejects.toBeInstanceOf(InvalidCriteriaError);
+    await expect(users.findByIds([missing])).rejects.toBeInstanceOf(InvalidCriteriaError);
 
     expect(await users.count({ where: { age: MoreThan(25) } })).toBe(2);
     expect(await users.countBy({ name: "Bob" })).toBe(1);

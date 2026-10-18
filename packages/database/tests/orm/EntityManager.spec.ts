@@ -496,6 +496,30 @@ describe("EntityManager", () => {
       await expect(manager.findOneByOrFail(User, { id: missing })).rejects.toBeInstanceOf(InvalidCriteriaError);
     });
 
+    test("findOne with an undefined where, findOneById and findByIds should refuse an undefined id", async () => {
+      // A value that is undefined at runtime, as an unset request field or a missing session claim would be
+      const missing = undefined as unknown as string;
+      const missingWhere = undefined as unknown as { id: string };
+      const failure = await manager.findOne(User, { where: missingWhere }).catch((error: unknown) => error);
+
+      expect(failure).toBeInstanceOf(InvalidCriteriaError);
+      expect((failure as InvalidCriteriaError).key).toBe("INVALID_CRITERIA");
+      expect((failure as InvalidCriteriaError).message).toContain("undefined where");
+      await expect(manager.findOneOrFail(User, { where: missingWhere, order: { id: "ASC" } })).rejects.toBeInstanceOf(
+        InvalidCriteriaError,
+      );
+      await expect(manager.findOneById(User, missing)).rejects.toThrow('"id" is undefined');
+      await expect(manager.findOneById(User, null as unknown as string)).rejects.toBeInstanceOf(InvalidCriteriaError);
+      await expect(manager.findOneById(User, { id: missing })).rejects.toThrow('"id" is undefined');
+      await expect(manager.findByIds(User, [missing])).rejects.toThrow('"id" is undefined');
+      await expect(manager.findByIds(User, ["u1", missing])).rejects.toBeInstanceOf(InvalidCriteriaError);
+    });
+
+    test("findOne without a where option should still read the first row", async () => {
+      expect((await manager.findOne(User, { order: { age: "ASC" } }))?.name).toBe("Bob");
+      expect((await manager.findOneById(User, { id: "u3" }))?.name).toBe("Carol");
+    });
+
     test("findOne family should still match on null, operators and nested values", async () => {
       expect((await manager.findOneBy(User, { name: "Bob", profile: IsNull() }))?.id).toBe("u2");
       expect((await manager.findOneBy(User, { age: MoreThan(25), name: "Alice" }))?.id).toBe("u1");
