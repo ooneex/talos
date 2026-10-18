@@ -36,6 +36,36 @@ const isPlainObject = (value: unknown): value is ObjectLiteralType =>
   !(value instanceof Date) &&
   !isFindOperator(value);
 
+/** The path of the first property a where object sets to `undefined`, e.g. `author.id`. */
+const findUndefinedWhereProperty = (where: unknown, path = ""): string | undefined => {
+  if (Array.isArray(where)) {
+    for (const group of where) {
+      const found = findUndefinedWhereProperty(group, path);
+
+      if (found) {
+        return found;
+      }
+    }
+
+    return undefined;
+  }
+
+  if (!isPlainObject(where)) {
+    return undefined;
+  }
+
+  for (const [key, value] of Object.entries(where)) {
+    const property = path ? `${path}.${key}` : key;
+    const found = value === undefined ? property : findUndefinedWhereProperty(value, property);
+
+    if (found) {
+      return found;
+    }
+  }
+
+  return undefined;
+};
+
 /**
  * Entity operations for every entity of a data source.
  *
@@ -699,7 +729,10 @@ export class EntityManager {
     } as unknown as QueryDeepPartialEntityType<Entity>);
   }
 
-  /** Applies update/delete criteria: ids, id lists, or where objects. Refuses empty criteria. */
+  /**
+   * Applies update/delete criteria: ids, id lists, or where objects. Refuses empty criteria and criteria
+   * holding an undefined value, either of which would otherwise reach every row.
+   */
   private applyCriteria<Entity extends ObjectLiteralType>(
     qb:
       | UpdateQueryBuilder<ObjectLiteralType>
@@ -717,6 +750,19 @@ export class EntityManager {
     if (isEmpty) {
       throw new InvalidCriteriaError(
         `Empty criteria are not allowed for ${this.connection.getMetadata(target).name}: pass an id, a list of ids or a where object.`,
+        criteria,
+      );
+    }
+
+    // The where builder leaves out undefined values, so `{ id: undefined }` would reach every row of the table
+    const undefinedProperty =
+      Array.isArray(criteria) && (criteria as unknown[]).includes(undefined)
+        ? "id"
+        : findUndefinedWhereProperty(criteria);
+
+    if (undefinedProperty) {
+      throw new InvalidCriteriaError(
+        `Cannot update or delete ${this.connection.getMetadata(target).name} where "${undefinedProperty}" is undefined: pass a value, null or IsNull(), or leave the property out.`,
         criteria,
       );
     }

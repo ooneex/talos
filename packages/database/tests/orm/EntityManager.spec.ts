@@ -326,6 +326,44 @@ describe("EntityManager", () => {
       await expect(manager.restore(User, null as unknown as string)).rejects.toBeInstanceOf(InvalidCriteriaError);
     });
 
+    test("update, delete, softDelete, restore, increment and decrement should refuse undefined criteria and touch no row", async () => {
+      await seedAlice(dataSource);
+      await manager.save(User, { id: "u2", name: "Bob", age: 20 });
+      await manager.softDelete(User, "u2");
+      const snapshot = async () =>
+        (await manager.find(User, { withDeleted: true, order: { id: "ASC" } })).map((user) => ({
+          id: user.id,
+          age: user.age,
+          deletedAt: user.deletedAt?.toISOString() ?? null,
+        }));
+      const before = await snapshot();
+      const postsBefore = await manager.count(Post);
+      // A value that is undefined at runtime, as an unset request field or a missing session claim would be
+      const missing = undefined as unknown as string;
+
+      const failure = await manager.update(User, { id: missing }, { age: 1 }).catch((error: unknown) => error);
+      expect(failure).toBeInstanceOf(InvalidCriteriaError);
+      expect((failure as InvalidCriteriaError).key).toBe("INVALID_CRITERIA");
+      expect((failure as InvalidCriteriaError).message).toContain('"id" is undefined');
+
+      await expect(
+        manager.update(User, { name: "Alice", age: missing as unknown as number }, { age: 1 }),
+      ).rejects.toThrow('"age" is undefined');
+      await expect(manager.update(User, [{ id: "u1" }, { id: missing }], { age: 1 })).rejects.toBeInstanceOf(
+        InvalidCriteriaError,
+      );
+      await expect(manager.delete(Post, { author: { id: missing } })).rejects.toThrow('"author.id" is undefined');
+      await expect(manager.delete(User, { id: missing })).rejects.toBeInstanceOf(InvalidCriteriaError);
+      await expect(manager.delete(User, ["u1", missing])).rejects.toBeInstanceOf(InvalidCriteriaError);
+      await expect(manager.softDelete(User, { id: missing })).rejects.toBeInstanceOf(InvalidCriteriaError);
+      await expect(manager.restore(User, { id: missing })).rejects.toBeInstanceOf(InvalidCriteriaError);
+      await expect(manager.increment(User, { id: missing }, "age", 5)).rejects.toBeInstanceOf(InvalidCriteriaError);
+      await expect(manager.decrement(User, { id: missing }, "age", 5)).rejects.toBeInstanceOf(InvalidCriteriaError);
+
+      expect(await snapshot()).toEqual(before);
+      expect(await manager.count(Post)).toBe(postsBefore);
+    });
+
     test("upsert should insert new rows and update the conflicting ones", async () => {
       await manager.insert(Tag, { label: "keep" });
 
