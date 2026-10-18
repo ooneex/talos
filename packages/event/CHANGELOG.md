@@ -59,3 +59,9 @@
 
 - Run package lint through bun check|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([de3ee05c](https://github.com/ooneex/talos/commit/de3ee05c))
 
+## [1.1.10](https://github.com/ooneex/talos/releases/tag/@talosjs/event@1.1.10) - 2026-10-18
+
+### Fixed
+
+- Reconnect RedisPubSubClient and resubscribe its channels after a Redis outage|Bun's RedisClient stops trying after maxRetries reconnect attempts and stays closed for good. After — Julien ([aae5d837](https://github.com/ooneex/talos/commit/aae5d837))
+
