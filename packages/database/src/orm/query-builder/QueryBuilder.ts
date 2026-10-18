@@ -3,10 +3,10 @@ import { Brackets, type IWhereExpressionBuilder, NotBrackets, type WhereConditio
 import type { DataSource } from "../DataSource";
 import type { IDriver } from "../driver/AbstractDriver";
 import type { EntityMetadata } from "../EntityMetadata";
-import { ParameterNotSetError } from "../errors";
+import { InvalidCriteriaError, ParameterNotSetError } from "../errors";
 import type { QueryRunner } from "../QueryRunner";
 import { type AliasType, QueryExpressionMap, type WherePartType } from "./QueryExpressionMap";
-import { WhereBuilder, type WhereParametersType } from "./WhereBuilder";
+import { findUndefinedWhereProperty, WhereBuilder, type WhereParametersType } from "./WhereBuilder";
 
 const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -46,6 +46,11 @@ export const chunkByParameters = <T>(items: readonly T[], valuesPerItem: number,
  */
 export abstract class QueryBuilder<Entity extends ObjectLiteralType> implements IWhereExpressionBuilder {
   public readonly expressionMap: QueryExpressionMap;
+  /**
+   * The where builder leaves out a property set to `undefined`. That is how a read makes a filter
+   * optional, but in an UPDATE or DELETE it widens the statement to every row, so writers refuse it.
+   */
+  protected readonly refusesUndefinedCriteria: boolean = false;
 
   public constructor(
     public readonly dataSource: DataSource,
@@ -361,11 +366,20 @@ export abstract class QueryBuilder<Entity extends ObjectLiteralType> implements 
     const metadata = this.mainMetadata;
     const list = Array.isArray(ids) ? ids : [ids];
 
+    if (this.refusesUndefinedCriteria && list.includes(undefined as unknown as EntityIdType)) {
+      this.refuseUndefinedCriteria(metadata?.primaryColumns[0]?.propertyName ?? "id", ids);
+    }
+
     if (!metadata) {
       return this.computeRawObjectWhere({ id: list.length === 1 ? list[0] : list } as ObjectLiteralType);
     }
 
     const idMaps = list.map((id) => metadata.ensureEntityIdMap(id));
+    const undefinedProperty = this.refusesUndefinedCriteria ? findUndefinedWhereProperty(idMaps) : undefined;
+
+    if (undefinedProperty) {
+      this.refuseUndefinedCriteria(undefinedProperty, ids);
+    }
     const whereBuilder = this.createWhereBuilder();
 
     if (!metadata.hasMultiplePrimaryKeys) {
@@ -430,6 +444,15 @@ export abstract class QueryBuilder<Entity extends ObjectLiteralType> implements 
     condition: WhereConditionInputType<Entity, this>,
     parameters?: ObjectLiteralType,
   ): this {
+    const undefinedProperty =
+      this.refusesUndefinedCriteria && typeof condition === "object" && !(condition instanceof Brackets)
+        ? findUndefinedWhereProperty(condition)
+        : undefined;
+
+    if (undefinedProperty) {
+      this.refuseUndefinedCriteria(undefinedProperty, condition);
+    }
+
     const sql = this.computeWhereCondition(condition, parameters);
 
     if (sql.length > 0) {
@@ -437,6 +460,13 @@ export abstract class QueryBuilder<Entity extends ObjectLiteralType> implements 
     }
 
     return this;
+  }
+
+  private refuseUndefinedCriteria(property: string, criteria: unknown): never {
+    throw new InvalidCriteriaError(
+      `Cannot update or delete ${this.mainMetadata?.name ?? this.alias} where "${property}" is undefined: pass a value, null or IsNull(), or leave the property out.`,
+      criteria,
+    );
   }
 
   /** A where object on a raw table: keys are column names. */

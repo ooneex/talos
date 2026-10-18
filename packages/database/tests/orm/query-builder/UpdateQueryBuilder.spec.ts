@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { Brackets } from "../../../src/orm/Brackets";
 import type { DataSource } from "../../../src/orm/DataSource";
-import { EntityPropertyNotFoundError, UpdateValuesMissingError } from "../../../src/orm/errors";
+import { EntityPropertyNotFoundError, InvalidCriteriaError, UpdateValuesMissingError } from "../../../src/orm/errors";
+import { In, IsNull } from "../../../src/orm/FindOperator";
 import { UpdateResult } from "../../../src/orm/query-builder/results";
 import { createSqliteDataSource, Post, seedAlice, User } from "../../fixtures/entities";
 import { createDialectDataSource } from "../../fixtures/metadata";
@@ -145,6 +147,55 @@ describe("UpdateQueryBuilder", () => {
 
       const none = await dataSource.createQueryBuilder().update(User).set({ age: 1 }).where({ id: "nobody" }).execute();
       expect(none.affected).toBe(0);
+    });
+
+    test("where, the whereInIds family and whereEntity should refuse undefined criteria and update no row", async () => {
+      await dataSource.getRepository(User).save({ id: "u2", name: "Bob", age: 20 });
+      const ages = async () =>
+        (await dataSource.getRepository(User).find({ order: { id: "ASC" } })).map((user) => user.age);
+      const before = await ages();
+      // A value that is undefined at runtime, as an unset request field or a missing session claim would be
+      const missing = undefined as unknown as string;
+      const update = () => dataSource.createQueryBuilder().update(User).set({ age: 1 });
+
+      expect(() => update().where({ id: missing })).toThrow(InvalidCriteriaError);
+      expect(() => update().where({ id: missing })).toThrow('"id" is undefined');
+      expect(() => update().where("age > 0").andWhere({ name: "Bob", id: missing })).toThrow('"id" is undefined');
+      expect(() =>
+        update()
+          .where({ id: "u1" })
+          .orWhere([{ id: "u2" }, { id: missing }]),
+      ).toThrow(InvalidCriteriaError);
+      expect(() => update().where({ profile: { id: missing } })).toThrow('"profile.id" is undefined');
+      expect(() => update().whereInIds([missing])).toThrow('"id" is undefined');
+      expect(() => update().where({ id: "u1" }).andWhereInIds(["u2", missing])).toThrow(InvalidCriteriaError);
+      expect(() => update().where({ id: "u1" }).orWhereInIds({ id: missing })).toThrow(InvalidCriteriaError);
+      expect(() => update().whereEntity(Object.assign(new User(), { name: "Unsaved" }))).toThrow(InvalidCriteriaError);
+
+      expect(await ages()).toEqual(before);
+    });
+
+    test("where should still accept null, operators, Brackets and named parameters", async () => {
+      await dataSource.getRepository(User).save({ id: "u2", name: "Bob", age: 20 });
+      const update = () => dataSource.createQueryBuilder().update(User).set({ isActive: false });
+
+      expect((await update().where({ profile: IsNull() }).execute()).affected).toBe(1);
+      expect(
+        (
+          await update()
+            .where({ id: In(["u1", "u2"]), name: "Bob" })
+            .execute()
+        ).affected,
+      ).toBe(1);
+      expect(
+        (
+          await update()
+            .where(new Brackets((qb) => qb.where({ id: "u1" }).orWhere({ id: "u2" })))
+            .execute()
+        ).affected,
+      ).toBe(2);
+      expect((await update().where("age > :age", { age: 25 }).execute()).affected).toBe(1);
+      expect((await update().whereInIds(["u1", "u2"]).execute()).affected).toBe(2);
     });
 
     test("whereEntity should sync the version and timestamps back onto the entities", async () => {

@@ -10,6 +10,7 @@ import { DeleteResult } from "./results";
  * await dataSource.createQueryBuilder().delete().from(UserEntity).where("id = :id", { id }).execute();
  */
 export class DeleteQueryBuilder<Entity extends ObjectLiteralType> extends QueryBuilder<Entity> {
+  protected override readonly refusesUndefinedCriteria = true;
   public from<T extends ObjectLiteralType>(
     target: EntityTargetType<T> | string,
     aliasName?: string,

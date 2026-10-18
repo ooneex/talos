@@ -34,6 +34,36 @@ const isPlainObject = (value: unknown): value is ObjectLiteralType =>
   !(value instanceof Date) &&
   !isFindOperator(value);
 
+/** The path of the first property a where object sets to `undefined`, e.g. `author.id`. */
+export const findUndefinedWhereProperty = (where: unknown, path = ""): string | undefined => {
+  if (Array.isArray(where)) {
+    for (const group of where) {
+      const found = findUndefinedWhereProperty(group, path);
+
+      if (found) {
+        return found;
+      }
+    }
+
+    return undefined;
+  }
+
+  if (!isPlainObject(where)) {
+    return undefined;
+  }
+
+  for (const [key, value] of Object.entries(where)) {
+    const property = path ? `${path}.${key}` : key;
+    const found = value === undefined ? property : findUndefinedWhereProperty(value, property);
+
+    if (found) {
+      return found;
+    }
+  }
+
+  return undefined;
+};
+
 /**
  * Turns a find-options `where` object into SQL for one entity alias.
  *
