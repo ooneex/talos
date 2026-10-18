@@ -36,7 +36,38 @@ const isPlainObject = (value: unknown): value is ObjectLiteralType =>
   !(value instanceof Date) &&
   !isFindOperator(value);
 
-/** The path of the first property a where object sets to `undefined`, e.g. `author.id`. */
+/**
+ * The index of the first `undefined` in a list operand: a plain list, or `In()` / `Any()`, also
+ * under `Not()`, `And()` and `Or()`. -1 when there is none.
+ */
+const findUndefinedListIndex = (value: unknown): number => {
+  if (Array.isArray(value)) {
+    return value.indexOf(undefined);
+  }
+
+  if (!isFindOperator(value)) {
+    return -1;
+  }
+
+  if (value.type === "in" || value.type === "any") {
+    return findUndefinedListIndex(value.value);
+  }
+
+  for (const child of value.child ? [value.child] : value.children) {
+    const index = findUndefinedListIndex(child);
+
+    if (index >= 0) {
+      return index;
+    }
+  }
+
+  return -1;
+};
+
+/**
+ * The path of the first property a where object sets to `undefined`, e.g. `author.id`, or of the first
+ * `undefined` its list operands hold, e.g. `id[1]` for `{ id: In(["a", undefined]) }`.
+ */
 const findUndefinedWhereProperty = (where: unknown, path = ""): string | undefined => {
   if (Array.isArray(where)) {
     for (const group of where) {
@@ -56,7 +87,18 @@ const findUndefinedWhereProperty = (where: unknown, path = ""): string | undefin
 
   for (const [key, value] of Object.entries(where)) {
     const property = path ? `${path}.${key}` : key;
-    const found = value === undefined ? property : findUndefinedWhereProperty(value, property);
+
+    if (value === undefined) {
+      return property;
+    }
+
+    const index = findUndefinedListIndex(value);
+
+    if (index >= 0) {
+      return `${property}[${index}]`;
+    }
+
+    const found = findUndefinedWhereProperty(value, property);
 
     if (found) {
       return found;
