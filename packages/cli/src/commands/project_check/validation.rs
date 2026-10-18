@@ -111,14 +111,38 @@ pub fn body(content: &str, open: usize) -> Option<&str> {
 
 /// The keys declared at the top level of an object body. Nested objects, unions
 /// and generics are skipped over rather than descended into: the check compares
-/// the fields a request carries, not their types.
+/// the fields a request carries, not their types. Brackets inside a string
+/// literal (`Assert("1 <= number <= 5")`) and the `>` of an arrow (`() => void`)
+/// are not brackets, and do not move the depth.
 pub fn keys(body: &str) -> BTreeSet<String> {
     let mut keys = BTreeSet::new();
     let mut depth = 0;
     let mut current = String::new();
+    let mut quote: Option<char> = None;
+    let mut escaped = false;
+    let mut previous = '\0';
 
     for character in body.chars() {
+        if let Some(open) = quote {
+            if escaped {
+                escaped = false;
+            } else if character == '\\' {
+                escaped = true;
+            } else if character == open {
+                quote = None;
+            }
+            current.push(character);
+            previous = character;
+            continue;
+        }
+        let after = previous;
+        previous = character;
         match character {
+            '"' | '\'' | '`' => {
+                quote = Some(character);
+                current.push(character);
+            }
+            '>' if after == '=' => current.push(character),
             '{' | '(' | '[' | '<' => depth += 1,
             '}' | ')' | ']' | '>' => depth -= 1,
             ':' if depth == 0 => {
