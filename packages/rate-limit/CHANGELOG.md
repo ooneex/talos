@@ -57,3 +57,9 @@
 
 - Run package lint through bun check|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([de3ee05c](https://github.com/ooneex/talos/commit/de3ee05c))
 
+## [1.1.10](https://github.com/ooneex/talos/releases/tag/@talosjs/rate-limit@1.1.10) - 2026-10-18
+
+### Fixed
+
+- Reconnect RedisRateLimiter after Redis comes back from an outage|Bun's RedisClient stops trying after maxRetries reconnect attempts and stays closed for good, so — Julien ([5c031a49](https://github.com/ooneex/talos/commit/5c031a49))
+
