@@ -57,6 +57,39 @@ describe("DeleteQueryBuilder", () => {
       await dataSource.destroy();
     });
 
+    test("where and the whereInIds family should refuse undefined criteria and delete no row", async () => {
+      const counts = async () => [
+        await dataSource.getRepository(User).count(),
+        await dataSource.getRepository(Post).count(),
+        await dataSource.getRepository(Tag).count(),
+      ];
+      const before = await counts();
+      // A value that is undefined at runtime, as an unset request field or a missing session claim would be
+      const missing = undefined as unknown as string;
+      const remove = () => dataSource.createQueryBuilder().delete().from(User);
+
+      expect(() => remove().where({ id: missing })).toThrow(InvalidCriteriaError);
+      expect(() => remove().where({ id: missing })).toThrow('"id" is undefined');
+      expect(() => remove().where("age > 0").andWhere({ id: missing })).toThrow(InvalidCriteriaError);
+      expect(() => remove().where({ id: "u1" }).orWhere({ name: missing })).toThrow('"name" is undefined');
+      expect(() =>
+        dataSource
+          .createQueryBuilder()
+          .delete()
+          .from(Post)
+          .where({ author: { id: missing } }),
+      ).toThrow('"author.id" is undefined');
+      expect(() => remove().whereInIds([missing])).toThrow('"id" is undefined');
+      expect(() => remove().whereInIds(missing)).toThrow(InvalidCriteriaError);
+      expect(() => remove().where({ id: "u1" }).andWhereInIds(["u1", missing])).toThrow(InvalidCriteriaError);
+      expect(() => remove().where({ id: "u1" }).orWhereInIds([missing])).toThrow(InvalidCriteriaError);
+      expect(() => dataSource.createQueryBuilder().delete().from("accounts").whereInIds([missing])).toThrow(
+        InvalidCriteriaError,
+      );
+
+      expect(await counts()).toEqual(before);
+    });
+
     test("should report the affected rows and return requested columns", async () => {
       const tags = await dataSource
         .createQueryBuilder()

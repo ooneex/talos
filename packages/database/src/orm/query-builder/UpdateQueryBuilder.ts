@@ -16,6 +16,7 @@ import { UpdateResult } from "./results";
  *   .execute();
  */
 export class UpdateQueryBuilder<Entity extends ObjectLiteralType> extends QueryBuilder<Entity> {
+  protected override readonly refusesUndefinedCriteria = true;
   protected whereEntities: ObjectLiteralType[] = [];
   /** Values the builder chose itself (update timestamp), kept so they can be synced onto entities. */
   protected autoValues: ObjectLiteralType = {};

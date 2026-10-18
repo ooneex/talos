@@ -25,6 +25,7 @@ import type { DeleteResult, InsertResult, UpdateResult } from "./query-builder/r
 import type { SelectQueryBuilder } from "./query-builder/SelectQueryBuilder";
 import type { SoftDeleteQueryBuilder } from "./query-builder/SoftDeleteQueryBuilder";
 import type { UpdateQueryBuilder } from "./query-builder/UpdateQueryBuilder";
+import { findUndefinedWhereProperty } from "./query-builder/WhereBuilder";
 import { Repository } from "./Repository";
 
 type AggregateFunctionType = "SUM" | "AVG" | "MIN" | "MAX";
@@ -35,36 +36,6 @@ const isPlainObject = (value: unknown): value is ObjectLiteralType =>
   !Array.isArray(value) &&
   !(value instanceof Date) &&
   !isFindOperator(value);
-
-/** The path of the first property a where object sets to `undefined`, e.g. `author.id`. */
-const findUndefinedWhereProperty = (where: unknown, path = ""): string | undefined => {
-  if (Array.isArray(where)) {
-    for (const group of where) {
-      const found = findUndefinedWhereProperty(group, path);
-
-      if (found) {
-        return found;
-      }
-    }
-
-    return undefined;
-  }
-
-  if (!isPlainObject(where)) {
-    return undefined;
-  }
-
-  for (const [key, value] of Object.entries(where)) {
-    const property = path ? `${path}.${key}` : key;
-    const found = value === undefined ? property : findUndefinedWhereProperty(value, property);
-
-    if (found) {
-      return found;
-    }
-  }
-
-  return undefined;
-};
 
 /**
  * Entity operations for every entity of a data source.

@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import type { DataSource } from "../../../src/orm/DataSource";
-import { MissingDeleteDateColumnError } from "../../../src/orm/errors";
+import { InvalidCriteriaError, MissingDeleteDateColumnError } from "../../../src/orm/errors";
 import { createSqliteDataSource, Post, seedAlice, User } from "../../fixtures/entities";
 import { createDialectDataSource } from "../../fixtures/metadata";
 
@@ -50,6 +50,17 @@ describe("SoftDeleteQueryBuilder", () => {
 
     afterAll(async () => {
       await dataSource.destroy();
+    });
+
+    test("softDelete and restore should refuse undefined criteria", () => {
+      const missing = undefined as unknown as string;
+
+      expect(() => dataSource.createQueryBuilder().softDelete().from(User).where({ id: missing })).toThrow(
+        InvalidCriteriaError,
+      );
+      expect(() => dataSource.createQueryBuilder().restore().from(User).whereInIds([missing])).toThrow(
+        InvalidCriteriaError,
+      );
     });
 
     test("soft-deleted rows should disappear from queries until restored", async () => {
