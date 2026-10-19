@@ -914,3 +914,9 @@
 - Ignore type-only imports in the boundaries check|The boundaries check drew an edge for every import, `import type` included, so an SDK importing — Julien ([3433c811](https://github.com/ooneex/talos/commit/3433c811))
 - Count test imports and list every orphan under --logs in the orphans check|The orphans check only walked the sources, so a helper or an export that only a spec under a — Julien ([1217a653](https://github.com/ooneex/talos/commit/1217a653))
 
+## [0.17.6](https://github.com/ooneex/talos/releases/tag/@talos/cli@0.17.6) - 2026-10-19
+
+### Changed
+
+- Update Cargo.lock| — Franck ([5896113a](https://github.com/ooneex/talos/commit/5896113a))
+
