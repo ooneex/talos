@@ -4,6 +4,7 @@ export enum EStripeEvent {
   CustomerSubscriptionDeleted = "customer.subscription.deleted",
   CustomerSubscriptionUpdated = "customer.subscription.updated",
   PaymentIntentPaymentFailed = "payment_intent.payment_failed",
+  ChargeRefunded = "charge.refunded",
 }
 
 export type StripeEventType = `${EStripeEvent}`;
@@ -100,6 +101,19 @@ export type PaymentIntentPaymentFailedDataType = {
   lastPaymentErrorMessage: string | null;
 };
 
+export type ChargeRefundedDataType = {
+  /** The refunded charge (`ch_…`). */
+  id: string;
+  customerId: string | null;
+  /** The payment intent the charge belongs to, `null` for a charge made without one. */
+  paymentIntentId: string | null;
+  /** `true` once the whole charge is refunded, `false` after a partial refund. */
+  refunded: boolean;
+  /** The total refunded so far, in the smallest currency unit. */
+  amountRefunded: number;
+  currency: string;
+};
+
 // ─── Webhook Event Union ───────────────────────────────────────────────────
 
 export type CheckoutSessionCompletedEventType = {
@@ -137,12 +151,20 @@ export type PaymentIntentPaymentFailedEventType = {
   data: PaymentIntentPaymentFailedDataType;
 };
 
+export type ChargeRefundedEventType = {
+  type: EStripeEvent.ChargeRefunded;
+  id: string;
+  created: Date;
+  data: ChargeRefundedDataType;
+};
+
 export type WebhookEventType =
   | CheckoutSessionCompletedEventType
   | InvoicePaidEventType
   | CustomerSubscriptionDeletedEventType
   | CustomerSubscriptionUpdatedEventType
-  | PaymentIntentPaymentFailedEventType;
+  | PaymentIntentPaymentFailedEventType
+  | ChargeRefundedEventType;
 
 // ─── Provider Interface ────────────────────────────────────────────────────
 
