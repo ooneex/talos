@@ -64,7 +64,7 @@ export class RedisRateLimiter implements IRateLimiter {
   }
 
   public async check(key: string): Promise<RateLimitResultType> {
-    const limit = 120;
+    const limit = 1000;
     const windowSeconds = 60;
     try {
       const rateLimitKey = this.getKey(key);

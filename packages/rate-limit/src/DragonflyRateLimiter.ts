@@ -4,7 +4,7 @@ import { decorator } from "./decorators";
 import { RateLimitException } from "./RateLimitException";
 import type { DragonflyRateLimiterOptionsType, IRateLimiter, RateLimitResultType } from "./types";
 
-const LIMIT = 120;
+const LIMIT = 1000;
 const WINDOW_SECONDS = 60;
 
 @decorator.rateLimit()

@@ -14,10 +14,10 @@ import type {
 @decorator.rateLimit()
 export class UpstashRedisRateLimiter implements IRateLimiter {
   private ratelimit: Ratelimit;
-  // Default: 120 requests per 60-second sliding window (high traffic)
+  // Default: 1000 requests per 60-second sliding window (high traffic)
   private static readonly DEFAULT_ALGORITHM: UpstashAlgorithmType = {
     type: "slidingWindow",
-    limit: 120,
+    limit: 1000,
     window: "60 s",
   };
 

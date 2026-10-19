@@ -149,8 +149,8 @@ describe("RedisRateLimiter", () => {
       const result = await limiter.check(testKey);
 
       expect(result.limited).toBe(false);
-      expect(result.remaining).toBe(119);
-      expect(result.total).toBe(120);
+      expect(result.remaining).toBe(999);
+      expect(result.total).toBe(1000);
       expect(result.resetAt).toBeInstanceOf(Date);
       expect(mockRedisClient.incr).toHaveBeenCalledWith("ratelimit:user:123");
       expect(mockRedisClient.expire).toHaveBeenCalledWith("ratelimit:user:123", 60);
@@ -166,14 +166,14 @@ describe("RedisRateLimiter", () => {
     });
 
     test("should return limited when count exceeds limit", async () => {
-      mockRedisClient.incr.mockResolvedValue(121);
+      mockRedisClient.incr.mockResolvedValue(1001);
       mockRedisClient.ttl.mockResolvedValue(30);
 
       const result = await limiter.check(testKey);
 
       expect(result.limited).toBe(true);
       expect(result.remaining).toBe(0);
-      expect(result.total).toBe(120);
+      expect(result.total).toBe(1000);
     });
 
     test("should return remaining count correctly", async () => {
@@ -183,11 +183,11 @@ describe("RedisRateLimiter", () => {
       const result = await limiter.check(testKey);
 
       expect(result.limited).toBe(false);
-      expect(result.remaining).toBe(70);
+      expect(result.remaining).toBe(950);
     });
 
     test("should return zero remaining when at limit", async () => {
-      mockRedisClient.incr.mockResolvedValue(120);
+      mockRedisClient.incr.mockResolvedValue(1000);
       mockRedisClient.ttl.mockResolvedValue(60);
 
       const result = await limiter.check(testKey);
@@ -290,7 +290,7 @@ describe("RedisRateLimiter", () => {
 
   describe("isLimited method", () => {
     test("should return the limited state from check", async () => {
-      mockRedisClient.incr.mockResolvedValue(121);
+      mockRedisClient.incr.mockResolvedValue(1001);
       mockRedisClient.ttl.mockResolvedValue(60);
 
       await expect(limiter.isLimited(testKey)).resolves.toBe(true);
@@ -394,7 +394,7 @@ describe("RedisRateLimiter", () => {
       const result = await limiter.check(testKey);
 
       expect(mockRedisClient.connect).toHaveBeenCalledTimes(2);
-      expect(result.total).toBe(120);
+      expect(result.total).toBe(1000);
     });
   });
 
@@ -405,10 +405,10 @@ describe("RedisRateLimiter", () => {
       mockRedisClient.ttl.mockResolvedValue(60);
       let result = await limiter.check(testKey);
       expect(result.limited).toBe(false);
-      expect(result.remaining).toBe(119);
+      expect(result.remaining).toBe(999);
 
       // Exceed limit
-      mockRedisClient.incr.mockResolvedValue(121);
+      mockRedisClient.incr.mockResolvedValue(1001);
       result = await limiter.check(testKey);
       expect(result.limited).toBe(true);
       expect(result.remaining).toBe(0);
@@ -422,7 +422,7 @@ describe("RedisRateLimiter", () => {
       mockRedisClient.incr.mockResolvedValue(1);
       result = await limiter.check(testKey);
       expect(result.limited).toBe(false);
-      expect(result.remaining).toBe(119);
+      expect(result.remaining).toBe(999);
     });
 
     test("should handle multiple keys independently", async () => {
@@ -436,8 +436,8 @@ describe("RedisRateLimiter", () => {
       const result1 = await limiter.check("user:1");
       const result2 = await limiter.check("user:2");
 
-      expect(result1.remaining).toBe(70);
-      expect(result2.remaining).toBe(20);
+      expect(result1.remaining).toBe(950);
+      expect(result2.remaining).toBe(900);
       expect(result1.limited).toBe(false);
       expect(result2.limited).toBe(false);
     });

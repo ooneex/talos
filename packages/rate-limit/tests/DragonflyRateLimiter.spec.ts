@@ -123,7 +123,7 @@ describe("DragonflyRateLimiter", () => {
     test("should return not limited on first request", async () => {
       const result = await limiter.check(testKey);
 
-      expect(result).toMatchObject({ limited: false, remaining: 119, total: 120 });
+      expect(result).toMatchObject({ limited: false, remaining: 999, total: 1000 });
       expect(result.resetAt).toBeInstanceOf(Date);
       expect(mockDragonflyClient.incr).toHaveBeenCalledWith("ratelimit:user:123");
     });
@@ -162,16 +162,16 @@ describe("DragonflyRateLimiter", () => {
     });
 
     test("should return limited when count exceeds limit", async () => {
-      mockDragonflyClient.incr.mockResolvedValue(121);
+      mockDragonflyClient.incr.mockResolvedValue(1001);
       mockDragonflyClient.ttl.mockResolvedValue(30);
 
       const result = await limiter.check(testKey);
 
-      expect(result).toMatchObject({ limited: true, remaining: 0, total: 120 });
+      expect(result).toMatchObject({ limited: true, remaining: 0, total: 1000 });
     });
 
     test("should not be limited when exactly at the limit", async () => {
-      mockDragonflyClient.incr.mockResolvedValue(120);
+      mockDragonflyClient.incr.mockResolvedValue(1000);
 
       const result = await limiter.check(testKey);
 
@@ -221,7 +221,7 @@ describe("DragonflyRateLimiter", () => {
 
   describe("isLimited method", () => {
     test("should return the limited state from check", async () => {
-      mockDragonflyClient.incr.mockResolvedValue(121);
+      mockDragonflyClient.incr.mockResolvedValue(1001);
 
       await expect(limiter.isLimited(testKey)).resolves.toBe(true);
     });
@@ -316,7 +316,7 @@ describe("DragonflyRateLimiter", () => {
       const result = await limiter.check(testKey);
 
       expect(mockDragonflyClient.connect).toHaveBeenCalledTimes(2);
-      expect(result.total).toBe(120);
+      expect(result.total).toBe(1000);
     });
   });
 
@@ -331,19 +331,19 @@ describe("DragonflyRateLimiter", () => {
       const result1 = await limiter.check("user:1");
       const result2 = await limiter.check("user:2");
 
-      expect(result1.remaining).toBe(70);
-      expect(result2.remaining).toBe(20);
+      expect(result1.remaining).toBe(950);
+      expect(result2.remaining).toBe(900);
     });
 
     test("should handle check -> exceed -> reset -> check", async () => {
-      mockDragonflyClient.incr.mockResolvedValue(121);
+      mockDragonflyClient.incr.mockResolvedValue(1001);
       expect((await limiter.check(testKey)).limited).toBe(true);
 
       await expect(limiter.reset(testKey)).resolves.toBe(true);
 
       mockDragonflyClient.incr.mockResolvedValue(1);
       const result = await limiter.check(testKey);
-      expect(result).toMatchObject({ limited: false, remaining: 119 });
+      expect(result).toMatchObject({ limited: false, remaining: 999 });
     });
   });
 });
