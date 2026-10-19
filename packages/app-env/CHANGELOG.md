@@ -136,3 +136,9 @@
 
 - Run package lint through bun check|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([de3ee05c](https://github.com/ooneex/talos/commit/de3ee05c))
 
+## [1.10.0](https://github.com/ooneex/talos/releases/tag/@talosjs/app-env@1.10.0) - 2026-10-19
+
+### Added
+
+- Add RATE_LIMIT_DRAGONFLY_URL|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([555b0b88](https://github.com/ooneex/talos/commit/555b0b88))
+
