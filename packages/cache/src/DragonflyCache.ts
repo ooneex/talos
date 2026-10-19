@@ -55,15 +55,7 @@ export class DragonflyCache extends AbstractRedisCache {
 
     // talos-ignore perf.await-in-loop: SCAN is a cursor — a page cannot be asked for before the one that returns it
     do {
-      const [nextCursor, keys] = await client.scan(
-        cursor,
-        "MATCH",
-        pattern,
-        "COUNT",
-        this.scanCount,
-        "TYPE",
-        "string",
-      );
+      const [nextCursor, keys] = await client.scan(cursor, "MATCH", pattern, "COUNT", this.scanCount, "TYPE", "string");
       cursor = nextCursor;
 
       if (keys.length > 0) {
