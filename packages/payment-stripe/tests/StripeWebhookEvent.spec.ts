@@ -1,8 +1,11 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
+import { createHmac } from "node:crypto";
 import { PaymentException } from "@talosjs/payment";
+import Stripe from "stripe";
 import type { StripeClient } from "@/StripeClient";
 import { StripeWebhookEvent } from "@/StripeWebhookEvent";
 import {
+  type ChargeRefundedEventType,
   type CheckoutSessionCompletedEventType,
   type CustomerSubscriptionDeletedEventType,
   type CustomerSubscriptionUpdatedEventType,
@@ -391,6 +394,112 @@ describe("StripeWebhookEvent", () => {
 
       expect(event.data.customerId).toBeNull();
       expect(event.data.lastPaymentErrorMessage).toBeNull();
+    });
+  });
+
+  describe("charge.refunded", () => {
+    test("should map a fully refunded charge", async () => {
+      respondWith(EStripeEvent.ChargeRefunded, {
+        id: "ch_test123",
+        customer: "cus_test123",
+        payment_intent: "pi_test123",
+        refunded: true,
+        amount: 19000,
+        amount_refunded: 19000,
+        currency: "eur",
+      });
+
+      const event = (await webhook.construct("p", "s", "w")) as ChargeRefundedEventType;
+
+      expect(event.type).toBe(EStripeEvent.ChargeRefunded);
+      expect(event.id).toBe("evt_test123");
+      expect(event.created).toEqual(new Date(CREATED_TS * 1000));
+      expect(event.data).toEqual({
+        id: "ch_test123",
+        customerId: "cus_test123",
+        paymentIntentId: "pi_test123",
+        refunded: true,
+        amountRefunded: 19000,
+        currency: "eur",
+      });
+    });
+
+    test("should report a partial refund and unwrap expanded customer and payment intent", async () => {
+      respondWith(EStripeEvent.ChargeRefunded, {
+        id: "ch_test123",
+        customer: { id: "cus_expanded" },
+        payment_intent: { id: "pi_expanded" },
+        refunded: false,
+        amount: 19000,
+        amount_refunded: 5000,
+        currency: "eur",
+      });
+
+      const event = (await webhook.construct("p", "s", "w")) as ChargeRefundedEventType;
+
+      expect(event.data.customerId).toBe("cus_expanded");
+      expect(event.data.paymentIntentId).toBe("pi_expanded");
+      expect(event.data.refunded).toBe(false);
+      expect(event.data.amountRefunded).toBe(5000);
+    });
+
+    test("should null the customer and payment intent ids when absent", async () => {
+      respondWith(EStripeEvent.ChargeRefunded, {
+        id: "ch_test123",
+        customer: null,
+        payment_intent: null,
+        refunded: true,
+        amount: 1000,
+        amount_refunded: 1000,
+        currency: "usd",
+      });
+
+      const event = (await webhook.construct("p", "s", "w")) as ChargeRefundedEventType;
+
+      expect(event.data.customerId).toBeNull();
+      expect(event.data.paymentIntentId).toBeNull();
+    });
+
+    test("should verify and map a signed charge.refunded payload", async () => {
+      const secret = "whsec_test_charge_refunded";
+      const payload = JSON.stringify({
+        id: "evt_refund123",
+        object: "event",
+        type: "charge.refunded",
+        created: CREATED_TS,
+        livemode: false,
+        data: {
+          object: {
+            id: "ch_signed123",
+            object: "charge",
+            customer: "cus_signed123",
+            payment_intent: "pi_signed123",
+            refunded: true,
+            amount: 19000,
+            amount_refunded: 19000,
+            currency: "eur",
+          },
+        },
+      });
+      const timestamp = Math.floor(Date.now() / 1000);
+      const digest = createHmac("sha256", secret).update(`${timestamp}.${payload}`, "utf8").digest("hex");
+      const client = { sdk: new Stripe("sk_test_unused") } as unknown as StripeClient;
+
+      const event = await new StripeWebhookEvent(client).construct(payload, `t=${timestamp},v1=${digest}`, secret);
+
+      expect(event).toEqual({
+        type: EStripeEvent.ChargeRefunded,
+        id: "evt_refund123",
+        created: new Date(CREATED_TS * 1000),
+        data: {
+          id: "ch_signed123",
+          customerId: "cus_signed123",
+          paymentIntentId: "pi_signed123",
+          refunded: true,
+          amountRefunded: 19000,
+          currency: "eur",
+        },
+      });
     });
   });
 

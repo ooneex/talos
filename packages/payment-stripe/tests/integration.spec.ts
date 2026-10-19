@@ -342,6 +342,42 @@ describe("Scenario 3 — webhook signature verification", () => {
       expect(event.data.canceledAt).toBeInstanceOf(Date);
     }
   });
+
+  run("should verify and parse a charge.refunded webhook", async () => {
+    const webhookEvent = new StripeWebhookEvent(client);
+
+    const now = Math.floor(Date.now() / 1000);
+    const payload = JSON.stringify({
+      id: "evt_charge_refunded_test",
+      object: "event",
+      type: "charge.refunded",
+      created: now,
+      data: {
+        object: {
+          id: "ch_test",
+          object: "charge",
+          customer: oneshotCustomerId ?? "cus_test",
+          payment_intent: "pi_test",
+          amount: 1999,
+          amount_refunded: 1999,
+          refunded: true,
+          currency: "eur",
+        },
+      },
+      livemode: false,
+    });
+
+    const signature = stripeWebhookSignature(payload, WEBHOOK_SECRET);
+    const event = await webhookEvent.construct(payload, signature, WEBHOOK_SECRET);
+
+    expect(event.type).toBe(EStripeEvent.ChargeRefunded);
+
+    if (event.type === EStripeEvent.ChargeRefunded) {
+      expect(event.data.paymentIntentId).toBe("pi_test");
+      expect(event.data.refunded).toBe(true);
+      expect(event.data.amountRefunded).toBe(1999);
+    }
+  });
 });
 
 // ─── Cleanup ───────────────────────────────────────────────────────────────

@@ -3,6 +3,8 @@ import { PaymentException } from "@talosjs/payment";
 import type Stripe from "stripe";
 import { StripeClient } from "./StripeClient";
 import {
+  type ChargeRefundedDataType,
+  type ChargeRefundedEventType,
   type CheckoutSessionCompletedDataType,
   type CheckoutSessionCompletedEventType,
   type CustomerSubscriptionDeletedDataType,
@@ -48,6 +50,8 @@ export class StripeWebhookEvent {
         return this.customerSubscriptionUpdated(raw, created);
       case EStripeEvent.PaymentIntentPaymentFailed:
         return this.paymentIntentPaymentFailed(raw, created);
+      case EStripeEvent.ChargeRefunded:
+        return this.chargeRefunded(raw, created);
       default:
         throw new PaymentException(`Unsupported webhook event type: ${raw.type}`, "UNSUPPORTED_EVENT_TYPE");
     }
@@ -118,5 +122,18 @@ export class StripeWebhookEvent {
       lastPaymentErrorMessage: obj.last_payment_error?.message ?? null,
     };
     return { type: EStripeEvent.PaymentIntentPaymentFailed, id: raw.id, created, data };
+  }
+
+  private chargeRefunded(raw: Stripe.Event, created: Date): ChargeRefundedEventType {
+    const obj = raw.data.object as Stripe.Charge;
+    const data: ChargeRefundedDataType = {
+      id: obj.id,
+      customerId: typeof obj.customer === "string" ? obj.customer : (obj.customer?.id ?? null),
+      paymentIntentId: typeof obj.payment_intent === "string" ? obj.payment_intent : (obj.payment_intent?.id ?? null),
+      refunded: obj.refunded,
+      amountRefunded: obj.amount_refunded,
+      currency: obj.currency,
+    };
+    return { type: EStripeEvent.ChargeRefunded, id: raw.id, created, data };
   }
 }
