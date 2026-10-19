@@ -15,6 +15,8 @@ export type RedisRateLimiterOptionsType = {
   tls?: boolean | object;
 };
 
+export type DragonflyRateLimiterOptionsType = RedisRateLimiterOptionsType;
+
 export type UpstashAlgorithmType =
   | { type: "fixedWindow"; limit: number; window: Duration }
   | { type: "slidingWindow"; limit: number; window: Duration }
