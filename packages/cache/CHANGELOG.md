@@ -87,3 +87,9 @@
 
 - Reconnect Redis and Dragonfly caches after the server comes back from an outage|Bun's RedisClient stops trying after maxRetries reconnect attempts and stays closed for good, so — Julien ([247f88d5](https://github.com/ooneex/talos/commit/247f88d5))
 
+## [1.3.9](https://github.com/ooneex/talos/releases/tag/@talosjs/cache@1.3.9) - 2026-10-19
+
+### Changed
+
+- Collapse Dragonfly SCAN arguments onto one line|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([6f8a4256](https://github.com/ooneex/talos/commit/6f8a4256))
+
