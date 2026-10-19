@@ -19,6 +19,7 @@ const ENV_VAR_NAMES: Record<string, string> = {
   "cache.upstash.rest_token": "CACHE_UPSTASH_REDIS_REST_TOKEN",
   "pubsub.redis.url": "PUBSUB_REDIS_URL",
   "rate_limit.redis.url": "RATE_LIMIT_REDIS_URL",
+  "rate_limit.dragonfly.url": "RATE_LIMIT_DRAGONFLY_URL",
   "rate_limit.upstash.url": "RATE_LIMIT_UPSTASH_REDIS_URL",
   "rate_limit.upstash.token": "RATE_LIMIT_UPSTASH_REDIS_TOKEN",
   "cors.origins": "CORS_ORIGINS",

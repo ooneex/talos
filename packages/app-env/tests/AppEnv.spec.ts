@@ -594,6 +594,7 @@ describe("AppEnv", () => {
       delete Bun.env.CACHE_UPSTASH_REDIS_REST_TOKEN;
       delete Bun.env.PUBSUB_REDIS_URL;
       delete Bun.env.RATE_LIMIT_REDIS_URL;
+      delete Bun.env.RATE_LIMIT_DRAGONFLY_URL;
       delete Bun.env.RATE_LIMIT_UPSTASH_REDIS_URL;
       delete Bun.env.RATE_LIMIT_UPSTASH_REDIS_TOKEN;
       delete Bun.env.CORS_ORIGINS;
@@ -684,6 +685,7 @@ describe("AppEnv", () => {
       expect(appEnv.CACHE_UPSTASH_REDIS_REST_TOKEN).toBeUndefined();
       expect(appEnv.PUBSUB_REDIS_URL).toBeUndefined();
       expect(appEnv.RATE_LIMIT_REDIS_URL).toBeUndefined();
+      expect(appEnv.RATE_LIMIT_DRAGONFLY_URL).toBeUndefined();
       expect(appEnv.RATE_LIMIT_UPSTASH_REDIS_URL).toBeUndefined();
       expect(appEnv.RATE_LIMIT_UPSTASH_REDIS_TOKEN).toBeUndefined();
       expect(appEnv.CORS_ORIGINS).toBeUndefined();
@@ -912,6 +914,7 @@ describe("AppEnv", () => {
     test("should read pub/sub and rate limit env vars", () => {
       Bun.env.PUBSUB_REDIS_URL = "redis://pubsub";
       Bun.env.RATE_LIMIT_REDIS_URL = "redis://ratelimit";
+      Bun.env.RATE_LIMIT_DRAGONFLY_URL = "redis://dragonfly-ratelimit";
       Bun.env.RATE_LIMIT_UPSTASH_REDIS_URL = "https://upstash-ratelimit.io";
       Bun.env.RATE_LIMIT_UPSTASH_REDIS_TOKEN = "upstash-ratelimit-token";
 
@@ -919,6 +922,7 @@ describe("AppEnv", () => {
 
       expect(appEnv.PUBSUB_REDIS_URL).toBe("redis://pubsub");
       expect(appEnv.RATE_LIMIT_REDIS_URL).toBe("redis://ratelimit");
+      expect(appEnv.RATE_LIMIT_DRAGONFLY_URL).toBe("redis://dragonfly-ratelimit");
       expect(appEnv.RATE_LIMIT_UPSTASH_REDIS_URL).toBe("https://upstash-ratelimit.io");
       expect(appEnv.RATE_LIMIT_UPSTASH_REDIS_TOKEN).toBe("upstash-ratelimit-token");
     });

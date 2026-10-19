@@ -115,6 +115,7 @@ const buildScalarEnvValues = (
     CACHE_UPSTASH_REDIS_REST_TOKEN: readString("CACHE_UPSTASH_REDIS_REST_TOKEN"),
     PUBSUB_REDIS_URL: readString("PUBSUB_REDIS_URL"),
     RATE_LIMIT_REDIS_URL: readString("RATE_LIMIT_REDIS_URL"),
+    RATE_LIMIT_DRAGONFLY_URL: readString("RATE_LIMIT_DRAGONFLY_URL"),
     RATE_LIMIT_UPSTASH_REDIS_URL: readString("RATE_LIMIT_UPSTASH_REDIS_URL"),
     RATE_LIMIT_UPSTASH_REDIS_TOKEN: readString("RATE_LIMIT_UPSTASH_REDIS_TOKEN"),
     QUEUE_REDIS_URL: readString("QUEUE_REDIS_URL"),
@@ -216,6 +217,7 @@ export class AppEnv implements IAppEnv {
 
   // Rate limit
   public readonly RATE_LIMIT_REDIS_URL: string | undefined;
+  public readonly RATE_LIMIT_DRAGONFLY_URL: string | undefined;
   public readonly RATE_LIMIT_UPSTASH_REDIS_URL: string | undefined;
   public readonly RATE_LIMIT_UPSTASH_REDIS_TOKEN: string | undefined;
 
