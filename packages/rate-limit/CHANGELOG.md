@@ -63,3 +63,9 @@
 
 - Reconnect RedisRateLimiter after Redis comes back from an outage|Bun's RedisClient stops trying after maxRetries reconnect attempts and stays closed for good, so — Julien ([5c031a49](https://github.com/ooneex/talos/commit/5c031a49))
 
+## [1.2.0](https://github.com/ooneex/talos/releases/tag/@talosjs/rate-limit@1.2.0) - 2026-10-19
+
+### Added
+
+- Add DragonflyRateLimiter|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([32a40d6e](https://github.com/ooneex/talos/commit/32a40d6e))
+
