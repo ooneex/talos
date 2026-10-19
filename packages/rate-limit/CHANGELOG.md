@@ -69,3 +69,9 @@
 
 - Add DragonflyRateLimiter|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([32a40d6e](https://github.com/ooneex/talos/commit/32a40d6e))
 
+## [1.3.0](https://github.com/ooneex/talos/releases/tag/@talosjs/rate-limit@1.3.0) - 2026-10-19
+
+### Added
+
+- Raise the default window limit to 1000|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([e779de53](https://github.com/ooneex/talos/commit/e779de53))
+
