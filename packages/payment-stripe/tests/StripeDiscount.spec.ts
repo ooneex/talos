@@ -251,6 +251,86 @@ describe("StripeDiscount", () => {
       expect(promoArgs.max_redemptions).toBe(100);
       expect(promoArgs.expires_at).toBe(Math.floor(redeemBy.getTime() / 1000));
     });
+
+    test("should create a coupon and a promotion code reserved to one customer", async () => {
+      const expiresAt = new Date("2026-12-31T23:59:59Z");
+      const metadata = { kind: "bridge", purchaseId: "pur_1" };
+
+      await discount.create({
+        id: "bridge-pur_1",
+        name: "BRIDGE-7K2Q",
+        type: "fixed",
+        amount: 19000,
+        currency: "eur",
+        duration: "once",
+        code: "BRIDGE-7K2Q",
+        customerId: "cus_buyer",
+        expiresAt,
+        maxRedemptions: 1,
+        redeemBy: expiresAt,
+        appliesTo: ["prod_target"],
+        metadata,
+      });
+
+      expect(getCreateArgs()).toEqual({
+        id: "bridge-pur_1",
+        name: "BRIDGE-7K2Q",
+        duration: "once",
+        amount_off: 19000,
+        currency: "eur",
+        max_redemptions: 1,
+        redeem_by: 1798761599,
+        applies_to: { products: ["prod_target"] },
+        metadata,
+      });
+      expect(getPromoCodeArgs()).toEqual({
+        coupon: "coupon_test123",
+        code: "BRIDGE-7K2Q",
+        customer: "cus_buyer",
+        max_redemptions: 1,
+        expires_at: 1798761599,
+        metadata,
+      });
+    });
+
+    test("should prefer expiresAt over redeemBy for the promotion code", async () => {
+      const redeemBy = new Date("2026-12-31T00:00:00Z");
+      const expiresAt = new Date("2026-11-30T00:00:00Z");
+
+      await discount.create({
+        name: "Short Code",
+        type: "percentage",
+        amount: 10,
+        duration: "once",
+        code: "SHORT10",
+        redeemBy,
+        expiresAt,
+      });
+
+      expect(getCreateArgs().redeem_by).toBe(Math.floor(redeemBy.getTime() / 1000));
+      expect(getPromoCodeArgs().expires_at).toBe(Math.floor(expiresAt.getTime() / 1000));
+    });
+
+    test("should send only coupon and code to the promotion code when no option is given", async () => {
+      await discount.create({ name: "Plain", type: "percentage", amount: 10, duration: "once", code: "PLAIN10" });
+
+      expect(getCreateArgs()).toEqual({ name: "Plain", duration: "once", percent_off: 10 });
+      expect(getPromoCodeArgs()).toEqual({ coupon: "coupon_test123", code: "PLAIN10" });
+    });
+
+    test("should ignore customerId and expiresAt without a code", async () => {
+      await discount.create({
+        name: "No Code",
+        type: "percentage",
+        amount: 10,
+        duration: "once",
+        customerId: "cus_buyer",
+        expiresAt: new Date("2026-12-31T00:00:00Z"),
+      });
+
+      expect(getCreateArgs()).toEqual({ name: "No Code", duration: "once", percent_off: 10 });
+      expect(mockPromotionCodesCreate).not.toHaveBeenCalled();
+    });
   });
 
   describe("create — additional options", () => {

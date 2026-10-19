@@ -232,6 +232,8 @@ export enum EStripeDiscountDuration {
 export type StripeDiscountDurationType = `${EStripeDiscountDuration}`;
 
 export type StripeDiscountCreateType = {
+  /** The coupon id; Stripe generates one when omitted. A taken id makes Stripe refuse the coupon. */
+  id?: string;
   name: string;
   type: StripeDiscountTypeType;
   amount: number;
@@ -239,8 +241,13 @@ export type StripeDiscountCreateType = {
   duration: StripeDiscountDurationType;
   durationInMonths?: number;
   code?: string;
+  /** With `code`: only this Stripe customer (`cus_…`) can redeem the promotion code. */
+  customerId?: string;
+  /** With `code`: when the promotion code stops working. Defaults to `redeemBy`. */
+  expiresAt?: Date;
   maxRedemptions?: number;
   redeemBy?: Date;
+  /** Set on the coupon and, with `code`, on the promotion code. */
   metadata?: Record<string, string>;
   appliesTo?: string[];
 };

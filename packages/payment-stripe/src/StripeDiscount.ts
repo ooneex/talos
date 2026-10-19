@@ -21,6 +21,8 @@ export class StripeDiscount {
       duration: data.duration,
     };
 
+    if (data.id) params.id = data.id;
+
     if (data.type === "percentage") {
       params.percent_off = data.amount;
     } else {
@@ -45,8 +47,12 @@ export class StripeDiscount {
         code: data.code,
       };
 
+      const expiresAt = data.expiresAt ?? data.redeemBy;
+
       if (data.maxRedemptions !== undefined) promotionParams.max_redemptions = data.maxRedemptions;
-      if (data.redeemBy) promotionParams.expires_at = Math.floor(data.redeemBy.getTime() / 1000);
+      if (expiresAt) promotionParams.expires_at = Math.floor(expiresAt.getTime() / 1000);
+      if (data.customerId) promotionParams.customer = data.customerId;
+      if (data.metadata) promotionParams.metadata = data.metadata;
 
       await this.client.sdk.promotionCodes.create(promotionParams);
     }
