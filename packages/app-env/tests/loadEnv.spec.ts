@@ -208,6 +208,21 @@ describe("loadEnv", () => {
     expect(Bun.env.HOST_NAME).toBeUndefined();
   });
 
+  test("skips unset, null, and blank values", async () => {
+    await Bun.write(
+      `${testDir}/.env.yml`,
+      ["app:", '  env: "local"', "  host:", '  port: "   "', "jwt:", "  secret: null", "cors:", "  origins: []", ""].join(
+        "\n",
+      ),
+    );
+    await loadEnv();
+    expect(Bun.env.APP_ENV).toBe("local");
+    expect(Bun.env.HOST_NAME).toBeUndefined();
+    expect(Bun.env.PORT).toBeUndefined();
+    expect(Bun.env.JWT_SECRET).toBeUndefined();
+    expect(Bun.env.CORS_ORIGINS).toBeUndefined();
+  });
+
   test("converts numeric values to strings", async () => {
     await Bun.write(`${testDir}/.env.yml`, "app:\n  port: 3000\n");
     await loadEnv();

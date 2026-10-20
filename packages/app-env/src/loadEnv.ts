@@ -90,6 +90,29 @@ const ENV_VAR_NAMES: Record<string, string> = {
   "allowed_users.admin": "ADMIN_USERS",
 };
 
+const envValue = (value: YamlNode): string | undefined => {
+  if (value === null || value === undefined) {
+    return undefined;
+  }
+
+  if (Array.isArray(value)) {
+    const joined = value
+      .map((entry) => envValue(entry))
+      .filter((entry): entry is string => entry !== undefined)
+      .join(",");
+
+    return joined === "" ? undefined : joined;
+  }
+
+  if (typeof value === "object") {
+    return undefined;
+  }
+
+  const text = String(value);
+
+  return text.trim() === "" ? undefined : text;
+};
+
 const flatten = (node: { [key: string]: YamlNode }, prefix = ""): Record<string, string> => {
   const result: Record<string, string> = {};
 
@@ -98,10 +121,17 @@ const flatten = (node: { [key: string]: YamlNode }, prefix = ""): Record<string,
 
     if (value !== null && typeof value === "object" && !Array.isArray(value)) {
       Object.assign(result, flatten(value as { [key: string]: YamlNode }, path));
-    } else if (value !== null && value !== undefined && value !== "") {
-      const envKey = ENV_VAR_NAMES[path] ?? path.replaceAll(".", "_").toUpperCase();
-      result[envKey] = String(value);
+      continue;
     }
+
+    const text = envValue(value);
+
+    if (text === undefined) {
+      continue;
+    }
+
+    const envKey = ENV_VAR_NAMES[path] ?? path.replaceAll(".", "_").toUpperCase();
+    result[envKey] = text;
   }
 
   return result;
