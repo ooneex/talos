@@ -104,3 +104,13 @@
 
 - Run package lint through bun check|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([de3ee05c](https://github.com/ooneex/talos/commit/de3ee05c))
 
+## [1.3.2](https://github.com/ooneex/talos/releases/tag/@talosjs/seeds@1.3.2) - 2026-10-20
+
+### Changed
+
+- Read APP_ENV through a getter in the load seed env spec|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([a563bda7](https://github.com/ooneex/talos/commit/a563bda7))
+
+### Fixed
+
+- Keep a process APP_ENV when the seed yaml loads|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([e95c7f29](https://github.com/ooneex/talos/commit/e95c7f29))
+
