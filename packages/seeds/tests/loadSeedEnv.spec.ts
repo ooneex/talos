@@ -7,6 +7,7 @@ import { loadSeedEnv, seedEnvFile } from "@/loadSeedEnv";
 const previousAppEnv = Bun.env.APP_ENV;
 const previousDatabaseUrl = Bun.env.DATABASE_URL;
 
+const appEnv = (): string | undefined => Bun.env.APP_ENV;
 const databaseUrl = (): string | undefined => Bun.env.DATABASE_URL;
 
 describe("seedEnvFile", () => {
@@ -84,6 +85,6 @@ describe("loadSeedEnv", () => {
 
     await loadSeedEnv(main);
 
-    expect(Bun.env.APP_ENV).toBe("local");
+    expect(appEnv()).toBe("local");
   });
 });
