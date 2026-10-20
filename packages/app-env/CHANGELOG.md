@@ -142,3 +142,9 @@
 
 - Add RATE_LIMIT_DRAGONFLY_URL|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([555b0b88](https://github.com/ooneex/talos/commit/555b0b88))
 
+## [1.10.1](https://github.com/ooneex/talos/releases/tag/@talosjs/app-env@1.10.1) - 2026-10-20
+
+### Fixed
+
+- Skip unset null and blank yaml values when loading env|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([769a5fe3](https://github.com/ooneex/talos/commit/769a5fe3))
+
