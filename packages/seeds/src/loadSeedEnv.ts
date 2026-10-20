@@ -23,7 +23,15 @@ export const loadSeedEnv = async (main: string = Bun.main): Promise<void> => {
     return;
   }
 
+  // `talos seed:run --env` sets APP_ENV before this file loads. The yaml is the
+  // rest of the config and must not put that choice back.
+  const appEnv = Bun.env.APP_ENV;
+
   await loadEnv([file]);
+
+  if (appEnv) {
+    Bun.env.APP_ENV = appEnv;
+  }
 };
 
 await loadSeedEnv();
