@@ -12,19 +12,9 @@ use super::{CoverageAudit, LOG_TAIL_LINES, MAX_LOW_FILES, ModuleCoverage, RunSta
 // Report output
 // ---------------------------------------------------------------------------
 
-/// Print the measured suites.
-///
-/// `compact` drops the modules that are already where they should be: a report
-/// embedded in a larger one — `project:check` — is read for what needs work,
-/// and sixty rows of `100%` bury the five that do. The command's own report
-/// keeps every row, because there the table *is* the answer.
-pub fn print_report(
-    audit: &CoverageAudit,
-    logs: bool,
-    strict: bool,
-    elapsed_ms: u64,
-    compact: bool,
-) {
+/// Print the measured suites. Every module that ran gets a row: the table is
+/// the answer.
+pub fn print_report(audit: &CoverageAudit, logs: bool, strict: bool, elapsed_ms: u64) {
     let ran = audit.ran();
     let skipped = audit
         .modules
@@ -60,24 +50,7 @@ pub fn print_report(
         return;
     }
 
-    // Worst first either way, so the compact table is the head of the full one:
-    // what needs work, and a count of what does not.
-    let (rows, hidden): (Vec<&ModuleCoverage>, usize) = if compact {
-        (
-            ran.iter()
-                .copied()
-                .filter(|module| {
-                    !module.is_covered(audit.threshold) && module.status != RunStatus::Unmeasured
-                })
-                .collect(),
-            ran.iter()
-                .filter(|module| module.is_covered(audit.threshold))
-                .count(),
-        )
-    } else {
-        (ran.clone(), 0)
-    };
-    print_rows(audit, &rows, hidden, strict);
+    print_rows(audit, &ran, strict);
     print_low_files(audit, strict);
     print_failures(audit, logs);
     println!();
@@ -184,9 +157,9 @@ fn print_module_row(
     );
 }
 
-fn print_rows(audit: &CoverageAudit, rows: &[&ModuleCoverage], hidden: usize, strict: bool) {
-    // Nothing to show is the good news, and the summary is where a compact
-    // report says it — an empty table under a heading says it worse.
+fn print_rows(audit: &CoverageAudit, rows: &[&ModuleCoverage], strict: bool) {
+    // A run whose suites all fell over has no row to draw. The failures
+    // printed under the heading are the report.
     if rows.is_empty() {
         return;
     }
@@ -229,18 +202,6 @@ fn print_rows(audit: &CoverageAudit, rows: &[&ModuleCoverage], hidden: usize, st
             style("✖").red().bold(),
             style(format!("{:<width$}", script_label(module))).bold(),
             style(reason).red()
-        );
-    }
-
-    if hidden > 0 {
-        println!(
-            "  {}",
-            style(format!(
-                "+{hidden} module{} clearing {}%",
-                if hidden == 1 { "" } else { "s" },
-                trim_percent(audit.threshold)
-            ))
-            .dim()
         );
     }
 }

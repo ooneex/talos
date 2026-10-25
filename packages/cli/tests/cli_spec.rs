@@ -206,7 +206,7 @@ fn the_help_command_lists_the_commands_it_offers() {
 
     assert!(output.status.success(), "{:?}", output);
     let text = stdout(&output);
-    assert!(text.contains("project:check"), "{text}");
+    assert!(text.contains("workspace:check"), "{text}");
     assert!(text.contains("module:create"), "{text}");
 }
 
@@ -300,69 +300,6 @@ fn the_app_and_shared_modules_cannot_be_removed() {
 // ---------------------------------------------------------------------------
 // The checks
 // ---------------------------------------------------------------------------
-
-#[test]
-fn project_check_prints_a_json_report_for_the_checks_it_was_asked_for() {
-    let (home, root) = sandbox("project-check-json");
-
-    let output = talos(
-        root.path(),
-        home.path(),
-        &[
-            "project:check",
-            "--only=folders,git,docs",
-            "--json",
-            "--no-cache",
-        ],
-    );
-
-    let payload: serde_json::Value =
-        serde_json::from_str(&stdout(&output)).expect("the report is valid JSON");
-    assert_eq!(
-        payload["checks"].as_array().map(Vec::len),
-        Some(3),
-        "one entry per requested check"
-    );
-}
-
-#[test]
-fn project_check_takes_its_working_directory_from_the_flag() {
-    let (home, root) = sandbox("project-check-cwd");
-    let elsewhere = Scratch::new("project-check-elsewhere");
-
-    let output = talos(
-        elsewhere.path(),
-        home.path(),
-        &[
-            "project:check",
-            &format!("--cwd={}", root.path().display()),
-            "--only=folders",
-            "--json",
-            "--no-cache",
-        ],
-    );
-
-    let payload: serde_json::Value =
-        serde_json::from_str(&stdout(&output)).expect("the report is valid JSON");
-    assert_eq!(
-        payload["root"].as_str().map(Path::new),
-        Some(root.path()),
-        "the report names the directory it checked"
-    );
-}
-
-#[test]
-fn project_check_rejects_a_check_it_does_not_know() {
-    let (home, root) = sandbox("project-check-unknown");
-
-    let output = talos(
-        root.path(),
-        home.path(),
-        &["project:check", "--only=not-a-check"],
-    );
-
-    assert!(!output.status.success(), "an unknown check ends the run");
-}
 
 #[test]
 fn coverage_says_so_when_no_module_carries_a_suite() {

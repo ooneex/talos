@@ -99,15 +99,11 @@ fn script_path(dir: &Path, bin_path: &[&str]) -> PathBuf {
 /// dependency also registers it. Two modules running at once therefore race to
 /// apply the same shared migration, and the loser dies on "relation already
 /// exists".
-///
-/// `stream` prints each module's lines as they arrive; a caller that owns
-/// stdout turns it off and reads them back off the audit instead.
 pub(super) fn run_targets(
     targets: Vec<Target>,
     root: &Path,
     options: &ModuleScriptsOptions,
     loader: &Loader,
-    stream: bool,
 ) -> Vec<ModuleScript> {
     let width = targets
         .iter()
@@ -123,8 +119,7 @@ pub(super) fn run_targets(
             // `--drop` goes to the first module only: a later drop would wipe
             // everything the modules before it just applied.
             let drop = options.drop && index == 0;
-            let logging = stream.then_some((width, loader));
-            let script = run_script(target, root, options, drop, logging);
+            let script = run_script(target, root, options, drop, width, loader);
             loader.left(0, &target.label);
             script
         })
@@ -167,15 +162,15 @@ fn script_args(
 }
 
 /// Run one module's script and turn its exit status into a [`ModuleScript`].
-///
-/// `logging` carries the column width and the loader to print each line
-/// through; `None` keeps the output to the returned [`ModuleScript`].
+/// Each line is printed as it arrives, through the loader, and kept on the
+/// returned script for `--logs`.
 fn run_script(
     target: &Target,
     root: &Path,
     options: &ModuleScriptsOptions,
     drop: bool,
-    logging: Option<(usize, &Loader)>,
+    width: usize,
+    loader: &Loader,
 ) -> ModuleScript {
     let started = Instant::now();
 
@@ -187,17 +182,7 @@ fn run_script(
         command.env("APP_ENV", env);
     }
 
-    let run = match logging {
-        Some((width, loader)) => run_streamed(&mut command, &target.label, width, loader),
-        None => command.output().map(|output| {
-            let text = format!(
-                "{}{}",
-                String::from_utf8_lossy(&output.stdout),
-                String::from_utf8_lossy(&output.stderr)
-            );
-            (output.status, text)
-        }),
-    };
+    let run = run_streamed(&mut command, &target.label, width, loader);
 
     let duration_ms = started.elapsed().as_millis() as u64;
     let (exit, text) = match run {

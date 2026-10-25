@@ -1,11 +1,9 @@
 use std::fs;
 use std::path::Path;
-use std::process::Command;
 
 use clap::Parser;
 use cli::commands::app_init::{
-    AppInitArgs, AppType, install_commitlint_hook, prune_unselected_assistant_dirs,
-    scaffold_destination,
+    AppInitArgs, AppType, prune_unselected_assistant_dirs, scaffold_destination,
 };
 use tempfile::tempdir;
 
@@ -245,39 +243,6 @@ fn scaffold_destination_with_cli_app_type_empties_modules_and_removes_dockerigno
     assert!(modules_dir.is_dir());
     assert_eq!(fs::read_dir(&modules_dir).unwrap().count(), 0);
     assert!(!destination_path.join(".dockerignore").exists());
-}
-
-#[test]
-fn install_commitlint_hook_writes_an_executable_hook() {
-    let repo = tempdir().unwrap();
-    assert!(
-        Command::new("git")
-            .args(["init", "--quiet"])
-            .current_dir(repo.path())
-            .status()
-            .unwrap()
-            .success()
-    );
-
-    install_commitlint_hook(repo.path()).expect("hook install should succeed in a git repo");
-
-    let hook_path = repo.path().join(".git").join("hooks").join("commit-msg");
-    let content = fs::read_to_string(&hook_path).unwrap();
-    assert!(content.contains("talos commitlint:check"));
-
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-
-        let mode = fs::metadata(&hook_path).unwrap().permissions().mode();
-        assert_eq!(mode & 0o111, 0o111, "hook file should be executable");
-    }
-}
-
-#[test]
-fn install_commitlint_hook_fails_outside_a_git_repository() {
-    let not_a_repo = tempdir().unwrap();
-    assert!(install_commitlint_hook(not_a_repo.path()).is_err());
 }
 
 #[test]

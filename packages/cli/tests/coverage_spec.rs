@@ -7,9 +7,7 @@ use cli::commands::coverage::{
     CoverageArgs, CoverageAudit, FileCoverage, ModuleCoverage, RunStatus, Runner, audit,
     parse_counts, parse_lcov, parse_table, runner, skip_reason,
 };
-use cli::commands::project_check::cache::FileHashes;
-use cli::commands::project_check::modules::discover_modules;
-use cli::utils::OutputFormat;
+use cli::utils::{FileHashes, OutputFormat, WorkspaceModule, discover_modules};
 
 #[derive(Parser)]
 struct TestCli {
@@ -190,7 +188,7 @@ fn mixed_workspace() -> tempfile::TempDir {
     temp
 }
 
-fn member(root: &Path, name: &str) -> cli::commands::project_check::modules::WorkspaceModule {
+fn member(root: &Path, name: &str) -> WorkspaceModule {
     discover_modules(root)
         .into_iter()
         .find(|module| module.name == name)
@@ -468,7 +466,7 @@ fn a_suite_that_never_reported_is_never_stored() {
 fn an_empty_workspace_reports_nothing_to_run() {
     let temp = tempfile::tempdir().expect("create temp dir");
 
-    let outcome = audit(temp.path(), None, None, None, Some(1), true, true);
+    let outcome = audit(temp.path(), None, None, None, Some(1), true);
     assert!(
         outcome
             .expect_err("an empty workspace holds no suite")

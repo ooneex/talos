@@ -8,10 +8,9 @@ use std::process::Command;
 use std::sync::Mutex;
 use std::time::Instant;
 
-use crate::commands::project_check::modules::{
-    WorkspaceModule, discover_modules, filter_modules, wanted_names,
+use crate::utils::{
+    Loader, WorkspaceModule, discover_modules, filter_modules, is_rust_module, wanted_names,
 };
-use crate::utils::{Loader, is_rust_module};
 
 use super::cache;
 use super::parsing::{CoverageReport, parse_counts, parse_lcov, parse_table};

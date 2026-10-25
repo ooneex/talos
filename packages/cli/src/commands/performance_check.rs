@@ -196,8 +196,8 @@ impl ModulePerformance {
     }
 }
 
-/// Outcome of a run, kept free of process exits and printing so it can be
-/// embedded in aggregated reports.
+/// Outcome of a run, kept free of process exits and printing so the command
+/// can report it.
 #[derive(Clone, Debug, Default)]
 pub struct PerformanceAudit {
     pub modules: Vec<ModulePerformance>,
@@ -283,17 +283,15 @@ fn mean(values: impl Iterator<Item = f64>) -> f64 {
 
 /// Score every selected module and return the audit instead of printing it.
 ///
-/// This is the whole of the command bar the report it prints, so an embedded
-/// run can never score differently from the command: same modules, same
-/// symbols, same rules. `quiet` is for a caller that owns stdout and only
-/// silences the spinner and the loader.
+/// This is the whole of the command bar the report it prints, so a caller
+/// scores the same way the command does: same modules, same symbols, same
+/// rules.
 pub fn audit(
     root: &Path,
     modules: Option<&str>,
     packages: Option<&str>,
     threshold: Option<f64>,
     min_severity: Option<&str>,
-    quiet: bool,
 ) -> Result<PerformanceAudit, String> {
     let floor = match min_severity {
         Some(label) => Some(Severity::from_label(label).ok_or_else(|| {
@@ -305,7 +303,7 @@ pub fn audit(
     // Discovery walks the whole workspace before a single line is read, and
     // it is the one stretch before the loader where nothing is printed, so it
     // gets a spinner of its own — same as lint's workspace fingerprint.
-    let spinner = (!quiet).then(|| Spinner::start("Discovering the workspace..."));
+    let spinner = Spinner::start("Discovering the workspace...");
     let members = workspace(root, modules, packages);
     let targets = collect_targets(&members);
     drop(spinner);
@@ -318,7 +316,7 @@ pub fn audit(
         .iter()
         .filter(|target| target.skip.is_none())
         .count();
-    let loader = if readable > 0 && !quiet {
+    let loader = if readable > 0 {
         Loader::start(vec![LoaderGroup::new("Symbols", readable)])
     } else {
         Loader::hidden()
@@ -355,7 +353,6 @@ pub fn execute(args: &PerformanceCheckArgs) -> bool {
         args.packages.as_deref(),
         args.threshold,
         args.min_severity.as_deref(),
-        false,
     ) {
         Ok(audit) => audit,
         Err(message) => {
@@ -374,7 +371,6 @@ pub fn execute(args: &PerformanceCheckArgs) -> bool {
         args.logs,
         args.strict,
         started.elapsed().as_millis() as u64,
-        false,
     );
     !audit.is_failure(args.strict)
 }
@@ -552,8 +548,8 @@ mod tests {
     #[test]
     fn an_unknown_severity_is_reported_rather_than_ignored() {
         let root = std::env::temp_dir();
-        let error = audit(&root, None, None, None, Some("severe"), true)
-            .expect_err("the severity is rejected");
+        let error =
+            audit(&root, None, None, None, Some("severe")).expect_err("the severity is rejected");
 
         assert!(error.contains("severe"));
     }

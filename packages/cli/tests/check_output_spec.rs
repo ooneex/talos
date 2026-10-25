@@ -128,16 +128,11 @@ fn the_command_line_is_the_gate_without_its_own_output_flag() {
         modules: Some("user".to_string()),
         logs: true,
         no_cache: true,
-        threshold: Some(85.0),
-        concurrency: Some(4),
-        strict: true,
         skip_install: false,
         output: Some(OutputFormat::Md),
         cwd: Some("./here".to_string()),
     };
 
-    // Only what the gate itself takes: the fields left for `measure` and
-    // `score` are not flags of it, so re-running with them would fail.
     assert_eq!(
         command_line(&args),
         "talos check --packages=core --modules=user --logs --no-cache"
@@ -151,9 +146,6 @@ fn the_command_line_of_a_bare_gate_is_bare() {
         modules: None,
         logs: false,
         no_cache: false,
-        threshold: None,
-        concurrency: None,
-        strict: false,
         skip_install: false,
         output: None,
         cwd: None,

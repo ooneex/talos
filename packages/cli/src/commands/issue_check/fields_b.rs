@@ -5,10 +5,13 @@ use std::collections::{BTreeSet, HashMap, HashSet};
 
 use serde_yaml::{Mapping, Value};
 
-use crate::utils::COMMIT_TYPES;
-
 use super::loading::{as_str, field, is_kebab_case, value_kind};
 use super::{FileReport, LABEL_BRANCH_TYPES, is_valid_issue_id, quote_list};
+
+/// Conventional-commit types a branch name is allowed to start with.
+const COMMIT_TYPES: &[&str] = &[
+    "build", "chore", "ci", "docs", "feat", "fix", "perf", "refactor", "revert", "style", "test",
+];
 
 /// Warn when a branch's conventional-commit type doesn't correspond to any of
 /// the issue's change-type labels (e.g. a `fix/` branch on a `Feature` issue).

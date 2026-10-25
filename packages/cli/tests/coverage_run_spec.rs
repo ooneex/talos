@@ -97,8 +97,7 @@ fn text(output: &Output) -> String {
 fn the_audit_measures_every_module_that_carries_a_suite() {
     let (_dir, root) = workspace();
 
-    let report =
-        audit(&root, None, None, Some(90.0), Some(2), true, true).expect("modules were found");
+    let report = audit(&root, None, None, Some(90.0), Some(2), true).expect("modules were found");
 
     let by_name = |name: &str| {
         report
@@ -131,8 +130,7 @@ fn the_audit_measures_a_module_that_disables_coverage_for_ordinary_tests() {
         "[test]\ncoverage = false\ncoverageReporter = [\"text\", \"lcov\"]\ncoverageDir = \"coverage\"\n",
     );
 
-    let report =
-        audit(&root, Some("covered"), None, None, None, true, true).expect("covered was found");
+    let report = audit(&root, Some("covered"), None, None, None, true).expect("covered was found");
 
     assert_eq!(report.modules[0].status, RunStatus::Passed);
     assert_eq!(report.modules[0].lines, 100.0);
@@ -144,7 +142,7 @@ fn the_audit_measures_a_module_that_disables_coverage_for_ordinary_tests() {
 fn a_module_with_no_suite_is_skipped_with_the_reason_it_was_skipped_for() {
     let (_dir, root) = workspace();
 
-    let report = audit(&root, None, None, None, None, true, true).expect("modules were found");
+    let report = audit(&root, None, None, None, None, true).expect("modules were found");
 
     let bare = report
         .modules
@@ -162,8 +160,7 @@ fn a_module_with_no_suite_is_skipped_with_the_reason_it_was_skipped_for() {
 fn the_audit_reports_the_files_that_put_a_module_under_the_threshold() {
     let (_dir, root) = workspace();
 
-    let report =
-        audit(&root, Some("thin"), None, Some(90.0), None, true, true).expect("thin was found");
+    let report = audit(&root, Some("thin"), None, Some(90.0), None, true).expect("thin was found");
 
     assert_eq!(report.modules.len(), 1);
     let low = report.modules[0].low_files(90.0);
@@ -177,8 +174,7 @@ fn the_audit_reports_the_files_that_put_a_module_under_the_threshold() {
 fn restricting_the_audit_to_a_module_leaves_the_others_unmeasured() {
     let (_dir, root) = workspace();
 
-    let report =
-        audit(&root, Some("covered"), None, None, None, true, true).expect("covered was found");
+    let report = audit(&root, Some("covered"), None, None, None, true).expect("covered was found");
 
     assert_eq!(report.modules.len(), 1);
     assert_eq!(report.modules[0].name, "covered");
@@ -188,7 +184,7 @@ fn restricting_the_audit_to_a_module_leaves_the_others_unmeasured() {
 fn a_workspace_with_no_member_at_all_has_nothing_to_audit() {
     let dir = tempfile::tempdir().expect("create temp dir");
 
-    assert!(audit(dir.path(), None, None, None, None, true, true).is_err());
+    assert!(audit(dir.path(), None, None, None, None, true).is_err());
 }
 
 #[test]
@@ -196,7 +192,7 @@ fn the_audit_fails_the_run_when_a_suite_is_red_whatever_the_threshold() {
     let (_dir, root) = workspace();
 
     let report =
-        audit(&root, Some("broken"), None, Some(0.0), None, true, true).expect("broken was found");
+        audit(&root, Some("broken"), None, Some(0.0), None, true).expect("broken was found");
 
     assert!(report.is_failure(false), "a red suite is always a failure");
     assert!(report.is_failure(true));
@@ -206,8 +202,7 @@ fn the_audit_fails_the_run_when_a_suite_is_red_whatever_the_threshold() {
 fn a_thin_module_only_fails_the_run_under_strict() {
     let (_dir, root) = workspace();
 
-    let report =
-        audit(&root, Some("thin"), None, Some(90.0), None, true, true).expect("thin was found");
+    let report = audit(&root, Some("thin"), None, Some(90.0), None, true).expect("thin was found");
 
     assert!(!report.is_failure(false), "lenient is a warning");
     assert!(report.is_failure(true), "strict is a failure");

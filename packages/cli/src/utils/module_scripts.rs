@@ -84,8 +84,8 @@ pub struct ModuleScript {
     pub output: String,
 }
 
-/// Outcome of a run, kept free of process exits and printing so it can be
-/// embedded in aggregated reports.
+/// Outcome of a run, kept free of process exits and printing so the command
+/// can report it.
 #[derive(Clone, Debug, Default)]
 pub struct ScriptAudit {
     pub modules: Vec<ModuleScript>,
@@ -122,16 +122,12 @@ impl ScriptAudit {
 /// Run the script in every module that carries it and return the audit
 /// instead of printing it.
 ///
-/// This is the whole of a command bar the report it prints, so an embedded
-/// run can never behave differently from the command: same modules, same
-/// order, same scripts. `quiet` is for a caller that owns stdout: it silences
-/// the spinner, the loader and the streamed lines, which stay readable on the
-/// audit.
-pub fn audit(root: &Path, options: &ModuleScriptsOptions, quiet: bool) -> ScriptAudit {
+/// This is the whole of a command bar the report it prints, so a caller runs
+/// the same modules, in the same order, with the same scripts.
+pub fn audit(root: &Path, options: &ModuleScriptsOptions) -> ScriptAudit {
     // Walking the workspace is the one stretch before the loader where nothing
     // is printed, so it gets a spinner of its own.
-    let spinner =
-        (!quiet).then(|| Spinner::start(format!("Discovering {} scripts...", options.script)));
+    let spinner = Spinner::start(format!("Discovering {} scripts...", options.script));
     let targets = collect_targets(root, options);
     std::mem::drop(spinner);
 
@@ -153,12 +149,8 @@ pub fn audit(root: &Path, options: &ModuleScriptsOptions, quiet: bool) -> Script
         }
     }
 
-    let loader = if quiet {
-        Loader::hidden()
-    } else {
-        Loader::start(vec![LoaderGroup::new(options.group, targets.len())])
-    };
-    let modules = run_targets(targets, root, options, &loader, !quiet);
+    let loader = Loader::start(vec![LoaderGroup::new(options.group, targets.len())]);
+    let modules = run_targets(targets, root, options, &loader);
     loader.stop();
 
     ScriptAudit { modules }
@@ -169,7 +161,7 @@ pub fn audit(root: &Path, options: &ModuleScriptsOptions, quiet: bool) -> Script
 /// so and counts as a success — there was nothing to run.
 pub fn run_module_scripts(root: &Path, options: ModuleScriptsOptions, logs: bool) -> bool {
     let started = Instant::now();
-    let audit = audit(root, &options, false);
+    let audit = audit(root, &options);
 
     if audit.modules.is_empty() {
         super::warn(if options.modules.is_empty() {

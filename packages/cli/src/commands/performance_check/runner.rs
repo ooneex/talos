@@ -8,11 +8,10 @@ use std::time::Instant;
 
 use rayon::prelude::*;
 
-use crate::commands::project_check::modules::{
-    TS_EXTENSIONS, WorkspaceModule, collect_files, discover_modules, filter_modules, relative,
-    wanted_names,
+use crate::utils::{
+    Loader, TS_EXTENSIONS, WorkspaceModule, collect_files, discover_modules, filter_modules,
+    is_rust_module, relative, wanted_names,
 };
-use crate::utils::{Loader, is_rust_module};
 
 use super::rules::{Severity, inspect, score};
 use super::suppressions::{Suppression, apply, collect};

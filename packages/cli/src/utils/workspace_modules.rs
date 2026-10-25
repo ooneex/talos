@@ -1,17 +1,11 @@
-// Workspace discovery shared by the static `project:check` checks.
-//
-// Every check that inspects the repository layout (structure, env, secrets,
-// dependencies, translations) needs the same three primitives: the list of
-// modules, their manifests, and a bounded file walk. They live here so the
-// checks stay small and testable.
+// Workspace discovery shared by the commands that walk `modules/` and `packages/`.
 
 use std::fs;
 use std::path::{Path, PathBuf};
 
 use serde_json::Value;
 
-use crate::commands::project_check::{EXCLUDED_DIRS, MAX_SCANNED_FILE_BYTES, split_csv};
-use crate::utils::strip_jsonc;
+use super::module_registry::strip_jsonc;
 
 /// Directories that hold workspace members, in the order they are reported.
 pub const MODULE_GROUPS: [&str; 2] = ["modules", "packages"];
@@ -31,6 +25,33 @@ pub const MODULE_TYPES: &[&str] = &[
     "swagger",
     "admin",
 ];
+
+/// Directories never descended into while scanning sources.
+pub const EXCLUDED_DIRS: &[&str] = &[
+    "node_modules",
+    "dist",
+    "build",
+    "target",
+    "coverage",
+    "var",
+    "vendor",
+    "storybook-static",
+    "__pycache__",
+    "site-packages",
+    "venv",
+    ".git",
+    ".turbo",
+    ".cache",
+    ".temp",
+    ".venv",
+    ".tox",
+    ".pytest_cache",
+    ".mypy_cache",
+    ".ruff_cache",
+];
+
+/// Files larger than this are skipped by a source walk.
+pub const MAX_SCANNED_FILE_BYTES: u64 = 512 * 1024;
 
 /// A workspace member — a directory under `modules/` or `packages/`.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -137,6 +158,19 @@ pub fn wanted_names(modules: Option<&str>, packages: Option<&str>) -> Vec<String
         .into_iter()
         .chain(split_csv(packages))
         .collect()
+}
+
+fn split_csv(value: Option<&str>) -> Vec<String> {
+    value
+        .map(|value| {
+            value
+                .split(',')
+                .map(str::trim)
+                .filter(|part| !part.is_empty())
+                .map(str::to_string)
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 /// Collect the files under `dir` whose extension is listed, skipping build

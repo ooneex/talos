@@ -24,9 +24,9 @@ use std::time::Instant;
 
 use clap::Args;
 
-use crate::commands::project_check::cache::FileHashes;
 use crate::utils::{
-    Loader, LoaderGroup, OutputFormat, Spinner, announce_agent_report, write_agent_report,
+    FileHashes, Loader, LoaderGroup, OutputFormat, Spinner, announce_agent_report,
+    write_agent_report,
 };
 
 /// How many modules a report shows the output of before it is truncated.
@@ -103,8 +103,8 @@ pub struct ModuleLint {
     pub cached: bool,
 }
 
-/// Outcome of a run, kept free of process exits and printing so it can be
-/// embedded in aggregated reports.
+/// Outcome of a run, kept free of process exits and printing so the command
+/// can report it.
 #[derive(Clone, Debug, Default)]
 pub struct LintAudit {
     pub modules: Vec<ModuleLint>,
@@ -140,16 +140,14 @@ impl LintAudit {
 
 /// Run every selected module's lint and return the audit instead of printing it.
 ///
-/// This is the whole of the command bar the report it prints, so an embedded
-/// run can never lint differently from the command: same targets, same
-/// cache, same scripts. `quiet` is for a caller that owns stdout and only
-/// silences the spinner and the loader.
+/// This is the whole of the command bar the report it prints, so a caller
+/// lints the same way the command does: same targets, same cache, same
+/// scripts.
 pub fn audit(
     root: &Path,
     modules: Option<&str>,
     packages: Option<&str>,
     no_cache: bool,
-    quiet: bool,
 ) -> Result<LintAudit, String> {
     let members = workspace(root, modules, packages);
     let targets = collect_targets(&members);
@@ -166,15 +164,16 @@ pub fn audit(
     // spare, and it is the one stretch before the loader where nothing is
     // printed, so it gets a spinner of its own.
     let hashes = (!no_cache && runnable > 0).then(|| FileHashes::load(root));
-    let spinner =
-        (hashes.is_some() && !quiet).then(|| Spinner::start("Fingerprinting the workspace..."));
+    let spinner = hashes
+        .is_some()
+        .then(|| Spinner::start("Fingerprinting the workspace..."));
     let cache = hashes.as_ref().map(|hashes| Cache {
         root,
         fingerprints: cache::Fingerprints::build(root, &members, hashes),
     });
     drop(spinner);
 
-    let loader = if runnable > 0 && !quiet {
+    let loader = if runnable > 0 {
         Loader::start(vec![LoaderGroup::new("Lint", runnable)])
     } else {
         Loader::hidden()
@@ -212,7 +211,6 @@ pub fn execute(args: &LintArgs) -> bool {
         args.modules.as_deref(),
         args.packages.as_deref(),
         args.no_cache,
-        false,
     ) {
         Ok(audit) => audit,
         Err(message) => {

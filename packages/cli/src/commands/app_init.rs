@@ -8,7 +8,7 @@ use fs_extra::dir::{CopyOptions, copy as copy_dir};
 use crate::commands::agent_skills_create::AgentSkillsCreateArgs;
 use crate::templates::llm::assistants::ASSISTANTS;
 use crate::utils::{
-    Action, Spinner, ask_confirm, ask_multiselect, clone_skeleton, ensure_bin, print_onboarding,
+    Action, Spinner, ask_multiselect, clone_skeleton, ensure_bin, print_onboarding,
     resolve_name_and_destination, run_actions,
 };
 
@@ -71,14 +71,12 @@ pub fn run(args: &AppInitArgs) {
     });
 }
 
-/// Builds the post-scaffold actions: dependency install, git init (with an
-/// optional commit-msg hook), and — when any agent directories were chosen —
-/// scaffolding their skill files.
+/// Builds the post-scaffold actions: dependency install, git init, and — when
+/// any agent directories were chosen — scaffolding their skill files.
 fn build_init_actions(
     destination: &Path,
     kebab_name: &str,
     skeleton_repo_dir: &Path,
-    install_hook: bool,
     agent_dirs: &[String],
     silent: bool,
 ) -> Vec<Action> {
@@ -89,13 +87,7 @@ fn build_init_actions(
         }),
         Action::new("Initializing git repository", {
             let destination = destination.to_path_buf();
-            move || {
-                run_captured(Command::new("git").arg("init").current_dir(&destination))?;
-                if install_hook {
-                    write_commitlint_hook(&destination)?;
-                }
-                Ok(())
-            }
+            move || run_captured(Command::new("git").arg("init").current_dir(&destination))
         }),
     ];
     if !agent_dirs.is_empty() {
@@ -164,8 +156,6 @@ pub fn execute(options: AppInitOptions) -> Option<PathBuf> {
     }
     crate::utils::success("Project files prepared");
 
-    let install_hook = ask_confirm("Install the commit-msg hook?", true);
-
     let agent_dirs = resolve_agent_dirs(silent);
     prune_unselected_assistant_dirs(&destination, &agent_dirs);
 
@@ -173,7 +163,6 @@ pub fn execute(options: AppInitOptions) -> Option<PathBuf> {
         &destination,
         &kebab_name,
         &skeleton_repo_dir,
-        install_hook,
         &agent_dirs,
         silent,
     );
@@ -351,48 +340,6 @@ fn keep_only_app_and_shared_modules(destination: &Path) -> Result<(), String> {
             fs::remove_dir_all(entry.path()).map_err(|e| e.to_string())?;
         }
     }
-    Ok(())
-}
-
-pub fn install_commitlint_hook(destination: &Path) -> Result<(), String> {
-    let hook_path = write_commitlint_hook(destination)?;
-    crate::utils::success(format!("{} installed successfully", hook_path.display()));
-    Ok(())
-}
-
-fn write_commitlint_hook(destination: &Path) -> Result<PathBuf, String> {
-    let repo = git2::Repository::open(destination)
-        .map_err(|_| "commitlint:init must run inside a git repository".to_string())?;
-
-    let _ = repo
-        .config()
-        .and_then(|mut config| config.remove("core.hooksPath"));
-
-    let hooks_dir = repo.path().join("hooks");
-
-    fs::create_dir_all(&hooks_dir).map_err(|e| e.to_string())?;
-
-    let hook_path = hooks_dir.join("commit-msg");
-    let hook_content = "#!/usr/bin/env sh\n\
-# Talos commit-message linter — installed by `talos commitlint:init`.\n\
-exec talos commitlint:check --file \"$1\"\n";
-    fs::write(&hook_path, hook_content).map_err(|e| e.to_string())?;
-    make_executable(&hook_path)?;
-
-    Ok(hook_path)
-}
-
-/// Git for Windows runs hooks through its bundled shell, which ignores mode
-/// bits, so the executable flag is only meaningful on unix.
-#[cfg(unix)]
-fn make_executable(path: &Path) -> Result<(), String> {
-    use std::os::unix::fs::PermissionsExt;
-
-    fs::set_permissions(path, fs::Permissions::from_mode(0o755)).map_err(|e| e.to_string())
-}
-
-#[cfg(not(unix))]
-fn make_executable(_path: &Path) -> Result<(), String> {
     Ok(())
 }
 

@@ -34,12 +34,6 @@ pub fn forwarded_args(args: &CheckArgs) -> WorkspaceCheckArgs {
         modules: args.modules.clone(),
         logs: args.logs,
         no_cache: args.no_cache,
-        // The gate lints and nothing else, so it never reads any of these —
-        // they are only here for the callers of `workspace_check::measure`
-        // and `score`, which build the same arguments themselves.
-        threshold: None,
-        concurrency: None,
-        strict: false,
         output: args.output,
         cwd: args.cwd.clone(),
         skip_install: args.skip_install,

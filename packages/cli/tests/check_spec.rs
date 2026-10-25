@@ -93,10 +93,6 @@ fn check_forwards_all_flags_to_workspace_check() {
     assert_eq!(forwarded.output, Some(OutputFormat::Json));
     assert_eq!(forwarded.cwd.as_deref(), Some("./here"));
     assert!(forwarded.skip_install);
-    // Nothing the gate runs reads any of these — see `forwarded_args`.
-    assert!(forwarded.threshold.is_none());
-    assert!(forwarded.concurrency.is_none());
-    assert!(!forwarded.strict);
 }
 
 #[test]

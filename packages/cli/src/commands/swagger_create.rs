@@ -854,9 +854,8 @@ fn operation_of(definition: &RouteDefinition) -> Value {
 /// that read a specification rather than the explorer.
 ///
 /// The mount prefix goes in `servers` and the paths carry only `/v<version>`.
-/// That is what OpenAPI means by a server — and it is also the shape
-/// `project:check --only=openapi` compares against, since a controller's
-/// decorator states the route without the prefix the app mounts it under.
+/// That is what OpenAPI means by a server. A controller's decorator states
+/// the route without the prefix the app mounts it under.
 pub fn render_openapi(definitions: &[(String, RouteDefinition)], prefix: &str) -> String {
     let mut paths: std::collections::BTreeMap<String, Map<String, Value>> =
         std::collections::BTreeMap::new();

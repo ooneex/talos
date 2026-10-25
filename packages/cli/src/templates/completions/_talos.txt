@@ -44,10 +44,6 @@ _talos_docker_publish_modules() {
   fi
 }
 
-_talos_project_checks() {
-  _values -s , 'checks' workspace structure tsconfig lockfile conventions imports boundaries restricted container registration routes validation roles entities sql async complexity duplication orphans env dependencies outdated docker migrations accessibility contrast translations stories sdk tests coverage performance e2e-coverage docs bundle security secrets git issues branches commits hygiene e2e
-}
-
 _talos_custom_commands() {
   local -a cmds
   if [[ -d modules ]]; then
@@ -187,8 +183,6 @@ _talos() {
     'completion\:zsh:Install Zsh completion for oo command'
     'completion\:bash:Install Bash completion for oo command'
     'completion\:fish:Install Fish completion for oo command'
-    'commitlint\:check:Validate a commit message file against the conventional-commit rules'
-    'commitlint\:init:Install the git commit-msg hook that lints commit messages'
     'help:Show available commands'
     'version:Print the installed CLI version'
     'upgrade:Upgrade the CLI to its latest version'
@@ -223,7 +217,6 @@ _talos() {
     'security\:check:Audit dependencies for known vulnerabilities via OSV.dev'
     'coverage:Run tests per module with coverage and report what is left uncovered'
     'performance\:check:Score every function, method and class on what it will cost as the data grows'
-    'project\:check:Run every health check — workspace, structure, conventions, env, deps, docker, migrations, a11y, translations, tests, docs, security, secrets, git, issues, commits, hygiene'
     'install:Install dependencies with bun, auditing every package for known vulnerabilities first'
     'update:Update dependencies with bun, auditing the resolved versions for known vulnerabilities first'
     'add:Add new dependencies with bun, auditing the resolved versions for known vulnerabilities first'
@@ -329,15 +322,6 @@ _talos() {
         command:run)
           _arguments -s \
             '--name=[Name of the command to run]:name:_talos_custom_commands' \
-            '--cwd=[Working directory]:cwd:_files -/'
-          ;;
-        commitlint:check)
-          _arguments -s \
-            '--file=[Commit message file to validate]:file:_files' \
-            '--cwd=[Working directory]:cwd:_files -/'
-          ;;
-        commitlint:init)
-          _arguments -s \
             '--cwd=[Working directory]:cwd:_files -/'
           ;;
         issue:create)
@@ -605,24 +589,6 @@ _talos() {
             '--min-severity=[Minimum severity to report]:level:(low moderate high critical)' \
             '--logs[Print every hotspot and every rule, each with what to do about it]' \
             '--strict[Fail when a module stays under the threshold]' \
-            '--cwd=[Working directory]:cwd:_files -/'
-          ;;
-        project:check)
-          _arguments -s \
-            '--only=[Only run these checks, comma-separated]:checks:_talos_project_checks' \
-            '--skip=[Skip these checks, comma-separated]:checks:_talos_project_checks' \
-            '--packages=-[Package name(s), comma-separated (default: all)]::packages:_talos_publish_packages' \
-            '--modules=-[Module name(s), comma-separated (default: all)]::modules:_talos_publish_modules' \
-            '--audit-level=[Minimum vulnerability severity to report]:level:(low moderate high critical)' \
-            '--threshold=[Minimum line and function coverage, in percent]:threshold:(70 75 80 85 90 95 100)' \
-            '--concurrency=[How many suites the workspace check runs at once]:concurrency:(1 2 4 8)' \
-            '--e2e[Also run the end-to-end suite]' \
-            '--outdated[Also compare every dependency against the public registries]' \
-            '--logs[Stream plain workspace logs instead of the interactive view]' \
-            '--no-cache[Skip reading and writing the workspace task cache]' \
-            '--strict[Fail when a check only reports warnings]' \
-            '--output=[Also write the report to var/outputs/talos_project_check.md or .json]:format:(md json)' \
-            '--json[Print the report as JSON]' \
             '--cwd=[Working directory]:cwd:_files -/'
           ;;
         entity:create)

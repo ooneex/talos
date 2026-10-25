@@ -25,8 +25,8 @@ fn hash_file(path: &Path) -> Option<String> {
 /// The timestamp is whole nanoseconds rather than milliseconds-as-a-float
 /// because a float does not survive the round trip through the cache file:
 /// `serde_json` reads some of them back a single unit off what was written,
-/// and the file then looks stale to every run that follows. See the same
-/// note on the project check's `FileHash`.
+/// and the file then looks stale to every run that follows. The content-hash
+/// memo stores the same timestamp as whole nanoseconds for the same reason.
 #[derive(Clone, Serialize, Deserialize)]
 pub struct FileHashRecord {
     pub size: u64,

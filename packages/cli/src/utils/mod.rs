@@ -1,8 +1,8 @@
 mod agent_report;
 mod case;
-mod commitlint;
 mod concurrently;
 mod credentials;
+mod file_hashes;
 mod frontend_modules;
 mod git;
 pub mod github;
@@ -27,6 +27,7 @@ mod rng;
 mod runnable_modules;
 mod rust_module;
 mod scaffold;
+mod secret_scan;
 mod skeleton;
 pub mod storage;
 mod style;
@@ -34,6 +35,7 @@ mod workspace;
 mod workspace_batch;
 mod workspace_footer;
 pub mod workspace_group;
+mod workspace_modules;
 pub mod workspace_scheduler;
 pub mod workspace_task;
 mod yaml;
@@ -43,16 +45,13 @@ pub use agent_report::{
     announce as announce_agent_report, logs as report_logs, write_agent_report,
 };
 pub use case::{pluralize, to_kebab_case, to_pascal_case, to_snake_case};
-pub use commitlint::{
-    BODY_MAX_LINE_LENGTH, COMMIT_TYPES, COMMON_SCOPE, HEADER_MAX_LENGTH, check_commit_message_file,
-    get_valid_scopes, lint_commit_message, strip_commit_comments,
-};
 pub use concurrently::{
     CloseEvent, ConcurrentCommand, ConcurrentlyOptions, ConcurrentlyOutcome, KillCondition,
     PrefixColor, PrefixStyle, StartupNotice, SuccessCondition, colorize, prefix_label,
     run as run_concurrently, run_is_successful, should_kill_others, truncate_command,
 };
 pub use credentials::{read_credentials, save_credentials};
+pub use file_hashes::{FileHashes, checker, fingerprint};
 pub use frontend_modules::{
     CREATE_NEW_DESIGN, DesignWithTargetCreateArgs, NO_TARGET, add_module_alias_if_present,
     clone_frontend_template, collect_modules_by_type, collect_used_ports, ensure_design_module,
@@ -113,6 +112,7 @@ pub use scaffold::{
     ScaffoldConfig, ScaffoldOptions, add_class_to_module, current_dir, ensure_module,
     install_dependency, resolve_scaffold_module, scaffold_resource,
 };
+pub use secret_scan::{SecretFinding, scan_content};
 pub use skeleton::{
     SKELETON_CACHE_MAX_AGE, SKELETON_REPO_URL, TEMPLATES_DIR_ENV, clone_skeleton, is_cache_stale,
     read_template, skeleton_templates_dir,
@@ -126,6 +126,11 @@ pub use workspace::{
 };
 pub use workspace_footer::{BAR_WIDTH, FooterState, build_footer_lines};
 pub use workspace_group::{INSTALL_COMMAND, build_group, build_install_group};
+pub use workspace_modules::{
+    EXCLUDED_DIRS, MAX_SCANNED_FILE_BYTES, MODULE_GROUPS, MODULE_TYPES, TS_EXTENSIONS,
+    WorkspaceModule, collect_files, discover_modules, filter_modules, read_json, read_module_type,
+    relative, wanted_names,
+};
 pub(crate) use workspace_scheduler::{
     SchedulerContext, default_concurrency, print_task_report, run_group,
 };

@@ -22,8 +22,8 @@ use std::sync::OnceLock;
 
 use regex::Regex;
 
-use crate::commands::project_check::secrets;
 use crate::templates::llm::assistants::ASSISTANTS;
+use crate::utils::scan_content as scan_secrets;
 
 pub const CRITICAL: &str = "CRITICAL";
 pub const HIGH: &str = "HIGH";
@@ -275,7 +275,7 @@ pub fn scan_content(content: &str, config: bool) -> Vec<RuleHit> {
 
     // A credential committed inside an agent file is handed straight to the
     // model and to every tool it calls.
-    for finding in secrets::scan_content(content, false) {
+    for finding in scan_secrets(content, false) {
         if !finding.confident {
             continue;
         }

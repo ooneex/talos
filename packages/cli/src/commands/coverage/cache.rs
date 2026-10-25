@@ -17,8 +17,8 @@
 // does not change what a test covers, and re-running the whole workspace for
 // it would cost more than the cache ever saves.
 //
-// Entries live in `var/cache/coverage/<module>.json`, next to the project and
-// workspace caches, and `--no-cache` bypasses both reading and writing. Only a
+// Entries live in `var/cache/coverage/<module>.json`, next to the workspace
+// cache, and `--no-cache` bypasses both reading and writing. Only a
 // suite that actually reported is stored: a run that could not start is a
 // transient failure, not an answer.
 
@@ -30,8 +30,7 @@ use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use super::{FileCoverage, ModuleCoverage, RunStatus, coverage_dir};
-use crate::commands::project_check::cache::{FileHashes, checker, fingerprint};
-use crate::commands::project_check::modules::WorkspaceModule;
+use crate::utils::{FileHashes, WorkspaceModule, checker, fingerprint};
 
 /// Where the entries live, relative to the project root.
 pub const CACHE_DIR: &str = "var/cache/coverage";
@@ -75,7 +74,7 @@ pub struct Fingerprints {
 
 impl Fingerprints {
     /// Fingerprint the workspace. Members are hashed in parallel, and the file
-    /// hashes underneath are memoised with the project check's, so a tree that
+    /// hashes underneath are memoised, so a tree that
     /// has not moved costs one `stat` per file.
     pub fn build(root: &Path, modules: &[WorkspaceModule], hashes: &FileHashes) -> Self {
         let members: Vec<(String, String)> = modules

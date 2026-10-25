@@ -39,9 +39,9 @@ use std::time::Instant;
 
 use clap::Args;
 
-use crate::commands::project_check::cache::FileHashes;
 use crate::utils::{
-    Loader, LoaderGroup, OutputFormat, Spinner, announce_agent_report, write_agent_report,
+    FileHashes, Loader, LoaderGroup, OutputFormat, Spinner, announce_agent_report,
+    write_agent_report,
 };
 
 /// Coverage a module is expected to reach, in percent, when `--threshold` says
@@ -201,8 +201,8 @@ impl ModuleCoverage {
     }
 }
 
-/// Outcome of a run, kept free of process exits and printing so it can be
-/// embedded in aggregated reports.
+/// Outcome of a run, kept free of process exits and printing so the command
+/// can report it.
 #[derive(Clone, Debug, Default)]
 pub struct CoverageAudit {
     pub modules: Vec<ModuleCoverage>,
@@ -276,10 +276,9 @@ impl CoverageAudit {
 
 /// Run every selected suite and return the coverage instead of printing it.
 ///
-/// This is the whole of the command bar the report it prints, so an embedded
-/// run can never measure differently from the command: same targets, same
-/// cache, same suites. `quiet` is for the one caller that owns stdout — a JSON
-/// report — and only silences the spinner and the loader.
+/// This is the whole of the command bar the report it prints, so a caller
+/// measures the same way the command does: same targets, same cache, same
+/// suites.
 pub fn audit(
     root: &Path,
     modules: Option<&str>,
@@ -287,7 +286,6 @@ pub fn audit(
     threshold: Option<f64>,
     concurrency: Option<usize>,
     no_cache: bool,
-    quiet: bool,
 ) -> Result<CoverageAudit, String> {
     let members = workspace(root, modules, packages);
     let targets = collect_targets(&members);
@@ -304,8 +302,9 @@ pub fn audit(
     // spare, and it is the one stretch before the loader where nothing is
     // printed, so it gets a spinner of its own.
     let hashes = (!no_cache && runnable > 0).then(|| FileHashes::load(root));
-    let spinner =
-        (hashes.is_some() && !quiet).then(|| Spinner::start("Fingerprinting the workspace..."));
+    let spinner = hashes
+        .is_some()
+        .then(|| Spinner::start("Fingerprinting the workspace..."));
     let cache = hashes.as_ref().map(|hashes| Cache {
         root,
         fingerprints: cache::Fingerprints::build(root, &members, hashes),
@@ -314,7 +313,7 @@ pub fn audit(
 
     // Suites are the slowest thing the CLI does, so the wait is drawn rather
     // than sat through — whoever asked for the numbers.
-    let loader = if runnable > 0 && !quiet {
+    let loader = if runnable > 0 {
         Loader::start(vec![LoaderGroup::new("Suites", runnable)])
     } else {
         Loader::hidden()
@@ -356,7 +355,6 @@ pub fn execute(args: &CoverageArgs) -> bool {
         args.threshold,
         args.concurrency,
         args.no_cache,
-        false,
     ) {
         Ok(audit) => audit,
         Err(message) => {
@@ -371,7 +369,7 @@ pub fn execute(args: &CoverageArgs) -> bool {
     }
 
     let elapsed_ms = started.elapsed().as_millis() as u64;
-    print_report(&audit, args.logs, args.strict, elapsed_ms, false);
+    print_report(&audit, args.logs, args.strict, elapsed_ms);
 
     // The file is written after the report and never instead of it: whatever
     // it does, the terminal has already said the same thing.

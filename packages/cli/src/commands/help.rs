@@ -38,14 +38,6 @@ const COMMANDS: &[(&str, &str)] = &[
     ("completion:fish", "Install Fish completion for oo command"),
     ("completion:zsh", "Install Zsh completion for oo command"),
     (
-        "commitlint:check",
-        "Validate a commit message file against the conventional-commit rules",
-    ),
-    (
-        "commitlint:init",
-        "Install the git commit-msg hook that lints commit messages",
-    ),
-    (
         "credentials:create",
         "Save API credentials for a provider under the user config",
     ),
@@ -139,10 +131,6 @@ const COMMANDS: &[(&str, &str)] = &[
         "Score every function, method and class on what it will cost as the data grows",
     ),
     ("permission:create", "Generate a new permission class"),
-    (
-        "project:check",
-        "Run every health check, by category: foundation, architecture, api, data, runtime, frontend, quality, supply-chain, process",
-    ),
     ("queue:create", "Generate a new queue class"),
     ("rate-limit:create", "Generate a new rate limiter class"),
     (

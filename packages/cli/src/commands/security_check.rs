@@ -232,9 +232,8 @@ pub struct SecurityFinding {
     pub remediation: String,
 }
 
-/// Outcome of an audit, kept free of process exits and printing so it can be
-/// embedded in aggregated reports such as `project:check`, or cached to disk
-/// by `install`.
+/// Outcome of an audit, kept free of process exits and printing so `install`
+/// can cache it to disk.
 #[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
 pub struct SecurityAudit {
     pub findings: Vec<SecurityFinding>,

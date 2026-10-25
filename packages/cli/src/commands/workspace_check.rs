@@ -21,10 +21,8 @@ use std::time::Instant;
 
 use clap::Args;
 
-use crate::commands::coverage::{self, CoverageAudit};
 use crate::commands::install::{self, InstallArgs};
 use crate::commands::lint::{self, LintArgs, LintAudit};
-use crate::commands::performance_check::{self, PerformanceAudit};
 
 /// The gate's completed work, kept separate from process exit and file output
 /// so `check` can append its test phase before deciding the final verdict.
@@ -54,25 +52,6 @@ pub struct WorkspaceCheckArgs {
     #[arg(long, default_value_t = false)]
     pub no_cache: bool,
 
-    /// Minimum line and function coverage a module must reach, in percent.
-    ///
-    /// Not a flag of the gate, which measures nothing: the field is here for
-    /// [`measure`] and [`score`], which `project:check` calls with options of
-    /// its own. A flag the gate would ignore is worse than no flag at all.
-    #[arg(skip)]
-    pub threshold: Option<f64>,
-
-    /// How many suites [`measure`] runs at once — see
-    /// [`threshold`](Self::threshold) for why this is not a flag.
-    #[arg(skip)]
-    pub concurrency: Option<usize>,
-
-    /// Whether a caller of [`measure`] treats a module under the threshold as
-    /// a failure — see [`threshold`](Self::threshold) for why this is not a
-    /// flag.
-    #[arg(skip)]
-    pub strict: bool,
-
     /// When set, lint uses dependencies the caller already installed. Release
     /// installs ahead of the build, then sets this.
     #[arg(skip)]
@@ -85,42 +64,6 @@ pub struct WorkspaceCheckArgs {
 
     #[arg(long)]
     pub cwd: Option<String>,
-}
-
-/// Measure a workspace's suites without reporting them or ending the process.
-///
-/// The gate itself no longer measures anything, but `project:check` owns a
-/// coverage check of its own and asks for it here so it reads the same flags
-/// through the same [`WorkspaceCheckArgs`] its other checks do. The suites
-/// still draw their loader while they run, unless `quiet` says the caller is
-/// holding stdout for a report of its own.
-pub fn measure(args: &WorkspaceCheckArgs, quiet: bool) -> Result<CoverageAudit, String> {
-    coverage::audit(
-        &root(args),
-        args.modules.as_deref(),
-        args.packages.as_deref(),
-        args.threshold,
-        args.concurrency,
-        args.no_cache,
-        quiet,
-    )
-}
-
-/// Score a workspace's sources without reporting them or ending the process —
-/// the counterpart of [`measure`], for the same caller.
-///
-/// The threshold is deliberately left unset: `--threshold` is a coverage
-/// rate, and spending it on a second, unrelated score would mean one number
-/// quietly deciding two different things.
-pub fn score(args: &WorkspaceCheckArgs, quiet: bool) -> Result<PerformanceAudit, String> {
-    performance_check::audit(
-        &root(args),
-        args.modules.as_deref(),
-        args.packages.as_deref(),
-        None,
-        None,
-        quiet,
-    )
 }
 
 pub fn install_args(args: &WorkspaceCheckArgs) -> InstallArgs {
@@ -187,7 +130,6 @@ pub fn audit(args: &WorkspaceCheckArgs) -> WorkspaceCheckExecution {
         args.modules.as_deref(),
         args.packages.as_deref(),
         args.no_cache,
-        false,
     );
     let elapsed_ms = started.elapsed().as_millis() as u64;
     print_check_report(args, &lint, elapsed_ms);
@@ -224,7 +166,7 @@ pub fn write_requested_output(
 
 /// Write the gate's report under `var/outputs` and say where it landed.
 fn write_output(root: &Path, format: OutputFormat, report: &CheckReport) {
-    crate::utils::announce_report_file(output::write(root, format, report), false);
+    crate::utils::announce_report_file(output::write(root, format, report));
 }
 
 /// Prints the lint report under the gate's own header, then returns whether

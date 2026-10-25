@@ -6,10 +6,7 @@ use std::process::Command;
 use std::sync::Mutex;
 use std::time::Instant;
 
-use crate::commands::project_check::modules::{
-    WorkspaceModule, discover_modules, filter_modules, wanted_names,
-};
-use crate::utils::Loader;
+use crate::utils::{Loader, WorkspaceModule, discover_modules, filter_modules, wanted_names};
 
 use super::cache;
 use super::{LintStatus, MAX_CONCURRENCY, ModuleLint};

@@ -16,8 +16,6 @@ pub mod cache_create;
 pub mod check;
 pub mod command_create;
 pub mod command_run;
-pub mod commitlint_check;
-pub mod commitlint_init;
 pub mod completion_bash;
 pub mod completion_fish;
 pub mod completion_zsh;
@@ -60,7 +58,6 @@ pub mod npm_credentials_create;
 pub mod npm_publish;
 pub mod performance_check;
 pub mod permission_create;
-pub mod project_check;
 pub mod queue_create;
 pub mod rate_limit_create;
 pub mod react_component_create;
@@ -327,12 +324,6 @@ pub enum Commands {
     #[command(name = "add")]
     Add(add::AddArgs),
 
-    #[command(name = "commitlint:check")]
-    CommitlintCheck(commitlint_check::CommitlintCheckArgs),
-
-    #[command(name = "commitlint:init")]
-    CommitlintInit(commitlint_init::CommitlintInitArgs),
-
     #[command(name = "fmt")]
     Fmt(fmt::FmtArgs),
 
@@ -392,10 +383,6 @@ pub enum Commands {
     #[command(name = "performance:check")]
     PerformanceCheck(performance_check::PerformanceCheckArgs),
 
-    /// Run every health check (workspace, structure, conventions, env, dependencies, docker, migrations, accessibility, translations, tests, docs, security, secrets, git, issues, commits, hygiene)
-    #[command(name = "project:check")]
-    ProjectCheck(project_check::ProjectCheckArgs),
-
     #[command(name = "migration:up")]
     MigrationUp(migration_up::MigrationUpArgs),
 
@@ -422,7 +409,6 @@ impl Commands {
             Commands::SecurityCheck(args) => security_check::run(args),
             Commands::Coverage(args) => coverage::run(args),
             Commands::PerformanceCheck(args) => performance_check::run(args),
-            Commands::ProjectCheck(args) => project_check::run(args),
             Commands::MigrationUp(args) => migration_up::run(args),
             Commands::MigrationDown(args) => migration_down::run(args),
             Commands::SeedRun(args) => seed_run::run(args),
@@ -524,8 +510,6 @@ impl Commands {
 
     fn run_quality_commands(&self) -> bool {
         match self {
-            Commands::CommitlintCheck(args) => commitlint_check::run(args),
-            Commands::CommitlintInit(args) => commitlint_init::run(args),
             Commands::Fmt(args) => fmt::run(args),
             Commands::Lint(args) => lint::run(args),
             Commands::Test(args) => test::run(args),

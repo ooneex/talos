@@ -6,7 +6,7 @@ use std::path::PathBuf;
 
 use clap::Args;
 
-use crate::commands::project_check::modules::wanted_names;
+use crate::utils::wanted_names;
 use crate::utils::{ModuleScriptsOptions, current_dir, error, run_module_scripts};
 
 #[derive(Args, Debug)]

@@ -21,24 +21,9 @@ const MAX_LINE_NUMBERS: usize = 6;
 /// How many modules the hotspot listing covers before the rest are counted.
 const MAX_MODULES: usize = 10;
 
-/// The same two budgets inside a report embedded in a larger one, where the
-/// listing is a pointer at the worst of it rather than the answer itself.
-const MAX_COMPACT_MODULES: usize = 3;
-const MAX_COMPACT_HOTSPOTS: usize = 3;
-
-/// Print the scored modules.
-///
-/// `compact` drops the modules that are already where they should be, for a
-/// report embedded in a larger one: sixty rows of `100%` bury the five that
-/// need work. The command's own report keeps every row, because there the
-/// table *is* the answer.
-pub fn print_report(
-    audit: &PerformanceAudit,
-    logs: bool,
-    strict: bool,
-    elapsed_ms: u64,
-    compact: bool,
-) {
+/// Print the scored modules. Every scored module gets a row: the table is
+/// the answer.
+pub fn print_report(audit: &PerformanceAudit, logs: bool, strict: bool, elapsed_ms: u64) {
     let scanned = audit.scanned();
     let skipped = audit.skipped();
 
@@ -71,24 +56,8 @@ pub fn print_report(
         return;
     }
 
-    let (rows, hidden): (Vec<&ModulePerformance>, usize) = if compact {
-        (
-            scanned
-                .iter()
-                .copied()
-                .filter(|module| module.score() < audit.threshold)
-                .collect(),
-            scanned
-                .iter()
-                .filter(|module| module.score() >= audit.threshold)
-                .count(),
-        )
-    } else {
-        (scanned.clone(), 0)
-    };
-
-    print_rows(audit, &rows, hidden, strict);
-    print_hotspots(audit, logs, strict, compact);
+    print_rows(audit, &scanned, strict);
+    print_hotspots(audit, logs, strict);
     println!();
     print_summary(audit, skipped, strict);
 }
@@ -113,7 +82,7 @@ fn print_rows_header(width: usize, count_width: usize) {
     );
 }
 
-fn print_rows(audit: &PerformanceAudit, rows: &[&ModulePerformance], hidden: usize, strict: bool) {
+fn print_rows(audit: &PerformanceAudit, rows: &[&ModulePerformance], strict: bool) {
     if rows.is_empty() {
         return;
     }
@@ -165,29 +134,12 @@ fn print_rows(audit: &PerformanceAudit, rows: &[&ModulePerformance], hidden: usi
             style(reason).dim()
         );
     }
-
-    if hidden > 0 {
-        println!(
-            "  {}",
-            style(format!(
-                "+{hidden} module{} clearing {}",
-                if hidden == 1 { "" } else { "s" },
-                trim_percent(audit.threshold)
-            ))
-            .dim()
-        );
-    }
 }
 
-/// How many entries a listing shows: all of them under `--logs`, a pointer at
-/// the worst of them inside a larger report, and the standard budget
-/// otherwise.
-fn shown(total: usize, logs: bool, compact: bool, full: usize, embedded: usize) -> usize {
-    match (logs, compact) {
-        (true, _) => total,
-        (false, true) => embedded,
-        (false, false) => full,
-    }
+/// How many entries a listing shows: all of them under `--logs`, the standard
+/// budget otherwise.
+fn shown(total: usize, logs: bool, full: usize) -> usize {
+    if logs { total } else { full }
 }
 
 /// The symbols that miss the threshold, module by module, with what each of
@@ -198,7 +150,7 @@ fn shown(total: usize, logs: bool, compact: bool, full: usize, embedded: usize) 
 /// of twenty thousand icons averages a comfortable pass while still holding
 /// the slowest function in the workspace. The table above says which modules
 /// are in trouble; this says which functions to open.
-fn print_hotspots(audit: &PerformanceAudit, logs: bool, strict: bool, compact: bool) {
+fn print_hotspots(audit: &PerformanceAudit, logs: bool, strict: bool) {
     let modules: Vec<&ModulePerformance> = audit
         .scanned()
         .into_iter()
@@ -219,13 +171,7 @@ fn print_hotspots(audit: &PerformanceAudit, logs: bool, strict: bool, compact: b
         }
     );
 
-    let listed = shown(
-        modules.len(),
-        logs,
-        compact,
-        MAX_MODULES,
-        MAX_COMPACT_MODULES,
-    );
+    let listed = shown(modules.len(), logs, MAX_MODULES);
     for module in modules.iter().take(listed) {
         let hotspots = module.hotspots(audit.threshold);
         println!();
@@ -241,13 +187,7 @@ fn print_hotspots(audit: &PerformanceAudit, logs: bool, strict: bool, compact: b
             .dim()
         );
 
-        let listed = shown(
-            hotspots.len(),
-            logs,
-            compact,
-            MAX_HOTSPOTS,
-            MAX_COMPACT_HOTSPOTS,
-        );
+        let listed = shown(hotspots.len(), logs, MAX_HOTSPOTS);
         let width = hotspots
             .iter()
             .take(listed)
@@ -512,13 +452,10 @@ mod tests {
 
     #[test]
     fn a_listing_is_budgeted_by_where_the_report_is_being_read() {
-        // `--logs` is the caller asking for everything, whatever else is set.
-        assert_eq!(shown(50, true, false, 10, 3), 50);
-        assert_eq!(shown(50, true, true, 10, 3), 50);
-        // Embedded in a larger report, the listing points at the worst of it.
-        assert_eq!(shown(50, false, true, 10, 3), 3);
-        // On its own, the listing is the answer.
-        assert_eq!(shown(50, false, false, 10, 3), 10);
+        // `--logs` is the caller asking for everything.
+        assert_eq!(shown(50, true, 10), 50);
+        // On its own, the listing is the answer, up to the budget.
+        assert_eq!(shown(50, false, 10), 10);
     }
 
     #[test]
@@ -527,7 +464,7 @@ mod tests {
             modules: Vec::new(),
             threshold: 90.0,
         };
-        print_report(&empty, false, false, 10, false);
+        print_report(&empty, false, false, 10);
 
         let only_skipped = PerformanceAudit {
             modules: vec![ModulePerformance {
@@ -536,7 +473,7 @@ mod tests {
             }],
             threshold: 90.0,
         };
-        print_report(&only_skipped, false, false, 10, false);
+        print_report(&only_skipped, false, false, 10);
 
         let findings: Vec<Finding> = RULES
             .iter()
@@ -563,8 +500,7 @@ mod tests {
             threshold: 90.0,
         };
 
-        print_report(&mixed, false, false, 100, false);
-        print_report(&mixed, true, true, 100, false);
-        print_report(&mixed, false, false, 100, true);
+        print_report(&mixed, false, false, 100);
+        print_report(&mixed, true, true, 100);
     }
 }

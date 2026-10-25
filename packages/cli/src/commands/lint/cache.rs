@@ -13,8 +13,8 @@
 // one for the handful of root files that shape every module's lint (the
 // manifests, the lockfile, the TypeScript and Biome configuration).
 //
-// Entries live in `var/cache/lint/<module>.json`, next to the project and
-// workspace caches, and `--no-cache` bypasses both reading and writing. Only a
+// Entries live in `var/cache/lint/<module>.json`, next to the workspace cache,
+// and `--no-cache` bypasses both reading and writing. Only a
 // lint that actually ran to completion is stored: a run that could not start
 // is a transient failure, not an answer.
 
@@ -26,8 +26,7 @@ use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use super::{LintStatus, ModuleLint};
-use crate::commands::project_check::cache::{FileHashes, checker, fingerprint};
-use crate::commands::project_check::modules::WorkspaceModule;
+use crate::utils::{FileHashes, WorkspaceModule, checker, fingerprint};
 
 /// Where the entries live, relative to the project root.
 pub const CACHE_DIR: &str = "var/cache/lint";
@@ -69,7 +68,7 @@ pub struct Fingerprints {
 
 impl Fingerprints {
     /// Fingerprint the workspace. Members are hashed in parallel, and the file
-    /// hashes underneath are memoised with the project check's, so a tree that
+    /// hashes underneath are memoised, so a tree that
     /// has not moved costs one `stat` per file.
     pub fn build(root: &Path, modules: &[WorkspaceModule], hashes: &FileHashes) -> Self {
         let members: Vec<(String, String)> = modules
