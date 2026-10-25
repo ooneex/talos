@@ -35,8 +35,6 @@ talos check --output=md               # also write var/outputs/talos_check.md fo
 talos coverage                        # per-package line and function coverage
 talos security:check                  # OSV.dev audit of every lockfile + LLM config audit
 talos performance:check               # performance rules over the sources
-talos project:check --strict          # the whole-project gate, every check aggregated
-talos project:check --output=md       # also write var/outputs/talos_project_check.md for an agent to fix
 talos release:create                  # detect unreleased commits, bump, changelog, tag, push
 talos release:create --bump           # force a patch bump of every package and module
 ```
@@ -110,7 +108,7 @@ Full rules live in the `optimize` skill; the load-bearing ones:
 
 ## Commits
 
-`type(scope): Subject` — checked by a git `commit-msg` hook (`talos commitlint:init` / `talos commitlint:check`).
+`type(scope): Subject`
 
 - **Type**: `feat`, `fix`, `refactor`, `test`, `chore`, `docs`, `style`, `perf`, `build`, `ci`, `revert`.
 - **Scope**: the package directory name (`routing`, `cache`, `cli`); anything outside `packages/` uses `common`. Never empty.

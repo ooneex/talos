@@ -220,7 +220,7 @@ talos run --commands=lint,test   # run arbitrary scripts across packages
 
 ### Commit Conventions
 
-This project uses [Conventional Commits](https://www.conventionalcommits.org/), enforced by a git `commit-msg` hook installed with `oo commitlint:init`.
+This project uses [Conventional Commits](https://www.conventionalcommits.org/).
 
 ```
 type(scope): Subject line

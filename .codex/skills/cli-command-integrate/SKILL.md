@@ -20,7 +20,7 @@ Don't guess the command's contract — read it:
 Classify the command against the existing patterns:
 
 - **Resource generator** — flags are exactly `--name`, `--module`, optionally `--override`/`--no-cache`, and it scaffolds a class + test (like `command:create`, `entity:create`, `cache:create`). These share one completion case and one Skeleton skill shape.
-- **Check/audit** — reports or fixes findings across the workspace (`security:check`, `coverage:check`, `project:check`).
+- **Check/audit** — reports or fixes findings across the workspace (`security:check`, `coverage`).
 - **One-off** — its own flag set, e.g. `docker:create`, `app:start`.
 
 ## 2. Update the four completion templates
