@@ -38,8 +38,8 @@
   "scripts": {
     "build": "bunup",
     "compile": "tsc ./src/index.ts --declaration --emitDeclarationOnly --target ES2022 --moduleResolution bundler --outfile dist/index.d.ts",
-    "fmt": "bunx biome check --write",
-    "lint": "bun check && bunx biome lint",
+    "fmt": "bun fmt --no-script --staged",
+    "lint": "bun check",
     "test": "bun test --parallel=4 --isolate tests"
   },
   "type": "module",

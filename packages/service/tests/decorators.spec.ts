@@ -132,7 +132,6 @@ describe("decorator.service", () => {
     }
 
     expect(() => {
-      // biome-ignore lint/suspicious/noExplicitAny: testing with typed service
       decorator.service()(TypedService as any);
     }).not.toThrow();
 

@@ -4,7 +4,6 @@ import { ExaSearchTool } from "@/tools/ExaSearchTool";
 // Records every `search` call so assertions can inspect the query and options
 // the tool assembles, and replays `searchResult` back as the response.
 const searchCalls: Array<{ query: string; options: Record<string, unknown> }> = [];
-// biome-ignore lint/suspicious/noExplicitAny: tests stub arbitrary result shapes
 let searchResult: { results: any[] } = { results: [] };
 
 const search = mock((query: string, options: Record<string, unknown>) => {

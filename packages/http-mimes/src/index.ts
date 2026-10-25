@@ -40,7 +40,6 @@ export interface IMime {
 }
 
 export class Mime implements IMime {
-  // biome-ignore lint/complexity/noUselessConstructor: explicit constructor is needed for Bun function coverage
   public constructor() {}
 
   /**

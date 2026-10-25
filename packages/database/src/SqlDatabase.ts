@@ -114,7 +114,6 @@ export abstract class SqlDatabase<Options extends DataSourceOptionsType = DataSo
 {
   protected source: DataSource<Options> | undefined;
 
-  // biome-ignore lint/complexity/noUselessConstructor: explicit constructor is needed for Bun function coverage
   public constructor() {}
 
   /**
@@ -126,7 +125,6 @@ export abstract class SqlDatabase<Options extends DataSourceOptionsType = DataSo
    * entities it was built with.
    */
   public static registerEntities(...entities: EntityTargetType[]): void {
-    // biome-ignore lint/complexity/noThisInStatic: the receiver is the subclass that owns the registry
     const registry = entityRegistry(this.name);
 
     for (const entity of entities) {

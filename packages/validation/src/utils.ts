@@ -1,15 +1,12 @@
-/** biome-ignore-all assist/source/organizeImports: local import must precede the external one so bun's coverage tool marks these lines as hit */
 import { Validation } from "./Validation";
 import * as A from "arktype";
 import type { TypeParser } from "arktype/internal/type.ts";
 import type { AssertType, ValidationResultType } from "./types";
 
-// biome-ignore lint/complexity/noBannedTypes: trust me
 export const Assert: TypeParser<{}> = A.type;
 
 type ConcreteValidation = {
   new (
-    // biome-ignore lint/suspicious/noExplicitAny: mixin pattern requires any
     ...args: any[]
   ): {
     getConstraint(): AssertType;
@@ -20,7 +17,6 @@ type ConcreteValidation = {
 
 export function createConstraint(constraintFn: () => AssertType, errorMessage: string | null): ConcreteValidation {
   return class extends Validation {
-    // biome-ignore lint/complexity/noUselessConstructor: explicit constructor needed so bun's coverage tool marks it as hit
     constructor() {
       super();
     }

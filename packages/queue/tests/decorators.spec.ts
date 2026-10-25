@@ -23,7 +23,6 @@ describe("decorator.queue", () => {
     }
 
     expect(() => {
-      // biome-ignore lint/suspicious/noExplicitAny: testing decorator
       decorator.queue()(TestQueue as any);
     }).not.toThrow();
   });
@@ -41,7 +40,6 @@ describe("decorator.queue", () => {
       }
     }
 
-    // biome-ignore lint/suspicious/noExplicitAny: testing decorator
     decorator.queue()(SingletonQueue as any);
 
     const instance1 = container.get(SingletonQueue);
@@ -63,7 +61,6 @@ describe("decorator.queue", () => {
       }
     }
 
-    // biome-ignore lint/suspicious/noExplicitAny: testing decorator
     decorator.queue(EContainerScope.Singleton)(ExplicitSingletonQueue as any);
 
     const instance1 = container.get(ExplicitSingletonQueue);
@@ -93,7 +90,6 @@ describe("decorator.queue", () => {
       }
     }
 
-    // biome-ignore lint/suspicious/noExplicitAny: testing decorator
     decorator.queue(EContainerScope.Transient)(TransientQueue as any);
 
     const instance1 = container.get(TransientQueue);
@@ -117,7 +113,6 @@ describe("decorator.queue", () => {
     }
 
     expect(() => {
-      // biome-ignore lint/suspicious/noExplicitAny: testing decorator
       decorator.queue(EContainerScope.Request)(RequestScopedQueue as any);
     }).not.toThrow();
 
@@ -140,7 +135,6 @@ describe("decorator.queue", () => {
       }
     }
 
-    // biome-ignore lint/suspicious/noExplicitAny: testing decorator
     decorator.queue()(RetrievableQueue as any);
 
     const instance = container.get(RetrievableQueue);
@@ -155,7 +149,6 @@ describe("decorator.queue", () => {
       }
     }
 
-    // biome-ignore lint/suspicious/noExplicitAny: testing decorator
     const result = decorator.queue()(VoidReturnQueue as any);
     expect(result).toBeUndefined();
   });

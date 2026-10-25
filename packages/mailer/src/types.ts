@@ -1,4 +1,3 @@
-// biome-ignore lint/suspicious/noExplicitAny: trust me
 export type MailerClassType = new (...args: any[]) => IMailer;
 
 export interface IMailerAttachment {

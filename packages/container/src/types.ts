@@ -1,5 +1,3 @@
-/** biome-ignore-all lint/suspicious/noExplicitAny: trust me */
-
 export enum EContainerScope {
   Singleton = "singleton",
   Transient = "transient",

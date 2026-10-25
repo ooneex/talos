@@ -10,7 +10,6 @@ export type CleanJobType =
   | "delayed"
   | "failed";
 
-// biome-ignore lint/suspicious/noExplicitAny: trust me
 export type QueueClassType = new (...args: any[]) => IQueue;
 
 export type QueueHandlerReturnType<R = unknown> = Promise<R> | R;

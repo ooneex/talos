@@ -45,7 +45,6 @@ describe("OpenrouterEmbeddingFunction", () => {
 
   test("should expose the api key as a sensitive key", () => {
     const fn = new OpenrouterEmbeddingFunction();
-    // biome-ignore lint/suspicious/noExplicitAny: access protected member for testing
     expect((fn as any).getSensitiveKeys()).toEqual(["apiKey"]);
   });
 

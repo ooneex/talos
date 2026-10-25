@@ -230,7 +230,6 @@ describe("UnauthorizedException", () => {
 
       try {
         throwUnauthorizedException();
-        // biome-ignore lint/suspicious/noExplicitAny: trust me
       } catch (error: any) {
         expect(error).toBeInstanceOf(UnauthorizedException);
         expect(error.stack).toBeDefined();

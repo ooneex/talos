@@ -127,7 +127,6 @@ function createMockLimitsResponse(overrides = {}) {
   };
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: Mock requires flexible typing
 const getCallArgs = (): any => {
   const calls = mockMetricsGet.mock.calls as unknown[][];
   if (calls.length === 0) {

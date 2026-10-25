@@ -61,7 +61,6 @@ describe("RouterException", () => {
 
     try {
       throwRouterException();
-      // biome-ignore lint/suspicious/noExplicitAny: trust me
     } catch (error: any) {
       expect(error).toBeInstanceOf(RouterException);
       expect(error.stack).toContain("throwRouterException");

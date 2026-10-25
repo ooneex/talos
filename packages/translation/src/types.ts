@@ -28,5 +28,4 @@ export interface ITranslation {
   trans: (key: string, options?: TransOptionsType) => string;
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: trust me
 export type TranslationClassType = new (...args: any[]) => ITranslation;

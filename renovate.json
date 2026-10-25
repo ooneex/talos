@@ -38,11 +38,6 @@
       "matchPackagePatterns": ["^@types/"]
     },
     {
-      "description": "Group all Biome related packages",
-      "groupName": "Biome",
-      "matchPackagePatterns": ["^@biomejs/"]
-    },
-    {
       "description": "Group all SWC related packages",
       "groupName": "SWC",
       "matchPackagePatterns": ["^@swc/", "^@swc-node/"]
@@ -51,11 +46,6 @@
       "description": "Group all test related packages",
       "groupName": "Testing tools",
       "matchPackagePatterns": ["^@types/bun", "^bun-types"]
-    },
-    {
-      "description": "Pin Biome to exact version for consistency",
-      "matchPackagePatterns": ["^@biomejs/"],
-      "rangeStrategy": "pin"
     },
     {
       "description": "Use pin strategy for Bun types to avoid breaking changes",

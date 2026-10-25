@@ -9,19 +9,15 @@ class MockVectorDatabase implements IVectorDatabase<{ metadata: Record<string, u
   public connect(): Promise<void> {
     return Promise.resolve();
   }
-  // biome-ignore lint/suspicious/noExplicitAny: test mock
   public getDatabase(): any {
     return null;
   }
-  // biome-ignore lint/suspicious/noExplicitAny: test mock
   public getEmbeddingModel(): any {
     return { model: "text-embedding-3-small" };
   }
-  // biome-ignore lint/suspicious/noExplicitAny: test mock
   public getSchema(): any {
     return {};
   }
-  // biome-ignore lint/suspicious/noExplicitAny: test mock
   public open(): any {
     return Promise.resolve(null);
   }

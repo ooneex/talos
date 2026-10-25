@@ -63,28 +63,24 @@ function createMockCouponList(overrides = {}) {
   };
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: Mock requires flexible typing
 const getCreateArgs = (): any => {
   const calls = mockCouponsCreate.mock.calls as unknown[][];
   if (calls.length === 0) throw new Error("No calls recorded");
   return calls[0]?.[0];
 };
 
-// biome-ignore lint/suspicious/noExplicitAny: Mock requires flexible typing
 const getUpdateArgs = (): { id: string; params: any } => {
   const calls = mockCouponsUpdate.mock.calls as unknown[][];
   if (calls.length === 0) throw new Error("No calls recorded");
   return { id: calls[0]?.[0] as string, params: calls[0]?.[1] };
 };
 
-// biome-ignore lint/suspicious/noExplicitAny: Mock requires flexible typing
 const getListArgs = (): any => {
   const calls = mockCouponsList.mock.calls as unknown[][];
   if (calls.length === 0) throw new Error("No calls recorded");
   return calls[0]?.[0];
 };
 
-// biome-ignore lint/suspicious/noExplicitAny: Mock requires flexible typing
 const getPromoCodeArgs = (): any => {
   const calls = mockPromotionCodesCreate.mock.calls as unknown[][];
   if (calls.length === 0) throw new Error("No calls recorded");

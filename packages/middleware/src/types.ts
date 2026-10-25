@@ -1,9 +1,7 @@
 import type { ContextConfigType, ContextType } from "@talosjs/controller";
 import type { ContextConfigType as SocketContextConfigType, ContextType as SocketContextType } from "@talosjs/socket";
 
-// biome-ignore lint/suspicious/noExplicitAny: trust me
 export type MiddlewareClassType = new (...args: any[]) => IMiddleware;
-// biome-ignore lint/suspicious/noExplicitAny: trust me
 export type SocketMiddlewareClassType = new (...args: any[]) => ISocketMiddleware;
 
 export interface IMiddleware<T extends ContextConfigType = ContextConfigType> {

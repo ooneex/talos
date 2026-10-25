@@ -32,7 +32,6 @@ const chatMock = mock((options: Record<string, unknown>) => {
 mock.module("@tanstack/ai", () => ({
   chat: chatMock,
   createChatOptions: (options: unknown) => options,
-  // biome-ignore lint/suspicious/noExplicitAny: minimal tool-definition stand-in
   toolDefinition: (definition: any) => ({
     server: (handler: unknown) => ({ ...definition, handler }),
   }),
@@ -57,7 +56,6 @@ class TestChat extends Chat {
   public getSkills = (): AiSkillClassType[] => [];
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: tests read arbitrary option keys off the recorded call
 const lastCall = () => chatCalls[chatCalls.length - 1] as Record<string, any>;
 
 beforeEach(() => {
@@ -137,7 +135,6 @@ describe("Chat.run", () => {
 
   test("should pass the outputSchema through when structured output is requested", async () => {
     chatResult = { ok: true };
-    // biome-ignore lint/suspicious/noExplicitAny: stand-in schema for the test
     const outputSchema = { kind: "object" } as any;
 
     const result = await new TestChat().run({ prompt: "hi", outputSchema });

@@ -5,7 +5,6 @@ import type { AssertType, IAssert } from "@talosjs/validation";
 import { router } from "./Router";
 import type { ExtractParametersType, RouteConfigType, RoutePathType } from "./types";
 
-// biome-ignore lint/suspicious/noExplicitAny: socket controllers have a different context type
 type SocketControllerClassType = new (...args: any[]) => { index: (...args: any[]) => any };
 
 type TypedRouteConfig<T extends string> = Omit<

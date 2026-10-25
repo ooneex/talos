@@ -10,12 +10,9 @@ const createMockEnv = (): AppEnv => {
   } as unknown as AppEnv;
 };
 
-// biome-ignore lint/suspicious/noExplicitAny: Mock requires flexible typing
 const mockDiscountsCreate = mock((): any => Promise.resolve(createMockDiscountResponse()));
-// biome-ignore lint/suspicious/noExplicitAny: Mock requires flexible typing
 const mockDiscountsUpdate = mock((): any => Promise.resolve(createMockDiscountResponse()));
 const mockDiscountsDelete = mock(() => Promise.resolve());
-// biome-ignore lint/suspicious/noExplicitAny: Mock requires flexible typing
 const mockDiscountsGet = mock((): any => Promise.resolve(createMockDiscountResponse()));
 
 mock.module("@polar-sh/sdk", () => ({
@@ -54,7 +51,6 @@ function createMockDiscountResponse(overrides = {}) {
   };
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: Mock requires flexible typing
 const getCreateCallArgs = (): any => {
   const calls = mockDiscountsCreate.mock.calls as unknown[][];
   if (calls.length === 0) {
@@ -63,7 +59,6 @@ const getCreateCallArgs = (): any => {
   return calls[0]?.[0];
 };
 
-// biome-ignore lint/suspicious/noExplicitAny: Mock requires flexible typing
 const getUpdateCallArgs = (): any => {
   const calls = mockDiscountsUpdate.mock.calls as unknown[][];
   if (calls.length === 0) {

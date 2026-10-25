@@ -34,8 +34,8 @@
   "name": "@talosjs/http-request-file",
   "scripts": {
     "build": "bunup",
-    "fmt": "bunx biome check --write",
-    "lint": "bun check && bunx biome lint",
+    "fmt": "bun fmt --no-script --staged",
+    "lint": "bun check",
     "test": "bun test --parallel=4 --isolate tests"
   },
   "type": "module",

@@ -33,5 +33,4 @@ export interface IEvent<Data extends Record<string, ScalarType> = Record<string,
   unsubscribeAll: () => Promise<void> | void;
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: trust me
 export type EventClassType = new (...args: any[]) => IEvent;

@@ -60,8 +60,8 @@ Create the following files under `packages/<name>/`.
   "scripts": {
     "test": "bun test --parallel=4 --isolate tests",
     "build": "bunup",
-    "fmt": "bunx biome check --write",
-    "lint": "tsc --noEmit && bunx biome lint",
+    "fmt": "bun fmt --no-script --staged",
+    "lint": "bun check",
   },
   "dependencies": {},
   "keywords": [

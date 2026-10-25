@@ -61,7 +61,6 @@ describe("AppEnvException", () => {
 
     try {
       throwAppEnvException();
-      // biome-ignore lint/suspicious/noExplicitAny: trust me
     } catch (error: any) {
       expect(error).toBeInstanceOf(AppEnvException);
       expect(error.stack).toContain("throwAppEnvException");

@@ -12,7 +12,6 @@ import type { LocaleInfoType } from "@talosjs/translation";
 import type { HttpMethodType, ScalarType } from "@talosjs/types";
 import type { IUser } from "@talosjs/user";
 
-// biome-ignore lint/suspicious/noExplicitAny: trust me
 export type ControllerClassType = new (...args: any[]) => IController<any>;
 
 export interface IController<T extends ContextConfigType = ContextConfigType> {
@@ -20,7 +19,6 @@ export interface IController<T extends ContextConfigType = ContextConfigType> {
 }
 
 export type ContextConfigType = {
-  // biome-ignore lint/suspicious/noExplicitAny: trust me
   response: Record<string, any>;
 } & Partial<RequestConfigType>;
 

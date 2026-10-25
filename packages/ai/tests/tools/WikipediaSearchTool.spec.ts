@@ -3,7 +3,6 @@ import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 // Records every fetched URL and request init so assertions can inspect the
 // Action API requests the tool assembles, and replays a queued JSON body per call.
 const calls: Array<{ url: string; init?: RequestInit | undefined }> = [];
-// biome-ignore lint/suspicious/noExplicitAny: tests queue arbitrary JSON bodies
 let responses: any[] = [];
 let nextOk = true;
 

@@ -1,7 +1,6 @@
 import type { IRole, IRolesConfig, RoleType } from "./types";
 
 export class Role implements IRole {
-  // biome-ignore lint/complexity/noUselessConstructor: explicit constructor is required for Bun function coverage
   public constructor() {}
 
   public hasRole(userRole: RoleType, requiredRole: RoleType, config: IRolesConfig): boolean {

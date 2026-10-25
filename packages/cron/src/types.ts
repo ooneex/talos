@@ -18,7 +18,6 @@ export type PrefixType = `${ECronPrefix}`;
 export type SuffixType = `${ECronSuffix}`;
 export type CronTimeType = `${PrefixType} ${number} ${SuffixType}`;
 
-// biome-ignore lint/suspicious/noExplicitAny: trust me
 export type CronClassType = new (...args: any[]) => ICron;
 
 /**

@@ -17,7 +17,6 @@ describe("decorator.middleware", () => {
     }
 
     expect(() => {
-      // biome-ignore lint/suspicious/noExplicitAny: testing decorator
       decorator.middleware()(TestMiddleware as any);
     }).not.toThrow();
   });
@@ -29,7 +28,6 @@ describe("decorator.middleware", () => {
       }
     }
 
-    // biome-ignore lint/suspicious/noExplicitAny: testing decorator
     decorator.middleware()(SingletonMiddleware as any);
 
     const instance1 = container.get(SingletonMiddleware);
@@ -45,7 +43,6 @@ describe("decorator.middleware", () => {
       }
     }
 
-    // biome-ignore lint/suspicious/noExplicitAny: testing decorator
     decorator.middleware(EContainerScope.Singleton)(ExplicitSingletonMiddleware as any);
 
     const instance1 = container.get(ExplicitSingletonMiddleware);
@@ -69,7 +66,6 @@ describe("decorator.middleware", () => {
       }
     }
 
-    // biome-ignore lint/suspicious/noExplicitAny: testing decorator
     decorator.middleware(EContainerScope.Transient)(TransientMiddleware as any);
 
     const instance1 = container.get(TransientMiddleware);
@@ -87,7 +83,6 @@ describe("decorator.middleware", () => {
     }
 
     expect(() => {
-      // biome-ignore lint/suspicious/noExplicitAny: testing decorator
       decorator.middleware(EContainerScope.Request)(RequestScopedMiddleware as any);
     }).not.toThrow();
 
@@ -103,7 +98,6 @@ describe("decorator.middleware", () => {
     }
 
     expect(() => {
-      // biome-ignore lint/suspicious/noExplicitAny: testing decorator
       decorator.middleware()(AuthenticationJwtBearerMiddleware as any);
     }).not.toThrow();
   });
@@ -117,7 +111,6 @@ describe("decorator.middleware", () => {
       }
     }
 
-    // biome-ignore lint/suspicious/noExplicitAny: testing decorator
     decorator.middleware()(RetrievableMiddleware as any);
 
     const instance = container.get(RetrievableMiddleware);
@@ -133,7 +126,6 @@ describe("decorator.middleware", () => {
     }
 
     expect(() => {
-      // biome-ignore lint/suspicious/noExplicitAny: testing decorator
       decorator.middleware()(AsyncMiddleware as any);
     }).not.toThrow();
 
@@ -149,7 +141,6 @@ describe("decorator.middleware", () => {
     }
 
     expect(() => {
-      // biome-ignore lint/suspicious/noExplicitAny: testing decorator
       decorator.middleware()(SocketTestMiddleware as any);
     }).not.toThrow();
 
@@ -165,7 +156,6 @@ describe("decorator.middleware", () => {
     }
 
     expect(() => {
-      // biome-ignore lint/suspicious/noExplicitAny: testing decorator
       decorator.middleware()(AsyncSocketMiddleware as any);
     }).not.toThrow();
 
@@ -180,7 +170,6 @@ describe("decorator.middleware", () => {
       }
     }
 
-    // biome-ignore lint/suspicious/noExplicitAny: testing decorator
     const result = decorator.middleware()(VoidReturnMiddleware as any);
     expect(result).toBeUndefined();
   });

@@ -61,7 +61,6 @@ describe("TranslationException", () => {
 
     try {
       throwTranslationException();
-      // biome-ignore lint/suspicious/noExplicitAny: trust me
     } catch (error: any) {
       expect(error).toBeInstanceOf(TranslationException);
       expect(error.stack).toContain("throwTranslationException");

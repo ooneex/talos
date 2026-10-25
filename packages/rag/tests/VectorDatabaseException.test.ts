@@ -61,7 +61,6 @@ describe("VectorDatabaseException", () => {
 
     try {
       throwVectorDatabaseException();
-      // biome-ignore lint/suspicious/noExplicitAny: trust me
     } catch (error: any) {
       expect(error).toBeInstanceOf(VectorDatabaseException);
       expect(error.stack).toContain("throwVectorDatabaseException");

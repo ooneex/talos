@@ -61,7 +61,6 @@ describe("PermissionException", () => {
 
     try {
       throwPermissionException();
-      // biome-ignore lint/suspicious/noExplicitAny: trust me
     } catch (error: any) {
       expect(error).toBeInstanceOf(PermissionException);
       expect(error.stack).toContain("throwPermissionException");

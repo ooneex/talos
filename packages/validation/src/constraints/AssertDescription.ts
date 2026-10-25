@@ -6,7 +6,6 @@ const AssertDescriptionBase: ReturnType<typeof createConstraint> = createConstra
 );
 
 export class AssertDescription extends AssertDescriptionBase {
-  // biome-ignore lint/complexity/noUselessConstructor: explicit constructor needed so bun's coverage tool marks it as hit
   constructor() {
     super();
   }

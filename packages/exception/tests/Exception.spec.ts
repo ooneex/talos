@@ -308,7 +308,6 @@ describe("Exception", () => {
 
       try {
         throwException();
-        // biome-ignore lint/suspicious/noExplicitAny: trust me
       } catch (error: any) {
         expect(error).toBeInstanceOf(Exception);
         expect(error.stack).toBeDefined();
@@ -523,18 +522,14 @@ describe("Exception", () => {
 
     test("should handle Error objects with custom properties", () => {
       const customError = new Error("Custom error");
-      // biome-ignore lint/suspicious/noExplicitAny: testing custom properties
       (customError as any).code = "CUSTOM_001";
-      // biome-ignore lint/suspicious/noExplicitAny: testing custom properties
       (customError as any).severity = "high";
 
       const exception = new Exception(customError, { status: 500 });
 
       expect(exception.message).toBe("Custom error");
       expect(exception.status).toBe(500);
-      // biome-ignore lint/suspicious/noExplicitAny: testing custom properties
       expect((exception.native as any)?.code).toBe("CUSTOM_001");
-      // biome-ignore lint/suspicious/noExplicitAny: testing custom properties
       expect((exception.native as any)?.severity).toBe("high");
     });
 

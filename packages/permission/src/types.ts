@@ -83,7 +83,6 @@ export enum EPermissionSubject {
 export type PermissionActionType = `${EPermissionAction}`;
 export type SubjectsType = `${EPermissionSubject}`;
 
-// biome-ignore lint/suspicious/noExplicitAny: trust me
 export type PermissionClassType = new (...args: any[]) => IPermission;
 
 export interface IPermission<A extends string = string, S extends string = string> {

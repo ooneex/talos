@@ -61,7 +61,6 @@ describe("ContainerException", () => {
 
     try {
       throwContainerException();
-      // biome-ignore lint/suspicious/noExplicitAny: trust me
     } catch (error: any) {
       expect(error).toBeInstanceOf(ContainerException);
       expect(error.stack).toContain("throwContainerException");

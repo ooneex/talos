@@ -61,7 +61,6 @@ describe("AnalyticsException", () => {
 
     try {
       throwAnalyticsException();
-      // biome-ignore lint/suspicious/noExplicitAny: trust me
     } catch (error: any) {
       expect(error).toBeInstanceOf(AnalyticsException);
       expect(error.stack).toContain("throwAnalyticsException");

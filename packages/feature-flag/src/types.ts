@@ -1,4 +1,3 @@
-// biome-ignore lint/suspicious/noExplicitAny: trust me
 export type FeatureFlagClassType = new (...args: any[]) => IFeatureFlag;
 
 export interface IFeatureFlag {

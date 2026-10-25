@@ -61,7 +61,6 @@ describe("PaymentException", () => {
 
     try {
       throwPaymentException();
-      // biome-ignore lint/suspicious/noExplicitAny: trust me
     } catch (error: any) {
       expect(error).toBeInstanceOf(PaymentException);
       expect(error.stack).toContain("throwPaymentException");

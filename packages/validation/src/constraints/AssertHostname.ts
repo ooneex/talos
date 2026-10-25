@@ -9,7 +9,6 @@ const AssertHostnameBase: ReturnType<typeof createConstraint> = createConstraint
 );
 
 export class AssertHostname extends AssertHostnameBase {
-  // biome-ignore lint/complexity/noUselessConstructor: explicit constructor needed so bun's coverage tool marks it as hit
   constructor() {
     super();
   }

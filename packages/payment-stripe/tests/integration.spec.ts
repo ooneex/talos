@@ -29,7 +29,6 @@ const createEnv = (): AppEnv =>
   }) as unknown as AppEnv;
 
 if (!isTestKey) {
-  // biome-ignore lint/suspicious/noConsole: intentional test-skip notice
   console.warn("⚠ Skipping integration tests — set STRIPE_SECRET_KEY=sk_test_xxx to enable them.");
 }
 
@@ -375,7 +374,6 @@ afterAll(async () => {
   }
 
   if (errors.length > 0) {
-    // biome-ignore lint/suspicious/noConsole: intentional cleanup-failure notice
     console.warn(`⚠ Cleanup failed for: ${errors.join(", ")}`);
   }
 });

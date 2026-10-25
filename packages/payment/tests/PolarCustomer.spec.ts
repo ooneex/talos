@@ -79,7 +79,6 @@ function createMockCustomerListResponse(overrides = {}) {
   };
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: Mock requires flexible typing
 const getCreateCallArgs = (): any => {
   const calls = mockCustomersCreate.mock.calls as unknown[][];
   if (calls.length === 0) {
@@ -88,7 +87,6 @@ const getCreateCallArgs = (): any => {
   return calls[0]?.[0];
 };
 
-// biome-ignore lint/suspicious/noExplicitAny: Mock requires flexible typing
 const getUpdateCallArgs = (): any => {
   const calls = mockCustomersUpdate.mock.calls as unknown[][];
   if (calls.length === 0) {
@@ -97,7 +95,6 @@ const getUpdateCallArgs = (): any => {
   return calls[0]?.[0];
 };
 
-// biome-ignore lint/suspicious/noExplicitAny: Mock requires flexible typing
 const getListCallArgs = (): any => {
   const calls = mockCustomersList.mock.calls as unknown[][];
   if (calls.length === 0) {
@@ -106,7 +103,6 @@ const getListCallArgs = (): any => {
   return calls[0]?.[0];
 };
 
-// biome-ignore lint/suspicious/noExplicitAny: Mock requires flexible typing
 const getUpdateExternalCallArgs = (): any => {
   const calls = mockCustomersUpdateExternal.mock.calls as unknown[][];
   if (calls.length === 0) {

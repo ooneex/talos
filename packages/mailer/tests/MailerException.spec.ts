@@ -61,7 +61,6 @@ describe("MailerException", () => {
 
     try {
       throwMailerException();
-      // biome-ignore lint/suspicious/noExplicitAny: trust me
     } catch (error: any) {
       expect(error).toBeInstanceOf(MailerException);
       expect(error.stack).toContain("throwMailerException");

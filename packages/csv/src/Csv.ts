@@ -1,4 +1,3 @@
-/** biome-ignore-all lint/suspicious/noAssignInExpressions: trust me */
 import { CsvException } from "./CsvException";
 import type {
   CsvIgnoreType,

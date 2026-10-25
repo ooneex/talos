@@ -61,7 +61,6 @@ describe("YoutubeException", () => {
 
     try {
       throwYoutubeException();
-      // biome-ignore lint/suspicious/noExplicitAny: trust me
     } catch (error: any) {
       expect(error).toBeInstanceOf(YoutubeException);
       expect(error.stack).toContain("throwYoutubeException");

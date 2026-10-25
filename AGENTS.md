@@ -41,7 +41,7 @@ talos release:create                  # detect unreleased commits, bump, changel
 talos release:create --bump           # force a patch bump of every package and module
 ```
 
-`talos help` and `talos <command> --help` list what exists — check there before writing a manual procedure. Inside a single package, `bun test tests`, `bunx biome check --write` and `bun run build` still work.
+`talos help` and `talos <command> --help` list what exists — check there before writing a manual procedure. Inside a single package, `bun test tests`, `bun fmt` and `bun run build` still work.
 
 ## Skills
 

@@ -61,7 +61,6 @@ describe("AiException", () => {
 
     try {
       throwAiException();
-      // biome-ignore lint/suspicious/noExplicitAny: trust me
     } catch (error: any) {
       expect(error).toBeInstanceOf(AiException);
       expect(error.stack).toContain("throwAiException");

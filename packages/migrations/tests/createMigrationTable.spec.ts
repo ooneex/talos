@@ -2,24 +2,19 @@ import { afterEach, beforeEach, describe, expect, jest, test } from "bun:test";
 import { createMigrationTable } from "@/createMigrationTable";
 
 describe("createMigrationTable", () => {
-  // biome-ignore lint/suspicious/noExplicitAny: mock for testing
   let mockSql: any;
-  // biome-ignore lint/suspicious/noExplicitAny: mock for testing
   let mockTx: any;
-  // biome-ignore lint/suspicious/noExplicitAny: mock for testing
   let beginCallback: any;
   const tableName = "test_migrations";
 
   beforeEach(() => {
     // Create a mock transaction
-    // biome-ignore lint/suspicious/noExplicitAny: mock for testing
     mockTx = jest.fn((_strings: TemplateStringsArray, ..._values: any[]) => {
       return Promise.resolve();
     });
 
     // Create a mock SQL function that captures the begin callback
     mockSql = jest.fn((name: string) => name);
-    // biome-ignore lint/suspicious/noExplicitAny: mock for testing
     mockSql.begin = jest.fn(async (callback: any) => {
       beginCallback = callback;
       return await callback(mockTx);
@@ -51,13 +46,11 @@ describe("createMigrationTable", () => {
   test("should use VARCHAR(20) for id column", async () => {
     // Capture the query executed in the transaction
     let executedQuery = "";
-    // biome-ignore lint/suspicious/noExplicitAny: mock for testing
     mockTx = jest.fn((strings: TemplateStringsArray, ..._values: any[]) => {
       executedQuery = strings.join("");
       return Promise.resolve();
     });
 
-    // biome-ignore lint/suspicious/noExplicitAny: mock for testing
     mockSql.begin = jest.fn(async (callback: any) => {
       return await callback(mockTx);
     });
@@ -89,7 +82,6 @@ describe("createMigrationTable", () => {
   test("should propagate query execution errors", async () => {
     const errorMessage = "Table creation failed";
     mockTx = jest.fn().mockRejectedValue(new Error(errorMessage));
-    // biome-ignore lint/suspicious/noExplicitAny: mock for testing
     mockSql.begin = jest.fn(async (callback: any) => {
       return await callback(mockTx);
     });

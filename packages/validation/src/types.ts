@@ -1,6 +1,5 @@
 import type * as A from "arktype";
 
-// biome-ignore lint/suspicious/noExplicitAny: trust me
 export type ValidationClassType = new (...args: any[]) => IAssert;
 
 /**

@@ -61,7 +61,6 @@ describe("RateLimitException", () => {
 
     try {
       throwRateLimitException();
-      // biome-ignore lint/suspicious/noExplicitAny: trust me
     } catch (error: any) {
       expect(error).toBeInstanceOf(RateLimitException);
       expect(error.stack).toContain("throwRateLimitException");

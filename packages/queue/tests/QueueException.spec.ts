@@ -75,7 +75,6 @@ describe("QueueException", () => {
     test("should preserve key and status when caught", () => {
       try {
         throw new QueueException("Boom", "QUEUE_BOOM");
-        // biome-ignore lint/suspicious/noExplicitAny: trust me
       } catch (error: any) {
         expect(error).toBeInstanceOf(QueueException);
         expect(error.key).toBe("QUEUE_BOOM");

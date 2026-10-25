@@ -9,7 +9,6 @@ const createMockEnv = (): AppEnv => {
   } as unknown as AppEnv;
 };
 
-// biome-ignore lint/suspicious/noExplicitAny: Mock requires flexible typing
 const mockCustomerSessionsCreate = mock((): any => Promise.resolve(createMockCustomerSessionResponse()));
 
 mock.module("@polar-sh/sdk", () => ({
@@ -32,7 +31,6 @@ function createMockCustomerSessionResponse(overrides = {}) {
   };
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: Mock requires flexible typing
 const getCreateCallArgs = (): any => {
   const calls = mockCustomerSessionsCreate.mock.calls as unknown[][];
   if (calls.length === 0) {

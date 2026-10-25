@@ -61,7 +61,6 @@ describe("DatabaseException", () => {
 
     try {
       throwDatabaseException();
-      // biome-ignore lint/suspicious/noExplicitAny: trust me
     } catch (error: any) {
       expect(error).toBeInstanceOf(DatabaseException);
       expect(error.stack).toContain("throwDatabaseException");

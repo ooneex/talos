@@ -61,7 +61,6 @@ describe("CommandException", () => {
 
     try {
       throwCommandException();
-      // biome-ignore lint/suspicious/noExplicitAny: trust me
     } catch (error: any) {
       expect(error).toBeInstanceOf(CommandException);
       expect(error.stack).toContain("throwCommandException");

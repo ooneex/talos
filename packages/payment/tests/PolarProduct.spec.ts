@@ -40,7 +40,6 @@ function createMockProductResponse(overrides = {}) {
   };
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: Mock requires flexible typing
 const getCreateCallArgs = (): any => {
   const calls = mockProductsCreate.mock.calls as unknown[][];
   if (calls.length === 0) {
@@ -49,7 +48,6 @@ const getCreateCallArgs = (): any => {
   return calls[0]?.[0];
 };
 
-// biome-ignore lint/suspicious/noExplicitAny: Mock requires flexible typing
 const getUpdateCallArgs = (): any => {
   const calls = mockProductsUpdate.mock.calls as unknown[][];
   if (calls.length === 0) {

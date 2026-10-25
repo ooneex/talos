@@ -61,7 +61,6 @@ describe("WorkflowException", () => {
 
     try {
       throwWorkflowException();
-      // biome-ignore lint/suspicious/noExplicitAny: trust me
     } catch (error: any) {
       expect(error).toBeInstanceOf(WorkflowException);
       expect(error.stack).toContain("throwWorkflowException");

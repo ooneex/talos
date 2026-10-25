@@ -1,7 +1,6 @@
 import type { ExceptionStackFrameType, IException } from "@talosjs/exception";
 import type { HttpMethodType, ScalarType } from "@talosjs/types";
 
-// biome-ignore lint/suspicious/noExplicitAny: Required for decorator compatibility with @inject parameters
 export type LoggerClassType = new (...args: any[]) => ILogger | ILogger<LogDataType>;
 
 export type LoggerOptionsType = {

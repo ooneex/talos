@@ -223,7 +223,6 @@ describe("BadRequestException", () => {
 
       try {
         throwBadRequestException();
-        // biome-ignore lint/suspicious/noExplicitAny: trust me
       } catch (error: any) {
         expect(error).toBeInstanceOf(BadRequestException);
         expect(error.stack).toBeDefined();

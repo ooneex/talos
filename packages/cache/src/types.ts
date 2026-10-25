@@ -1,4 +1,3 @@
-// biome-ignore lint/suspicious/noExplicitAny: trust me
 export type CacheClassType = new (...args: any[]) => ICache;
 
 export type RedisCacheOptionsType = {

@@ -61,7 +61,6 @@ describe("LoggerException", () => {
 
     try {
       throwLoggerException();
-      // biome-ignore lint/suspicious/noExplicitAny: trust me
     } catch (error: any) {
       expect(error).toBeInstanceOf(LoggerException);
       expect(error.stack).toContain("throwLoggerException");

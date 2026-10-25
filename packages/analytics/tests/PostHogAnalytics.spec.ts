@@ -4,13 +4,11 @@ import type { IAnalytics, PostHogCaptureOptionsType } from "@/types";
 
 // Create mock PostHog instance
 const mockPostHogInstance = {
-  // biome-ignore lint/suspicious/noExplicitAny: Mock requires flexible typing
   capture: mock((_options: any) => {}),
   shutdown: mock(() => {}),
 };
 
 // Mock the PostHog constructor
-// biome-ignore lint/suspicious/noExplicitAny: Mock requires flexible typing
 const MockPostHog = mock((_apiKey: string, _options?: { host?: string }): any => mockPostHogInstance);
 
 // Mock the entire posthog-node module

@@ -62,7 +62,6 @@ describe("StorageException", () => {
 
     try {
       throwStorageException();
-      // biome-ignore lint/suspicious/noExplicitAny: trust me
     } catch (error: any) {
       expect(error).toBeInstanceOf(StorageException);
       expect(error.stack).toContain("throwStorageException");

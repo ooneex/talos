@@ -9,9 +9,7 @@ const createMockEnv = (): AppEnv => {
   } as unknown as AppEnv;
 };
 
-// biome-ignore lint/suspicious/noExplicitAny: Mock requires flexible typing
 const mockCheckoutsCreate = mock((): any => Promise.resolve(createMockCheckoutResponse()));
-// biome-ignore lint/suspicious/noExplicitAny: Mock requires flexible typing
 const mockCheckoutsGet = mock((): any => Promise.resolve(createMockCheckoutResponse()));
 
 mock.module("@polar-sh/sdk", () => ({
@@ -66,7 +64,6 @@ function createMockCheckoutResponse(overrides = {}) {
   };
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: Mock requires flexible typing
 const getCreateCallArgs = (): any => {
   const calls = mockCheckoutsCreate.mock.calls as unknown[][];
   if (calls.length === 0) {

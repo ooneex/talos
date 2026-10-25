@@ -50,7 +50,6 @@ describe("decorator.cache", () => {
     }
 
     expect(() => {
-      // biome-ignore lint/suspicious/noExplicitAny: testing decorator
       decorator.cache()(TestCache as any);
     }).not.toThrow();
   });
@@ -95,7 +94,6 @@ describe("decorator.cache", () => {
       }
     }
 
-    // biome-ignore lint/suspicious/noExplicitAny: testing decorator
     decorator.cache()(SingletonCache as any);
 
     const instance1 = container.get(SingletonCache);
@@ -144,7 +142,6 @@ describe("decorator.cache", () => {
       }
     }
 
-    // biome-ignore lint/suspicious/noExplicitAny: testing decorator
     decorator.cache(EContainerScope.Singleton)(ExplicitSingletonCache as any);
 
     const instance1 = container.get(ExplicitSingletonCache);
@@ -201,7 +198,6 @@ describe("decorator.cache", () => {
       }
     }
 
-    // biome-ignore lint/suspicious/noExplicitAny: testing decorator
     decorator.cache(EContainerScope.Transient)(TransientCache as any);
 
     const instance1 = container.get(TransientCache);
@@ -252,7 +248,6 @@ describe("decorator.cache", () => {
     }
 
     expect(() => {
-      // biome-ignore lint/suspicious/noExplicitAny: testing decorator
       decorator.cache(EContainerScope.Request)(RequestScopedCache as any);
     }).not.toThrow();
 
@@ -268,7 +263,6 @@ describe("decorator.cache", () => {
     }
 
     expect(() => {
-      // biome-ignore lint/suspicious/noExplicitAny: testing decorator
       decorator.cache()(RedisDistributedSessionCache as any);
     }).not.toThrow();
   });
@@ -282,7 +276,6 @@ describe("decorator.cache", () => {
       }
     }
 
-    // biome-ignore lint/suspicious/noExplicitAny: testing decorator
     decorator.cache()(RetrievableCache as any);
 
     const instance = container.get(RetrievableCache);
@@ -297,7 +290,6 @@ describe("decorator.cache", () => {
       }
     }
 
-    // biome-ignore lint/suspicious/noExplicitAny: testing decorator
     const result = decorator.cache()(VoidReturnCache as any);
     expect(result).toBeUndefined();
   });

@@ -31,7 +31,6 @@ describe("parseString", () => {
     test("should parse positive floats", () => {
       expect(parseString("123.45") as number).toBe(123.45);
       expect(parseString("0.5") as number).toBe(0.5);
-      // biome-ignore lint/suspicious/noApproximativeNumericConstant: trust me
       expect(parseString("3.14159") as number).toBe(3.141_59);
     });
 

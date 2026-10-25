@@ -8,7 +8,6 @@ export class Router implements IRouter {
   private socketRoutes: Map<string, RouteConfigType> = new Map();
   private httpRoutes: Map<string, RouteConfigType[]> = new Map();
 
-  // biome-ignore lint/complexity/noUselessConstructor: Bun coverage requires an explicit constructor to mark it as hit
   public constructor() {}
 
   public addRoute(route: RouteConfigType): this {

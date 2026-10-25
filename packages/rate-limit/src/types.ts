@@ -1,6 +1,5 @@
 import type { Duration } from "@upstash/ratelimit";
 
-// biome-ignore lint/suspicious/noExplicitAny: trust me
 export type RateLimiterClassType = new (...args: any[]) => IRateLimiter;
 
 export type RedisRateLimiterOptionsType = {

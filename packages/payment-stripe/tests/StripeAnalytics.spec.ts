@@ -66,14 +66,12 @@ function createMockSubscriptionsList(overrides = {}) {
   };
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: Mock requires flexible typing
 const getChargesArgs = (): any => {
   const calls = mockChargesList.mock.calls as unknown[][];
   if (calls.length === 0) throw new Error("No calls recorded");
   return calls[0]?.[0];
 };
 
-// biome-ignore lint/suspicious/noExplicitAny: Mock requires flexible typing
 const getSubscriptionsArgs = (): any => {
   const calls = mockSubscriptionsList.mock.calls as unknown[][];
   if (calls.length === 0) throw new Error("No calls recorded");

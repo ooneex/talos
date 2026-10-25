@@ -199,7 +199,6 @@ export type FieldValueType =
   | DateMillisecond
   | EmbeddingFunction;
 
-// biome-ignore lint/suspicious/noExplicitAny: trust me
 export type VectorDatabaseClassType = new (...args: any[]) => IVectorDatabase<any> | ICloudflareVectorDatabase<any>;
 
 export type FilterFieldType<T extends { metadata: Record<string, unknown> }> = keyof T["metadata"] | "id" | "text";

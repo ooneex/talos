@@ -1,4 +1,3 @@
-/** biome-ignore-all lint/suspicious/noAssignInExpressions: trust me */
 import { YAML } from "bun";
 import type { IYaml, YamlLoadOptionsType, YamlToCsvOptionsType, YamlToJsonOptionsType } from "./types";
 import { YamlException } from "./YamlException";

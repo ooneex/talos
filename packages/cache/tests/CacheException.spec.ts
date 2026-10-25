@@ -61,7 +61,6 @@ describe("CacheException", () => {
 
     try {
       throwCacheException();
-      // biome-ignore lint/suspicious/noExplicitAny: trust me
     } catch (error: any) {
       expect(error).toBeInstanceOf(CacheException);
       expect(error.stack).toContain("throwCacheException");

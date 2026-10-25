@@ -86,35 +86,30 @@ function createMockPriceList(overrides = {}) {
   };
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: Mock requires flexible typing
 const getProductCreateArgs = (): any => {
   const calls = mockProductsCreate.mock.calls as unknown[][];
   if (calls.length === 0) throw new Error("No calls recorded");
   return calls[0]?.[0];
 };
 
-// biome-ignore lint/suspicious/noExplicitAny: Mock requires flexible typing
 const getProductUpdateArgs = (): { id: string; params: any } => {
   const calls = mockProductsUpdate.mock.calls as unknown[][];
   if (calls.length === 0) throw new Error("No calls recorded");
   return { id: calls[0]?.[0] as string, params: calls[0]?.[1] };
 };
 
-// biome-ignore lint/suspicious/noExplicitAny: Mock requires flexible typing
 const getProductListArgs = (): any => {
   const calls = mockProductsList.mock.calls as unknown[][];
   if (calls.length === 0) throw new Error("No calls recorded");
   return calls[0]?.[0];
 };
 
-// biome-ignore lint/suspicious/noExplicitAny: Mock requires flexible typing
 const getPriceCreateArgs = (): any => {
   const calls = mockPricesCreate.mock.calls as unknown[][];
   if (calls.length === 0) throw new Error("No calls recorded");
   return calls[0]?.[0];
 };
 
-// biome-ignore lint/suspicious/noExplicitAny: Mock requires flexible typing
 const getPriceListArgs = (): any => {
   const calls = mockPricesList.mock.calls as unknown[][];
   if (calls.length === 0) throw new Error("No calls recorded");

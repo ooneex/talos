@@ -1,5 +1,6 @@
 {
   "name": "talos",
+  "packageManager": "bun@1.4.4",
   "description": "The bronze automaton guardian of Crete — automation & protection",
   "dependencies": {
     "@upstash/redis": "^1.39.0",
@@ -9,8 +10,7 @@
     "react-dom": "^19.3.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.3.7",
-    "@types/bun": "^1.4.2",
+    "@types/bun": "^1.4.4",
     "@types/node": "^24.19.0",
     "@types/pluralize": "^0.0.33",
     "@types/react": "^19.3.0",

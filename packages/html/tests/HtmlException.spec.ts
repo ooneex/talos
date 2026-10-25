@@ -61,7 +61,6 @@ describe("HtmlException", () => {
 
     try {
       throwHtmlException();
-      // biome-ignore lint/suspicious/noExplicitAny: trust me
     } catch (error: any) {
       expect(error).toBeInstanceOf(HtmlException);
       expect(error.stack).toContain("throwHtmlException");

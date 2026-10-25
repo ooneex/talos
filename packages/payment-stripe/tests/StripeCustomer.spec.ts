@@ -55,21 +55,18 @@ function createMockCustomerList(overrides = {}) {
   };
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: Mock requires flexible typing
 const getCreateArgs = (): any => {
   const calls = mockCustomersCreate.mock.calls as unknown[][];
   if (calls.length === 0) throw new Error("No calls recorded");
   return calls[0]?.[0];
 };
 
-// biome-ignore lint/suspicious/noExplicitAny: Mock requires flexible typing
 const getUpdateArgs = (): { id: string; params: any } => {
   const calls = mockCustomersUpdate.mock.calls as unknown[][];
   if (calls.length === 0) throw new Error("No calls recorded");
   return { id: calls[0]?.[0] as string, params: calls[0]?.[1] };
 };
 
-// biome-ignore lint/suspicious/noExplicitAny: Mock requires flexible typing
 const getListArgs = (): any => {
   const calls = mockCustomersList.mock.calls as unknown[][];
   if (calls.length === 0) throw new Error("No calls recorded");

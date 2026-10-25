@@ -27,7 +27,6 @@ function createMockPortalSession(overrides = {}) {
   };
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: Mock requires flexible typing
 const getCreateArgs = (): any => {
   const calls = mockPortalSessionCreate.mock.calls as unknown[][];
   if (calls.length === 0) throw new Error("No calls recorded");

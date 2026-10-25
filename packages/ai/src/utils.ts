@@ -114,7 +114,6 @@ export const isJudged = (skill: ISkill, names: string[]): boolean => {
 const normalizeSkillName = (value: string): string => value.trim().toLowerCase();
 
 /** Convert {@link ITool} instances into TanStack server tools. */
-// biome-ignore lint/suspicious/noExplicitAny: server-tool generics depend on each tool's schema
 export const toServerTools = (tools: ITool[]): any[] =>
   tools.map((tool) => {
     const inputSchema = tool.getInputSchema?.();
@@ -169,7 +168,6 @@ export const toChatMiddleware = (middleware: IMiddleware): ChatMiddleware => {
   const bind = <K extends keyof IMiddleware & keyof ChatMiddleware>(key: K): void => {
     const hook = middleware[key];
     if (hook) {
-      // biome-ignore lint/suspicious/noExplicitAny: hooks share identical signatures across both interfaces
       (adapted[key] as any) = (hook as any).bind(middleware);
     }
   };

@@ -136,7 +136,6 @@ const resolve = (identifier: ServiceIdentifierType): unknown => {
 };
 
 export class Container implements IContainer {
-  // biome-ignore lint/complexity/noUselessConstructor: explicit constructor is needed for Bun function coverage
   public constructor() {}
 
   public add(target: ClassType, scope: EContainerScope = EContainerScope.Singleton): void {

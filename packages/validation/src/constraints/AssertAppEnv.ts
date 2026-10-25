@@ -9,7 +9,6 @@ const AssertAppEnvBase: ReturnType<typeof createConstraint> = createConstraint(
 );
 
 export class AssertAppEnv extends AssertAppEnvBase {
-  // biome-ignore lint/complexity/noUselessConstructor: explicit constructor needed so bun's coverage tool marks it as hit
   constructor() {
     super();
   }

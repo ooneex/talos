@@ -61,7 +61,6 @@ describe("CronException", () => {
 
     try {
       throwCronException();
-      // biome-ignore lint/suspicious/noExplicitAny: trust me
     } catch (error: any) {
       expect(error).toBeInstanceOf(CronException);
       expect(error.stack).toContain("throwCronException");

@@ -227,7 +227,6 @@ describe("MethodNotAllowedException", () => {
 
       try {
         throwMethodNotAllowedException();
-        // biome-ignore lint/suspicious/noExplicitAny: trust me
       } catch (error: any) {
         expect(error).toBeInstanceOf(MethodNotAllowedException);
         expect(error.stack).toBeDefined();

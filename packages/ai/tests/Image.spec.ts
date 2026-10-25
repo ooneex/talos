@@ -28,7 +28,6 @@ class TestImage extends Image {
   public getPrompts = (): string[] => ["Flat illustration.", "No text."];
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: tests read arbitrary option keys off the recorded call
 const lastCall = () => generateCalls[generateCalls.length - 1] as Record<string, any>;
 
 beforeEach(() => {

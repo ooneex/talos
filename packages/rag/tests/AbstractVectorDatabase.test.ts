@@ -69,7 +69,6 @@ describe("AbstractVectorDatabase", () => {
   test("should connect and return database connection", async () => {
     const db = new TestVectorDatabase();
     await db.connect();
-    // biome-ignore lint/suspicious/noExplicitAny: test mock
     expect(db.getDatabase()).toBe(mockConnection as any);
   });
 
@@ -127,7 +126,6 @@ describe("AbstractVectorDatabase", () => {
     await db.connect();
     await db.open("new_table", { mode: "create" });
 
-    // biome-ignore lint/suspicious/noExplicitAny: test mock
     const lastCall = mockConnection.createEmptyTable.mock.lastCall as any[];
     expect(lastCall?.[0]).toBe("new_table");
     expect(lastCall?.[2]).toEqual({ mode: "create" });

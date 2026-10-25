@@ -21,19 +21,14 @@ import type {
   UsageInfo,
 } from "@tanstack/ai";
 
-// biome-ignore lint/suspicious/noExplicitAny: trust me
 export type AiChatClassType = new (...args: any[]) => IChat;
 
-// biome-ignore lint/suspicious/noExplicitAny: trust me
 export type AiToolClassType = new (...args: any[]) => ITool;
 
-// biome-ignore lint/suspicious/noExplicitAny: trust me
 export type AiMiddlewareClassType = new (...args: any[]) => IMiddleware;
 
-// biome-ignore lint/suspicious/noExplicitAny: trust me
 export type AiSkillClassType = new (...args: any[]) => ISkill;
 
-// biome-ignore lint/suspicious/noExplicitAny: trust me
 export type AiImageClassType = new (...args: any[]) => IImage;
 
 export type ChatInputType = {

@@ -61,7 +61,6 @@ describe("JwtException", () => {
 
     try {
       throwJwtException();
-      // biome-ignore lint/suspicious/noExplicitAny: trust me
     } catch (error: any) {
       expect(error).toBeInstanceOf(JwtException);
       expect(error.stack).toContain("throwJwtException");

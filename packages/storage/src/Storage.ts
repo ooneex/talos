@@ -8,7 +8,6 @@ export abstract class Storage implements IStorage {
   public abstract getOptions(): S3Options;
   protected abstract bucket: string;
 
-  // biome-ignore lint/complexity/noUselessConstructor: explicit constructor is required for Bun coverage
   public constructor() {}
 
   public getBucket(): string {

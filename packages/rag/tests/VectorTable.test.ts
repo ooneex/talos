@@ -58,7 +58,6 @@ describe("VectorTable", () => {
   describe("add", () => {
     test("should add data to the table", async () => {
       const mockTable = createMockTable();
-      // biome-ignore lint/suspicious/noExplicitAny: test mock
       const table = new VectorTable<TestData>(mockTable as any);
       const data = [{ id: "1", text: "hello", metadata: { category: "books", score: 9 } }];
 
@@ -73,12 +72,10 @@ describe("VectorTable", () => {
     test("should return matching row by id", async () => {
       const row = { id: "abc", text: "hello", metadata: { category: "books", score: 9 } };
       const mockTable = createMockTable([row]);
-      // biome-ignore lint/suspicious/noExplicitAny: test mock
       const table = new VectorTable<TestData>(mockTable as any);
 
       const result = await table.findById("abc");
 
-      // biome-ignore lint/suspicious/noExplicitAny: test mock
       const q = (mockTable.query.mock.results[0] as any).value;
       expect(q.where).toHaveBeenCalledWith("id = 'abc'");
       expect(q.limit).toHaveBeenCalledWith(1);
@@ -87,7 +84,6 @@ describe("VectorTable", () => {
 
     test("should return null when no row matches", async () => {
       const mockTable = createMockTable([]);
-      // biome-ignore lint/suspicious/noExplicitAny: test mock
       const table = new VectorTable<TestData>(mockTable as any);
 
       const result = await table.findById("missing");
@@ -97,36 +93,30 @@ describe("VectorTable", () => {
 
     test("should escape single quotes in id", async () => {
       const mockTable = createMockTable([]);
-      // biome-ignore lint/suspicious/noExplicitAny: test mock
       const table = new VectorTable<TestData>(mockTable as any);
 
       await table.findById("o'brien");
 
-      // biome-ignore lint/suspicious/noExplicitAny: test mock
       const q = (mockTable.query.mock.results[0] as any).value;
       expect(q.where).toHaveBeenCalledWith("id = 'o''brien'");
     });
 
     test("should apply select and always include id", async () => {
       const mockTable = createMockTable([]);
-      // biome-ignore lint/suspicious/noExplicitAny: test mock
       const table = new VectorTable<TestData>(mockTable as any);
 
       await table.findById("1", { select: ["text", "category"] });
 
-      // biome-ignore lint/suspicious/noExplicitAny: test mock
       const q = (mockTable.query.mock.results[0] as any).value;
       expect(q.select).toHaveBeenCalledWith(["id", "text", "metadata.category"]);
     });
 
     test("should not call select when option is omitted", async () => {
       const mockTable = createMockTable([]);
-      // biome-ignore lint/suspicious/noExplicitAny: test mock
       const table = new VectorTable<TestData>(mockTable as any);
 
       await table.findById("1");
 
-      // biome-ignore lint/suspicious/noExplicitAny: test mock
       const q = (mockTable.query.mock.results[0] as any).value;
       expect(q.select).not.toHaveBeenCalled();
     });
@@ -135,12 +125,10 @@ describe("VectorTable", () => {
   describe("findBy", () => {
     test("should filter by a string metadata field", async () => {
       const mockTable = createMockTable();
-      // biome-ignore lint/suspicious/noExplicitAny: test mock
       const table = new VectorTable<TestData>(mockTable as any);
 
       await table.findBy({ category: "books" });
 
-      // biome-ignore lint/suspicious/noExplicitAny: test mock
       const q = (mockTable.query.mock.results[0] as any).value;
       expect(q.where).toHaveBeenCalledWith("metadata.category = 'books'");
       expect(q.limit).toHaveBeenCalledWith(10);
@@ -148,72 +136,60 @@ describe("VectorTable", () => {
 
     test("should filter by a number metadata field", async () => {
       const mockTable = createMockTable();
-      // biome-ignore lint/suspicious/noExplicitAny: test mock
       const table = new VectorTable<TestData>(mockTable as any);
 
       await table.findBy({ score: 9 });
 
-      // biome-ignore lint/suspicious/noExplicitAny: test mock
       const q = (mockTable.query.mock.results[0] as any).value;
       expect(q.where).toHaveBeenCalledWith("metadata.score = 9");
     });
 
     test("should join multiple fields with AND", async () => {
       const mockTable = createMockTable();
-      // biome-ignore lint/suspicious/noExplicitAny: test mock
       const table = new VectorTable<TestData>(mockTable as any);
 
       await table.findBy({ category: "books", score: 9 });
 
-      // biome-ignore lint/suspicious/noExplicitAny: test mock
       const q = (mockTable.query.mock.results[0] as any).value;
       expect(q.where).toHaveBeenCalledWith("metadata.category = 'books' AND metadata.score = 9");
     });
 
     test("should apply custom limit", async () => {
       const mockTable = createMockTable();
-      // biome-ignore lint/suspicious/noExplicitAny: test mock
       const table = new VectorTable<TestData>(mockTable as any);
 
       await table.findBy({ category: "books" }, { limit: 5 });
 
-      // biome-ignore lint/suspicious/noExplicitAny: test mock
       const q = (mockTable.query.mock.results[0] as any).value;
       expect(q.limit).toHaveBeenCalledWith(5);
     });
 
     test("should apply select and always include id", async () => {
       const mockTable = createMockTable();
-      // biome-ignore lint/suspicious/noExplicitAny: test mock
       const table = new VectorTable<TestData>(mockTable as any);
 
       await table.findBy({ category: "books" }, { select: ["category"] });
 
-      // biome-ignore lint/suspicious/noExplicitAny: test mock
       const q = (mockTable.query.mock.results[0] as any).value;
       expect(q.select).toHaveBeenCalledWith(["id", "metadata.category"]);
     });
 
     test("should escape single quotes in string values", async () => {
       const mockTable = createMockTable();
-      // biome-ignore lint/suspicious/noExplicitAny: test mock
       const table = new VectorTable<TestData>(mockTable as any);
 
       await table.findBy({ category: "cook's" });
 
-      // biome-ignore lint/suspicious/noExplicitAny: test mock
       const q = (mockTable.query.mock.results[0] as any).value;
       expect(q.where).toHaveBeenCalledWith("metadata.category = 'cook''s'");
     });
 
     test("should skip undefined values", async () => {
       const mockTable = createMockTable();
-      // biome-ignore lint/suspicious/noExplicitAny: test mock
       const table = new VectorTable<TestData>(mockTable as any);
 
       await table.findBy({ category: "books", score: undefined });
 
-      // biome-ignore lint/suspicious/noExplicitAny: test mock
       const q = (mockTable.query.mock.results[0] as any).value;
       expect(q.where).toHaveBeenCalledWith("metadata.category = 'books'");
     });
@@ -221,12 +197,10 @@ describe("VectorTable", () => {
     test("should return rows from toArray", async () => {
       const row = { id: "1", text: "hello", metadata: { category: "books", score: 9 } };
       const mockTable = createMockTable([row]);
-      // biome-ignore lint/suspicious/noExplicitAny: test mock
       const table = new VectorTable<TestData>(mockTable as any);
 
       const results = await table.findBy({ category: "books" });
 
-      // biome-ignore lint/suspicious/noExplicitAny: test mock
       expect(results).toEqual([row] as any);
     });
   });
@@ -235,12 +209,10 @@ describe("VectorTable", () => {
     test("should return first matching row", async () => {
       const row = { id: "1", text: "hello", metadata: { category: "books", score: 9 } };
       const mockTable = createMockTable([row]);
-      // biome-ignore lint/suspicious/noExplicitAny: test mock
       const table = new VectorTable<TestData>(mockTable as any);
 
       const result = await table.findOneBy({ category: "books" });
 
-      // biome-ignore lint/suspicious/noExplicitAny: test mock
       const q = (mockTable.query.mock.results[0] as any).value;
       expect(q.limit).toHaveBeenCalledWith(1);
       expect(result).toEqual(row);
@@ -248,7 +220,6 @@ describe("VectorTable", () => {
 
     test("should return null when no row matches", async () => {
       const mockTable = createMockTable([]);
-      // biome-ignore lint/suspicious/noExplicitAny: test mock
       const table = new VectorTable<TestData>(mockTable as any);
 
       const result = await table.findOneBy({ category: "missing" });
@@ -258,12 +229,10 @@ describe("VectorTable", () => {
 
     test("should apply select and always include id", async () => {
       const mockTable = createMockTable([]);
-      // biome-ignore lint/suspicious/noExplicitAny: test mock
       const table = new VectorTable<TestData>(mockTable as any);
 
       await table.findOneBy({ category: "books" }, { select: ["text", "category"] });
 
-      // biome-ignore lint/suspicious/noExplicitAny: test mock
       const q = (mockTable.query.mock.results[0] as any).value;
       expect(q.select).toHaveBeenCalledWith(["id", "text", "metadata.category"]);
     });
@@ -272,7 +241,6 @@ describe("VectorTable", () => {
   describe("createIndex", () => {
     test("should create a scalar index on a column", async () => {
       const mockTable = createMockTable();
-      // biome-ignore lint/suspicious/noExplicitAny: test mock
       const table = new VectorTable<TestData>(mockTable as any);
 
       const result = await table.createIndex("category");
@@ -284,7 +252,6 @@ describe("VectorTable", () => {
     test("should create a scalar index with config options", async () => {
       const { Index } = await import("@lancedb/lancedb");
       const mockTable = createMockTable();
-      // biome-ignore lint/suspicious/noExplicitAny: test mock
       const table = new VectorTable<TestData>(mockTable as any);
       const config = { config: Index.btree() };
 
@@ -298,13 +265,11 @@ describe("VectorTable", () => {
   describe("createVectorIndex", () => {
     test("should create IVF PQ vector index on default column", async () => {
       const mockTable = createMockTable();
-      // biome-ignore lint/suspicious/noExplicitAny: test mock
       const table = new VectorTable<TestData>(mockTable as any);
 
       const result = await table.createVectorIndex();
 
       expect(mockTable.createIndex).toHaveBeenCalled();
-      // biome-ignore lint/suspicious/noExplicitAny: test mock
       const call = mockTable.createIndex.mock.lastCall as any[];
       expect(call?.[0]).toBe("vector");
       expect(result).toBe(table);
@@ -312,12 +277,10 @@ describe("VectorTable", () => {
 
     test("should create vector index on custom column", async () => {
       const mockTable = createMockTable();
-      // biome-ignore lint/suspicious/noExplicitAny: test mock
       const table = new VectorTable<TestData>(mockTable as any);
 
       await table.createVectorIndex("custom_vector");
 
-      // biome-ignore lint/suspicious/noExplicitAny: test mock
       const call = mockTable.createIndex.mock.lastCall as any[];
       expect(call?.[0]).toBe("custom_vector");
     });
@@ -328,7 +291,6 @@ describe("VectorTable", () => {
       const mockTable = createMockTable();
       const mockQuery = createMockVectorQuery();
       mockTable.search.mockReturnValue(mockQuery);
-      // biome-ignore lint/suspicious/noExplicitAny: test mock
       const table = new VectorTable<TestData>(mockTable as any);
 
       const results = await table.search("hello world");
@@ -338,7 +300,6 @@ describe("VectorTable", () => {
       expect(mockQuery.limit).toHaveBeenCalledWith(10);
       expect(mockQuery.fastSearch).toHaveBeenCalled();
       expect(mockQuery.toArray).toHaveBeenCalled();
-      // biome-ignore lint/suspicious/noExplicitAny: test mock
       expect(results).toEqual([{ id: "1", text: "hello", metadata: { category: "books", score: 9 } }] as any);
     });
 
@@ -346,7 +307,6 @@ describe("VectorTable", () => {
       const mockTable = createMockTable();
       const mockQuery = createMockVectorQuery();
       mockTable.search.mockReturnValue(mockQuery);
-      // biome-ignore lint/suspicious/noExplicitAny: test mock
       const table = new VectorTable<TestData>(mockTable as any);
 
       await table.search("query", { limit: 5 });
@@ -358,7 +318,6 @@ describe("VectorTable", () => {
       const mockTable = createMockTable();
       const mockQuery = createMockVectorQuery();
       mockTable.search.mockReturnValue(mockQuery);
-      // biome-ignore lint/suspicious/noExplicitAny: test mock
       const table = new VectorTable<TestData>(mockTable as any);
 
       await table.search("query", { select: ["id", "category"] });
@@ -370,7 +329,6 @@ describe("VectorTable", () => {
       const mockTable = createMockTable();
       const mockQuery = createMockVectorQuery();
       mockTable.search.mockReturnValue(mockQuery);
-      // biome-ignore lint/suspicious/noExplicitAny: test mock
       const table = new VectorTable<TestData>(mockTable as any);
 
       await table.search("query", { select: ["text", "category"] });
@@ -382,7 +340,6 @@ describe("VectorTable", () => {
       const mockTable = createMockTable();
       const mockQuery = createMockVectorQuery();
       mockTable.search.mockReturnValue(mockQuery);
-      // biome-ignore lint/suspicious/noExplicitAny: test mock
       const table = new VectorTable<TestData>(mockTable as any);
 
       await table.search("query", { select: ["id", "text"] });
@@ -394,7 +351,6 @@ describe("VectorTable", () => {
       const mockTable = createMockTable();
       const mockQuery = createMockVectorQuery();
       mockTable.search.mockReturnValue(mockQuery);
-      // biome-ignore lint/suspicious/noExplicitAny: test mock
       const table = new VectorTable<TestData>(mockTable as any);
 
       await table.search("query", { filter: { field: "category", op: "=", value: "books" } });
@@ -406,7 +362,6 @@ describe("VectorTable", () => {
       const mockTable = createMockTable();
       const mockQuery = createMockVectorQuery();
       mockTable.search.mockReturnValue(mockQuery);
-      // biome-ignore lint/suspicious/noExplicitAny: test mock
       const table = new VectorTable<TestData>(mockTable as any);
 
       await table.search("query", { nprobes: 20 });
@@ -418,7 +373,6 @@ describe("VectorTable", () => {
       const mockTable = createMockTable();
       const mockQuery = createMockVectorQuery();
       mockTable.search.mockReturnValue(mockQuery);
-      // biome-ignore lint/suspicious/noExplicitAny: test mock
       const table = new VectorTable<TestData>(mockTable as any);
 
       await table.search("query", { refineFactor: 10 });
@@ -430,7 +384,6 @@ describe("VectorTable", () => {
       const mockTable = createMockTable();
       const mockQuery = createMockVectorQuery();
       mockTable.search.mockReturnValue(mockQuery);
-      // biome-ignore lint/suspicious/noExplicitAny: test mock
       const table = new VectorTable<TestData>(mockTable as any);
 
       await table.search("query", { fastSearch: false });
@@ -442,7 +395,6 @@ describe("VectorTable", () => {
       const mockTable = createMockTable();
       const mockQuery = createMockVectorQuery();
       mockTable.search.mockReturnValue(mockQuery);
-      // biome-ignore lint/suspicious/noExplicitAny: test mock
       const table = new VectorTable<TestData>(mockTable as any);
 
       await table.search("query");
@@ -457,7 +409,6 @@ describe("VectorTable", () => {
       const mockTable = createMockTable();
       const mockQuery = createMockVectorQuery();
       mockTable.search.mockReturnValue(mockQuery);
-      // biome-ignore lint/suspicious/noExplicitAny: test mock
       const table = new VectorTable<TestData>(mockTable as any);
 
       const plan = await table.explainPlan("query");
@@ -471,7 +422,6 @@ describe("VectorTable", () => {
       const mockTable = createMockTable();
       const mockQuery = createMockVectorQuery();
       mockTable.search.mockReturnValue(mockQuery);
-      // biome-ignore lint/suspicious/noExplicitAny: test mock
       const table = new VectorTable<TestData>(mockTable as any);
 
       await table.explainPlan("query", {
@@ -491,7 +441,6 @@ describe("VectorTable", () => {
       const mockTable = createMockTable();
       const mockQuery = createMockVectorQuery();
       mockTable.search.mockReturnValue(mockQuery);
-      // biome-ignore lint/suspicious/noExplicitAny: test mock
       const table = new VectorTable<TestData>(mockTable as any);
 
       const plan = await table.analyzePlan("query");
@@ -505,7 +454,6 @@ describe("VectorTable", () => {
       const mockTable = createMockTable();
       const mockQuery = createMockVectorQuery();
       mockTable.search.mockReturnValue(mockQuery);
-      // biome-ignore lint/suspicious/noExplicitAny: test mock
       const table = new VectorTable<TestData>(mockTable as any);
 
       await table.analyzePlan("query", {

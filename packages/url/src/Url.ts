@@ -4,7 +4,6 @@ import { ReadonlyUrl } from "./ReadonlyUrl";
 import type { IUrl } from "./types";
 
 export class Url extends ReadonlyUrl implements IUrl {
-  // biome-ignore lint/complexity/noUselessConstructor: explicit constructor is required for Bun coverage.
   public constructor(url: string | URL) {
     super(url);
   }

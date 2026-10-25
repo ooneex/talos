@@ -14,9 +14,7 @@ const workerConstructorArgs: { name: string; processor: unknown; opts: unknown }
 
 // Mock implementations of the underlying bullmq Queue methods.
 const mockQueueMethods = {
-  // biome-ignore lint/suspicious/noExplicitAny: mock job factory
   add: mock(async (name: string, data: any, opts?: unknown) => ({ id: "job-1", name, data, opts })),
-  // biome-ignore lint/suspicious/noExplicitAny: mock job factory
   addBulk: mock(async (jobs: { name: string; data: any }[]) =>
     jobs.map((job, index) => ({ id: `job-${index}`, name: job.name, data: job.data })),
   ),
@@ -140,11 +138,9 @@ describe("Queue", () => {
     });
 
     mockQueueMethods.add.mockImplementation(
-      // biome-ignore lint/suspicious/noExplicitAny: mock job factory
       async (name: string, data: any, opts?: unknown) => ({ id: "job-1", name, data, opts }),
     );
     mockQueueMethods.addBulk.mockImplementation(
-      // biome-ignore lint/suspicious/noExplicitAny: mock job factory
       async (jobs: { name: string; data: any }[]) =>
         jobs.map((job, index) => ({ id: `job-${index}`, name: job.name, data: job.data })),
     );
@@ -172,7 +168,6 @@ describe("Queue", () => {
       try {
         new TestQueue(env);
         expect(true).toBe(false); // should not reach here
-        // biome-ignore lint/suspicious/noExplicitAny: trust me
       } catch (error: any) {
         expect(error).toBeInstanceOf(QueueException);
         expect(error.key).toBe("QUEUE_REDIS_URL_REQUIRED");

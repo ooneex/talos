@@ -9,7 +9,6 @@ export interface ITransition<Data extends Record<string, unknown> = Record<strin
   onFail: <Context = unknown>(data: Data, error: unknown, context?: Context) => Promise<void> | void;
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: trust me
 export type WorkflowTransitionClassType = new (...args: any[]) => ITransition;
 
 export interface IWorkflow<Data extends Record<string, unknown> = Record<string, unknown>, Output = unknown> {
@@ -19,5 +18,4 @@ export interface IWorkflow<Data extends Record<string, unknown> = Record<string,
   run: <Context = unknown>(data: Data, context?: Context) => Promise<Output> | Output;
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: trust me
 export type WorkflowClassType = new (...args: any[]) => IWorkflow;

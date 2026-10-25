@@ -6,14 +6,12 @@ import type { MiddlewareClassType, SocketMiddlewareClassType } from "@talosjs/mi
 import type { RateLimiterClassType } from "@talosjs/rate-limit";
 import type { Server, TLSOptions, WebSocketCompressor } from "bun";
 
-// biome-ignore lint/suspicious/noExplicitAny: trust me
 export type AppEventStartClassType = new (...args: any[]) => IAppEventStart;
 
 export interface IAppEventStart {
   handle: (server: Server<unknown>) => void | Promise<void>;
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: trust me
 export type AppEventStopClassType = new (...args: any[]) => IAppEventStop;
 
 export interface IAppEventStop {

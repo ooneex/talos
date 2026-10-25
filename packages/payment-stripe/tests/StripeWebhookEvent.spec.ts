@@ -25,7 +25,6 @@ function createMockClient() {
   } as unknown as StripeClient;
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: Stripe event fixtures need flexible typing
 function createMockEvent(type: string = EStripeEvent.CheckoutSessionCompleted, object: any = {}): any {
   return {
     id: "evt_test123",
@@ -36,7 +35,6 @@ function createMockEvent(type: string = EStripeEvent.CheckoutSessionCompleted, o
   };
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: Stripe object fixtures need flexible typing
 const respondWith = (type: string, object: any): void => {
   mockConstructEvent.mockImplementation(() => Promise.resolve(createMockEvent(type, object)));
 };

@@ -39,7 +39,6 @@ describe("RAG", () => {
     test("should render the PDF's pages as images", async () => {
       const rag = new RAG("tests/file-sample.pdf");
 
-      // biome-ignore lint/suspicious/noExplicitAny: exercises the protected renderPages directly
       const doc = await (rag as any).renderPages();
       try {
         expect(doc.length).toBeGreaterThan(0);
@@ -53,7 +52,6 @@ describe("RAG", () => {
     test("should build an OpenAI client scoped to the OpenRouter API", () => {
       const rag = new RAG("tests/file-sample.pdf", { apiKey: "sk-test" });
 
-      // biome-ignore lint/suspicious/noExplicitAny: exercises the protected createClient directly
       const client = (rag as any).createClient("sk-test");
       expect(client).toBeInstanceOf(OpenAI);
     });

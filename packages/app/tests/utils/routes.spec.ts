@@ -236,7 +236,6 @@ describe("formatHttpRoutes middleware and access control", () => {
       [ThrowingMiddleware as unknown as import("@talosjs/middleware").MiddlewareClassType],
     )["/v1/middleware-error"]?.GET;
 
-    // biome-ignore lint/complexity/noBannedTypes: trust me
     const response = await (handler as Function)(createReq("http://localhost/v1/middleware-error"), createServer());
     const body = await response.json();
 
@@ -288,7 +287,6 @@ describe("formatHttpRoutes middleware and access control", () => {
       [HeaderMiddleware, RejectingMiddleware] as unknown as import("@talosjs/middleware").MiddlewareClassType[],
     )["/v1/header-carry-over"]?.GET;
 
-    // biome-ignore lint/complexity/noBannedTypes: trust me
     const response = await (handler as Function)(createReq("http://localhost/v1/header-carry-over"), createServer());
 
     expect(response.status).toBe(HttpStatus.Code.InternalServerError);
@@ -342,7 +340,6 @@ describe("formatHttpRoutes middleware and access control", () => {
       [RestrictedUsersMiddleware as unknown as import("@talosjs/middleware").MiddlewareClassType],
     )["/v1/allowed-users"]?.GET;
 
-    // biome-ignore lint/complexity/noBannedTypes: trust me
     const response = await (handler as Function)(createReq("http://localhost/v1/allowed-users"), createServer());
     const body = await response.json();
 
@@ -391,7 +388,6 @@ describe("formatHttpRoutes middleware and access control", () => {
       ]),
     )["/v1/permission-denied"]?.GET;
 
-    // biome-ignore lint/complexity/noBannedTypes: trust me
     const response = await (handler as Function)(createReq("http://localhost/v1/permission-denied"), createServer());
     const body = await response.json();
 
@@ -443,7 +439,6 @@ describe("formatHttpRoutes middleware and access control", () => {
       ]),
     )["/v1/permission-allowed"]?.GET;
 
-    // biome-ignore lint/complexity/noBannedTypes: trust me
     const response = await (handler as Function)(createReq("http://localhost/v1/permission-allowed"), createServer());
     const body = await response.json();
 
@@ -507,7 +502,6 @@ describe("formatHttpRoutes feature flag", () => {
     ]);
 
     const handler = formatHttpRoutes(httpRoutes)["/v1/flagged"]?.GET;
-    // biome-ignore lint/complexity/noBannedTypes: trust me
     const response = await (handler as Function)(createReq("http://localhost/v1/flagged"), createServer());
 
     expect(response.status).toBe(HttpStatus.Code.NotFound);
@@ -543,7 +537,6 @@ describe("formatHttpRoutes feature flag", () => {
     ]);
 
     const handler = formatHttpRoutes(httpRoutes)["/v1/enabled"]?.GET;
-    // biome-ignore lint/complexity/noBannedTypes: trust me
     const response = await (handler as Function)(createReq("http://localhost/v1/enabled"), createServer());
 
     expect(response.status).toBe(HttpStatus.Code.OK);
@@ -579,7 +572,6 @@ describe("formatHttpRoutes feature flag", () => {
     ]);
 
     const handler = formatHttpRoutes(httpRoutes)["/v1/async-flag"]?.GET;
-    // biome-ignore lint/complexity/noBannedTypes: trust me
     const response = await (handler as Function)(createReq("http://localhost/v1/async-flag"), createServer());
 
     expect(response.status).toBe(HttpStatus.Code.NotFound);
@@ -607,7 +599,6 @@ describe("formatHttpRoutes feature flag", () => {
     ]);
 
     const handler = formatHttpRoutes(httpRoutes)["/v1/no-flag"]?.GET;
-    // biome-ignore lint/complexity/noBannedTypes: trust me
     const response = await (handler as Function)(createReq("http://localhost/v1/no-flag"), createServer());
 
     expect(response.status).toBe(HttpStatus.Code.OK);
@@ -745,7 +736,6 @@ describe("formatHttpRoutes cache", () => {
       requestIP: mock(() => ({ address: "127.0.0.1" })),
     } as unknown as Server<unknown>;
 
-    // biome-ignore lint/complexity/noBannedTypes: trust me
     const response = await (handler as Function)(mockReq, mockServer);
 
     expect(response.status).toBe(cachedStatus);
@@ -792,12 +782,10 @@ describe("formatHttpRoutes rate limit", () => {
     path: string,
     controller: unknown,
     middlewares: import("@talosjs/middleware").MiddlewareClassType[] = [],
-    // biome-ignore lint/complexity/noBannedTypes: trust me
   ): Function => {
     const httpRoutes = new Map<string, RouteConfigType[]>();
     httpRoutes.set(path, [createMockRoute({ path, method: "GET", controller } as Partial<RouteConfigType>)]);
 
-    // biome-ignore lint/complexity/noBannedTypes: trust me
     return formatHttpRoutes(httpRoutes, middlewares)[`/v1${path}`]?.GET as Function;
   };
 
@@ -1080,7 +1068,6 @@ describe("formatHttpRoutes cache after access checks", () => {
     ]);
 
     const handler = formatHttpRoutes(httpRoutes)["/v1/restricted-cached"]?.GET;
-    // biome-ignore lint/complexity/noBannedTypes: trust me
     const response = await (handler as Function)(createReq("http://localhost/v1/restricted-cached"), createServer());
 
     expect(response.status).toBe(HttpStatus.Code.Forbidden);
@@ -1120,7 +1107,6 @@ describe("formatHttpRoutes cache after access checks", () => {
     ]);
 
     const handler = formatHttpRoutes(httpRoutes)["/v1/cache-write-fail"]?.GET;
-    // biome-ignore lint/complexity/noBannedTypes: trust me
     const response = await (handler as Function)(createReq("http://localhost/v1/cache-write-fail"), createServer());
 
     expect(response.status).toBe(HttpStatus.Code.OK);

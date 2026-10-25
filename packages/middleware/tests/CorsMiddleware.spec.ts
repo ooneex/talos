@@ -36,11 +36,9 @@ function createMockContext(options: { origin?: string; method?: string } = {}) {
           return this;
         },
       },
-      // biome-ignore lint/suspicious/noExplicitAny: mock
       json(_data: any, _status?: number) {},
     },
     _responseHeaders: responseHeaders,
-    // biome-ignore lint/suspicious/noExplicitAny: mock
   } as any;
 }
 

@@ -6,7 +6,6 @@ const AssertEmailBase: ReturnType<typeof createConstraint> = createConstraint(
 );
 
 export class AssertEmail extends AssertEmailBase {
-  // biome-ignore lint/complexity/noUselessConstructor: explicit constructor needed so bun's coverage tool marks it as hit
   constructor() {
     super();
   }

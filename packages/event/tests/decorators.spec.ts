@@ -252,7 +252,6 @@ describe("decorator.event", () => {
     }
 
     expect(() => {
-      // biome-ignore lint/suspicious/noExplicitAny: testing with typed pubsub
       decorator.event()(TypedPubSub as any);
     }).not.toThrow();
 

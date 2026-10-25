@@ -228,7 +228,6 @@ describe("NotFoundException", () => {
 
       try {
         throwNotFoundException();
-        // biome-ignore lint/suspicious/noExplicitAny: trust me
       } catch (error: any) {
         expect(error).toBeInstanceOf(NotFoundException);
         expect(error.stack).toBeDefined();

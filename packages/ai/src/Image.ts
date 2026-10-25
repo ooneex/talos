@@ -25,7 +25,6 @@ import { buildImagePrompt, createImageAdapter } from "./utils";
  * ```
  */
 export abstract class Image implements IImage {
-  // biome-ignore lint/complexity/noUselessConstructor: explicit constructor is needed for Bun function coverage
   public constructor() {}
 
   /** OpenRouter model identifier in `provider/model` form (e.g. `google/gemini-2.5-flash-image`). */

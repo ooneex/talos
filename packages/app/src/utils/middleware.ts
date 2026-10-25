@@ -4,7 +4,6 @@ type MiddlewareHandlerType<TContext> = {
   handler: (context: TContext) => Promise<TContext> | TContext;
 };
 
-// biome-ignore lint/suspicious/noExplicitAny: trust me
 type MiddlewareHandlerClassType<TContext> = new (...args: any[]) => MiddlewareHandlerType<TContext>;
 
 export const runMiddlewares = async <TContext>(

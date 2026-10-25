@@ -5,7 +5,6 @@ import type { MongoClient, MongoClientOptions } from "mongodb";
 import type { FindOperator } from "./orm/FindOperator";
 import type { Repository } from "./orm/Repository";
 
-// biome-ignore lint/suspicious/noExplicitAny: trust me
 export type DatabaseClassType = new (...args: any[]) => IDatabase | ISqlDatabase;
 
 export interface IDatabase {
@@ -28,11 +27,9 @@ export interface ISqlDatabase {
 // ---------------------------------------------------------------------------
 
 /** Any object whose properties are read dynamically — entity instances and plain rows alike. */
-// biome-ignore lint/suspicious/noExplicitAny: an index signature of `any` is the only one class instances satisfy
 export type ObjectLiteralType = Record<string, any>;
 
 /** A class, abstract or not. Decorators hand the constructor over as this. */
-// biome-ignore lint/suspicious/noExplicitAny: constructor parameters are unknown to the ORM
 export type ClassType<T = ObjectLiteralType> = abstract new (...args: any[]) => T;
 
 /** How an entity is referred to: its class, or the name it was registered under. */
@@ -342,7 +339,6 @@ export type JoinTableMultipleColumnsOptionsType = Omit<JoinTableOptionsType, "jo
 
 export type RelationTypeType = "one-to-one" | "one-to-many" | "many-to-one" | "many-to-many";
 
-// biome-ignore lint/suspicious/noExplicitAny: the inverse-side selector receives the related entity
 export type InverseSideSelectorType<T> = string | ((object: T) => any);
 
 // ---------------------------------------------------------------------------
@@ -662,16 +658,14 @@ export type FindOptionsWherePropertyType<Narrowed, Property = Narrowed> = Narrow
   ? FindOptionsWherePropertyType<NonNullable<I>>
   : Narrowed extends Array<infer I>
     ? FindOptionsWherePropertyType<NonNullable<I>>
-    : // biome-ignore lint/suspicious/noExplicitAny: methods are excluded from where clauses, whatever their signature
-      Narrowed extends (...args: any[]) => any
+    : Narrowed extends (...args: any[]) => any
       ? never
       : Narrowed extends Uint8Array
         ? Property | FindOperator<Property>
         : Narrowed extends Date
           ? Property | FindOperator<Property>
           : Narrowed extends object
-            ?
-                | FindOptionsWhereType<Property>
+            ? FindOptionsWhereType<Property>
                 | FindOptionsWhereType<Property>[]
                 | EqualOperatorType<Property>
                 | FindOperator<unknown>
@@ -699,8 +693,7 @@ export type FindOptionsOrderPropertyType<Property> = Property extends Promise<in
   ? FindOptionsOrderPropertyType<NonNullable<I>>
   : Property extends Array<infer I>
     ? FindOptionsOrderPropertyType<NonNullable<I>>
-    : // biome-ignore lint/suspicious/noExplicitAny: methods cannot be ordered by
-      Property extends (...args: any[]) => any
+    : Property extends (...args: any[]) => any
       ? never
       : Property extends Uint8Array
         ? FindOptionsOrderValueType
@@ -718,8 +711,7 @@ export type FindOptionsRelationsPropertyType<Property> = Property extends Promis
   ? FindOptionsRelationsPropertyType<NonNullable<I>> | boolean
   : Property extends Array<infer I>
     ? FindOptionsRelationsPropertyType<NonNullable<I>> | boolean
-    : // biome-ignore lint/suspicious/noExplicitAny: methods are not relations
-      Property extends (...args: any[]) => any
+    : Property extends (...args: any[]) => any
       ? never
       : Property extends Uint8Array
         ? boolean
@@ -739,8 +731,7 @@ export type FindOptionsSelectPropertyType<Property> = Property extends Promise<i
   ? FindOptionsSelectPropertyType<I> | boolean
   : Property extends Array<infer I>
     ? FindOptionsSelectPropertyType<I> | boolean
-    : // biome-ignore lint/suspicious/noExplicitAny: methods cannot be selected
-      Property extends (...args: any[]) => any
+    : Property extends (...args: any[]) => any
       ? never
       : Property extends Uint8Array
         ? boolean

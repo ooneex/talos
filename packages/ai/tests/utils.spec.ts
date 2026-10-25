@@ -328,7 +328,6 @@ describe("toToolHookMiddleware", () => {
     ];
 
     const middleware = toToolHookMiddleware(tools);
-    // biome-ignore lint/suspicious/noExplicitAny: minimal hook context for the test
     await middleware?.onBeforeToolCall?.({} as any, { toolName: "beta" } as any);
 
     expect(calls).toEqual(["beta"]);
@@ -345,7 +344,6 @@ describe("toToolHookMiddleware", () => {
     ];
 
     const middleware = toToolHookMiddleware(tools);
-    // biome-ignore lint/suspicious/noExplicitAny: minimal hook info for the test
     await middleware?.onAfterToolCall?.({} as any, { toolName: "alpha" } as any);
 
     expect(calls).toEqual(["alpha"]);
@@ -355,7 +353,6 @@ describe("toToolHookMiddleware", () => {
     const middleware = toToolHookMiddleware([makeTool("alpha", { onAfterCall: () => {} })]);
 
     expect(
-      // biome-ignore lint/suspicious/noExplicitAny: minimal hook info for the test
       await middleware?.onAfterToolCall?.({} as any, { toolName: "missing" } as any),
     ).toBeUndefined();
   });
@@ -367,8 +364,7 @@ describe("toServerTools", () => {
     getDescription: () => `${name} desc`,
     handler: (param) => ({ echoed: param }),
     ...(withSchema
-      ? // biome-ignore lint/suspicious/noExplicitAny: stand-in schema for the test
-        { getInputSchema: () => ({}) as any }
+      ? { getInputSchema: () => ({}) as any }
       : {}),
   });
 

@@ -262,7 +262,7 @@ fn a_conventional_skill_reports_nothing() {
         # Service create\n\n\
         1. Run `oo service:create --name UserCreate --module user`.\n\
         2. Implement the business logic in `src/services/`.\n\
-        3. Run `bun test tests` and `bunx biome check --write`.\n\
+        3. Run `bun test tests` and `bun fmt`.\n\
         4. Commit with `feat(user): Add UserCreateService`.\n";
 
     assert!(rules(skill).is_empty(), "{:?}", rules(skill));
