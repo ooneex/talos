@@ -67,4 +67,5 @@ git commit -m "chore(common): Update dependencies and cache package"
 ## Trailers & Conventions
 
 - Do not add any `Co-Authored-By` trailer.
+- Strip the Cursor agent trailer (`Co-authored-by: Cursor <cursoragent@cursor.com>`) if your tooling adds it — check with `git log -1 --format=%B` and amend it out.
 - Apply all coding conventions from the `optimize` skill.
