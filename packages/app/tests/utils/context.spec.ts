@@ -2,6 +2,7 @@ import { describe, expect, mock, spyOn, test } from "bun:test";
 import { AppEnv } from "@talosjs/app-env";
 import { container } from "@talosjs/container";
 import type { BunRequest, Server } from "bun";
+import { RequestBodyTooLargeException } from "@/RequestBodyTooLargeException";
 import { buildHttpContext, type RouteInfoType } from "@/utils/context";
 
 const createMockReq = (overrides: Record<string, unknown> = {}): BunRequest => {
@@ -238,6 +239,123 @@ describe("buildHttpContext", () => {
     const context = await buildHttpContext({ req, server, route });
 
     expect(context.route?.roles).toEqual(["ROLE_ADMIN", "ROLE_SUPER_ADMIN"]);
+
+    cleanupContainer();
+  });
+});
+
+describe("buildHttpContext body size", () => {
+  const encoder = new TextEncoder();
+
+  const chunkedReq = (contentType: string, text: string, chunkSize = 64): BunRequest => {
+    const bytes = encoder.encode(text);
+    let offset = 0;
+    const body = new ReadableStream<Uint8Array>({
+      pull: (controller) => {
+        if (offset >= bytes.length) {
+          controller.close();
+          return;
+        }
+        controller.enqueue(bytes.slice(offset, offset + chunkSize));
+        offset += chunkSize;
+      },
+    });
+    const req = new Request("http://localhost/v1/test", {
+      method: "POST",
+      headers: { "content-type": contentType },
+      body,
+    });
+    return Object.assign(req, { params: {} }) as unknown as BunRequest;
+  };
+
+  test("parses a JSON body within the limit", async () => {
+    setupContainer();
+
+    const req = createMockReq({
+      method: "POST",
+      headers: new Headers({ "content-type": "application/json", "content-length": "15" }),
+    });
+
+    const context = await buildHttpContext({ req, server: createMockServer(), maxBodySize: 15 });
+
+    expect(context.payload).toEqual({ key: "value" });
+
+    cleanupContainer();
+  });
+
+  test("throws without reading the body when its declared length is over the limit", async () => {
+    setupContainer();
+
+    const req = createMockReq({
+      method: "POST",
+      headers: new Headers({ "content-type": "application/json", "content-length": "2048" }),
+    });
+
+    await expect(buildHttpContext({ req, server: createMockServer(), maxBodySize: 1024 })).rejects.toBeInstanceOf(
+      RequestBodyTooLargeException,
+    );
+    expect(req.json).not.toHaveBeenCalled();
+
+    cleanupContainer();
+  });
+
+  test("throws once a chunked JSON body passes the limit", async () => {
+    setupContainer();
+
+    const req = chunkedReq("application/json", JSON.stringify({ text: "a".repeat(2048) }));
+
+    await expect(buildHttpContext({ req, server: createMockServer(), maxBodySize: 1024 })).rejects.toBeInstanceOf(
+      RequestBodyTooLargeException,
+    );
+
+    cleanupContainer();
+  });
+
+  test("throws once a chunked form body passes the limit", async () => {
+    setupContainer();
+
+    const req = chunkedReq("application/x-www-form-urlencoded", `text=${"a".repeat(2048)}`);
+
+    await expect(buildHttpContext({ req, server: createMockServer(), maxBodySize: 1024 })).rejects.toBeInstanceOf(
+      RequestBodyTooLargeException,
+    );
+
+    cleanupContainer();
+  });
+
+  test("parses a chunked form body within the limit", async () => {
+    setupContainer();
+
+    const req = chunkedReq("application/x-www-form-urlencoded", "text=hello");
+
+    const context = await buildHttpContext({ req, server: createMockServer(), maxBodySize: 1024 });
+
+    expect(context.request.form?.get("text")).toBe("hello");
+
+    cleanupContainer();
+  });
+
+  test("still leaves the payload empty when a body within the limit is malformed", async () => {
+    setupContainer();
+
+    const req = chunkedReq("application/json", "{not json");
+
+    const context = await buildHttpContext({ req, server: createMockServer(), maxBodySize: 1024 });
+
+    expect(context.payload).toEqual({});
+
+    cleanupContainer();
+  });
+
+  test("leaves the body unread when readBody is false", async () => {
+    setupContainer();
+
+    const req = createMockReq({ method: "POST" });
+
+    const context = await buildHttpContext({ req, server: createMockServer(), readBody: false });
+
+    expect(req.json).not.toHaveBeenCalled();
+    expect(context.payload).toEqual({});
 
     cleanupContainer();
   });

@@ -133,6 +133,19 @@ export type AppConfigType = {
   routing: {
     prefix: string;
   };
+  /**
+   * Largest request body an HTTP route accepts, in bytes, for every route
+   * that does not set its own `maxBodySize`. A body over it is refused with a
+   * 413 `REQUEST_BODY_TOO_LARGE` before it is read into memory: on its
+   * `Content-Length`, or once the bytes read pass it when the body is chunked.
+   *
+   * Keep it well below `server.maxRequestBodySize`, which Bun applies to
+   * every request, and raise only the routes that need more: e.g. an upload
+   * route that streams `request.native.body` itself.
+   *
+   * @default undefined (no limit beyond `server.maxRequestBodySize`)
+   */
+  maxBodySize?: number;
   loggers: LoggerClassType[];
   onException?: LoggerClassType;
   cache?: CacheClassType;

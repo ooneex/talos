@@ -1,4 +1,4 @@
-import { describe, expect, mock, test } from "bun:test";
+import { describe, expect, mock, spyOn, test } from "bun:test";
 import { AppEnv } from "@talosjs/app-env";
 import { container } from "@talosjs/container";
 import type { ContextType } from "@talosjs/controller";
@@ -1113,5 +1113,293 @@ describe("formatHttpRoutes cache after access checks", () => {
 
     container.removeConstant("logger");
     container.removeConstant("cache");
+  });
+});
+
+describe("formatHttpRoutes body size", () => {
+  const KB = 1024;
+
+  const createServer = (): Server<unknown> =>
+    ({ requestIP: mock(() => ({ address: "127.0.0.1" })) }) as unknown as Server<unknown>;
+
+  const toBunRequest = (req: Request): BunRequest => Object.assign(req, { params: {} }) as unknown as BunRequest;
+
+  const chunkedStream = (chunks: number, chunkSize: number, onPull: () => void = () => {}) => {
+    let sent = 0;
+    return new ReadableStream<Uint8Array>({
+      pull: (controller) => {
+        onPull();
+        if (sent === chunks) {
+          controller.close();
+          return;
+        }
+        sent++;
+        controller.enqueue(new Uint8Array(chunkSize).fill(97));
+      },
+    });
+  };
+
+  const createRoutes = (path: string, controller: RouteConfigType["controller"], maxBodySize?: number) =>
+    new Map([
+      [
+        path,
+        [
+          createMockRoute({
+            path,
+            method: "POST",
+            controller,
+            ...(maxBodySize !== undefined && { maxBodySize }),
+          } as Partial<RouteConfigType>),
+        ],
+      ],
+    ]);
+
+  const setup = () => {
+    container.addConstant("logger", createMockLogger());
+    container.add(AppEnv);
+  };
+
+  test("hands a body within the app limit to the controller", async () => {
+    setup();
+    const indexMock = mock((context: ContextType) => new HttpResponse().json({ received: context.payload }));
+    class UnderLimitController {
+      index = indexMock;
+    }
+    container.add(UnderLimitController);
+
+    const handler = formatHttpRoutes(createRoutes("/under-limit", UnderLimitController), [], undefined, KB)[
+      "/v1/under-limit"
+    ]?.POST as Function;
+    const body = JSON.stringify({ text: "hello" });
+    const response = await handler(
+      toBunRequest(
+        new Request("http://localhost/v1/under-limit", {
+          method: "POST",
+          headers: { "content-type": "application/json", "content-length": String(body.length) },
+          body,
+        }),
+      ),
+      createServer(),
+    );
+
+    expect(response.status).toBe(HttpStatus.Code.OK);
+    expect((await response.json()).data).toEqual({ received: { text: "hello" } });
+
+    container.removeConstant("logger");
+  });
+
+  test("answers 413 on a declared length over the limit without reading the body", async () => {
+    setup();
+    const indexMock = mock(() => new HttpResponse().json({ ok: true }));
+    class DeclaredOverController {
+      index = indexMock;
+    }
+    container.add(DeclaredOverController);
+
+    const handler = formatHttpRoutes(createRoutes("/declared-over", DeclaredOverController), [], undefined, KB)[
+      "/v1/declared-over"
+    ]?.POST as Function;
+    const req = new Request("http://localhost/v1/declared-over", {
+      method: "POST",
+      headers: { "content-type": "application/json", "content-length": String(2 * KB) },
+      body: JSON.stringify({ text: "a".repeat(2 * KB - 11) }),
+    });
+    const jsonSpy = spyOn(req, "json");
+
+    const response = await handler(toBunRequest(req), createServer());
+    const body = await response.json();
+
+    expect(response.status).toBe(HttpStatus.Code.ContentTooLarge);
+    expect(body.key).toBe("REQUEST_BODY_TOO_LARGE");
+    expect(jsonSpy).not.toHaveBeenCalled();
+    expect(req.bodyUsed).toBe(false);
+    expect(indexMock).not.toHaveBeenCalled();
+
+    container.removeConstant("logger");
+  });
+
+  test("answers 413 once a chunked body passes the limit", async () => {
+    setup();
+    const indexMock = mock(() => new HttpResponse().json({ ok: true }));
+    class ChunkedOverController {
+      index = indexMock;
+    }
+    container.add(ChunkedOverController);
+
+    const handler = formatHttpRoutes(createRoutes("/chunked-over", ChunkedOverController), [], undefined, KB)[
+      "/v1/chunked-over"
+    ]?.POST as Function;
+    let pulls = 0;
+    const req = new Request("http://localhost/v1/chunked-over", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: chunkedStream(64, KB / 4, () => pulls++),
+    });
+
+    const response = await handler(toBunRequest(req), createServer());
+
+    expect(response.status).toBe(HttpStatus.Code.ContentTooLarge);
+    expect((await response.json()).key).toBe("REQUEST_BODY_TOO_LARGE");
+    expect(pulls).toBeLessThan(64);
+    expect(indexMock).not.toHaveBeenCalled();
+
+    container.removeConstant("logger");
+  });
+
+  test("lets a route raise its own limit above the app default", async () => {
+    setup();
+    class OverrideController {
+      index(context: ContextType): IResponse {
+        return new HttpResponse().json({ size: (context.payload as { text: string }).text.length });
+      }
+    }
+    container.add(OverrideController);
+
+    const handler = formatHttpRoutes(createRoutes("/override", OverrideController, 8 * KB), [], undefined, KB)[
+      "/v1/override"
+    ]?.POST as Function;
+    const body = JSON.stringify({ text: "a".repeat(4 * KB) });
+    const response = await handler(
+      toBunRequest(
+        new Request("http://localhost/v1/override", {
+          method: "POST",
+          headers: { "content-type": "application/json", "content-length": String(body.length) },
+          body,
+        }),
+      ),
+      createServer(),
+    );
+
+    expect(response.status).toBe(HttpStatus.Code.OK);
+    expect((await response.json()).data).toEqual({ size: 4 * KB });
+
+    container.removeConstant("logger");
+  });
+
+  test("streams a raw body to a controller that reads it itself, without buffering it", async () => {
+    setup();
+    const chunks = 64;
+    const chunkSize = 16 * KB;
+    let pulls = 0;
+    let pullsAtController = -1;
+    class RawStreamController {
+      async index(context: ContextType): Promise<IResponse> {
+        pullsAtController = pulls;
+        let received = 0;
+        const reader = (context.request.native.body as ReadableStream<Uint8Array>).getReader();
+        for (let chunk = await reader.read(); !chunk.done; chunk = await reader.read()) {
+          received += chunk.value.byteLength;
+        }
+        return new HttpResponse().json({ received });
+      }
+    }
+    container.add(RawStreamController);
+
+    const handler = formatHttpRoutes(
+      createRoutes("/raw-stream", RawStreamController, chunks * chunkSize),
+      [],
+      undefined,
+      KB,
+    )["/v1/raw-stream"]?.POST as Function;
+    const response = await handler(
+      toBunRequest(
+        new Request("http://localhost/v1/raw-stream", {
+          method: "POST",
+          headers: { "content-type": "application/octet-stream" },
+          body: chunkedStream(chunks, chunkSize, () => pulls++),
+        }),
+      ),
+      createServer(),
+    );
+
+    expect(response.status).toBe(HttpStatus.Code.OK);
+    expect((await response.json()).data).toEqual({ received: chunks * chunkSize });
+    expect(pullsAtController).toBeLessThan(4);
+
+    container.removeConstant("logger");
+  });
+
+  test("answers 413 when a raw stream passes the route limit while the controller reads it", async () => {
+    setup();
+    class RawStreamOverController {
+      async index(context: ContextType): Promise<IResponse> {
+        await new Response(context.request.native.body).arrayBuffer();
+        return new HttpResponse().json({ ok: true });
+      }
+    }
+    container.add(RawStreamOverController);
+
+    const handler = formatHttpRoutes(createRoutes("/raw-stream-over", RawStreamOverController, 4 * KB))[
+      "/v1/raw-stream-over"
+    ]?.POST as Function;
+    const response = await handler(
+      toBunRequest(
+        new Request("http://localhost/v1/raw-stream-over", {
+          method: "POST",
+          headers: { "content-type": "application/octet-stream" },
+          body: chunkedStream(8, KB),
+        }),
+      ),
+      createServer(),
+    );
+
+    expect(response.status).toBe(HttpStatus.Code.ContentTooLarge);
+    expect((await response.json()).key).toBe("REQUEST_BODY_TOO_LARGE");
+
+    container.removeConstant("logger");
+  });
+
+  test("answers 413 to a chunked upload over the limit on a running server", async () => {
+    setup();
+    class ServedController {
+      index(): IResponse {
+        return new HttpResponse().json({ ok: true });
+      }
+    }
+    container.add(ServedController);
+
+    const server = Bun.serve({
+      port: 0,
+      routes: formatHttpRoutes(createRoutes("/served", ServedController), [], undefined, KB),
+    } as unknown as Parameters<typeof Bun.serve>[0]);
+
+    try {
+      const response = await fetch(`${server.url}v1/served`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: chunkedStream(16, KB),
+      });
+
+      expect(response.status).toBe(HttpStatus.Code.ContentTooLarge);
+      expect((await response.json()).key).toBe("REQUEST_BODY_TOO_LARGE");
+    } finally {
+      server.stop(true);
+      container.removeConstant("logger");
+    }
+  });
+
+  test("rethrows an error that is not about the body size", async () => {
+    setup();
+    class UnreachedController {
+      index(): IResponse {
+        return new HttpResponse().json({ ok: true });
+      }
+    }
+    container.add(UnreachedController);
+
+    const handler = formatHttpRoutes(createRoutes("/ip-failure", UnreachedController), [], undefined, KB)[
+      "/v1/ip-failure"
+    ]?.POST as Function;
+    const server = {
+      requestIP: mock(() => {
+        throw new Error("socket closed");
+      }),
+    } as unknown as Server<unknown>;
+
+    await expect(
+      handler(toBunRequest(new Request("http://localhost/v1/ip-failure", { method: "POST" })), server),
+    ).rejects.toThrow("socket closed");
+
+    container.removeConstant("logger");
   });
 });

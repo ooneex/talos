@@ -8,28 +8,49 @@ import type { ILogger } from "@talosjs/logger";
 import type { IRateLimiter } from "@talosjs/rate-limit";
 import type { RouteConfigType } from "@talosjs/routing";
 import type { BunRequest, Server } from "bun";
+import { RequestBodyTooLargeException } from "../RequestBodyTooLargeException";
+import { limitRequestBody } from "./body";
 
 export type RouteInfoType = Pick<RouteConfigType, "name" | "path" | "method" | "version" | "description" | "roles">;
 
+// A parse failure leaves the payload empty, as it always has, but a body over the limit has to reach
+// the route handler so it can answer 413
+const rethrowTooLarge = (error: unknown): void => {
+  if (error instanceof RequestBodyTooLargeException) {
+    throw error;
+  }
+};
+
+/**
+ * Throws a `RequestBodyTooLargeException` when the body is over `maxBodySize`. Without it the body is
+ * only bounded by Bun's `maxRequestBodySize`. `readBody: false` leaves the body unread, e.g. to answer
+ * a request whose body was refused.
+ */
 export const buildHttpContext = async (ctx: {
   req: BunRequest;
   server: Server<unknown>;
   route?: RouteInfoType;
+  maxBodySize?: number | undefined;
+  readBody?: boolean;
 }): Promise<ContextType> => {
-  const { req, server, route } = ctx;
+  const { req, server, route, maxBodySize, readBody = true } = ctx;
 
   const address = server.requestIP(req);
   const ip = address?.address ?? "unknown";
 
   const response = new HttpResponse();
 
+  const native = maxBodySize === undefined ? req : limitRequestBody(req, maxBodySize);
+
   let payload = {};
   let form: FormData | null = null;
-  const contentType = req.headers.get("content-type");
+  const contentType = readBody ? native.headers.get("content-type") : null;
   if (contentType?.includes("application/json")) {
     try {
-      payload = await req.json();
-    } catch (_e) {}
+      payload = await native.json();
+    } catch (error: unknown) {
+      rethrowTooLarge(error);
+    }
   } else if (
     // formData() only ever succeeds for these two content types; skipping the
     // attempt otherwise avoids paying for a thrown exception on every body-less
@@ -38,11 +59,13 @@ export const buildHttpContext = async (ctx: {
     (contentType.includes("multipart/form-data") || contentType.includes("application/x-www-form-urlencoded"))
   ) {
     try {
-      form = await req.formData();
-    } catch (_e) {}
+      form = await native.formData();
+    } catch (error: unknown) {
+      rethrowTooLarge(error);
+    }
   }
 
-  const request = new HttpRequest(req, {
+  const request = new HttpRequest(native, {
     params: req.params,
     payload,
     form,
