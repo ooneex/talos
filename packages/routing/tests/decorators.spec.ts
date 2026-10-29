@@ -18,6 +18,23 @@ type SocketContextType = HttpContextType & {
 
 describe("Route", () => {
   describe("HTTP method decorators", () => {
+    test("keeps the maxBodySize of an HTTP route", () => {
+      class UploadController {
+        public async index(context: HttpContextType): Promise<IResponse> {
+          return context.response;
+        }
+      }
+
+      Route.post("/dec-upload", {
+        name: "dec.upload",
+        version: 1,
+        description: "maxBodySize decorator test",
+        maxBodySize: 1024 * 1024 * 1024,
+      })(UploadController);
+
+      expect(router.findRouteByName("dec.upload")?.maxBodySize).toBe(1024 * 1024 * 1024);
+    });
+
     test("Route.get registers controller with GET method and isSocket: false", () => {
       class GetController {
         public async index(context: HttpContextType): Promise<IResponse> {

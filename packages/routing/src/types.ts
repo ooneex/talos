@@ -26,6 +26,13 @@ export type RouteConfigType = {
   permission?: PermissionClassType;
   featureFlag?: FeatureFlagClassType;
   cache?: string;
+  /**
+   * Largest request body this HTTP route accepts, in bytes. It overrides the
+   * app-wide `maxBodySize` of `@talosjs/app`, in either direction, so one
+   * upload route can take more than the rest. A larger body is refused with a
+   * 413 before it is read into memory. Ignored by socket routes.
+   */
+  maxBodySize?: number;
   isSocket: boolean;
 };
 
