@@ -24,7 +24,17 @@ export interface IStorage {
   putDir(bucket: string, options: PutDirOptionsType): Promise<number>;
   put(
     key: string,
-    content: string | ArrayBufferView | ArrayBuffer | SharedArrayBuffer | Request | Response | BunFile | S3File | Blob,
+    content:
+      | string
+      | ArrayBufferView
+      | ArrayBuffer
+      | SharedArrayBuffer
+      | Request
+      | Response
+      | BunFile
+      | S3File
+      | Blob
+      | ReadableStream,
   ): Promise<number>;
   getFile(key: string, options: GetFileOptionsType): Promise<number>;
   getAsJson<T = unknown>(key: string): Promise<T>;

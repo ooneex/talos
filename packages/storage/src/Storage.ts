@@ -74,11 +74,11 @@ export abstract class Storage implements IStorage {
 
   public async put(
     key: string,
-    content: string | ArrayBuffer | SharedArrayBuffer | Request | Response | BunFile | S3File | Blob,
+    content: string | ArrayBuffer | SharedArrayBuffer | Request | Response | BunFile | S3File | Blob | ReadableStream,
   ): Promise<number> {
     const s3file: S3File = this.getS3File(key);
 
-    return await s3file.write(content);
+    return await s3file.write(content instanceof ReadableStream ? new Response(content) : content);
   }
 
   public async getFile(key: string, options: GetFileOptionsType): Promise<number> {
