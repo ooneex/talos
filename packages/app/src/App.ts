@@ -263,7 +263,7 @@ export class App {
     const allMiddlewares = this.buildMiddlewares(middlewares);
 
     return {
-      ...formatHttpRoutes(router.getHttpRoutes(), allMiddlewares, prefix),
+      ...formatHttpRoutes(router.getHttpRoutes(), allMiddlewares, prefix, this.config.maxBodySize),
       ...formatSocketRoutes(router.getSocketRoutes(), prefix),
       "/*": this.createNotFoundHandler(),
     };
@@ -286,7 +286,8 @@ export class App {
       version: 0,
       description: "Not Found",
     };
-    let context = await buildHttpContext({ req, server, route });
+    // No route reads the body of a request it does not match, so it is never buffered
+    let context = await buildHttpContext({ req, server, route, readBody: false });
     context.response.notFound("Not Found");
 
     if (!this.config.cors) {

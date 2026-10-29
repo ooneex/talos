@@ -1076,6 +1076,86 @@ hierarchy:
       exitSpy.mockRestore();
     });
 
+    test("never reads the body of a request no route matches", async () => {
+      const serveSpy = spyOn(Bun, "serve").mockReturnValue(fakeServer as unknown as ReturnType<typeof Bun.serve>);
+      const exitSpy = spyOn(process, "exit").mockImplementation((() => undefined) as never);
+
+      await new App(createMockConfig()).run();
+
+      const serveOptions = (serveSpy.mock.calls as unknown[][])[0]?.[0] as {
+        routes: {
+          "/*": (req: import("bun").BunRequest, server: import("bun").Server<unknown>) => Promise<Response>;
+        };
+      };
+      const json = mock(() => Promise.resolve({}));
+
+      const response = await serveOptions.routes["/*"](
+        {
+          cookies: { get: mock(() => null), set: mock(() => {}) },
+          headers: new Headers({ "content-type": "application/json" }),
+          method: "POST",
+          url: "http://localhost/missing",
+          params: {},
+          json,
+          formData: mock(() => Promise.resolve(new FormData())),
+        } as unknown as import("bun").BunRequest,
+        { requestIP: mock(() => ({ address: "127.0.0.1" })) } as unknown as import("bun").Server<unknown>,
+      );
+
+      expect(response.status).toBe(HttpStatus.Code.NotFound);
+      expect(json).not.toHaveBeenCalled();
+
+      serveSpy.mockRestore();
+      exitSpy.mockRestore();
+    });
+
+    test("applies the app maxBodySize to the routes that set none", async () => {
+      const serveSpy = spyOn(Bun, "serve").mockReturnValue(fakeServer as unknown as ReturnType<typeof Bun.serve>);
+      const exitSpy = spyOn(process, "exit").mockImplementation((() => undefined) as never);
+
+      const index = mock(() => new HttpResponse().json({ ok: true }));
+      class BodyLimitedController {
+        index = index;
+      }
+      router.addRoute({
+        name: "app.body.limited",
+        path: "/body-limited",
+        method: "POST",
+        version: 1,
+        description: "Body limit probe",
+        controller: BodyLimitedController,
+      } as unknown as Parameters<typeof router.addRoute>[0]);
+
+      await new App(createMockConfig({ maxBodySize: 1024 })).run();
+
+      const serveOptions = (serveSpy.mock.calls as unknown[][])[0]?.[0] as {
+        routes: Record<
+          string,
+          Record<string, (req: import("bun").BunRequest, server: import("bun").Server<unknown>) => Promise<Response>>
+        >;
+      };
+      const handler = Object.entries(serveOptions.routes).find(([path]) => path.endsWith("/body-limited"))?.[1]?.POST;
+
+      const response = await handler?.(
+        {
+          cookies: { get: mock(() => null), set: mock(() => {}) },
+          headers: new Headers({ "content-type": "application/json", "content-length": "2048" }),
+          method: "POST",
+          url: "http://localhost/v1/body-limited",
+          params: {},
+          json: mock(() => Promise.resolve({})),
+          formData: mock(() => Promise.resolve(new FormData())),
+        } as unknown as import("bun").BunRequest,
+        { requestIP: mock(() => ({ address: "127.0.0.1" })) } as unknown as import("bun").Server<unknown>,
+      );
+
+      expect(response?.status).toBe(HttpStatus.Code.ContentTooLarge);
+      expect(index).not.toHaveBeenCalled();
+
+      serveSpy.mockRestore();
+      exitSpy.mockRestore();
+    });
+
     test("stops verifying TLS certificates on local, so a proxied machine can boot", async () => {
       const serveSpy = spyOn(Bun, "serve").mockReturnValue(fakeServer as unknown as ReturnType<typeof Bun.serve>);
       const exitSpy = spyOn(process, "exit").mockImplementation((() => undefined) as never);

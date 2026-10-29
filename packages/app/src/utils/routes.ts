@@ -5,6 +5,7 @@ import type { MiddlewareClassType } from "@talosjs/middleware";
 import type { RateLimitResultType } from "@talosjs/rate-limit";
 import type { RouteConfigType } from "@talosjs/routing";
 import type { BunRequest, Server } from "bun";
+import { RequestBodyTooLargeException } from "../RequestBodyTooLargeException";
 import { applyEnvRoles, checkAllowedUsers } from "./auth";
 import { buildHttpContext } from "./context";
 import { buildExceptionResponse, httpRouteHandler, toControllerError } from "./controller";
@@ -123,6 +124,27 @@ const checkRoutePermission = async (
   return buildHttpErrorResponse(context, "Forbidden", HttpStatus.Code.Forbidden, "PERMISSION_DENIED");
 };
 
+/**
+ * The body is bounded while the context reads it, before any middleware runs. A body over the
+ * limit is answered from a context built without reading it.
+ */
+const buildRouteContext = async (
+  req: BunRequest,
+  server: Server<unknown>,
+  route: RouteConfigType,
+  maxBodySize?: number,
+): Promise<Awaited<ReturnType<typeof buildHttpContext>> | Response> => {
+  try {
+    return await buildHttpContext({ req, server, route, maxBodySize });
+  } catch (error: unknown) {
+    if (!(error instanceof RequestBodyTooLargeException)) {
+      throw error;
+    }
+    const context = await buildHttpContext({ req, server, route, readBody: false });
+    return buildHttpErrorResponse(context, error.message, error.status, error.key);
+  }
+};
+
 const buildCacheKey = (
   route: RouteConfigType,
   context: Awaited<ReturnType<typeof buildHttpContext>>,
@@ -138,6 +160,7 @@ export const formatHttpRoutes = (
   httpRoutes: Map<string, RouteConfigType[]>,
   middlewares: MiddlewareClassType[] = [],
   prefix?: string,
+  maxBodySize?: number,
 ): HttpRoutesMapType => {
   const routes: HttpRoutesMapType = {};
 
@@ -149,7 +172,11 @@ export const formatHttpRoutes = (
       const methodHandlers = routes[versionedPath];
 
       methodHandlers[route.method] = async (req: BunRequest, server: Server<unknown>) => {
-        let context = await buildHttpContext({ req, server, route });
+        const routeContext = await buildRouteContext(req, server, route, route.maxBodySize ?? maxBodySize);
+        if (routeContext instanceof Response) {
+          return routeContext;
+        }
+        let context = routeContext;
 
         const featureFlagResponse = await checkFeatureFlag(context, route);
         if (featureFlagResponse) {
