@@ -319,6 +319,17 @@ describe("FilesystemStorage", () => {
       expect(bytesWritten).toBe(13);
     });
 
+    test("should write ReadableStream content", async () => {
+      const storage = new FilesystemStorage(new AppEnv());
+      storage.setBucket("put-bucket");
+
+      const bytesWritten = await storage.put("stream.txt", new Blob(["stream body"]).stream());
+
+      expect(bytesWritten).toBe(11);
+      expect(await storage.getAsJson<never>("stream.txt").catch(() => "not json")).toBe("not json");
+      expect(new TextDecoder().decode(await storage.getAsArrayBuffer("stream.txt"))).toBe("stream body");
+    });
+
     test("should create nested directories automatically", async () => {
       const storage = new FilesystemStorage(new AppEnv());
       storage.setBucket("put-bucket");

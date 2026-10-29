@@ -169,16 +169,28 @@ export class BunnyStorage implements IStorage {
 
   public async put(
     key: string,
-    content: string | ArrayBufferView | ArrayBuffer | SharedArrayBuffer | Request | Response | BunFile | S3File | Blob,
+    content:
+      | string
+      | ArrayBufferView
+      | ArrayBuffer
+      | SharedArrayBuffer
+      | Request
+      | Response
+      | BunFile
+      | S3File
+      | Blob
+      | ReadableStream,
   ): Promise<number> {
     const { stream, length } = await this.toReadableStream(content);
+    const counter = { bytes: 0 };
+    const body = length === null ? this.countBytes(stream, counter) : stream;
     const filePath = this.buildFilePath(key);
 
     try {
       await BunnyStorageSDK.file.upload(
         this.storageZone,
         filePath,
-        stream as unknown as NodeReadableStream<Uint8Array>,
+        body as unknown as NodeReadableStream<Uint8Array>,
       );
     } catch (error) {
       throw new StorageException(
@@ -190,7 +202,7 @@ export class BunnyStorage implements IStorage {
       );
     }
 
-    return length;
+    return length ?? counter.bytes;
   }
 
   public async getFile(key: string, options: GetFileOptionsType): Promise<number> {
@@ -256,9 +268,41 @@ export class BunnyStorage implements IStorage {
     return this.bucket ? `/${this.bucket}/${key}` : `/${key}`;
   }
 
+  /** Passes the stream through untouched while tallying the bytes that flow, for bodies of unknown length. */
+  private countBytes(stream: ReadableStream<Uint8Array>, counter: { bytes: number }): ReadableStream<Uint8Array> {
+    return stream.pipeThrough(
+      new TransformStream<Uint8Array, Uint8Array>({
+        transform(chunk, controller) {
+          counter.bytes += chunk.byteLength;
+          controller.enqueue(chunk);
+        },
+      }),
+    );
+  }
+
+  /** A `Content-Length` header read as a byte count, or `null` when absent or not a valid size. */
+  private contentLength(headers: Headers): number | null {
+    return this.toSize(headers.get("content-length"));
+  }
+
+  /**
+   * The content as a stream, plus its length in bytes when it is known up front (`null` otherwise,
+   * in which case the caller counts the bytes as they flow). Bodies that expose a stream are never
+   * read into memory.
+   */
   private async toReadableStream(
-    content: string | ArrayBufferView | ArrayBuffer | SharedArrayBuffer | Request | Response | BunFile | S3File | Blob,
-  ): Promise<{ stream: ReadableStream<Uint8Array>; length: number }> {
+    content:
+      | string
+      | ArrayBufferView
+      | ArrayBuffer
+      | SharedArrayBuffer
+      | Request
+      | Response
+      | BunFile
+      | S3File
+      | Blob
+      | ReadableStream,
+  ): Promise<{ stream: ReadableStream<Uint8Array>; length: number | null }> {
     if (typeof content === "string") {
       const encoded = new TextEncoder().encode(content);
       return { stream: new Blob([encoded]).stream(), length: encoded.length };
@@ -284,9 +328,22 @@ export class BunnyStorage implements IStorage {
       return { stream: content.stream(), length: content.size };
     }
 
+    if (content instanceof ReadableStream) {
+      return { stream: content, length: null };
+    }
+
     if (content instanceof Request || content instanceof Response) {
-      const arrayBuffer = await content.arrayBuffer();
-      return { stream: new Blob([arrayBuffer]).stream(), length: arrayBuffer.byteLength };
+      if (content.body === null) {
+        return { stream: new Blob([]).stream(), length: 0 };
+      }
+
+      return { stream: content.body, length: this.contentLength(content.headers) };
+    }
+
+    if (typeof content === "object" && content !== null && "stream" in content && "size" in content) {
+      const file = content as BunFile | S3File;
+
+      return { stream: file.stream(), length: file.size };
     }
 
     if (typeof content === "object" && content !== null && "arrayBuffer" in content) {

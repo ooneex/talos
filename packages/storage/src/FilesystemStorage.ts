@@ -173,13 +173,15 @@ export class FilesystemStorage extends Storage {
 
   public override async put(
     key: string,
-    content: string | ArrayBuffer | SharedArrayBuffer | Request | Response | BunFile | S3File | Blob,
+    content: string | ArrayBuffer | SharedArrayBuffer | Request | Response | BunFile | S3File | Blob | ReadableStream,
   ): Promise<number> {
     const filePath = this.getFilePath(key);
     await this.ensureDirectory(dirname(filePath), "STORAGE_UPLOAD_FAILED");
 
     try {
-      return await Bun.write(filePath, await this.normalizeContent(content));
+      const data = await this.normalizeContent(content);
+
+      return data instanceof Response ? await Bun.write(filePath, data) : await Bun.write(filePath, data);
     } catch (error) {
       throw new StorageException(
         `Failed to write file ${key}: ${error instanceof Error ? error.message : String(error)}`,
@@ -308,8 +310,8 @@ export class FilesystemStorage extends Storage {
   }
 
   private async normalizeContent(
-    content: string | ArrayBuffer | SharedArrayBuffer | Request | Response | BunFile | S3File | Blob,
-  ): Promise<string | ArrayBuffer | Blob> {
+    content: string | ArrayBuffer | SharedArrayBuffer | Request | Response | BunFile | S3File | Blob | ReadableStream,
+  ): Promise<string | ArrayBuffer | Blob | Response> {
     if (typeof content === "string" || content instanceof ArrayBuffer || content instanceof Blob) {
       return content;
     }
@@ -318,6 +320,10 @@ export class FilesystemStorage extends Storage {
       const arrayBuffer = new ArrayBuffer(content.byteLength);
       new Uint8Array(arrayBuffer).set(new Uint8Array(content));
       return arrayBuffer;
+    }
+
+    if (content instanceof ReadableStream) {
+      return new Response(content);
     }
 
     if (content instanceof Request || content instanceof Response) {

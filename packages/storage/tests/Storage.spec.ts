@@ -8,7 +8,7 @@ import { Storage } from "@/Storage";
 class MockS3File {
   private content: string | ArrayBuffer | null = null;
 
-  async write(data: string | ArrayBuffer | SharedArrayBuffer | Blob): Promise<number> {
+  async write(data: string | ArrayBuffer | SharedArrayBuffer | Blob | Response): Promise<number> {
     if (typeof data === "string") {
       this.content = data;
       return data.length;
@@ -16,6 +16,11 @@ class MockS3File {
     if (data instanceof ArrayBuffer || data instanceof SharedArrayBuffer) {
       this.content = data instanceof SharedArrayBuffer ? new ArrayBuffer(data.byteLength) : data;
       return data.byteLength;
+    }
+    if (data instanceof Response) {
+      const buffer = await data.arrayBuffer();
+      this.content = buffer;
+      return buffer.byteLength;
     }
     if (data instanceof Blob) {
       const buffer = await data.arrayBuffer();
@@ -354,6 +359,12 @@ describe("Storage", () => {
       const result = await storage.put("test.bin", content);
 
       expect(result).toBe(10);
+    });
+
+    test("should write ReadableStream content", async () => {
+      const result = await storage.put("stream.txt", new Blob(["Hello, stream!"]).stream());
+
+      expect(result).toBe(14);
     });
 
     test("should write Blob content", async () => {

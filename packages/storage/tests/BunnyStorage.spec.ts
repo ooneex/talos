@@ -56,6 +56,17 @@ describe("BunnyStorage", () => {
     await rm(workspaceTmpDir, { force: true, recursive: true });
   });
 
+  // A real fetch reads the upload body to the end; the mock must too, or a stream is never consumed.
+  const respondAfterDraining = () =>
+    fetchMock.mockImplementationOnce(async (_url: unknown, init?: RequestInit) => {
+      const body = init?.body;
+      if (body instanceof ReadableStream) {
+        await body.pipeTo(new WritableStream());
+      }
+
+      return new Response('{"HttpCode":201}', { status: 201 });
+    });
+
   describe("constructor", () => {
     test("should create instance with environment variables", () => {
       const storage = new BunnyStorage(new AppEnv());
@@ -381,7 +392,7 @@ describe("BunnyStorage", () => {
     });
 
     test("should upload Request content", async () => {
-      fetchMock.mockResolvedValueOnce(new Response('{"HttpCode":201}', { status: 201 }));
+      respondAfterDraining();
 
       const storage = new BunnyStorage(new AppEnv());
       const request = new Request("https://example.com", { body: "Request body", method: "POST" });
@@ -391,13 +402,93 @@ describe("BunnyStorage", () => {
     });
 
     test("should upload Response content", async () => {
-      fetchMock.mockResolvedValueOnce(new Response('{"HttpCode":201}', { status: 201 }));
+      respondAfterDraining();
 
       const storage = new BunnyStorage(new AppEnv());
       const response = new Response("Response body");
       const size = await storage.put("test.txt", response);
 
       expect(size).toBe(13);
+    });
+
+    test("should stream Request content without buffering it", async () => {
+      respondAfterDraining();
+      const arrayBuffer = spyOn(Request.prototype, "arrayBuffer");
+
+      const storage = new BunnyStorage(new AppEnv());
+      const request = new Request("https://example.com", {
+        body: "Request body",
+        headers: { "Content-Length": "12" },
+        method: "POST",
+      });
+      const size = await storage.put("test.txt", request);
+
+      expect(size).toBe(12);
+      expect(arrayBuffer).not.toHaveBeenCalled();
+      arrayBuffer.mockRestore();
+    });
+
+    test("should stream Response content without buffering it", async () => {
+      respondAfterDraining();
+      const arrayBuffer = spyOn(Response.prototype, "arrayBuffer");
+
+      const storage = new BunnyStorage(new AppEnv());
+      const response = new Response("Response body", { headers: { "Content-Length": "13" } });
+      const size = await storage.put("test.txt", response);
+
+      expect(size).toBe(13);
+      expect(arrayBuffer).not.toHaveBeenCalled();
+      arrayBuffer.mockRestore();
+    });
+
+    test("should count the bytes of a Response without Content-Length", async () => {
+      respondAfterDraining();
+
+      const storage = new BunnyStorage(new AppEnv());
+      const body = new ReadableStream({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode("abc"));
+          controller.enqueue(new TextEncoder().encode("defg"));
+          controller.close();
+        },
+      });
+      const size = await storage.put("test.txt", new Response(body));
+
+      expect(size).toBe(7);
+    });
+
+    test("should upload an empty Response as zero bytes", async () => {
+      respondAfterDraining();
+
+      const storage = new BunnyStorage(new AppEnv());
+      const size = await storage.put("empty.txt", new Response(null));
+
+      expect(size).toBe(0);
+    });
+
+    test("should upload a plain ReadableStream and count its bytes", async () => {
+      respondAfterDraining();
+
+      const storage = new BunnyStorage(new AppEnv());
+      const stream = new Blob(["stream content"]).stream();
+      const size = await storage.put("stream.txt", stream);
+
+      expect(size).toBe(14);
+      const [, init] = fetchMock.mock.calls[0] as [URL, RequestInit];
+      expect(init.body).toBeDefined();
+    });
+
+    test("should stream a Bun file without reading it into memory", async () => {
+      respondAfterDraining();
+      await Bun.write(join(workspaceTmpDir, "big.txt"), "file content");
+      const file = Bun.file(join(workspaceTmpDir, "big.txt"));
+      const arrayBuffer = spyOn(file, "arrayBuffer");
+
+      const storage = new BunnyStorage(new AppEnv());
+      const size = await storage.put("big.txt", file);
+
+      expect(size).toBe(12);
+      expect(arrayBuffer).not.toHaveBeenCalled();
     });
 
     test("should throw StorageException on upload failure", async () => {
