@@ -15,6 +15,11 @@ export type LineItemType = {
   quantity?: number;
 };
 
+export type CheckoutDiscountType = {
+  promotionCode?: string;
+  coupon?: string;
+};
+
 export type CheckoutInvoiceCreationType = {
   description?: string;
   footer?: string;
@@ -29,7 +34,10 @@ export type CheckoutSessionCreateType = {
   customerId?: string;
   customerEmail?: string;
   metadata?: Record<string, string>;
+  /** Ignored when `discounts` are given — Stripe refuses both on one session. */
   allowPromotionCodes?: boolean;
+  /** Apply promotion codes or coupons up front, instead of letting the customer type one. */
+  discounts?: CheckoutDiscountType[];
   /**
    * Issue a paid invoice for a one-time payment (`mode: "payment"` only — subscriptions always get
    * an invoice per cycle). Without it Stripe only sends a receipt.

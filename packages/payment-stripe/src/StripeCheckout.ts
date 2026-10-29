@@ -31,7 +31,12 @@ export class StripeCheckoutSession {
       params.metadata = data.metadata;
     }
 
-    if (data.allowPromotionCodes !== undefined) {
+    if (data.discounts?.length) {
+      params.discounts = data.discounts.map((discount) => ({
+        ...(discount.promotionCode && { promotion_code: discount.promotionCode }),
+        ...(discount.coupon && { coupon: discount.coupon }),
+      }));
+    } else if (data.allowPromotionCodes !== undefined) {
       params.allow_promotion_codes = data.allowPromotionCodes;
     }
 

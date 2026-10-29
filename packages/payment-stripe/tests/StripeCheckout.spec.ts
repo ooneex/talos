@@ -145,6 +145,7 @@ describe("StripeCheckoutSession", () => {
 
       const args = getCreateArgs();
       expect(args.allow_promotion_codes).toBeUndefined();
+      expect(args.discounts).toBeUndefined();
       expect(args.invoice_creation).toBeUndefined();
       expect(args.billing_address_collection).toBeUndefined();
       expect(args.tax_id_collection).toBeUndefined();
@@ -160,6 +161,45 @@ describe("StripeCheckoutSession", () => {
       });
 
       expect(getCreateArgs().allow_promotion_codes).toBe(false);
+    });
+
+    test("should map discounts to Stripe promotion codes and coupons", async () => {
+      await checkout.create({
+        lineItems: [{ price: "price_test123" }],
+        mode: "payment",
+        successUrl: "https://example.com/success",
+        discounts: [{ promotionCode: "promo_test123" }, { coupon: "coupon_test123" }],
+      });
+
+      expect(getCreateArgs().discounts).toEqual([{ promotion_code: "promo_test123" }, { coupon: "coupon_test123" }]);
+    });
+
+    test("should drop allowPromotionCodes when discounts are given", async () => {
+      await checkout.create({
+        lineItems: [{ price: "price_test123" }],
+        mode: "payment",
+        successUrl: "https://example.com/success",
+        allowPromotionCodes: true,
+        discounts: [{ promotionCode: "promo_test123" }],
+      });
+
+      const args = getCreateArgs();
+      expect(args.discounts).toEqual([{ promotion_code: "promo_test123" }]);
+      expect(args.allow_promotion_codes).toBeUndefined();
+    });
+
+    test("should keep allowPromotionCodes when discounts are empty", async () => {
+      await checkout.create({
+        lineItems: [{ price: "price_test123" }],
+        mode: "payment",
+        successUrl: "https://example.com/success",
+        allowPromotionCodes: true,
+        discounts: [],
+      });
+
+      const args = getCreateArgs();
+      expect(args.discounts).toBeUndefined();
+      expect(args.allow_promotion_codes).toBe(true);
     });
 
     test("should enable invoice creation for a one-time payment", async () => {
