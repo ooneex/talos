@@ -234,4 +234,7 @@ pub fn run(args: &ControllerCreateArgs) {
     crate::utils::success(format!("{} created successfully", test_file_path.display()));
 
     install_dependency("@talosjs/controller", cwd);
+    if resolved.is_socket {
+        install_dependency("@talosjs/socket", cwd);
+    }
 }
