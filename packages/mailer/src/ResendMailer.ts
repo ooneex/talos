@@ -53,12 +53,20 @@ export class ResendMailer implements IMailer {
       );
     }
 
-    await this.client.emails.send({
+    const { error } = await this.client.emails.send({
       to: config.to,
       from: `${senderName} <${senderAddress}>`,
       subject: `${config.subject}`,
       html: renderToString(config.content),
       ...(config.attachments && { attachments: config.attachments }),
     });
+
+    if (error) {
+      throw new MailerException(`Resend refused the email: ${error.message}`, "EMAIL_SEND_FAILED", {
+        name: error.name,
+        to: config.to,
+        subject: config.subject,
+      });
+    }
   }
 }
