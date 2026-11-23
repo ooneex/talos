@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
+
 import type { ContextType as HttpContextType } from "@talosjs/controller";
 import type { IResponse } from "@talosjs/http-response";
+
 import { Route } from "@/decorators";
 import { router } from "@/Router";
 

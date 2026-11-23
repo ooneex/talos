@@ -2,6 +2,7 @@ import type { ControllerClassType } from "@talosjs/controller";
 import { GUEST_ROLE } from "@talosjs/role";
 import type { HttpMethodType } from "@talosjs/types";
 import type { AssertType, IAssert } from "@talosjs/validation";
+
 import { router } from "./Router";
 import type { ExtractParametersType, RouteConfigType, RoutePathType } from "./types";
 

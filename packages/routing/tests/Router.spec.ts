@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, test } from "bun:test";
+
 import type { ContextType, IController } from "@talosjs/controller";
 import type { IResponse } from "@talosjs/http-response";
+
 import { Router } from "@/Router";
 import { RouterException } from "@/RouterException";
 import type { RouteConfigType } from "@/types";

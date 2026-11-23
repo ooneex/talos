@@ -1,4 +1,5 @@
 import { type AssertType, type IAssert, isAssert, isAssertRecord, jsonSchemaToTypeString } from "@talosjs/validation";
+
 import type { RouteConfigType, ValidRoutePathType } from "./types";
 
 /**

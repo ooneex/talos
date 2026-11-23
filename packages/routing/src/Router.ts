@@ -1,4 +1,5 @@
 import { container, EContainerScope } from "@talosjs/container";
+
 import { RouterException } from "./RouterException";
 import type { IRouter, RouteConfigType } from "./types";
 

@@ -110,9 +110,8 @@ export type RoutePathType<T extends string = string> = ValidateRoutePathType<T>;
  * - RouteParametersType<"/users/:id/bills/:billId"> -> { id: string; billId: string }
  * - RouteParametersType<"/static"> -> Record<string, never>
  */
-export type RouteParametersType<T extends string> = ExtractParametersType<T> extends never
-  ? Record<string, never>
-  : Record<ExtractParametersType<T>, string>;
+export type RouteParametersType<T extends string> =
+  ExtractParametersType<T> extends never ? Record<string, never> : Record<ExtractParametersType<T>, string>;
 
 /**
  * Check if a route path has parameters
@@ -122,16 +121,14 @@ export type HasParametersType<T extends string> = ExtractParametersType<T> exten
 /**
  * Get parameter count for a route path
  */
-export type CountParametersType<
-  T extends string,
-  Count extends readonly unknown[] = readonly [],
-> = ExtractParametersType<T> extends never
-  ? Count["length"]
-  : T extends `${infer _Start}/:${infer _Param}/${infer Rest}`
-    ? CountParametersType<`/${Rest}`, readonly [...Count, unknown]>
-    : T extends `${infer _Start}/:${infer _Param}`
-      ? [...Count, unknown]["length"]
-      : Count["length"];
+export type CountParametersType<T extends string, Count extends readonly unknown[] = readonly []> =
+  ExtractParametersType<T> extends never
+    ? Count["length"]
+    : T extends `${infer _Start}/:${infer _Param}/${infer Rest}`
+      ? CountParametersType<`/${Rest}`, readonly [...Count, unknown]>
+      : T extends `${infer _Start}/:${infer _Param}`
+        ? [...Count, unknown]["length"]
+        : Count["length"];
 
 export type ParameterCountType<T extends string> = CountParametersType<T>;
 
