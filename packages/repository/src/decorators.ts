@@ -1,4 +1,5 @@
 import { container, EContainerScope } from "@talosjs/container";
+
 import type { RepositoryClassType } from "./types";
 
 export const decorator = {
