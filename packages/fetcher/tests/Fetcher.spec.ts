@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, jest, test } from "bun:test";
+
 import type { ResponseDataType } from "@talosjs/http-response";
+
 import { Fetcher } from "@/index";
 
 // Extended type for mock responses with additional computed properties

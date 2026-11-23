@@ -2,6 +2,7 @@ import { Header } from "@talosjs/http-header";
 import type { MimeType } from "@talosjs/http-mimes";
 import type { ResponseDataType } from "@talosjs/http-response";
 import type { HttpMethodType } from "@talosjs/types";
+
 import type { IFetcher } from "./types";
 
 export class Fetcher implements IFetcher {
