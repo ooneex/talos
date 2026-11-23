@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
+
 import type { IContainer } from "@talosjs/container";
 import type { IException } from "@talosjs/exception";
+
 import { logger } from "@/logger";
 
 // Define ILogger interface locally to avoid importing from @talosjs/logger

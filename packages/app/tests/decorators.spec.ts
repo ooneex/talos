@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
+
 import { Container, EContainerScope } from "@talosjs/container";
 import type { Server } from "bun";
+
 import { decorator } from "@/decorators";
 import type { IAppEventStart, IAppEventStop } from "@/types";
 

@@ -1,11 +1,14 @@
 import { describe, expect, mock, test } from "bun:test";
 import { join } from "node:path";
+
 import { container } from "@talosjs/container";
 import type { ContextType } from "@talosjs/controller";
 import { Exception } from "@talosjs/exception";
 import { HttpStatus } from "@talosjs/http-status";
 import type { LogDataType } from "@talosjs/logger";
+
 import { logException, logRequest, logServerStart, logSwallowedError } from "@/utils/logging";
+
 import { createMockContext, createMockLogger } from "./helpers";
 
 describe("logSwallowedError", () => {

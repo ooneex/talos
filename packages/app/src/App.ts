@@ -1,4 +1,5 @@
 import { dirname, join } from "node:path";
+
 import { AppEnv, Environment, type IAppEnv, loadEnv } from "@talosjs/app-env";
 import { container } from "@talosjs/container";
 import type { ICron } from "@talosjs/cron";
@@ -15,6 +16,7 @@ import { AssertAppEnv } from "@talosjs/validation/constraints/AssertAppEnv";
 import { AssertHostname } from "@talosjs/validation/constraints/AssertHostname";
 import { AssertPort } from "@talosjs/validation/constraints/AssertPort";
 import type { BunRequest, Server, ServerWebSocket } from "bun";
+
 import { logger as loggerFunc } from "./logger";
 import { formatSocketRoutes, socketRouteHandler } from "./socketRouteUtils";
 import type { AppConfigType, IAppEventStart, IAppEventStop } from "./types";

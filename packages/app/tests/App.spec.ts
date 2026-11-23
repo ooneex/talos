@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, mock, spyOn, test } from "bun:test";
+
 import { AppEnv } from "@talosjs/app-env";
 import { container } from "@talosjs/container";
 import { Exception } from "@talosjs/exception";
@@ -7,6 +8,7 @@ import { HttpStatus } from "@talosjs/http-status";
 import type { IMailer } from "@talosjs/mailer";
 import { RoleException } from "@talosjs/role";
 import { router } from "@talosjs/routing";
+
 import { App } from "@/App";
 import type { AppConfigType } from "@/types";
 

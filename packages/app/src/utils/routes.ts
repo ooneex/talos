@@ -5,6 +5,7 @@ import type { MiddlewareClassType } from "@talosjs/middleware";
 import type { RateLimitResultType } from "@talosjs/rate-limit";
 import type { RouteConfigType } from "@talosjs/routing";
 import type { BunRequest, Server } from "bun";
+
 import { applyEnvRoles, checkAllowedUsers } from "./auth";
 import { buildHttpContext } from "./context";
 import { buildExceptionResponse, httpRouteHandler, toControllerError } from "./controller";

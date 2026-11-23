@@ -1,8 +1,11 @@
 import { describe, expect, test } from "bun:test";
+
 import { container } from "@talosjs/container";
 import type { ContextType } from "@talosjs/controller";
 import type { MiddlewareClassType } from "@talosjs/middleware";
+
 import { runMiddlewares } from "@/utils/middleware";
+
 import { createMockContext } from "./helpers";
 
 describe("runMiddlewares", () => {

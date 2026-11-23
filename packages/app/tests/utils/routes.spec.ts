@@ -1,4 +1,5 @@
 import { describe, expect, mock, test } from "bun:test";
+
 import { AppEnv } from "@talosjs/app-env";
 import { container } from "@talosjs/container";
 import type { ContextType } from "@talosjs/controller";
@@ -9,7 +10,9 @@ import type { PermissionClassType } from "@talosjs/permission";
 import type { IRateLimiter, RateLimitResultType } from "@talosjs/rate-limit";
 import type { RouteConfigType } from "@talosjs/routing";
 import type { BunRequest, Server } from "bun";
+
 import { formatHttpRoutes } from "@/utils/routes";
+
 import { createMockLogger, createMockRoute } from "./helpers";
 
 describe("formatHttpRoutes", () => {

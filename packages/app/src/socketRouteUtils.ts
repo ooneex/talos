@@ -11,6 +11,7 @@ import type { LocaleInfoType } from "@talosjs/translation";
 import type { ScalarType } from "@talosjs/types";
 import { random } from "@talosjs/utils/random";
 import type { BunRequest, Server, ServerWebSocket } from "bun";
+
 import { applyEnvRoles, checkAllowedUsers } from "./utils/auth";
 import { DEFAULT_CACHE_TTL, safeCacheGet, safeCacheSet } from "./utils/cache";
 import { buildHttpContext } from "./utils/context";

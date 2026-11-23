@@ -196,4 +196,3 @@
 ### Added
 
 - Bind a lazy mailer token from app config|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([c6f24059](https://github.com/ooneex/talos/commit/c6f24059))
-

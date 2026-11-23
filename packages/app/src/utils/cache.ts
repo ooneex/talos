@@ -1,4 +1,5 @@
 import type { ICache } from "@talosjs/cache";
+
 import { logSwallowedError } from "./logging";
 
 export const DEFAULT_CACHE_TTL = 300;

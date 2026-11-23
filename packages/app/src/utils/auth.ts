@@ -2,6 +2,7 @@ import { container } from "@talosjs/container";
 import type { ContextType } from "@talosjs/controller";
 import { HttpStatus } from "@talosjs/http-status";
 import type { IRolesConfig } from "@talosjs/role";
+
 import type { RouteValidationErrorType } from "./validation";
 
 export const applyEnvRoles = (context: ContextType): void => {
