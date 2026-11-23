@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
+
 import type { AppEnv } from "@talosjs/app-env";
+
 import { PaymentException, PolarCheckout } from "@/index";
 
 const createMockEnv = (): AppEnv => {

@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
+
 import type { AppEnv } from "@talosjs/app-env";
+
 import type { IProduct } from "@/index";
 import { PaymentException, PolarProduct } from "@/index";
 

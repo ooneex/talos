@@ -67,4 +67,3 @@
 ### Fixed
 
 - Map Polar product prices to amountType payloads|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([ba54198d](https://github.com/ooneex/talos/commit/ba54198d))
-

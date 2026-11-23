@@ -2,6 +2,7 @@ import { Polar } from "@polar-sh/sdk";
 import { AppEnv } from "@talosjs/app-env";
 import { inject, injectable } from "@talosjs/container";
 import type { CurrencyCodeType } from "@talosjs/currencies";
+
 import { PaymentException } from "./PaymentException";
 import type {
   CheckoutAddressType,
