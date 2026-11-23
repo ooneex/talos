@@ -1,4 +1,5 @@
 import type { StatusCodeType } from "@talosjs/http-status";
+
 import type { ExceptionStackFrameType, IException } from "./types";
 
 export class Exception extends Error implements IException {

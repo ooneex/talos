@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
+
 import { HttpStatus } from "@talosjs/http-status";
+
 import { Exception } from "@/Exception";
 import { UnauthorizedException } from "@/UnauthorizedException";
 

@@ -1,4 +1,5 @@
 import { HttpStatus } from "@talosjs/http-status";
+
 import { Exception } from "./Exception";
 
 export class UnauthorizedException extends Exception {
