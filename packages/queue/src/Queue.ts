@@ -1,9 +1,11 @@
-import type { BulkJobOptions, Queue as BullQueue, Job, JobsOptions, Worker } from "bullmq";
+import type { BulkJobOptions, Job, JobsOptions, Queue as BullQueue, Worker } from "bullmq";
+
 import type { IQueue, QueueHandlerReturnType, ScalarType } from "./types";
 
-export abstract class Queue<T extends Record<string, ScalarType> = Record<string, ScalarType>, R = unknown>
-  implements IQueue<T, R>
-{
+export abstract class Queue<
+  T extends Record<string, ScalarType> = Record<string, ScalarType>,
+  R = unknown,
+> implements IQueue<T, R> {
   public constructor() {}
 
   protected abstract queue: BullQueue<T, R>;

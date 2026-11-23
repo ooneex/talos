@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
+
 import { Exception } from "@talosjs/exception";
+
 import { QueueException } from "@/index";
 
 describe("QueueException", () => {

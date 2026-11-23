@@ -1,14 +1,7 @@
 import type { Job, JobProgress } from "bullmq";
 
 export type CleanJobType =
-  | "completed"
-  | "wait"
-  | "waiting"
-  | "active"
-  | "paused"
-  | "prioritized"
-  | "delayed"
-  | "failed";
+  "completed" | "wait" | "waiting" | "active" | "paused" | "prioritized" | "delayed" | "failed";
 
 export type QueueClassType = new (...args: any[]) => IQueue;
 

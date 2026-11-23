@@ -1,7 +1,9 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, mock, test } from "bun:test";
+
 import { AppEnv } from "@talosjs/app-env";
-import type { Queue as BullQueue, BunRedisRawClient, Job, Worker } from "bullmq";
+import type { BunRedisRawClient, Job, Queue as BullQueue, Worker } from "bullmq";
 import { RedisClient } from "bun";
+
 import { Queue, QueueException } from "@/index";
 
 const REDIS_URL = "redis://localhost:6379";
@@ -137,12 +139,14 @@ describe("Queue", () => {
       }
     });
 
-    mockQueueMethods.add.mockImplementation(
-      async (name: string, data: any, opts?: unknown) => ({ id: "job-1", name, data, opts }),
-    );
-    mockQueueMethods.addBulk.mockImplementation(
-      async (jobs: { name: string; data: any }[]) =>
-        jobs.map((job, index) => ({ id: `job-${index}`, name: job.name, data: job.data })),
+    mockQueueMethods.add.mockImplementation(async (name: string, data: any, opts?: unknown) => ({
+      id: "job-1",
+      name,
+      data,
+      opts,
+    }));
+    mockQueueMethods.addBulk.mockImplementation(async (jobs: { name: string; data: any }[]) =>
+      jobs.map((job, index) => ({ id: `job-${index}`, name: job.name, data: job.data })),
     );
     mockQueueMethods.remove.mockImplementation(async (_id: string): Promise<number> => 1);
     mockQueueMethods.close.mockImplementation(async (): Promise<void> => {});
