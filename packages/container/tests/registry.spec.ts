@@ -1,6 +1,7 @@
 import { afterAll, describe, expect, test } from "bun:test";
 import { cpSync, mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
+
 import { Container, container, inject, injectable } from "@/index";
 
 // Loading the sources from a second path gives Bun a module graph of its own, which is what a dependency

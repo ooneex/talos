@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, test } from "bun:test";
+
 import {
   Container,
+  container as sharedContainer,
   ContainerException,
   EContainerScope,
   inject,
   injectable,
-  container as sharedContainer,
 } from "@/index";
 
 describe("Container - Dependency Injection", () => {

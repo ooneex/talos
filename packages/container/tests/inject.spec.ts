@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+
 import { ContainerException } from "@/index";
 import { getInjections, inject } from "@/inject";
 
