@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+
 import type { EntityClassType, IEntity } from "@/index";
 
 describe("@talosjs/entity - IEntity and EntityClassType", () => {
