@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test";
+
 import type { CurrencyCodeType, CurrencyIconType, CurrencyNameType, CurrencySymbolType } from "@/index";
 import { CURRENCIES } from "@/index";
 

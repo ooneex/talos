@@ -1,4 +1,5 @@
 import type { IBase } from "@talosjs/types";
+
 import type { CURRENCIES } from "./constants";
 
 export type CurrencyCodeType = (typeof CURRENCIES)[number]["code"];

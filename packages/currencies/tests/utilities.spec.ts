@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test";
+
 import { CURRENCIES } from "@/constants";
 import type { CurrencyCodeType } from "@/types";
 

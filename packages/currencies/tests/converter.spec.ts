@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test";
+
 import { CurrencyConverter, type ExchangeRatesType } from "@/converter";
 
 describe("CurrencyConverter", () => {
