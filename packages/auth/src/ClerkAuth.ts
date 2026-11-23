@@ -2,6 +2,7 @@ import { createClerkClient, type Session, type User, verifyToken } from "@clerk/
 import { AppEnv } from "@talosjs/app-env";
 import { inject } from "@talosjs/container";
 import { HttpStatus } from "@talosjs/http-status";
+
 import { AuthException } from "./AuthException";
 import { decorator } from "./decorators";
 import type { IAuth } from "./types";

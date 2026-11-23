@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
+
 import { container } from "@talosjs/container";
 import type { RoleType } from "@talosjs/role";
+
 import { AuthException } from "@/AuthException";
 import { ClerkAuthMiddleware } from "@/ClerkAuthMiddleware";
 

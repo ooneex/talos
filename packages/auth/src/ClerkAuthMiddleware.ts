@@ -5,6 +5,7 @@ import { HttpStatus } from "@talosjs/http-status";
 import type { IMiddleware } from "@talosjs/middleware";
 import { GUEST_ROLE, type IRolesConfig, type RoleType } from "@talosjs/role";
 import type { IUser } from "@talosjs/user";
+
 import { AuthException } from "./AuthException";
 import { ClerkAuth } from "./ClerkAuth";
 import { decorator } from "./decorators";
