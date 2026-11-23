@@ -1,4 +1,5 @@
 import { has, trans } from "@talosjs/utils/trans";
+
 import { TranslationException } from "./TranslationException";
 import type { ITranslation, LocaleType, TranslationDictType, TransOptionsType } from "./types";
 

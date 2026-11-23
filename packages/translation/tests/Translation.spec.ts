@@ -1,7 +1,9 @@
 import { beforeAll, describe, expect, test } from "bun:test";
 import { join } from "node:path";
+
 import { container } from "@talosjs/container";
 import { YAML } from "bun";
+
 import { Translation, TranslationException } from "@/index";
 import type { TranslationDictType } from "@/types";
 
