@@ -1,5 +1,6 @@
 import { injectable } from "@talosjs/container";
 import { parseString } from "@talosjs/utils/parseString";
+
 import type { EnvironmentNameType, IAppEnv } from "./types";
 
 type MutableAppEnvType = { -readonly [K in keyof IAppEnv]: IAppEnv[K] };

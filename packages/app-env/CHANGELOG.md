@@ -147,4 +147,3 @@
 ### Fixed
 
 - Skip unset null and blank yaml values when loading env|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([769a5fe3](https://github.com/ooneex/talos/commit/769a5fe3))
-

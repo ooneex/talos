@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test";
 import { mkdirSync, rmSync } from "node:fs";
+
 import { loadEnv } from "@/loadEnv";
 
 const tmpBase = `${import.meta.dir}/tmp`;
@@ -211,9 +212,17 @@ describe("loadEnv", () => {
   test("skips unset, null, and blank values", async () => {
     await Bun.write(
       `${testDir}/.env.yml`,
-      ["app:", '  env: "local"', "  host:", '  port: "   "', "jwt:", "  secret: null", "cors:", "  origins: []", ""].join(
-        "\n",
-      ),
+      [
+        "app:",
+        '  env: "local"',
+        "  host:",
+        '  port: "   "',
+        "jwt:",
+        "  secret: null",
+        "cors:",
+        "  origins: []",
+        "",
+      ].join("\n"),
     );
     await loadEnv();
     expect(Bun.env.APP_ENV).toBe("local");
