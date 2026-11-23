@@ -17,13 +17,13 @@ Always work from the **root of the workspace**. Packages are picked up automatic
 
 Collect the following from the user (ask only for what is missing; infer reasonable defaults for the rest):
 
-| Field | Default | Notes |
-|-------|---------|-------|
-| `name` | — (required) | Kebab-case directory name under `packages/` (e.g. `workflow`). Becomes `@talosjs/<name>`. |
-| `description` | — (required) | One-line summary used in `package.json` and `README.md`. |
-| `version` | `0.0.1` | Initial semver. |
-| `target` | `bun` | bunup build target — `bun` or `browser`. Use `browser` only for packages meant to run in the browser. |
-| `keywords` | inferred | Always includes `bun`, `talos`, `typescript`, plus the package name. |
+| Field         | Default      | Notes                                                                                                 |
+| ------------- | ------------ | ----------------------------------------------------------------------------------------------------- |
+| `name`        | — (required) | Kebab-case directory name under `packages/` (e.g. `workflow`). Becomes `@talosjs/<name>`.             |
+| `description` | — (required) | One-line summary used in `package.json` and `README.md`.                                              |
+| `version`     | `0.0.1`      | Initial semver.                                                                                       |
+| `target`      | `bun`        | bunup build target — `bun` or `browser`. Use `browser` only for packages meant to run in the browser. |
+| `keywords`    | inferred     | Always includes `bun`, `talos`, `typescript`, plus the package name.                                  |
 
 Validate that `packages/<name>/` does not already exist. If it does, stop and tell the user.
 
@@ -39,12 +39,7 @@ Create the following files under `packages/<name>/`.
   "description": "<description>",
   "version": "0.0.1",
   "type": "module",
-  "files": [
-    "dist",
-    "LICENSE",
-    "README.md",
-    "package.json"
-  ],
+  "files": ["dist", "LICENSE", "README.md", "package.json"],
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -61,15 +56,10 @@ Create the following files under `packages/<name>/`.
     "test": "bun test --parallel=4 --isolate tests",
     "build": "bunup",
     "fmt": "bun fmt --no-script --staged",
-    "lint": "bun check",
+    "lint": "bun check"
   },
   "dependencies": {},
-  "keywords": [
-    "bun",
-    "talos",
-    "typescript",
-    "<name>"
-  ]
+  "keywords": ["bun", "talos", "typescript", "<name>"]
 }
 ```
 

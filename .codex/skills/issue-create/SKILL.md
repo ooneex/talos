@@ -17,13 +17,13 @@ Always work from the **root of the workspace**. Issue files are plain YAML writt
 
 Collect the following from the user (ask only for missing values; infer reasonable defaults for the rest):
 
-| Field | Default | Valid values |
-|-------|---------|--------------|
-| `title` | — (required) | Any non-empty string |
-| `package` | inferred (see below) | Any package directory under `packages/` (e.g. `routing`, `cache`, `container`) |
-| `priority` | inferred (see below) | `Low`, `Medium`, `High`, `Urgent` |
-| `labels` | `[]` | Comma-separated list |
-| `description` | `null` | Free-form text |
+| Field         | Default              | Valid values                                                                   |
+| ------------- | -------------------- | ------------------------------------------------------------------------------ |
+| `title`       | — (required)         | Any non-empty string                                                           |
+| `package`     | inferred (see below) | Any package directory under `packages/` (e.g. `routing`, `cache`, `container`) |
+| `priority`    | inferred (see below) | `Low`, `Medium`, `High`, `Urgent`                                              |
+| `labels`      | `[]`                 | Comma-separated list                                                           |
+| `description` | `null`               | Free-form text                                                                 |
 
 The `state` is **always** `Todo` — do not ask the user for it and never override it.
 

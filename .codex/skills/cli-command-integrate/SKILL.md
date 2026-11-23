@@ -20,12 +20,12 @@ Don't guess the command's contract — read it:
 Classify the command against the existing patterns:
 
 - **Resource generator** — flags are exactly `--name`, `--module`, optionally `--override`/`--no-cache`, and it scaffolds a class + test (like `command:create`, `entity:create`, `cache:create`). These share one completion case and one Skeleton skill shape.
-- **Check/audit** — reports or fixes findings across the workspace (`security:check`, `coverage`).
-- **One-off** — its own flag set, e.g. `docker:create`, `app:start`.
+- **Check/audit** — reports or fixes findings across the workspace (`workspace:check`, `check`).
+- **One-off** — its own flag set, e.g. `credentials:create`, `app:start`.
 
 ## 2. Update the four completion templates
 
-All four live in `packages/cli/src/templates/completions/` and are hand-maintained (baked into the binary via `include_str!` in `completion_zsh.rs`/`completion_bash.rs`/`completion_fish.rs` — there is no generator, editing the `.txt` files directly *is* the fix). `_oo.txt` just delegates to `_talos`; skip it unless you're touching `oo`-only behavior.
+All four live in `packages/cli/src/templates/completions/` and are hand-maintained (baked into the binary via `include_str!` in `completion_zsh.rs`/`completion_bash.rs`/`completion_fish.rs` — there is no generator, editing the `.txt` files directly _is_ the fix). `_oo.txt` just delegates to `_talos`; skip it unless you're touching `oo`-only behavior.
 
 For a **resource generator** that fits the shared `--name`/`--module`/`--override` shape, add its name to the existing shared group in each file instead of writing a new block:
 
@@ -62,14 +62,14 @@ cargo check   # confirms commands/mod.rs registration + dispatch arm compile
 - Body: run the generator, complete the generated class per its actual TS interface (read the equivalent `@talosjs/<package>` interface this command scaffolds against — check `packages/<package>/src/types.ts` in Talos), complete the test file, lint/format/test, following the exact section structure of the sibling skill.
 - Only add a new skill if one doesn't already cover it — check `.claude/skills/*-create/SKILL.md` first.
 
-**Check/audit** — mirror `security-check`/`coverage-check`: a skill that runs `talos <ns>:<action> ...`, reports grouped findings, and supports an `--issues` mode that files one YAML issue per finding. Only add a paired `*-founder`/`*-fixer` agent if the command's findings are large enough to want per-file autonomous fixing (that's the exception, not the default — most commands just need the skill).
+**Check/audit** — a skill that runs `talos <ns>:<action> ...` and reports grouped findings. Only add a paired `*-founder`/`*-fixer` agent if the command's findings are large enough to want per-file autonomous fixing (that's the exception, not the default — most commands just need the skill).
 
 **One-off** — usually no new skill; instead extend the most relevant existing reference skill (e.g. `talos-commands`, `talos-scaffold`) with the new invocation.
 
 Whichever shape applies, also update the **`talos-commands`** reference skill (`.claude/skills/talos-commands/SKILL.md`) — this is the flag/command cheat sheet every other skill assumes is current:
 
-- Resource generators: append `<ns>` to the backtick-separated list after *"Class generators share the form..."* and, if it wraps a new skill, note it's covered by the matching `/<noun>-create` skill (already implied by the existing closing sentence — no per-command edit needed unless the artifact name needs spelling out, e.g. `spa:feature`).
-- Everything else: add a `talos <ns>:<action> --flag <value> ...  # <description>` line under the matching `##` section (Bootstrap / Application / Generators / Issues / Marketing / Custom commands / etc.), matching the inline-comment style already there.
+- Resource generators: append `<ns>` to the backtick-separated list after _"Class generators share the form..."_ and, if it wraps a new skill, note it's covered by the matching `/<noun>-create` skill (already implied by the existing closing sentence — no per-command edit needed unless the artifact name needs spelling out, e.g. `spa:feature`).
+- Everything else: add a `talos <ns>:<action> --flag <value> ...  # <description>` line under the matching `##` section (Bootstrap / Application / Generators / Custom commands / etc.), matching the inline-comment style already there.
 
 ## 4. Verify and report
 

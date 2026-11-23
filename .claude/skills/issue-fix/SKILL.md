@@ -16,6 +16,7 @@ Always run all commands from the **root of the workspace**, not from inside indi
 ### 1. Locate and read the issue YML
 
 The user provides:
+
 - `--package` — the package name (e.g. `routing`, `cache`, `container`)
 - `--id` — the issue identifier (e.g. `EAB-204913`)
 

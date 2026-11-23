@@ -61,11 +61,15 @@ export class UserService {
 ```typescript
 // correct
 type ServiceDataType = Record<string, unknown>;
-interface IService { execute(): Promise<void>; }
+interface IService {
+  execute(): Promise<void>;
+}
 
 // incorrect
 type ServiceData = Record<string, unknown>;
-interface Service { execute(): Promise<void>; }
+interface Service {
+  execute(): Promise<void>;
+}
 ```
 
 ### Non-null Assertions
@@ -103,11 +107,11 @@ export class BookEntity {
 
 // incorrect
 export class BookEntity {
-  @Column({ name: "title", type: "varchar", length: 255 })  // nullable missing
+  @Column({ name: "title", type: "varchar", length: 255 }) // nullable missing
   public title: string = "";
 
   @Column({ name: "subtitle", type: "varchar", length: 255, nullable: true })
-  public subtitle?: string;  // null missing from type union
+  public subtitle?: string; // null missing from type union
 }
 ```
 
@@ -144,6 +148,7 @@ Read all `src/**/*.ts` and `tests/**/*.ts` files. Map all types, interfaces, cla
 ### 3. Enforce naming conventions
 
 Scan and fix across all files:
+
 - Types not ending with `Type` — rename and update all references
 - Interfaces not starting with `I` — rename and update all references
 - Non-arrow standalone functions — convert to arrow functions (skip class methods)

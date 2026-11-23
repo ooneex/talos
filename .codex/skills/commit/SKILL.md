@@ -29,19 +29,19 @@ Create separate commits per modified module, following the project's conventiona
 
 **Type** — pick by the change:
 
-| Type | Use when |
-|------|----------|
-| `feat` | New feature / new files with functionality |
-| `fix` | Bug fix |
+| Type       | Use when                                             |
+| ---------- | ---------------------------------------------------- |
+| `feat`     | New feature / new files with functionality           |
+| `fix`      | Bug fix                                              |
 | `refactor` | Restructuring, renaming, deleted-only or moved files |
-| `test` | Tests only (`*.spec.ts` only) |
-| `chore` | Deps, lock files, configs, maintenance |
-| `docs` | Docs only (`*.md` only) |
-| `style` | Formatting only |
-| `perf` | Performance |
-| `build` | Build system, build configs, scripts |
-| `ci` | CI/CD files |
-| `revert` | Revert previous commit |
+| `test`     | Tests only (`*.spec.ts` only)                        |
+| `chore`    | Deps, lock files, configs, maintenance               |
+| `docs`     | Docs only (`*.md` only)                              |
+| `style`    | Formatting only                                      |
+| `perf`     | Performance                                          |
+| `build`    | Build system, build configs, scripts                 |
+| `ci`       | CI/CD files                                          |
+| `revert`   | Revert previous commit                               |
 
 **Scope** — module name (lower-case) for files under `modules/<name>/`; else `common`. Any `modules/<name>` or `packages/<name>` directory is automatically a valid scope (discovered at commit time, no config). Never empty; fall back to `common`.
 

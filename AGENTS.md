@@ -28,13 +28,10 @@ talos fmt                             # Biome format across the workspace
 talos lint                            # tsc --noEmit + Biome lint (cargo clippy for the CLI)
 talos test                            # bun test per package (cargo test for the CLI)
 talos build                           # bunup per package
-talos check                           # build + fmt + lint + test, one report (alias of workspace:check)
+talos check                           # install + lint + test, one report
 talos check --packages=cache,routing  # scope any of the above to named packages
 talos check --logs --no-cache         # stream task output / bypass var/cache
 talos check --output=md               # also write var/outputs/talos_check.md for an agent to fix
-talos coverage                        # per-package line and function coverage
-talos security:check                  # OSV.dev audit of every lockfile + LLM config audit
-talos performance:check               # performance rules over the sources
 talos release:create                  # detect unreleased commits, bump, changelog, tag, push
 talos release:create --bump           # force a patch bump of every package and module
 ```
@@ -45,16 +42,16 @@ talos release:create --bump           # force a patch bump of every package and 
 
 This repo ships skills only; the agents live in Skeleton and target generated apps.
 
-| Task | Skill |
-|---|---|
-| Scaffold a new `@talosjs/<name>` package | `package-create` |
-| Audit a package and file one YAML issue per finding | `issue-found` |
-| Create a single issue by hand | `issue-create` |
-| Restructure / split an issue | `issue-improve` |
-| Implement an issue, then fmt + lint + test | `issue-fix` |
-| Enforce conventions, drop duplication and trivial tests | `optimize` |
-| Commit, grouped by package | `commit` |
-| Finish a new or changed CLI command | `cli-command-integrate` |
+| Task                                                    | Skill                   |
+| ------------------------------------------------------- | ----------------------- |
+| Scaffold a new `@talosjs/<name>` package                | `package-create`        |
+| Audit a package and file one YAML issue per finding     | `issue-found`           |
+| Create a single issue by hand                           | `issue-create`          |
+| Restructure / split an issue                            | `issue-improve`         |
+| Implement an issue, then fmt + lint + test              | `issue-fix`             |
+| Enforce conventions, drop duplication and trivial tests | `optimize`              |
+| Commit, grouped by package                              | `commit`                |
+| Finish a new or changed CLI command                     | `cli-command-integrate` |
 
 ### Issues
 
@@ -70,17 +67,17 @@ So a change to a CLI command's name, flags or behaviour is not done when it comp
 
 Grouped by domain; read the package's `README.md` and `src/index.ts` for its real surface.
 
-| Domain | Packages |
-|---|---|
-| Application & architecture | `app`, `app-env`, `container`, `module`, `service`, `repository`, `command`, `exception`, `types`, `utils`, `cli` |
-| HTTP & routing | `routing`, `controller`, `middleware`, `http-request`, `http-request-file`, `http-response`, `http-header`, `http-mimes`, `http-status`, `fetcher`, `url`, `rate-limit` |
-| Real-time | `socket`, `socket-client`, `event` |
-| Data & persistence | `database`, `entity`, `migrations`, `seeds`, `cache`, `storage`, `rag` |
-| Auth & access control | `auth`, `jwt`, `permission`, `role`, `user` |
-| AI & integrations | `ai`, `analytics`, `linear`, `mailer`, `payment`, `payment-stripe`, `youtube`, `youtube-utils` |
-| Cross-cutting services | `logger`, `cron`, `validation`, `feature-flag`, `translation`, `queue`, `workflow` |
-| Files & formats | `fs`, `csv`, `json`, `yml`, `html`, `pdf` |
-| Reference data & helpers | `color`, `country`, `currencies`, `hour-utils` |
+| Domain                     | Packages                                                                                                                                                                |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Application & architecture | `app`, `app-env`, `container`, `module`, `service`, `repository`, `command`, `exception`, `types`, `utils`, `cli`                                                       |
+| HTTP & routing             | `routing`, `controller`, `middleware`, `http-request`, `http-request-file`, `http-response`, `http-header`, `http-mimes`, `http-status`, `fetcher`, `url`, `rate-limit` |
+| Real-time                  | `socket`, `socket-client`, `event`                                                                                                                                      |
+| Data & persistence         | `database`, `entity`, `migrations`, `seeds`, `cache`, `storage`, `rag`                                                                                                  |
+| Auth & access control      | `auth`, `jwt`, `permission`, `role`, `user`                                                                                                                             |
+| AI & integrations          | `ai`, `analytics`, `linear`, `mailer`, `payment`, `payment-stripe`, `youtube`, `youtube-utils`                                                                          |
+| Cross-cutting services     | `logger`, `cron`, `validation`, `feature-flag`, `translation`, `queue`, `workflow`                                                                                      |
+| Files & formats            | `fs`, `csv`, `json`, `yml`, `html`, `pdf`                                                                                                                               |
+| Reference data & helpers   | `color`, `country`, `currencies`, `hour-utils`                                                                                                                          |
 
 Intra-repo dependencies are declared as `"@talosjs/<name>": "workspace:^"`, and a package only depends on what it truly imports — a package that would drag half the ecosystem in is a design smell, not a dependency list to extend.
 

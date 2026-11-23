@@ -21,12 +21,15 @@ Rewrite the `description` field into this structured format:
 
 ```markdown
 ## Context
+
 <Background information explaining why this issue exists>
 
 ## Goal
+
 <What needs to be achieved>
 
 ## Acceptance Criteria
+
 - [ ] <Condition 1 that must be met>
 - [ ] <Condition 2 that must be met>
 - [ ] <Public API change is exported from `src/index.ts`>
@@ -34,10 +37,12 @@ Rewrite the `description` field into this structured format:
 - [ ] <…>
 
 ## Technical Notes
+
 <Optional: technical constraints or implementation hints — omit section if not applicable>
 ```
 
 Rules:
+
 - Preserve all factual information from the original description
 - Keep each section concise and actionable
 - Acceptance Criteria must be checkboxes (`- [ ]`), not prose
@@ -51,6 +56,7 @@ Rules:
 ### 3. Extract Labels, Set State and Priority
 
 **Labels** — Based on the improved description, suggest relevant labels:
+
 - Short (1–3 words), properly cased: Title Case for general terms, uppercase for acronyms (e.g. `Feature`, `Bug`, `API`, `Database`, `UI`, `Breaking Change`)
 - Deduplicate against labels already present in the YAML
 
@@ -73,6 +79,7 @@ If the user explicitly states a priority, always honor it over the inferred valu
 ### 4. Check Whether Splitting Is Needed
 
 Evaluate whether the issue is large or complex enough to split. An issue needs splitting when it:
+
 - Spans multiple unrelated concerns or implementation areas
 - Cannot be completed in one focused developer session
 - Contains several independent acceptance criteria that could ship separately
@@ -84,6 +91,7 @@ Skip splitting if the issue is already small and focused.
 Break the issue into 3–7 small, self-contained, independently implementable issues.
 
 For each sub-issue:
+
 - Generate a new identifier using the format `XXX-NNNNNN` (3 uppercase letters + 6 digits); check the issues directory for collisions
 - Write a new YAML file to the same `packages/<package>/issues/` directory
 - Inherit `priority` and `labels` from the parent issue, and set `state` to `Todo`
@@ -96,10 +104,12 @@ After writing all sub-issues, update the parent issue's `## Acceptance Criteria`
 ## Acceptance Criteria
 
 ### <Sub-issue title>
+
 - [ ] <Condition from sub-issue>
 - [ ] <…>
 
 ### <Sub-issue title>
+
 - [ ] <Condition from sub-issue>
 - [ ] <…>
 ```
@@ -107,6 +117,7 @@ After writing all sub-issues, update the parent issue's `## Acceptance Criteria`
 Do not invent new criteria — copy them verbatim from each sub-issue.
 
 Sub-issue YAML structure:
+
 ```yaml
 id: "<generated-id>"
 title: "<action-oriented title: verb + noun>"

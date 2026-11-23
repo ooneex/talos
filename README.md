@@ -1,6 +1,7 @@
 <a id="readme-top"></a>
 
 <!-- PROJECT SHIELDS -->
+
 [![Contributors][contributors-shield]][contributors-url]
 [![Forks][forks-shield]][forks-url]
 [![Stargazers][stars-shield]][stars-url]
@@ -66,6 +67,7 @@
 </details>
 
 <!-- ABOUT THE PROJECT -->
+
 ## About The Project
 
 <div align="center">
@@ -103,6 +105,7 @@ Full documentation: [docs.talosjs.com](https://docs.talosjs.com/getting-started)
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 <!-- GETTING STARTED -->
+
 ## Getting Started
 
 A few commands take you from an empty machine to a running Talos app with its first domain.
@@ -145,7 +148,7 @@ bun --version
    cd movie-app
    ```
 
-3. **Start the development environment.** `app:start` brings up the shared Docker stack, then runs every runnable module — `api`, `microservice`, `spa`, `admin`, `storybook`, and `swagger` — concurrently with hot reload. Narrow it with `--modules` or `--packages`.
+3. **Start the development environment.** `app:start` brings up the Docker stack of each selected back-end module that has a `docker-compose.yml`, then runs every runnable module — `api`, `microservice`, `spa`, `admin`, `storybook`, and `swagger` — concurrently with hot reload. Narrow it with `--modules` or `--packages`.
 
    ```sh
    talos app:start                          # everything
@@ -185,6 +188,7 @@ Prefer an AI agent? Scaffold the skills once with `talos agent:skills:create` �
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 <!-- ROADMAP -->
+
 ## Roadmap
 
 See the [open issues](https://github.com/ooneex/talos/issues) for a full list of proposed features and known issues.
@@ -192,6 +196,7 @@ See the [open issues](https://github.com/ooneex/talos/issues) for a full list of
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 <!-- DEVELOPMENT -->
+
 ## Development
 
 ### Working on the Monorepo
@@ -214,7 +219,6 @@ talos fmt                        # format
 talos lint                       # Biome + TypeScript
 talos test                       # test suites
 talos build                      # build every package
-talos coverage                   # tests with coverage, reporting what's uncovered
 talos run --commands=lint,test   # run arbitrary scripts across packages
 ```
 
@@ -239,6 +243,7 @@ chore(common): Update bun.lock dependencies
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 <!-- CONTRIBUTING -->
+
 ## Contributing
 
 Contributions are welcome. To propose a change:
@@ -254,6 +259,7 @@ If Talos is useful to you, a star on the repo is appreciated.
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 <!-- LICENSE -->
+
 ## License
 
 Distributed under the MIT License. See [`LICENSE`](LICENSE) for more information.
@@ -261,6 +267,7 @@ Distributed under the MIT License. See [`LICENSE`](LICENSE) for more information
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 <!-- ACKNOWLEDGMENTS -->
+
 ## Acknowledgments
 
 - [Bun](https://bun.sh) — Fast all-in-one JavaScript runtime
@@ -274,6 +281,7 @@ Distributed under the MIT License. See [`LICENSE`](LICENSE) for more information
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 <!-- MARKDOWN LINKS & IMAGES -->
+
 [contributors-shield]: https://img.shields.io/github/contributors/ooneex/talos.svg?style=for-the-badge&color=432371
 [contributors-url]: https://github.com/ooneex/talos/graphs/contributors
 [forks-shield]: https://img.shields.io/github/forks/ooneex/talos.svg?style=for-the-badge&color=FAAE7B
