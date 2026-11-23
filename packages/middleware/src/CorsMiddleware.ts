@@ -2,6 +2,7 @@ import { AppEnv } from "@talosjs/app-env";
 import { inject } from "@talosjs/container";
 import type { ContextConfigType, ContextType } from "@talosjs/controller";
 import type { HttpMethodType } from "@talosjs/types";
+
 import { decorator } from "./decorators";
 import type { IMiddleware } from "./types";
 
