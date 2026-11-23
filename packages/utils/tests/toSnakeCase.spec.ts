@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+
 import { toSnakeCase } from "@/toSnakeCase";
 
 describe("toSnakeCase", () => {

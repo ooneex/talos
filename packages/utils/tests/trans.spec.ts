@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { has, type TransDictType, trans } from "@/trans";
+
+import { has, trans, type TransDictType } from "@/trans";
 
 const dict: TransDictType = {
   user: {

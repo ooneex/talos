@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+
 import { customAlphabet, nanoid, randomInt, urlAlphabet } from "@/nanoid";
 
 describe("nanoid", () => {

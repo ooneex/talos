@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+
 import { toKebabCase } from "@/toKebabCase";
 
 describe("toKebabCase", () => {
