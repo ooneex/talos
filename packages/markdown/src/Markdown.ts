@@ -1,4 +1,5 @@
 import { Html } from "@talosjs/html";
+
 import { MarkdownException } from "./MarkdownException";
 import { BlockParser, HtmlRenderer, type MarkdownBlockType, parseFrontMatter, resolveOptions } from "./parser";
 import type { MarkdownResolvedOptionsType } from "./parser/utils";

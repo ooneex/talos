@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+
 import { normalizeUrl, resolveOptions, slugify } from "@/parser/utils";
 
 describe("parser utils", () => {

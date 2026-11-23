@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+
 import { parseFlow, parseQuoted, resolveScalar, YamlParser } from "@/parser/YamlParser";
 
 const parse = (source: string): unknown => new YamlParser().parse(source);

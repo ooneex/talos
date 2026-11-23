@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+
 import { InlineParser, resolveOptions } from "@/index";
 
 const render = (source: string, options = {}): string =>

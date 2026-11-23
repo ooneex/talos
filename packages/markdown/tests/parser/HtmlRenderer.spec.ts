@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+
 import { HtmlRenderer, markdownToHtml, parseMarkdown, renderMarkdown } from "@/index";
 
 describe("HtmlRenderer", () => {

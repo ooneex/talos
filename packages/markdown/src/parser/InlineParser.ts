@@ -1,4 +1,5 @@
 import { decodeEntities } from "@talosjs/html";
+
 import type { MarkdownReferenceType } from "./nodes";
 import {
   ASCII_PUNCTUATION,

@@ -1,4 +1,5 @@
 import { afterAll, afterEach, beforeAll, describe, expect, test } from "bun:test";
+
 import { Markdown, MarkdownException } from "@/index";
 
 const DOCUMENT = `---

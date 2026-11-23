@@ -1,4 +1,5 @@
 import { decodeEntities } from "@talosjs/html";
+
 import type { MarkdownOptionsType } from "../types";
 
 export type MarkdownResolvedOptionsType = Required<MarkdownOptionsType>;
