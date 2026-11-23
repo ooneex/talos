@@ -3,6 +3,7 @@ import { locales } from "@talosjs/translation";
 import type { ScalarType } from "@talosjs/types";
 import { parseString } from "@talosjs/utils/parseString";
 import { trim } from "@talosjs/utils/trim";
+
 import type { IReadonlyUrl } from "./types";
 
 export class ReadonlyUrl implements IReadonlyUrl {

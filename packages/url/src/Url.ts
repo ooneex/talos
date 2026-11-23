@@ -1,5 +1,6 @@
 import type { ScalarType } from "@talosjs/types";
 import { trim } from "@talosjs/utils/trim";
+
 import { ReadonlyUrl } from "./ReadonlyUrl";
 import type { IUrl } from "./types";
 
