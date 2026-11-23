@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+
 import { SIMPLE_COLOR_NAMES, SIMPLE_COLORS } from "@/index";
 
 describe("SIMPLE_COLORS", () => {
