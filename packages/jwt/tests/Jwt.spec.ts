@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+
 import type { AppEnv } from "@talosjs/app-env";
+
 import type { JwtDefaultPayloadType, JwtPayloadType } from "@/index";
 import { Jwt, JwtException } from "@/index";
 
@@ -797,9 +799,7 @@ describe("Jwt", () => {
         "with-special-chars-!@#$%^&*()",
         "UPPERCASE-SECRET",
         "mixed-Case-Secret-123!",
-        new Array(256)
-          .fill("a")
-          .join(""), // Very long secret
+        new Array(256).fill("a").join(""), // Very long secret
       ];
 
       for (const secret of secrets) {

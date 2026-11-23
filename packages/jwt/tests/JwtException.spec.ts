@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
+
 import { Exception } from "@talosjs/exception";
 import { HttpStatus } from "@talosjs/http-status";
+
 import { JwtException } from "@/index";
 
 describe("JwtException", () => {

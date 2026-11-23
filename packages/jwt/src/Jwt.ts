@@ -2,6 +2,7 @@ import { AppEnv } from "@talosjs/app-env";
 import { inject, injectable } from "@talosjs/container";
 import type { JWTHeaderParameters } from "jose";
 import * as jose from "jose";
+
 import { JwtException } from "./JwtException";
 import type { IJwt, JwtDefaultPayloadType, JwtPayloadType } from "./types";
 
