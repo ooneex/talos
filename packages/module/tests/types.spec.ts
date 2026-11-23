@@ -1,10 +1,12 @@
 import { describe, expect, test } from "bun:test";
+
 import type { IController as HttpController } from "@talosjs/controller";
 import type { ICron } from "@talosjs/cron";
 import type { IEntity } from "@talosjs/entity";
 import type { IEvent } from "@talosjs/event";
 import type { IMiddleware } from "@talosjs/middleware";
 import type { IController as SocketController } from "@talosjs/socket";
+
 import type { ModuleType } from "@/index";
 
 class TestHttpController implements HttpController {
