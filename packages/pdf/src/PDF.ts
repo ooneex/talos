@@ -1,4 +1,5 @@
 import { processPdf } from "@firecrawl/pdf-inspector";
+
 import { PDFException } from "./PDFException";
 import type { IPDF, PDFExtractOptionsType, PDFExtractResultType, PDFType } from "./types";
 
