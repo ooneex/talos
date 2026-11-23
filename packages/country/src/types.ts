@@ -1,5 +1,6 @@
 import type { LocaleType } from "@talosjs/translation";
 import type { TimeZone } from "@vvo/tzdb";
+
 import type { countries } from "./countries";
 
 export type CountryEntryType = (typeof countries)[number];

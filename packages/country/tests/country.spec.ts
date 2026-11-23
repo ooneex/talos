@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
+
 import { getCities, getCountry } from "@/country";
+
 import type { CountryLangType, CountryType } from "../src/types";
 
 describe("@talosjs/country - getCountry", () => {
