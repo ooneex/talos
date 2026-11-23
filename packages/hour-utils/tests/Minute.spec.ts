@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+
 import { Minute } from "@/index";
 
 describe("Minute.convert(...).to('hms')", () => {

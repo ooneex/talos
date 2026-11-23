@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+
 import { Second } from "@/index";
 
 describe("Second.convert(...).to('hms')", () => {

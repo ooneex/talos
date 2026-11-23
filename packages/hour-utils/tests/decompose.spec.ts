@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+
 import type { TimeFormatType } from "@/decompose";
 import { Second } from "@/index";
 
