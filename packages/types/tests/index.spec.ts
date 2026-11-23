@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+
 import { type FilterResultType, HTTP_METHODS, type IBase, type StatusType } from "../src/index";
 
 describe("@talosjs/types - HTTP_METHODS", () => {
