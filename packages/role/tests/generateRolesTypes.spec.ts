@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
+
 import { YAML } from "bun";
+
 import { generateRolesTypes, type IRolesConfig } from "@/index";
 import rolesYml from "@/roles.yml" with { type: "text" };
 

@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
+
 import { YAML } from "bun";
+
 import { RoleException } from "@/RoleException";
 import rolesYml from "@/roles.yml" with { type: "text" };
 import type { IRolesConfig } from "@/types";

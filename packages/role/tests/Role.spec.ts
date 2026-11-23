@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
+
 import { YAML } from "bun";
+
 import { Role } from "@/Role";
 import rolesYml from "@/roles.yml" with { type: "text" };
 import type { IRolesConfig, RoleType } from "@/types";
@@ -31,9 +33,7 @@ describe("Role", () => {
     });
 
     test("should return false when both roles are unknown", () => {
-      expect(role.hasRole("ROLE_UNKNOWN" as RoleType, "ROLE_ALSO_UNKNOWN" as RoleType, config)).toBe(
-        false,
-      );
+      expect(role.hasRole("ROLE_UNKNOWN" as RoleType, "ROLE_ALSO_UNKNOWN" as RoleType, config)).toBe(false);
     });
 
     test("should return false when required role is unknown even if user role exists", () => {
