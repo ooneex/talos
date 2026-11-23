@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
+
 import type { StripeClient } from "@/StripeClient";
 import { StripeCustomer } from "@/StripeCustomer";
 

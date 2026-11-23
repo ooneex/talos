@@ -1,6 +1,7 @@
 import { inject, injectable } from "@talosjs/container";
 import { PaymentException } from "@talosjs/payment";
 import type Stripe from "stripe";
+
 import { StripeClient } from "./StripeClient";
 import {
   type CheckoutSessionCompletedDataType,

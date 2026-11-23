@@ -1,5 +1,6 @@
 import { inject, injectable } from "@talosjs/container";
 import type Stripe from "stripe";
+
 import { StripeClient } from "./StripeClient";
 import type {
   StripeCustomerAddressType,

@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+
 import { AppEnv } from "@talosjs/app-env";
 import { PaymentException } from "@talosjs/payment";
+
 import { StripeClient } from "@/StripeClient";
 
 describe("StripeClient", () => {

@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
+
 import { PaymentException } from "@talosjs/payment";
+
 import type { StripeClient } from "@/StripeClient";
 import { StripeWebhookEvent } from "@/StripeWebhookEvent";
 import {

@@ -1,4 +1,5 @@
 import { inject, injectable } from "@talosjs/container";
+
 import { StripeCheckoutSession } from "./StripeCheckout";
 import { StripeWebhookEvent } from "./StripeWebhookEvent";
 import type { CheckoutSessionCreateType, CheckoutSessionType, IPaymentProvider, WebhookEventType } from "./types";
