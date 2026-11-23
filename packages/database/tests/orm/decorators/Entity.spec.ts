@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+
 import { Entity, Index, Unique } from "../../../src/orm/decorators/Entity";
 import { getMetadataArgsStorage } from "../../../src/orm/MetadataArgsStorage";
 

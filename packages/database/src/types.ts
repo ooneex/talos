@@ -2,6 +2,7 @@ import type { ClickHouseClient, ClickHouseClientConfigOptions, ClickHouseSetting
 import type { Client as LibsqlClient, Config as LibsqlConfig } from "@libsql/client";
 import type { RedisClient, SQL, TLSOptions } from "bun";
 import type { MongoClient, MongoClientOptions } from "mongodb";
+
 import type { FindOperator } from "./orm/FindOperator";
 import type { Repository } from "./orm/Repository";
 
@@ -70,16 +71,7 @@ type QueryDeepPartialEntityInnerType<Entity> = {
 };
 
 export type DatabaseTypeType =
-  | "postgres"
-  | "mysql"
-  | "mariadb"
-  | "sqlite"
-  | "clickhouse"
-  | "redis"
-  | "mongodb"
-  | "turso"
-  | "bunny"
-  | "cloudflare";
+  "postgres" | "mysql" | "mariadb" | "sqlite" | "clickhouse" | "redis" | "mongodb" | "turso" | "bunny" | "cloudflare";
 
 export type CloudflareValueType = string | number | boolean | null | ArrayBuffer;
 
@@ -110,12 +102,7 @@ export type CloudflareLocationHintType = "wnam" | "enam" | "weur" | "eeur" | "ap
 export type CloudflareReadReplicationModeType = "auto" | "disabled";
 
 export type DatabaseClientType =
-  | SQL
-  | ClickHouseClient
-  | RedisClient
-  | MongoClient
-  | LibsqlClient
-  | ICloudflareDatabase;
+  SQL | ClickHouseClient | RedisClient | MongoClient | LibsqlClient | ICloudflareDatabase;
 
 export type TransactionIsolationLevelType = "READ UNCOMMITTED" | "READ COMMITTED" | "REPEATABLE READ" | "SERIALIZABLE";
 
@@ -654,24 +641,25 @@ export type EqualOperatorType<T> = FindOperator<T>;
  * whole union: a union-typed column stays comparable to a single `FindOperator` holding the union
  * (`FindOperator<"todo" | "done">`) instead of collapsing into a union of per-member operators.
  */
-export type FindOptionsWherePropertyType<Narrowed, Property = Narrowed> = Narrowed extends Promise<infer I>
-  ? FindOptionsWherePropertyType<NonNullable<I>>
-  : Narrowed extends Array<infer I>
+export type FindOptionsWherePropertyType<Narrowed, Property = Narrowed> =
+  Narrowed extends Promise<infer I>
     ? FindOptionsWherePropertyType<NonNullable<I>>
-    : Narrowed extends (...args: any[]) => any
-      ? never
-      : Narrowed extends Uint8Array
-        ? Property | FindOperator<Property>
-        : Narrowed extends Date
+    : Narrowed extends Array<infer I>
+      ? FindOptionsWherePropertyType<NonNullable<I>>
+      : Narrowed extends (...args: any[]) => any
+        ? never
+        : Narrowed extends Uint8Array
           ? Property | FindOperator<Property>
-          : Narrowed extends object
-            ? FindOptionsWhereType<Property>
+          : Narrowed extends Date
+            ? Property | FindOperator<Property>
+            : Narrowed extends object
+              ? | FindOptionsWhereType<Property>
                 | FindOptionsWhereType<Property>[]
                 | EqualOperatorType<Property>
                 | FindOperator<unknown>
                 | boolean
                 | Property
-            : Property | FindOperator<Property> | null;
+              : Property | FindOperator<Property> | null;
 
 export type FindOptionsWhereType<Entity> = {
   [P in keyof Entity]?: P extends "toString" ? unknown : FindOptionsWherePropertyType<NonNullable<Entity[P]>>;
@@ -689,37 +677,39 @@ export type FindOptionsOrderValueType =
       nulls?: "first" | "last" | "FIRST" | "LAST";
     };
 
-export type FindOptionsOrderPropertyType<Property> = Property extends Promise<infer I>
-  ? FindOptionsOrderPropertyType<NonNullable<I>>
-  : Property extends Array<infer I>
+export type FindOptionsOrderPropertyType<Property> =
+  Property extends Promise<infer I>
     ? FindOptionsOrderPropertyType<NonNullable<I>>
-    : Property extends (...args: any[]) => any
-      ? never
-      : Property extends Uint8Array
-        ? FindOptionsOrderValueType
-        : Property extends Date
+    : Property extends Array<infer I>
+      ? FindOptionsOrderPropertyType<NonNullable<I>>
+      : Property extends (...args: any[]) => any
+        ? never
+        : Property extends Uint8Array
           ? FindOptionsOrderValueType
-          : Property extends object
-            ? FindOptionsOrderType<Property> | FindOptionsOrderValueType
-            : FindOptionsOrderValueType;
+          : Property extends Date
+            ? FindOptionsOrderValueType
+            : Property extends object
+              ? FindOptionsOrderType<Property> | FindOptionsOrderValueType
+              : FindOptionsOrderValueType;
 
 export type FindOptionsOrderType<Entity> = {
   [P in keyof Entity]?: P extends "toString" ? unknown : FindOptionsOrderPropertyType<NonNullable<Entity[P]>>;
 };
 
-export type FindOptionsRelationsPropertyType<Property> = Property extends Promise<infer I>
-  ? FindOptionsRelationsPropertyType<NonNullable<I>> | boolean
-  : Property extends Array<infer I>
+export type FindOptionsRelationsPropertyType<Property> =
+  Property extends Promise<infer I>
     ? FindOptionsRelationsPropertyType<NonNullable<I>> | boolean
-    : Property extends (...args: any[]) => any
-      ? never
-      : Property extends Uint8Array
-        ? boolean
-        : Property extends Date
+    : Property extends Array<infer I>
+      ? FindOptionsRelationsPropertyType<NonNullable<I>> | boolean
+      : Property extends (...args: any[]) => any
+        ? never
+        : Property extends Uint8Array
           ? boolean
-          : Property extends object
-            ? FindOptionsRelationsType<Property> | boolean
-            : boolean;
+          : Property extends Date
+            ? boolean
+            : Property extends object
+              ? FindOptionsRelationsType<Property> | boolean
+              : boolean;
 
 export type FindOptionsRelationsType<Entity> = {
   [P in keyof Entity]?: P extends "toString" ? unknown : FindOptionsRelationsPropertyType<NonNullable<Entity[P]>>;
@@ -727,19 +717,20 @@ export type FindOptionsRelationsType<Entity> = {
 
 export type FindOptionsRelationByStringType = string[];
 
-export type FindOptionsSelectPropertyType<Property> = Property extends Promise<infer I>
-  ? FindOptionsSelectPropertyType<I> | boolean
-  : Property extends Array<infer I>
+export type FindOptionsSelectPropertyType<Property> =
+  Property extends Promise<infer I>
     ? FindOptionsSelectPropertyType<I> | boolean
-    : Property extends (...args: any[]) => any
-      ? never
-      : Property extends Uint8Array
-        ? boolean
-        : Property extends Date
+    : Property extends Array<infer I>
+      ? FindOptionsSelectPropertyType<I> | boolean
+      : Property extends (...args: any[]) => any
+        ? never
+        : Property extends Uint8Array
           ? boolean
-          : Property extends object
-            ? FindOptionsSelectType<Property>
-            : boolean;
+          : Property extends Date
+            ? boolean
+            : Property extends object
+              ? FindOptionsSelectType<Property>
+              : boolean;
 
 export type FindOptionsSelectType<Entity> = {
   [P in keyof Entity]?: P extends "toString" ? unknown : FindOptionsSelectPropertyType<NonNullable<Entity[P]>>;
@@ -794,14 +785,7 @@ export type UpsertOptionsType<Entity> = {
 export type EntityIdType = string | number | bigint | Date | ObjectLiteralType;
 
 export type FindCriteriaType<Entity> =
-  | string
-  | string[]
-  | number
-  | number[]
-  | Date
-  | Date[]
-  | FindOptionsWhereType<Entity>
-  | FindOptionsWhereType<Entity>[];
+  string | string[] | number | number[] | Date | Date[] | FindOptionsWhereType<Entity> | FindOptionsWhereType<Entity>[];
 
 /** Result of a raw query — the rows plus the metadata Bun reports on them. */
 export type QueryResultType<Row = ObjectLiteralType> = {

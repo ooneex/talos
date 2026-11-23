@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+
 import type { QueryDeepPartialEntityType } from "../../../src";
 import type { DataSource } from "../../../src/orm/DataSource";
 import { InsertValuesMissingError } from "../../../src/orm/errors";

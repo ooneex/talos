@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+
 import { AsyncLock } from "../../src/orm/AsyncLock";
 
 describe("AsyncLock", () => {

@@ -102,34 +102,34 @@ MainDatabase.registerEntities(User, Post);
 
 ## What is in the box
 
-| Area | Surface |
-|---|---|
-| Entities | `@Entity`, `@Column`, `@PrimaryColumn`, `@PrimaryGeneratedColumn` (`increment`, `uuid`, `rowid`, `identity`), `@CreateDateColumn`, `@UpdateDateColumn`, `@DeleteDateColumn`, `@VersionColumn`, `@Index`, `@Unique`, entity inheritance |
-| Relations | `@OneToOne`, `@OneToMany`, `@ManyToOne`, `@ManyToMany` with `@JoinColumn` / `@JoinTable`, eager loading, cascades (`insert`, `update`, `remove`, `soft-remove`, `recover`), `orphanedRowAction`, `onDelete` / `onUpdate` |
-| Connection | `DataSource` owns the selected native driver client: `initialize`, `destroy`, `dropDatabase`, `query`; relational drivers also provide `synchronize`, `transaction`, repositories and query builders; bring your own client through `options.client` |
-| Manager & repository | `create`, `merge`, `preload`, `save`, `remove`, `softRemove`, `recover`, `insert`, `update`, `upsert`, `delete`, `softDelete`, `restore`, `clear`, `increment`, `decrement`, `find*`, `count*`, `exists*`, `sum`, `average`, `minimum`, `maximum`, `Repository.extend` |
-| Find options | `where` (objects, arrays, nested relations), `select`, `relations`, `order`, `skip` / `take`, `withDeleted`, `loadEagerRelations`; operators `Equal`, `Not`, `In`, `Like`, `ILike`, `Between`, `MoreThan`, `LessThan`, `IsNull`, `Raw`, `And`, `Or`, `Any`, `ArrayContains`, `JsonContains`, … |
-| Query builders | `SelectQueryBuilder` (joins, `Brackets`, group / having, pagination, locking, `getRawMany`, `getManyAndCount`, streaming-free hydration), `InsertQueryBuilder` (`orUpdate`, `orIgnore`, `returning`), `UpdateQueryBuilder`, `DeleteQueryBuilder`, `SoftDeleteQueryBuilder`, `RelationQueryBuilder` (`of().add()/remove()/set()/loadMany()`) |
-| Transactions | callback transactions with isolation levels, nested savepoints, `QueryRunner` for manual control; SQLite transactions are serialised on the single connection |
-| Schema | `SchemaBuilder` creates tables, foreign keys, unique constraints and indexes in dependency order (`synchronize: true`); `dropSchema` for test databases |
-| Naming | `DefaultNamingStrategy` (TypeORM-compatible hashed constraint names), `SnakeNamingStrategy`, custom `INamingStrategy` |
-| Errors | `QueryFailedError`, `EntityNotFoundError`, `EntityMetadataNotFoundError`, `TransactionNotStartedError`, … all extend `DatabaseException` |
-| Key-value | `RedisDriver` on Bun's native `RedisClient`; compatible with Redis, Valkey and Dragonfly RESP servers |
-| Documents | `MongoDriver` on the official `MongoClient`; native commands and direct typed client access |
+| Area                 | Surface                                                                                                                                                                                                                                                                                                                                     |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Entities             | `@Entity`, `@Column`, `@PrimaryColumn`, `@PrimaryGeneratedColumn` (`increment`, `uuid`, `rowid`, `identity`), `@CreateDateColumn`, `@UpdateDateColumn`, `@DeleteDateColumn`, `@VersionColumn`, `@Index`, `@Unique`, entity inheritance                                                                                                      |
+| Relations            | `@OneToOne`, `@OneToMany`, `@ManyToOne`, `@ManyToMany` with `@JoinColumn` / `@JoinTable`, eager loading, cascades (`insert`, `update`, `remove`, `soft-remove`, `recover`), `orphanedRowAction`, `onDelete` / `onUpdate`                                                                                                                    |
+| Connection           | `DataSource` owns the selected native driver client: `initialize`, `destroy`, `dropDatabase`, `query`; relational drivers also provide `synchronize`, `transaction`, repositories and query builders; bring your own client through `options.client`                                                                                        |
+| Manager & repository | `create`, `merge`, `preload`, `save`, `remove`, `softRemove`, `recover`, `insert`, `update`, `upsert`, `delete`, `softDelete`, `restore`, `clear`, `increment`, `decrement`, `find*`, `count*`, `exists*`, `sum`, `average`, `minimum`, `maximum`, `Repository.extend`                                                                      |
+| Find options         | `where` (objects, arrays, nested relations), `select`, `relations`, `order`, `skip` / `take`, `withDeleted`, `loadEagerRelations`; operators `Equal`, `Not`, `In`, `Like`, `ILike`, `Between`, `MoreThan`, `LessThan`, `IsNull`, `Raw`, `And`, `Or`, `Any`, `ArrayContains`, `JsonContains`, …                                              |
+| Query builders       | `SelectQueryBuilder` (joins, `Brackets`, group / having, pagination, locking, `getRawMany`, `getManyAndCount`, streaming-free hydration), `InsertQueryBuilder` (`orUpdate`, `orIgnore`, `returning`), `UpdateQueryBuilder`, `DeleteQueryBuilder`, `SoftDeleteQueryBuilder`, `RelationQueryBuilder` (`of().add()/remove()/set()/loadMany()`) |
+| Transactions         | callback transactions with isolation levels, nested savepoints, `QueryRunner` for manual control; SQLite transactions are serialised on the single connection                                                                                                                                                                               |
+| Schema               | `SchemaBuilder` creates tables, foreign keys, unique constraints and indexes in dependency order (`synchronize: true`); `dropSchema` for test databases                                                                                                                                                                                     |
+| Naming               | `DefaultNamingStrategy` (TypeORM-compatible hashed constraint names), `SnakeNamingStrategy`, custom `INamingStrategy`                                                                                                                                                                                                                       |
+| Errors               | `QueryFailedError`, `EntityNotFoundError`, `EntityMetadataNotFoundError`, `TransactionNotStartedError`, … all extend `DatabaseException`                                                                                                                                                                                                    |
+| Key-value            | `RedisDriver` on Bun's native `RedisClient`; compatible with Redis, Valkey and Dragonfly RESP servers                                                                                                                                                                                                                                       |
+| Documents            | `MongoDriver` on the official `MongoClient`; native commands and direct typed client access                                                                                                                                                                                                                                                 |
 
 ### Drivers
 
-| `type` | Backed by | Notes |
-|---|---|---|
-| `postgres` | Bun `SQL` (PostgreSQL adapter) | `RETURNING`, `ILIKE`, arrays, `jsonb`, schemas, `gen_random_uuid()` |
-| `mysql` | Bun `SQL` (MySQL adapter) | `ON DUPLICATE KEY UPDATE`, `LAST_INSERT_ID()` reloads, backtick quoting |
-| `sqlite` | Bun `SQL` (SQLite adapter) | file or `:memory:`, foreign keys on by default, WAL and busy timeout options |
-| `turso` | [`@libsql/client`](https://docs.turso.tech/sdk/ts/reference) | Remote Turso, local files and embedded replicas with the SQLite ORM dialect |
-| `bunny` | [`@libsql/client/web`](https://bunny.net/docs/database/connect/typescript) | Remote Bunny Database over HTTP or WebSocket with the SQLite ORM dialect |
-| `cloudflare` | `CloudflareDriver` with a Worker database binding or the [D1 HTTP API](https://developers.cloudflare.com/api/resources/d1/) | SQLite dialect, prepared statements, schema synchronization and repositories |
-| `clickhouse` | [`@clickhouse/client`](https://clickhouse.com/docs/integrations/language-clients/js) | HTTP(S), `JSONEachRow`, typed query parameters, `MergeTree` synchronization |
-| `redis` | Bun `RedisClient` | Native commands, TLS, reconnects and auto-pipelining; also speaks to Valkey and Dragonfly |
-| `mongodb` | [`mongodb`](https://www.mongodb.com/docs/drivers/node/current/) | Native database commands, collection management and typed `MongoClient` access |
+| `type`       | Backed by                                                                                                                   | Notes                                                                                     |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `postgres`   | Bun `SQL` (PostgreSQL adapter)                                                                                              | `RETURNING`, `ILIKE`, arrays, `jsonb`, schemas, `gen_random_uuid()`                       |
+| `mysql`      | Bun `SQL` (MySQL adapter)                                                                                                   | `ON DUPLICATE KEY UPDATE`, `LAST_INSERT_ID()` reloads, backtick quoting                   |
+| `sqlite`     | Bun `SQL` (SQLite adapter)                                                                                                  | file or `:memory:`, foreign keys on by default, WAL and busy timeout options              |
+| `turso`      | [`@libsql/client`](https://docs.turso.tech/sdk/ts/reference)                                                                | Remote Turso, local files and embedded replicas with the SQLite ORM dialect               |
+| `bunny`      | [`@libsql/client/web`](https://bunny.net/docs/database/connect/typescript)                                                  | Remote Bunny Database over HTTP or WebSocket with the SQLite ORM dialect                  |
+| `cloudflare` | `CloudflareDriver` with a Worker database binding or the [D1 HTTP API](https://developers.cloudflare.com/api/resources/d1/) | SQLite dialect, prepared statements, schema synchronization and repositories              |
+| `clickhouse` | [`@clickhouse/client`](https://clickhouse.com/docs/integrations/language-clients/js)                                        | HTTP(S), `JSONEachRow`, typed query parameters, `MergeTree` synchronization               |
+| `redis`      | Bun `RedisClient`                                                                                                           | Native commands, TLS, reconnects and auto-pipelining; also speaks to Valkey and Dragonfly |
+| `mongodb`    | [`mongodb`](https://www.mongodb.com/docs/drivers/node/current/)                                                             | Native database commands, collection management and typed `MongoClient` access            |
 
 ### Redis
 

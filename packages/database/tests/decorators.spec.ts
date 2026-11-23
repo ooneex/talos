@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, test } from "bun:test";
+
 import { Container, EContainerScope } from "@talosjs/container";
+
 import { decorator } from "../src/decorators";
 import type { IDatabase } from "../src/types";
 

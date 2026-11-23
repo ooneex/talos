@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
+
 import { RedisClient } from "bun";
+
 import type { DatabaseClientType, QueryResultType } from "../../../src";
 import { DataSource } from "../../../src/orm/DataSource";
 import { RedisDriver } from "../../../src/orm/driver/RedisDriver";
@@ -82,19 +84,12 @@ describe("RedisDriver", () => {
       lastInsertRowid: null,
     });
     expect(
-      await driver.query<number>(client as DatabaseClientType, "DEL", [
-        date,
-        new Uint8Array([65]),
-        { id: 1 },
-        null,
-      ]),
-    ).toEqual(
-      {
-        records: [3],
-        affected: 3,
-        lastInsertRowid: null,
-      },
-    );
+      await driver.query<number>(client as DatabaseClientType, "DEL", [date, new Uint8Array([65]), { id: 1 }, null]),
+    ).toEqual({
+      records: [3],
+      affected: 3,
+      lastInsertRowid: null,
+    });
     expect(calls[3]).toEqual({
       command: "DEL",
       parameters: ["2026-01-02T03:04:05.000Z", "A", '{"id":1}', ""],
@@ -172,7 +167,7 @@ describe("RedisDriver", () => {
         queries.push({ command, parameters });
 
         if (command === "SCAN") {
-        scans += 1;
+          scans += 1;
 
           return {
             records: scans === 1 ? ["7", ["one", "two"]] : ["0", ["three"]],

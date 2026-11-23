@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+
 import {
   JoinColumn,
   JoinTable,
@@ -15,11 +16,7 @@ class Target {
 }
 
 class Owner {
-  @ManyToOne(
-    () => Target,
-    (target) => target.owners,
-    { onDelete: "CASCADE", nullable: false },
-  )
+  @ManyToOne(() => Target, (target) => target.owners, { onDelete: "CASCADE", nullable: false })
   @JoinColumn({ name: "target_id", referencedColumnName: "id", foreignKeyConstraintName: "FK_owner_target" })
   public target?: Target;
 
@@ -34,11 +31,7 @@ class Owner {
   @JoinTable({ name: "owner_targets", joinColumn: { name: "owner_id" }, inverseJoinColumn: { name: "target_id" } })
   public many?: Target[];
 
-  @ManyToMany(
-    () => Target,
-    (target) => target.owners,
-    { cascade: ["insert"] },
-  )
+  @ManyToMany(() => Target, (target) => target.owners, { cascade: ["insert"] })
   @JoinTable({
     schema: "public",
     joinColumns: [{ name: "a" }, { name: "b" }],

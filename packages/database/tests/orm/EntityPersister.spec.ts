@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+
 import type { RelationType } from "../../src";
 import { DataSource } from "../../src/orm/DataSource";
 import { Column, DeleteDateColumn, PrimaryGeneratedColumn } from "../../src/orm/decorators/columns";
@@ -16,11 +17,7 @@ class Team {
   @Column({ type: "varchar" })
   public name = "";
 
-  @OneToMany(
-    () => Member,
-    (member) => member.team,
-    { orphanedRowAction: "delete" },
-  )
+  @OneToMany(() => Member, (member) => member.team, { orphanedRowAction: "delete" })
   public members?: Member[];
 }
 
@@ -32,11 +29,7 @@ class Member {
   @Column({ type: "varchar" })
   public name = "";
 
-  @ManyToOne(
-    () => Team,
-    (team) => team.members,
-    { nullable: true, onDelete: "SET NULL" },
-  )
+  @ManyToOne(() => Team, (team) => team.members, { nullable: true, onDelete: "SET NULL" })
   public team?: Team | null;
 }
 
@@ -51,11 +44,7 @@ class Board {
   @DeleteDateColumn()
   public deletedAt?: Date | null;
 
-  @OneToMany(
-    () => Card,
-    (card) => card.board,
-    { cascade: true, orphanedRowAction: "soft-delete" },
-  )
+  @OneToMany(() => Card, (card) => card.board, { cascade: true, orphanedRowAction: "soft-delete" })
   public cards?: Card[];
 }
 
@@ -70,11 +59,7 @@ class Card {
   @DeleteDateColumn()
   public deletedAt?: Date | null;
 
-  @ManyToOne(
-    () => Board,
-    (board) => board.cards,
-    { nullable: true },
-  )
+  @ManyToOne(() => Board, (board) => board.cards, { nullable: true })
   public board?: Board | null;
 }
 
@@ -83,11 +68,7 @@ class Shelf {
   @PrimaryGeneratedColumn()
   public id?: number;
 
-  @OneToMany(
-    () => Book,
-    (book) => book.shelf,
-    { cascade: true, orphanedRowAction: "disable" },
-  )
+  @OneToMany(() => Book, (book) => book.shelf, { cascade: true, orphanedRowAction: "disable" })
   public books?: Book[];
 }
 
@@ -99,11 +80,7 @@ class Book {
   @Column({ type: "varchar" })
   public title = "";
 
-  @ManyToOne(
-    () => Shelf,
-    (shelf) => shelf.books,
-    { nullable: true },
-  )
+  @ManyToOne(() => Shelf, (shelf) => shelf.books, { nullable: true })
   public shelf?: Shelf | null;
 }
 
@@ -115,11 +92,7 @@ class Account {
   @Column({ type: "varchar" })
   public email = "";
 
-  @OneToOne(
-    () => Wallet,
-    (wallet) => wallet.account,
-    { cascade: true },
-  )
+  @OneToOne(() => Wallet, (wallet) => wallet.account, { cascade: true })
   public wallet?: RelationType<Wallet>;
 }
 
@@ -131,11 +104,7 @@ class Wallet {
   @Column({ type: "integer" })
   public balance = 0;
 
-  @OneToOne(
-    () => Account,
-    (account) => account.wallet,
-    { cascade: true },
-  )
+  @OneToOne(() => Account, (account) => account.wallet, { cascade: true })
   @JoinColumn()
   public account?: Account;
 }

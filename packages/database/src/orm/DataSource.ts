@@ -23,8 +23,8 @@ import {
 } from "./errors";
 import { getMetadataArgsStorage } from "./MetadataArgsStorage";
 import { DefaultNamingStrategy } from "./NamingStrategy";
-import { QueryRunner } from "./QueryRunner";
 import { SelectQueryBuilder } from "./query-builder/SelectQueryBuilder";
+import { QueryRunner } from "./QueryRunner";
 import { Repository } from "./Repository";
 import { SchemaBuilder } from "./SchemaBuilder";
 

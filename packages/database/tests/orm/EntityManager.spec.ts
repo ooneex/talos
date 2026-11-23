@@ -1,10 +1,11 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+
 import type { DataSource } from "../../src/orm/DataSource";
 import type { EntityManager } from "../../src/orm/EntityManager";
 import { EntityNotFoundError, InvalidCriteriaError, QueryFailedError } from "../../src/orm/errors";
 import { In, IsNull, MoreThan } from "../../src/orm/FindOperator";
-import type { QueryRunner } from "../../src/orm/QueryRunner";
 import type { QueryBuilder } from "../../src/orm/query-builder/QueryBuilder";
+import type { QueryRunner } from "../../src/orm/QueryRunner";
 import { Repository } from "../../src/orm/Repository";
 import { createSqliteDataSource, Post, Profile, seedAlice, Tag, User } from "../fixtures/entities";
 

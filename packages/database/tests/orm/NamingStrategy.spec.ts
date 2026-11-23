@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+
 import { DefaultNamingStrategy, SnakeNamingStrategy } from "../../src/orm/NamingStrategy";
 
 describe("DefaultNamingStrategy", () => {

@@ -1,10 +1,12 @@
 import { describe, expect, test } from "bun:test";
+
 import type { Client, InStatement, ResultSet } from "@libsql/client";
+
 import type { DatabaseClientType } from "../../../src";
 import { DataSource } from "../../../src/orm/DataSource";
 import { Column, PrimaryGeneratedColumn } from "../../../src/orm/decorators/columns";
 import { Entity } from "../../../src/orm/decorators/Entity";
-import { BunnyDriver, bunnyConfig } from "../../../src/orm/driver/BunnyDriver";
+import { bunnyConfig, BunnyDriver } from "../../../src/orm/driver/BunnyDriver";
 import { TransactionsNotSupportedError } from "../../../src/orm/errors";
 
 @Entity("bunny_users")

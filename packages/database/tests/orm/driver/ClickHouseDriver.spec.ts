@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
+
 import type { ClickHouseClient } from "@clickhouse/client";
+
 import type { DatabaseClientType, QueryResultType } from "../../../src";
 import { DataSource } from "../../../src/orm/DataSource";
 import { bindClickHouseParameters, ClickHouseDriver } from "../../../src/orm/driver/ClickHouseDriver";

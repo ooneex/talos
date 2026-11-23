@@ -18,13 +18,13 @@ import type { EntityMetadata } from "./EntityMetadata";
 import { EntityPersister } from "./EntityPersister";
 import { EntityNotFoundError, InvalidCriteriaError } from "./errors";
 import { isFindOperator } from "./FindOperator";
-import type { QueryRunner } from "./QueryRunner";
 import type { DeleteQueryBuilder } from "./query-builder/DeleteQueryBuilder";
 import type { QueryBuilder } from "./query-builder/QueryBuilder";
 import type { DeleteResult, InsertResult, UpdateResult } from "./query-builder/results";
 import type { SelectQueryBuilder } from "./query-builder/SelectQueryBuilder";
 import type { SoftDeleteQueryBuilder } from "./query-builder/SoftDeleteQueryBuilder";
 import type { UpdateQueryBuilder } from "./query-builder/UpdateQueryBuilder";
+import type { QueryRunner } from "./QueryRunner";
 import { Repository } from "./Repository";
 
 type AggregateFunctionType = "SUM" | "AVG" | "MIN" | "MAX";

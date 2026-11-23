@@ -1,5 +1,6 @@
 import { toCamelCase } from "@talosjs/utils/toCamelCase";
 import { toSnakeCase } from "@talosjs/utils/toSnakeCase";
+
 import type { INamingStrategy } from "../types";
 
 const sha1 = (input: string): string => {

@@ -135,4 +135,3 @@
 - Refuse update and delete criteria that set a where property to undefined|The where builder leaves out a property whose value is undefined. update(User, { id: undefined }, — Julien ([622affe4](https://github.com/ooneex/talos/commit/622affe4))
 - Share one connection between concurrent opens of a closed source|SqlDatabase.open checked isInitialized and then awaited initialize(). Every request that arrived — Julien ([0c0e441d](https://github.com/ooneex/talos/commit/0c0e441d))
 - Refuse findOne criteria that set a where property to undefined|The where builder leaves out a property whose value is undefined, so findOneBy({ id: undefined }) — Julien ([9aabe07c](https://github.com/ooneex/talos/commit/9aabe07c))
-

@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+
 import { Brackets, type IWhereExpressionBuilder, NotBrackets } from "../../src/orm/Brackets";
 import type { DataSource } from "../../src/orm/DataSource";
 import { createSqliteDataSource, User } from "../fixtures/entities";

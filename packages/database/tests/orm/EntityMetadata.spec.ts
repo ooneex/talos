@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+
 import { ColumnMetadata, EntityMetadata, RelationMetadata } from "../../src/orm/EntityMetadata";
 import { MissingPrimaryColumnError } from "../../src/orm/errors";
 import { Post, Profile, Tag, User } from "../fixtures/entities";

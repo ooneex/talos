@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+
 import {
   And,
   Any,
@@ -11,8 +12,8 @@ import {
   type FindOperatorTypeType,
   ILike,
   In,
-  IsNull,
   isFindOperator,
+  IsNull,
   JsonContains,
   LessThan,
   LessThanOrEqual,

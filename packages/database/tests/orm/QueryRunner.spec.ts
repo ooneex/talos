@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+
 import type { IQueryLogger } from "../../src";
 import type { DataSource } from "../../src/orm/DataSource";
 import { EntityManager } from "../../src/orm/EntityManager";

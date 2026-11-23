@@ -109,9 +109,9 @@ const connect = async (source: DataSource<DataSourceOptionsType>): Promise<void>
  *
  * MainDatabase.registerEntities(UserEntity);
  */
-export abstract class SqlDatabase<Options extends DataSourceOptionsType = DataSourceOptionsType>
-  implements ISqlDatabase
-{
+export abstract class SqlDatabase<
+  Options extends DataSourceOptionsType = DataSourceOptionsType,
+> implements ISqlDatabase {
   protected source: DataSource<Options> | undefined;
 
   public constructor() {}

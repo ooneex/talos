@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+
 import type { EntityTargetType } from "../../../src";
 import type { DataSource } from "../../../src/orm/DataSource";
 import { InvalidCriteriaError, RelationNotFoundError } from "../../../src/orm/errors";

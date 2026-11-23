@@ -29,10 +29,7 @@ export class Tag {
   @Column({ type: "varchar", length: 50, unique: true })
   public label = "";
 
-  @ManyToMany(
-    () => Post,
-    (post) => post.tags,
-  )
+  @ManyToMany(() => Post, (post) => post.tags)
   public posts?: Post[];
 }
 
@@ -77,11 +74,7 @@ export class User {
   @JoinColumn({ name: "profile_id" })
   public profile?: Profile | null;
 
-  @OneToMany(
-    () => Post,
-    (post) => post.author,
-    { cascade: true },
-  )
+  @OneToMany(() => Post, (post) => post.author, { cascade: true })
   public posts?: Post[];
 }
 
@@ -96,19 +89,11 @@ export class Post {
   @Column({ type: "integer", default: 0 })
   public views = 0;
 
-  @ManyToOne(
-    () => User,
-    (user) => user.posts,
-    { onDelete: "CASCADE" },
-  )
+  @ManyToOne(() => User, (user) => user.posts, { onDelete: "CASCADE" })
   @JoinColumn({ name: "author_id" })
   public author?: User | null;
 
-  @ManyToMany(
-    () => Tag,
-    (tag) => tag.posts,
-    { cascade: true },
-  )
+  @ManyToMany(() => Tag, (tag) => tag.posts, { cascade: true })
   @JoinTable({ name: "post_tags" })
   public tags?: Tag[];
 }

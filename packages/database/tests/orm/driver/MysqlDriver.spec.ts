@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+
 import type { QueryResultType } from "../../../src";
 import { MysqlDriver } from "../../../src/orm/driver/MysqlDriver";
 import type { QueryRunner } from "../../../src/orm/QueryRunner";

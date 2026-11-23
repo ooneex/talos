@@ -14,9 +14,9 @@ import type {
 } from "../types";
 import type { EntityManager } from "./EntityManager";
 import type { EntityMetadata } from "./EntityMetadata";
-import type { QueryRunner } from "./QueryRunner";
 import type { DeleteResult, InsertResult, UpdateResult } from "./query-builder/results";
 import type { SelectQueryBuilder } from "./query-builder/SelectQueryBuilder";
+import type { QueryRunner } from "./QueryRunner";
 
 /**
  * The entity manager's operations, fixed to one entity.

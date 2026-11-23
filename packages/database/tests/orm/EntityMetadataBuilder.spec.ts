@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+
 import { Column, PrimaryColumn, PrimaryGeneratedColumn } from "../../src/orm/decorators/columns";
 import { Entity, Index, Unique } from "../../src/orm/decorators/Entity";
 import { JoinColumn, JoinTable, ManyToMany, ManyToOne, OneToMany, OneToOne } from "../../src/orm/decorators/relations";
@@ -189,10 +190,7 @@ describe("EntityMetadataBuilder", () => {
       @PrimaryGeneratedColumn()
       public id?: number;
 
-      @OneToOne(
-        () => Lock,
-        (lock) => lock.key,
-      )
+      @OneToOne(() => Lock, (lock) => lock.key)
       public lock?: { id?: number } | null;
     }
 
@@ -247,10 +245,7 @@ describe("EntityMetadataBuilder", () => {
       @PrimaryGeneratedColumn()
       public id?: number;
 
-      @OneToMany(
-        () => BadChild,
-        (child) => child.missing,
-      )
+      @OneToMany(() => BadChild, (child) => child.missing)
       public children?: BadChild[];
     }
 

@@ -19,7 +19,7 @@ import { DeleteQueryBuilder } from "./DeleteQueryBuilder";
 import { InsertQueryBuilder } from "./InsertQueryBuilder";
 import { QueryBuilder } from "./QueryBuilder";
 import type { AliasType, JoinAttributeType, LockModeType, QueryExpressionMap } from "./QueryExpressionMap";
-import { RawSqlResultsToEntityTransformer, rawColumnName } from "./RawSqlResultsToEntityTransformer";
+import { rawColumnName, RawSqlResultsToEntityTransformer } from "./RawSqlResultsToEntityTransformer";
 import { RelationQueryBuilder } from "./RelationQueryBuilder";
 import { SoftDeleteQueryBuilder } from "./SoftDeleteQueryBuilder";
 import { UpdateQueryBuilder } from "./UpdateQueryBuilder";

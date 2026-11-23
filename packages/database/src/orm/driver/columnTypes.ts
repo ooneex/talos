@@ -2,14 +2,7 @@ import type { ColumnType } from "../../types";
 
 /** How a raw database value of a column becomes the entity value; decided once per column. */
 export type HydrationKindType =
-  | "array"
-  | "boolean"
-  | "datetime"
-  | "date"
-  | "json"
-  | "simple-array"
-  | "integer"
-  | "none";
+  "array" | "boolean" | "datetime" | "date" | "json" | "simple-array" | "integer" | "none";
 
 const BOOLEAN_TYPES: ReadonlySet<string> = new Set(["boolean", "bool"]);
 const DATETIME_TYPES: ReadonlySet<string> = new Set([

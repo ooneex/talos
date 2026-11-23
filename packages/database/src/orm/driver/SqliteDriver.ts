@@ -1,6 +1,8 @@
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
+
 import { SQL } from "bun";
+
 import type {
   DatabaseClientType,
   DatabaseTypeType,

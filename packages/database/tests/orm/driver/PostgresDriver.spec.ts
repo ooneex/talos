@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
+
 import type { QueryResultType } from "../../../src";
-import { PostgresDriver, parsePgArray, pgArrayLiteral } from "../../../src/orm/driver/PostgresDriver";
+import { parsePgArray, pgArrayLiteral, PostgresDriver } from "../../../src/orm/driver/PostgresDriver";
 import type { QueryRunner } from "../../../src/orm/QueryRunner";
 import { fakeColumn } from "../../fixtures/metadata";
 

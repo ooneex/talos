@@ -1,5 +1,6 @@
 import { type ClickHouseClient, type ClickHouseClientConfigOptions, createClient } from "@clickhouse/client";
 import type { ReservedSQL } from "bun";
+
 import type {
   ClickHouseDataSourceOptionsType,
   DatabaseClientType,

@@ -1,5 +1,6 @@
 import type { Client, Config } from "@libsql/client";
 import { createClient } from "@libsql/client/web";
+
 import type { BunnyDataSourceOptionsType, DatabaseTypeType } from "../../types";
 import { TursoDriver } from "./TursoDriver";
 
