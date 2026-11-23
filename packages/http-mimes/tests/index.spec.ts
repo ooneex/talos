@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, test } from "bun:test";
+
 import { Mime } from "@/index.ts";
 
 describe("Mime", () => {
