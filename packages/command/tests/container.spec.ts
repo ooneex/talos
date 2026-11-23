@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+
 import { COMMANDS_CONTAINER } from "@/container";
 import type { ICommand } from "@/types";
 

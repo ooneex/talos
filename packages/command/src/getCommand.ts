@@ -1,4 +1,5 @@
 import { container } from "@talosjs/container";
+
 import { COMMANDS_CONTAINER } from "./container";
 import type { ICommand } from "./types";
 

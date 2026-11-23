@@ -1,10 +1,12 @@
 import { parseArgs } from "node:util";
+
 import { loadEnv } from "@talosjs/app-env";
 import type { IException } from "@talosjs/exception";
 import { Exception } from "@talosjs/exception";
 import { TerminalLogger } from "@talosjs/logger";
 import type { HttpMethodType } from "@talosjs/types";
 import { toKebabCase } from "@talosjs/utils/toKebabCase";
+
 import { getCommand } from "./getCommand";
 
 // Kebab-case each comma-separated entry, so `--package(s)`/`--module(s)` accept a single

@@ -1,4 +1,5 @@
 import { container, EContainerScope } from "@talosjs/container";
+
 import { COMMANDS_CONTAINER } from "./container";
 import type { CommandClassType } from "./types";
 

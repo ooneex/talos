@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+
 import { container, EContainerScope } from "@talosjs/container";
+
 import { COMMANDS_CONTAINER } from "@/container";
 import { decorator } from "@/decorators";
 import type { ICommand } from "@/types";
