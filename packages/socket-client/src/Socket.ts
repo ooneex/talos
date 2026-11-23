@@ -1,11 +1,11 @@
 import type { ResponseDataType } from "@talosjs/http-response";
+
 import type { ISocket, RequestDataType } from "./types";
 
 export class Socket<
   SendData extends RequestDataType = RequestDataType,
   Response extends Record<string, unknown> = Record<string, unknown>,
-> implements ISocket<SendData, Response>
-{
+> implements ISocket<SendData, Response> {
   private ws: WebSocket;
   private messageHandler?: (response: ResponseDataType<Response>) => void;
   private openHandler?: (event: Event) => void;

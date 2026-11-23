@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
+
 import { Environment } from "@talosjs/app-env";
 import type { ResponseDataType } from "@talosjs/http-response";
+
 import { type RequestDataType, Socket } from "@/index";
 
 // Type-safe interface for testing private members
