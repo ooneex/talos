@@ -3,9 +3,5 @@ coverage = false
 coverageReporter = ["text", "lcov"]
 coverageDir = "coverage"
 coverageSkipTestFiles = true
-coveragePathIgnorePatterns = [
-  "../**",
-  "dist/**",
-  "src/types.ts",
-]
+coveragePathIgnorePatterns = ["../**", "dist/**", "src/types.ts"]
 coverageThreshold = { lines = 0.99, functions = 0.99, statements = 0.99 }

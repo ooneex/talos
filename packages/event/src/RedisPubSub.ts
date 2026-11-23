@@ -1,9 +1,10 @@
 import type { ScalarType } from "@talosjs/types";
+
 import type { IEvent, IEventClient } from "./types";
 
-export abstract class RedisPubSub<Data extends Record<string, ScalarType> = Record<string, ScalarType>>
-  implements IEvent<Data>
-{
+export abstract class RedisPubSub<
+  Data extends Record<string, ScalarType> = Record<string, ScalarType>,
+> implements IEvent<Data> {
   constructor(protected readonly client: IEventClient<Data>) {}
 
   public abstract getChannel(): string | Promise<string>;

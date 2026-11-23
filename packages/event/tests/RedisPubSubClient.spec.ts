@@ -1,5 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, mock, test } from "bun:test";
+
 import { AppEnv } from "@talosjs/app-env";
+
 import { EventException } from "@/EventException";
 import { RedisPubSubClient } from "@/RedisPubSubClient";
 
@@ -313,8 +315,7 @@ describe("RedisPubSubClient", () => {
       await client.subscribe("test-channel", handler);
 
       const subscriberHandler = mockSubscriberClient.subscribe.mock.calls[0]?.[1] as
-        | ((message: string, channel: string) => void)
-        | undefined;
+        ((message: string, channel: string) => void) | undefined;
 
       subscriberHandler?.(JSON.stringify({ message: "hello", count: 42 }), "test-channel");
 
@@ -548,8 +549,7 @@ describe("RedisPubSubClient", () => {
       expect(mockSubscriberClient.subscribe).toHaveBeenCalledWith("channel-2", expect.any(Function));
 
       const listener = mockSubscriberClient.subscribe.mock.calls[0]?.[1] as
-        | ((message: string, channel: string) => void)
-        | undefined;
+        ((message: string, channel: string) => void) | undefined;
       listener?.(JSON.stringify({ message: "back", count: 1 }), "channel-1");
 
       expect(handler).toHaveBeenCalledWith({ data: { message: "back", count: 1 }, channel: "channel-1" });

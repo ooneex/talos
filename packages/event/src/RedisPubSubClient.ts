@@ -1,6 +1,7 @@
 import { AppEnv } from "@talosjs/app-env";
 import { inject, injectable } from "@talosjs/container";
 import type { ScalarType } from "@talosjs/types";
+
 import { EventException } from "./EventException";
 import type { IEventClient, PubSubMessageHandlerType, RedisPubSubOptionsType } from "./types";
 

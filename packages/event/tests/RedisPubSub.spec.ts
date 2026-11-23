@@ -1,4 +1,5 @@
 import { describe, expect, mock, test } from "bun:test";
+
 import { RedisPubSub } from "@/RedisPubSub";
 import type { IEventClient, PubSubMessageHandlerType } from "@/types";
 
