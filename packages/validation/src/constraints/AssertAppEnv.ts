@@ -1,4 +1,5 @@
 import { Environment } from "@talosjs/app-env";
+
 import { Assert, createConstraint } from "../utils";
 
 const environments: string[] = Object.values(Environment);

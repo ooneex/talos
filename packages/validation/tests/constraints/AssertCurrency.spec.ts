@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
+
 import { CURRENCIES } from "@talosjs/currencies";
+
 import { AssertCurrency } from "@/constraints/AssertCurrency";
 
 describe("AssertCurrency", () => {

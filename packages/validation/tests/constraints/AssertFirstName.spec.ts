@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+
 import { AssertFirstName } from "@/constraints/AssertFirstName";
 
 describe("AssertFirstName", () => {

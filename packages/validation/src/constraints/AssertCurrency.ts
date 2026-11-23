@@ -1,4 +1,5 @@
 import { CURRENCIES } from "@talosjs/currencies";
+
 import { Assert, createConstraint } from "../utils";
 
 const VALID_CURRENCY_CODES: string[] = CURRENCIES.map((currency) => currency.code);

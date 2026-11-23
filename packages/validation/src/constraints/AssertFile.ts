@@ -1,4 +1,5 @@
 import type { MimeType } from "@talosjs/http-mimes";
+
 import type { AssertType, ValidationResultType } from "../types";
 import { Assert } from "../utils";
 import { Validation } from "../Validation";

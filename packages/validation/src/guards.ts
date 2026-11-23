@@ -1,4 +1,5 @@
 import { type } from "arktype";
+
 import type { AssertRecordType, AssertSchemaType, AssertType, IAssert, ValidationResultType } from "./types";
 
 /**

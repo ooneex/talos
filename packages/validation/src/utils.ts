@@ -1,14 +1,13 @@
-import { Validation } from "./Validation";
 import * as A from "arktype";
 import type { TypeParser } from "arktype/internal/type.ts";
+
 import type { AssertType, ValidationResultType } from "./types";
+import { Validation } from "./Validation";
 
 export const Assert: TypeParser<{}> = A.type;
 
 type ConcreteValidation = {
-  new (
-    ...args: any[]
-  ): {
+  new (...args: any[]): {
     getConstraint(): AssertType;
     getErrorMessage(): string | null;
     validate(data: unknown, constraint?: AssertType): ValidationResultType;

@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+
 import { AssertEmail } from "@/constraints/AssertEmail";
 import { AssertFile } from "@/constraints/AssertFile";
 import { isAssert, isAssertRecord, isAssertType, validateAssert } from "@/guards";

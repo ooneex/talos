@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+
 import { AssertYoutubeUrl } from "@/constraints/AssertYoutubeUrl";
 
 describe("AssertYoutubeUrl", () => {

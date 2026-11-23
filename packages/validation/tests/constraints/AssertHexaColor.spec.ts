@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+
 import { AssertHexaColor } from "@/constraints/AssertHexaColor";
 
 describe("AssertHexaColor", () => {

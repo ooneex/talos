@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+
 import { Assert, createConstraint, jsonSchemaToTypeString } from "@/utils";
 
 describe("Assert", () => {

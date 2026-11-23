@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
+
 import { locales } from "@talosjs/translation";
+
 import { AssertLocale } from "@/constraints/AssertLocale";
 
 describe("AssertLocale", () => {

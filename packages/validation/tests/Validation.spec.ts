@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+
 import type { AssertType, ValidationResultType } from "@/types";
 import { Assert } from "@/utils";
 import { Validation } from "@/Validation";

@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
+
 import { Environment } from "@talosjs/app-env";
+
 import { AssertAppEnv } from "@/constraints/AssertAppEnv";
 
 describe("AssertAppEnv", () => {
