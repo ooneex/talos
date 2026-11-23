@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, test } from "bun:test";
+
 import { Environment } from "@talosjs/app-env";
 import { Header } from "@talosjs/http-header";
 import { HttpStatus } from "@talosjs/http-status";
+
 import { HttpResponse, type IResponse } from "@/index";
 
 describe("HttpResponse", () => {
