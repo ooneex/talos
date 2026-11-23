@@ -1,4 +1,5 @@
 import type { Issue as LinearSDKIssue } from "@linear/sdk";
+
 import type {
   LinearCommentType,
   LinearLabelType,

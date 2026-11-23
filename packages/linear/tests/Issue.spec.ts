@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+
 import { Issue, mapIssue } from "@/Issue";
 
 const makeRawIssue = (overrides: Record<string, unknown> = {}) => ({

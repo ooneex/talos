@@ -1,6 +1,7 @@
 import { LinearClient } from "@linear/sdk";
 import { AppEnv } from "@talosjs/app-env";
 import { inject, injectable } from "@talosjs/container";
+
 import { type Issue, mapIssue } from "./Issue";
 import { LinearException } from "./LinearException";
 import type {

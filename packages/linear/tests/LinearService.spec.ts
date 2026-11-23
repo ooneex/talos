@@ -1,5 +1,7 @@
 import { describe, expect, mock, test } from "bun:test";
+
 import type { AppEnv } from "@talosjs/app-env";
+
 import { LinearException, LinearService } from "@/index";
 
 const mockTeam = { id: "team-1", name: "Engineering", key: "ENG" };
