@@ -1,4 +1,5 @@
 import { container } from "@talosjs/container";
+
 import { MIGRATIONS_CONTAINER } from "./container";
 import type { IMigration, MigrationClassType } from "./types";
 

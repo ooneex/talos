@@ -1,5 +1,7 @@
 import { join } from "node:path";
+
 import { Glob } from "bun";
+
 import { generateMigrationVersion } from "./generateMigrationVersion";
 
 const migrationTemplate = `import { decorator, type IMigration, type MigrationClassType } from '@talosjs/migrations';

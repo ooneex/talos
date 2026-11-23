@@ -1,12 +1,14 @@
 import { parseArgs } from "node:util";
+
 import type { IException } from "@talosjs/exception";
 import type { SQL } from "bun";
+
 import { createMigrationTable } from "./createMigrationTable";
 import "./loadMigrationEnv";
 import { databaseIdentity, migrationSource, openMigrationDatabase } from "./database";
 import { getMigrations } from "./getMigrations";
 import { computeMigrationHash, isMigrationCached, migrationCacheDir, writeMigrationCache } from "./migrationCache";
-import { COLORS, colorize, formatDuration, runLogger, SYMBOLS } from "./runLogger";
+import { colorize, COLORS, formatDuration, runLogger, SYMBOLS } from "./runLogger";
 import type { IMigration, MigrationConfigType } from "./types";
 
 type UpOptionsType = {

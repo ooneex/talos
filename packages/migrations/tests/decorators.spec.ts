@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, jest, test } from "bun:test";
+
 import { container, EContainerScope } from "@talosjs/container";
+
 import { MIGRATIONS_CONTAINER } from "@/container";
 import { decorator } from "@/decorators";
 import type { IMigration, MigrationClassType } from "@/types";

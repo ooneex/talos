@@ -1,5 +1,7 @@
 import { parseArgs } from "node:util";
+
 import type { IException } from "@talosjs/exception";
+
 import { createMigrationTable } from "./createMigrationTable";
 import "./loadMigrationEnv";
 import { migrationSource, openMigrationDatabase } from "./database";

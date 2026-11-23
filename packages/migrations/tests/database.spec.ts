@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
+
 import type { DataSource, PostgresDataSourceOptionsType, SqliteDataSourceOptionsType } from "@talosjs/database";
 import type { SQL } from "bun";
+
 import { databaseIdentity, migrationSource, openMigrationDatabase } from "@/database";
 import type { IMigrationDatabase, IMigrationDataSource } from "@/types";
 

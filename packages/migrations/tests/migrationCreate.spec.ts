@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { existsSync, rmSync } from "node:fs";
 import { join } from "node:path";
+
 import { migrationCreate } from "@/migrationCreate";
 
 describe("migrationCreate", () => {

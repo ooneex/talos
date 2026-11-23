@@ -1,4 +1,5 @@
 import { dirname, join } from "node:path";
+
 import { loadEnv } from "@talosjs/app-env";
 
 /**

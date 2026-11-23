@@ -1,4 +1,5 @@
 import { container, EContainerScope } from "@talosjs/container";
+
 import { MIGRATIONS_CONTAINER } from "./container";
 import type { MigrationClassType } from "./types";
 

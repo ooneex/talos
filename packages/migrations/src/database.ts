@@ -1,4 +1,5 @@
 import type { SQL } from "bun";
+
 import type { IMigrationDatabase, IMigrationDataSource } from "./types";
 
 /**
