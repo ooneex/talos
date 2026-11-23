@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, test } from "bun:test";
+
 import { Permission, PermissionException } from "@/index";
+
 import type { ContextType } from "../../controller/src/types";
 
 class TestPermission<A extends string = string, S extends string = string> extends Permission<A, S> {
