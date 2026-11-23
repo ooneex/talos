@@ -1,5 +1,6 @@
 import { afterAll, beforeEach, describe, expect, test } from "bun:test";
 import { mkdir, rm } from "node:fs/promises";
+
 import { Directory, DirectoryException, File } from "@/index";
 
 async function collect<T>(gen: AsyncGenerator<T>): Promise<T[]> {

@@ -1,5 +1,6 @@
 import { afterAll, afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { rm } from "node:fs/promises";
+
 import { File, FileException } from "@/index";
 
 const TEST_DIR = ".temp/talos-fs-test-file";
