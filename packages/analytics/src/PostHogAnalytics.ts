@@ -1,14 +1,15 @@
 import { AppEnv } from "@talosjs/app-env";
 import { inject } from "@talosjs/container";
 import { PostHog } from "posthog-node";
+
 import { AnalyticsException } from "./AnalyticsException";
 import { decorator } from "./decorators";
 import type { IAnalytics, PostHogCaptureOptionsType } from "./types";
 
 @decorator.analytics()
-export class PostHogAnalytics<T extends PostHogCaptureOptionsType = PostHogCaptureOptionsType>
-  implements IAnalytics<T>
-{
+export class PostHogAnalytics<
+  T extends PostHogCaptureOptionsType = PostHogCaptureOptionsType,
+> implements IAnalytics<T> {
   private client: PostHog | null = null;
 
   constructor(@inject(AppEnv) private readonly env: AppEnv) {

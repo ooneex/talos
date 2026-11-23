@@ -1,4 +1,5 @@
 import { container, EContainerScope } from "@talosjs/container";
+
 import type { AnalyticsClassType } from "./types";
 
 export const decorator = {

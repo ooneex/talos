@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
+
 import { AnalyticsException } from "@/AnalyticsException";
 import type { IAnalytics, PostHogCaptureOptionsType } from "@/types";
 
