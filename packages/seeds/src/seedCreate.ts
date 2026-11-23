@@ -1,7 +1,9 @@
 import { join } from "node:path";
+
 import { toKebabCase } from "@talosjs/utils/toKebabCase";
 import { toPascalCase } from "@talosjs/utils/toPascalCase";
 import { Glob } from "bun";
+
 import testTemplate from "./seed.test.txt";
 import template from "./seed.txt";
 

@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
+
 import { container, EContainerScope } from "@talosjs/container";
+
 import { SEEDS_CONTAINER } from "@/container";
 import { decorator } from "@/decorators";
 import type { ISeed } from "@/types";

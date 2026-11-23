@@ -1,4 +1,5 @@
 import { container } from "@talosjs/container";
+
 import { SEEDS_CONTAINER } from "./container";
 import type { Environment, ISeed, SeedClassType } from "./types";
 

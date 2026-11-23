@@ -1,5 +1,7 @@
 import { join } from "node:path";
+
 import { toKebabCase } from "@talosjs/utils/toKebabCase";
+
 import testTemplate from "./seed.test.txt";
 
 export const seedTestCreate = async (config: { name: string; testsDir: string; module?: string }): Promise<string> => {

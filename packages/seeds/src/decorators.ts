@@ -1,4 +1,5 @@
 import { container, EContainerScope } from "@talosjs/container";
+
 import { SEEDS_CONTAINER } from "./container";
 import type { SeedClassType } from "./types";
 

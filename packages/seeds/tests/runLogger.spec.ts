@@ -1,5 +1,6 @@
 import { describe, expect, spyOn, test } from "bun:test";
-import { bold, COLORS, colorize, formatDuration, persist, runLogger, SYMBOLS } from "@/runLogger";
+
+import { bold, colorize, COLORS, formatDuration, persist, runLogger, SYMBOLS } from "@/runLogger";
 
 const ESC = String.fromCharCode(27);
 const RESET = `${ESC}[0m`;

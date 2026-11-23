@@ -1,9 +1,11 @@
 import { parseArgs } from "node:util";
+
 import { container } from "@talosjs/container";
 import type { IException } from "@talosjs/exception";
+
 import { getSeeds } from "./getSeeds";
 import "./loadSeedEnv";
-import { COLORS, colorize, formatDuration, runLogger, SYMBOLS } from "./runLogger";
+import { colorize, COLORS, formatDuration, runLogger, SYMBOLS } from "./runLogger";
 import { computeSeedHash, isSeedCached, seedCacheDir, writeSeedCache } from "./seedCache";
 import type { ISeed, ISeedDatabase, SeedRunConfigType } from "./types";
 

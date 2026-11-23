@@ -113,4 +113,3 @@
 ### Fixed
 
 - Keep a process APP_ENV when the seed yaml loads|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([e95c7f29](https://github.com/ooneex/talos/commit/e95c7f29))
-
