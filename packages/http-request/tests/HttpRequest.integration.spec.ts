@@ -1,6 +1,8 @@
 import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
+
 import type { LocaleType } from "@talosjs/translation";
 import realAcceptLanguageParser from "accept-language-parser";
+
 import { HttpRequest } from "@/HttpRequest";
 
 // Capture the real parser before mocking so it can be restored afterwards.

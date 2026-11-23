@@ -4,6 +4,7 @@ import type { LocaleInfoType, LocaleType } from "@talosjs/translation";
 import type { HttpMethodType, ScalarType } from "@talosjs/types";
 import { type IUrl, Url } from "@talosjs/url";
 import parser from "accept-language-parser";
+
 import type { IRequest, RequestConfigType } from "./types";
 
 export class HttpRequest<Config extends RequestConfigType = RequestConfigType> implements IRequest<Config> {

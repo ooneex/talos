@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, test } from "bun:test";
+
 import type { LocaleType } from "@talosjs/translation";
+
 import { HttpRequest } from "@/HttpRequest";
 
 interface NestedPayload {

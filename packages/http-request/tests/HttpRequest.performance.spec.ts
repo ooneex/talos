@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, test } from "bun:test";
+
 import { HttpRequest } from "@/HttpRequest";
 
 describe("HttpRequest Performance Tests", () => {
