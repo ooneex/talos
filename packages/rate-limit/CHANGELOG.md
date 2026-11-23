@@ -74,4 +74,3 @@
 ### Added
 
 - Raise the default window limit to 1000|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([e779de53](https://github.com/ooneex/talos/commit/e779de53))
-
