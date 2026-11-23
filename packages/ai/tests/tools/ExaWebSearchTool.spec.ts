@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
+
 import { ExaSearchTool } from "@/tools/ExaSearchTool";
 
 // Records every `search` call so assertions can inspect the query and options

@@ -2,8 +2,8 @@ import type { AssertSchemaType } from "@talosjs/validation";
 import type {
   AbortInfo,
   AfterToolCallInfo,
-  AGUIEvent,
   AgentLoopStrategy,
+  AGUIEvent,
   BeforeToolCallDecision,
   ChatMiddleware,
   ChatMiddlewareConfig,
@@ -307,11 +307,7 @@ export interface IMiddleware<TContext = unknown> {
     ctx: ChatMiddlewareContext<TContext>,
     chunk: StreamChunk,
   ) =>
-    | undefined
-    | StreamChunk
-    | Array<StreamChunk>
-    | null
-    | Promise<undefined | StreamChunk | Array<StreamChunk> | null>;
+    undefined | StreamChunk | Array<StreamChunk> | null | Promise<undefined | StreamChunk | Array<StreamChunk> | null>;
   /** Called after all tool calls in an iteration have been processed. */
   onToolPhaseComplete?: (ctx: ChatMiddlewareContext<TContext>, info: ToolPhaseCompleteInfo) => void | Promise<void>;
   /** Called once per model iteration that reports usage in its RUN_FINISHED chunk. */

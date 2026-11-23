@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
+
 import type { Issue } from "@talosjs/linear";
 
 // Records every `getIssues` call so assertions can inspect the team and filter

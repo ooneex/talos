@@ -1,14 +1,16 @@
 import { beforeEach, describe, expect, test } from "bun:test";
+
 import { Container, EContainerScope } from "@talosjs/container";
 import type { AGUIEvent } from "@tanstack/ai";
+
 import { decorator } from "@/decorators";
 import type {
   AiSkillClassType,
   ChatInputType,
   IChat,
   IImage,
-  IMiddleware,
   ImageResultType,
+  IMiddleware,
   ISkill,
   ITool,
 } from "@/types";

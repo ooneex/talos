@@ -1,7 +1,8 @@
 import { Assert, type AssertSchemaType } from "@talosjs/validation";
 import { type ChatMiddleware, toolDefinition } from "@tanstack/ai";
-import { type OpenRouterTextModelOptions, openRouterImage, openRouterText } from "@tanstack/ai-openrouter";
-import type { ChatInputType, IMiddleware, ImageInputType, ISkill, ITool, MessageType } from "./types";
+import { openRouterImage, openRouterText, type OpenRouterTextModelOptions } from "@tanstack/ai-openrouter";
+
+import type { ChatInputType, ImageInputType, IMiddleware, ISkill, ITool, MessageType } from "./types";
 
 /** AdapterType created by {@link openRouterText}, used as the chat transport. */
 export type AdapterType = ReturnType<typeof openRouterText>;

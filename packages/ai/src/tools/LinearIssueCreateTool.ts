@@ -7,6 +7,7 @@ import {
   type LinearUserType,
 } from "@talosjs/linear";
 import { Assert, type AssertSchemaType } from "@talosjs/validation";
+
 import { decorator } from "../decorators";
 import type { ITool } from "../types";
 import { type LinearIssueResultType, toIssueResult } from "./utils";

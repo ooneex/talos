@@ -1,5 +1,6 @@
 import { container } from "@talosjs/container";
-import { type AGUIEvent, type ChatMiddleware, chat, createChatOptions } from "@tanstack/ai";
+import { type AGUIEvent, chat, type ChatMiddleware, createChatOptions } from "@tanstack/ai";
+
 import type {
   AiMiddlewareClassType,
   AiSkillClassType,
@@ -17,8 +18,8 @@ import {
   buildSkillPrompts,
   createAdapter,
   isJudged,
-  type SkillJudgementType,
   skillJudgementSchema,
+  type SkillJudgementType,
   toChatMiddleware,
   toServerTools,
   toToolHookMiddleware,

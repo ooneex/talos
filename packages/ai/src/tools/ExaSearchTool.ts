@@ -2,6 +2,7 @@ import { AppEnv } from "@talosjs/app-env";
 import { inject } from "@talosjs/container";
 import { Assert, type AssertSchemaType } from "@talosjs/validation";
 import Exa from "exa-js";
+
 import { decorator } from "../decorators";
 import type { ITool } from "../types";
 
@@ -10,13 +11,7 @@ export type ExaSearchType = "auto" | "fast" | "deep-lite" | "deep" | "deep-reaso
 
 /** Data category Exa can bias the search toward. */
 export type ExaCategoryType =
-  | "company"
-  | "research paper"
-  | "news"
-  | "pdf"
-  | "personal site"
-  | "financial report"
-  | "people";
+  "company" | "research paper" | "news" | "pdf" | "personal site" | "financial report" | "people";
 
 /** Arguments the model supplies when calling the Exa web search tool. */
 export type ExaSearchInputType = {

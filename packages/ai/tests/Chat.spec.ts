@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
+
 import type { AGUIEvent } from "@tanstack/ai";
 
 // Records every `chat()` invocation so assertions can inspect the assembled

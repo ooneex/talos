@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
+
 import type { ChatMiddlewareConfig, ChatMiddlewareContext } from "@tanstack/ai";
+
 import type { AiToolClassType, IMiddleware, ISkill, ITool, MessageType } from "@/types";
 import {
   buildImagePrompt,
@@ -352,9 +354,7 @@ describe("toToolHookMiddleware", () => {
   test("should no-op when the called tool name has no registered hook", async () => {
     const middleware = toToolHookMiddleware([makeTool("alpha", { onAfterCall: () => {} })]);
 
-    expect(
-      await middleware?.onAfterToolCall?.({} as any, { toolName: "missing" } as any),
-    ).toBeUndefined();
+    expect(await middleware?.onAfterToolCall?.({} as any, { toolName: "missing" } as any)).toBeUndefined();
   });
 });
 
@@ -363,9 +363,7 @@ describe("toServerTools", () => {
     getName: () => name,
     getDescription: () => `${name} desc`,
     handler: (param) => ({ echoed: param }),
-    ...(withSchema
-      ? { getInputSchema: () => ({}) as any }
-      : {}),
+    ...(withSchema ? { getInputSchema: () => ({}) as any } : {}),
   });
 
   test("should produce one server tool per input tool", () => {

@@ -1,4 +1,5 @@
 import { generateImage } from "@tanstack/ai";
+
 import type { IImage, ImageInputType, ImageResultType } from "./types";
 import { buildImagePrompt, createImageAdapter } from "./utils";
 
