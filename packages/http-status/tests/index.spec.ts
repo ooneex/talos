@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, test } from "bun:test";
+
 import { HttpStatus, type StatusCodeType } from "@/index";
 
 describe("Status", () => {
