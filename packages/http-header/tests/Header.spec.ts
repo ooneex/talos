@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, test } from "bun:test";
+
 import type { HttpMethodType } from "@talosjs/types";
+
 import { Header } from "@/index";
 
 describe("Header", () => {

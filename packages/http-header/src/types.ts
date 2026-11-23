@@ -1,5 +1,6 @@
 import type { MimeType } from "@talosjs/http-mimes";
 import type { CharsetType, EncodingType, HttpMethodType } from "@talosjs/types";
+
 import type { HEADERS } from "./constants";
 
 export enum ECookieSameSite {

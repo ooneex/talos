@@ -1,5 +1,6 @@
 import type { MimeType } from "@talosjs/http-mimes";
 import type { CharsetType, EncodingType, HttpMethodType } from "@talosjs/types";
+
 import { ReadonlyHeader } from "./ReadonlyHeader";
 import type { HeaderFieldType, IHeader } from "./types";
 

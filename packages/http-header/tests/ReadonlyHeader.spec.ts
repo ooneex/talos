@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, test } from "bun:test";
+
 import { ReadonlyHeader } from "@/index";
 
 describe("ReadonlyHeader", () => {

@@ -1,6 +1,7 @@
 import type { MimeType } from "@talosjs/http-mimes";
 import type { CharsetType, EncodingType, HttpMethodType } from "@talosjs/types";
 import { UAParser } from "ua-parser-js";
+
 import type { HeaderFieldType, IReadonlyHeader, IUserAgent } from "./types";
 
 export class ReadonlyHeader implements IReadonlyHeader {
