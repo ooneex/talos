@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+
 import { DomComment, DomElement, DomText, parseHtml, toMarkdown } from "@/index";
 
 const md = (html: string): string => toMarkdown(parseHtml(html));

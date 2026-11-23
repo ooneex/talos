@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+
 import { type DomElement, DomText, HtmlException, matchesSelector, parseHtml, parseSelector, selectAll } from "@/index";
 
 const document = parseHtml(`<!DOCTYPE html><html lang="en"><head><title>T</title></head><body>

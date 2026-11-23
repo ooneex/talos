@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+
 import type { HtmlHeadingType, HtmlImageType, HtmlLinkType, HtmlTaskType, HtmlVideoType, IHtml } from "@/index";
 import { Html, HtmlException } from "@/index";
 

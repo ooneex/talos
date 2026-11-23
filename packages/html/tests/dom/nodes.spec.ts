@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+
 import { DomComment, DomDoctype, DomDocument, DomElement, DomText, parseHtml } from "@/index";
 
 describe("nodes", () => {

@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+
 import { DomDocument, DomElement, DomSelection, fromUrl, HtmlException, load } from "@/index";
 
 describe("query", () => {

@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+
 import { DomTokenizer, type DomTokenType } from "@/index";
 
 const tokenize = (input: string): DomTokenType[] => {

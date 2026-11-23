@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+
 import { decodeEntities, escapeAttribute, escapeText } from "@/index";
 
 describe("entities", () => {

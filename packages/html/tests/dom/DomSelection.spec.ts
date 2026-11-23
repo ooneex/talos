@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+
 import { type DomElement, DomSelection, DomText, load } from "@/index";
 
 const html = `<div id="main" class="wrap">
