@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
+
 import type { IResponse } from "@talosjs/http-response";
 import type { ServerWebSocket } from "bun";
+
 import type { ContextConfigType, ContextType, IController } from "@/index";
 
 const expectType = <T>(_value: T): void => {};
