@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
+
 import { container, EContainerScope } from "@talosjs/container";
+
 import { decorator, type IVectorDatabase } from "@/index";
 
 class MockVectorDatabase implements IVectorDatabase<{ metadata: Record<string, unknown> }> {

@@ -1,4 +1,5 @@
 import { Utf8 } from "apache-arrow";
+
 import { AbstractVectorDatabase } from "./AbstractVectorDatabase.ts";
 import type { EmbeddingModelType, FieldValueType } from "./types.ts";
 

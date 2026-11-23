@@ -91,14 +91,12 @@ export class CloudflareVectorTable<DataType extends { metadata: Record<string, u
       );
     }
 
-    const vectors = data.map(
-      (item, index): CloudflareVectorizeVectorType => ({
-        id: item.id,
-        values: embeddings[index] ?? [],
-        ...(item.namespace ? { namespace: item.namespace } : {}),
-        metadata: { ...item.metadata, [TEXT_METADATA_KEY]: item.text },
-      }),
-    );
+    const vectors = data.map((item, index): CloudflareVectorizeVectorType => ({
+      id: item.id,
+      values: embeddings[index] ?? [],
+      ...(item.namespace ? { namespace: item.namespace } : {}),
+      metadata: { ...item.metadata, [TEXT_METADATA_KEY]: item.text },
+    }));
 
     return operation === "insert" ? this.client.insert(this.name, vectors) : this.client.upsert(this.name, vectors);
   }

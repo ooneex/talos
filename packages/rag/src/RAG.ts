@@ -4,6 +4,7 @@ import { PDF } from "@talosjs/pdf";
 import OpenAI from "openai";
 import type { Pdf as PdfImageDocument } from "pdf-to-img";
 import { pdf as renderPdfPages } from "pdf-to-img";
+
 import { RAGException } from "./RAGException";
 import type { IRAG, RAGExtractResultType, RAGOcrPageType, RAGOptionsType } from "./types";
 

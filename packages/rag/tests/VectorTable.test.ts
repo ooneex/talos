@@ -1,4 +1,5 @@
 import { describe, expect, mock, test } from "bun:test";
+
 import { VectorTable } from "@/index";
 
 const mockReranker = { rerank: mock() };

@@ -7,9 +7,9 @@ import type { EmbeddingModelType, FieldValueType, IVectorDatabase } from "./type
 import { VectorDatabaseException } from "./VectorDatabaseException.ts";
 import { VectorTable } from "./VectorTable.ts";
 
-export abstract class AbstractVectorDatabase<DataType extends { metadata: Record<string, unknown> }>
-  implements IVectorDatabase<DataType>
-{
+export abstract class AbstractVectorDatabase<
+  DataType extends { metadata: Record<string, unknown> },
+> implements IVectorDatabase<DataType> {
   private db: lancedb.Connection | null = null;
   private readonly embeddingModel: EmbeddingModelType;
   private readonly embedding: EmbeddingFunction;

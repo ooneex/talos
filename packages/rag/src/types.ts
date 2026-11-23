@@ -23,6 +23,7 @@ import type {
   Uint64,
   Utf8,
 } from "apache-arrow";
+
 import type { CloudflareVectorizeClient } from "./CloudflareVectorizeClient.ts";
 import type { CloudflareVectorTable } from "./CloudflareVectorTable.ts";
 import type { VectorTable } from "./VectorTable.ts";
@@ -211,7 +212,4 @@ export type FilterConditionType<T extends { metadata: Record<string, unknown> }>
   | { field: FilterFieldType<T>; op: "IS TRUE" | "IS NOT TRUE" | "IS FALSE" | "IS NOT FALSE"; value?: never };
 
 export type FilterType<T extends { metadata: Record<string, unknown> }> =
-  | FilterConditionType<T>
-  | { AND: FilterType<T>[] }
-  | { OR: FilterType<T>[] }
-  | { NOT: FilterType<T> };
+  FilterConditionType<T> | { AND: FilterType<T>[] } | { OR: FilterType<T>[] } | { NOT: FilterType<T> };

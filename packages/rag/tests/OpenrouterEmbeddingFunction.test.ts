@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
+
 import { Float32 } from "apache-arrow";
+
 import type { OpenrouterModelType } from "@/index";
 
 const embeddingsCreate = mock(() =>

@@ -1,7 +1,10 @@
 import { describe, expect, mock, test } from "bun:test";
+
 import { Utf8 } from "apache-arrow";
+
 import type { EmbeddingModelType, FieldValueType } from "@/index";
 import { VectorDatabaseException, VectorTable } from "@/index";
+
 import { AbstractVectorDatabase } from "../src/AbstractVectorDatabase.ts";
 
 // Mock embedding function

@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
+
 import { PDFException, PDFType } from "@talosjs/pdf";
 import OpenAI from "openai";
+
 import { RAG, RAGException } from "@/index";
 
 describe("RAG", () => {

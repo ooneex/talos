@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
+
 import type { PDFExtractOptionsType, PDFExtractResultType } from "@talosjs/pdf";
 import type OpenAI from "openai";
 import type { Pdf as PdfImageDocument } from "pdf-to-img";
+
 import { RAG, RAGException } from "@/index";
 
 const baseExtractResult: PDFExtractResultType = {

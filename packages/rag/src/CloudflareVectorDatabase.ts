@@ -14,9 +14,9 @@ import { VectorDatabaseException } from "./VectorDatabaseException.ts";
 const DEFAULT_EMBEDDING_MODEL: EmbeddingModelType = { model: "text-embedding-3-small" };
 const MAX_VECTORIZE_DIMENSIONS = 1536;
 
-export class CloudflareVectorDatabase<DataType extends { metadata: Record<string, unknown> }>
-  implements ICloudflareVectorDatabase<DataType>
-{
+export class CloudflareVectorDatabase<
+  DataType extends { metadata: Record<string, unknown> },
+> implements ICloudflareVectorDatabase<DataType> {
   private readonly client: CloudflareVectorizeClient;
   private readonly embedding: ITextEmbeddingFunction;
   private readonly embeddingModel: EmbeddingModelType;

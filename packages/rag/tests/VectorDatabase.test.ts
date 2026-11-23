@@ -1,4 +1,5 @@
 import { describe, expect, mock, test } from "bun:test";
+
 import { Utf8 } from "apache-arrow";
 
 // The base constructor resolves an embedding function from the lancedb

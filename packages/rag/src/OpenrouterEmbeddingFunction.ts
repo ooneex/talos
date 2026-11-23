@@ -2,6 +2,7 @@ import { EmbeddingFunction, register } from "@lancedb/lancedb/embedding";
 import { AppEnv } from "@talosjs/app-env";
 import { Float32 } from "apache-arrow";
 import OpenAI from "openai";
+
 import type { OpenrouterEmbeddingOptionsType, OpenrouterModelType } from "./types.ts";
 
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";

@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+
 import type { FilterType } from "@/index";
 import { buildFilter } from "@/utils.ts";
 
