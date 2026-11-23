@@ -20,7 +20,7 @@ use clap::Args;
 use console::style;
 
 use crate::commands::install;
-use crate::commands::security_check::{self, SecurityAudit, Severity};
+use crate::utils::security_audit::{self, SecurityAudit, Severity};
 use crate::utils::{
     Loader, LoaderGroup, OutputFormat, Spinner, announce_agent_report, current_dir, ensure_bin,
     error, step, success, warn, write_agent_report,
@@ -405,7 +405,7 @@ fn load_or_run_audit(
 
     loader.pause();
     let spinner = Spinner::start("Auditing updated dependencies for known vulnerabilities");
-    let audit = security_check::audit(root, None, None, Some(audit_level));
+    let audit = security_audit::audit(root, None, None, Some(audit_level));
     spinner.stop();
     loader.resume();
     loader.advance(0);

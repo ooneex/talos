@@ -7,7 +7,7 @@
 //! it says, so this one keeps what the console drops — every failing target's
 //! log — and names each one by a path relative to the workspace root.
 //!
-//! `build`, `fmt`, `lint` and `coverage` all leave the same kind of file
+//! `build`, `fmt`, `lint` and `update` all leave the same kind of file
 //! behind: a verdict, a summary of what each section found, and the entries
 //! that need work with their evidence attached. Only the entries differ, so
 //! only the entries are each command's own — the rendering lives here, and a

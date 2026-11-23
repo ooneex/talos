@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use clap::Parser;
 
 use cli::commands::install::{AuditCache, InstallArgs, hash_lockfile, read_cache, write_cache};
-use cli::commands::security_check::SecurityAudit;
+use cli::utils::security_audit::SecurityAudit;
 
 #[derive(Parser)]
 struct TestCli {

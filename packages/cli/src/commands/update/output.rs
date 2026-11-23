@@ -5,7 +5,7 @@
 //! See [`crate::utils::AgentReport`] for the shape every command's report
 //! shares.
 
-use crate::commands::security_check::{SecurityAudit, SecurityFinding};
+use crate::utils::security_audit::{SecurityAudit, SecurityFinding};
 use crate::utils::{
     AgentReport, ReportEntry, ReportSection, ReportStatus, SummaryRow, report_logs,
 };
@@ -298,7 +298,7 @@ fn command_entry(name: &str, reason: &str, step: &CommandStep, args: &UpdateArgs
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::commands::security_check::SecurityFinding;
+    use crate::utils::security_audit::SecurityFinding;
 
     fn args() -> UpdateArgs {
         UpdateArgs {

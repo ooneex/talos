@@ -5,11 +5,7 @@ mod credentials;
 mod file_hashes;
 mod frontend_modules;
 mod git;
-pub mod github;
 mod index_exports;
-mod issue;
-pub mod linear;
-mod marketing;
 mod migration_version;
 mod module_registry;
 mod module_removal;
@@ -19,17 +15,14 @@ mod parallel;
 mod ports;
 mod process;
 mod prompts;
-mod provider;
 mod publish_targets;
-mod recipe;
 mod report_output;
-mod rng;
 mod runnable_modules;
 mod rust_module;
 mod scaffold;
 mod secret_scan;
+pub mod security_audit;
 mod skeleton;
-pub mod storage;
 mod style;
 mod workspace;
 mod workspace_batch;
@@ -57,19 +50,13 @@ pub use frontend_modules::{
     clone_frontend_template, collect_modules_by_type, collect_used_ports, ensure_design_module,
     ensure_shared_placeholder, finalize_module_yml, find_free_port, install_frontend_dependencies,
     normalize_module_name, prompt_design_module, prompt_target_module, rewrite_frontend_package,
-    rewrite_module_imports, rewrite_playwright_port, rewrite_vite_alias, visit_files_recursive,
-    with_design_field, with_optional_yml_field, with_target_field,
+    rewrite_module_imports, rewrite_vite_alias, visit_files_recursive, with_design_field,
+    with_optional_yml_field, with_target_field,
 };
 pub use git::{
     discover as discover_git_repo, origin_url as git_origin_url, toplevel as git_toplevel,
 };
 pub use index_exports::write_export_index;
-pub use issue::{IssueYaml, generate_issue_id, issue_to_yaml};
-pub use marketing::{
-    IMAGE_EXTENSION, MARKETING_PLATFORMS, MARKETING_STATES, MarketingYaml, VIDEO_EXTENSION,
-    generate_marketing_id, generate_media_name, marketing_to_yaml, normalize_platform,
-    normalize_state,
-};
 pub use migration_version::generate_migration_version;
 pub use module_registry::{
     add_path_alias, add_to_app_module, add_to_microservice_module, add_to_shared_module,
@@ -97,11 +84,9 @@ pub use prompts::{
     resolve_name_and_destination, validate_destination, validate_name, validate_route_method,
     validate_route_name, validate_route_path,
 };
-pub use provider::{Provider, resolve_provider_client};
 pub use publish_targets::{
     PublishTarget, discover_publish_targets, resolve_publish_targets, split_csv,
 };
-pub use recipe::{RECIPE_ACTIONS, Recipe, RecipeStep, parse_recipe, recipe_to_yaml};
 pub use report_output::{OUTPUT_DIR, OutputFormat, announce_report_file, write_report_file};
 pub use runnable_modules::{
     RunnableModule, RunnableModuleType, collect_runnable_modules, find_app_module,

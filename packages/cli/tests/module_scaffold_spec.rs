@@ -1,7 +1,7 @@
 //! Runs the generators that copy a whole module out of the skeleton.
 //!
-//! `design:create`, `spa:create`, `admin:create`, `storybook:create` and
-//! `microservice:create` all start by cloning the skeleton repository. The
+//! `design:create`, `spa:create` and `microservice:create` all start by
+//! cloning the skeleton repository. The
 //! clone is cached under `$HOME/.talos/skeleton`, so seeding that cache with a
 //! miniature skeleton is what keeps this offline: the resolver finds a
 //! populated, fresh directory and never reaches the network.
@@ -12,11 +12,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use cli::commands::{
-    admin_create::{self, AdminCreateArgs},
     design_create::{self, DesignCreateArgs},
     microservice_create::{self, MicroserviceCreateArgs},
     spa_create::{self, SpaCreateArgs},
-    storybook_create::{self, StorybookCreateArgs},
 };
 
 fn write(path: &Path, content: &str) {
@@ -66,8 +64,6 @@ fn seed(home: &Path) {
 
     ui_template(&skeleton.join("modules/design"), "design");
     ui_template(&skeleton.join("modules/spa"), "spa");
-    ui_template(&skeleton.join("modules/admin"), "admin");
-    ui_template(&skeleton.join("modules/storybook"), "storybook");
 
     let microservice = skeleton.join("modules/microservice");
     write(
@@ -207,46 +203,6 @@ fn every_skeleton_generator_lands_a_renamed_module_in_the_workspace() {
         "the shared folder is seeded"
     );
 
-    // --- admin --------------------------------------------------------------
-
-    admin_create::run(&AdminCreateArgs {
-        name: Some("back-office".to_string()),
-        design: Some("brand".to_string()),
-        target: None,
-        cwd: cwd.clone(),
-        silent: true,
-        no_cache: false,
-    });
-
-    let back_office = root.join("modules/back-office");
-    let admin_yml = read(&back_office.join("back-office.yml"));
-    assert!(admin_yml.contains("design: \"brand\""), "{admin_yml}");
-    assert!(
-        !admin_yml.contains("target:"),
-        "no target drops the field entirely: {admin_yml}"
-    );
-
-    // --- storybook ----------------------------------------------------------
-
-    storybook_create::run(&StorybookCreateArgs {
-        name: Some("gallery".to_string()),
-        design: Some("brand".to_string()),
-        cwd: cwd.clone(),
-        silent: true,
-        no_cache: false,
-    });
-
-    let gallery = root.join("modules/gallery");
-    assert!(read(&gallery.join("gallery.yml")).contains("design: \"brand\""));
-    assert!(read(&gallery.join("package.json")).contains("vite --port"));
-
-    // Every front-end module gets its own port.
-    let ports = spa_create::collect_used_ports(&root.join("modules"), "");
-    assert!(
-        ports.len() >= 3,
-        "spa, admin and storybook each took a port: {ports:?}"
-    );
-
     // --- microservice -------------------------------------------------------
 
     microservice_create::run(&MicroserviceCreateArgs {
@@ -292,14 +248,14 @@ fn every_skeleton_generator_lands_a_renamed_module_in_the_workspace() {
     let designs = spa_create::collect_design_modules(&root.join("modules"));
     assert!(designs.contains(&"brand".to_string()), "{designs:?}");
 
-    let targets = admin_create::collect_target_modules(&root.join("modules"));
+    let targets = spa_create::collect_target_modules(&root.join("modules"));
     assert!(
         !targets.contains(&"brand".to_string()),
         "a design is not a target: {targets:?}"
     );
 
     let mut seen = Vec::new();
-    storybook_create::visit_files_recursive(&gallery.join("src"), &mut |path| {
+    spa_create::visit_files_recursive(&web.join("src"), &mut |path| {
         seen.push(path.to_path_buf());
     });
     assert!(!seen.is_empty(), "the walk reaches the copied sources");

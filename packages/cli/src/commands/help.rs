@@ -26,14 +26,13 @@ const COMMANDS: &[(&str, &str)] = &[
         "Run the build script across packages and modules with its own dedicated cache",
     ),
     ("cache:create", "Generate a new cache class"),
-    ("check", "Alias for `workspace:check`"),
+    (
+        "check",
+        "Install dependencies, lint sources and run every package and module test suite",
+    ),
     ("command:create", "Generate a new command class"),
     ("command:run", "Run a custom command from a module"),
     ("controller:create", "Generate a new controller class"),
-    (
-        "coverage",
-        "Run every module's tests with coverage and report what is left uncovered",
-    ),
     ("completion:bash", "Install Bash completion for oo command"),
     ("completion:fish", "Install Fish completion for oo command"),
     ("completion:zsh", "Install Zsh completion for oo command"),
@@ -45,19 +44,6 @@ const COMMANDS: &[(&str, &str)] = &[
     ("database:create", "Generate a new database class"),
     ("design:create", "Generate a new design module"),
     ("design:remove", "Remove an existing design module"),
-    (
-        "docker:create",
-        "Add a docker service to docker-compose.yml",
-    ),
-    (
-        "docker:publish",
-        "Build and push a package or module Docker image to Docker Hub",
-    ),
-    (
-        "docker:credentials:create",
-        "Save a Docker registry access token under the user config",
-    ),
-    ("e2e:run", "Alias for `workspace:run --commands=e2e`"),
     ("entity:create", "Generate a new TypeORM entity class"),
     ("event:create", "Generate a new event class"),
     ("flag:create", "Generate a new feature flag class"),
@@ -71,35 +57,11 @@ const COMMANDS: &[(&str, &str)] = &[
         "Install dependencies with bun, auditing every package for known vulnerabilities first",
     ),
     (
-        "issue:check",
-        "Validate every issue YAML file against the issue conventions",
-    ),
-    (
-        "issue:convert",
-        "Bundle a module's issue YAML files into a single issues.json",
-    ),
-    (
-        "issue:create",
-        "Create a YAML skeleton file for a new issue",
-    ),
-    (
-        "issue:pull",
-        "Pull an issue from Linear and save it as a YAML file",
-    ),
-    (
-        "issue:push",
-        "Push one or more local issue YAML files to Linear (create or update)",
-    ),
-    (
         "lint",
         "Run the lint script across packages and modules with its own dedicated cache",
     ),
     ("logger:create", "Generate a new logger class"),
     ("mailer:create", "Generate a new mailer class"),
-    (
-        "marketing:create",
-        "Create a marketing post resource inside a module",
-    ),
     ("microservice:create", "Generate a new microservice"),
     ("microservice:remove", "Remove an existing microservice"),
     ("middleware:create", "Generate a new middleware class"),
@@ -115,7 +77,7 @@ const COMMANDS: &[(&str, &str)] = &[
     ("module:remove", "Remove an existing module"),
     (
         "workspace:check",
-        "Run the full verification pipeline: install, build, fmt, lint, test",
+        "Install dependencies and lint every package and module",
     ),
     (
         "workspace:run",
@@ -126,21 +88,9 @@ const COMMANDS: &[(&str, &str)] = &[
         "Save an npm Granular Access Token under the user config",
     ),
     ("npm:publish", "Publish a package or module to npm"),
-    (
-        "performance:check",
-        "Score every function, method and class on what it will cost as the data grows",
-    ),
     ("permission:create", "Generate a new permission class"),
     ("queue:create", "Generate a new queue class"),
     ("rate-limit:create", "Generate a new rate limiter class"),
-    (
-        "recipe:create",
-        "Create a YAML recipe listing the steps to test a feature",
-    ),
-    (
-        "recipe:run",
-        "Replay recipe steps in a headless or visible browser",
-    ),
     ("repository:create", "Generate a new repository class"),
     (
         "react:component:create",
@@ -155,10 +105,6 @@ const COMMANDS: &[(&str, &str)] = &[
         "run",
         "Alias for `workspace:run`, forwarding every option untouched",
     ),
-    (
-        "security:check",
-        "Audit dependencies via OSV.dev and assistant agents/skills for LLM risks",
-    ),
     ("seed:create", "Generate a new seed file"),
     (
         "sdk:create",
@@ -169,25 +115,10 @@ const COMMANDS: &[(&str, &str)] = &[
     ("spa:create", "Generate a new spa module"),
     ("storage:create", "Generate a new storage class"),
     (
-        "storage:push",
-        "Push a local file or folder to a Cloudflare R2, Bunny or S3 bucket",
-    ),
-    (
-        "storage:pull",
-        "Pull a Cloudflare R2, Bunny or S3 bucket path into a local folder",
-    ),
-    (
         "spa:feature:create",
         "Generate a new spa feature (route, layout, hooks and folders)",
     ),
     ("spa:remove", "Remove an existing spa module"),
-    ("storybook:create", "Generate a new storybook module"),
-    ("storybook:remove", "Remove an existing storybook module"),
-    (
-        "swagger:create",
-        "Generate a new swagger module from a target module's controllers",
-    ),
-    ("swagger:remove", "Remove an existing swagger module"),
     (
         "test",
         "Run the test script across packages and modules with its own dedicated cache",

@@ -70,11 +70,6 @@ fn seed_home(home: &Path) {
         "// {{NAME}}\n",
     );
     write(&templates.join("database.redis.test.txt"), "// {{NAME}}\n");
-    write(&templates.join("e2e.spec.txt"), "// e2e\n");
-    write(
-        &templates.join("playwright.config.txt"),
-        "export default {};\n",
-    );
     write(
         &templates.join("react-component.txt"),
         "export const {{NAME}} = () => null;\n",
@@ -162,10 +157,6 @@ fn workspace(root: &Path) {
     write(
         &root.join("tsconfig.json"),
         "{ \"compilerOptions\": { \"paths\": {} } }\n",
-    );
-    write(
-        &root.join("modules/user/issues/OON-100000.yml"),
-        "id: \"OON-100000\"\nmodule: \"user\"\ntitle: \"Something\"\nstate: \"Todo\"\npriority: \"Medium\"\n",
     );
     write(&root.join("modules/user/user.yml"), "type: \"module\"\n");
     write(
@@ -325,10 +316,6 @@ fn the_bundle_generators_are_reachable_by_their_command_names() {
             "modules/user/src/mailers/WelcomeMailer.ts",
         ),
         (
-            &["e2e:create", "--name=checkout", "--module=user"],
-            "modules/user/e2e/Checkout.spec.ts",
-        ),
-        (
             &["react:component:create", "--name=card", "--module=web"],
             "modules/web/src/components/Card.tsx",
         ),
@@ -411,8 +398,6 @@ fn the_read_only_commands_answer_without_touching_the_workspace() {
         vec!["completion:bash"],
         vec!["completion:fish"],
         vec!["completion:zsh"],
-        vec!["issue:check"],
-        vec!["issue:convert"],
     ] {
         let output = sandbox.run(&args);
         assert!(output.status.success(), "{args:?}: {}", text(&output));
@@ -430,7 +415,6 @@ fn the_workspace_runners_all_route_at_the_same_task_runner() {
         vec!["lint", "--no-cache"],
         vec!["test", "--no-cache"],
         vec!["build", "--no-cache"],
-        vec!["e2e:run", "--no-cache"],
     ] {
         let output = sandbox.run(&args);
         assert!(
@@ -439,64 +423,4 @@ fn the_workspace_runners_all_route_at_the_same_task_runner() {
             text(&output)
         );
     }
-}
-
-#[test]
-fn marketing_create_is_reachable_by_its_command_name() {
-    let sandbox = sandbox();
-
-    let output = sandbox.run(&["marketing:create", "--module=user"]);
-
-    // Whatever it decides to do, the name has to reach the command rather than
-    // clap's unknown-subcommand error.
-    assert!(
-        !text(&output).contains("unrecognized subcommand"),
-        "{}",
-        text(&output)
-    );
-}
-
-#[test]
-fn recipe_create_is_reachable_and_writes_a_recipe_in_the_module() {
-    let sandbox = sandbox();
-
-    let output = sandbox.run(&[
-        "recipe:create",
-        "--module=user",
-        "--title=Sign in",
-        "--step=navigate http://localhost:3033",
-    ]);
-
-    assert!(output.status.success(), "{}", text(&output));
-    let recipe = fs::read_dir(sandbox.root.join("modules/user/recipes"))
-        .expect("the recipes directory was created")
-        .flatten()
-        .find(|entry| entry.file_name().to_string_lossy().ends_with(".yml"))
-        .expect("a recipe was written");
-    let yaml = fs::read_to_string(recipe.path()).expect("recipe yaml");
-    assert!(
-        yaml.contains("steps:\n  - action: \"navigate\"\n    url: \"http://localhost:3033\"\n"),
-        "{yaml}"
-    );
-}
-
-#[test]
-fn recipe_run_is_reachable_and_replays_the_recipes_with_bun() {
-    let sandbox = sandbox();
-    let created = sandbox.run(&[
-        "recipe:create",
-        "--module=user",
-        "--step=navigate http://localhost:3033",
-    ]);
-    assert!(created.status.success(), "{}", text(&created));
-
-    let output = sandbox.run(&["recipe:run", "--module=user"]);
-
-    // Nothing is on the sandbox PATH, so it stops at the bun check.
-    assert_eq!(output.status.code(), Some(1), "{}", text(&output));
-    assert!(
-        text(&output).contains("\"bun\" is required but was not found on the PATH"),
-        "{}",
-        text(&output)
-    );
 }

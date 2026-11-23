@@ -1,4 +1,4 @@
-//! Runs the five `*:remove` commands over a scratch workspace.
+//! Runs the four `*:remove` commands over a scratch workspace.
 //!
 //! They share one shape: refuse the two modules the app cannot live without,
 //! refuse a module of the wrong type, and otherwise unwire the module from the
@@ -9,12 +9,10 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use cli::commands::{
-    admin_remove::{self, AdminRemoveArgs},
     design_remove::{self, DesignRemoveArgs},
     microservice_remove::{self, MicroserviceRemoveArgs},
     module_remove::{self, ModuleRemoveArgs},
     spa_remove::{self, SpaRemoveArgs},
-    storybook_remove::{self, StorybookRemoveArgs},
 };
 
 fn write(path: &Path, content: &str) {
@@ -31,8 +29,6 @@ fn workspace() -> (tempfile::TempDir, PathBuf) {
     let members = [
         ("brand", "design", "Brand"),
         ("web", "spa", "Web"),
-        ("back-office", "admin", "BackOffice"),
-        ("gallery", "storybook", "Gallery"),
         ("billing", "microservice", "Billing"),
         ("user", "module", "User"),
     ];
@@ -142,21 +138,11 @@ fn design_remove_deletes_the_module_and_unwires_every_reference_to_it() {
 }
 
 #[test]
-fn spa_admin_storybook_and_microservice_each_remove_their_own_module() {
+fn spa_microservice_and_module_each_remove_their_own_module() {
     let (_dir, root) = workspace();
 
     spa_remove::run(&SpaRemoveArgs {
         name: Some("web".to_string()),
-        cwd: cwd(&root),
-        silent: true,
-    });
-    admin_remove::run(&AdminRemoveArgs {
-        name: Some("back-office".to_string()),
-        cwd: cwd(&root),
-        silent: true,
-    });
-    storybook_remove::run(&StorybookRemoveArgs {
-        name: Some("gallery".to_string()),
         cwd: cwd(&root),
         silent: true,
     });
@@ -171,11 +157,11 @@ fn spa_admin_storybook_and_microservice_each_remove_their_own_module() {
         silent: true,
     });
 
-    for name in ["web", "back-office", "gallery", "billing", "user"] {
+    for name in ["web", "billing", "user"] {
         assert!(!root.join("modules").join(name).exists(), "{name} is gone");
     }
     let app_module = read(&root.join("modules/app/src/AppModule.ts"));
-    for pascal in ["Web", "BackOffice", "Gallery", "Billing", "User"] {
+    for pascal in ["Web", "Billing", "User"] {
         assert!(
             !app_module.contains(&format!("{pascal}Module")),
             "{pascal}Module went with its module: {app_module}"
@@ -230,16 +216,6 @@ fn the_app_and_shared_modules_are_refused_by_every_remover() {
             silent: true,
         });
         spa_remove::run(&SpaRemoveArgs {
-            name: Some(name.to_string()),
-            cwd: cwd(&root),
-            silent: true,
-        });
-        admin_remove::run(&AdminRemoveArgs {
-            name: Some(name.to_string()),
-            cwd: cwd(&root),
-            silent: true,
-        });
-        storybook_remove::run(&StorybookRemoveArgs {
             name: Some(name.to_string()),
             cwd: cwd(&root),
             silent: true,

@@ -191,22 +191,24 @@ fn text(output: &Output) -> String {
 
 #[cfg(unix)]
 #[test]
-fn app_start_runs_selected_back_end_modules_and_starts_docker_when_needed() {
+fn app_start_runs_selected_back_end_modules_and_starts_their_docker_services() {
     let dir = TempDir::new("app-start-run");
     dir.write("modules/app/package.json", r#"{"name": "@acme/app"}"#);
     dir.write("modules/app/app.yml", "type: \"api\"\n");
+    dir.write("modules/app/docker-compose.yml", "services: {}\n");
+    dir.write("modules/api/package.json", r#"{"name": "@acme/api"}"#);
+    dir.write("modules/api/api.yml", "type: \"api\"\n");
     dir.write(
-        "modules/app/docker-compose.yml",
+        "modules/api/docker-compose.yml",
         "services:\n  postgres:\n    ports: [\"5432:5432\"]\n",
     );
-    dir.write("modules/api/api.yml", "type: \"api\"\n");
     dir.write("modules/api/src/index.ts", "console.log('api');\n");
     let bin = dir.dir("bin");
     let log = dir.path().join("bin.log");
     write_executable(
         &bin.join("docker"),
         &format!(
-            "#!/bin/sh\nprintf 'docker:%s\\n' \"$*\" >> \"{}\"\nif [ \"$1 $2 $3 $4\" = \"compose config --format json\" ]; then printf '%s\\n' '{{\"services\":{{\"postgres\":{{\"ports\":[{{\"published\":\"5432\",\"target\":5432}}]}}}}}}'; fi\nexit 0\n",
+            "#!/bin/sh\nprintf 'docker:%s\\n' \"$*\" >> \"{}\"\nif [ \"$1\" != \"--version\" ] && [ \"${{PWD##*/}}\" != \"api\" ]; then echo \"wrong module: $PWD\" >&2; exit 1; fi\nif [ \"$1 $2 $3 $4\" = \"compose config --format json\" ]; then printf '%s\\n' '{{\"services\":{{\"postgres\":{{\"ports\":[{{\"published\":\"5432\",\"target\":5432}}]}}}}}}'; fi\nexit 0\n",
             log.display()
         ),
     );
@@ -233,8 +235,12 @@ fn app_start_runs_selected_back_end_modules_and_starts_docker_when_needed() {
 
     let output_text = text(&output);
     assert!(output.status.success(), "{output_text}");
-    assert!(output_text.contains("Starting Docker services for @acme/app"));
-    assert!(output_text.contains("Stopping previous Docker services for @acme/app"));
+    assert!(
+        output_text.contains("Starting Docker services for @acme/api"),
+        "{output_text}"
+    );
+    assert!(output_text.contains("Stopping previous Docker services for @acme/api"));
+    assert!(!output_text.contains("@acme/app"), "{output_text}");
     assert!(output_text.contains("Freed port 5432 of docker:postgres (pid 4242)"));
     assert!(output_text.contains("Starting api"));
     let log_text = std::fs::read_to_string(log).expect("log");
@@ -252,7 +258,7 @@ fn app_start_runs_selected_back_end_modules_and_starts_docker_when_needed() {
 }
 
 #[test]
-fn app_start_reports_missing_app_module() {
+fn app_start_reports_when_no_module_is_found() {
     let dir = TempDir::new("app-start-missing-app");
 
     let output = run_talos(
@@ -262,7 +268,7 @@ fn app_start_reports_missing_app_module() {
     );
 
     assert!(output.status.success());
-    assert!(text(&output).contains("Module app not found"));
+    assert!(text(&output).contains("No matching modules found"));
 }
 
 #[test]

@@ -2,7 +2,7 @@ use std::fs;
 use std::path::Path;
 
 /// A package or module directory discovered under `packages/` or `modules/`,
-/// eligible for a registry publish command (`docker:publish`, `npm:publish`).
+/// eligible for a registry publish command (`npm:publish`).
 #[derive(Clone, Debug)]
 pub struct PublishTarget {
     pub base: String,

@@ -932,3 +932,9 @@
 
 - Update Cargo.lock| — Franck ([42aa2bba](https://github.com/ooneex/talos/commit/42aa2bba))
 
+## [Unreleased]
+
+### Removed
+
+- Remove the admin:create, admin:remove, storybook:create, storybook:remove, swagger:create, swagger:remove, coverage, security:check, performance:check, issue:create, issue:check, issue:convert, issue:pull, issue:push, recipe:create, recipe:run, marketing:create, storage:push, storage:pull, docker:create, docker:publish, docker:credentials:create, e2e:create and e2e:run commands, their shell completions and the Linear, GitHub-issue, recipe, marketing and bucket-storage helpers only they used; the OSV.dev and assistant-configuration audit stays as a library behind install, add and update
+- Drop the now unused sha2, hmac and zip dependencies

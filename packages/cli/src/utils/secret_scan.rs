@@ -1,5 +1,5 @@
-// Credential-shaped strings in a file. `security:check` uses this when it
-// audits assistant instructions.
+// Credential-shaped strings in a file. The dependency audit run by `install`,
+// `add` and `update` uses this when it scans assistant instructions.
 
 use std::sync::OnceLock;
 

@@ -24,20 +24,6 @@ function __talos_pkg_modules
     end
 end
 
-function __talos_docker_packages
-    test -d packages; or return
-    for f in packages/*/Dockerfile
-        test -f "$f"; and string replace -r '^packages/([^/]+)/Dockerfile$' '$1' -- "$f"
-    end
-end
-
-function __talos_docker_modules
-    test -d modules; or return
-    for f in modules/*/Dockerfile
-        test -f "$f"; and string replace -r '^modules/([^/]+)/Dockerfile$' '$1' -- "$f"
-    end
-end
-
 function __talos_yaml_modules --argument-names type
     test -d modules; or return
     # `set` tolerates a non-matching glob (unlike passing it straight to grep).
@@ -86,47 +72,6 @@ function __talos_custom_commands
     test (count $files) -gt 0; or return
     command grep -h -A1 getName $files 2>/dev/null \
         | command sed -n 's/.*return "\(.*\)".*/\1/p' | command sort -u
-end
-
-# Recipe IDs (modules/*/recipes/<ID>.yml), described by "module · title"; an
-# ID found in several modules lists each of them.
-function __talos_recipe_ids
-    test -d modules; or return
-    set -l files modules/*/recipes/*.yml
-    test (count $files) -gt 0; or return
-    command awk -v sq="'" '
-        BEGIN { bs = sprintf("%c", 92) }
-        function unescape(v,  out, i, c) {
-            out = ""
-            for (i = 1; i <= length(v); i++) {
-                c = substr(v, i, 1)
-                if (c == bs && i < length(v)) c = substr(v, ++i, 1)
-                out = out c
-            }
-            return out
-        }
-        function flush() {
-            if (file == "") return
-            entry = module (title == "" ? "" : " · " title)
-            desc[id] = (id in desc) ? desc[id] "; " entry : entry
-        }
-        FNR == 1 {
-            flush(); file = FILENAME; title = ""; seen = 0
-            id = file; sub(/.*\//, "", id); sub(/\.yml$/, "", id)
-            module = file; sub(/^modules\//, "", module); sub(/\/.*/, "", module)
-        }
-        /^title:/ && !seen {
-            seen = 1; v = substr($0, 7); sub(/^[ \t]+/, "", v); sub(/[ \t]+$/, "", v)
-            q = substr(v, 1, 1)
-            if (v == "null" || v == "~") v = ""
-            else if ((q == "\"" || q == sq) && length(v) > 1 && substr(v, length(v), 1) == q) {
-                v = substr(v, 2, length(v) - 2)
-                if (q == sq) gsub(sq sq, sq, v); else v = unescape(v)
-            }
-            title = v
-        }
-        END { flush(); for (id in desc) print id "\t" desc[id] }
-    ' $files 2>/dev/null | command sort
 end
 
 function __talos_agent_dirs
@@ -179,11 +124,6 @@ for cmd in oo talos
     complete -c $cmd -f -n __fish_use_subcommand -a help -d 'Show available commands'
     complete -c $cmd -f -n __fish_use_subcommand -a version -d 'Print the installed CLI version'
     complete -c $cmd -f -n __fish_use_subcommand -a upgrade -d 'Upgrade the CLI to its latest version'
-    complete -c $cmd -f -n __fish_use_subcommand -a issue:create -d 'Create a YAML skeleton file for a new issue'
-    complete -c $cmd -f -n __fish_use_subcommand -a issue:pull -d 'Pull one or more issues from Linear and save them as YAML files'
-    complete -c $cmd -f -n __fish_use_subcommand -a issue:push -d 'Push one or more local issue YAML files to Linear (create or update)'
-    complete -c $cmd -f -n __fish_use_subcommand -a issue:convert -d 'Convert a module or package issue YAML files into a single issues.json'
-    complete -c $cmd -f -n __fish_use_subcommand -a issue:check -d 'Validate every issue YAML file against the issue conventions'
     complete -c $cmd -f -n __fish_use_subcommand -a analytics:create -d 'Generate a new analytics class'
     complete -c $cmd -f -n __fish_use_subcommand -a cache:create -d 'Generate a new cache class'
     complete -c $cmd -f -n __fish_use_subcommand -a command:create -d 'Generate a new command class'
@@ -196,18 +136,12 @@ for cmd in oo talos
     complete -c $cmd -f -n __fish_use_subcommand -a ai:middleware:create -d 'Generate a new AI middleware class'
     complete -c $cmd -f -n __fish_use_subcommand -a design:create -d 'Generate a new design module'
     complete -c $cmd -f -n __fish_use_subcommand -a design:remove -d 'Remove an existing design module'
-    complete -c $cmd -f -n __fish_use_subcommand -a docker:create -d 'Add a docker service to docker-compose.yml'
-    complete -c $cmd -f -n __fish_use_subcommand -a docker:credentials:create -d 'Save a Docker registry access token under the user config'
-    complete -c $cmd -f -n __fish_use_subcommand -a docker:publish -d 'Build and push a package or module Docker image to Docker Hub'
     complete -c $cmd -f -n __fish_use_subcommand -a npm:credentials:create -d 'Save an npm Granular Access Token under the user config'
     complete -c $cmd -f -n __fish_use_subcommand -a npm:publish -d 'Publish a package or module to npm'
     complete -c $cmd -f -n __fish_use_subcommand -a workspace:run -d 'Run package.json scripts across packages and modules with granular caching'
     complete -c $cmd -f -n __fish_use_subcommand -a run -d 'Alias for workspace:run'
     complete -c $cmd -f -n __fish_use_subcommand -a workspace:check -d 'Install dependencies and lint packages and modules with granular caching'
     complete -c $cmd -f -n __fish_use_subcommand -a check -d 'Install dependencies, lint sources and run package and module test suites'
-    complete -c $cmd -f -n __fish_use_subcommand -a security:check -d 'Audit dependencies for known vulnerabilities via OSV.dev'
-    complete -c $cmd -f -n __fish_use_subcommand -a coverage -d 'Run tests per module with coverage and report what is left uncovered'
-    complete -c $cmd -f -n __fish_use_subcommand -a performance:check -d 'Score every function, method and class on what it will cost as the data grows'
     complete -c $cmd -f -n __fish_use_subcommand -a install -d 'Install dependencies with bun, auditing every package for known vulnerabilities first'
     complete -c $cmd -f -n __fish_use_subcommand -a update -d 'Update dependencies with bun, auditing the resolved versions for known vulnerabilities first'
     complete -c $cmd -f -n __fish_use_subcommand -a add -d 'Add new dependencies with bun, auditing the resolved versions for known vulnerabilities first'
@@ -219,9 +153,6 @@ for cmd in oo talos
     complete -c $cmd -f -n __fish_use_subcommand -a flag:create -d 'Generate a new feature flag class'
     complete -c $cmd -f -n __fish_use_subcommand -a logger:create -d 'Generate a new logger class'
     complete -c $cmd -f -n __fish_use_subcommand -a mailer:create -d 'Generate a new mailer class'
-    complete -c $cmd -f -n __fish_use_subcommand -a marketing:create -d 'Create a marketing post resource inside a module'
-    complete -c $cmd -f -n __fish_use_subcommand -a recipe:create -d 'Create a YAML recipe listing the steps to test a feature'
-    complete -c $cmd -f -n __fish_use_subcommand -a recipe:run -d 'Replay recipe steps in a headless or visible browser'
     complete -c $cmd -f -n __fish_use_subcommand -a middleware:create -d 'Generate a new middleware class'
     complete -c $cmd -f -n __fish_use_subcommand -a permission:create -d 'Generate a new permission class'
     complete -c $cmd -f -n __fish_use_subcommand -a queue:create -d 'Generate a new queue class'
@@ -234,15 +165,7 @@ for cmd in oo talos
     complete -c $cmd -f -n __fish_use_subcommand -a spa:create -d 'Generate a new spa module'
     complete -c $cmd -f -n __fish_use_subcommand -a spa:feature:create -d 'Generate a new spa feature (route, layout, hooks and folders)'
     complete -c $cmd -f -n __fish_use_subcommand -a spa:remove -d 'Remove an existing spa module'
-    complete -c $cmd -f -n __fish_use_subcommand -a admin:create -d 'Generate a new admin module'
-    complete -c $cmd -f -n __fish_use_subcommand -a admin:remove -d 'Remove an existing admin module'
-    complete -c $cmd -f -n __fish_use_subcommand -a storybook:create -d 'Generate a new storybook module'
-    complete -c $cmd -f -n __fish_use_subcommand -a storybook:remove -d 'Remove an existing storybook module'
-    complete -c $cmd -f -n __fish_use_subcommand -a swagger:create -d 'Generate a new swagger module from a target module\'s controllers'
-    complete -c $cmd -f -n __fish_use_subcommand -a swagger:remove -d 'Remove an existing swagger module'
     complete -c $cmd -f -n __fish_use_subcommand -a storage:create -d 'Generate a new storage class'
-    complete -c $cmd -f -n __fish_use_subcommand -a storage:push -d 'Push a local file or folder to a Cloudflare R2, Bunny or S3 bucket'
-    complete -c $cmd -f -n __fish_use_subcommand -a storage:pull -d 'Pull a Cloudflare R2, Bunny or S3 bucket path into a local folder'
     complete -c $cmd -f -n __fish_use_subcommand -a translation:create -d 'Generate a new translation class'
     complete -c $cmd -f -n __fish_use_subcommand -a vector-database:create -d 'Generate a new vector database class'
     complete -c $cmd -f -n __fish_use_subcommand -a workflow:create -d 'Generate a new workflow class'
@@ -287,52 +210,6 @@ for cmd in oo talos
     complete -c $cmd -n '__fish_seen_subcommand_from command:run' -l name -x -a '(__talos_custom_commands)' -d 'Name of the command to run'
     complete -c $cmd -n '__fish_seen_subcommand_from command:run' -l cwd -r -f -a '(__fish_complete_directories)' -d 'Working directory'
 
-    complete -c $cmd -n '__fish_seen_subcommand_from issue:create' -l title -x -d 'Issue title'
-    complete -c $cmd -n '__fish_seen_subcommand_from issue:create' -l priority -x -a 'Low Medium High Urgent' -d 'Issue priority'
-    complete -c $cmd -n '__fish_seen_subcommand_from issue:create' -l description -x -d 'Issue description'
-    complete -c $cmd -n '__fish_seen_subcommand_from issue:create' -l labels -x -d 'Label (repeatable)'
-    complete -c $cmd -n '__fish_seen_subcommand_from issue:create' -l module -x -a '(__talos_modules)' -d 'Module name'
-    complete -c $cmd -n '__fish_seen_subcommand_from issue:create' -l interactive -d 'Prompt for all fields'
-
-    complete -c $cmd -n '__fish_seen_subcommand_from marketing:create' -l title -x -d 'Post title'
-    complete -c $cmd -n '__fish_seen_subcommand_from marketing:create' -l content -x -d 'Post content'
-    complete -c $cmd -n '__fish_seen_subcommand_from marketing:create' -l hashtag -x -d 'Hashtag (repeatable)'
-    complete -c $cmd -n '__fish_seen_subcommand_from marketing:create' -l platform -x -a 'X Instagram Facebook LinkedIn TikTok Threads WhatsApp Telegram Messenger Discord Reddit Medium' -d 'Target platform (repeatable)'
-    complete -c $cmd -n '__fish_seen_subcommand_from marketing:create' -l image -r -d 'Path to a .png image (repeatable)'
-    complete -c $cmd -n '__fish_seen_subcommand_from marketing:create' -l video -r -d 'Path to a .mp4 video (repeatable)'
-    complete -c $cmd -n '__fish_seen_subcommand_from marketing:create' -l state -x -a 'Todo in-review Published' -d 'Post state'
-    complete -c $cmd -n '__fish_seen_subcommand_from marketing:create' -l module -x -a '(__talos_modules)' -d 'Module name'
-    complete -c $cmd -n '__fish_seen_subcommand_from marketing:create' -l cwd -r -d 'Working directory'
-
-    complete -c $cmd -n '__fish_seen_subcommand_from recipe:create' -l title -x -d 'Recipe title'
-    complete -c $cmd -n '__fish_seen_subcommand_from recipe:create' -l description -x -d 'Recipe description'
-    complete -c $cmd -n '__fish_seen_subcommand_from recipe:create' -l step -x -d 'Browser step: navigate, click, fill, press, scroll or wait (repeatable)'
-    complete -c $cmd -n '__fish_seen_subcommand_from recipe:create' -l dependency -x -d 'ID of a recipe to run first (repeatable or comma-separated)'
-    complete -c $cmd -n '__fish_seen_subcommand_from recipe:create' -l module -x -a '(__talos_modules)' -d 'Module name'
-    complete -c $cmd -n '__fish_seen_subcommand_from recipe:create' -l cwd -r -f -a '(__fish_complete_directories)' -d 'Working directory'
-    complete -c $cmd -n '__fish_seen_subcommand_from recipe:run' -l id -x -a '(__talos_recipe_ids)' -d 'Recipe IDs to run, comma-separated (default: all)'
-    complete -c $cmd -n '__fish_seen_subcommand_from recipe:run' -l module -x -a '(__talos_modules)' -d 'Only run recipes of these modules, comma-separated'
-    complete -c $cmd -n '__fish_seen_subcommand_from recipe:run' -l base-url -x -d 'Origin relative URLs resolve against (default: $E2E_BASE_URL)'
-    complete -c $cmd -n '__fish_seen_subcommand_from recipe:run' -l timeout -x -d 'Milliseconds a step may wait (default: 10000)'
-    complete -c $cmd -n '__fish_seen_subcommand_from recipe:run' -l headed -d 'Replay in a new tab of your default browser'
-    complete -c $cmd -n '__fish_seen_subcommand_from recipe:run' -l width -x -d 'Viewport width in pixels (default: 1440)'
-    complete -c $cmd -n '__fish_seen_subcommand_from recipe:run' -l height -x -d 'Viewport height in pixels (default: 900)'
-    complete -c $cmd -n '__fish_seen_subcommand_from recipe:run' -l cwd -r -f -a '(__fish_complete_directories)' -d 'Working directory'
-
-    complete -c $cmd -n '__fish_seen_subcommand_from issue:pull' -l id -x -d 'Comma-separated issue IDs or identifiers'
-    complete -c $cmd -n '__fish_seen_subcommand_from issue:pull' -l module -x -a '(__talos_modules)' -d 'Module name'
-
-    complete -c $cmd -n '__fish_seen_subcommand_from issue:push' -l id -x -d 'Comma-separated local issue IDs to push'
-    complete -c $cmd -n '__fish_seen_subcommand_from issue:push' -l module -x -a '(__talos_modules)' -d 'Module name'
-
-    complete -c $cmd -n '__fish_seen_subcommand_from issue:convert' -l destination -x -a '(__talos_modules)' -d 'Comma-separated destination modules or packages'
-
-    complete -c $cmd -n '__fish_seen_subcommand_from issue:check' -l module -x -a '(__talos_modules)' -d 'Only check these modules, comma-separated'
-    complete -c $cmd -n '__fish_seen_subcommand_from issue:check' -l id -x -d 'Only check these issue IDs, comma-separated'
-    complete -c $cmd -n '__fish_seen_subcommand_from issue:check' -l strict -d 'Fail on warnings as well as errors'
-    complete -c $cmd -n '__fish_seen_subcommand_from issue:check' -l json -d 'Print the diagnostics as JSON instead of a human report'
-    complete -c $cmd -n '__fish_seen_subcommand_from issue:check' -l cwd -d 'Working directory'
-
     complete -c $cmd -n "__fish_seen_subcommand_from $__talos_resource_cmds" -l name -x -d 'Name of the resource'
     complete -c $cmd -n "__fish_seen_subcommand_from $__talos_resource_cmds" -l module -x -a '(__talos_modules)' -d 'Module name'
     complete -c $cmd -n "__fish_seen_subcommand_from $__talos_resource_cmds" -l override -d 'Override existing file'
@@ -351,17 +228,6 @@ for cmd in oo talos
     complete -c $cmd -n '__fish_seen_subcommand_from controller:create' -l route-method -x -a 'GET POST PUT PATCH DELETE HEAD OPTIONS' -d 'Route HTTP method'
     complete -c $cmd -n '__fish_seen_subcommand_from controller:create' -l is-socket -d 'Socket mode'
     complete -c $cmd -n '__fish_seen_subcommand_from controller:create' -l override -d 'Override existing file'
-
-    complete -c $cmd -n '__fish_seen_subcommand_from docker:create' -l name -x -a 'clickhouse dragonfly elasticsearch grafana jaeger keycloak libretranslate maildev memcached minio mongodb mysql nats postgres prometheus rabbitmq redis temporal vault' -d 'Docker service name'
-
-    complete -c $cmd -n '__fish_seen_subcommand_from docker:credentials:create' -l registry -x -d 'Docker registry'
-    complete -c $cmd -n '__fish_seen_subcommand_from docker:credentials:create' -l username -x -d 'Docker username'
-    complete -c $cmd -n '__fish_seen_subcommand_from docker:credentials:create' -l token -x -d 'Docker access token'
-
-    complete -c $cmd -n '__fish_seen_subcommand_from docker:publish' -l packages -a '(__talos_docker_packages)' -d 'Package name(s), comma-separated'
-    complete -c $cmd -n '__fish_seen_subcommand_from docker:publish' -l modules -a '(__talos_docker_modules)' -d 'Module name(s), comma-separated'
-    complete -c $cmd -n '__fish_seen_subcommand_from docker:publish' -l tag -x -d 'Image tag'
-
 
     complete -c $cmd -n '__fish_seen_subcommand_from credentials:create' -l provider -x -a 'jira linear x instagram facebook linkedin tiktok threads whatsapp telegram messenger discord reddit medium cloudflare bunny s3 openrouter' -d 'Credentials provider'
     complete -c $cmd -n '__fish_seen_subcommand_from credentials:create' -l base-url -x -d 'Base URL'
@@ -388,16 +254,6 @@ for cmd in oo talos
     complete -c $cmd -n '__fish_seen_subcommand_from credentials:create' -l api-key -x -d 'API key'
 
     complete -c $cmd -n '__fish_seen_subcommand_from npm:credentials:create' -l token -x -d 'npm Granular Access Token'
-
-    complete -c $cmd -n '__fish_seen_subcommand_from storage:push' -l provider -x -a 'cloudflare bunny s3' -d 'Storage provider'
-    complete -c $cmd -n '__fish_seen_subcommand_from storage:push' -l from -r -d 'Local file or folder to push'
-    complete -c $cmd -n '__fish_seen_subcommand_from storage:push' -l destination -x -d 'Destination bucket path'
-    complete -c $cmd -n '__fish_seen_subcommand_from storage:push' -l zip -d 'Send one zip archive instead of the individual files'
-
-    complete -c $cmd -n '__fish_seen_subcommand_from storage:pull' -l provider -x -a 'cloudflare bunny s3' -d 'Storage provider'
-    complete -c $cmd -n '__fish_seen_subcommand_from storage:pull' -l from -x -d 'Remote bucket path to pull'
-    complete -c $cmd -n '__fish_seen_subcommand_from storage:pull' -l destination -r -f -a '(__fish_complete_directories)' -d 'Local folder to pull into'
-    complete -c $cmd -n '__fish_seen_subcommand_from storage:pull' -l unzip -d 'Unpack every zip archive that comes down'
 
     complete -c $cmd -n '__fish_seen_subcommand_from npm:publish' -l packages -a '(__talos_packages)' -d 'Package name(s), comma-separated'
     complete -c $cmd -n '__fish_seen_subcommand_from npm:publish' -l modules -a '(__talos_pkg_modules)' -d 'Module name(s), comma-separated'
@@ -431,32 +287,6 @@ for cmd in oo talos
     complete -c $cmd -n '__fish_seen_subcommand_from update' -l logs -d 'Print the output of every step that fails'
     complete -c $cmd -n '__fish_seen_subcommand_from update' -l output -x -a 'md json' -d 'Also write the report to var/outputs/talos_update.md or .json'
     complete -c $cmd -n '__fish_seen_subcommand_from update' -l cwd -d 'Working directory'
-
-    complete -c $cmd -n '__fish_seen_subcommand_from security:check' -l issues -d 'Create a YAML issue per vulnerability instead of printing the report'
-    complete -c $cmd -n '__fish_seen_subcommand_from security:check' -l modules -a '(__talos_pkg_modules)' -d 'Module name(s), comma-separated'
-    complete -c $cmd -n '__fish_seen_subcommand_from security:check' -l packages -a '(__talos_packages)' -d 'Alias for --modules, comma-separated'
-    complete -c $cmd -n '__fish_seen_subcommand_from security:check' -l audit-level -a 'low moderate high critical' -d 'Minimum severity to report'
-    complete -c $cmd -n '__fish_seen_subcommand_from security:check' -l cwd -d 'Working directory'
-
-    complete -c $cmd -n '__fish_seen_subcommand_from coverage' -l issues -d 'Create a YAML issue per under-covered module instead of printing the report'
-    complete -c $cmd -n '__fish_seen_subcommand_from coverage' -l modules -a '(__talos_pkg_modules)' -d 'Module name(s), comma-separated'
-    complete -c $cmd -n '__fish_seen_subcommand_from coverage' -l packages -a '(__talos_packages)' -d 'Alias for --modules, comma-separated'
-    complete -c $cmd -n '__fish_seen_subcommand_from coverage' -l threshold -d 'Minimum line and function coverage, in percent'
-    complete -c $cmd -n '__fish_seen_subcommand_from coverage' -l logs -d 'Print the output of every suite that fails'
-    complete -c $cmd -n '__fish_seen_subcommand_from coverage' -l concurrency -d 'How many suites run at once'
-    complete -c $cmd -n '__fish_seen_subcommand_from coverage' -l no-cache -d 'Skip reading and writing the coverage cache'
-    complete -c $cmd -n '__fish_seen_subcommand_from coverage' -l strict -d 'Fail when a module stays under the threshold'
-    complete -c $cmd -n '__fish_seen_subcommand_from coverage' -l output -x -a 'md json' -d 'Also write the report to var/outputs/talos_coverage.md or .json'
-    complete -c $cmd -n '__fish_seen_subcommand_from coverage' -l cwd -d 'Working directory'
-
-    complete -c $cmd -n '__fish_seen_subcommand_from performance:check' -l issues -d 'Create a YAML issue per module under the threshold instead of printing the report'
-    complete -c $cmd -n '__fish_seen_subcommand_from performance:check' -l modules -a '(__talos_pkg_modules)' -d 'Module name(s), comma-separated'
-    complete -c $cmd -n '__fish_seen_subcommand_from performance:check' -l packages -a '(__talos_packages)' -d 'Alias for --modules, comma-separated'
-    complete -c $cmd -n '__fish_seen_subcommand_from performance:check' -l threshold -d 'Minimum score a module must reach, out of 100'
-    complete -c $cmd -n '__fish_seen_subcommand_from performance:check' -l min-severity -x -a 'low moderate high critical' -d 'Minimum severity to report'
-    complete -c $cmd -n '__fish_seen_subcommand_from performance:check' -l logs -d 'Print every hotspot and every rule, each with what to do about it'
-    complete -c $cmd -n '__fish_seen_subcommand_from performance:check' -l strict -d 'Fail when a module stays under the threshold'
-    complete -c $cmd -n '__fish_seen_subcommand_from performance:check' -l cwd -d 'Working directory'
 
     complete -c $cmd -n '__fish_seen_subcommand_from entity:create' -l name -x -d 'Name of the resource'
     complete -c $cmd -n '__fish_seen_subcommand_from entity:create' -l module -x -a '(__talos_modules)' -d 'Module name'
@@ -509,23 +339,7 @@ for cmd in oo talos
     complete -c $cmd -n '__fish_seen_subcommand_from spa:create' -l target -x -a '(__talos_destination_modules)' -d 'Target module name'
     complete -c $cmd -n '__fish_seen_subcommand_from spa:create' -l no-cache -d 'Ignore the cached skeleton and re-download it'
 
-    complete -c $cmd -n '__fish_seen_subcommand_from admin:create' -l name -x -d 'Name of the resource'
-    complete -c $cmd -n '__fish_seen_subcommand_from admin:create' -l design -x -a '(__talos_design_modules)' -d 'Design module name'
-    complete -c $cmd -n '__fish_seen_subcommand_from admin:create' -l target -x -a '(__talos_destination_modules)' -d 'Target module name'
-    complete -c $cmd -n '__fish_seen_subcommand_from admin:create' -l no-cache -d 'Ignore the cached skeleton and re-download it'
-
-    complete -c $cmd -n '__fish_seen_subcommand_from storybook:create' -l name -x -d 'Name of the resource'
-    complete -c $cmd -n '__fish_seen_subcommand_from storybook:create' -l design -x -a '(__talos_design_modules)' -d 'Design module name'
-    complete -c $cmd -n '__fish_seen_subcommand_from storybook:create' -l no-cache -d 'Ignore the cached skeleton and re-download it'
-
-    complete -c $cmd -n '__fish_seen_subcommand_from swagger:create' -l name -x -d 'Name of the resource'
-    complete -c $cmd -n '__fish_seen_subcommand_from swagger:create' -l module -x -a '(__talos_modules)' -d 'Module name'
-    complete -c $cmd -n '__fish_seen_subcommand_from swagger:create' -l design -x -a '(__talos_design_modules)' -d 'Design module name'
-    complete -c $cmd -n '__fish_seen_subcommand_from swagger:create' -l prefix -x -d 'Route prefix the backend mounts controllers under'
-    complete -c $cmd -n '__fish_seen_subcommand_from swagger:create' -l force -d 'Reinstall the explorer, discarding local changes to it'
-    complete -c $cmd -n '__fish_seen_subcommand_from swagger:create' -l no-cache -d 'Ignore the cached skeleton and re-download it'
-
-    complete -c $cmd -n '__fish_seen_subcommand_from design:remove spa:remove storybook:remove swagger:remove microservice:remove module:remove admin:remove' -l name -x -a '(__talos_modules)' -d 'Module name'
+    complete -c $cmd -n '__fish_seen_subcommand_from design:remove spa:remove microservice:remove module:remove' -l name -x -a '(__talos_modules)' -d 'Module name'
 
     complete -c $cmd -n '__fish_seen_subcommand_from seed:create' -l name -x -d 'Name of the resource'
     complete -c $cmd -n '__fish_seen_subcommand_from seed:create' -l module -x -a '(__talos_modules)' -d 'Module name'

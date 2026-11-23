@@ -7,7 +7,6 @@
 
 use std::collections::BTreeSet;
 
-use cli::utils::linear::priority_name;
 use cli::utils::workspace_scheduler::{failure_excerpt, finish_lines};
 use cli::utils::{
     FooterState, LoaderRow, Task, TaskStatus, build_footer_lines, error, info, step, success, warn,
@@ -239,23 +238,4 @@ fn every_message_helper_prints_without_needing_a_terminal() {
     warn("careful");
     info("by the way");
     step("working");
-}
-
-// ---------------------------------------------------------------------------
-// Linear priorities
-// ---------------------------------------------------------------------------
-
-#[test]
-fn a_linear_priority_maps_to_the_name_the_issue_files_use() {
-    assert_eq!(priority_name(Some(0)).as_deref(), Some("No priority"));
-    assert_eq!(priority_name(Some(1)).as_deref(), Some("Urgent"));
-    assert_eq!(priority_name(Some(2)).as_deref(), Some("High"));
-    assert_eq!(priority_name(Some(3)).as_deref(), Some("Medium"));
-    assert_eq!(priority_name(Some(4)).as_deref(), Some("Low"));
-    assert_eq!(
-        priority_name(Some(9)).as_deref(),
-        Some("9"),
-        "a value the table does not know is passed through"
-    );
-    assert_eq!(priority_name(None), None);
 }

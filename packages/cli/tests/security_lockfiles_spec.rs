@@ -1,4 +1,4 @@
-//! The lockfile readers behind `security:check`.
+//! The lockfile readers behind the dependency audit.
 //!
 //! Several ecosystems, several formats, one job: turn a lockfile into the
 //! `(ecosystem, name, version)` tuples the audit queries. None of it needs the
@@ -7,7 +7,7 @@
 use std::fs;
 use std::path::Path;
 
-use cli::commands::security_check::{
+use cli::utils::security_audit::{
     Ecosystem, PackageKey, collect_packages, parse_bun_lock, parse_composer_lock,
     parse_gemfile_lock, parse_go_sum, parse_package_lock, target_name, unquote,
 };

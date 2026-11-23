@@ -70,7 +70,7 @@ fn text(output: &Output) -> String {
 
 #[cfg(unix)]
 #[test]
-fn app_stop_stops_docker_for_selected_back_end_modules() {
+fn app_stop_stops_docker_only_for_the_selected_back_end_modules() {
     let dir = tempfile::tempdir().expect("tempdir");
     std::fs::create_dir_all(dir.path().join("modules/app")).expect("app dir");
     std::fs::create_dir_all(dir.path().join("modules/api")).expect("api dir");
@@ -85,14 +85,24 @@ fn app_stop_stops_docker_for_selected_back_end_modules() {
         "services: {}\n",
     )
     .expect("compose");
+    std::fs::write(
+        dir.path().join("modules/api/package.json"),
+        r#"{"name": "@acme/api"}"#,
+    )
+    .expect("api package");
     std::fs::write(dir.path().join("modules/api/api.yml"), "type: \"api\"\n").expect("api yml");
+    std::fs::write(
+        dir.path().join("modules/api/docker-compose.yml"),
+        "services: {}\n",
+    )
+    .expect("api compose");
     let bin = dir.path().join("bin");
     std::fs::create_dir_all(&bin).expect("bin");
     let log = dir.path().join("docker.log");
     write_executable(
         &bin.join("docker"),
         &format!(
-            "#!/bin/sh\nprintf 'docker:%s\\n' \"$*\" >> \"{}\"\nif [ \"$1\" = \"--version\" ]; then exit 0; fi\nexit 0\n",
+            "#!/bin/sh\nprintf 'docker:%s:%s\\n' \"$*\" \"${{PWD##*/}}\" >> \"{}\"\nif [ \"$1\" = \"--version\" ]; then exit 0; fi\nexit 0\n",
             log.display()
         ),
     );
@@ -111,13 +121,15 @@ fn app_stop_stops_docker_for_selected_back_end_modules() {
 
     let output_text = text(&output);
     assert!(output.status.success(), "{output_text}");
-    assert!(output_text.contains("Stopping Docker services for @acme/app"));
+    assert!(output_text.contains("Stopping Docker services for @acme/api"));
+    assert!(!output_text.contains("@acme/app"), "{output_text}");
     let log_text = std::fs::read_to_string(log).expect("log");
-    assert!(log_text.contains("docker:compose down"));
+    assert!(log_text.contains("docker:compose down:api"), "{log_text}");
+    assert!(!log_text.contains(":app"), "{log_text}");
 }
 
 #[test]
-fn app_stop_exits_when_the_app_module_is_missing() {
+fn app_stop_exits_when_no_module_is_found() {
     let dir = tempfile::tempdir().expect("tempdir");
 
     let output = run_talos(
@@ -127,7 +139,7 @@ fn app_stop_exits_when_the_app_module_is_missing() {
     );
 
     assert!(!output.status.success());
-    assert!(text(&output).contains("Module app not found"));
+    assert!(text(&output).contains("No matching modules found"));
 }
 
 /// A `lsof` that reports `pid` until the first call has been logged, so the
@@ -288,18 +300,16 @@ fn app_stop_exits_when_there_is_nothing_left_to_stop() {
 
 #[cfg(unix)]
 #[test]
-fn app_stop_falls_back_to_app_when_package_name_is_missing() {
+fn app_stop_falls_back_to_the_module_name_when_package_name_is_missing() {
     let dir = tempfile::tempdir().expect("tempdir");
-    std::fs::create_dir_all(dir.path().join("modules/app")).expect("app dir");
     std::fs::create_dir_all(dir.path().join("modules/api")).expect("api dir");
-    std::fs::write(dir.path().join("modules/app/package.json"), "{}").expect("package");
-    std::fs::write(dir.path().join("modules/app/app.yml"), "type: \"api\"\n").expect("yml");
+    std::fs::write(dir.path().join("modules/api/package.json"), "{}").expect("package");
+    std::fs::write(dir.path().join("modules/api/api.yml"), "type: \"api\"\n").expect("api yml");
     std::fs::write(
-        dir.path().join("modules/app/docker-compose.yml"),
+        dir.path().join("modules/api/docker-compose.yml"),
         "services: {}\n",
     )
     .expect("compose");
-    std::fs::write(dir.path().join("modules/api/api.yml"), "type: \"api\"\n").expect("api yml");
     let bin = dir.path().join("bin");
     std::fs::create_dir_all(&bin).expect("bin");
     write_executable(
@@ -321,5 +331,5 @@ fn app_stop_falls_back_to_app_when_package_name_is_missing() {
 
     let output_text = text(&output);
     assert!(output.status.success(), "{output_text}");
-    assert!(output_text.contains("Stopping Docker services for app"));
+    assert!(output_text.contains("Stopping Docker services for api"));
 }

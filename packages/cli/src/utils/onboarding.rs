@@ -36,10 +36,7 @@ const NUMBER_WIDTH: usize = 3;
 /// The commands worth knowing about once the app is running.
 const EXTRAS: [(&str, &str); 3] = [
     ("talos app:stop", "Stop the app and its Docker services"),
-    (
-        "talos check",
-        "Install, build, format, lint and test everything",
-    ),
+    ("talos check", "Install, lint and test everything"),
     ("talos help", "Every command, with what it does"),
 ];
 

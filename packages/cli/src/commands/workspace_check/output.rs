@@ -20,7 +20,6 @@ use console::strip_ansi_codes;
 use serde_json::{Value, json};
 
 use super::WorkspaceCheckArgs;
-use crate::commands::coverage::tail;
 use crate::commands::lint::{LintAudit, LintStatus};
 use crate::utils::{OutputFormat, write_report_file};
 
@@ -132,6 +131,16 @@ fn logs(output: &str) -> String {
         return "(no output captured)".to_string();
     }
     lines.join("\n")
+}
+
+/// The last `count` non-blank lines of `output`, oldest first.
+fn tail(output: &str, count: usize) -> Vec<&str> {
+    let lines: Vec<&str> = output
+        .lines()
+        .filter(|line| !line.trim().is_empty())
+        .collect();
+    let start = lines.len().saturating_sub(count);
+    lines[start..].to_vec()
 }
 
 // ---------------------------------------------------------------------------

@@ -16,8 +16,8 @@ use super::{
 pub const CREATE_NEW_DESIGN: &str = "Create a new design";
 pub const NO_TARGET: &str = "No target";
 
-/// Shared CLI arguments for the `admin:create` and `spa:create` commands, which take
-/// identical flags (an optional target module besides the design module a storybook lacks).
+/// CLI arguments for `spa:create`: the design module plus an optional target
+/// module.
 #[derive(Args, Debug)]
 pub struct DesignWithTargetCreateArgs {
     #[arg(long)]
@@ -367,28 +367,6 @@ pub fn rewrite_vite_alias(vite_path: &Path, design_kebab: Option<&str>) {
     }
 }
 
-/// Point the copied Playwright config at the port the module actually serves.
-pub fn rewrite_playwright_port(config_path: &Path, port: u16) {
-    let Ok(content) = fs::read_to_string(config_path) else {
-        return;
-    };
-    let Ok(port_re) = Regex::new(r"127\.0\.0\.1:(\d+)|--port (\d+)") else {
-        return;
-    };
-    let rewritten = port_re
-        .replace_all(&content, |caps: &regex::Captures| {
-            if caps.get(1).is_some() {
-                format!("127.0.0.1:{port}")
-            } else {
-                format!("--port {port}")
-            }
-        })
-        .into_owned();
-    if rewritten != content {
-        let _ = fs::write(config_path, rewritten);
-    }
-}
-
 pub fn ensure_shared_placeholder(src_dir: &Path) {
     let _ = fs::create_dir_all(src_dir.join("shared"));
     let _ = fs::write(src_dir.join("shared").join(".gitkeep"), "");
@@ -532,22 +510,5 @@ mod tests {
 
         assert!(used.is_empty());
         assert_eq!(find_free_port(3032, &used), 3032);
-    }
-
-    #[test]
-    fn rewrites_every_port_of_a_playwright_config() {
-        let temp = tempfile::tempdir().expect("temp dir");
-        let path = temp.path().join("playwright.config.ts");
-        fs::write(
-            &path,
-            "baseURL: \"http://127.0.0.1:3032\"\ncommand: \"vite --port 3032\"\n",
-        )
-        .expect("write config");
-
-        rewrite_playwright_port(&path, 3040);
-
-        let content = fs::read_to_string(&path).expect("read config");
-        assert!(content.contains("127.0.0.1:3040"));
-        assert!(content.contains("--port 3040"));
     }
 }

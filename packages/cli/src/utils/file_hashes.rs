@@ -1,4 +1,4 @@
-//! The memo of file content hashes shared by `lint` and `coverage`.
+//! The memo of file content hashes used by `lint`.
 //!
 //! Hashing is skipped while a file's size and modification time are unchanged,
 //! so a second run over a tree that has not moved is a directory walk. The memo

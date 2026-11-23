@@ -1,10 +1,10 @@
 //! Runs the generators that write a bundle of files rather than a single pair.
 //!
-//! Commands, seeds, mailers, migrations, e2e specs, React components, SPA
-//! features, translations and docker services each lay down several files and
-//! wire them together — an export index, a bin entry point, a config, a
-//! dictionary. Each one takes an explicit `--cwd`, so unlike the plain
-//! generators these can each have a test of their own.
+//! Commands, seeds, mailers, migrations, React components, SPA features and
+//! translations each lay down several files and wire them together — an
+//! export index, a bin entry point, a config, a dictionary. Each one takes an
+//! explicit `--cwd`, so unlike the plain generators these can each have a test
+//! of their own.
 //!
 //! The root `package.json` lists every dependency the generators would
 //! otherwise shell out to `bun add` for, which is what keeps the runs offline.
@@ -14,8 +14,6 @@ use std::path::{Path, PathBuf};
 
 use cli::commands::{
     command_create::{self, CommandCreateArgs},
-    docker_create::{self, DockerCreateArgs},
-    e2e_create::{self, E2eCreateArgs},
     mailer_create::{self, MailerCreateArgs},
     migration_create::{self, MigrationCreateArgs},
     react_component_create::{self, ReactComponentCreateArgs},
@@ -72,14 +70,6 @@ const TEMPLATES: &[(&str, &str)] = &[
     ),
     ("module/migration.up.txt", "// migrate up\n"),
     ("module/migration.down.txt", "// migrate down\n"),
-    (
-        "e2e.spec.txt",
-        "import { test } from \"@playwright/test\";\n",
-    ),
-    (
-        "playwright.config.txt",
-        "export default { testDir: \"./e2e\" };\n",
-    ),
     (
         "react-component.txt",
         "export const {{NAME}} = () => null;\n",
@@ -142,14 +132,6 @@ const TEMPLATES: &[(&str, &str)] = &[
         "// {{NAME}}Translation in {{MODULE}}\n",
     ),
     ("translation.yml.txt", "hello:\n  en: \"Hello\"\n"),
-    (
-        "docker/postgres.txt",
-        "services:\n  postgres:\n    image: postgres:16\nvolumes:\n  postgres_data:\nnetworks:\n  talos:\n",
-    ),
-    (
-        "docker/redis.txt",
-        "services:\n  redis:\n    image: redis:7\nvolumes:\n  redis_data:\nnetworks:\n  talos:\n",
-    ),
 ];
 
 /// Every dependency the generators would install if it were missing.
@@ -376,49 +358,6 @@ fn migration_create_stamps_the_file_with_the_version_it_generated() {
 }
 
 #[test]
-fn e2e_create_writes_the_spec_the_config_and_the_script_that_runs_them() {
-    let (_dir, root) = workspace();
-
-    e2e_create::run(&E2eCreateArgs {
-        no_cache: false,
-        name: Some("CheckoutSpec".to_string()),
-        module: Some("user".to_string()),
-        r#override: false,
-        cwd: cwd(&root),
-    });
-
-    let base = root.join("modules/user");
-    assert!(
-        base.join("e2e/Checkout.spec.ts").is_file(),
-        "the Spec suffix is not doubled"
-    );
-    assert!(base.join("playwright.config.ts").is_file());
-    let manifest: serde_json::Value =
-        serde_json::from_str(&read(&base.join("package.json"))).expect("valid manifest");
-    assert!(
-        manifest["scripts"]["e2e"].is_string(),
-        "the module gains an e2e script: {manifest}"
-    );
-}
-
-#[test]
-fn e2e_create_keeps_a_config_that_is_already_there() {
-    let (_dir, root) = workspace();
-    let config = root.join("modules/user/playwright.config.ts");
-    write(&config, "// hand written\n");
-
-    e2e_create::run(&E2eCreateArgs {
-        no_cache: false,
-        name: Some("checkout".to_string()),
-        module: Some("user".to_string()),
-        r#override: false,
-        cwd: cwd(&root),
-    });
-
-    assert_eq!(read(&config), "// hand written\n");
-}
-
-#[test]
 fn react_component_create_puts_the_component_at_the_module_root_by_default() {
     let (_dir, root) = workspace();
 
@@ -550,59 +489,5 @@ fn translation_create_scaffolds_a_hook_and_a_json_dictionary_for_a_spa_module() 
     assert!(
         !src.join("translations").exists(),
         "the backend layout is not used"
-    );
-}
-
-#[test]
-fn docker_create_writes_a_compose_file_when_the_app_has_none() {
-    let (_dir, root) = workspace();
-
-    docker_create::run(&DockerCreateArgs {
-        no_cache: false,
-        name: Some("postgres".to_string()),
-        cwd: cwd(&root),
-    });
-
-    let compose = read(&root.join("modules/app/docker-compose.yml"));
-    assert!(compose.contains("postgres:"), "{compose}");
-}
-
-#[test]
-fn docker_create_merges_a_second_service_into_the_compose_file() {
-    let (_dir, root) = workspace();
-
-    docker_create::run(&DockerCreateArgs {
-        no_cache: false,
-        name: Some("postgres".to_string()),
-        cwd: cwd(&root),
-    });
-    docker_create::run(&DockerCreateArgs {
-        no_cache: false,
-        name: Some("redis".to_string()),
-        cwd: cwd(&root),
-    });
-
-    let compose = read(&root.join("modules/app/docker-compose.yml"));
-    assert!(compose.contains("postgres:"), "{compose}");
-    assert!(compose.contains("redis:"), "{compose}");
-    assert!(
-        docker_create::service_exists(&compose, "redis"),
-        "the merged service is found by the same rule the merge uses"
-    );
-}
-
-#[test]
-fn docker_create_refuses_a_service_it_has_no_template_for() {
-    let (_dir, root) = workspace();
-
-    docker_create::run(&DockerCreateArgs {
-        no_cache: false,
-        name: Some("not-a-service".to_string()),
-        cwd: cwd(&root),
-    });
-
-    assert!(
-        !root.join("modules/app/docker-compose.yml").exists(),
-        "nothing is written for a service that does not exist"
     );
 }

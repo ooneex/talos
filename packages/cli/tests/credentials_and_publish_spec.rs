@@ -1,9 +1,8 @@
 //! The commands gated on a credentials file or on an external binary.
 //!
-//! `credentials:create` and its two siblings write a profile under
-//! `$HOME/.talos`; `npm:publish`, `docker:publish` and `app:stop` refuse to do
-//! anything until the binary they drive and the profile they need are both
-//! there. A scratch `HOME` and a `PATH` with nothing on it cover both sides
+//! `credentials:create` and `npm:credentials:create` write a profile under
+//! `$HOME/.talos`; `npm:publish` and `app:stop` refuse to do anything until the
+//! binary they drive and the profile they need are both there. A scratch `HOME` and a `PATH` with nothing on it cover both sides
 //! without touching a registry.
 
 use std::fs;
@@ -148,33 +147,18 @@ fn a_field_the_run_cannot_ask_for_leaves_no_profile_behind() {
 }
 
 #[test]
-fn the_two_dedicated_credential_commands_each_write_their_own_profile() {
+fn the_dedicated_npm_credential_command_writes_its_own_profile() {
     let home = home();
 
     talos_bare(
         home.path(),
         &["npm:credentials:create", "--token=npm_token", "--silent"],
     );
-    talos_bare(
-        home.path(),
-        &[
-            "docker:credentials:create",
-            "--registry=docker.io",
-            "--username=me",
-            "--token=docker_token",
-            "--silent",
-        ],
-    );
 
     assert!(
         fs::read_to_string(home.path().join(".talos/credentials/npm.yml"))
             .expect("npm profile")
             .contains("npm_token")
-    );
-    assert!(
-        fs::read_to_string(home.path().join(".talos/credentials/docker.yml"))
-            .expect("docker profile")
-            .contains("docker_token")
     );
 }
 
@@ -292,62 +276,17 @@ fn only_the_tarballs_are_swept_out_of_a_package_directory() {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn docker_publish_without_the_docker_binary_stops_before_anything_else() {
-    let (_dir, root) = workspace();
-    let home = home();
-
-    let output = talos(&root, home.path(), false, &["docker:publish"]);
-
-    assert!(text(&output).contains("docker"), "{}", text(&output));
-}
-
-#[test]
-fn app_stop_needs_an_app_module_before_it_needs_docker() {
+fn app_stop_needs_a_runnable_module_before_it_needs_docker() {
     let (_dir, root) = workspace();
     let home = home();
 
     let output = talos(&root, home.path(), true, &["app:stop"]);
 
     assert!(!output.status.success());
-    assert!(text(&output).contains("app"), "{}", text(&output));
-}
-
-// ---------------------------------------------------------------------------
-// issue:create
-// ---------------------------------------------------------------------------
-
-#[test]
-fn issue_create_writes_a_todo_issue_the_checker_accepts() {
-    let (_dir, root) = workspace();
-    let home = home();
-
-    let output = talos(
-        &root,
-        home.path(),
-        true,
-        &[
-            "issue:create",
-            "--module=user",
-            "--title=Add pagination",
-            "--priority=High",
-            "--label=Feature",
-            "--description=Page the list",
-        ],
-    );
-
-    assert!(output.status.success(), "{}", text(&output));
-    let entry = fs::read_dir(root.join("modules/user/issues"))
-        .expect("the issues directory was created")
-        .flatten()
-        .next()
-        .expect("one issue was written");
-    let issue = fs::read_to_string(entry.path()).expect("read the issue");
-    assert!(issue.contains("Add pagination"), "{issue}");
-    assert!(issue.contains("High"), "{issue}");
-    assert!(issue.contains("Feature"), "{issue}");
     assert!(
-        issue.contains("Todo"),
-        "a new issue always starts in Todo: {issue}"
+        text(&output).contains("No matching modules found"),
+        "{}",
+        text(&output)
     );
 }
 

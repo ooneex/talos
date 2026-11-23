@@ -26,24 +26,6 @@ _talos_publish_modules() {
   fi
 }
 
-_talos_docker_publish_packages() {
-  local -a packages
-  if [[ -d packages ]]; then
-    packages=(packages/*/Dockerfile(N))
-    packages=(${${packages%/Dockerfile}#packages/})
-    _values -s , 'packages' $packages
-  fi
-}
-
-_talos_docker_publish_modules() {
-  local -a modules
-  if [[ -d modules ]]; then
-    modules=(modules/*/Dockerfile(N))
-    modules=(${${modules%/Dockerfile}#modules/})
-    _values -s , 'modules' $modules
-  fi
-}
-
 _talos_custom_commands() {
   local -a cmds
   if [[ -d modules ]]; then
@@ -109,51 +91,6 @@ _talos_runnable_modules() {
   fi
 }
 
-_talos_recipe_ids() {
-  local -a files recipes
-  files=(modules/*/recipes/*.yml(N))
-  (( ${#files} )) || return
-  # One "ID[module · title]" value per recipe, escaped for _values; an ID
-  # found in several modules lists each of them.
-  recipes=(${(@f)"$(command awk -v sq="'" '
-    BEGIN { bs = sprintf("%c", 92) }
-    function unescape(v,  out, i, c) {
-      out = ""
-      for (i = 1; i <= length(v); i++) {
-        c = substr(v, i, 1)
-        if (c == bs && i < length(v)) c = substr(v, ++i, 1)
-        out = out c
-      }
-      return out
-    }
-    function flush() {
-      if (file == "") return
-      entry = module (title == "" ? "" : " · " title)
-      desc[id] = (id in desc) ? desc[id] "; " entry : entry
-    }
-    FNR == 1 {
-      flush(); file = FILENAME; title = ""; seen = 0
-      id = file; sub(/.*\//, "", id); sub(/\.yml$/, "", id)
-      module = file; sub(/^modules\//, "", module); sub(/\/.*/, "", module)
-    }
-    /^title:/ && !seen {
-      seen = 1; v = substr($0, 7); sub(/^[ \t]+/, "", v); sub(/[ \t]+$/, "", v)
-      q = substr(v, 1, 1)
-      if (v == "null" || v == "~") v = ""
-      else if ((q == "\"" || q == sq) && length(v) > 1 && substr(v, length(v), 1) == q) {
-        v = substr(v, 2, length(v) - 2)
-        if (q == sq) gsub(sq sq, sq, v); else v = unescape(v)
-      }
-      title = v
-    }
-    END {
-      flush()
-      for (id in desc) { d = desc[id]; gsub(/[][\\:]/, "\\\\&", d); print id "[" d "]" }
-    }
-  ' $files 2>/dev/null | sort)"})
-  _values -s , 'recipes' $recipes
-}
-
 _talos_agent_dirs() {
   local -a dirs
   dirs=(
@@ -186,11 +123,6 @@ _talos() {
     'help:Show available commands'
     'version:Print the installed CLI version'
     'upgrade:Upgrade the CLI to its latest version'
-    'issue\:create:Create a YAML skeleton file for a new issue'
-    'issue\:pull:Pull one or more issues from Linear and save them as YAML files'
-    'issue\:push:Push one or more local issue YAML files to Linear (create or update)'
-    'issue\:convert:Convert a module or package'\''s issue YAML files into a single issues.json'
-    'issue\:check:Validate every issue YAML file against the issue conventions'
     'ai\:chat\:create:Generate a new AI chat class'
     'ai\:tool\:create:Generate a new AI tool class'
     'ai\:middleware\:create:Generate a new AI middleware class'
@@ -203,20 +135,12 @@ _talos() {
     'database\:create:Generate a new database class'
     'design\:create:Generate a new design module'
     'design\:remove:Remove an existing design module'
-    'docker\:create:Add a docker service to docker-compose.yml'
-    'docker\:credentials\:create:Save a Docker registry access token under the user config'
-    'docker\:publish:Build and push a package or module Docker image to Docker Hub'
-    'storage\:push:Push a local file or folder to a Cloudflare R2, Bunny or S3 bucket'
-    'storage\:pull:Pull a Cloudflare R2, Bunny or S3 bucket path into a local folder'
     'npm\:credentials\:create:Save an npm Granular Access Token under the user config'
     'npm\:publish:Publish a package or module to npm'
     'workspace\:run:Run package.json scripts across packages and modules with granular caching'
     'run:Alias for workspace:run — run package.json scripts across packages and modules with granular caching'
     'workspace\:check:Install dependencies and lint packages and modules with granular caching'
     'check:Install dependencies, lint sources and run package and module test suites'
-    'security\:check:Audit dependencies for known vulnerabilities via OSV.dev'
-    'coverage:Run tests per module with coverage and report what is left uncovered'
-    'performance\:check:Score every function, method and class on what it will cost as the data grows'
     'install:Install dependencies with bun, auditing every package for known vulnerabilities first'
     'update:Update dependencies with bun, auditing the resolved versions for known vulnerabilities first'
     'add:Add new dependencies with bun, auditing the resolved versions for known vulnerabilities first'
@@ -224,15 +148,10 @@ _talos() {
     'fmt:Run the fmt script across packages and modules with its own dedicated cache'
     'lint:Run the lint script across packages and modules with its own dedicated cache'
     'test:Run the test script across packages and modules with its own dedicated cache'
-    'e2e\:run:Alias for workspace:run --commands=e2e — run the e2e script across packages and modules with granular caching'
-    'e2e\:create:Generate a new Playwright e2e test'
     'entity\:create:Generate a new entity class'
     'flag\:create:Generate a new feature flag class'
     'logger\:create:Generate a new logger class'
     'mailer\:create:Generate a new mailer class'
-    'marketing\:create:Create a marketing post resource inside a module'
-    'recipe\:create:Create a YAML recipe listing the steps to test a feature'
-    'recipe\:run:Replay recipe steps in a headless or visible browser'
     'middleware\:create:Generate a new middleware class'
     'permission\:create:Generate a new permission class'
     'queue\:create:Generate a new queue class'
@@ -246,12 +165,6 @@ _talos() {
     'spa\:feature\:create:Generate a new spa feature (route, layout, hooks and folders)'
     'react\:component\:create:Generate a new react component (with test) in a module or feature'
     'spa\:remove:Remove an existing spa module'
-    'admin\:create:Generate a new admin module'
-    'admin\:remove:Remove an existing admin module'
-    'storybook\:create:Generate a new storybook module'
-    'storybook\:remove:Remove an existing storybook module'
-    'swagger\:create:Generate a new swagger module from a target module'"'"'s controllers'
-    'swagger\:remove:Remove an existing swagger module'
     'storage\:create:Generate a new storage class'
     'translation\:create:Generate a new translation class'
     'vector-database\:create:Generate a new vector database class'
@@ -324,69 +237,6 @@ _talos() {
             '--name=[Name of the command to run]:name:_talos_custom_commands' \
             '--cwd=[Working directory]:cwd:_files -/'
           ;;
-        issue:create)
-          _arguments -s \
-            '--title=[Issue title]:title' \
-            '--priority=[Issue priority]:priority:(Low Medium High Urgent)' \
-            '--description=[Issue description]:description' \
-            '*--labels=[Label (repeatable)]:label' \
-            '--module=[Module name]:module:_talos_modules' \
-            '--interactive[Prompt for all fields]'
-          ;;
-        issue:pull)
-          _arguments -s \
-            '*--id=[Comma-separated issue IDs or identifiers]:id' \
-            '--module=[Module name]:module:_talos_modules'
-          ;;
-        issue:push)
-          _arguments -s \
-            '*--id=[Comma-separated local issue IDs to push]:id' \
-            '--module=[Module name]:module:_talos_modules'
-          ;;
-        issue:convert)
-          _arguments -s \
-            '*--destination=[Comma-separated destination modules or packages]:destination:_talos_modules'
-          ;;
-        issue:check)
-          _arguments -s \
-            '*--module=[Only check these modules, comma-separated (default: all)]:module:_talos_modules' \
-            '*--id=[Only check these issue IDs, comma-separated (default: all)]:id' \
-            '--strict[Fail on warnings as well as errors]' \
-            '--json[Print the diagnostics as JSON instead of a human report]' \
-            '--cwd=[Working directory]:cwd:_files -/'
-          ;;
-        marketing:create)
-          _arguments -s \
-            '--title=[Post title]:title' \
-            '--content=[Post content]:content' \
-            '*--hashtag=[Hashtag (repeatable)]:hashtag' \
-            '*--platform=[Target platform (repeatable)]:platform:(X Instagram Facebook LinkedIn TikTok Threads WhatsApp Telegram Messenger Discord Reddit Medium)' \
-            '*--image=[Path to a .png image (repeatable)]:image:_files -g "*.png"' \
-            '*--video=[Path to a .mp4 video (repeatable)]:video:_files -g "*.mp4"' \
-            '--state=[Post state]:state:(Todo in-review Published)' \
-            '--module=[Module name]:module:_talos_modules' \
-            '--cwd=[Working directory]:cwd:_files -/'
-          ;;
-        recipe:create)
-          _arguments -s \
-            '--title=[Recipe title]:title' \
-            '--description=[Recipe description]:description' \
-            '*--step=[Browser step: navigate, click, fill, press, scroll or wait (repeatable)]:step' \
-            '*--dependency=[ID of a recipe to run first (repeatable or comma-separated)]:dependency' \
-            '--module=[Module name]:module:_talos_modules' \
-            '--cwd=[Working directory]:cwd:_files -/'
-          ;;
-        recipe:run)
-          _arguments -s \
-            '*--id=[Recipe IDs to run, comma-separated (default: all)]:id:_talos_recipe_ids' \
-            '*--module=[Only run recipes of these modules, comma-separated]:module:_talos_modules' \
-            '--base-url=[Origin relative URLs resolve against (default: $E2E_BASE_URL)]:url' \
-            '--timeout=[Milliseconds a step may wait (default: 10000)]:milliseconds' \
-            '--headed[Replay in a new tab of your default browser]' \
-            '--width=[Viewport width in pixels (default: 1440)]:pixels' \
-            '--height=[Viewport height in pixels (default: 900)]:pixels' \
-            '--cwd=[Working directory]:cwd:_files -/'
-          ;;
         react:component:create)
           _arguments -s \
             '--name=[Name of the resource]:name' \
@@ -394,7 +244,7 @@ _talos() {
             '--feature=[Feature name (scopes the component to a feature)]:feature' \
             '--override[Override existing file]'
           ;;
-        ai:chat:create|ai:tool:create|ai:middleware:create|analytics:create|cache:create|command:create|cron:create|e2e:create|flag:create|logger:create|mailer:create|permission:create|queue:create|rate-limit:create|repository:create|service:create|spa:feature:create|storage:create|translation:create|vector-database:create|workflow:create|workflow:transition:create)
+        ai:chat:create|ai:tool:create|ai:middleware:create|analytics:create|cache:create|command:create|cron:create|flag:create|logger:create|mailer:create|permission:create|queue:create|rate-limit:create|repository:create|service:create|spa:feature:create|storage:create|translation:create|vector-database:create|workflow:create|workflow:transition:create)
           _arguments -s \
             '--name=[Name of the resource]:name' \
             '--module=[Module name]:module:_talos_modules' \
@@ -418,22 +268,6 @@ _talos() {
             '--route-method=[Route HTTP method]:method:(GET POST PUT PATCH DELETE HEAD OPTIONS)' \
             '--is-socket[Socket mode]' \
             '--override[Override existing file]'
-          ;;
-        docker:create)
-          _arguments -s \
-            '--name=[Docker service name]:name:(clickhouse dragonfly elasticsearch grafana jaeger keycloak libretranslate maildev memcached minio mongodb mysql nats postgres prometheus rabbitmq redis temporal vault)'
-          ;;
-        docker:credentials:create)
-          _arguments -s \
-            '--registry=[Docker registry]:registry' \
-            '--username=[Docker username]:username' \
-            '--token=[Docker access token]:token'
-          ;;
-        docker:publish)
-          _arguments -s \
-            '--packages=-[Package name(s), comma-separated (default: all)]::packages:_talos_docker_publish_packages' \
-            '--modules=-[Module name(s), comma-separated (default: all)]::modules:_talos_docker_publish_modules' \
-            '--tag=[Image tag (default: package.json version or latest)]:tag'
           ;;
         credentials:create)
           _arguments -s \
@@ -460,20 +294,6 @@ _talos() {
             '--bucket=[Bucket name]:bucket' \
             '--storage-zone=[Storage zone name]:storageZone' \
             '--api-key=[API key]:apiKey'
-          ;;
-        storage:push)
-          _arguments -s \
-            '--provider=[Storage provider]:provider:(cloudflare bunny s3)' \
-            '--from=[Local file or folder to push]:from:_files' \
-            '--destination=[Destination bucket path]:destination' \
-            '--zip[Send one zip archive instead of the individual files]'
-          ;;
-        storage:pull)
-          _arguments -s \
-            '--provider=[Storage provider]:provider:(cloudflare bunny s3)' \
-            '--from=[Remote bucket path to pull]:from' \
-            '--destination=[Local folder to pull into]:destination:_files -/' \
-            '--unzip[Unpack every zip archive that comes down]'
           ;;
         npm:credentials:create)
           _arguments -s \
@@ -510,13 +330,6 @@ _talos() {
             '--no-cache[Skip reading and writing the task cache]' \
             '--output=[Also write the report to var/outputs/talos_<command>.md or .json]:format:(md json)' \
             '--cwd=[Working directory]:cwd:_files -/'
-          ;;
-        e2e:run)
-          _arguments -s \
-            '--packages=-[Package name(s), comma-separated (default: all)]::packages:_talos_publish_packages' \
-            '--modules=-[Module name(s), comma-separated (default: all)]::modules:_talos_publish_modules' \
-            '--logs[Stream plain logs instead of the interactive view]' \
-            '--no-cache[Skip reading and writing the task cache]'
           ;;
         test)
           _arguments -s \
@@ -557,38 +370,6 @@ _talos() {
             '--audit-level=[Minimum severity that blocks the add]:level:(low moderate high critical)' \
             '--skip-audit[Skip the vulnerability audit and add directly]' \
             '--no-cache[Bypass the cached audit result and re-query OSV.dev]' \
-            '--cwd=[Working directory]:cwd:_files -/'
-          ;;
-        security:check)
-          _arguments -s \
-            '--issues[Create a YAML issue per vulnerability instead of printing the report]' \
-            '--modules=-[Module name(s), comma-separated (default: all)]::modules:_talos_publish_modules' \
-            '--packages=-[Alias for --modules, comma-separated (default: all)]::packages:_talos_publish_packages' \
-            '--audit-level=[Minimum severity to report]:level:(low moderate high critical)' \
-            '--cwd=[Working directory]:cwd:_files -/'
-          ;;
-        coverage)
-          _arguments -s \
-            '--issues[Create a YAML issue per under-covered module instead of printing the report]' \
-            '--modules=-[Module name(s), comma-separated (default: all)]::modules:_talos_publish_modules' \
-            '--packages=-[Alias for --modules, comma-separated (default: all)]::packages:_talos_publish_packages' \
-            '--threshold=[Minimum line and function coverage, in percent]:threshold:(70 75 80 85 90 95 100)' \
-            '--logs[Print the output of every suite that fails]' \
-            '--concurrency=[How many suites run at once]:concurrency:(1 2 4 8)' \
-            '--no-cache[Skip reading and writing the coverage cache]' \
-            '--strict[Fail when a module stays under the threshold]' \
-            '--output=[Also write the report to var/outputs/talos_coverage.md or .json]:format:(md json)' \
-            '--cwd=[Working directory]:cwd:_files -/'
-          ;;
-        performance:check)
-          _arguments -s \
-            '--issues[Create a YAML issue per module under the threshold instead of printing the report]' \
-            '--modules=-[Module name(s), comma-separated (default: all)]::modules:_talos_publish_modules' \
-            '--packages=-[Alias for --modules, comma-separated (default: all)]::packages:_talos_publish_packages' \
-            '--threshold=[Minimum score a module must reach, out of 100]:threshold:(70 75 80 85 90 95 100)' \
-            '--min-severity=[Minimum severity to report]:level:(low moderate high critical)' \
-            '--logs[Print every hotspot and every rule, each with what to do about it]' \
-            '--strict[Fail when a module stays under the threshold]' \
             '--cwd=[Working directory]:cwd:_files -/'
           ;;
         entity:create)
@@ -664,29 +445,7 @@ _talos() {
             '--target=[Target module name]:target:_talos_destination_modules' \
             '--no-cache[Ignore the cached skeleton and re-download it]'
           ;;
-        storybook:create)
-          _arguments -s \
-            '--name=[Name of the resource]:name' \
-            '--design=[Design module name]:design:_talos_design_modules' \
-            '--no-cache[Ignore the cached skeleton and re-download it]'
-          ;;
-        swagger:create)
-          _arguments -s \
-            '--name=[Name of the resource]:name' \
-            '--module=[Module name]:module:_talos_modules' \
-            '--design=[Design module name]:design:_talos_design_modules' \
-            '--prefix=[Route prefix the backend mounts controllers under]:prefix' \
-            '--force[Reinstall the explorer, discarding local changes to it]' \
-            '--no-cache[Ignore the cached skeleton and re-download it]'
-          ;;
-        admin:create)
-          _arguments -s \
-            '--name=[Name of the resource]:name' \
-            '--design=[Design module name]:design:_talos_design_modules' \
-            '--target=[Target module name]:target:_talos_destination_modules' \
-            '--no-cache[Ignore the cached skeleton and re-download it]'
-          ;;
-        design:remove|spa:remove|storybook:remove|swagger:remove|microservice:remove|module:remove|admin:remove)
+        design:remove|spa:remove|microservice:remove|module:remove)
           _arguments -s \
             '--name=[Module name]:name:_talos_modules'
           ;;

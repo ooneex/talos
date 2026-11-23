@@ -1,6 +1,4 @@
 pub mod add;
-pub mod admin_create;
-pub mod admin_remove;
 pub mod agent_skills_create;
 pub mod ai_chat_create;
 pub mod ai_middleware_create;
@@ -20,32 +18,20 @@ pub mod completion_bash;
 pub mod completion_fish;
 pub mod completion_zsh;
 pub mod controller_create;
-pub mod coverage;
 pub mod credentials_create;
 pub mod cron_create;
 pub mod database_create;
 pub mod design_create;
 pub mod design_remove;
-pub mod docker_create;
-pub mod docker_credentials_create;
-pub mod docker_publish;
-pub mod e2e_create;
-pub mod e2e_run;
 pub mod entity_create;
 pub mod event_create;
 pub mod feature_flag_create;
 pub mod fmt;
 pub mod help;
 pub mod install;
-pub mod issue_check;
-pub mod issue_convert;
-pub mod issue_create;
-pub mod issue_pull;
-pub mod issue_push;
 pub mod lint;
 pub mod logger_create;
 pub mod mailer_create;
-pub mod marketing_create;
 pub mod microservice_create;
 pub mod microservice_remove;
 pub mod middleware_create;
@@ -56,18 +42,14 @@ pub mod module_create;
 pub mod module_remove;
 pub mod npm_credentials_create;
 pub mod npm_publish;
-pub mod performance_check;
 pub mod permission_create;
 pub mod queue_create;
 pub mod rate_limit_create;
 pub mod react_component_create;
-pub mod recipe_create;
-pub mod recipe_run;
 pub mod release_create;
 pub mod repository_create;
 pub mod run;
 pub mod sdk_create;
-pub mod security_check;
 pub mod seed_create;
 pub mod seed_run;
 pub mod service_create;
@@ -75,12 +57,6 @@ pub mod spa_create;
 pub mod spa_feature_create;
 pub mod spa_remove;
 pub mod storage_create;
-pub mod storage_pull;
-pub mod storage_push;
-pub mod storybook_create;
-pub mod storybook_remove;
-pub mod swagger_create;
-pub mod swagger_remove;
 pub mod test;
 pub mod translation_create;
 pub mod update;
@@ -177,42 +153,8 @@ pub enum Commands {
     #[command(name = "design:remove")]
     DesignRemove(design_remove::DesignRemoveArgs),
 
-    #[command(name = "docker:create")]
-    DockerCreate(docker_create::DockerCreateArgs),
-
-    #[command(name = "docker:publish")]
-    DockerPublish(docker_publish::DockerPublishArgs),
-
     #[command(name = "mailer:create")]
     MailerCreate(mailer_create::MailerCreateArgs),
-
-    #[command(name = "issue:create")]
-    IssueCreate(issue_create::IssueCreateArgs),
-
-    #[command(name = "issue:pull")]
-    IssuePull(issue_pull::IssuePullArgs),
-
-    #[command(name = "issue:push")]
-    IssuePush(issue_push::IssuePushArgs),
-
-    #[command(name = "issue:convert")]
-    IssueConvert(issue_convert::IssueConvertArgs),
-
-    /// Validate every issue YAML file against the issue conventions
-    #[command(name = "issue:check")]
-    IssueCheck(issue_check::IssueCheckArgs),
-
-    /// Create a marketing post resource inside a module
-    #[command(name = "marketing:create")]
-    MarketingCreate(marketing_create::MarketingCreateArgs),
-
-    /// Create a YAML recipe listing the steps to test a feature
-    #[command(name = "recipe:create")]
-    RecipeCreate(recipe_create::RecipeCreateArgs),
-
-    /// Replay recipe steps in a headless or visible browser
-    #[command(name = "recipe:run")]
-    RecipeRun(recipe_run::RecipeRunArgs),
 
     #[command(name = "microservice:create")]
     MicroserviceCreate(microservice_create::MicroserviceCreateArgs),
@@ -253,19 +195,8 @@ pub enum Commands {
     #[command(name = "storage:create")]
     StorageCreate(storage_create::StorageCreateArgs),
 
-    /// Push a local file or folder to a Cloudflare R2, Bunny or S3 bucket
-    #[command(name = "storage:push")]
-    StoragePush(storage_push::StoragePushArgs),
-
-    /// Pull a Cloudflare R2, Bunny or S3 bucket path into a local folder
-    #[command(name = "storage:pull")]
-    StoragePull(storage_pull::StoragePullArgs),
-
     #[command(name = "spa:create")]
     SpaCreate(spa_create::SpaCreateArgs),
-
-    #[command(name = "admin:create")]
-    AdminCreate(admin_create::AdminCreateArgs),
 
     #[command(name = "vector-database:create")]
     VectorDatabaseCreate(vector_database_create::VectorDatabaseCreateArgs),
@@ -275,9 +206,6 @@ pub enum Commands {
 
     #[command(name = "workflow:transition:create")]
     WorkflowTransitionCreate(workflow_transition_create::WorkflowTransitionCreateArgs),
-
-    #[command(name = "docker:credentials:create")]
-    DockerCredentialsCreate(docker_credentials_create::DockerCredentialsCreateArgs),
 
     #[command(name = "credentials:create")]
     CredentialsCreate(credentials_create::CredentialsCreateArgs),
@@ -336,32 +264,11 @@ pub enum Commands {
     #[command(name = "translation:create")]
     TranslationCreate(translation_create::TranslationCreateArgs),
 
-    #[command(name = "e2e:create")]
-    E2eCreate(e2e_create::E2eCreateArgs),
-
-    #[command(name = "e2e:run")]
-    E2eRun(e2e_run::E2eRunArgs),
-
     #[command(name = "spa:feature:create")]
     SpaFeatureCreate(spa_feature_create::SpaFeatureCreateArgs),
 
     #[command(name = "spa:remove")]
     SpaRemove(spa_remove::SpaRemoveArgs),
-
-    #[command(name = "admin:remove")]
-    AdminRemove(admin_remove::AdminRemoveArgs),
-
-    #[command(name = "storybook:create")]
-    StorybookCreate(storybook_create::StorybookCreateArgs),
-
-    #[command(name = "storybook:remove")]
-    StorybookRemove(storybook_remove::StorybookRemoveArgs),
-
-    #[command(name = "swagger:create")]
-    SwaggerCreate(swagger_create::SwaggerCreateArgs),
-
-    #[command(name = "swagger:remove")]
-    SwaggerRemove(swagger_remove::SwaggerRemoveArgs),
 
     /// Install dependencies and lint every package and module
     #[command(name = "workspace:check")]
@@ -370,18 +277,6 @@ pub enum Commands {
     /// Install dependencies, lint sources and run every package and module test suite
     #[command(name = "check")]
     Check(check::CheckArgs),
-
-    /// Audit dependencies via OSV.dev and assistant agents/skills for LLM risks
-    #[command(name = "security:check")]
-    SecurityCheck(security_check::SecurityCheckArgs),
-
-    /// Run every module's tests with coverage and report what is left uncovered
-    #[command(name = "coverage")]
-    Coverage(coverage::CoverageArgs),
-
-    /// Score every function, method and class on what it will cost as the data grows
-    #[command(name = "performance:check")]
-    PerformanceCheck(performance_check::PerformanceCheckArgs),
 
     #[command(name = "migration:up")]
     MigrationUp(migration_up::MigrationUpArgs),
@@ -406,9 +301,6 @@ impl Commands {
         match self {
             Commands::WorkspaceCheck(args) => workspace_check::run(args),
             Commands::Check(args) => check::run(args),
-            Commands::SecurityCheck(args) => security_check::run(args),
-            Commands::Coverage(args) => coverage::run(args),
-            Commands::PerformanceCheck(args) => performance_check::run(args),
             Commands::MigrationUp(args) => migration_up::run(args),
             Commands::MigrationDown(args) => migration_down::run(args),
             Commands::SeedRun(args) => seed_run::run(args),
@@ -443,17 +335,7 @@ impl Commands {
             Commands::DatabaseCreate(args) => database_create::run(args),
             Commands::DesignCreate(args) => design_create::run(args),
             Commands::DesignRemove(args) => design_remove::run(args),
-            Commands::DockerCreate(args) => docker_create::run(args),
-            Commands::DockerPublish(args) => docker_publish::run(args),
             Commands::MailerCreate(args) => mailer_create::run(args),
-            Commands::IssueCreate(args) => issue_create::run(args),
-            Commands::IssuePull(args) => issue_pull::run(args),
-            Commands::IssuePush(args) => issue_push::run(args),
-            Commands::IssueConvert(args) => issue_convert::run(args),
-            Commands::IssueCheck(args) => issue_check::run(args),
-            Commands::MarketingCreate(args) => marketing_create::run(args),
-            Commands::RecipeCreate(args) => recipe_create::run(args),
-            Commands::RecipeRun(args) => recipe_run::run(args),
             Commands::MicroserviceCreate(args) => microservice_create::run(args),
             Commands::MicroserviceRemove(args) => microservice_remove::run(args),
             Commands::CommandCreate(args) => command_create::run(args),
@@ -467,27 +349,16 @@ impl Commands {
             Commands::RateLimitCreate(args) => rate_limit_create::run(args),
             Commands::ServiceCreate(args) => service_create::run(args),
             Commands::StorageCreate(args) => storage_create::run(args),
-            Commands::StoragePush(args) => storage_push::run(args),
-            Commands::StoragePull(args) => storage_pull::run(args),
             Commands::SpaCreate(args) => spa_create::run(args),
-            Commands::AdminCreate(args) => admin_create::run(args),
             Commands::VectorDatabaseCreate(args) => vector_database_create::run(args),
             Commands::WorkflowCreate(args) => workflow_create::run(args),
             Commands::WorkflowTransitionCreate(args) => workflow_transition_create::run(args),
-            Commands::DockerCredentialsCreate(args) => docker_credentials_create::run(args),
             Commands::CredentialsCreate(args) => credentials_create::run(args),
             Commands::NpmCredentialsCreate(args) => npm_credentials_create::run(args),
             Commands::NpmPublish(args) => npm_publish::run(args),
             Commands::TranslationCreate(args) => translation_create::run(args),
-            Commands::E2eCreate(args) => e2e_create::run(args),
-            Commands::E2eRun(args) => e2e_run::run(args),
             Commands::SpaFeatureCreate(args) => spa_feature_create::run(args),
             Commands::SpaRemove(args) => spa_remove::run(args),
-            Commands::AdminRemove(args) => admin_remove::run(args),
-            Commands::StorybookCreate(args) => storybook_create::run(args),
-            Commands::StorybookRemove(args) => storybook_remove::run(args),
-            Commands::SwaggerCreate(args) => swagger_create::run(args),
-            Commands::SwaggerRemove(args) => swagger_remove::run(args),
             _ => return false,
         }
         true
