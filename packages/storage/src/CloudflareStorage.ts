@@ -1,6 +1,7 @@
 import { AppEnv } from "@talosjs/app-env";
 import { inject } from "@talosjs/container";
 import type { S3Options } from "bun";
+
 import { decorator } from "./decorators";
 import { Storage } from "./Storage";
 import { StorageException } from "./StorageException";

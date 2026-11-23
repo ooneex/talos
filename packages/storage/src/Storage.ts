@@ -1,5 +1,7 @@
 import { basename, join } from "node:path";
+
 import type { BunFile, S3File, S3Options } from "bun";
+
 import { putDirRecursive } from "./putDir";
 import type { GetFileOptionsType, IStorage, PutDirOptionsType } from "./types";
 
