@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
+
 import { renderToStaticMarkup } from "react-dom/server";
+
 import { Facebook } from "@/icons/Facebook";
 import { Instagram } from "@/icons/Instagram";
 import { Linkedin } from "@/icons/Linkedin";

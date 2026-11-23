@@ -2,6 +2,7 @@ import { AppEnv } from "@talosjs/app-env";
 import { inject } from "@talosjs/container";
 import { renderToString } from "react-dom/server";
 import { Resend } from "resend";
+
 import { decorator } from "./decorators";
 import { MailerException } from "./MailerException";
 import type { IMailer, IMailerAttachment } from "./types";

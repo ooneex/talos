@@ -1,4 +1,5 @@
 import { container, EContainerScope } from "@talosjs/container";
+
 import type { MailerClassType } from "./types";
 
 export const decorator = {

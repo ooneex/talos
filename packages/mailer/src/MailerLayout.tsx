@@ -1,4 +1,5 @@
 import type { LocaleType } from "@talosjs/translation";
+
 import { MAILER_BODY_STYLE, MailerLayoutBody } from "./MailerLayoutBody";
 import { MailerLayoutFooter } from "./MailerLayoutFooter";
 import { MailerLayoutHeader } from "./MailerLayoutHeader";
