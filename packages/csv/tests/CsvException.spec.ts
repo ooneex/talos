@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+
 import { CsvException } from "@/index";
 
 describe("CsvException", () => {
