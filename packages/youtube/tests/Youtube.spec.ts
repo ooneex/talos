@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
+
 import { Youtube, YoutubeException } from "@/index";
 
 const originalFetch = globalThis.fetch;
