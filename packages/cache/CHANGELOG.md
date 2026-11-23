@@ -92,4 +92,3 @@
 ### Changed
 
 - Collapse Dragonfly SCAN arguments onto one line|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([6f8a4256](https://github.com/ooneex/talos/commit/6f8a4256))
-

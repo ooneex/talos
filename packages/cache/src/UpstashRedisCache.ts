@@ -1,6 +1,7 @@
 import { AppEnv } from "@talosjs/app-env";
 import { inject } from "@talosjs/container";
 import { Redis } from "@upstash/redis";
+
 import { AbstractCache } from "./AbstractCache";
 import { CacheException } from "./CacheException";
 import { decorator } from "./decorators";
