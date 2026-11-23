@@ -1,4 +1,5 @@
 import { YAML } from "bun";
+
 import type { IYaml, YamlLoadOptionsType, YamlToCsvOptionsType, YamlToJsonOptionsType } from "./types";
 import { YamlException } from "./YamlException";
 

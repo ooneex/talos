@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+
 import { YamlException } from "@/index";
 
 describe("YamlException", () => {

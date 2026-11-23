@@ -1,5 +1,6 @@
 import { afterAll, beforeEach, describe, expect, test } from "bun:test";
 import { rm } from "node:fs/promises";
+
 import { Yaml, YamlException } from "@/index";
 
 const TEST_DIR = ".temp/talos-yml-test";
