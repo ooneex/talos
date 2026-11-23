@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
+
 import { container, EContainerScope } from "@talosjs/container";
+
 import { decorator } from "@/decorators";
 import type { ITransition, WorkflowTransitionClassType } from "@/types";
 import { Workflow } from "@/Workflow";

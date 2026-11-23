@@ -1,10 +1,12 @@
 import { container } from "@talosjs/container";
+
 import type { ITransition, IWorkflow, WorkflowTransitionClassType } from "./types";
 import { WorkflowException } from "./WorkflowException";
 
-export abstract class Workflow<Data extends Record<string, unknown> = Record<string, unknown>, Output = unknown>
-  implements IWorkflow<Data, Output>
-{
+export abstract class Workflow<
+  Data extends Record<string, unknown> = Record<string, unknown>,
+  Output = unknown,
+> implements IWorkflow<Data, Output> {
   public constructor() {}
 
   public abstract getName(): string;
