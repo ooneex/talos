@@ -1,5 +1,6 @@
 import type { ExceptionStackFrameType, IException } from "@talosjs/exception";
 import type { ScalarType } from "@talosjs/types";
+
 import { decorator } from "./decorators";
 import type { ILogger, LoggerOptionsType } from "./types";
 

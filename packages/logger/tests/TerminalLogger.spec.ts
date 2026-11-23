@@ -1,5 +1,7 @@
 import { describe, expect, mock, spyOn, test } from "bun:test";
+
 import type { IException } from "@talosjs/exception";
+
 import { TerminalLogger } from "@/TerminalLogger";
 
 describe("TerminalLogger", () => {

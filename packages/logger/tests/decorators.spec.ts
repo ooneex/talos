@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, test } from "bun:test";
+
 import { Container, EContainerScope } from "@talosjs/container";
+
 import { decorator } from "@/decorators";
 import type { ILogger } from "@/types";
 

@@ -3,6 +3,7 @@ import { AppEnv } from "@talosjs/app-env";
 import { inject } from "@talosjs/container";
 import type { IException } from "@talosjs/exception";
 import type { ScalarType } from "@talosjs/types";
+
 import { decorator } from "./decorators";
 import { LoggerException } from "./LoggerException";
 import type { ILogger } from "./types";
