@@ -67,3 +67,11 @@
 ### Fixed
 
 - Map Polar product prices to amountType payloads|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([ba54198d](https://github.com/ooneex/talos/commit/ba54198d))
+
+## [1.1.11](https://github.com/ooneex/talos/releases/tag/@talosjs/payment@1.1.11) - 2026-11-24
+
+### Changed
+
+- Update sources and tests| — Franck ([bac3eb3d](https://github.com/ooneex/talos/commit/bac3eb3d))
+- Replace Biome with bun fmt across the workspace|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([939ce67c](https://github.com/ooneex/talos/commit/939ce67c))
+
