@@ -135,3 +135,11 @@
 - Refuse update and delete criteria that set a where property to undefined|The where builder leaves out a property whose value is undefined. update(User, { id: undefined }, — Julien ([622affe4](https://github.com/ooneex/talos/commit/622affe4))
 - Share one connection between concurrent opens of a closed source|SqlDatabase.open checked isInitialized and then awaited initialize(). Every request that arrived — Julien ([0c0e441d](https://github.com/ooneex/talos/commit/0c0e441d))
 - Refuse findOne criteria that set a where property to undefined|The where builder leaves out a property whose value is undefined, so findOneBy({ id: undefined }) — Julien ([9aabe07c](https://github.com/ooneex/talos/commit/9aabe07c))
+
+## [1.7.3](https://github.com/ooneex/talos/releases/tag/@talosjs/database@1.7.3) - 2026-11-24
+
+### Changed
+
+- Update sources and tests| — Franck ([d59233de](https://github.com/ooneex/talos/commit/d59233de))
+- Replace Biome with bun fmt across the workspace|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([939ce67c](https://github.com/ooneex/talos/commit/939ce67c))
+
