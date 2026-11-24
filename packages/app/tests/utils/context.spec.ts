@@ -180,6 +180,24 @@ describe("buildHttpContext", () => {
     cleanupContainer();
   });
 
+  test("handles a malformed form body gracefully, as a request without files", async () => {
+    setupContainer();
+
+    const formData = mock(() => Promise.reject(new TypeError("Missing boundary in multipart/form-data")));
+    const req = createMockReq({
+      headers: new Headers({ "content-type": "multipart/form-data" }),
+      formData,
+    });
+
+    const context = await buildHttpContext({ req, server: createMockServer() });
+
+    expect(formData).toHaveBeenCalledTimes(1);
+    expect(context.payload).toEqual({});
+    expect(context.files).toEqual({});
+
+    cleanupContainer();
+  });
+
   test("retrieves optional services from container when available", async () => {
     const mockCache = { get: () => {}, set: () => {} };
     setupContainer({ cache: mockCache });

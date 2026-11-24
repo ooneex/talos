@@ -344,6 +344,70 @@ describe("App", () => {
       expect(logger2.init).toHaveBeenCalled();
     });
 
+    test("registers each configured class the container does not hold yet", async () => {
+      class FreshLogger {
+        init = mock(() => {});
+        info = mock(() => {});
+        error = mock(() => {});
+        warn = mock(() => {});
+        debug = mock(() => {});
+        log = mock(() => {});
+        success = mock(() => {});
+      }
+      class FreshOnException extends FreshLogger {}
+      class FreshOnStart {
+        handle = mock(() => {});
+      }
+      class FreshOnStop {
+        handle = mock(() => {});
+      }
+      class FreshCache {
+        get = mock(() => null);
+        set = mock(() => {});
+      }
+      class FreshRateLimiter {
+        check = mock(() => true);
+      }
+      class FreshCron {
+        start = mock(() => {});
+      }
+      const fresh = [FreshLogger, FreshOnException, FreshOnStart, FreshOnStop, FreshCache, FreshRateLimiter, FreshCron];
+
+      expect(fresh.map((target) => container.has(target))).toEqual(fresh.map(() => false));
+
+      // The container is shared by every test: put back the constants this one replaces.
+      const tokens = ["logger", "exception.logger", "app.event.start", "app.event.stop", "cache", "rateLimiter"];
+      const saved = tokens.map((token) => [token, container.hasConstant(token), container.hasConstant(token) ? container.getConstant(token) : undefined] as const);
+      const restore = () => {
+        for (const [token, had, value] of saved) {
+          if (had) container.addConstant(token, value);
+          else if (container.hasConstant(token)) container.removeConstant(token);
+        }
+      };
+
+      await new App(
+        createMockConfig({
+          loggers: [FreshLogger],
+          onException: FreshOnException,
+          onStart: FreshOnStart,
+          onStop: FreshOnStop,
+          cache: FreshCache,
+          rateLimiter: FreshRateLimiter,
+          cronJobs: [FreshCron],
+        }),
+      ).init();
+
+      expect(fresh.map((target) => container.has(target))).toEqual(fresh.map(() => true));
+      expect((container.get(FreshLogger) as FreshLogger).init).toHaveBeenCalledTimes(1);
+      expect(container.getConstant("exception.logger")).toBe(container.get(FreshOnException));
+      expect(container.getConstant("app.event.start")).toBe(container.get(FreshOnStart));
+      expect(container.getConstant("app.event.stop")).toBe(container.get(FreshOnStop));
+      expect(container.getConstant("cache")).toBe(container.get(FreshCache));
+      expect(container.getConstant("rateLimiter")).toBe(container.get(FreshRateLimiter));
+
+      restore();
+    });
+
     test("registers multiple cron jobs in the container", async () => {
       class Cron1 {
         start = mock(() => {});
@@ -1076,6 +1140,76 @@ hierarchy:
 
       serveSpy.mockRestore();
       exitSpy.mockRestore();
+    });
+
+    test("answers 404 for a missing path when no CORS middleware is configured", async () => {
+      const serveSpy = spyOn(Bun, "serve").mockReturnValue(fakeServer as unknown as ReturnType<typeof Bun.serve>);
+      const exitSpy = spyOn(process, "exit").mockImplementation((() => undefined) as never);
+
+      await new App(createMockConfig()).run();
+
+      const serveOptions = (serveSpy.mock.calls as unknown[][])[0]?.[0] as {
+        routes: {
+          "/*": (req: import("bun").BunRequest, server: import("bun").Server<unknown>) => Promise<Response>;
+        };
+      };
+      const response = await serveOptions.routes["/*"](
+        {
+          cookies: { get: mock(() => null), set: mock(() => {}) },
+          headers: new Headers(),
+          method: "GET",
+          url: "http://localhost/missing",
+          params: {},
+          json: mock(() => Promise.resolve({})),
+          formData: mock(() => Promise.resolve(new FormData())),
+        } as unknown as import("bun").BunRequest,
+        {
+          requestIP: mock(() => ({ address: "127.0.0.1" })),
+        } as unknown as import("bun").Server<unknown>,
+      );
+
+      expect(response.status).toBe(HttpStatus.Code.NotFound);
+
+      serveSpy.mockRestore();
+      exitSpy.mockRestore();
+    });
+
+    test("exits with 1 when the app cannot initialize", async () => {
+      const serveSpy = spyOn(Bun, "serve").mockReturnValue(fakeServer as unknown as ReturnType<typeof Bun.serve>);
+      const exitSpy = spyOn(process, "exit").mockImplementation((() => undefined) as never);
+      const initSpy = spyOn(App.prototype, "init").mockRejectedValue(new Error("invalid configuration"));
+
+      await new App(createMockConfig()).run();
+
+      expect(exitSpy).toHaveBeenCalledWith(1);
+
+      initSpy.mockRestore();
+      serveSpy.mockRestore();
+      exitSpy.mockRestore();
+    });
+
+    test("announces the server under its own hostname, and 0.0.0.0 as localhost", async () => {
+      const exitSpy = spyOn(process, "exit").mockImplementation((() => undefined) as never);
+      const banners: string[] = [];
+      const writeSpy = spyOn(process.stdout, "write").mockImplementation(((chunk: string) => {
+        banners.push(String(chunk));
+        return true;
+      }) as never);
+      const serveSpy = spyOn(Bun, "serve");
+
+      for (const hostname of ["api.example.com", "0.0.0.0"]) {
+        serveSpy.mockReturnValue({ ...fakeServer, hostname } as unknown as ReturnType<typeof Bun.serve>);
+        await new App(createMockConfig()).run();
+      }
+
+      writeSpy.mockRestore();
+      serveSpy.mockRestore();
+      exitSpy.mockRestore();
+
+      const output = banners.join("");
+      expect(output).toContain("http://api.example.com:3000");
+      expect(output).toContain("http://localhost:3000");
+      expect(output).not.toContain("0.0.0.0");
     });
 
     test("stops verifying TLS certificates on local, so a proxied machine can boot", async () => {
