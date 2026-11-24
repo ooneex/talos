@@ -1890,3 +1890,79 @@ describe("socketRouteHandler cache after access checks", () => {
     expect(sentData.status).toBe(HttpStatus.Code.OK);
   });
 });
+
+describe("socketRouteHandler, several messages on one socket", () => {
+  const send = (wsId: string, wsSendMock: ReturnType<typeof mock>, payload: Record<string, unknown>, middlewares = []) =>
+    socketRouteHandler({
+      message: JSON.stringify({ payload }),
+      ws: createMockWs(wsId, wsSendMock) as unknown as import("bun").ServerWebSocket<{ id: string }>,
+      server: createMockServer() as unknown as import("bun").Server<{ id: string }>,
+      middlewares,
+    });
+
+  const answers = (wsSendMock: ReturnType<typeof mock>) =>
+    (wsSendMock.mock.calls as unknown[][]).map((call) => JSON.parse(String(call[0])).data);
+
+  test("messages handled at the same time each answer their own payload", async () => {
+    class SlowEchoController {
+      async index(ctx: ContextType): Promise<IResponse> {
+        const payload = ctx.payload as { n: number; wait: number };
+        await Bun.sleep(payload.wait);
+        return ctx.response.json({ n: payload.n, seen: (ctx.payload as { n: number }).n });
+      }
+    }
+    container.add(SlowEchoController);
+    const wsId = `test-ws-id-concurrent-${Date.now()}`;
+    container.addConstant(wsId, { context: createMockSocketContext(), route: createMockSocketRoute({ controller: SlowEchoController }) });
+    const wsSendMock = mock(() => {});
+
+    // The first one finishes last: it would answer the last payload if they shared a context.
+    await Promise.all([
+      send(wsId, wsSendMock, { n: 1, wait: 30 }),
+      send(wsId, wsSendMock, { n: 2, wait: 10 }),
+      send(wsId, wsSendMock, { n: 3, wait: 0 }),
+    ]);
+
+    expect(answers(wsSendMock).sort((a, b) => a.n - b.n)).toEqual([
+      { n: 1, seen: 1 },
+      { n: 2, seen: 2 },
+      { n: 3, seen: 3 },
+    ]);
+  });
+
+  test("what a message sets on its context never reaches the connection's or the next message's", async () => {
+    const seen: (string | null)[] = [];
+
+    class UserFromPayloadMiddleware {
+      async handler(ctx: ContextType): Promise<ContextType> {
+        const name = (ctx.payload as { user?: string }).user;
+        if (name) ctx.user = { id: name, email: `${name}@example.com`, roles: [] } as unknown as ContextType["user"];
+        return ctx;
+      }
+    }
+    container.add(UserFromPayloadMiddleware);
+
+    class UserController {
+      index(ctx: ContextType): IResponse {
+        seen.push(ctx.user?.id ?? null);
+        return ctx.response.json({ ok: true });
+      }
+    }
+    container.add(UserController);
+    const connection = createMockSocketContext({
+      env: { APP_ENV: "production" } as unknown as ContextType["env"],
+    });
+    const wsId = `test-ws-id-isolated-${Date.now()}`;
+    container.addConstant(wsId, { context: connection, route: createMockSocketRoute({ controller: UserController }) });
+    const wsSendMock = mock(() => {});
+    const middlewares = [UserFromPayloadMiddleware] as unknown as never[];
+
+    await send(wsId, wsSendMock, { user: "ada" }, middlewares);
+    await send(wsId, wsSendMock, {}, middlewares);
+
+    expect(seen).toEqual(["ada", null]);
+    expect(connection.user).toBeNull();
+    expect(connection.payload).toEqual({});
+    expect(connection.response.getData()).toBeNull();
+  });
+});

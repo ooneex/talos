@@ -1,7 +1,7 @@
 import type { EnvironmentNameType } from "@talosjs/app-env";
 import { Cache } from "@talosjs/cache";
 import { container } from "@talosjs/container";
-import type { IResponse } from "@talosjs/http-response";
+import { HttpResponse, type IResponse } from "@talosjs/http-response";
 import { HttpStatus, type StatusCodeType } from "@talosjs/http-status";
 import type { SocketMiddlewareClassType } from "@talosjs/middleware";
 import type { RouteConfigType } from "@talosjs/routing";
@@ -82,7 +82,13 @@ export const socketRouteHandler = async ({
     return;
   }
 
-  let { context, route } = container.getConstant<{ context: ContextType; route: RouteConfigType }>(ws.data.id);
+  const { context: connection, route } = container.getConstant<{ context: ContextType; route: RouteConfigType }>(
+    ws.data.id,
+  );
+  // Every message gets its own context and response. The connection's context is built once, at the
+  // upgrade, and Bun does not wait for one message's handler before it starts the next: a message
+  // sent before the previous one is answered would otherwise overwrite its payload, user and response.
+  let context: ContextType = { ...connection, response: new HttpResponse() };
   const currentEnv: EnvironmentNameType = context.env.APP_ENV;
 
   // channel must be set up before any sendException call
