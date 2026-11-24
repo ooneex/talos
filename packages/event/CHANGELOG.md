@@ -64,3 +64,11 @@
 ### Fixed
 
 - Reconnect RedisPubSubClient and resubscribe its channels after a Redis outage|Bun's RedisClient stops trying after maxRetries reconnect attempts and stays closed for good. After — Julien ([aae5d837](https://github.com/ooneex/talos/commit/aae5d837))
+
+## [1.1.11](https://github.com/ooneex/talos/releases/tag/@talosjs/event@1.1.11) - 2026-11-24
+
+### Changed
+
+- Update sources and tests| — Franck ([fd61e3fc](https://github.com/ooneex/talos/commit/fd61e3fc))
+- Replace Biome with bun fmt across the workspace|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([939ce67c](https://github.com/ooneex/talos/commit/939ce67c))
+
