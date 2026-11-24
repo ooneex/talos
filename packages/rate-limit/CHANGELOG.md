@@ -74,3 +74,11 @@
 ### Added
 
 - Raise the default window limit to 1000|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([e779de53](https://github.com/ooneex/talos/commit/e779de53))
+
+## [1.3.1](https://github.com/ooneex/talos/releases/tag/@talosjs/rate-limit@1.3.1) - 2026-11-24
+
+### Changed
+
+- Update sources and tests| — Franck ([c544b2ea](https://github.com/ooneex/talos/commit/c544b2ea))
+- Replace Biome with bun fmt across the workspace|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([939ce67c](https://github.com/ooneex/talos/commit/939ce67c))
+
