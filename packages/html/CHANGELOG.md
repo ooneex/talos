@@ -64,3 +64,11 @@
 ### Changed
 
 - Run package lint through bun check|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([de3ee05c](https://github.com/ooneex/talos/commit/de3ee05c))
+
+## [1.2.2](https://github.com/ooneex/talos/releases/tag/@talosjs/html@1.2.2) - 2026-11-24
+
+### Changed
+
+- Update sources and tests| — Franck ([c7397f9f](https://github.com/ooneex/talos/commit/c7397f9f))
+- Replace Biome with bun fmt across the workspace|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([939ce67c](https://github.com/ooneex/talos/commit/939ce67c))
+
