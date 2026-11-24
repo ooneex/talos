@@ -92,3 +92,11 @@
 ### Changed
 
 - Collapse Dragonfly SCAN arguments onto one line|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([6f8a4256](https://github.com/ooneex/talos/commit/6f8a4256))
+
+## [1.3.10](https://github.com/ooneex/talos/releases/tag/@talosjs/cache@1.3.10) - 2026-11-24
+
+### Changed
+
+- Update sources and tests| — Franck ([c540fb88](https://github.com/ooneex/talos/commit/c540fb88))
+- Replace Biome with bun fmt across the workspace|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([939ce67c](https://github.com/ooneex/talos/commit/939ce67c))
+
