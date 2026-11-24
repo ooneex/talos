@@ -95,3 +95,16 @@
 ### Changed
 
 - Run package lint through bun check|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([de3ee05c](https://github.com/ooneex/talos/commit/de3ee05c))
+
+## [1.3.5](https://github.com/ooneex/talos/releases/tag/@talosjs/ai@1.3.5) - 2026-11-24
+
+### Changed
+
+- Bump brightdata, exa-js and firecrawl| — Franck ([6842e9ed](https://github.com/ooneex/talos/commit/6842e9ed))
+- Update sources and tests| — Franck ([b8a4ae29](https://github.com/ooneex/talos/commit/b8a4ae29))
+- Replace Biome with bun fmt across the workspace|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([939ce67c](https://github.com/ooneex/talos/commit/939ce67c))
+
+### Fixed
+
+- Align Exa search categories with its API| — Franck ([9662be24](https://github.com/ooneex/talos/commit/9662be24))
+
