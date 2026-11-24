@@ -41,3 +41,11 @@
 ### Changed
 
 - Run package lint through bun check|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([de3ee05c](https://github.com/ooneex/talos/commit/de3ee05c))
+
+## [0.2.2](https://github.com/ooneex/talos/releases/tag/@talosjs/payment-stripe@0.2.2) - 2026-11-24
+
+### Changed
+
+- Update sources and tests| — Franck ([fbd2c4bb](https://github.com/ooneex/talos/commit/fbd2c4bb))
+- Replace Biome with bun fmt across the workspace|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([939ce67c](https://github.com/ooneex/talos/commit/939ce67c))
+
