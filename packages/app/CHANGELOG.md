@@ -196,3 +196,16 @@
 ### Added
 
 - Bind a lazy mailer token from app config|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([c6f24059](https://github.com/ooneex/talos/commit/c6f24059))
+
+## [1.10.1](https://github.com/ooneex/talos/releases/tag/@talosjs/app@1.10.1) - 2026-11-24
+
+### Changed
+
+- Cover container registration, 404 fallback, init failure and malformed form bodies| — Franck ([28aefc45](https://github.com/ooneex/talos/commit/28aefc45))
+- Update sources and tests| — Franck ([4603b3f9](https://github.com/ooneex/talos/commit/4603b3f9))
+- Replace Biome with bun fmt across the workspace|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([939ce67c](https://github.com/ooneex/talos/commit/939ce67c))
+
+### Fixed
+
+- Give each socket message its own context and response| — Franck ([4157159a](https://github.com/ooneex/talos/commit/4157159a))
+
