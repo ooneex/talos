@@ -113,3 +113,11 @@
 ### Fixed
 
 - Keep a process APP_ENV when the seed yaml loads|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([e95c7f29](https://github.com/ooneex/talos/commit/e95c7f29))
+
+## [1.3.3](https://github.com/ooneex/talos/releases/tag/@talosjs/seeds@1.3.3) - 2026-11-24
+
+### Changed
+
+- Update sources and tests| — Franck ([06027b01](https://github.com/ooneex/talos/commit/06027b01))
+- Replace Biome with bun fmt across the workspace|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([939ce67c](https://github.com/ooneex/talos/commit/939ce67c))
+
