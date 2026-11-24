@@ -147,3 +147,11 @@
 ### Fixed
 
 - Skip unset null and blank yaml values when loading env|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([769a5fe3](https://github.com/ooneex/talos/commit/769a5fe3))
+
+## [1.10.2](https://github.com/ooneex/talos/releases/tag/@talosjs/app-env@1.10.2) - 2026-11-24
+
+### Changed
+
+- Update sources and tests| — Franck ([5d3b4a9e](https://github.com/ooneex/talos/commit/5d3b4a9e))
+- Replace Biome with bun fmt across the workspace|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([939ce67c](https://github.com/ooneex/talos/commit/939ce67c))
+
