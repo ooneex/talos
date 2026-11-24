@@ -59,6 +59,17 @@ describe("ExaWebSearchTool metadata", () => {
 
     expect((schema({ query: "ai", type: "turbo" }) as { summary?: string }).summary).toBeString();
   });
+
+  test("should accept only the categories Exa's search API takes", () => {
+    const schema = makeTool().getInputSchema();
+
+    for (const category of ["company", "publication", "news", "personal site", "financial report", "people"]) {
+      expect(schema({ query: "ai", category })).toEqual({ query: "ai", category });
+    }
+    // Exa renamed "research paper" to "publication" and dropped "pdf".
+    expect((schema({ query: "ai", category: "research paper" }) as { summary?: string }).summary).toBeString();
+    expect((schema({ query: "ai", category: "pdf" }) as { summary?: string }).summary).toBeString();
+  });
 });
 
 describe("ExaWebSearchTool.handler", () => {

@@ -9,9 +9,8 @@ import type { ITool } from "../types";
 /** Search type accepted by Exa — trades latency for depth. */
 export type ExaSearchType = "auto" | "fast" | "deep-lite" | "deep" | "deep-reasoning" | "instant";
 
-/** Data category Exa can bias the search toward. */
-export type ExaCategoryType =
-  "company" | "research paper" | "news" | "pdf" | "personal site" | "financial report" | "people";
+/** Data category Exa can bias the search toward — the categories its search API accepts. */
+export type ExaCategoryType = "company" | "publication" | "news" | "personal site" | "financial report" | "people";
 
 /** Arguments the model supplies when calling the Exa web search tool. */
 export type ExaSearchInputType = {
@@ -88,7 +87,7 @@ export class ExaSearchTool implements ITool<unknown, Promise<ExaSearchResultType
       query: "string > 0",
       "numResults?": "number > 0",
       "type?": "'auto' | 'fast' | 'deep-lite' | 'deep' | 'deep-reasoning' | 'instant'",
-      "category?": "'company' | 'research paper' | 'news' | 'pdf' | 'personal site' | 'financial report' | 'people'",
+      "category?": "'company' | 'publication' | 'news' | 'personal site' | 'financial report' | 'people'",
       "includeDomains?": "string[]",
       "excludeDomains?": "string[]",
     });
