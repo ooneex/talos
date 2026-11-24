@@ -112,3 +112,11 @@
 ### Changed
 
 - Run package lint through bun check|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([de3ee05c](https://github.com/ooneex/talos/commit/de3ee05c))
+
+## [1.3.2](https://github.com/ooneex/talos/releases/tag/@talosjs/migrations@1.3.2) - 2026-11-24
+
+### Changed
+
+- Update sources and tests| — Franck ([4dd00f24](https://github.com/ooneex/talos/commit/4dd00f24))
+- Replace Biome with bun fmt across the workspace|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([939ce67c](https://github.com/ooneex/talos/commit/939ce67c))
+
