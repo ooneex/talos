@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "@brightdata/sdk": "^1.1.0",
+    "@brightdata/sdk": "^1.2.0",
     "@talosjs/app-env": "workspace:^",
     "@talosjs/container": "workspace:^",
     "@talosjs/exception": "workspace:^",
@@ -9,8 +9,8 @@
     "@talosjs/validation": "workspace:^",
     "@tanstack/ai": "^0.31.0",
     "@tanstack/ai-openrouter": "^0.13.4",
-    "exa-js": "^2.14.0",
-    "firecrawl": "^4.28.2"
+    "exa-js": "^2.29.0",
+    "firecrawl": "^4.54.0"
   },
   "description": "AI toolkit for TypeScript — seamlessly integrate 300+ models via OpenRouter with a unified API for text generation, streaming, and content transformation",
   "devDependencies": {
