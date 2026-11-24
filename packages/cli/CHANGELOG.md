@@ -934,6 +934,20 @@
 
 ## [Unreleased]
 
+## [0.18.0](https://github.com/ooneex/talos/releases/tag/@talos/cli@0.18.0) - 2026-11-24
+
+### Added
+
+- Add security audit utilities and specs| — Franck ([ad0cc92b](https://github.com/ooneex/talos/commit/ad0cc92b))
+
+### Changed
+
+- Update sources and tests| — Franck ([eb1c9a71](https://github.com/ooneex/talos/commit/eb1c9a71))
+- Remove project:check and the commitlint commands|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([2d2badd4](https://github.com/ooneex/talos/commit/2d2badd4))
+- Replace Biome with bun fmt across the workspace|Co-authored-by: Cursor <cursoragent@cursor.com> — Franck ([939ce67c](https://github.com/ooneex/talos/commit/939ce67c))
+- Update Cargo.lock| — Franck ([7d2012c3](https://github.com/ooneex/talos/commit/7d2012c3))
+
+
 ### Removed
 
 - Remove the admin:create, admin:remove, storybook:create, storybook:remove, swagger:create, swagger:remove, coverage, security:check, performance:check, issue:create, issue:check, issue:convert, issue:pull, issue:push, recipe:create, recipe:run, marketing:create, storage:push, storage:pull, docker:create, docker:publish, docker:credentials:create, e2e:create and e2e:run commands, their shell completions and the Linear, GitHub-issue, recipe, marketing and bucket-storage helpers only they used; the OSV.dev and assistant-configuration audit stays as a library behind install, add and update
